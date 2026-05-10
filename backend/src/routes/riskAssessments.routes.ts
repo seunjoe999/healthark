@@ -1,0 +1,127 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { body, param } from 'express-validator';
+import { authenticate, requireRole } from '../middleware/auth';
+import { validateRequest } from '../middleware/validate';
+import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
+import { ApiResponse } from '../types';
+import jwt from 'jsonwebtoken';
+
+const router = Router();
+router.use(authenticate);
+
+function fromToken(req: Request, field: string): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
+  return (req.staff as any)?.[field] || '';
+}
+
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { suId, homeId } = req.query as Record<string, string>;
+    const targetHomeId = homeId || fromToken(req, 'homeId');
+    let sql = `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name
+               FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id
+               WHERE ra.is_active = true`;
+    const params: unknown[] = [];
+    let idx = 1;
+    if (suId) { sql += ` AND ra.su_id = $${idx++}`; params.push(suId); }
+    else { sql += ` AND ra.home_id = $${idx++}`; params.push(targetHomeId); }
+    sql += ' ORDER BY ra.current_risk_level DESC, ra.created_at DESC';
+    const rows = await query(sql, params);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.get('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name
+         FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id WHERE ra.id = $1`,
+        [req.params.id]
+      );
+      if (!rows.length) throw new AppError('Risk assessment not found', 404);
+      const updates = await query(
+        `SELECT rau.*, s.first_name || ' ' || s.last_name as updated_by_name
+         FROM risk_assessment_updates rau JOIN staff s ON s.id = rau.updated_by
+         WHERE rau.risk_id = $1 ORDER BY rau.created_at DESC`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: { ...rows[0] as object, updates } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/',
+  [body('suId').isUUID(), body('assessmentName').notEmpty()],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { suId, assessmentName, description, riskLevel, currentRiskLevel,
+              whoIsAtRisk, isHistorical, whatCouldHappen, triggers,
+              protectiveFactors, managementPlan, reviewFrequency } = req.body;
+
+      const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
+      const days = freqDays[reviewFrequency || 'monthly'] || 30;
+      const nextReview = new Date();
+      nextReview.setDate(nextReview.getDate() + days);
+
+      const rows = await query(
+        `INSERT INTO risk_assessments (su_id, home_id, assessment_name, description, risk_level,
+          current_risk_level, who_is_at_risk, is_historical, what_could_happen, triggers,
+          protective_factors, management_plan, review_frequency, next_review_date, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+        [suId, homeId, assessmentName, description || null, riskLevel || 'low',
+         currentRiskLevel || riskLevel || 'low', whoIsAtRisk || null,
+         isHistorical || false, whatCouldHappen || null, triggers || null,
+         protectiveFactors || null, managementPlan || null,
+         reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const { description, currentRiskLevel, managementPlan, updateNotes,
+              triggers, protectiveFactors, reviewFrequency } = req.body;
+      const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
+      const freq = reviewFrequency || 'monthly';
+      const nextReview = new Date();
+      nextReview.setDate(nextReview.getDate() + (freqDays[freq] || 30));
+
+      await query(
+        `UPDATE risk_assessments SET
+          description = COALESCE($1, description),
+          current_risk_level = COALESCE($2, current_risk_level),
+          management_plan = COALESCE($3, management_plan),
+          triggers = COALESCE($4, triggers),
+          protective_factors = COALESCE($5, protective_factors),
+          review_frequency = $6,
+          last_review_date = CURRENT_DATE,
+          next_review_date = $7,
+          reviewed_by = $8,
+          updated_at = NOW()
+         WHERE id = $9`,
+        [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
+         freq, nextReview.toISOString().split('T')[0], staffId, req.params.id]
+      );
+
+      if (updateNotes) {
+        await query(
+          'INSERT INTO risk_assessment_updates (risk_id, update_notes, new_risk_level, updated_by) VALUES ($1,$2,$3,$4)',
+          [req.params.id, updateNotes, currentRiskLevel || null, staffId]
+        );
+      }
+      res.json({ success: true, message: 'Risk assessment updated' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+export default router;

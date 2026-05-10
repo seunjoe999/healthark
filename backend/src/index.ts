@@ -98,10 +98,13 @@ import serviceUserRoutes from './routes/serviceUsers.routes';
 app.use('/api/service-users', serviceUserRoutes);
 import dailyRecordRoutes from './routes/dailyRecords.routes';
 app.use('/api/daily-records', dailyRecordRoutes);
-// app.use('/api/care-plans', carePlanRoutes);
-// app.use('/api/risk-assessments', riskAssessmentRoutes);
+import carePlanRoutes from './routes/carePlans.routes';
+app.use('/api/care-plans', carePlanRoutes);
+import riskAssessmentRoutes from './routes/riskAssessments.routes';
+app.use('/api/risk-assessments', riskAssessmentRoutes);
 // app.use('/api/mar', marRoutes);
-// app.use('/api/safeguarding', safeguardingRoutes);
+import safeguardingRoutes from './routes/safeguarding.routes';
+app.use('/api/safeguarding', safeguardingRoutes);
 // app.use('/api/tasks', taskRoutes);
 // app.use('/api/messages', messageRoutes);
 // app.use('/api/audits', auditRoutes);
@@ -165,3 +168,6 @@ app.get('/debug/homes', async (req: any, res: any) => {
   );
   res.json({ rows, count: rows.length });
 });
+
+import staffHRRoutes from './routes/staffHR.routes';
+app.use('/api/staff-hr', staffHRRoutes);

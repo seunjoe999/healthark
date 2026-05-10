@@ -13,7 +13,12 @@ router.use(authenticate);
 // GET /api/staff - list staff (scoped to org/home)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { staffId, role, organisationId, homeId } = req.staff;
+    const token = req.headers.authorization?.substring(7);
+    const decoded = token ? require("jsonwebtoken").decode(token) as any : {};
+    const staffId = req.staff?.staffId || decoded?.staffId || "";
+    const role = req.staff?.role || decoded?.role || "";
+    const organisationId = req.staff?.organisationId || decoded?.organisationId || "";
+    const homeId = req.staff?.homeId || decoded?.homeId || "";
     const filterHomeId = req.query.homeId as string | undefined;
 
     let rows;
