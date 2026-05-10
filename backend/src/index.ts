@@ -94,7 +94,8 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/alerts', alertsRoutes);
 
 // Phase 2+ routes (wired in as each phase is built)
-// app.use('/api/service-users', serviceUserRoutes);
+import serviceUserRoutes from './routes/serviceUsers.routes';
+app.use('/api/service-users', serviceUserRoutes);
 // app.use('/api/daily-records', dailyRecordRoutes);
 // app.use('/api/care-plans', carePlanRoutes);
 // app.use('/api/risk-assessments', riskAssessmentRoutes);
@@ -152,3 +153,14 @@ bootstrap().catch((err) => {
 });
 
 export default app;
+
+// TEMPORARY DEBUG ROUTE - remove after testing
+app.get('/debug/homes', async (req: any, res: any) => {
+  const { query: dbQuery } = await import('./config/database');
+  const rows = await dbQuery(
+    `SELECT h.id, h.name, h.organisation_id, h.is_active 
+     FROM homes h 
+     WHERE h.organisation_id = '00000000-0000-0000-0000-000000000001'`
+  );
+  res.json({ rows, count: rows.length });
+});
