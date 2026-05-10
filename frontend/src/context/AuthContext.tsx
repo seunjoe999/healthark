@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await authApi.login(email, password)
     const { accessToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
-    // Store on window - truly global, survives all module reloads
     ;(window as any).__HA_TOKEN__ = accessToken
     ;(window as any).__HA_USER__ = authUser
     setUser(authUser)

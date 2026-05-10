@@ -96,7 +96,8 @@ app.use('/api/alerts', alertsRoutes);
 // Phase 2+ routes (wired in as each phase is built)
 import serviceUserRoutes from './routes/serviceUsers.routes';
 app.use('/api/service-users', serviceUserRoutes);
-// app.use('/api/daily-records', dailyRecordRoutes);
+import dailyRecordRoutes from './routes/dailyRecords.routes';
+app.use('/api/daily-records', dailyRecordRoutes);
 // app.use('/api/care-plans', carePlanRoutes);
 // app.use('/api/risk-assessments', riskAssessmentRoutes);
 // app.use('/api/mar', marRoutes);

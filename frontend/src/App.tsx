@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import AppLayout from './components/layout/AppLayout'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
+import DailyRecords from './pages/daily-records/DailyRecords'
 import ServiceUserList from './pages/service-users/ServiceUserList'
 import ServiceUserProfile from './pages/service-users/ServiceUserProfile'
 
@@ -43,7 +44,7 @@ function AppRoutes() {
       <Route path="/service-users" element={<ProtectedRoute><ServiceUserList /></ProtectedRoute>} />
       <Route path="/service-users/:id" element={<ProtectedRoute><ServiceUserProfile /></ProtectedRoute>} />
       <Route path="/service-users/new" element={<ProtectedRoute><ComingSoon title="Add Service User" /></ProtectedRoute>} />
-      <Route path="/daily-records" element={<ProtectedRoute><ComingSoon title="Daily Records" /></ProtectedRoute>} />
+      <Route path="/daily-records" element={<ProtectedRoute><DailyRecords /></ProtectedRoute>} />
       <Route path="/care-plans" element={<ProtectedRoute><ComingSoon title="Care Plans" /></ProtectedRoute>} />
       <Route path="/safeguarding" element={<ProtectedRoute><ComingSoon title="Safeguarding" /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><ComingSoon title="Staff Management" /></ProtectedRoute>} />

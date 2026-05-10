@@ -194,3 +194,105 @@
 2026-05-10 18:08:38 [[32minfo[39m] [0mGET /api/homes [36m304[0m 33.943 ms - -[0m
 2026-05-10 18:08:38 [[31merror[39m] Request error {"error":"column su.room_number does not exist","stack":"error: column su.room_number does not exist\n    at C:\\Users\\akofi\\Downloads\\healthark\\backend\\node_modules\\pg-pool\\index.js:45:11\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at query (C:\\Users\\akofi\\Downloads\\healthark\\backend\\src\\config\\database.ts:28:15)\n    at C:\\Users\\akofi\\Downloads\\healthark\\backend\\src\\routes\\serviceUsers.routes.ts:41:18","path":"/api/service-users","method":"GET"}
 2026-05-10 18:08:38 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [31m500[0m 46.066 ms - 64[0m
+2026-05-10 18:12:22 [[32minfo[39m] Database connected successfully
+2026-05-10 18:12:22 [[32minfo[39m] Starting HealthArk scheduler
+2026-05-10 18:12:22 [[32minfo[39m] Scheduler started — all jobs registered
+2026-05-10 18:12:22 [[32minfo[39m] HealthArk API running on port 3001 [development]
+2026-05-10 18:13:22 [[32minfo[39m] [0mGET /api/homes [36m304[0m 294.327 ms - -[0m
+2026-05-10 18:13:23 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [32m200[0m 478.937 ms - 690[0m
+2026-05-10 18:14:28 [[32minfo[39m] Staff logged in {"staffId":"82fe8f70-093f-4683-941e-2ae5440f3e39","role":"group_admin"}
+2026-05-10 18:14:28 [[32minfo[39m] [0mPOST /api/auth/login [32m200[0m 2903.943 ms - -[0m
+2026-05-10 18:14:28 [[32minfo[39m] [0mGET /api/homes [36m304[0m 89.186 ms - -[0m
+2026-05-10 18:14:28 [[32minfo[39m] [0mGET /api/homes [36m304[0m 6.823 ms - -[0m
+2026-05-10 18:14:29 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 558.232 ms - -[0m
+2026-05-10 18:14:30 [[32minfo[39m] [0mGET /api/homes [36m304[0m 52.118 ms - -[0m
+2026-05-10 18:14:31 [[32minfo[39m] [0mGET /api/homes [36m304[0m 38.375 ms - -[0m
+2026-05-10 18:14:31 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 130.538 ms - -[0m
+2026-05-10 18:15:01 [[32minfo[39m] Staff logged in {"staffId":"82fe8f70-093f-4683-941e-2ae5440f3e39","role":"group_admin"}
+2026-05-10 18:15:01 [[32minfo[39m] [0mPOST /api/auth/login [32m200[0m 3316.232 ms - -[0m
+2026-05-10 18:15:01 [[32minfo[39m] [0mGET /api/homes [36m304[0m 76.412 ms - -[0m
+2026-05-10 18:15:01 [[32minfo[39m] [0mGET /api/homes [36m304[0m 75.496 ms - -[0m
+2026-05-10 18:15:01 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 362.806 ms - -[0m
+2026-05-10 18:15:03 [[32minfo[39m] [0mGET /api/homes [36m304[0m 45.474 ms - -[0m
+2026-05-10 18:15:03 [[32minfo[39m] [0mGET /api/homes [36m304[0m 31.638 ms - -[0m
+2026-05-10 18:15:03 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 45.482 ms - -[0m
+2026-05-10 18:18:13 [[32minfo[39m] Staff logged in {"staffId":"82fe8f70-093f-4683-941e-2ae5440f3e39","role":"group_admin"}
+2026-05-10 18:18:14 [[32minfo[39m] [0mPOST /api/auth/login [32m200[0m 3590.963 ms - -[0m
+2026-05-10 18:18:14 [[32minfo[39m] [0mGET /api/homes [36m304[0m 184.022 ms - -[0m
+2026-05-10 18:18:14 [[32minfo[39m] [0mGET /api/homes [36m304[0m 203.350 ms - -[0m
+2026-05-10 18:18:15 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 904.553 ms - -[0m
+2026-05-10 18:18:17 [[32minfo[39m] [0mGET /api/homes [36m304[0m 19.166 ms - -[0m
+2026-05-10 18:18:17 [[32minfo[39m] [0mGET /api/homes [36m304[0m 18.727 ms - -[0m
+2026-05-10 18:18:17 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 42.099 ms - -[0m
+2026-05-10 18:19:55 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482 [32m200[0m 1118.045 ms - -[0m
+2026-05-10 18:19:55 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482 [36m304[0m 7.338 ms - -[0m
+2026-05-10 18:19:55 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/contacts [32m200[0m 1219.456 ms - 26[0m
+2026-05-10 18:19:55 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/messages [32m200[0m 1227.759 ms - 26[0m
+2026-05-10 18:19:55 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/contacts [36m304[0m 58.639 ms - -[0m
+2026-05-10 18:19:55 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/messages [36m304[0m 36.669 ms - -[0m
+2026-05-10 18:22:49 [[32minfo[39m] Staff logged in {"staffId":"82fe8f70-093f-4683-941e-2ae5440f3e39","role":"group_admin"}
+2026-05-10 18:22:49 [[32minfo[39m] [0mPOST /api/auth/login [32m200[0m 2307.297 ms - -[0m
+2026-05-10 18:22:49 [[32minfo[39m] [0mGET /api/homes [36m304[0m 107.711 ms - -[0m
+2026-05-10 18:22:49 [[32minfo[39m] [0mGET /api/homes [36m304[0m 61.801 ms - -[0m
+2026-05-10 18:22:50 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 310.426 ms - -[0m
+2026-05-10 18:22:51 [[32minfo[39m] [0mGET /api/homes [36m304[0m 57.415 ms - -[0m
+2026-05-10 18:22:52 [[32minfo[39m] [0mGET /api/homes [36m304[0m 268.385 ms - -[0m
+2026-05-10 18:22:52 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 487.981 ms - -[0m
+2026-05-10 18:22:53 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482 [36m304[0m 77.197 ms - -[0m
+2026-05-10 18:22:53 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/contacts [36m304[0m 78.747 ms - -[0m
+2026-05-10 18:22:53 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482 [36m304[0m 120.408 ms - -[0m
+2026-05-10 18:22:53 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/contacts [36m304[0m 126.951 ms - -[0m
+2026-05-10 18:22:54 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/messages [36m304[0m 439.561 ms - -[0m
+2026-05-10 18:22:54 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/messages [36m304[0m 107.093 ms - -[0m
+2026-05-10 18:34:12 [[32minfo[39m] Database connected successfully
+2026-05-10 18:34:12 [[32minfo[39m] Starting HealthArk scheduler
+2026-05-10 18:34:12 [[32minfo[39m] Scheduler started — all jobs registered
+2026-05-10 18:34:12 [[32minfo[39m] HealthArk API running on port 3001 [development]
+2026-05-10 18:34:42 [[32minfo[39m] Database connected successfully
+2026-05-10 18:34:42 [[32minfo[39m] Starting HealthArk scheduler
+2026-05-10 18:34:42 [[32minfo[39m] Scheduler started — all jobs registered
+2026-05-10 18:34:42 [[32minfo[39m] HealthArk API running on port 3001 [development]
+2026-05-10 18:36:22 [[32minfo[39m] Staff logged in {"staffId":"82fe8f70-093f-4683-941e-2ae5440f3e39","role":"group_admin"}
+2026-05-10 18:36:22 [[32minfo[39m] [0mPOST /api/auth/login [32m200[0m 1818.437 ms - -[0m
+2026-05-10 18:36:22 [[32minfo[39m] [0mGET /api/homes [36m304[0m 183.411 ms - -[0m
+2026-05-10 18:36:23 [[32minfo[39m] [0mGET /api/homes [36m304[0m 162.961 ms - -[0m
+2026-05-10 18:36:23 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 666.035 ms - -[0m
+2026-05-10 18:36:34 [[32minfo[39m] [0mGET /api/homes [36m304[0m 52.462 ms - -[0m
+2026-05-10 18:36:34 [[32minfo[39m] [0mGET /api/homes [36m304[0m 35.977 ms - -[0m
+2026-05-10 18:36:34 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 41.207 ms - -[0m
+2026-05-10 18:36:35 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482 [36m304[0m 104.084 ms - -[0m
+2026-05-10 18:36:35 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/contacts [36m304[0m 157.599 ms - -[0m
+2026-05-10 18:36:35 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/messages [36m304[0m 181.671 ms - -[0m
+2026-05-10 18:36:35 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482 [36m304[0m 77.913 ms - -[0m
+2026-05-10 18:36:35 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/contacts [36m304[0m 111.843 ms - -[0m
+2026-05-10 18:36:35 [[32minfo[39m] [0mGET /api/service-users/92818c0f-b5d7-46f7-8d04-8699b01c2482/messages [36m304[0m 123.334 ms - -[0m
+2026-05-10 18:38:08 [[32minfo[39m] [0mGET /api/homes [36m304[0m 328.279 ms - -[0m
+2026-05-10 18:38:08 [[32minfo[39m] [0mGET /api/homes [36m304[0m 56.035 ms - -[0m
+2026-05-10 18:38:09 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 1102.560 ms - -[0m
+2026-05-10 18:38:11 [[32minfo[39m] [0mGET /api/homes [36m304[0m 300.515 ms - -[0m
+2026-05-10 18:38:11 [[32minfo[39m] [0mGET /api/homes [36m304[0m 18.004 ms - -[0m
+2026-05-10 18:38:11 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 24.241 ms - -[0m
+2026-05-10 18:38:13 [[32minfo[39m] [0mGET /api/homes [36m304[0m 16.399 ms - -[0m
+2026-05-10 18:38:13 [[32minfo[39m] [0mGET /api/homes [36m304[0m 61.799 ms - -[0m
+2026-05-10 18:38:13 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 84.258 ms - -[0m
+2026-05-10 18:38:15 [[32minfo[39m] [0mGET /api/daily-records/fluid-total?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [32m200[0m 85.207 ms - 98[0m
+2026-05-10 18:38:15 [[32minfo[39m] [0mGET /api/daily-records?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [32m200[0m 355.092 ms - 26[0m
+2026-05-10 18:38:29 [[32minfo[39m] [0mGET /api/daily-records?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 40.789 ms - -[0m
+2026-05-10 18:38:30 [[32minfo[39m] [0mGET /api/daily-records/fluid-total?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 192.496 ms - -[0m
+2026-05-10 18:43:41 [[32minfo[39m] Staff logged in {"staffId":"82fe8f70-093f-4683-941e-2ae5440f3e39","role":"group_admin"}
+2026-05-10 18:43:41 [[32minfo[39m] [0mPOST /api/auth/login [32m200[0m 787.802 ms - -[0m
+2026-05-10 18:43:41 [[32minfo[39m] [0mGET /api/homes [36m304[0m 78.378 ms - -[0m
+2026-05-10 18:43:41 [[32minfo[39m] [0mGET /api/homes [36m304[0m 5.719 ms - -[0m
+2026-05-10 18:43:41 [[32minfo[39m] [0mGET /api/homes/5c027814-a0f9-44f3-bad4-138e4783fd51/dashboard [36m304[0m 127.955 ms - -[0m
+2026-05-10 18:43:44 [[32minfo[39m] [0mGET /api/homes [36m304[0m 38.014 ms - -[0m
+2026-05-10 18:43:45 [[32minfo[39m] [0mGET /api/homes [36m304[0m 11.071 ms - -[0m
+2026-05-10 18:43:45 [[32minfo[39m] [0mGET /api/service-users?homeId=5c027814-a0f9-44f3-bad4-138e4783fd51&status=live [36m304[0m 8.566 ms - -[0m
+2026-05-10 18:43:46 [[32minfo[39m] [0mGET /api/daily-records/fluid-total?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 20.025 ms - -[0m
+2026-05-10 18:43:46 [[32minfo[39m] [0mGET /api/daily-records?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 124.033 ms - -[0m
+2026-05-10 18:44:42 [[32minfo[39m] [0mPOST /api/daily-records [32m201[0m 452.191 ms - 445[0m
+2026-05-10 18:44:42 [[32minfo[39m] [0mGET /api/daily-records?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [32m200[0m 19.590 ms - 494[0m
+2026-05-10 18:44:42 [[32minfo[39m] [0mGET /api/daily-records/fluid-total?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [32m200[0m 89.033 ms - 99[0m
+2026-05-10 18:44:50 [[32minfo[39m] [0mGET /api/daily-records?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 8.064 ms - -[0m
+2026-05-10 18:44:50 [[32minfo[39m] [0mGET /api/daily-records/fluid-total?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 92.544 ms - -[0m
+2026-05-10 18:45:44 [[32minfo[39m] [0mGET /api/daily-records/fluid-total?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 193.325 ms - -[0m
+2026-05-10 18:45:44 [[32minfo[39m] [0mGET /api/daily-records?suId=92818c0f-b5d7-46f7-8d04-8699b01c2482&date=2026-05-10 [36m304[0m 205.411 ms - -[0m

@@ -16,7 +16,7 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      (window as any).__HA_TOKEN__ = null
+      ;(window as any).__HA_TOKEN__ = null
       window.location.href = '/login'
     }
     return Promise.reject(err)
@@ -29,8 +29,7 @@ export const authApi = {
   login: (email: string, password: string) => api.post('/auth/login', { email, password }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
-  changePassword: (currentPassword: string, newPassword: string) =>
-    api.put('/auth/change-password', { currentPassword, newPassword }),
+  changePassword: (cur: string, next: string) => api.put('/auth/change-password', { currentPassword: cur, newPassword: next }),
 }
 
 export const homesApi = {
@@ -48,16 +47,12 @@ export const suApi = {
   create: (data: Record<string, unknown>) => api.post('/service-users', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/service-users/${id}`, data),
   getContacts: (id: string) => api.get(`/service-users/${id}/contacts`),
-  addContact: (id: string, data: Record<string, unknown>) =>
-    api.post(`/service-users/${id}/contacts`, data),
-  updateContact: (id: string, contactId: string, data: Record<string, unknown>) =>
-    api.put(`/service-users/${id}/contacts/${contactId}`, data),
-  deleteContact: (id: string, contactId: string) =>
-    api.delete(`/service-users/${id}/contacts/${contactId}`),
+  addContact: (id: string, data: Record<string, unknown>) => api.post(`/service-users/${id}/contacts`, data),
+  updateContact: (id: string, cid: string, data: Record<string, unknown>) => api.put(`/service-users/${id}/contacts/${cid}`, data),
+  deleteContact: (id: string, cid: string) => api.delete(`/service-users/${id}/contacts/${cid}`),
   getDocuments: (id: string) => api.get(`/service-users/${id}/documents`),
   getMessages: (id: string) => api.get(`/service-users/${id}/messages`),
-  sendMessage: (id: string, data: Record<string, unknown>) =>
-    api.post(`/service-users/${id}/messages`, data),
+  sendMessage: (id: string, data: Record<string, unknown>) => api.post(`/service-users/${id}/messages`, data),
 }
 
 export const staffApi = {
@@ -70,8 +65,15 @@ export const staffApi = {
 }
 
 export const alertsApi = {
-  list: (homeId: string, resolved = false) =>
-    api.get('/alerts', { params: { homeId, resolved } }),
-  resolve: (id: string, notes?: string) =>
-    api.put(`/alerts/${id}/resolve`, { resolutionNotes: notes }),
+  list: (homeId: string, resolved = false) => api.get('/alerts', { params: { homeId, resolved } }),
+  resolve: (id: string, notes?: string) => api.put(`/alerts/${id}/resolve`, { resolutionNotes: notes }),
+}
+
+export const dailyRecordsApi = {
+  list: (suId: string, date?: string, recordType?: string) =>
+    api.get('/daily-records', { params: { suId, date, recordType } }),
+  create: (data: Record<string, unknown>) => api.post('/daily-records', data),
+  getDetail: (id: string) => api.get(`/daily-records/${id}/detail`),
+  getFluidTotal: (suId: string, date?: string) =>
+    api.get('/daily-records/fluid-total', { params: { suId, date } }),
 }
