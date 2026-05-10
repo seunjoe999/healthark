@@ -1,0 +1,3 @@
+2026-05-10 12:36:42 [[32minfo[39m] Running migration...
+2026-05-10 12:47:03 [[31merror[39m] Seed failed {"err":{"length":93,"name":"error","severity":"ERROR","code":"42501","file":"aclchk.c","line":"2795","routine":"aclcheck_error"}}
+2026-05-10 12:47:47 [[32minfo[39m] Seed done. Logins: admin@healthark.co.uk/Admin123!@# | manager@healthark.co.uk/Manager123!@# | staff@healthark.co.uk/CareStaff123!
