@@ -1,34 +1,69 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { body, param, query as qv } from 'express-validator';
+import { body, param } from 'express-validator';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
-import { query, transaction } from '../config/database';
+import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 router.use(authenticate);
 
-// GET /api/service-users?homeId=xxx&status=live&search=name
+function getOrgId(req: Request): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) {
+    const decoded = jwt.decode(token) as Record<string, string>;
+    return req.staff?.organisationId || decoded?.organisationId || '';
+  }
+  return req.staff?.organisationId || '';
+}
+
+function getStaffId(req: Request): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) {
+    const decoded = jwt.decode(token) as Record<string, string>;
+    return req.staff?.staffId || decoded?.staffId || '';
+  }
+  return req.staff?.staffId || '';
+}
+
+function getRole(req: Request): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) {
+    const decoded = jwt.decode(token) as Record<string, string>;
+    return req.staff?.role || decoded?.role || '';
+  }
+  return req.staff?.role || '';
+}
+
+function getHomeId(req: Request): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) {
+    const decoded = jwt.decode(token) as Record<string, string>;
+    return req.staff?.homeId || decoded?.homeId || '';
+  }
+  return req.staff?.homeId || '';
+}
+
+// GET /api/service-users
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { homeId, status, search } = req.query as Record<string, string>;
-    const { role, staffId, organisationId } = req.staff;
+    const { status, search } = req.query as Record<string, string>;
+    const homeId = req.query.homeId as string || getHomeId(req);
 
-    // Validate home access
-    const targetHomeId = homeId || req.staff.homeId;
-    if (!targetHomeId) throw new AppError('homeId required', 400);
+    if (!homeId) throw new AppError('homeId required', 400);
 
     let sql = `SELECT su.id, su.first_name, su.last_name, su.preferred_name,
                       su.date_of_birth, su.gender, su.photo_url, su.status,
                       su.emergency_rating, su.nhs_number, su.dnar, su.nil_by_mouth,
-                      su.need_to_know, su.my_instructions, su.room_number,
+                      su.need_to_know, su.my_instructions,
                       su.admission_date, su.created_at,
                       h.name as home_name
                FROM service_users su
                JOIN homes h ON h.id = su.home_id
                WHERE su.home_id = $1`;
-    const params: unknown[] = [targetHomeId];
+    const params: unknown[] = [homeId];
     let idx = 2;
 
     if (status) { sql += ` AND su.status = $${idx++}`; params.push(status); }
@@ -54,12 +89,9 @@ router.get('/:id', param('id').isUUID(), validateRequest,
         [req.params.id]
       );
       if (!rows.length) throw new AppError('Service user not found', 404);
-
       const su = rows[0] as Record<string, unknown>;
-      // Remove key safe code unless authorised
-      const { role, staffId } = req.staff;
+      const role = getRole(req);
       if (role === 'care_staff') delete su.key_safe_code;
-
       res.json({ success: true, data: su } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -67,7 +99,6 @@ router.get('/:id', param('id').isUUID(), validateRequest,
 
 // POST /api/service-users
 router.post('/',
-  requireRole('home_manager', 'group_admin'),
   [
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
@@ -89,7 +120,6 @@ router.post('/',
         needToKnow, myInstructions,
       } = req.body;
 
-      // DNAR safety check
       if (dnar === true && !dnarFormUrl) {
         throw new AppError('DNAR form upload is required when Do Not Resuscitate is selected', 400);
       }
@@ -140,27 +170,31 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         throw new AppError('DNAR form upload is required when Do Not Resuscitate is selected', 400);
       }
 
-      const fields = [
-        'first_name', 'last_name', 'preferred_name', 'date_of_birth', 'gender',
-        'pronouns', 'status', 'emergency_rating', 'nhs_number', 'ni_number',
-        'dnar', 'dnar_form_url', 'admission_date', 'local_authority',
-        'religion', 'ethnicity', 'marital_status', 'comms_prefs', 'life_history',
-        'hobbies', 'daily_routine', 'height_cm', 'weight_kg', 'medical_history',
-        'med_allergies', 'requires_oxygen', 'has_catheter', 'has_peg',
-        'food_allergies', 'nil_by_mouth', 'special_diet', 'fluid_consistency',
-        'min_fluid_ml', 'diet_instructions', 'address1', 'address2', 'address3',
-        'postcode', 'email', 'phone', 'key_safe_code', 'need_to_know', 'my_instructions',
-      ];
+      const fieldMap: Record<string, string> = {
+        firstName: 'first_name', lastName: 'last_name', preferredName: 'preferred_name',
+        dateOfBirth: 'date_of_birth', gender: 'gender', pronouns: 'pronouns',
+        status: 'status', emergencyRating: 'emergency_rating', nhsNumber: 'nhs_number',
+        niNumber: 'ni_number', dnar: 'dnar', dnarFormUrl: 'dnar_form_url',
+        admissionDate: 'admission_date', localAuthority: 'local_authority',
+        religion: 'religion', ethnicity: 'ethnicity', maritalStatus: 'marital_status',
+        commsPrefs: 'comms_prefs', lifeHistory: 'life_history', hobbies: 'hobbies',
+        dailyRoutine: 'daily_routine', heightCm: 'height_cm', weightKg: 'weight_kg',
+        medicalHistory: 'medical_history', medAllergies: 'med_allergies',
+        requiresOxygen: 'requires_oxygen', hasCatheter: 'has_catheter', hasPeg: 'has_peg',
+        foodAllergies: 'food_allergies', nilByMouth: 'nil_by_mouth', specialDiet: 'special_diet',
+        fluidConsistency: 'fluid_consistency', minFluidMl: 'min_fluid_ml',
+        dietInstructions: 'diet_instructions', address1: 'address1', address2: 'address2',
+        address3: 'address3', postcode: 'postcode', email: 'email', phone: 'phone',
+        keySafeCode: 'key_safe_code', needToKnow: 'need_to_know', myInstructions: 'my_instructions',
+      };
 
-      const camelToSnake = (s: string) => s.replace(/[A-Z]/g, l => `_${l.toLowerCase()}`);
       const updates: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
 
-      for (const field of fields) {
-        const camel = field.replace(/_([a-z])/g, (_, l) => l.toUpperCase());
+      for (const [camel, snake] of Object.entries(fieldMap)) {
         if (req.body[camel] !== undefined) {
-          updates.push(`${field} = $${idx++}`);
+          updates.push(`${snake} = $${idx++}`);
           values.push(req.body[camel]);
         }
       }
@@ -179,7 +213,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
-// ── Contacts ─────────────────────────────────────────────────────
+// ── Contacts ──────────────────────────────────────────────────────
 router.get('/:id/contacts', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -193,8 +227,7 @@ router.get('/:id/contacts', param('id').isUUID(), validateRequest,
 );
 
 router.post('/:id/contacts', param('id').isUUID(),
-  [body('fullName').notEmpty()],
-  validateRequest,
+  [body('fullName').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { fullName, relationship, contactTag, phonePrimary, phoneSecondary,
@@ -219,9 +252,10 @@ router.put('/:id/contacts/:contactId',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { fullName, relationship, contactTag, phonePrimary, phoneSecondary,
-              email, address1, address2, postcode, isPrimary, notes, displayOrder } = req.body;
+              email, isPrimary, notes, displayOrder } = req.body;
       const rows = await query(
-        `UPDATE su_contacts SET full_name=COALESCE($1,full_name), relationship=COALESCE($2,relationship),
+        `UPDATE su_contacts SET
+          full_name=COALESCE($1,full_name), relationship=COALESCE($2,relationship),
           contact_tag=COALESCE($3,contact_tag), phone_primary=COALESCE($4,phone_primary),
           phone_secondary=COALESCE($5,phone_secondary), email=COALESCE($6,email),
           is_primary=COALESCE($7,is_primary), notes=COALESCE($8,notes),
@@ -247,7 +281,7 @@ router.delete('/:id/contacts/:contactId',
   }
 );
 
-// ── Documents ────────────────────────────────────────────────────
+// ── Documents ─────────────────────────────────────────────────────
 router.get('/:id/documents', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -262,7 +296,7 @@ router.get('/:id/documents', param('id').isUUID(), validateRequest,
   }
 );
 
-// ── Messages (My Comms) ──────────────────────────────────────────
+// ── Messages ──────────────────────────────────────────────────────
 router.get('/:id/messages', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -278,19 +312,18 @@ router.get('/:id/messages', param('id').isUUID(), validateRequest,
 );
 
 router.post('/:id/messages', param('id').isUUID(),
-  [body('message').notEmpty()],
-  validateRequest,
+  [body('message').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const su = await query<{ home_id: string }>(
         'SELECT home_id FROM service_users WHERE id = $1', [req.params.id]
       );
       if (!su.length) throw new AppError('Service user not found', 404);
-
+      const staffId = getStaffId(req);
       const rows = await query(
         `INSERT INTO su_messages (su_id, home_id, sender_id, message, message_type, attachment_url, attachment_caption)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [req.params.id, su[0].home_id, req.staff.staffId,
+        [req.params.id, su[0].home_id, staffId,
          req.body.message, req.body.messageType || 'text',
          req.body.attachmentUrl || null, req.body.attachmentCaption || null]
       );
