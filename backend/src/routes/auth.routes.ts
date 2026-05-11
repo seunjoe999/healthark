@@ -1,38 +1,126 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body } from 'express-validator';
-import { authService } from '../services/auth.service';
-import { authenticate } from '../middleware/auth';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { validateRequest } from '../middleware/validate';
+import { authenticate } from '../middleware/auth';
+import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 
 const router = Router();
 
+const signAccess = (payload: object) =>
+  jwt.sign(payload, process.env.JWT_SECRET!);
+const signRefresh = (payload: object) =>
+  jwt.sign(payload, process.env.JWT_REFRESH_SECRET!);
+
 // POST /api/auth/login
-router.post(
-  '/login',
-  [
-    body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
-    body('password').notEmpty().withMessage('Password required'),
-  ],
+router.post('/login',
+  [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, password } = req.body;
-      const result = await authService.login(email, password, req.ip);
-      res.json({ success: true, data: result } as ApiResponse);
+      const rows = await query<any>(
+        `SELECT id, email, password_hash, first_name, last_name, role,
+                home_id, organisation_id, status, is_active, photo_url
+         FROM staff WHERE email = $1`,
+        [email]
+      );
+      if (!rows.length) throw new AppError('Invalid email or password', 401);
+      const staff = rows[0];
+      if (!staff.is_active || staff.status === 'terminated')
+        throw new AppError('Account is inactive. Contact your administrator.', 401);
+      const valid = await bcrypt.compare(password, staff.password_hash);
+      if (!valid) throw new AppError('Invalid email or password', 401);
+
+      const payload = {
+        staffId: staff.id, organisationId: staff.organisation_id,
+        homeId: staff.home_id, role: staff.role, email: staff.email,
+      };
+      const accessToken = signAccess(payload);
+      const refreshToken = signRefresh(payload);
+      await query('UPDATE staff SET refresh_token=$1, last_login=NOW() WHERE id=$2', [refreshToken, staff.id]);
+      await query(
+        `INSERT INTO audit_log (staff_id, home_id, action, ip_address)
+         VALUES ($1,$2,'login',$3)`,
+        [staff.id, staff.home_id, req.ip]
+      );
+
+      res.json({
+        success: true,
+        data: {
+          accessToken, refreshToken,
+          staff: {
+            id: staff.id, email: staff.email,
+            firstName: staff.first_name, lastName: staff.last_name,
+            role: staff.role, homeId: staff.home_id,
+            organisationId: staff.organisation_id, photoUrl: staff.photo_url,
+          },
+        },
+      } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
 
-// POST /api/auth/refresh
-router.post(
-  '/refresh',
-  [body('refreshToken').notEmpty()],
+// POST /api/auth/register — staff self-registration (creates pending account)
+router.post('/register',
+  [
+    body('firstName').notEmpty().trim(),
+    body('lastName').notEmpty().trim(),
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 8 }),
+    body('phone').optional(),
+    body('registrationCode').notEmpty(),
+  ],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const tokens = await authService.refreshTokens(req.body.refreshToken);
-      res.json({ success: true, data: tokens } as ApiResponse);
+      const { firstName, lastName, email, password, phone, registrationCode } = req.body;
+
+      // Validate registration code matches an active home
+      const homeRows = await query<any>(
+        `SELECT h.id, h.organisation_id, h.name FROM homes h
+         JOIN organisations o ON o.id = h.organisation_id
+         WHERE h.qr_token = $1 AND h.is_active = true`,
+        [registrationCode]
+      );
+      if (!homeRows.length) throw new AppError('Invalid registration code. Contact your manager.', 400);
+      const home = homeRows[0];
+
+      // Check email not already registered
+      const existing = await query('SELECT id FROM staff WHERE email = $1', [email]);
+      if (existing.length) throw new AppError('An account with this email already exists.', 400);
+
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create staff with pending status — admin must activate
+      const staffRows = await query<any>(
+        `INSERT INTO staff (
+          organisation_id, home_id, email, password_hash,
+          first_name, last_name, phone, role, status, is_active
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'care_staff','pending',false)
+        RETURNING id, email, first_name, last_name, role, status`,
+        [home.organisation_id, home.id, email, passwordHash, firstName, lastName, phone || null]
+      );
+      const newStaff = staffRows[0];
+
+      // Create onboarding record
+      await query('INSERT INTO staff_onboarding (staff_id) VALUES ($1) ON CONFLICT DO NOTHING', [newStaff.id]);
+
+      // Create alert for manager
+      await query(
+        `INSERT INTO business_alerts (home_id, alert_type, severity, title, description)
+         VALUES ($1,'new_staff_registration','info','New staff registration pending approval',$2)`,
+        [home.id, `${firstName} ${lastName} (${email}) has registered and is awaiting account approval.`]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Registration submitted. Your manager will activate your account shortly.',
+        data: { name: `${firstName} ${lastName}`, homeName: home.name },
+      } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
@@ -40,50 +128,45 @@ router.post(
 // POST /api/auth/logout
 router.post('/logout', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await authService.logout(req.staff.staffId, req.staff.homeId);
-    res.json({ success: true, message: 'Logged out successfully' } as ApiResponse);
+    const token = req.headers.authorization?.substring(7);
+    const decoded = token ? jwt.decode(token) as any : {};
+    const staffId = decoded?.staffId;
+    if (staffId) await query('UPDATE staff SET refresh_token=NULL WHERE id=$1', [staffId]);
+    res.json({ success: true, message: 'Logged out' } as ApiResponse);
   } catch (err) { next(err); }
 });
-
-// PUT /api/auth/change-password
-router.put(
-  '/change-password',
-  authenticate,
-  [
-    body('currentPassword').notEmpty(),
-    body('newPassword').isLength({ min: 10 }).withMessage('Minimum 10 characters'),
-  ],
-  validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await authService.changePassword(
-        req.staff.staffId,
-        req.body.currentPassword,
-        req.body.newPassword
-      );
-      res.json({ success: true, message: 'Password updated' } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
 
 // GET /api/auth/me
 router.get('/me', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const rows = await (await import('../config/database')).query<{
-      id: string; first_name: string; last_name: string; email: string;
-      role: string; home_id: string; organisation_id: string;
-      photo_url: string; last_login: string; leave_hours_total: number;
-      leave_hours_used: number;
-    }>(
-      `SELECT id, first_name, last_name, email, role, home_id,
-              organisation_id, photo_url, last_login,
-              leave_hours_total, leave_hours_used
-       FROM staff WHERE id = $1`,
-      [req.staff.staffId]
+    const token = req.headers.authorization?.substring(7);
+    const decoded = token ? jwt.decode(token) as any : {};
+    const staffId = decoded?.staffId || (req.staff as any)?.staffId;
+    const rows = await query<any>(
+      'SELECT id, email, first_name, last_name, role, home_id, organisation_id, photo_url FROM staff WHERE id=$1',
+      [staffId]
     );
-    if (!rows.length) { res.status(404).json({ success: false, error: 'Not found' }); return; }
+    if (!rows.length) throw new AppError('Staff not found', 404);
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// PUT /api/auth/activate/:staffId — manager activates pending staff
+router.put('/activate/:staffId', authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? jwt.decode(token) as any : {};
+      const role = decoded?.role;
+      if (!['home_manager', 'group_admin'].includes(role))
+        throw new AppError('Only managers can activate staff accounts', 403);
+      await query(
+        `UPDATE staff SET status='active', is_active=true WHERE id=$1`,
+        [req.params.staffId]
+      );
+      res.json({ success: true, message: 'Staff account activated' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 export default router;

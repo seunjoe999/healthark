@@ -5,6 +5,7 @@ import cors from 'cors';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { logger } from './config/logger';
 import { pool } from './config/database';
@@ -15,113 +16,86 @@ import authRoutes from './routes/auth.routes';
 import homesRoutes from './routes/homes.routes';
 import staffRoutes from './routes/staff.routes';
 import alertsRoutes from './routes/alerts.routes';
+import serviceUserRoutes from './routes/serviceUsers.routes';
+import dailyRecordRoutes from './routes/dailyRecords.routes';
+import carePlanRoutes from './routes/carePlans.routes';
+import riskAssessmentRoutes from './routes/riskAssessments.routes';
+import safeguardingRoutes from './routes/safeguarding.routes';
+import staffHRRoutes from './routes/staffHR.routes';
+import aiAuditRoutes from './routes/aiAudit.routes';
+import reportsRoutes from './routes/reports.routes';
+import policiesRoutes from './routes/policies.routes';
+import ppeRoutes from './routes/ppe.routes';
+import documentsRoutes from './routes/documents.routes';
+import messagesRoutes from './routes/messages.routes';
+import calendarRoutes from './routes/calendar.routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
 
-// ── Security middleware ──────────────────────────────────────────
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-    },
-  },
-}));
+// ── Security ─────────────────────────────────────────────────────
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// ── CORS ─────────────────────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS: origin ${origin} not allowed`));
-    }
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Authorization', 'Content-Type', 'X-Session-ID'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
 }));
 
-// ── Rate limiting ────────────────────────────────────────────────
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
-  max: parseInt(process.env.RATE_LIMIT_MAX || '500'),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Too many requests. Please try again later.' },
-});
+// ── Rate limiting ─────────────────────────────────────────────────
+app.use('/api', rateLimit({ windowMs: 900000, max: 500, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 10, standardHeaders: true, legacyHeaders: false }));
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { success: false, error: 'Too many login attempts. Please wait 15 minutes.' },
-});
-
-app.use('/api', limiter);
-app.use('/api/auth/login', authLimiter);
-
-// ── General middleware ───────────────────────────────────────────
+// ── General middleware ────────────────────────────────────────────
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
-  stream: { write: (message) => logger.info(message.trim()) },
-}));
+app.use(morgan('dev', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
-// ── Health check ─────────────────────────────────────────────────
+// ── Static files (uploaded documents) ────────────────────────────
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// ── Health check ──────────────────────────────────────────────────
 app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      db: 'connected',
-    });
+    res.json({ status: 'ok', db: 'connected' });
   } catch {
     res.status(503).json({ status: 'error', db: 'disconnected' });
   }
 });
 
-// ── API Routes ───────────────────────────────────────────────────
+// ── ALL API Routes ────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/homes', homesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/alerts', alertsRoutes);
-
-// Phase 2+ routes (wired in as each phase is built)
-import serviceUserRoutes from './routes/serviceUsers.routes';
 app.use('/api/service-users', serviceUserRoutes);
-import dailyRecordRoutes from './routes/dailyRecords.routes';
 app.use('/api/daily-records', dailyRecordRoutes);
-import carePlanRoutes from './routes/carePlans.routes';
 app.use('/api/care-plans', carePlanRoutes);
-import riskAssessmentRoutes from './routes/riskAssessments.routes';
 app.use('/api/risk-assessments', riskAssessmentRoutes);
-// app.use('/api/mar', marRoutes);
-import safeguardingRoutes from './routes/safeguarding.routes';
 app.use('/api/safeguarding', safeguardingRoutes);
-// app.use('/api/tasks', taskRoutes);
-// app.use('/api/messages', messageRoutes);
-// app.use('/api/audits', auditRoutes);
-// app.use('/api/reports', reportRoutes);
-// app.use('/api/policies', policyRoutes);
-// app.use('/api/qa', qaRoutes);
-// app.use('/api/ppe', ppeRoutes);
-// app.use('/api/leave', leaveRoutes);
-// app.use('/api/calendar', calendarRoutes);
+app.use('/api/staff-hr', staffHRRoutes);
+app.use('/api/audits', aiAuditRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/policies', policiesRoutes);
+app.use('/api/ppe', ppeRoutes);
+app.use('/api/documents', documentsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/calendar', calendarRoutes);
 
-// ── 404 & error handler ──────────────────────────────────────────
+// ── Error handling ────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
-// ── Start ────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────────────
 async function bootstrap() {
-  // Test DB connection
   try {
     await pool.query('SELECT 1');
     logger.info('Database connected successfully');
@@ -134,60 +108,12 @@ async function bootstrap() {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
 
-  // Start background scheduler
-  if (process.env.NODE_ENV !== 'test') {
-    startScheduler();
-  }
+  if (process.env.NODE_ENV !== 'test') startScheduler();
 }
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received — shutting down gracefully');
-  await pool.end();
-  process.exit(0);
-});
+process.on('SIGTERM', async () => { await pool.end(); process.exit(0); });
+process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection', { reason }));
 
-process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled rejection', { reason });
-});
-
-bootstrap().catch((err) => {
-  logger.error('Bootstrap failed', { err });
-  process.exit(1);
-});
+bootstrap().catch((err) => { logger.error('Bootstrap failed', { err }); process.exit(1); });
 
 export default app;
-
-// TEMPORARY DEBUG ROUTE - remove after testing
-app.get('/debug/homes', async (req: any, res: any) => {
-  const { query: dbQuery } = await import('./config/database');
-  const rows = await dbQuery(
-    `SELECT h.id, h.name, h.organisation_id, h.is_active 
-     FROM homes h 
-     WHERE h.organisation_id = '00000000-0000-0000-0000-000000000001'`
-  );
-  res.json({ rows, count: rows.length });
-});
-
-import staffHRRoutes from './routes/staffHR.routes';
-app.use('/api/staff-hr', staffHRRoutes);
-
-import aiAuditRoutes from './routes/aiAudit.routes';
-import reportsRoutes from './routes/reports.routes';
-import policiesRoutes from './routes/policies.routes';
-import ppeRoutes from './routes/ppe.routes';
-app.use('/api/audits', aiAuditRoutes);
-app.use('/api/reports', reportsRoutes);
-app.use('/api/policies', policiesRoutes);
-app.use('/api/ppe', ppeRoutes);
-
-import documentsRoutes from './routes/documents.routes';
-import messagesRoutes from './routes/messages.routes';
-import calendarRoutes from './routes/calendar.routes';
-app.use('/api/documents', documentsRoutes);
-app.use('/api/messages', messagesRoutes);
-app.use('/api/calendar', calendarRoutes);
-
-// Serve uploaded files
-app.use('/uploads', require('express').static(require('path').join(process.cwd(), 'uploads')));
-

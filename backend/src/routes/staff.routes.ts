@@ -99,24 +99,39 @@ router.post(
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
     body('role').isIn(['care_staff','senior_carer','home_manager','group_admin','auditor']),
-    body('password').isLength({ min: 10 }).withMessage('Minimum 10 characters'),
+    body('password').optional().isLength({ min: 8 }).withMessage('Minimum 8 characters'),
     body('homeId').optional().isUUID(),
   ],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, firstName, lastName, role, password, homeId,
-              phone, startDate, niNumber } = req.body;
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const orgId = req.staff?.organisationId || decoded?.organisationId || '';
+      const defaultHomeId = req.body.homeId || decoded?.homeId || null;
 
-      const passwordHash = await authService.hashPassword(password);
+      const { email, firstName, lastName, role, password, homeId,
+              phone, startDate, niNumber, dateOfBirth, gender,
+              nationality, maritalStatus, address1, postcode,
+              emergencyName, emergencyPhone, emergencyNotes } = req.body;
+
+      const rawPassword = password || Math.random().toString(36).slice(-10) + 'Cc1!';
+      const passwordHash = await authService.hashPassword(rawPassword);
 
       const rows = await query(
         `INSERT INTO staff (organisation_id, home_id, email, password_hash,
-                           first_name, last_name, role, phone, start_date, ni_number)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, email, first_name, last_name, role`,
-        [req.staff.organisationId, homeId || null, email, passwordHash,
-         firstName, lastName, role, phone || null,
-         startDate || null, niNumber || null]
+                           first_name, last_name, role, phone, start_date, ni_number,
+                           date_of_birth, gender, nationality, marital_status,
+                           address1, postcode, emergency_name, emergency_phone, emergency_notes,
+                           status, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'active',true)
+         RETURNING id, email, first_name, last_name, role`,
+        [orgId, homeId || defaultHomeId, email, passwordHash,
+         firstName, lastName, role || 'care_staff', phone || null,
+         startDate || null, niNumber || null,
+         dateOfBirth || null, gender || null, nationality || null, maritalStatus || null,
+         address1 || null, postcode || null,
+         emergencyName || null, emergencyPhone || null, emergencyNotes || null]
       );
 
       const newStaff = rows[0] as { id: string };

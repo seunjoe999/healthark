@@ -7,9 +7,6 @@ import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
 import ServiceUserList from './pages/service-users/ServiceUserList'
 import ServiceUserProfile from './pages/service-users/ServiceUserProfile'
-import EditServiceUser from './pages/service-users/EditServiceUser'
-import AddServiceUser from './pages/service-users/AddServiceUser'
-import AddStaff from './pages/staff/AddStaff'
 import DailyRecords from './pages/daily-records/DailyRecords'
 import CarePlans from './pages/care-plans/CarePlans'
 import Safeguarding from './pages/safeguarding/Safeguarding'
@@ -55,14 +52,12 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-users" element={<ProtectedRoute><ServiceUserList /></ProtectedRoute>} />
-      <Route path="/service-users/new" element={<ProtectedRoute><AddServiceUser /></ProtectedRoute>} />
-      <Route path="/service-users/:id/edit" element={<ProtectedRoute><EditServiceUser /></ProtectedRoute>} />
+      <Route path="/service-users/new" element={<ProtectedRoute><ComingSoon title="Add Service User" /></ProtectedRoute>} />
       <Route path="/service-users/:id" element={<ProtectedRoute><ServiceUserProfile /></ProtectedRoute>} />
       <Route path="/daily-records" element={<ProtectedRoute><DailyRecords /></ProtectedRoute>} />
       <Route path="/care-plans" element={<ProtectedRoute><CarePlans /></ProtectedRoute>} />
       <Route path="/safeguarding" element={<ProtectedRoute><Safeguarding /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><StaffModule /></ProtectedRoute>} />
-      <Route path="/staff/new" element={<ProtectedRoute><AddStaff /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
       <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />

@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { staffApi, homesApi } from '../../api'
+import { Link } from 'react-router-dom'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInYears } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, Search, ChevronRight } from 'lucide-react'
+import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, Search, ChevronRight, Upload, FileText, Trash2, Eye, FileImage } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents'
 
 export default function StaffModule() {
   const { user, isRole } = useAuth()
@@ -24,6 +25,8 @@ export default function StaffModule() {
   const [leave, setLeave] = useState<any[]>([])
   const [onboarding, setOnboarding] = useState<any>(null)
   const [clockHistory, setClockHistory] = useState<any[]>([])
+  const [staffDocs, setStaffDocs] = useState<any[]>([])
+  const [uploadStaffDocOpen, setUploadStaffDocOpen] = useState(false)
   const [addLeaveOpen, setAddLeaveOpen] = useState(false)
   const [addTrainingOpen, setAddTrainingOpen] = useState(false)
 
@@ -45,16 +48,18 @@ export default function StaffModule() {
   const selectStaff = async (s: any) => {
     setSelected(s)
     setTab('profile')
-    const [trainingRes, leaveRes, onboardingRes, clockRes] = await Promise.all([
+    const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes] = await Promise.all([
       api.get(`/staff-hr/training/${s.id}`),
       api.get('/staff-hr/leave'),
       api.get(`/staff-hr/onboarding/${s.id}`),
       staffApi.clockHistory(s.id),
+      api.get(`/documents/staff/${s.id}`),
     ])
     setTraining(trainingRes.data.data || [])
     setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
     setOnboarding(onboardingRes.data.data)
     setClockHistory(clockRes.data.data || [])
+    setStaffDocs(docsRes.data.data || [])
   }
 
   const getName = (s: any) => `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()
@@ -66,6 +71,7 @@ export default function StaffModule() {
     { key: 'leave', label: `Leave (${leave.length})` },
     { key: 'onboarding', label: 'Onboarding' },
     { key: 'clock', label: 'Clock history' },
+    { key: 'documents', label: 'Documents' },
   ]
 
   return (
@@ -79,6 +85,13 @@ export default function StaffModule() {
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
+          <div className="flex gap-2 mb-3">
+            <Link to="/staff/new" className="flex-1">
+              <button className="w-full py-2 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
+                + Add staff member
+              </button>
+            </Link>
+          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input className="input pl-8 text-sm" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -295,6 +308,43 @@ export default function StaffModule() {
               </div>
             )}
 
+
+            {tab === 'documents' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-slate-800">Staff documents ({staffDocs.length})</h3>
+                  <Button size="sm" icon={<Upload className="w-3.5 h-3.5" />} onClick={() => setUploadStaffDocOpen(true)}>Upload document</Button>
+                </div>
+                {staffDocs.length === 0 ? (
+                  <EmptyState title="No documents uploaded" description="Upload DBS certificates, contracts, training records and more"
+                    action={<Button icon={<Upload className="w-4 h-4" />} onClick={() => setUploadStaffDocOpen(true)}>Upload first document</Button>} />
+                ) : (
+                  <div className="space-y-2">
+                    {staffDocs.map((doc: any) => (
+                      <div key={doc.id} className="bg-white rounded-xl border border-slate-100 shadow-card p-4 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-slate-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-800 truncate">{doc.title || doc.file_name}</p>
+                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                            <span>{STAFF_DOC_TYPES.find(t => t.value === doc.document_type)?.label || doc.document_type}</span>
+                            {doc.expiry_date && <span className="text-amber-600 font-medium">Expires {format(new Date(doc.expiry_date), 'd MMM yyyy')}</span>}
+                            <span>{doc.created_at ? format(new Date(doc.created_at), 'd MMM yyyy') : ''}</span>
+                          </div>
+                        </div>
+                        <a href={doc.file_url} target="_blank" rel="noreferrer">
+                          <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <StaffDocUploadModal open={uploadStaffDocOpen} onClose={() => setUploadStaffDocOpen(false)} staffId={selected.id}
+                  onUploaded={(doc) => { setStaffDocs(prev => [doc, ...prev]); setUploadStaffDocOpen(false); toast.success('Document uploaded') }} />
+              </div>
+            )}
+
             {tab === 'clock' && (
               <div>
                 <h3 className="font-semibold text-navy-900 mb-4">Clock in / out history</h3>
@@ -393,6 +443,87 @@ function AddTrainingModal({ open, onClose, staffId, onSaved }: { open: boolean; 
         </div>
         <Input label="Certificate expiry date" type="date" value={form.expiryDate} onChange={e => set('expiryDate', e.target.value)} hint="Leave blank if no expiry" />
         <div className="flex gap-3 justify-end"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save training</Button></div>
+      </form>
+    </Modal>
+  )
+}
+
+
+const STAFF_DOC_TYPES = [
+  { value: 'dbs_certificate', label: 'DBS certificate' },
+  { value: 'application_form', label: 'Application form' },
+  { value: 'care_certificate', label: 'Care certificate' },
+  { value: 'induction_record', label: 'Induction record' },
+  { value: 'reference', label: 'Reference' },
+  { value: 'contract', label: 'Employment contract' },
+  { value: 'training_certificate', label: 'Training certificate' },
+  { value: 'right_to_work', label: 'Right to work document' },
+  { value: 'id_document', label: 'ID / Passport' },
+  { value: 'disciplinary', label: 'Disciplinary record' },
+  { value: 'appraisal', label: 'Appraisal document' },
+  { value: 'medical_clearance', label: 'Medical clearance' },
+  { value: 'pregnancy_risk', label: 'Pregnancy risk assessment' },
+  { value: 'other', label: 'Other document' },
+]
+
+function StaffDocUploadModal({ open, onClose, staffId, onUploaded }: {
+  open: boolean; onClose: () => void; staffId: string; onUploaded: (doc: any) => void
+}) {
+  const [docType, setDocType] = React.useState('')
+  const [title, setTitle] = React.useState('')
+  const [notes, setNotes] = React.useState('')
+  const [expiryDate, setExpiryDate] = React.useState('')
+  const [file, setFile] = React.useState<File | null>(null)
+  const [loading, setLoading] = React.useState(false)
+  const fileRef = React.useRef<HTMLInputElement>(null)
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file || !docType) { toast.error('Please select a document type and file'); return }
+    setLoading(true)
+    try {
+      const token = (window as any).__HA_TOKEN__
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', docType)
+      formData.append('title', title || file.name)
+      if (notes) formData.append('notes', notes)
+      if (expiryDate) formData.append('expiryDate', expiryDate)
+      const res = await fetch(`/api/documents/staff/${staffId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      onUploaded(data.data)
+    } catch (err: any) { toast.error(err?.message || 'Upload failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Upload staff document">
+      <form onSubmit={save} className="space-y-4">
+        <Select label="Document type *" required value={docType} onChange={e => setDocType(e.target.value)}
+          options={STAFF_DOC_TYPES} placeholder="Select document type" />
+        <Input label="Document title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to use filename" />
+        <div onClick={() => fileRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${file ? 'border-emerald-400 bg-emerald-500/5' : 'border-slate-200 hover:border-slate-300 bg-slate-50'}`}>
+          {file ? (
+            <div className="flex items-center justify-center gap-2 text-emerald-700">
+              <FileText className="w-5 h-5" /><span className="text-sm font-medium">{file.name}</span>
+            </div>
+          ) : (
+            <div><Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-600 font-medium">Click to choose file</p><p className="text-xs text-slate-400 mt-1">PDF, Word, images up to 20MB</p></div>
+          )}
+        </div>
+        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt" onChange={e => setFile(e.target.files?.[0] || null)} />
+        <Input label="Expiry date" type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} hint="For certificates with expiry dates" />
+        <div><label className="label">Notes</label><textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} /></div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading} icon={<Upload className="w-4 h-4" />}>Upload</Button>
+        </div>
       </form>
     </Modal>
   )
