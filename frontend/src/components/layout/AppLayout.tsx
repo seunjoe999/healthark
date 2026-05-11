@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
-  Pill, CheckSquare, Star, ChevronRight
+  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck
 } from 'lucide-react'
 
 const navSections = [
@@ -34,6 +34,7 @@ const navSections = [
   {
     label: 'Quality & Compliance',
     items: [
+      { label: 'Reviews',       to: '/reviews',       icon: ClipboardCheck,  roles: [] },
       { label: 'Quality & QA',  to: '/quality',       icon: Star,            roles: ['home_manager','group_admin'] },
       { label: 'Audits',        to: '/audits',        icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
       { label: 'Reports',       to: '/reports',       icon: BarChart3,       roles: ['home_manager','group_admin'] },

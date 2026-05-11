@@ -1,0 +1,216 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { body, param } from 'express-validator';
+import { authenticate } from '../middleware/auth';
+import { validateRequest } from '../middleware/validate';
+import { query } from '../config/database';
+import { ApiResponse } from '../types';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+
+const router = Router();
+router.use(authenticate);
+
+function fromToken(req: Request, field: string): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
+  return (req.staff as any)?.[field] || '';
+}
+
+// ── Service User Reviews ─────────────────────────────────────────
+router.get('/su/:suId', param('suId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT r.*, s.first_name || ' ' || s.last_name as created_by_name
+         FROM su_reviews r LEFT JOIN staff s ON s.id = r.created_by
+         WHERE r.su_id = $1 ORDER BY r.review_date DESC`,
+        [req.params.suId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('reviewDate').isDate()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+      const { suId, reviewType, reviewDate, summary, residentFeedback, familyFeedback,
+              outcomes, nextReviewDate, attendees } = req.body;
+      const rows = await query(
+        `INSERT INTO su_reviews (su_id, home_id, created_by, review_type, review_date, summary,
+          resident_feedback, family_feedback, outcomes, next_review_date, attendees)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        [suId, homeId, staffId, reviewType || 'care_review', reviewDate, summary,
+         residentFeedback || null, familyFeedback || null, outcomes || null,
+         nextReviewDate || null, attendees || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// ── Staff Cautions ───────────────────────────────────────────────
+router.get('/cautions/:staffId', param('staffId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT sc.*, s.first_name || ' ' || s.last_name as created_by_name
+         FROM staff_cautions sc LEFT JOIN staff s ON s.id = sc.created_by
+         WHERE sc.staff_id = $1 ORDER BY sc.created_at DESC`,
+        [req.params.staffId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const createdBy = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+      const { staffId, cautionType, overview, strengths, weaknesses, actionPoints, reviewDate } = req.body;
+      const rows = await query(
+        `INSERT INTO staff_cautions (staff_id, home_id, created_by, caution_type, overview,
+          strengths, weaknesses, action_points, review_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [staffId, homeId, createdBy, cautionType || 'verbal', overview,
+         strengths || null, weaknesses || null, actionPoints || null, reviewDate || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// ── Staff Supervisions ───────────────────────────────────────────
+router.get('/supervisions/:staffId', param('staffId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT ss.*, s.first_name || ' ' || s.last_name as conducted_by_name
+         FROM staff_supervisions ss LEFT JOIN staff s ON s.id = ss.conducted_by
+         WHERE ss.staff_id = $1 ORDER BY ss.supervision_date DESC`,
+        [req.params.staffId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/supervisions', [body('staffId').isUUID(), body('supervisionDate').isDate()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const conductedBy = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+      const { staffId, supervisionType, supervisionDate, summary, strengths,
+              areasForImprovement, actionPoints, staffComments, nextDate } = req.body;
+      const rows = await query(
+        `INSERT INTO staff_supervisions (staff_id, home_id, conducted_by, supervision_type,
+          supervision_date, summary, strengths, areas_for_improvement, action_points,
+          staff_comments, next_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        [staffId, homeId, conductedBy, supervisionType || 'supervision', supervisionDate,
+         summary || null, strengths || null, areasForImprovement || null,
+         actionPoints || null, staffComments || null, nextDate || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// ── MUST Score ───────────────────────────────────────────────────
+router.get('/must/:suId', param('suId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT ms.*, s.first_name || ' ' || s.last_name as assessed_by_name
+         FROM must_scores ms LEFT JOIN staff s ON s.id = ms.assessed_by
+         WHERE ms.su_id = $1 ORDER BY ms.assessed_date DESC LIMIT 10`,
+        [req.params.suId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/must', [body('suId').isUUID()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+      const { suId, weightKg, heightCm, bmiScore, weightLossScore, acuteDiseaseScore,
+              managementPlan, nextAssessment } = req.body;
+      const bmi = heightCm ? Math.round((weightKg / Math.pow(heightCm / 100, 2)) * 10) / 10 : null;
+      const totalScore = (bmiScore || 0) + (weightLossScore || 0) + (acuteDiseaseScore || 0);
+      const riskLevel = totalScore === 0 ? 'low' : totalScore === 1 ? 'medium' : 'high';
+
+      const rows = await query(
+        `INSERT INTO must_scores (su_id, home_id, assessed_by, weight_kg, height_cm, bmi,
+          bmi_score, weight_loss_score, acute_disease_score, total_score, risk_level,
+          management_plan, next_assessment)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+        [suId, homeId, staffId, weightKg || null, heightCm || null, bmi,
+         bmiScore || 0, weightLossScore || 0, acuteDiseaseScore || 0,
+         totalScore, riskLevel, managementPlan || null, nextAssessment || null]
+      );
+
+      // Update SU weight and BMI
+      if (weightKg) await query('UPDATE service_users SET weight_kg=$1, bmi=$2 WHERE id=$3', [weightKg, bmi, suId]);
+
+      res.status(201).json({ success: true, data: { ...rows[0] as object, totalScore, riskLevel } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// ── Password change ──────────────────────────────────────────────
+router.put('/change-password', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) throw { status: 400, message: 'Both passwords required' };
+    if (newPassword.length < 8) throw { status: 400, message: 'New password must be at least 8 characters' };
+
+    const rows = await query<any>('SELECT password_hash FROM staff WHERE id = $1', [staffId]);
+    if (!rows.length) throw { status: 404, message: 'Staff not found' };
+
+    const valid = await bcrypt.compare(currentPassword, rows[0].password_hash);
+    if (!valid) throw { status: 401, message: 'Current password is incorrect' };
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await query('UPDATE staff SET password_hash = $1 WHERE id = $2', [newHash, staffId]);
+
+    res.json({ success: true, message: 'Password changed successfully' } as ApiResponse);
+  } catch (err: any) {
+    if (err.status) res.status(err.status).json({ success: false, error: err.message });
+    else next(err);
+  }
+});
+
+// ── Settings — home info ─────────────────────────────────────────
+router.get('/settings/home', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = fromToken(req, 'homeId');
+    const rows = await query('SELECT * FROM homes WHERE id = $1', [homeId]);
+    res.json({ success: true, data: rows[0] || null } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.put('/settings/home', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = fromToken(req, 'homeId');
+    const { name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius } = req.body;
+    await query(
+      `UPDATE homes SET name=COALESCE($1,name), address1=COALESCE($2,address1),
+        postcode=COALESCE($3,postcode), phone=COALESCE($4,phone), email=COALESCE($5,email),
+        manager_name=COALESCE($6,manager_name), latitude=COALESCE($7,latitude),
+        longitude=COALESCE($8,longitude), geofence_radius=COALESCE($9,geofence_radius),
+        updated_at=NOW() WHERE id=$10`,
+      [name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius, homeId]
+    );
+    res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+export default router;

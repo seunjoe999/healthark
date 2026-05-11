@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions'
 
 export default function StaffModule() {
   const { user, isRole } = useAuth()
@@ -27,6 +27,10 @@ export default function StaffModule() {
   const [clockHistory, setClockHistory] = useState<any[]>([])
   const [staffDocs, setStaffDocs] = useState<any[]>([])
   const [uploadStaffDocOpen, setUploadStaffDocOpen] = useState(false)
+  const [cautions, setCautions] = useState<any[]>([])
+  const [supervisions, setSupervisions] = useState<any[]>([])
+  const [addCautionOpen, setAddCautionOpen] = useState(false)
+  const [addSupervisionOpen, setAddSupervisionOpen] = useState(false)
   const [addLeaveOpen, setAddLeaveOpen] = useState(false)
   const [addTrainingOpen, setAddTrainingOpen] = useState(false)
 
@@ -54,12 +58,16 @@ export default function StaffModule() {
       api.get(`/staff-hr/onboarding/${s.id}`),
       staffApi.clockHistory(s.id),
       api.get(`/documents/staff/${s.id}`),
+      api.get(`/reviews/cautions/${s.id}`),
+      api.get(`/reviews/supervisions/${s.id}`),
     ])
     setTraining(trainingRes.data.data || [])
     setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
     setOnboarding(onboardingRes.data.data)
     setClockHistory(clockRes.data.data || [])
     setStaffDocs(docsRes.data.data || [])
+    setCautions((await api.get(`/reviews/cautions/${s.id}`)).data.data || [])
+    setSupervisions((await api.get(`/reviews/supervisions/${s.id}`)).data.data || [])
   }
 
   const getName = (s: any) => `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()
@@ -72,6 +80,8 @@ export default function StaffModule() {
     { key: 'onboarding', label: 'Onboarding' },
     { key: 'clock', label: 'Clock history' },
     { key: 'documents', label: 'Documents' },
+    { key: 'cautions', label: 'Cautions' },
+    { key: 'supervisions', label: 'Supervisions' },
   ]
 
   return (
@@ -391,6 +401,80 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
+
+            {tab === 'cautions' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-slate-800">Cautions & Disciplinary ({cautions.length})</h3>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
+                </div>
+                {cautions.length === 0 ? (
+                  <EmptyState title="No cautions recorded" description="Record any verbal warnings, written warnings or disciplinary actions" action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>} />
+                ) : (
+                  <div className="space-y-3">
+                    {cautions.map((c: any) => (
+                      <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <span className={`badge ${c.caution_type === 'final_written' ? 'badge-critical' : c.caution_type === 'written' ? 'badge-warning' : 'badge-info'}`}>{(c.caution_type || '').replace('_', ' ')}</span>
+                            <p className="text-xs text-slate-400 mt-1">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''} · {c.created_by_name}</p>
+                          </div>
+                          {c.review_date && <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">Review: {format(new Date(c.review_date), 'd MMM yyyy')}</span>}
+                        </div>
+                        <div className="space-y-2">
+                          <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overview</p><p className="text-sm text-slate-700 mt-0.5">{c.overview}</p></div>
+                          {c.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-sm text-slate-700 mt-0.5">{c.strengths}</p></div>}
+                          {c.weaknesses && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-sm text-slate-700 mt-0.5">{c.weaknesses}</p></div>}
+                          {c.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-sm text-slate-700 mt-0.5">{c.action_points}</p></div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addCautionOpen && selected && (
+                  <AddCautionModalInline staffId={selected.id} onClose={() => setAddCautionOpen(false)}
+                    onSaved={async () => { setAddCautionOpen(false); const res = await api.get(`/reviews/cautions/${selected.id}`); setCautions(res.data.data || []); toast.success('Caution recorded') }} />
+                )}
+              </div>
+            )}
+
+            {tab === 'supervisions' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-slate-800">Supervisions & Reviews ({supervisions.length})</h3>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>
+                </div>
+                {supervisions.length === 0 ? (
+                  <EmptyState title="No supervisions recorded" description="Document supervision sessions and performance reviews" action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>} />
+                ) : (
+                  <div className="space-y-3">
+                    {supervisions.map((s: any) => (
+                      <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <span className="badge badge-info capitalize">{(s.supervision_type || '').replace('_', ' ')}</span>
+                            <p className="text-xs text-slate-400 mt-1">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''} · {s.conducted_by_name}</p>
+                          </div>
+                          {s.next_date && <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">Next: {format(new Date(s.next_date), 'd MMM yyyy')}</span>}
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          {s.summary && <p className="text-slate-700">{s.summary}</p>}
+                          {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
+                          {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
+                          {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
+                          {s.staff_comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff comments</p><p className="text-slate-700 mt-0.5 italic">"{s.staff_comments}"</p></div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addSupervisionOpen && selected && (
+                  <AddSupervisionModalInline staffId={selected.id} onClose={() => setAddSupervisionOpen(false)}
+                    onSaved={async () => { setAddSupervisionOpen(false); const res = await api.get(`/reviews/supervisions/${selected.id}`); setSupervisions(res.data.data || []); toast.success('Supervision recorded') }} />
+                )}
+              </div>
+            )}
+
 function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
   const [form, setForm] = useState({ leaveType: '', startDate: '', endDate: '', hoursRequested: '', reason: '' })
   const [loading, setLoading] = useState(false)
@@ -524,6 +608,68 @@ function StaffDocUploadModal({ open, onClose, staffId, onUploaded }: {
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading} icon={<Upload className="w-4 h-4" />}>Upload</Button>
         </div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddCautionModalInline({ staffId, onClose, onSaved }: { staffId: string; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = React.useState({ cautionType: 'verbal', overview: '', strengths: '', weaknesses: '', actionPoints: '', reviewDate: '' })
+  const [loading, setLoading] = React.useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const CAUTION_TYPES = [{ value: 'verbal', label: 'Verbal warning' }, { value: 'written', label: 'Written warning' }, { value: 'final_written', label: 'Final written warning' }, { value: 'performance_plan', label: 'Performance improvement plan' }]
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try { await api.post('/reviews/cautions', { staffId, ...form }); onSaved() }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Record caution" size="lg">
+      <form onSubmit={save} className="space-y-4">
+        <Select label="Caution type *" required value={form.cautionType} onChange={e => set('cautionType', e.target.value)} options={CAUTION_TYPES} />
+        <div><label className="label">Overview *</label><textarea required className="input" rows={3} value={form.overview} onChange={e => set('overview', e.target.value)} placeholder="Overview of the issue or incident..." /></div>
+        <div><label className="label">Strengths</label><textarea className="input" rows={2} value={form.strengths} onChange={e => set('strengths', e.target.value)} /></div>
+        <div><label className="label">Weaknesses / Areas for improvement</label><textarea className="input" rows={2} value={form.weaknesses} onChange={e => set('weaknesses', e.target.value)} /></div>
+        <div><label className="label">Action points</label><textarea className="input" rows={2} value={form.actionPoints} onChange={e => set('actionPoints', e.target.value)} /></div>
+        <Input label="Review date" type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
+        <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save caution</Button></div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddSupervisionModalInline({ staffId, onClose, onSaved }: { staffId: string; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = React.useState({ supervisionType: 'supervision', supervisionDate: new Date().toISOString().split('T')[0], summary: '', strengths: '', areasForImprovement: '', actionPoints: '', staffComments: '', nextDate: '' })
+  const [loading, setLoading] = React.useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const SUPERVISION_TYPES = [{ value: 'supervision', label: 'Supervision' }, { value: 'appraisal', label: 'Appraisal' }, { value: 'one_to_one', label: 'One-to-one' }, { value: 'return_to_work', label: 'Return to work' }, { value: 'probation_review', label: 'Probation review' }]
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try { await api.post('/reviews/supervisions', { staffId, ...form }); onSaved() }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Record supervision" size="lg">
+      <form onSubmit={save} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Type *" required value={form.supervisionType} onChange={e => set('supervisionType', e.target.value)} options={SUPERVISION_TYPES} />
+          <Input label="Date *" type="date" required value={form.supervisionDate} onChange={e => set('supervisionDate', e.target.value)} />
+        </div>
+        <div><label className="label">Summary</label><textarea className="input" rows={3} value={form.summary} onChange={e => set('summary', e.target.value)} /></div>
+        <div><label className="label">Strengths</label><textarea className="input" rows={2} value={form.strengths} onChange={e => set('strengths', e.target.value)} /></div>
+        <div><label className="label">Areas for improvement</label><textarea className="input" rows={2} value={form.areasForImprovement} onChange={e => set('areasForImprovement', e.target.value)} /></div>
+        <div><label className="label">Action points</label><textarea className="input" rows={2} value={form.actionPoints} onChange={e => set('actionPoints', e.target.value)} /></div>
+        <div><label className="label">Staff member's comments</label><textarea className="input" rows={2} value={form.staffComments} onChange={e => set('staffComments', e.target.value)} /></div>
+        <Input label="Next supervision date" type="date" value={form.nextDate} onChange={e => set('nextDate', e.target.value)} />
+        <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save supervision</Button></div>
       </form>
     </Modal>
   )

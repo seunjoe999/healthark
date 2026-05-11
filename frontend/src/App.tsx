@@ -25,6 +25,8 @@ import CalendarPage from './pages/calendar/Calendar'
 import MAR from './pages/mar/MAR'
 import Tasks from './pages/tasks/Tasks'
 import Quality from './pages/quality/Quality'
+import Reviews from './pages/reviews/Reviews'
+import Settings from './pages/settings/Settings'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -76,7 +78,8 @@ function AppRoutes() {
       <Route path="/ppe" element={<ProtectedRoute><PPE /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Settings" /></ProtectedRoute>} />
+      <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
