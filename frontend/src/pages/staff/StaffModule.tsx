@@ -5,7 +5,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInYears } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, Search, ChevronRight, Upload, FileText, Trash2, Eye, FileImage } from 'lucide-react'
+import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, Search, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]

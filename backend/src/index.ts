@@ -90,6 +90,13 @@ app.use('/api/documents', documentsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/calendar', calendarRoutes);
 
+import marRoutes from './routes/mar.routes';
+import tasksRoutes from './routes/tasks.routes';
+import qualityRoutes from './routes/quality.routes';
+app.use('/api/mar', marRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/quality', qualityRoutes);
+
 // ── Error handling ────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);

@@ -349,4 +349,16 @@ router.get('/:id/clock', param('id').isUUID(), validateRequest,
   }
 );
 
+
+// DELETE /api/staff/:id
+router.delete('/:id', requireRole('group_admin', 'home_manager'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('UPDATE staff SET is_active=false, status=$1 WHERE id=$2', ['terminated', req.params.id]);
+      res.json({ success: true, message: 'Staff member deactivated' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

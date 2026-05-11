@@ -7,13 +7,14 @@ import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
 import ServiceUserList from './pages/service-users/ServiceUserList'
 import ServiceUserProfile from './pages/service-users/ServiceUserProfile'
-import EditServiceUser from './pages/service-users/EditServiceUser'
 import AddServiceUser from './pages/service-users/AddServiceUser'
-import AddStaff from './pages/staff/AddStaff'
+import EditServiceUser from './pages/service-users/EditServiceUser'
 import DailyRecords from './pages/daily-records/DailyRecords'
 import CarePlans from './pages/care-plans/CarePlans'
 import Safeguarding from './pages/safeguarding/Safeguarding'
 import StaffModule from './pages/staff/StaffModule'
+import AddStaff from './pages/staff/AddStaff'
+import EditStaff from './pages/staff/EditStaff'
 import Audits from './pages/audits/Audits'
 import Reports from './pages/reports/Reports'
 import Alerts from './pages/alerts/Alerts'
@@ -21,6 +22,9 @@ import Policies from './pages/policies/Policies'
 import PPE from './pages/ppe/PPE'
 import Messages from './pages/messages/Messages'
 import CalendarPage from './pages/calendar/Calendar'
+import MAR from './pages/mar/MAR'
+import Tasks from './pages/tasks/Tasks'
+import Quality from './pages/quality/Quality'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -37,12 +41,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function ComingSoon({ title }: { title: string }) {
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
-        <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-3xl">🔨</span>
-        </div>
-        <h2 className="text-xl font-bold text-purple-900 mb-2">{title}</h2>
-        <p className="text-gray-500 text-sm">Coming soon</p>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-12 text-center">
+        <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4"><span className="text-3xl">🔨</span></div>
+        <h2 className="font-display text-xl text-slate-900 mb-2">{title}</h2>
+        <p className="text-slate-400 text-sm">Coming soon</p>
       </div>
     </div>
   )
@@ -63,6 +65,10 @@ function AppRoutes() {
       <Route path="/safeguarding" element={<ProtectedRoute><Safeguarding /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><StaffModule /></ProtectedRoute>} />
       <Route path="/staff/new" element={<ProtectedRoute><AddStaff /></ProtectedRoute>} />
+      <Route path="/staff/:id/edit" element={<ProtectedRoute><EditStaff /></ProtectedRoute>} />
+      <Route path="/mar" element={<ProtectedRoute><MAR /></ProtectedRoute>} />
+      <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+      <Route path="/quality" element={<ProtectedRoute><Quality /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
       <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
@@ -80,7 +86,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '10px', fontSize: '14px' } }} />
+        <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>

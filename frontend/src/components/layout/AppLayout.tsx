@@ -1,11 +1,12 @@
 import React, { useState, ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
-  Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare, ChevronRight
+  Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
+  Pill, CheckSquare, Star, ChevronRight
 } from 'lucide-react'
 
 const navSections = [
@@ -15,13 +16,15 @@ const navSections = [
       { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard, roles: [] },
       { label: 'Residents',     to: '/service-users', icon: Users,           roles: [] },
       { label: 'Daily Records', to: '/daily-records', icon: ClipboardList,   roles: [] },
+      { label: 'MAR Chart',     to: '/mar',           icon: Pill,            roles: [] },
       { label: 'Care Plans',    to: '/care-plans',    icon: FileText,        roles: [] },
       { label: 'Safeguarding',  to: '/safeguarding',  icon: ShieldAlert,     roles: [] },
     ]
   },
   {
-    label: 'Management',
+    label: 'Operations',
     items: [
+      { label: 'Tasks',         to: '/tasks',         icon: CheckSquare,     roles: [] },
       { label: 'Staff',         to: '/staff',         icon: UserSquare,      roles: ['home_manager','group_admin'] },
       { label: 'Calendar',      to: '/calendar',      icon: Calendar,        roles: ['home_manager','group_admin'] },
       { label: 'Messages',      to: '/messages',      icon: MessageSquare,   roles: [] },
@@ -29,8 +32,9 @@ const navSections = [
     ]
   },
   {
-    label: 'Intelligence',
+    label: 'Quality & Compliance',
     items: [
+      { label: 'Quality & QA',  to: '/quality',       icon: Star,            roles: ['home_manager','group_admin'] },
       { label: 'Audits',        to: '/audits',        icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
       { label: 'Reports',       to: '/reports',       icon: BarChart3,       roles: ['home_manager','group_admin'] },
       { label: 'Policies',      to: '/policies',      icon: BookOpen,        roles: [] },
@@ -43,18 +47,12 @@ const navSections = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isRole } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const location = useLocation()
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full" style={{ background: 'linear-gradient(160deg, #151f35 0%, #1e2d4a 40%, #27334d 100%)' }}>
-      {/* Logo area */}
-      <div className="px-5 pt-6 pb-5">
+      <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-3 mb-1">
-          <div className="relative flex-shrink-0">
-            <img src="/logo.jpeg" alt="CompCare Hub"
-              className="w-10 h-10 rounded-xl object-contain shadow-lg"
-              style={{ background: 'white', padding: '3px' }} />
-          </div>
+          <img src="/logo.jpeg" alt="CompCare Hub" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
           <div>
             <h1 className="text-white font-display text-lg leading-none">CompCare Hub</h1>
             <p className="text-slate-500 text-xs mt-0.5">Your Care Our Priority</p>
@@ -62,17 +60,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      {/* Gold separator */}
-      <div className="mx-5 mb-5 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,150,26,0.4) 0%, rgba(212,150,26,0.1) 100%)' }} />
+      <div className="mx-5 mb-4 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,150,26,0.4) 0%, rgba(212,150,26,0.1) 100%)' }} />
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 space-y-5 pb-4">
+      <nav className="flex-1 overflow-y-auto px-3 space-y-4 pb-4">
         {navSections.map(section => {
           const visible = section.items.filter(item => item.roles.length === 0 || item.roles.some(r => isRole(r)))
           if (!visible.length) return null
           return (
             <div key={section.label}>
-              <p className="px-3 mb-2 text-xs font-bold uppercase tracking-widest text-slate-600">{section.label}</p>
+              <p className="px-3 mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-600">{section.label}</p>
               <div className="space-y-0.5">
                 {visible.map(item => {
                   const Icon = item.icon
@@ -80,18 +76,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}
                       className={({ isActive }) => clsx(
                         'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group',
-                        isActive
-                          ? 'text-white'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                       )}
-                      style={({ isActive }) => isActive ? {
-                        background: 'linear-gradient(135deg, rgba(212,150,26,0.2) 0%, rgba(212,150,26,0.08) 100%)',
-                        border: '1px solid rgba(212,150,26,0.25)',
-                      } : {}}>
+                      style={({ isActive }) => isActive ? { background: 'linear-gradient(135deg, rgba(212,150,26,0.2) 0%, rgba(212,150,26,0.08) 100%)', border: '1px solid rgba(212,150,26,0.25)' } : {}}>
                       {({ isActive }) => (
                         <>
                           <Icon className={clsx('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-gold-400' : 'text-slate-500 group-hover:text-slate-300')} />
-                          <span className="flex-1">{item.label}</span>
+                          <span className="flex-1 text-sm">{item.label}</span>
                           {isActive && <ChevronRight className="w-3.5 h-3.5 text-gold-400/60" />}
                         </>
                       )}
@@ -104,11 +95,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      {/* User profile */}
       <div className="border-t border-white/8 p-4">
         <div className="flex items-center gap-3 mb-3 px-1">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900"
-            style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           <div className="flex-1 min-w-0">
@@ -116,10 +105,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
           </div>
         </div>
-        <button onClick={logout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/8 rounded-xl text-sm transition-all duration-150 font-medium">
-          <LogOut className="w-4 h-4" />
-          Sign out
+        <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/8 rounded-xl text-sm transition-all duration-150 font-medium">
+          <LogOut className="w-4 h-4" /> Sign out
         </button>
       </div>
     </div>
@@ -127,41 +114,25 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0 shadow-sidebar">
+      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(21,31,53,0.12)' }}>
         <SidebarContent />
       </aside>
-
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-64 flex flex-col z-10 shadow-2xl animate-slide-in-left">
-            <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1">
-              <X className="w-5 h-5" />
-            </button>
+          <div className="relative w-64 flex flex-col z-10 shadow-2xl">
+            <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
             <SidebarContent />
           </div>
         </div>
       )}
-
-      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile header */}
         <header className="lg:hidden bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
-          <button onClick={() => setMobileOpen(true)} className="text-slate-500 p-1 hover:text-slate-900">
-            <Menu className="w-5 h-5" />
-          </button>
+          <button onClick={() => setMobileOpen(true)} className="text-slate-500 p-1 hover:text-slate-900"><Menu className="w-5 h-5" /></button>
           <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
           <span className="font-display text-slate-900 text-base">CompCare Hub</span>
         </header>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="animate-in">
-            {children}
-          </div>
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   )
