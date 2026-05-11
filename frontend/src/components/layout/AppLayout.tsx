@@ -1,95 +1,123 @@
 import React, { useState, ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
-  Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare
+  Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare, ChevronRight
 } from 'lucide-react'
 
-const navItems = [
-  { label: 'Dashboard',      to: '/dashboard',      icon: 'LayoutDashboard', roles: [] },
-  { label: 'Service Users',  to: '/service-users',  icon: 'Users',           roles: [] },
-  { label: 'Daily Records',  to: '/daily-records',  icon: 'ClipboardList',   roles: [] },
-  { label: 'Care Plans',     to: '/care-plans',     icon: 'FileText',        roles: [] },
-  { label: 'Safeguarding',   to: '/safeguarding',   icon: 'ShieldAlert',     roles: [] },
-  { label: 'Staff',          to: '/staff',          icon: 'UserSquare',      roles: ['home_manager','group_admin'] },
-  { label: 'Calendar',       to: '/calendar',       icon: 'Calendar',        roles: ['home_manager','group_admin'] },
-  { label: 'Audits',         to: '/audits',         icon: 'Activity',        roles: ['home_manager','group_admin','auditor'] },
-  { label: 'Reports',        to: '/reports',        icon: 'BarChart3',       roles: ['home_manager','group_admin'] },
-  { label: 'Policies',       to: '/policies',       icon: 'BookOpen',        roles: [] },
-  { label: 'PPE Stock',      to: '/ppe',            icon: 'Package',         roles: ['home_manager','group_admin'] },
-  { label: 'Messages',       to: '/messages',       icon: 'MessageSquare',   roles: [] },
-  { label: 'Alerts',         to: '/alerts',         icon: 'Bell',            roles: [] },
-  { label: 'Settings',       to: '/settings',       icon: 'Settings',        roles: ['group_admin'] },
+const navSections = [
+  {
+    label: 'Care',
+    items: [
+      { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard, roles: [] },
+      { label: 'Residents',     to: '/service-users', icon: Users,           roles: [] },
+      { label: 'Daily Records', to: '/daily-records', icon: ClipboardList,   roles: [] },
+      { label: 'Care Plans',    to: '/care-plans',    icon: FileText,        roles: [] },
+      { label: 'Safeguarding',  to: '/safeguarding',  icon: ShieldAlert,     roles: [] },
+    ]
+  },
+  {
+    label: 'Management',
+    items: [
+      { label: 'Staff',         to: '/staff',         icon: UserSquare,      roles: ['home_manager','group_admin'] },
+      { label: 'Calendar',      to: '/calendar',      icon: Calendar,        roles: ['home_manager','group_admin'] },
+      { label: 'Messages',      to: '/messages',      icon: MessageSquare,   roles: [] },
+      { label: 'Alerts',        to: '/alerts',        icon: Bell,            roles: [] },
+    ]
+  },
+  {
+    label: 'Intelligence',
+    items: [
+      { label: 'Audits',        to: '/audits',        icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
+      { label: 'Reports',       to: '/reports',       icon: BarChart3,       roles: ['home_manager','group_admin'] },
+      { label: 'Policies',      to: '/policies',      icon: BookOpen,        roles: [] },
+      { label: 'PPE Stock',     to: '/ppe',           icon: Package,         roles: ['home_manager','group_admin'] },
+      { label: 'Settings',      to: '/settings',      icon: Settings,        roles: ['group_admin'] },
+    ]
+  }
 ]
-
-const iconMap: Record<string, React.ReactNode> = {
-  LayoutDashboard: <LayoutDashboard className="w-5 h-5" />,
-  Users:           <Users className="w-5 h-5" />,
-  UserSquare:      <UserSquare className="w-5 h-5" />,
-  ClipboardList:   <ClipboardList className="w-5 h-5" />,
-  FileText:        <FileText className="w-5 h-5" />,
-  ShieldAlert:     <ShieldAlert className="w-5 h-5" />,
-  Activity:        <Activity className="w-5 h-5" />,
-  Calendar:        <Calendar className="w-5 h-5" />,
-  Package:         <Package className="w-5 h-5" />,
-  BookOpen:        <BookOpen className="w-5 h-5" />,
-  BarChart3:       <BarChart3 className="w-5 h-5" />,
-  MessageSquare:   <MessageSquare className="w-5 h-5" />,
-  Bell:            <Bell className="w-5 h-5" />,
-  Settings:        <Settings className="w-5 h-5" />,
-}
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isRole } = useAuth()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
 
-  const visibleNav = navItems.filter(item =>
-    item.roles.length === 0 || item.roles.some(r => isRole(r))
-  )
-
-  const Sidebar = () => (
-    <div className="flex flex-col h-full" style={{ background: 'linear-gradient(180deg, #3b0764 0%, #4C1D95 100%)' }}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-        <img src="/logo.jpeg" alt="CompCare Hub" className="w-10 h-10 rounded-lg object-contain bg-white p-0.5 flex-shrink-0" />
-        <div>
-          <h1 className="text-white font-bold text-base leading-tight">CompCare Hub</h1>
-          <p className="text-purple-300 text-xs mt-0.5">Your Care Our Priority</p>
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full" style={{ background: 'linear-gradient(160deg, #151f35 0%, #1e2d4a 40%, #27334d 100%)' }}>
+      {/* Logo area */}
+      <div className="px-5 pt-6 pb-5">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="relative flex-shrink-0">
+            <img src="/logo.jpeg" alt="CompCare Hub"
+              className="w-10 h-10 rounded-xl object-contain shadow-lg"
+              style={{ background: 'white', padding: '3px' }} />
+          </div>
+          <div>
+            <h1 className="text-white font-display text-lg leading-none">CompCare Hub</h1>
+            <p className="text-slate-500 text-xs mt-0.5">Your Care Our Priority</p>
+          </div>
         </div>
       </div>
 
+      {/* Gold separator */}
+      <div className="mx-5 mb-5 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,150,26,0.4) 0%, rgba(212,150,26,0.1) 100%)' }} />
+
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {visibleNav.map(item => (
-          <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) => clsx(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              isActive ? 'bg-white/15 text-white' : 'text-purple-200 hover:bg-white/8 hover:text-white'
-            )}>
-            <span className="flex-shrink-0">{iconMap[item.icon]}</span>
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 space-y-5 pb-4">
+        {navSections.map(section => {
+          const visible = section.items.filter(item => item.roles.length === 0 || item.roles.some(r => isRole(r)))
+          if (!visible.length) return null
+          return (
+            <div key={section.label}>
+              <p className="px-3 mb-2 text-xs font-bold uppercase tracking-widest text-slate-600">{section.label}</p>
+              <div className="space-y-0.5">
+                {visible.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}
+                      className={({ isActive }) => clsx(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group',
+                        isActive
+                          ? 'text-white'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      )}
+                      style={({ isActive }) => isActive ? {
+                        background: 'linear-gradient(135deg, rgba(212,150,26,0.2) 0%, rgba(212,150,26,0.08) 100%)',
+                        border: '1px solid rgba(212,150,26,0.25)',
+                      } : {}}>
+                      {({ isActive }) => (
+                        <>
+                          <Icon className={clsx('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-gold-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                          <span className="flex-1">{item.label}</span>
+                          {isActive && <ChevronRight className="w-3.5 h-3.5 text-gold-400/60" />}
+                        </>
+                      )}
+                    </NavLink>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
       </nav>
 
-      {/* User */}
-      <div className="border-t border-white/10 p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-bold">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </span>
+      {/* User profile */}
+      <div className="border-t border-white/8 p-4">
+        <div className="flex items-center gap-3 mb-3 px-1">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900"
+            style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+            {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user?.firstName} {user?.lastName}</p>
-            <p className="text-purple-300 text-xs capitalize">{user?.role?.replace(/_/g, ' ')}</p>
+            <p className="text-white text-sm font-medium truncate leading-tight">{user?.firstName} {user?.lastName}</p>
+            <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
           </div>
         </div>
         <button onClick={logout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-purple-200 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">
+          className="flex items-center gap-2 w-full px-3 py-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/8 rounded-xl text-sm transition-all duration-150 font-medium">
           <LogOut className="w-4 h-4" />
           Sign out
         </button>
@@ -98,35 +126,42 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0">
-        <Sidebar />
+      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0 shadow-sidebar">
+        <SidebarContent />
       </aside>
 
-      {/* Mobile sidebar */}
-      {sidebarOpen && (
+      {/* Mobile overlay */}
+      {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-64 flex flex-col z-10">
-            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-white z-20">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="relative w-64 flex flex-col z-10 shadow-2xl animate-slide-in-left">
+            <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1">
               <X className="w-5 h-5" />
             </button>
-            <Sidebar />
+            <SidebarContent />
           </div>
         </div>
       )}
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="lg:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="text-gray-600">
-            <Menu className="w-6 h-6" />
+        {/* Mobile header */}
+        <header className="lg:hidden bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+          <button onClick={() => setMobileOpen(true)} className="text-slate-500 p-1 hover:text-slate-900">
+            <Menu className="w-5 h-5" />
           </button>
-          <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded object-contain" />
-          <span className="font-bold text-purple-900">CompCare Hub</span>
+          <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
+          <span className="font-display text-slate-900 text-base">CompCare Hub</span>
         </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="animate-in">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   )

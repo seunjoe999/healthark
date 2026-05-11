@@ -180,3 +180,14 @@ app.use('/api/audits', aiAuditRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/policies', policiesRoutes);
 app.use('/api/ppe', ppeRoutes);
+
+import documentsRoutes from './routes/documents.routes';
+import messagesRoutes from './routes/messages.routes';
+import calendarRoutes from './routes/calendar.routes';
+app.use('/api/documents', documentsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/calendar', calendarRoutes);
+
+// Serve uploaded files
+app.use('/uploads', require('express').static(require('path').join(process.cwd(), 'uploads')));
+
