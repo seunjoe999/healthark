@@ -1307,7 +1307,7 @@ FOR EACH ROW EXECUTE FUNCTION calculate_bmi();
 INSERT INTO organisations (id, name, reg_number, email)
 VALUES (
   '00000000-0000-0000-0000-000000000001',
-  'HealthArk Organisation',
+  'CompCare Hub Organisation',
   'REG-001',
-  'admin@healthark.co.uk'
+  'admin@compcarehub.co.uk'
 );

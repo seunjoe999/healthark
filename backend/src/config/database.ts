@@ -4,7 +4,7 @@ const config: PoolConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'healthark',
-  user: process.env.DB_USER || 'healthark_user',
+  user: process.env.DB_USER || 'compcare_user',
   password: process.env.DB_PASSWORD,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
   // Connection pool settings

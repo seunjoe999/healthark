@@ -30,7 +30,7 @@ export const logger = winston.createLogger({
       maxFiles: 5,
     }),
     new winston.transports.File({
-      filename: path.join(logDir, 'healthark.log'),
+      filename: path.join(logDir, 'compcarehub.log'),
       maxsize: 50 * 1024 * 1024,
       maxFiles: 10,
     }),

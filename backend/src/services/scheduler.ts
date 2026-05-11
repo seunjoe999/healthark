@@ -8,7 +8,7 @@ import { logger } from '../config/logger';
 // ================================================================
 
 export function startScheduler(): void {
-  logger.info('Starting HealthArk scheduler');
+  logger.info('Starting CompCare Hub scheduler');
 
   // Every hour: check fluid intake
   cron.schedule('0 * * * *', async () => {

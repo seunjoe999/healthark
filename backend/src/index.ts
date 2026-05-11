@@ -131,7 +131,7 @@ async function bootstrap() {
   }
 
   app.listen(PORT, () => {
-    logger.info(`HealthArk API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+    logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
 
   // Start background scheduler
@@ -171,3 +171,12 @@ app.get('/debug/homes', async (req: any, res: any) => {
 
 import staffHRRoutes from './routes/staffHR.routes';
 app.use('/api/staff-hr', staffHRRoutes);
+
+import aiAuditRoutes from './routes/aiAudit.routes';
+import reportsRoutes from './routes/reports.routes';
+import policiesRoutes from './routes/policies.routes';
+import ppeRoutes from './routes/ppe.routes';
+app.use('/api/audits', aiAuditRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/policies', policiesRoutes);
+app.use('/api/ppe', ppeRoutes);

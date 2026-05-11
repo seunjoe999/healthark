@@ -1,0 +1,232 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { body, param } from 'express-validator';
+import { authenticate, requireRole } from '../middleware/auth';
+import { validateRequest } from '../middleware/validate';
+import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
+import { ApiResponse } from '../types';
+import jwt from 'jsonwebtoken';
+
+const router = Router();
+router.use(authenticate);
+
+function fromToken(req: Request, field: string): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
+  return (req.staff as any)?.[field] || '';
+}
+
+// GET /api/audits — list audit reports
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT ar.*, s.first_name || ' ' || s.last_name as generated_by_name
+       FROM audit_reports ar LEFT JOIN staff s ON s.id = ar.generated_by
+       WHERE ar.home_id = $1 ORDER BY ar.generated_at DESC LIMIT 50`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/audits/generate — trigger AI audit
+router.post('/generate',
+  requireRole('home_manager', 'group_admin'),
+  [body('auditType').notEmpty(), body('homeId').optional().isUUID()],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { auditType, customName, periodFrom, periodTo } = req.body;
+
+      const from = periodFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const to = periodTo || new Date().toISOString().split('T')[0];
+
+      // Create pending audit record
+      const auditRows = await query(
+        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, is_ai_generated)
+         VALUES ($1,$2,$3,$4,$5,$6,'generating',true) RETURNING *`,
+        [homeId, auditType, customName || null, from, to, staffId]
+      );
+      const auditId = (auditRows[0] as any).id;
+
+      // Run AI analysis asynchronously
+      generateAuditReport(auditId, homeId, auditType, from, to).catch(console.error);
+
+      res.status(202).json({ success: true, data: { id: auditId, status: 'generating', message: 'Audit generation started. Check back in a moment.' } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/audits/:id — get specific audit
+router.get('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query('SELECT * FROM audit_reports WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Audit not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string) {
+  try {
+    // Gather data for the audit
+    const [carePlans, incidents, dailyRecords, fluidData, staffTraining, marRecords, missingRecords] = await Promise.all([
+      query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active,
+                    su.first_name || ' ' || su.last_name as su_name
+             FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
+             WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]),
+      query(`SELECT ri.incident_type, ri.manager_reviewed, dr.record_date,
+                    su.first_name || ' ' || su.last_name as su_name
+             FROM records_incidents ri JOIN daily_records dr ON dr.id = ri.daily_record_id
+             JOIN service_users su ON su.id = dr.su_id
+             WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]),
+      query(`SELECT record_type, COUNT(*) as count FROM daily_records
+             WHERE home_id = $1 AND record_date BETWEEN $2 AND $3
+             GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]),
+      query(`SELECT su.first_name || ' ' || su.last_name as su_name, ft.total_ml, ft.below_threshold, ft.record_date
+             FROM su_daily_fluid_totals ft JOIN service_users su ON su.id = ft.su_id
+             WHERE ft.home_id = $1 AND ft.record_date BETWEEN $2 AND $3 AND ft.below_threshold = true`, [homeId, from, to]),
+      query(`SELECT s.first_name || ' ' || s.last_name as staff_name, st.course_name, st.expiry_date
+             FROM staff_training st JOIN staff s ON s.id = st.staff_id
+             WHERE s.home_id = $1 AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]),
+      query(`SELECT COUNT(*) as total, COUNT(CASE WHEN given = true THEN 1 END) as given,
+                    COUNT(CASE WHEN refused = true THEN 1 END) as refused,
+                    COUNT(CASE WHEN given IS NULL THEN 1 END) as pending
+             FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]),
+      query(`SELECT su.first_name || ' ' || su.last_name as su_name, COUNT(*) as days_missing
+             FROM service_users su
+             WHERE su.home_id = $1 AND su.status = 'live'
+             AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]),
+    ]);
+
+    // Build structured findings
+    const overduePlans = (carePlans as any[]).filter(cp => cp.next_review_date && new Date(cp.next_review_date) < new Date());
+    const unreviewedIncidents = (incidents as any[]).filter(i => !i.manager_reviewed);
+    const fluidFlags = fluidData as any[];
+    const expiringTraining = staffTraining as any[];
+    const marStats = (marRecords as any[])[0] || {};
+    const todayMissing = missingRecords as any[];
+
+    // Build report text
+    const auditLabel = auditType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+    let findings = `## ${auditLabel} Audit Report\n**Period:** ${from} to ${to}\n\n`;
+
+    switch (auditType) {
+      case 'care_plan':
+        findings += `### Care Plan Review Compliance\n`;
+        findings += `- Total active care plans: **${(carePlans as any[]).length}**\n`;
+        findings += `- Overdue for review: **${overduePlans.length}**\n`;
+        if (overduePlans.length > 0) {
+          findings += `\n**Overdue plans:**\n`;
+          overduePlans.forEach((cp: any) => findings += `- ${cp.su_name}: ${cp.plan_type} (due ${cp.next_review_date})\n`);
+        }
+        findings += overduePlans.length === 0 ? '\n✅ All care plans are current and within review dates.\n' : '\n⚠️ Action required: review overdue care plans immediately.\n';
+        break;
+
+      case 'documentation':
+        const totalRecords = (dailyRecords as any[]).reduce((sum: number, r: any) => sum + parseInt(r.count), 0);
+        findings += `### Documentation Audit\n`;
+        findings += `- Total records logged in period: **${totalRecords}**\n`;
+        findings += `- Residents with no record today: **${todayMissing.length}**\n\n`;
+        findings += `**Record types logged:**\n`;
+        (dailyRecords as any[]).forEach((r: any) => findings += `- ${r.record_type.replace(/_/g, ' ')}: ${r.count} records\n`);
+        if (todayMissing.length > 0) {
+          findings += `\n**Missing today's records:**\n`;
+          todayMissing.forEach((su: any) => findings += `- ${su.su_name}\n`);
+        }
+        break;
+
+      case 'medication':
+      case 'mar_chart':
+        findings += `### Medication Administration Records\n`;
+        findings += `- Total MAR entries: **${marStats.total || 0}**\n`;
+        findings += `- Given: **${marStats.given || 0}**\n`;
+        findings += `- Refused: **${marStats.refused || 0}**\n`;
+        findings += `- Pending/unsigned: **${marStats.pending || 0}**\n`;
+        const compliance = marStats.total > 0 ? Math.round((parseInt(marStats.given || 0) / parseInt(marStats.total)) * 100) : 0;
+        findings += `\n**Compliance rate: ${compliance}%**\n`;
+        findings += compliance >= 95 ? '\n✅ MAR compliance is within acceptable range.\n' : '\n⚠️ MAR compliance is below 95% — review unsigned entries.\n';
+        break;
+
+      case 'incident_analysis':
+        findings += `### Incident Analysis\n`;
+        findings += `- Total incidents in period: **${(incidents as any[]).length}**\n`;
+        findings += `- Not reviewed by management: **${unreviewedIncidents.length}**\n`;
+        if (unreviewedIncidents.length > 0) {
+          findings += `\n**Unreviewed incidents:**\n`;
+          unreviewedIncidents.forEach((i: any) => findings += `- ${i.su_name}: ${i.incident_type} on ${i.record_date}\n`);
+        }
+        const byType: Record<string, number> = {};
+        (incidents as any[]).forEach((i: any) => { byType[i.incident_type] = (byType[i.incident_type] || 0) + 1; });
+        if (Object.keys(byType).length > 0) {
+          findings += `\n**By type:**\n`;
+          Object.entries(byType).forEach(([type, count]) => findings += `- ${type}: ${count}\n`);
+        }
+        break;
+
+      case 'nutrition_hydration':
+        findings += `### Nutrition & Hydration Audit\n`;
+        findings += `- Fluid intake below threshold (in period): **${fluidFlags.length} instances**\n`;
+        if (fluidFlags.length > 0) {
+          findings += `\n**Below threshold instances:**\n`;
+          fluidFlags.forEach((f: any) => findings += `- ${f.su_name}: ${f.total_ml}ml on ${f.record_date}\n`);
+        }
+        findings += fluidFlags.length === 0 ? '\n✅ All residents met their fluid intake targets.\n' : '\n⚠️ Action required: review fluid intake for affected residents.\n';
+        break;
+
+      case 'safeguarding':
+        const safeguardingRows = await query(
+          `SELECT sc.*, su.first_name || ' ' || su.last_name as su_name
+           FROM safeguarding_concerns sc JOIN service_users su ON su.id = sc.su_id
+           WHERE sc.home_id = $1 AND sc.incident_date BETWEEN $2 AND $3`,
+          [homeId, from, to]
+        );
+        findings += `### Safeguarding Audit\n`;
+        findings += `- Total concerns raised: **${(safeguardingRows as any[]).length}**\n`;
+        findings += `- Not yet acknowledged: **${(safeguardingRows as any[]).filter((s: any) => !s.manager_ack).length}**\n`;
+        (safeguardingRows as any[]).forEach((s: any) => {
+          findings += `\n**${s.su_name}** (${s.incident_date})\n`;
+          findings += `- ${s.overview?.substring(0, 100)}...\n`;
+          findings += `- Status: ${s.manager_ack ? '✅ Acknowledged' : '⚠️ Pending acknowledgement'}\n`;
+        });
+        break;
+
+      default:
+        findings += `### ${auditLabel}\n`;
+        findings += `- Total daily records in period: **${(dailyRecords as any[]).reduce((s: number, r: any) => s + parseInt(r.count), 0)}**\n`;
+        findings += `- Active care plans: **${(carePlans as any[]).length}**\n`;
+        findings += `- Overdue care plan reviews: **${overduePlans.length}**\n`;
+        findings += `- Incidents: **${(incidents as any[]).length}**\n`;
+        findings += `- Fluid below threshold: **${fluidFlags.length}**\n`;
+        findings += `- Training expiring: **${expiringTraining.length}**\n`;
+    }
+
+    // Build recommendations
+    let recommendations = '';
+    if (overduePlans.length > 0) recommendations += `- Review and update ${overduePlans.length} overdue care plan(s) immediately\n`;
+    if (unreviewedIncidents.length > 0) recommendations += `- Review and sign off ${unreviewedIncidents.length} unreviewed incident(s)\n`;
+    if (fluidFlags.length > 0) recommendations += `- Investigate fluid intake for residents with below-threshold recordings\n`;
+    if (expiringTraining.length > 0) recommendations += `- Arrange renewal for ${expiringTraining.length} expiring training certificate(s)\n`;
+    if (!recommendations) recommendations = '- No immediate actions required. Continue monitoring.';
+
+    const checksTotal = (carePlans as any[]).length + (incidents as any[]).length + (dailyRecords as any[]).length;
+    const checksFailed = overduePlans.length + unreviewedIncidents.length + fluidFlags.length;
+
+    await query(
+      `UPDATE audit_reports SET
+        status = 'completed', findings = $1, recommendations = $2, raw_report = $3,
+        total_checks = $4, checks_passed = $5, checks_failed = $6, generated_at = NOW()
+       WHERE id = $7`,
+      [findings, recommendations, findings, checksTotal, checksTotal - checksFailed, checksFailed, auditId]
+    );
+  } catch (err) {
+    console.error('Audit generation failed:', err);
+    await query(`UPDATE audit_reports SET status = 'failed' WHERE id = $1`, [auditId]);
+  }
+}
+
+export default router;
