@@ -24,22 +24,64 @@ function parseUser(staff: Record<string, unknown>): AuthUser {
   }
 }
 
+function saveSession(token: string, user: AuthUser) {
+  ;(window as any).__HA_TOKEN__ = token
+  ;(window as any).__HA_USER__ = user
+  try { sessionStorage.setItem('ha_token', token); sessionStorage.setItem('ha_user', JSON.stringify(user)) } catch {}
+  try { localStorage.setItem('ha_token', token); localStorage.setItem('ha_user', JSON.stringify(user)) } catch {}
+}
+
+function loadSession(): { token: string | null; user: AuthUser | null } {
+  // 1. Memory (survives tab navigation, not full reload)
+  if ((window as any).__HA_TOKEN__ && (window as any).__HA_USER__) {
+    return { token: (window as any).__HA_TOKEN__, user: (window as any).__HA_USER__ }
+  }
+  // 2. sessionStorage (survives page refresh within same tab)
+  try {
+    const t = sessionStorage.getItem('ha_token')
+    const u = sessionStorage.getItem('ha_user')
+    if (t && u) {
+      const user = JSON.parse(u)
+      ;(window as any).__HA_TOKEN__ = t
+      ;(window as any).__HA_USER__ = user
+      return { token: t, user }
+    }
+  } catch {}
+  // 3. localStorage (survives closing and reopening)
+  try {
+    const t = localStorage.getItem('ha_token')
+    const u = localStorage.getItem('ha_user')
+    if (t && u) {
+      const user = JSON.parse(u)
+      ;(window as any).__HA_TOKEN__ = t
+      ;(window as any).__HA_USER__ = user
+      return { token: t, user }
+    }
+  } catch {}
+  return { token: null, user: null }
+}
+
+function clearSession() {
+  ;(window as any).__HA_TOKEN__ = null
+  ;(window as any).__HA_USER__ = null
+  try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
+  try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(() => loadSession().user)
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password)
     const { accessToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
-    ;(window as any).__HA_TOKEN__ = accessToken
-    ;(window as any).__HA_USER__ = authUser
+    saveSession(accessToken, authUser)
     setUser(authUser)
   }
 
   const logout = () => {
     try { authApi.logout() } catch {}
-    ;(window as any).__HA_TOKEN__ = null
-    ;(window as any).__HA_USER__ = null
+    clearSession()
     setUser(null)
   }
 

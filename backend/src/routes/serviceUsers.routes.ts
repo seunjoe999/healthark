@@ -1,3 +1,17 @@
+
+// Auto-geocode a UK postcode using postcodes.io (free, no API key)
+async function geocodePostcode(postcode: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const clean = postcode.replace(/\s/g, '').toUpperCase();
+    const res = await fetch(`https://api.postcodes.io/postcodes/${clean}`);
+    const data = await res.json() as any;
+    if (data.status === 200 && data.result) {
+      return { lat: data.result.latitude, lng: data.result.longitude };
+    }
+  } catch {}
+  return null;
+}
+
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
 import { authenticate, requireRole } from '../middleware/auth';
@@ -6,6 +20,21 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+
+
+// Auto-lookup UK postcode GPS coordinates
+async function lookupPostcodeGPS(postcode: string): Promise<{ lat: number; lng: number } | null> {
+  if (!postcode) return null;
+  try {
+    const clean = postcode.replace(/\s/g, '').toUpperCase();
+    const res = await fetch(`https://api.postcodes.io/postcodes/${clean}`);
+    const data = await res.json() as any;
+    if (data.status === 200 && data.result) {
+      return { lat: data.result.latitude, lng: data.result.longitude };
+    }
+  } catch {}
+  return null;
+}
 
 const router = Router();
 router.use(authenticate);
@@ -156,6 +185,13 @@ router.post('/',
           needToKnow || null, myInstructions || null,
         ]
       );
+      // Auto-lookup postcode GPS for geofence
+      if (postcode) {
+        const gps = await lookupPostcodeGPS(postcode);
+        if (gps) {
+          await query('UPDATE service_users SET latitude=$1, longitude=$2 WHERE id=$3', [gps.lat, gps.lng, (rows[0] as any).id]);
+        }
+      }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -242,6 +278,13 @@ router.post('/:id/contacts', param('id').isUUID(),
          address1 || null, address2 || null, postcode || null,
          isPrimary || false, notes || null, displayOrder || 0]
       );
+      // Auto-lookup postcode GPS for geofence
+      if (postcode) {
+        const gps = await lookupPostcodeGPS(postcode);
+        if (gps) {
+          await query('UPDATE service_users SET latitude=$1, longitude=$2 WHERE id=$3', [gps.lat, gps.lng, (rows[0] as any).id]);
+        }
+      }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

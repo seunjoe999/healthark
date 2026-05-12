@@ -155,13 +155,23 @@ export default function StaffModule() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-white rounded-xl border border-gray-100 p-1 mb-4 overflow-x-auto">
-              {tabs.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${tab === t.key ? 'bg-navy-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  {t.label}
-                </button>
-              ))}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-5">
+              <div className="flex overflow-x-auto">
+                {tabs.map((t, i) => (
+                  <button key={t.key} onClick={() => setTab(t.key)}
+                    className={`flex-shrink-0 px-4 py-3.5 text-xs font-semibold whitespace-nowrap transition-all relative border-b-2 ${
+                      tab === t.key
+                        ? 'border-gold-500 text-slate-900 bg-gold-500/5'
+                        : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+                    }`}
+                    style={tab === t.key ? { borderBottomColor: '#d4961a' } : {}}>
+                    {t.label}
+                    {tab === t.key && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full" style={{ background: 'linear-gradient(90deg, #e8b130, #d4961a)' }} />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Tab content */}
@@ -355,6 +365,75 @@ export default function StaffModule() {
               </div>
             )}
 
+            {tab === 'cautions' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-slate-800">Cautions & Disciplinary ({cautions.length})</h3>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
+                </div>
+                {cautions.length === 0 ? (
+                  <EmptyState title="No cautions recorded" description="Record verbal warnings, written warnings or disciplinary actions"
+                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>} />
+                ) : (
+                  <div className="space-y-3">
+                    {cautions.map((c: any) => (
+                      <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="badge badge-warning capitalize">{(c.caution_type || '').replace('_', ' ')}</span>
+                          <p className="text-xs text-slate-400">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''}</p>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overview</p><p className="text-slate-700 mt-0.5">{c.overview}</p></div>
+                          {c.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{c.strengths}</p></div>}
+                          {c.weaknesses && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{c.weaknesses}</p></div>}
+                          {c.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{c.action_points}</p></div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addCautionOpen && selected && (
+                  <AddCautionModalInline staffId={selected.id} onClose={() => setAddCautionOpen(false)}
+                    onSaved={async () => { setAddCautionOpen(false); const res = await api.get(`/reviews/cautions/${selected.id}`); setCautions(res.data.data || []); toast.success('Caution recorded') }} />
+                )}
+              </div>
+            )}
+
+            {tab === 'supervisions' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-slate-800">Supervisions & Reviews ({supervisions.length})</h3>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>
+                </div>
+                {supervisions.length === 0 ? (
+                  <EmptyState title="No supervisions recorded" description="Document supervision sessions and performance reviews"
+                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>} />
+                ) : (
+                  <div className="space-y-3">
+                    {supervisions.map((s: any) => (
+                      <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="badge badge-info capitalize">{(s.supervision_type || '').replace('_', ' ')}</span>
+                          <p className="text-xs text-slate-400">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''}</p>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          {s.summary && <p className="text-slate-700">{s.summary}</p>}
+                          {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
+                          {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
+                          {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
+                          {s.staff_comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff comments</p><p className="text-slate-700 mt-0.5 italic">"{s.staff_comments}"</p></div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addSupervisionOpen && selected && (
+                  <AddSupervisionModalInline staffId={selected.id} onClose={() => setAddSupervisionOpen(false)}
+                    onSaved={async () => { setAddSupervisionOpen(false); const res = await api.get(`/reviews/supervisions/${selected.id}`); setSupervisions(res.data.data || []); toast.success('Supervision recorded') }} />
+                )}
+              </div>
+            )}
+
             {tab === 'clock' && (
               <div>
                 <h3 className="font-semibold text-navy-900 mb-4">Clock in / out history</h3>
@@ -398,218 +477,6 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
       <dt className="text-xs text-gray-500 font-medium">{label}</dt>
       <dd className="text-sm text-gray-900 mt-0.5 capitalize">{value || '—'}</dd>
     </div>
-  )
-}
-
-
-            {tab === 'cautions' && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-slate-800">Cautions & Disciplinary ({cautions.length})</h3>
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
-                </div>
-                {cautions.length === 0 ? (
-                  <EmptyState title="No cautions recorded" description="Record any verbal warnings, written warnings or disciplinary actions" action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>} />
-                ) : (
-                  <div className="space-y-3">
-                    {cautions.map((c: any) => (
-                      <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <span className={`badge ${c.caution_type === 'final_written' ? 'badge-critical' : c.caution_type === 'written' ? 'badge-warning' : 'badge-info'}`}>{(c.caution_type || '').replace('_', ' ')}</span>
-                            <p className="text-xs text-slate-400 mt-1">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''} · {c.created_by_name}</p>
-                          </div>
-                          {c.review_date && <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">Review: {format(new Date(c.review_date), 'd MMM yyyy')}</span>}
-                        </div>
-                        <div className="space-y-2">
-                          <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overview</p><p className="text-sm text-slate-700 mt-0.5">{c.overview}</p></div>
-                          {c.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-sm text-slate-700 mt-0.5">{c.strengths}</p></div>}
-                          {c.weaknesses && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-sm text-slate-700 mt-0.5">{c.weaknesses}</p></div>}
-                          {c.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-sm text-slate-700 mt-0.5">{c.action_points}</p></div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {addCautionOpen && selected && (
-                  <AddCautionModalInline staffId={selected.id} onClose={() => setAddCautionOpen(false)}
-                    onSaved={async () => { setAddCautionOpen(false); const res = await api.get(`/reviews/cautions/${selected.id}`); setCautions(res.data.data || []); toast.success('Caution recorded') }} />
-                )}
-              </div>
-            )}
-
-            {tab === 'supervisions' && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-slate-800">Supervisions & Reviews ({supervisions.length})</h3>
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>
-                </div>
-                {supervisions.length === 0 ? (
-                  <EmptyState title="No supervisions recorded" description="Document supervision sessions and performance reviews" action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>} />
-                ) : (
-                  <div className="space-y-3">
-                    {supervisions.map((s: any) => (
-                      <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <span className="badge badge-info capitalize">{(s.supervision_type || '').replace('_', ' ')}</span>
-                            <p className="text-xs text-slate-400 mt-1">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''} · {s.conducted_by_name}</p>
-                          </div>
-                          {s.next_date && <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">Next: {format(new Date(s.next_date), 'd MMM yyyy')}</span>}
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          {s.summary && <p className="text-slate-700">{s.summary}</p>}
-                          {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
-                          {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
-                          {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
-                          {s.staff_comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff comments</p><p className="text-slate-700 mt-0.5 italic">"{s.staff_comments}"</p></div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {addSupervisionOpen && selected && (
-                  <AddSupervisionModalInline staffId={selected.id} onClose={() => setAddSupervisionOpen(false)}
-                    onSaved={async () => { setAddSupervisionOpen(false); const res = await api.get(`/reviews/supervisions/${selected.id}`); setSupervisions(res.data.data || []); toast.success('Supervision recorded') }} />
-                )}
-              </div>
-            )}
-
-function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ leaveType: '', startDate: '', endDate: '', hoursRequested: '', reason: '' })
-  const [loading, setLoading] = useState(false)
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try { await api.post('/staff-hr/leave', { staffId, ...form, hoursRequested: parseFloat(form.hoursRequested) }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Request leave">
-      <form onSubmit={save} className="space-y-4">
-        <Select label="Leave type *" required value={form.leaveType} onChange={e => set('leaveType', e.target.value)} options={LEAVE_TYPES} placeholder="Select type" />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
-        </div>
-        <Input label="Hours requested *" type="number" step="0.5" required value={form.hoursRequested} onChange={e => set('hoursRequested', e.target.value)} />
-        <div><label className="label">Reason (optional)</label><textarea className="input" rows={2} value={form.reason} onChange={e => set('reason', e.target.value)} /></div>
-        <div className="flex gap-3 justify-end"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Submit request</Button></div>
-      </form>
-    </Modal>
-  )
-}
-
-function AddTrainingModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ courseName: '', completedDate: '', durationHours: '', expiryDate: '' })
-  const [loading, setLoading] = useState(false)
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try { await api.post('/staff-hr/training', { staffId, ...form, durationHours: form.durationHours ? parseFloat(form.durationHours) : null, expiryDate: form.expiryDate || null }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Add training record">
-      <form onSubmit={save} className="space-y-4">
-        <Input label="Course name *" required value={form.courseName} onChange={e => set('courseName', e.target.value)} placeholder="e.g. First Aid, Manual Handling..." />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Date completed *" type="date" required value={form.completedDate} onChange={e => set('completedDate', e.target.value)} />
-          <Input label="Duration (hours)" type="number" step="0.5" value={form.durationHours} onChange={e => set('durationHours', e.target.value)} />
-        </div>
-        <Input label="Certificate expiry date" type="date" value={form.expiryDate} onChange={e => set('expiryDate', e.target.value)} hint="Leave blank if no expiry" />
-        <div className="flex gap-3 justify-end"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save training</Button></div>
-      </form>
-    </Modal>
-  )
-}
-
-
-const STAFF_DOC_TYPES = [
-  { value: 'dbs_certificate', label: 'DBS certificate' },
-  { value: 'application_form', label: 'Application form' },
-  { value: 'care_certificate', label: 'Care certificate' },
-  { value: 'induction_record', label: 'Induction record' },
-  { value: 'reference', label: 'Reference' },
-  { value: 'contract', label: 'Employment contract' },
-  { value: 'training_certificate', label: 'Training certificate' },
-  { value: 'right_to_work', label: 'Right to work document' },
-  { value: 'id_document', label: 'ID / Passport' },
-  { value: 'disciplinary', label: 'Disciplinary record' },
-  { value: 'appraisal', label: 'Appraisal document' },
-  { value: 'medical_clearance', label: 'Medical clearance' },
-  { value: 'pregnancy_risk', label: 'Pregnancy risk assessment' },
-  { value: 'other', label: 'Other document' },
-]
-
-function StaffDocUploadModal({ open, onClose, staffId, onUploaded }: {
-  open: boolean; onClose: () => void; staffId: string; onUploaded: (doc: any) => void
-}) {
-  const [docType, setDocType] = React.useState('')
-  const [title, setTitle] = React.useState('')
-  const [notes, setNotes] = React.useState('')
-  const [expiryDate, setExpiryDate] = React.useState('')
-  const [file, setFile] = React.useState<File | null>(null)
-  const [loading, setLoading] = React.useState(false)
-  const fileRef = React.useRef<HTMLInputElement>(null)
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!file || !docType) { toast.error('Please select a document type and file'); return }
-    setLoading(true)
-    try {
-      const token = (window as any).__HA_TOKEN__
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('documentType', docType)
-      formData.append('title', title || file.name)
-      if (notes) formData.append('notes', notes)
-      if (expiryDate) formData.append('expiryDate', expiryDate)
-      const res = await fetch(`/api/documents/staff/${staffId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      onUploaded(data.data)
-    } catch (err: any) { toast.error(err?.message || 'Upload failed') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Upload staff document">
-      <form onSubmit={save} className="space-y-4">
-        <Select label="Document type *" required value={docType} onChange={e => setDocType(e.target.value)}
-          options={STAFF_DOC_TYPES} placeholder="Select document type" />
-        <Input label="Document title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to use filename" />
-        <div onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${file ? 'border-emerald-400 bg-emerald-500/5' : 'border-slate-200 hover:border-slate-300 bg-slate-50'}`}>
-          {file ? (
-            <div className="flex items-center justify-center gap-2 text-emerald-700">
-              <FileText className="w-5 h-5" /><span className="text-sm font-medium">{file.name}</span>
-            </div>
-          ) : (
-            <div><Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-600 font-medium">Click to choose file</p><p className="text-xs text-slate-400 mt-1">PDF, Word, images up to 20MB</p></div>
-          )}
-        </div>
-        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt" onChange={e => setFile(e.target.files?.[0] || null)} />
-        <Input label="Expiry date" type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} hint="For certificates with expiry dates" />
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} /></div>
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={loading} icon={<Upload className="w-4 h-4" />}>Upload</Button>
-        </div>
-      </form>
-    </Modal>
   )
 }
 
@@ -670,6 +537,156 @@ function AddSupervisionModalInline({ staffId, onClose, onSaved }: { staffId: str
         <div><label className="label">Staff member's comments</label><textarea className="input" rows={2} value={form.staffComments} onChange={e => set('staffComments', e.target.value)} /></div>
         <Input label="Next supervision date" type="date" value={form.nextDate} onChange={e => set('nextDate', e.target.value)} />
         <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save supervision</Button></div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddTrainingModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
+  const [form, setForm] = React.useState({ courseName: '', completedDate: '', expiryDate: '', durationHours: '', provider: '', certificateUrl: '' })
+  const [loading, setLoading] = React.useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await api.post(`/staff-hr/training`, { staffId, ...form })
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Add training record">
+      <form onSubmit={save} className="space-y-4">
+        <Input label="Course name *" required value={form.courseName} onChange={e => set('courseName', e.target.value)} placeholder="e.g. Manual Handling, Safeguarding Adults..." />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Completed date *" type="date" required value={form.completedDate} onChange={e => set('completedDate', e.target.value)} />
+          <Input label="Expiry date" type="date" value={form.expiryDate} onChange={e => set('expiryDate', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Duration (hours)" type="number" step="0.5" value={form.durationHours} onChange={e => set('durationHours', e.target.value)} />
+          <Input label="Provider / trainer" value={form.provider} onChange={e => set('provider', e.target.value)} />
+        </div>
+        <Input label="Certificate URL" value={form.certificateUrl} onChange={e => set('certificateUrl', e.target.value)} placeholder="Link to certificate..." />
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading}>Add training</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
+  const [form, setForm] = React.useState({ leaveType: 'annual', startDate: '', endDate: '', totalHours: '', notes: '', status: 'pending' })
+  const [loading, setLoading] = React.useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity leave' }, { value: 'paternity', label: 'Paternity leave' }, { value: 'unpaid', label: 'Unpaid leave' }, { value: 'other', label: 'Other' }]
+  const STATUSES = [{ value: 'pending', label: 'Pending approval' }, { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' }]
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await api.post(`/staff-hr/leave`, { staffId, ...form, totalHours: parseFloat(form.totalHours) || null })
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Request / record leave">
+      <form onSubmit={save} className="space-y-4">
+        <Select label="Leave type *" required value={form.leaveType} onChange={e => set('leaveType', e.target.value)} options={LEAVE_TYPES} />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+        </div>
+        <Input label="Total hours" type="number" step="0.5" value={form.totalHours} onChange={e => set('totalHours', e.target.value)} hint="e.g. 7.5 for one day" />
+        <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)} options={STATUSES} />
+        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading}>Save leave record</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function StaffDocUploadModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: (doc: any) => void }) {
+  const [docType, setDocType] = React.useState('')
+  const [title, setTitle] = React.useState('')
+  const [notes, setNotes] = React.useState('')
+  const [expiryDate, setExpiryDate] = React.useState('')
+  const [file, setFile] = React.useState<File | null>(null)
+  const [loading, setLoading] = React.useState(false)
+  const fileRef = React.useRef<HTMLInputElement>(null)
+  const STAFF_DOC_TYPES = [
+    { value: 'dbs_certificate', label: 'DBS certificate' },
+    { value: 'application_form', label: 'Application form' },
+    { value: 'care_certificate', label: 'Care certificate' },
+    { value: 'induction_record', label: 'Induction record' },
+    { value: 'reference', label: 'Reference' },
+    { value: 'contract', label: 'Employment contract' },
+    { value: 'training_certificate', label: 'Training certificate' },
+    { value: 'right_to_work', label: 'Right to work document' },
+    { value: 'id_document', label: 'ID / Passport' },
+    { value: 'disciplinary', label: 'Disciplinary record' },
+    { value: 'appraisal', label: 'Appraisal document' },
+    { value: 'medical_clearance', label: 'Medical clearance' },
+    { value: 'other', label: 'Other document' },
+  ]
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file || !docType) { toast.error('Please select a document type and file'); return }
+    setLoading(true)
+    try {
+      const token = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', docType)
+      formData.append('title', title || file.name)
+      if (notes) formData.append('notes', notes)
+      if (expiryDate) formData.append('expiryDate', expiryDate)
+      const res = await fetch(`/api/documents/staff/${staffId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      onSaved(data.data)
+    } catch (err: any) { toast.error(err?.message || 'Upload failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Upload staff document">
+      <form onSubmit={save} className="space-y-4">
+        <Select label="Document type *" required value={docType} onChange={e => setDocType(e.target.value)}
+          options={STAFF_DOC_TYPES} placeholder="Select document type" />
+        <Input label="Document title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to use filename" />
+        <div onClick={() => fileRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${file ? 'border-emerald-400 bg-emerald-500/5' : 'border-slate-200 hover:border-slate-300 bg-slate-50'}`}>
+          {file ? (
+            <div className="flex items-center justify-center gap-2 text-emerald-700">
+              <FileText className="w-5 h-5" /><span className="text-sm font-medium">{file.name}</span>
+            </div>
+          ) : (
+            <div><Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-600 font-medium">Click to choose file</p><p className="text-xs text-slate-400 mt-1">PDF, Word, images up to 20MB</p></div>
+          )}
+        </div>
+        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt" onChange={e => setFile(e.target.files?.[0] || null)} />
+        <Input label="Expiry date" type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} hint="For certificates with expiry dates" />
+        <div><label className="label">Notes</label><textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} /></div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading} icon={<Upload className="w-4 h-4" />}>Upload</Button>
+        </div>
       </form>
     </Modal>
   )

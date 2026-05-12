@@ -26,6 +26,7 @@ import MAR from './pages/mar/MAR'
 import Tasks from './pages/tasks/Tasks'
 import Quality from './pages/quality/Quality'
 import Reviews from './pages/reviews/Reviews'
+import ClockIn from './pages/clockin/ClockIn'
 import Settings from './pages/settings/Settings'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/clockin/:token" element={<ClockIn />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-users" element={<ProtectedRoute><ServiceUserList /></ProtectedRoute>} />
       <Route path="/service-users/new" element={<ProtectedRoute><AddServiceUser /></ProtectedRoute>} />

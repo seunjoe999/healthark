@@ -138,7 +138,9 @@ export default function EditServiceUser() {
             <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             <Input label="Address line 1" value={form.address1} onChange={e => set('address1', e.target.value)} className="md:col-span-2" />
             <Input label="Address line 2" value={form.address2} onChange={e => set('address2', e.target.value)} />
-            <Input label="Postcode" value={form.postcode} onChange={e => set('postcode', e.target.value)} />
+            <div>
+              <Input label="Postcode" value={form.postcode} onChange={e => set('postcode', e.target.value)} hint="Saving this automatically sets the clock-in geofence for this address" />
+            </div>
           </div>
         </Card>
       )}

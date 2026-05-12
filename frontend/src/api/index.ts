@@ -1,5 +1,12 @@
 import axios from 'axios'
 
+function getToken(): string | null {
+  if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
+  try { const t = sessionStorage.getItem('ha_token'); if (t) return t } catch {}
+  try { const t = localStorage.getItem('ha_token'); if (t) return t } catch {}
+  return null
+}
+
 const api = axios.create({
   baseURL: '/api',
   timeout: 15000,
@@ -7,7 +14,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = (window as any).__HA_TOKEN__
+  const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -17,6 +24,8 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       ;(window as any).__HA_TOKEN__ = null
+      try { sessionStorage.removeItem('ha_token') } catch {}
+      try { localStorage.removeItem('ha_token') } catch {}
       window.location.href = '/login'
     }
     return Promise.reject(err)

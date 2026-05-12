@@ -2,8 +2,81 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Card, SectionHeading, Spinner } from '../../components/ui'
-import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check } from 'lucide-react'
+import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+
+function GeofencePostcodeLookup({ currentPostcode, currentRadius, hasCoords, onSave }: {
+  currentPostcode: string
+  currentRadius: number
+  hasCoords: boolean
+  onSave: (lat: number, lng: number, radius: number) => void
+}) {
+  const [postcode, setPostcode] = React.useState(currentPostcode)
+  const [radius, setRadius] = React.useState(String(currentRadius || 200))
+  const [looking, setLooking] = React.useState(false)
+  const [found, setFound] = React.useState(hasCoords)
+  const [error, setError] = React.useState('')
+
+  const lookup = async () => {
+    const clean = postcode.replace(/\s/g, '').toUpperCase()
+    if (!clean) { setError('Please enter a postcode'); return }
+    setLooking(true)
+    setError('')
+    try {
+      const res = await fetch(`https://api.postcodes.io/postcodes/${clean}`)
+      const data = await res.json()
+      if (data.status !== 200 || !data.result) {
+        setError('Postcode not found. Check it and try again.')
+        setLooking(false)
+        return
+      }
+      const { latitude, longitude } = data.result
+      onSave(latitude, longitude, parseInt(radius) || 200)
+      setFound(true)
+      toast.success(`Geofence set for ${clean} — staff must be within ${radius}m`)
+    } catch {
+      setError('Could not look up postcode. Check your connection.')
+    } finally { setLooking(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2 items-end">
+        <div className="flex-1">
+          <label className="label">Care home postcode</label>
+          <input className="input" placeholder="e.g. SW1A 1AA" value={postcode}
+            onChange={e => { setPostcode(e.target.value); setFound(false) }}
+            onKeyDown={e => e.key === 'Enter' && lookup()} />
+        </div>
+        <div className="w-36">
+          <label className="label">Radius (metres)</label>
+          <input className="input" type="number" value={radius} onChange={e => setRadius(e.target.value)} />
+        </div>
+        <Button type="button" icon={looking ? undefined : <Search className="w-4 h-4" />} loading={looking} onClick={lookup}>
+          Set geofence
+        </Button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />{error}
+        </div>
+      )}
+
+      {found && !error && (
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
+          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+          Geofence active — staff must be within <strong className="mx-1">{radius}m</strong> of <strong>{postcode.toUpperCase()}</strong> to clock in
+        </div>
+      )}
+
+      {!found && !error && (
+        <p className="text-xs text-slate-400">Enter your care home postcode and click Set geofence. We look up the GPS coordinates automatically.</p>
+      )}
+    </div>
+  )
+}
 
 export default function Settings() {
   const { user } = useAuth()
@@ -106,16 +179,15 @@ export default function Settings() {
               <MapPin className="w-4 h-4 text-purple-500" />
               <h4 className="font-semibold text-slate-800 text-sm">Clock-in geofence (postcode lock)</h4>
             </div>
-            <p className="text-xs text-slate-500 mb-3">Staff can only clock in when within the geofence radius of the home. Set the GPS coordinates and radius below. Staff clocking in outside this area will be flagged.</p>
-            <div className="grid grid-cols-3 gap-3">
-              <Input label="Latitude" type="number" step="0.000001" value={form.latitude || ''} onChange={e => set('latitude', e.target.value)} placeholder="e.g. 51.5074" hint="Find on Google Maps" />
-              <Input label="Longitude" type="number" step="0.000001" value={form.longitude || ''} onChange={e => set('longitude', e.target.value)} placeholder="e.g. -0.1278" />
-              <Input label="Radius (metres)" type="number" value={String(form.geofenceRadius || 200)} onChange={e => set('geofenceRadius', e.target.value)} hint="Default: 200m" />
-            </div>
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-xs text-blue-700 font-medium">💡 How to find your GPS coordinates</p>
-              <p className="text-xs text-blue-600 mt-1">Go to Google Maps, right-click on your care home address, and click the coordinates shown. Copy the two numbers into Latitude and Longitude above.</p>
-            </div>
+            <p className="text-xs text-slate-500 mb-3">Staff can only clock in when they are physically close to the care home. Just enter your postcode and we'll set up the geofence automatically.</p>
+            <GeofencePostcodeLookup
+              currentPostcode={form.postcode || ''}
+              currentRadius={form.geofenceRadius || 200}
+              hasCoords={!!(form.latitude && form.longitude)}
+              onSave={(lat, lng, radius) => {
+                setForm((p: any) => ({ ...p, latitude: lat, longitude: lng, geofenceRadius: radius }))
+              }}
+            />
           </div>
 
           <div className="flex justify-end mt-4">

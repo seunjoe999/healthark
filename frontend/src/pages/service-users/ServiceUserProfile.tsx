@@ -9,10 +9,11 @@ import {
 import {
   ArrowLeft, Phone, Mail, MapPin, Heart, FileText, MessageSquare,
   Plus, Edit, User, AlertTriangle, Clipboard, Activity, Users,
-  Upload, Download, Trash2, Eye, File, FileImage, Lock
+  Upload, Download, Trash2, Eye, File, FileImage, Lock, QrCode
 } from 'lucide-react'
 import { format, differenceInYears } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
+import { QRModal } from './QRModal'
 import toast from 'react-hot-toast'
 
 type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background'
@@ -89,6 +90,7 @@ export default function ServiceUserProfile() {
   const [uploadDocOpen, setUploadDocOpen] = useState(false)
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -193,11 +195,14 @@ export default function ServiceUserProfile() {
                   {su.nhsNumber && ` · NHS: ${su.nhsNumber}`}
                 </p>
               </div>
-              {isRole('home_manager', 'group_admin') && (
-                <Link to={`/service-users/${su.id}/edit`}>
-                  <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
-                </Link>
-              )}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" icon={<QrCode className="w-3.5 h-3.5" />} onClick={() => setQrOpen(true)}>QR clock-in</Button>
+                {isRole('home_manager', 'group_admin') && (
+                  <Link to={`/service-users/${su.id}/edit`}>
+                    <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -235,6 +240,20 @@ export default function ServiceUserProfile() {
               <Field label="Phone" value={su.phone} icon={<Phone className="w-3.5 h-3.5" />} />
               <Field label="Address" value={[su.address1, su.postcode].filter(Boolean).join(', ')} icon={<MapPin className="w-3.5 h-3.5" />} />
             </dl>
+            {su.postcode && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <p className="text-xs font-semibold text-slate-600">Clock-in geofence active</p>
+                  </div>
+                  <button onClick={() => setQrOpen(true)} className="text-xs text-purple-600 font-semibold hover:text-purple-800 flex items-center gap-1">
+                    <QrCode className="w-3.5 h-3.5" /> View QR code
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Staff must be near <strong className="text-slate-600">{su.postcode}</strong> to clock in or out</p>
+              </div>
+            )}
           </Card>
           <Card className="md:col-span-2">
             <SectionHeading title="Dietary requirements" />
@@ -426,6 +445,7 @@ export default function ServiceUserProfile() {
           </Card>
         </div>
       )}
+      {qrOpen && su && <QRModal open={qrOpen} onClose={() => setQrOpen(false)} suId={su.id} suName={`${su.firstName} ${su.lastName}`} />}
     </div>
   )
 }
