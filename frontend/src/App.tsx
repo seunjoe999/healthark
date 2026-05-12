@@ -25,6 +25,9 @@ import CalendarPage from './pages/calendar/Calendar'
 import MAR from './pages/mar/MAR'
 import Tasks from './pages/tasks/Tasks'
 import Quality from './pages/quality/Quality'
+import Rota from './pages/rota/Rota'
+import PrintQR from './pages/clockin/PrintQR'
+import Holidays from './pages/holidays/Holidays'
 import Reviews from './pages/reviews/Reviews'
 import ClockIn from './pages/clockin/ClockIn'
 import Settings from './pages/settings/Settings'
@@ -59,6 +62,7 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/clockin/:token" element={<ClockIn />} />
+      <Route path="/clockin/:token/print" element={<PrintQR />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-users" element={<ProtectedRoute><ServiceUserList /></ProtectedRoute>} />
       <Route path="/service-users/new" element={<ProtectedRoute><AddServiceUser /></ProtectedRoute>} />
@@ -81,6 +85,8 @@ function AppRoutes() {
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+      <Route path="/rota" element={<ProtectedRoute><Rota /></ProtectedRoute>} />
+      <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

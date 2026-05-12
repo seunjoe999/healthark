@@ -8,6 +8,9 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -45,7 +48,7 @@ router.post('/',
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [orgId, homeId || null, title, version || '1.0', documentUrl,
          effectiveDate || new Date().toISOString().split('T')[0],
-         reviewDate || null, staffId, requiresSign ?? true]
+         nd(reviewDate), staffId, requiresSign ?? true]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

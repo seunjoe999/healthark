@@ -5,6 +5,9 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -166,6 +169,80 @@ router.get('/monthly-summary', async (req: Request, res: Response, next: NextFun
         staffActive: parseInt(staffActive[0]?.count || '0'),
       }
     } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+
+// MAR report
+router.get('/mar-report', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const { from, to } = req.query as Record<string, string>;
+    const rows = await query(
+      `SELECT mr.id, mr.su_id, mr.home_id, mr.medication_name, mr.dose, mr.route,
+              mr.record_date, mr.given, mr.given_at, mr.refused, mr.refused_reason,
+              mr.omitted, mr.omit_reason, mr.notes, mr.scheduled_time,
+              su.first_name || ' ' || su.last_name as su_name,
+              s.first_name || ' ' || s.last_name as given_by_name
+       FROM mar_records mr
+       JOIN service_users su ON su.id = mr.su_id
+       LEFT JOIN staff s ON s.id = mr.given_by
+       WHERE mr.home_id = $1 AND mr.record_date BETWEEN $2 AND $3
+       ORDER BY mr.record_date DESC, su_name`,
+      [homeId, from || new Date().toISOString().split('T')[0], to || new Date().toISOString().split('T')[0]]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Medication report
+router.get('/medication-report', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT m.*, su.first_name || ' ' || su.last_name as su_name
+       FROM su_medications m JOIN service_users su ON su.id = m.su_id
+       WHERE m.home_id = $1 AND m.is_active = true ORDER BY su_name, m.medication_name`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Care plan reviews report
+router.get('/care-plan-reviews', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT cp.*, su.first_name || ' ' || su.last_name as su_name,
+              CASE WHEN cp.next_review_date < CURRENT_DATE THEN 'overdue'
+                   WHEN cp.next_review_date < CURRENT_DATE + interval '7 days' THEN 'due_soon'
+                   ELSE 'current' END as review_status
+       FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
+       WHERE cp.home_id = $1 ORDER BY cp.next_review_date ASC NULLS LAST`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Safeguarding report
+router.get('/safeguarding', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const { from, to } = req.query as Record<string, string>;
+    const rows = await query(
+      `SELECT sg.*, su.first_name || ' ' || su.last_name as su_name,
+              s.first_name || ' ' || s.last_name as created_by_name
+       FROM safeguarding_concerns sg
+       JOIN service_users su ON su.id = sg.su_id
+       LEFT JOIN staff s ON s.id = sg.created_by
+       WHERE sg.home_id = $1
+       ${from ? "AND sg.incident_date >= $2 AND sg.incident_date <= $3" : ""}
+       ORDER BY sg.incident_date DESC`,
+      from ? [homeId, from, to || new Date().toISOString().split('T')[0]] : [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });
 

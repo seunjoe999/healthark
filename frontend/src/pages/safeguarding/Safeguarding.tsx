@@ -50,10 +50,10 @@ export default function Safeguarding() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Shield className="w-6 h-6 text-red-600" /> Safeguarding
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{concerns.length} concern{concerns.length !== 1 ? 's' : ''} recorded</p>
+          <p className="text-slate-500 text-sm mt-0.5">{concerns.length} concern{concerns.length !== 1 ? 's' : ''} recorded</p>
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && (
@@ -71,21 +71,21 @@ export default function Safeguarding() {
       ) : (
         <div className="space-y-3">
           {concerns.map((c: any) => (
-            <div key={c.id} className="bg-white rounded-xl border border-gray-100 shadow-sm">
+            <div key={c.id} className="bg-white rounded-xl border border-slate-100 shadow-sm">
               <button onClick={() => setSelected(selected?.id === c.id ? null : c)}
-                className="w-full p-5 text-left hover:bg-gray-50">
+                className="w-full p-5 text-left hover:bg-slate-50">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <AlertTriangle className={`w-4 h-4 ${c.manager_ack ? 'text-green-500' : 'text-red-600'}`} />
-                      <h3 className="font-semibold text-navy-900">{c.su_name}</h3>
+                      <h3 className="font-semibold text-slate-900">{c.su_name}</h3>
                       {c.manager_ack
                         ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Acknowledged</span>
                         : <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Pending review</span>
                       }
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">{c.overview}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-sm text-slate-600 line-clamp-2">{c.overview}</p>
+                    <p className="text-xs text-slate-400 mt-1">
                       {format(new Date(c.incident_date), 'd MMM yyyy')} · Recorded by {c.created_by_name}
                     </p>
                   </div>
@@ -93,7 +93,7 @@ export default function Safeguarding() {
               </button>
 
               {selected?.id === c.id && (
-                <div className="px-5 pb-5 border-t border-gray-50 space-y-4 pt-4">
+                <div className="px-5 pb-5 border-t border-slate-50 space-y-4 pt-4">
                   <Field label="Location" value={c.incident_location} />
                   <Field label="Incident overview" value={c.overview} />
                   <Field label="Witnesses" value={c.witnesses} />
@@ -131,8 +131,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-sm text-gray-700 whitespace-pre-line">{value}</p>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-sm text-slate-700 whitespace-pre-line">{value}</p>
     </div>
   )
 }

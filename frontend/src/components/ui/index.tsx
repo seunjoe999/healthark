@@ -250,3 +250,5 @@ export function NilByMouthBanner({ nilByMouth }: { nilByMouth: boolean }) {
     </div>
   )
 }
+
+export { default as PhotoUpload } from './PhotoUpload'

@@ -11,6 +11,9 @@ import path from 'path';
 import fs from 'fs';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -74,7 +77,7 @@ router.post('/su/:suId', param('suId').isUUID(), validateRequest,
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [req.params.suId, homeId, staffId, documentType || 'other', title || req.file.originalname,
          fileUrl, req.file.originalname, req.file.size, req.file.mimetype,
-         notes || null, expiryDate || null]
+         notes || null, nd(expiryDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -130,7 +133,7 @@ router.post('/staff/:staffId', param('staffId').isUUID(), validateRequest,
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
         [req.params.staffId, staffId, documentType || 'other', title || req.file.originalname,
          fileUrl, req.file.originalname, req.file.size, req.file.mimetype,
-         notes || null, expiryDate || null]
+         notes || null, nd(expiryDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

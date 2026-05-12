@@ -8,6 +8,9 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -44,7 +47,7 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [suId, homeId, staffId, reviewType || 'care_review', reviewDate, summary,
          residentFeedback || null, familyFeedback || null, outcomes || null,
-         nextReviewDate || null, attendees || null]
+         nd(nextReviewDate), attendees || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -77,7 +80,7 @@ router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()]
           strengths, weaknesses, action_points, review_date)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [staffId, homeId, createdBy, cautionType || 'verbal', overview,
-         strengths || null, weaknesses || null, actionPoints || null, reviewDate || null]
+         strengths || null, weaknesses || null, actionPoints || null, nd(reviewDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -113,7 +116,7 @@ router.post('/supervisions', [body('staffId').isUUID(), body('supervisionDate').
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [staffId, homeId, conductedBy, supervisionType || 'supervision', supervisionDate,
          summary || null, strengths || null, areasForImprovement || null,
-         actionPoints || null, staffComments || null, nextDate || null]
+         actionPoints || null, staffComments || null, nd(nextDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

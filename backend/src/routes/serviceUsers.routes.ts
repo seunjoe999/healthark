@@ -37,6 +37,9 @@ async function lookupPostcodeGPS(postcode: string): Promise<{ lat: number; lng: 
 }
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function getOrgId(req: Request): string {
@@ -173,7 +176,7 @@ router.post('/',
           homeId, firstName, lastName, preferredName || null, dateOfBirth,
           gender || null, pronouns || null, status || 'pre_admission',
           emergencyRating || 'low', nhsNumber || null, niNumber || null,
-          dnar ?? null, dnarFormUrl || null, admissionDate || null, localAuthority || null,
+          dnar ?? null, dnarFormUrl || null, nd(admissionDate), localAuthority || null,
           religion || null, ethnicity || null, maritalStatus || null,
           commsPrefs || null, lifeHistory || null, hobbies || null, dailyRoutine || null,
           heightCm || null, weightKg || null, medicalHistory || null, medAllergies || null,

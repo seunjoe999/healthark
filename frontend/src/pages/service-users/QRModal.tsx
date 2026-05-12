@@ -104,6 +104,7 @@ export function QRModal({ open, onClose, suId, suName }: { open: boolean; onClos
   }
 
   const clockInUrl = qrData?.qrUrl || ''
+  const printUrl = qrData?.qrToken ? `/clockin/${qrData.qrToken}/print` : ''
 
   return (
     <Modal open={open} onClose={onClose} title={`QR Clock-in — ${suName}`} size="md">
@@ -122,6 +123,11 @@ export function QRModal({ open, onClose, suId, suName }: { open: boolean; onClos
             <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(clockInUrl); toast.success('Link copied') }}>
               Copy clock-in link
             </Button>
+            {printUrl && (
+              <a href={printUrl} target="_blank" rel="noreferrer">
+                <Button size="sm" variant="outline">🖨️ Print QR poster</Button>
+              </a>
+            )}
           </div>
 
           {/* Location status */}

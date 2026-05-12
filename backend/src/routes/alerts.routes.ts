@@ -7,6 +7,9 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 // GET /api/alerts?homeId=xxx

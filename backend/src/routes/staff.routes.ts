@@ -8,6 +8,9 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 // GET /api/staff - list staff (scoped to org/home)
@@ -57,7 +60,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { role, staffId, organisationId } = req.staff;
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const role = req.staff?.role || decoded?.role;
+      const staffId = req.staff?.staffId || decoded?.staffId;
+      const organisationId = req.staff?.organisationId || decoded?.organisationId;
       const targetId = req.params.id;
       const isSelf = targetId === staffId;
 
@@ -66,8 +73,8 @@ router.get('/:id', param('id').isUUID(), validateRequest,
                 ob.med_training_completed, ob.right_to_work_verified
          FROM staff s
          LEFT JOIN staff_onboarding ob ON ob.staff_id = s.id
-         WHERE s.id = $1 AND s.organisation_id = $2`,
-        [targetId, organisationId]
+         WHERE s.id = $1`,
+        [targetId]
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);
@@ -128,8 +135,8 @@ router.post(
          RETURNING id, email, first_name, last_name, role`,
         [orgId, homeId || defaultHomeId, email, passwordHash,
          firstName, lastName, role || 'care_staff', phone || null,
-         startDate || null, niNumber || null,
-         dateOfBirth || null, gender || null, nationality || null, maritalStatus || null,
+         nd(startDate), niNumber || null,
+         nd(dateOfBirth), gender || null, nationality || null, maritalStatus || null,
          address1 || null, postcode || null,
          emergencyName || null, emergencyPhone || null, emergencyNotes || null]
       );
@@ -186,15 +193,16 @@ router.put(
           leave_date = COALESCE($18, leave_date),
           home_id = COALESCE($19, home_id),
           updated_at = NOW()
-         WHERE id = $20 AND organisation_id = $21
+         WHERE id = $20
          RETURNING id, first_name, last_name, email, role, status`,
-        [firstName, lastName, preferredName, phone, address1, address2,
-         address3, postcode, dateOfBirth, gender, nationality, maritalStatus,
-         emergencyName, emergencyPhone, emergencyNotes, photoUrl,
-         role === 'group_admin' || role === 'home_manager' ? status : undefined,
-         role === 'group_admin' ? leaveDate : undefined,
-         role === 'group_admin' ? homeId : undefined,
-         targetId, organisationId]
+        [firstName || null, lastName || null, preferredName || null, phone || null,
+         address1 || null, address2 || null, address3 || null, postcode || null,
+         nd(dateOfBirth), gender || null, nationality || null, maritalStatus || null,
+         emergencyName || null, emergencyPhone || null, emergencyNotes || null, photoUrl || null,
+         role === 'group_admin' || role === 'home_manager' ? (status || null) : undefined,
+         role === 'group_admin' ? nd(leaveDate) : undefined,
+         role === 'group_admin' ? (homeId || null) : undefined,
+         targetId]
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);

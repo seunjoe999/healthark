@@ -8,6 +8,9 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -42,7 +45,7 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
           prescribed_by, start_date, end_date, instructions, is_prn, added_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
         [suId, homeId, medicationName, dose || null, frequency || null, route || null,
-         prescribedBy || null, startDate || null, endDate || null,
+         prescribedBy || null, nd(startDate), nd(endDate),
          instructions || null, isPrn || false, staffId]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);

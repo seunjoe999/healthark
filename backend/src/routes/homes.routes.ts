@@ -9,6 +9,9 @@ import { randomBytes } from 'crypto';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function getOrgId(req: Request): string {

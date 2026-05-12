@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { staffApi, homesApi } from '../../api'
+import PhotoUpload from '../../components/ui/PhotoUpload'
 import { Link } from 'react-router-dom'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -87,9 +88,9 @@ export default function StaffModule() {
   return (
     <div className="flex h-full">
       {/* Left — staff list */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="font-semibold text-navy-900 mb-3">Staff</h2>
+      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+        <div className="p-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-900 mb-3">Staff</h2>
           {homes.length > 1 && (
             <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
@@ -103,7 +104,7 @@ export default function StaffModule() {
             </Link>
           </div>
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input className="input pl-8 text-sm" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
@@ -113,14 +114,14 @@ export default function StaffModule() {
             const isSelected = selected?.id === s.id
             return (
               <button key={s.id} onClick={() => selectStaff(s)}
-                className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-navy-50 border-l-2 border-l-navy-900' : ''}`}>
+                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50 border-l-2 border-l-slate-900' : ''}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? 'bg-navy-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
                     {(s.first_name || s.firstName || '?')[0]}{(s.last_name || s.lastName || '?')[0]}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${isSelected ? 'text-navy-900' : 'text-gray-800'}`}>{name}</p>
-                    <p className="text-xs text-gray-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
+                    <p className={`text-sm font-medium truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>{name}</p>
+                    <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
                   </div>
                 </div>
               </button>
@@ -130,7 +131,7 @@ export default function StaffModule() {
       </div>
 
       {/* Right — staff detail */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
         {!selected ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a staff member" description="Choose a staff member to view their profile and records" />
@@ -138,19 +139,26 @@ export default function StaffModule() {
         ) : (
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-navy-100 flex items-center justify-center text-xl font-bold text-navy-600 flex-shrink-0">
-                  {(selected.first_name || selected.firstName || '?')[0]}{(selected.last_name || selected.lastName || '?')[0]}
-                </div>
+                <PhotoUpload
+                  currentUrl={selected.photo_url || selected.photoUrl}
+                  name={`${selected.first_name || selected.firstName || ''} ${selected.last_name || selected.lastName || ''}`}
+                  uploadUrl={`/api/upload/staff-photo/${selected.id}`}
+                  onUploaded={(url) => setSelected((p: any) => ({ ...p, photo_url: url }))}
+                  size="md"
+                />
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold text-navy-900">{getName(selected)}</h2>
-                  <p className="text-sm text-gray-500 capitalize">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
-                  <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
+                  <h2 className="text-xl font-bold text-slate-900">{getName(selected)}</h2>
+                  <p className="text-sm text-slate-500 capitalize">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
+                  <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
                     {selected.start_date && <span>Started {format(new Date(selected.start_date), 'd MMM yyyy')}</span>}
                     <span className="text-green-600 font-medium">{(selected.leave_hours_total || 224) - (selected.leave_hours_used || 0)} hrs leave remaining</span>
                   </div>
                 </div>
+                <Link to={`/staff/${selected.id}/edit`} className="flex-shrink-0">
+                  <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
+                </Link>
               </div>
             </div>
 
@@ -215,7 +223,7 @@ export default function StaffModule() {
             {tab === 'training' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-navy-900">Training & certificates</h3>
+                  <h3 className="font-semibold text-slate-900">Training & certificates</h3>
                   {isRole('home_manager', 'group_admin') && (
                     <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTrainingOpen(true)}>Add training</Button>
                   )}
@@ -228,11 +236,11 @@ export default function StaffModule() {
                       const expiring = t.expiry_date && differenceInYears(new Date(t.expiry_date), new Date()) < 1
                       const expired = t.expiry_date && new Date(t.expiry_date) < new Date()
                       return (
-                        <div key={t.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                        <div key={t.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
                           <Award className={`w-5 h-5 flex-shrink-0 ${expired ? 'text-red-500' : expiring ? 'text-orange-500' : 'text-green-500'}`} />
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{t.course_name}</p>
-                            <p className="text-xs text-gray-500">Completed {t.completed_date ? format(new Date(t.completed_date), 'd MMM yyyy') : '—'}
+                            <p className="font-medium text-slate-900">{t.course_name}</p>
+                            <p className="text-xs text-slate-500">Completed {t.completed_date ? format(new Date(t.completed_date), 'd MMM yyyy') : '—'}
                               {t.duration_hours && ` · ${t.duration_hours}hrs`}
                               {t.expiry_date && ` · Expires ${format(new Date(t.expiry_date), 'd MMM yyyy')}`}
                             </p>
@@ -253,7 +261,7 @@ export default function StaffModule() {
             {tab === 'leave' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-navy-900">Leave requests</h3>
+                  <h3 className="font-semibold text-slate-900">Leave requests</h3>
                   <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddLeaveOpen(true)}>Request leave</Button>
                 </div>
                 {leave.length === 0 ? (
@@ -261,11 +269,11 @@ export default function StaffModule() {
                 ) : (
                   <div className="space-y-2">
                     {leave.map((l: any) => (
-                      <div key={l.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
-                        <Calendar className="w-5 h-5 flex-shrink-0 text-navy-600" />
+                      <div key={l.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                        <Calendar className="w-5 h-5 flex-shrink-0 text-slate-600" />
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900 capitalize">{(l.leave_type || '').replace('_', ' ')}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="font-medium text-slate-900 capitalize">{(l.leave_type || '').replace('_', ' ')}</p>
+                          <p className="text-xs text-slate-500">
                             {l.start_date ? format(new Date(l.start_date), 'd MMM') : '—'} — {l.end_date ? format(new Date(l.end_date), 'd MMM yyyy') : '—'} · {l.hours_requested}hrs
                           </p>
                         </div>
@@ -315,11 +323,11 @@ export default function StaffModule() {
                       <div key={item.key} className="flex items-center gap-3">
                         {onboarding[item.key]
                           ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          : <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
+                          : <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
                         }
                         <div>
-                          <p className={`text-sm ${onboarding[item.key] ? 'text-gray-900' : 'text-gray-400'}`}>{item.label}</p>
-                          {item.date && onboarding[item.key] && <p className="text-xs text-gray-400">{format(new Date(item.date), 'd MMM yyyy')}</p>}
+                          <p className={`text-sm ${onboarding[item.key] ? 'text-slate-900' : 'text-slate-400'}`}>{item.label}</p>
+                          {item.date && onboarding[item.key] && <p className="text-xs text-slate-400">{format(new Date(item.date), 'd MMM yyyy')}</p>}
                         </div>
                       </div>
                     ))}
@@ -436,17 +444,17 @@ export default function StaffModule() {
 
             {tab === 'clock' && (
               <div>
-                <h3 className="font-semibold text-navy-900 mb-4">Clock in / out history</h3>
+                <h3 className="font-semibold text-slate-900 mb-4">Clock in / out history</h3>
                 {clockHistory.length === 0 ? (
                   <EmptyState title="No clock events" description="No clock-in or clock-out records found" />
                 ) : (
                   <div className="space-y-2">
                     {clockHistory.slice(0, 20).map((e: any) => (
-                      <div key={e.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                      <div key={e.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
                         <Clock className={`w-5 h-5 flex-shrink-0 ${e.event_type === 'clock_in' ? 'text-green-500' : 'text-red-500'}`} />
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900 capitalize">{(e.event_type || '').replace('_', ' ')}</p>
-                          <p className="text-xs text-gray-500">{e.event_time ? format(new Date(e.event_time), 'd MMM yyyy, HH:mm') : '—'} · {e.home_name || 'Unknown home'}</p>
+                          <p className="font-medium text-slate-900 capitalize">{(e.event_type || '').replace('_', ' ')}</p>
+                          <p className="text-xs text-slate-500">{e.event_time ? format(new Date(e.event_time), 'd MMM yyyy, HH:mm') : '—'} · {e.home_name || 'Unknown home'}</p>
                         </div>
                         {e.punctuality && (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.punctuality === 'on_time' ? 'bg-green-100 text-green-700' : e.punctuality === 'early' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
@@ -474,8 +482,8 @@ export default function StaffModule() {
 function InfoField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
-      <dt className="text-xs text-gray-500 font-medium">{label}</dt>
-      <dd className="text-sm text-gray-900 mt-0.5 capitalize">{value || '—'}</dd>
+      <dt className="text-xs text-slate-500 font-medium">{label}</dt>
+      <dd className="text-sm text-slate-900 mt-0.5 capitalize">{value || '—'}</dd>
     </div>
   )
 }

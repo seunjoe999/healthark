@@ -15,6 +15,10 @@ const REPORT_TYPES = [
   { value: 'staff-attendance', label: 'Staff Attendance', description: 'Clock in/out history' },
   { value: 'training-compliance', label: 'Training Compliance', description: 'Expiring and expired certificates' },
   { value: 'monthly-summary', label: 'Monthly Summary', description: 'High-level month overview' },
+  { value: 'mar-report', label: 'MAR Report', description: 'Medication administration records' },
+  { value: 'medication-report', label: 'Medication Report', description: 'All medications by resident' },
+  { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
+  { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
 ]
 
 export default function Reports() {
@@ -45,7 +49,7 @@ export default function Reports() {
       else { params.from = from; params.to = to }
       const res = await api.get(`/reports/${reportType}`, { params })
       setData(res.data.data)
-    } catch (err: any) { toast.error('Failed to load report') }
+    } catch (err: any) { console.error('Report error:', err?.response?.data); toast.error(err?.response?.data?.error || 'Failed to load report') }
     finally { setLoading(false) }
   }
 

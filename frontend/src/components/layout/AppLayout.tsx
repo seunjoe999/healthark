@@ -1,4 +1,5 @@
 import React, { useState, ReactNode } from 'react'
+import NotificationsBell from './NotificationsBell'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
@@ -6,7 +7,7 @@ import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
-  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck
+  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree
 } from 'lucide-react'
 
 const navSections = [
@@ -25,6 +26,8 @@ const navSections = [
     label: 'Operations',
     items: [
       { label: 'Tasks',         to: '/tasks',         icon: CheckSquare,     roles: [] },
+      { label: 'Rota',          to: '/rota',          icon: CalendarRange,   roles: ['home_manager','group_admin','senior_carer'] },
+      { label: 'Holidays',      to: '/holidays',      icon: Palmtree,        roles: ['home_manager','group_admin'] },
       { label: 'Staff',         to: '/staff',         icon: UserSquare,      roles: ['home_manager','group_admin'] },
       { label: 'Calendar',      to: '/calendar',      icon: Calendar,        roles: ['home_manager','group_admin'] },
       { label: 'Messages',      to: '/messages',      icon: MessageSquare,   roles: [] },
@@ -52,12 +55,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full" style={{ background: 'linear-gradient(160deg, #151f35 0%, #1e2d4a 40%, #27334d 100%)' }}>
       <div className="px-5 pt-6 pb-4">
-        <div className="flex items-center gap-3 mb-1">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-3">
           <img src="/logo.jpeg" alt="CompCare Hub" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
           <div>
             <h1 className="text-white font-display text-lg leading-none">CompCare Hub</h1>
             <p className="text-slate-500 text-xs mt-0.5">Your Care Our Priority</p>
           </div>
+          </div>
+          <NotificationsBell />
         </div>
       </div>
 

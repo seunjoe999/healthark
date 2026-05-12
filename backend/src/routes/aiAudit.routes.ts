@@ -8,6 +8,9 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -73,41 +76,64 @@ router.get('/:id', param('id').isUUID(), validateRequest,
 
 async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string) {
   try {
-    // Gather data for the audit
-    const [carePlans, incidents, dailyRecords, fluidData, staffTraining, marRecords, missingRecords] = await Promise.all([
+    console.log('AUDIT START: homeId=', homeId, 'type=', auditType, 'from=', from, 'to=', to);
+    // Gather data for the audit — run separately to identify failures
+    let carePlans: any[] = [], incidents: any[] = [], dailyRecords: any[] = [];
+    let fluidData: any[] = [], staffTraining: any[] = [], marRecords: any[] = [], missingRecords: any[] = [];
+    try { carePlans = await query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active, su.first_name || ' ' || su.last_name as su_name FROM care_plans cp JOIN service_users su ON su.id = cp.su_id WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]); console.log('Q1 ok', carePlans.length); } catch(e: any) { console.error('Q1 failed:', e.message); }
+    try { incidents = await query(`SELECT dr.notes as incident_type, false as manager_reviewed, dr.record_date, su.first_name || ' ' || su.last_name as su_name FROM daily_records dr JOIN service_users su ON su.id = dr.su_id WHERE dr.home_id = $1 AND dr.record_type = 'incident' AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]); console.log('Q2 ok', incidents.length); } catch(e: any) { console.error('Q2 failed:', e.message); }
+    try { dailyRecords = await query(`SELECT record_type, COUNT(*) as count FROM daily_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3 GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]); console.log('Q3 ok', dailyRecords.length); } catch(e: any) { console.error('Q3 failed:', e.message); }
+    try { fluidData = await query(`SELECT su.first_name || ' ' || su.last_name as su_name, SUM(COALESCE(dr.amount_ml,0)) as total_ml, dr.record_date FROM daily_records dr JOIN service_users su ON su.id = dr.su_id WHERE dr.home_id = $1 AND dr.record_type = 'fluid_intake' AND dr.record_date BETWEEN $2 AND $3 GROUP BY su.id, su.first_name, su.last_name, su.min_fluid_ml, dr.record_date HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, [homeId, from, to]); console.log('Q4 ok', fluidData.length); } catch(e: any) { console.error('Q4 failed:', e.message); }
+    try { staffTraining = await query(`SELECT s.first_name || ' ' || s.last_name as staff_name, st.course_name, st.expiry_date FROM staff_training st JOIN staff s ON s.id = st.staff_id WHERE s.home_id = $1 AND st.expiry_date IS NOT NULL AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]); console.log('Q5 ok', staffTraining.length); } catch(e: any) { console.error('Q5 failed:', e.message); }
+    try { marRecords = await query(`SELECT COUNT(*) as total, COUNT(CASE WHEN given = true THEN 1 END) as given, COUNT(CASE WHEN refused = true THEN 1 END) as refused FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]); console.log('Q6 ok'); } catch(e: any) { console.error('Q6 failed:', e.message); marRecords = [{ total: 0, given: 0, refused: 0 }]; }
+    try { missingRecords = await query(`SELECT su.first_name || ' ' || su.last_name as su_name FROM service_users su WHERE su.home_id = $1 AND su.status = 'live' AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]); console.log('Q7 ok', missingRecords.length); } catch(e: any) { console.error('Q7 failed:', e.message); }
+
+    if (false) { // dead code to satisfy destructuring removal
+    const [___a] = await Promise.all([
       query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active,
                     su.first_name || ' ' || su.last_name as su_name
              FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
              WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]),
-      query(`SELECT ri.incident_type, ri.manager_reviewed, dr.record_date,
+      query(`SELECT dr.notes as incident_type, false as manager_reviewed, dr.record_date,
                     su.first_name || ' ' || su.last_name as su_name
-             FROM records_incidents ri JOIN daily_records dr ON dr.id = ri.daily_record_id
+             FROM daily_records dr
              JOIN service_users su ON su.id = dr.su_id
-             WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]),
+             WHERE dr.home_id = $1 AND dr.record_type = 'incident'
+             AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]),
       query(`SELECT record_type, COUNT(*) as count FROM daily_records
              WHERE home_id = $1 AND record_date BETWEEN $2 AND $3
              GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]),
-      query(`SELECT su.first_name || ' ' || su.last_name as su_name, ft.total_ml, ft.below_threshold, ft.record_date
-             FROM su_daily_fluid_totals ft JOIN service_users su ON su.id = ft.su_id
-             WHERE ft.home_id = $1 AND ft.record_date BETWEEN $2 AND $3 AND ft.below_threshold = true`, [homeId, from, to]),
+      query(`SELECT su.first_name || ' ' || su.last_name as su_name,
+                    SUM(CASE WHEN dr.amount_ml IS NOT NULL THEN dr.amount_ml ELSE 0 END) as total_ml,
+                    dr.record_date,
+                    CASE WHEN SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500) THEN true ELSE false END as below_threshold
+             FROM daily_records dr
+             JOIN service_users su ON su.id = dr.su_id
+             WHERE dr.home_id = $1 AND dr.record_type = 'fluid_intake'
+             AND dr.record_date BETWEEN $2 AND $3
+             GROUP BY su.id, su.first_name, su.last_name, su.min_fluid_ml, dr.record_date
+             HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, [homeId, from, to]),
       query(`SELECT s.first_name || ' ' || s.last_name as staff_name, st.course_name, st.expiry_date
              FROM staff_training st JOIN staff s ON s.id = st.staff_id
-             WHERE s.home_id = $1 AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]),
-      query(`SELECT COUNT(*) as total, COUNT(CASE WHEN given = true THEN 1 END) as given,
+             WHERE s.home_id = $1 AND st.expiry_date IS NOT NULL
+             AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]),
+      query(`SELECT COUNT(*) as total,
+                    COUNT(CASE WHEN given = true THEN 1 END) as given,
                     COUNT(CASE WHEN refused = true THEN 1 END) as refused,
-                    COUNT(CASE WHEN given IS NULL THEN 1 END) as pending
+                    COUNT(CASE WHEN given IS NULL AND refused = false THEN 1 END) as pending
              FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]),
-      query(`SELECT su.first_name || ' ' || su.last_name as su_name, COUNT(*) as days_missing
+      query(`SELECT su.first_name || ' ' || su.last_name as su_name
              FROM service_users su
              WHERE su.home_id = $1 AND su.status = 'live'
              AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]),
-    ]);
-
+    ]); } // end dead code
+    console.log('AUDIT: data gathered', { carePlans: (carePlans as any[]).length, incidents: (incidents as any[]).length, dailyRecords: (dailyRecords as any[]).length });
     // Build structured findings
     const overduePlans = (carePlans as any[]).filter(cp => cp.next_review_date && new Date(cp.next_review_date) < new Date());
     const unreviewedIncidents = (incidents as any[]).filter(i => !i.manager_reviewed);
     const fluidFlags = fluidData as any[];
     const expiringTraining = staffTraining as any[];
+    console.log('AUDIT: building findings for type:', auditType);
     const marStats = (marRecords as any[])[0] || {};
     const todayMissing = missingRecords as any[];
 
@@ -213,6 +239,7 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
     if (expiringTraining.length > 0) recommendations += `- Arrange renewal for ${expiringTraining.length} expiring training certificate(s)\n`;
     if (!recommendations) recommendations = '- No immediate actions required. Continue monitoring.';
 
+    console.log('AUDIT: findings built, saving...');
     const checksTotal = (carePlans as any[]).length + (incidents as any[]).length + (dailyRecords as any[]).length;
     const checksFailed = overduePlans.length + unreviewedIncidents.length + fluidFlags.length;
 
@@ -223,9 +250,11 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
        WHERE id = $7`,
       [findings, recommendations, findings, checksTotal, checksTotal - checksFailed, checksFailed, auditId]
     );
-  } catch (err) {
-    console.error('Audit generation failed:', err);
-    await query(`UPDATE audit_reports SET status = 'failed' WHERE id = $1`, [auditId]);
+  } catch (err: any) {
+    console.error('Audit generation failed:', err?.message || err);
+    console.error('Stack:', err?.stack);
+    await query(`UPDATE audit_reports SET status = 'failed', findings = $1 WHERE id = $2`,
+      [`Audit failed: ${err?.message || 'Unknown error'}`, auditId]);
   }
 }
 

@@ -7,6 +7,9 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -115,7 +118,7 @@ router.post('/capacity', [body('suId').isUUID(), body('decisionArea').notEmpty()
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [suId, homeId, staffId, decisionArea, hasCapacity ?? null,
          bestInterestDecision || null, consultedWith || null,
-         outcome || null, reviewDate || null]
+         outcome || null, nd(reviewDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

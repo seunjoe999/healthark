@@ -92,11 +92,17 @@ app.use('/api/calendar', calendarRoutes);
 
 import marRoutes from './routes/mar.routes';
 import clockinRoutes from './routes/clockin.routes';
+import shiftsRoutes from './routes/shifts.routes';
+import notificationsRoutes from './routes/notifications.routes';
+import uploadRoutes from './routes/upload.routes';
 import reviewsRoutes from './routes/reviews.routes';
 import tasksRoutes from './routes/tasks.routes';
 import qualityRoutes from './routes/quality.routes';
 app.use('/api/mar', marRoutes);
 app.use('/api/clockin', clockinRoutes);
+app.use('/api/shifts', shiftsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/quality', qualityRoutes);

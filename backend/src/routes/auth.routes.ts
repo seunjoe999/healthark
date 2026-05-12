@@ -10,6 +10,9 @@ import { ApiResponse } from '../types';
 
 const router = Router();
 
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
+
 const signAccess = (payload: object) =>
   jwt.sign(payload, process.env.JWT_SECRET!);
 const signRefresh = (payload: object) =>

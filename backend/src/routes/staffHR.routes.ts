@@ -8,6 +8,9 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
+
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -109,7 +112,7 @@ router.post('/training',
       const rows = await query(
         `INSERT INTO staff_training (staff_id, course_name, completed_date, duration_hours, expiry_date, certificate_url, created_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [staffId, courseName, completedDate, durationHours || null, expiryDate || null, certificateUrl || null, createdBy]
+        [staffId, courseName, completedDate, durationHours || null, nd(expiryDate), certificateUrl || null, createdBy]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -211,6 +214,69 @@ router.post('/assessments',
         [staffId, conductedBy, homeId, assessmentType, customName || null, assessmentDate, outcome || null, recommendations || null, nextDueDate || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+
+// GET /api/staff-hr/leave/all — all leave for a home (for holiday calendar)
+router.get('/leave/all', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.headers.authorization?.substring(7);
+    const decoded = token ? jwt.decode(token) as any : {};
+    const homeId = (req.query.homeId as string) || decoded?.homeId || '';
+    const { from, to } = req.query as Record<string, string>;
+    let sql = `SELECT lr.*, s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role
+               FROM staff_leave lr JOIN staff s ON s.id = lr.staff_id
+               WHERE s.home_id = $1`;
+    const params: unknown[] = [homeId];
+    if (from) { sql += ` AND lr.end_date >= $${params.length+1}`; params.push(from); }
+    if (to)   { sql += ` AND lr.start_date <= $${params.length+1}`; params.push(to); }
+    sql += ' ORDER BY lr.start_date DESC';
+    const rows = await query(sql, params);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/staff-hr/leave/:id/approve
+router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? jwt.decode(token) as any : {};
+      const managerId = decoded?.staffId;
+      // Get leave record
+      const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Leave not found', 404);
+      const leave = rows[0];
+      await query('UPDATE leave_requests SET status=$1, approved_by=$2, approved_at=NOW() WHERE id=$3',
+        ['approved', managerId, req.params.id]);
+      // Deduct hours from staff annual leave
+      if (leave.total_hours) {
+        await query('UPDATE staff SET leave_hours_remaining = COALESCE(leave_hours_remaining, leave_hours_total) - $1 WHERE id = $2',
+          [leave.total_hours, leave.staff_id]);
+      }
+      // Send notification to staff
+      await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+        VALUES ($1,$2,'Leave request approved','Your leave request has been approved.','success','/staff')`,
+        [leave.staff_id, leave.home_id]);
+      res.json({ success: true, message: 'Leave approved' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/staff-hr/leave/:id/decline
+router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Leave not found', 404);
+      const leave = rows[0];
+      await query('UPDATE leave_requests SET status=$1 WHERE id=$2', ['declined', req.params.id]);
+      await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+        VALUES ($1,$2,'Leave request declined','Your leave request has been declined. Please speak to your manager.','warning','/staff')`,
+        [leave.staff_id, leave.home_id]);
+      res.json({ success: true, message: 'Leave declined' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

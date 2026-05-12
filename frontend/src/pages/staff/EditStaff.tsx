@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { staffApi, homesApi } from '../../api'
 import api from '../../api'
 import { Button, Input, Select, Card, SectionHeading, Spinner } from '../../components/ui'
+import PhotoUpload from '../../components/ui/PhotoUpload'
 import { ArrowLeft, Save, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -36,6 +37,7 @@ function norm(s: any) {
     emergencyName: s.emergency_name || s.emergencyName || '',
     emergencyPhone: s.emergency_phone || s.emergencyPhone || '',
     emergencyNotes: s.emergency_notes || s.emergencyNotes || '',
+    photoUrl: s.photo_url || s.photoUrl || '',
     niNumber: s.ni_number || s.niNumber || '',
     leaveHoursTotal: s.leave_hours_total || s.leaveHoursTotal || 224,
     homeId: s.home_id || s.homeId || '',
@@ -106,6 +108,23 @@ export default function EditStaff() {
       </div>
 
       <h1 className="font-display text-2xl text-slate-900 mb-6">Edit staff profile — {form.firstName} {form.lastName}</h1>
+      {/* Photo upload */}
+      {id && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 mb-5 flex items-center gap-5">
+          <PhotoUpload
+            currentUrl={form.photoUrl}
+            name={`${form.firstName} ${form.lastName}`}
+            uploadUrl={`/api/upload/staff-photo/${id}`}
+            onUploaded={(url) => setForm((p: any) => ({ ...p, photoUrl: url }))}
+            size="lg"
+          />
+          <div>
+            <p className="font-semibold text-slate-800">Profile photo</p>
+            <p className="text-sm text-slate-400 mt-0.5">Click the photo to upload a new image</p>
+            <p className="text-xs text-slate-400 mt-1">JPG, PNG or WebP · Max 5MB</p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-5">
         <Card>

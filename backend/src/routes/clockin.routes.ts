@@ -9,6 +9,9 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 
+function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
+
+
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }

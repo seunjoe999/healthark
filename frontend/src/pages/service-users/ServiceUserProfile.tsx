@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { format, differenceInYears } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
+import PhotoUpload from '../../components/ui/PhotoUpload'
 import { QRModal } from './QRModal'
 import toast from 'react-hot-toast'
 
@@ -174,9 +175,13 @@ export default function ServiceUserProfile() {
           </div>
         )}
         <div className="flex items-start gap-5">
-          <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0 text-2xl font-bold text-slate-500 overflow-hidden font-display">
-            {su.photoUrl ? <img src={su.photoUrl} className="w-full h-full object-cover" alt="" /> : `${su.firstName?.[0] || '?'}${su.lastName?.[0] || '?'}`}
-          </div>
+          <PhotoUpload
+            currentUrl={su.photoUrl}
+            name={`${su.firstName} ${su.lastName}`}
+            uploadUrl={`/api/upload/su-photo/${su.id}`}
+            onUploaded={(url) => setSu((p: any) => ({ ...p, photoUrl: url }))}
+            size="md"
+          />
           <div className="flex-1">
             <div className="flex items-start justify-between flex-wrap gap-3">
               <div>

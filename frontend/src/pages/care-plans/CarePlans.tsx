@@ -66,7 +66,7 @@ function RiskBadge({ level }: { level: string }) {
     high: 'bg-orange-100 text-orange-700',
     critical: 'bg-red-100 text-red-700',
   }
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${colors[level] || 'bg-gray-100 text-gray-700'}`}>{level}</span>
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${colors[level] || 'bg-slate-100 text-slate-700'}`}>{level}</span>
 }
 
 export default function CarePlans() {
@@ -118,9 +118,9 @@ export default function CarePlans() {
   return (
     <div className="flex h-full">
       {/* Left — SU selector */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="font-semibold text-navy-900 mb-3">Care Plans & Risks</h2>
+      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+        <div className="p-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-900 mb-3">Care Plans & Risks</h2>
           {homes.length > 1 && (
             <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
@@ -134,12 +134,12 @@ export default function CarePlans() {
             const isSelected = selectedSu?.id === su.id
             return (
               <button key={su.id} onClick={() => selectSu(su)}
-                className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-navy-50 border-l-2 border-l-navy-900' : ''}`}>
+                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50 border-l-2 border-l-slate-900' : ''}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? 'bg-navy-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
                     {(su.first_name || su.firstName || '?')[0]}{(su.last_name || su.lastName || '?')[0]}
                   </div>
-                  <p className={`text-sm font-medium truncate ${isSelected ? 'text-navy-900' : 'text-gray-800'}`}>{name}</p>
+                  <p className={`text-sm font-medium truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>{name}</p>
                 </div>
               </button>
             )
@@ -148,7 +148,7 @@ export default function CarePlans() {
       </div>
 
       {/* Right — plans and risks */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
         {!selectedSu ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a resident" description="Choose a resident to view their care plans and risk assessments" />
@@ -156,7 +156,7 @@ export default function CarePlans() {
         ) : (
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-navy-900">{getName(selectedSu)}</h2>
+              <h2 className="text-xl font-bold text-slate-900">{getName(selectedSu)}</h2>
               <div className="flex gap-2">
                 <Button size="sm" variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddRiskOpen(true)}>Add risk</Button>
                 <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add care plan</Button>
@@ -164,11 +164,11 @@ export default function CarePlans() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-white rounded-xl border border-gray-100 p-1 mb-4">
-              <button onClick={() => setTab('plans')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'plans' ? 'bg-navy-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            <div className="flex gap-1 bg-white rounded-xl border border-slate-100 p-1 mb-4">
+              <button onClick={() => setTab('plans')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'plans' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
                 Care Plans ({plans.length})
               </button>
-              <button onClick={() => setTab('risks')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'risks' ? 'bg-navy-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+              <button onClick={() => setTab('risks')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'risks' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
                 Risk Assessments ({risks.length})
               </button>
             </div>
@@ -180,40 +180,40 @@ export default function CarePlans() {
               ) : (
                 <div className="space-y-3">
                   {plans.map((plan: any) => (
-                    <div key={plan.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={plan.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                       <button onClick={() => setSelectedPlan(selectedPlan?.id === plan.id ? null : plan)}
-                        className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50">
+                        className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-50">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <FileText className="w-4 h-4 text-navy-600" />
-                            <h3 className="font-semibold text-navy-900">
+                            <FileText className="w-4 h-4 text-slate-600" />
+                            <h3 className="font-semibold text-slate-900">
                               {plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type}
                             </h3>
                           </div>
                           <div className="flex items-center gap-3">
                             <ReviewStatus nextReviewDate={plan.next_review_date} />
-                            <span className="text-xs text-gray-400 capitalize">{plan.review_frequency?.replace('_', ' ')}</span>
+                            <span className="text-xs text-slate-400 capitalize">{plan.review_frequency?.replace('_', ' ')}</span>
                             {plan.outcome_achieved && (
                               <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full capitalize">{plan.outcome_achieved}</span>
                             )}
                           </div>
                         </div>
-                        {selectedPlan?.id === plan.id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        {selectedPlan?.id === plan.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </button>
                       {selectedPlan?.id === plan.id && (
-                        <div className="px-5 pb-5 border-t border-gray-50">
+                        <div className="px-5 pb-5 border-t border-slate-50">
                           <div className="grid md:grid-cols-3 gap-4 mt-4">
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">My aims & outcomes</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-line">{plan.aims_outcomes || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">My aims & outcomes</p>
+                              <p className="text-sm text-slate-700 whitespace-pre-line">{plan.aims_outcomes || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">What I can do</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-line">{plan.what_i_can_do || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">What I can do</p>
+                              <p className="text-sm text-slate-700 whitespace-pre-line">{plan.what_i_can_do || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">How to support me</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-line">{plan.how_to_support || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">How to support me</p>
+                              <p className="text-sm text-slate-700 whitespace-pre-line">{plan.how_to_support || '—'}</p>
                             </div>
                           </div>
                           <div className="flex gap-2 mt-4">
@@ -236,41 +236,41 @@ export default function CarePlans() {
               ) : (
                 <div className="space-y-3">
                   {risks.map((risk: any) => (
-                    <div key={risk.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={risk.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                       <button onClick={() => setSelectedPlan(selectedPlan?.id === risk.id ? null : risk)}
-                        className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50">
+                        className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-50">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <AlertTriangle className="w-4 h-4 text-orange-600" />
-                            <h3 className="font-semibold text-navy-900">{risk.assessment_name}</h3>
+                            <h3 className="font-semibold text-slate-900">{risk.assessment_name}</h3>
                             <RiskBadge level={risk.current_risk_level} />
                           </div>
                           <ReviewStatus nextReviewDate={risk.next_review_date} />
                         </div>
-                        {selectedPlan?.id === risk.id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        {selectedPlan?.id === risk.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </button>
                       {selectedPlan?.id === risk.id && (
-                        <div className="px-5 pb-5 border-t border-gray-50">
+                        <div className="px-5 pb-5 border-t border-slate-50">
                           <div className="grid md:grid-cols-2 gap-4 mt-4">
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Description</p>
-                              <p className="text-sm text-gray-700">{risk.description || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</p>
+                              <p className="text-sm text-slate-700">{risk.description || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Who is at risk</p>
-                              <p className="text-sm text-gray-700">{risk.who_is_at_risk || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Who is at risk</p>
+                              <p className="text-sm text-slate-700">{risk.who_is_at_risk || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Triggers</p>
-                              <p className="text-sm text-gray-700">{risk.triggers || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Triggers</p>
+                              <p className="text-sm text-slate-700">{risk.triggers || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Protective factors</p>
-                              <p className="text-sm text-gray-700">{risk.protective_factors || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Protective factors</p>
+                              <p className="text-sm text-slate-700">{risk.protective_factors || '—'}</p>
                             </div>
                             <div className="md:col-span-2">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Management plan</p>
-                              <p className="text-sm text-gray-700 whitespace-pre-line">{risk.management_plan || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Management plan</p>
+                              <p className="text-sm text-slate-700 whitespace-pre-line">{risk.management_plan || '—'}</p>
                             </div>
                           </div>
                         </div>
