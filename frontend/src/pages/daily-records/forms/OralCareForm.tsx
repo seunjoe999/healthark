@@ -25,7 +25,7 @@ export default function OralCareForm({ suId, onSaved }: { suId: string; onSaved:
         <div className="flex flex-wrap gap-2 mt-1">
           {CARE_TYPES.map(t => (
             <button key={t} type="button" onClick={() => toggle(t.toLowerCase().replace(/ /g, '_'))}
-              className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${careTypes.includes(t.toLowerCase().replace(/ /g, '_')) ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-gray-700 border-gray-200'}`}>
+              className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${careTypes.includes(t.toLowerCase().replace(/ /g, '_')) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'}`}>
               {t}
             </button>
           ))}
@@ -35,7 +35,7 @@ export default function OralCareForm({ suId, onSaved }: { suId: string; onSaved:
         options={[{ value: 'good', label: 'Good' }, { value: 'dry', label: 'Dry' }, { value: 'sore', label: 'Sore' }, { value: 'ulcers', label: 'Ulcers' }, { value: 'bleeding', label: 'Bleeding gums' }, { value: 'other', label: 'Other' }]} placeholder="Select condition" />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="dent" checked={form.hasDentures} onChange={e => setForm(p => ({ ...p, hasDentures: e.target.checked }))} className="rounded" />
-        <label htmlFor="dent" className="text-sm text-gray-700">Has dentures</label>
+        <label htmlFor="dent" className="text-sm text-slate-700">Has dentures</label>
       </div>
       {form.hasDentures && (
         <Select label="Denture type" value={form.dentureType} onChange={e => setForm(p => ({ ...p, dentureType: e.target.value }))}

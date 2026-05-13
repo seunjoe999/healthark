@@ -41,7 +41,7 @@ export default function BowelForm({ suId, onSaved }: { suId: string; onSaved: ()
       </div>
       <div className="flex items-center gap-2">
         <input type="checkbox" id="lax" checked={form.laxativeGiven} onChange={e => set('laxativeGiven', e.target.checked)} className="rounded" />
-        <label htmlFor="lax" className="text-sm text-gray-700">Laxative given today</label>
+        <label htmlFor="lax" className="text-sm text-slate-700">Laxative given today</label>
       </div>
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>

@@ -64,7 +64,7 @@ export default function Alerts() {
           <h1 className="text-2xl font-bold text-purple-900 flex items-center gap-2">
             <Bell className="w-6 h-6 text-purple-600" /> Business Alerts
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{alerts.length} {showResolved ? 'resolved' : 'active'} alert{alerts.length !== 1 ? 's' : ''}</p>
+          <p className="text-slate-500 text-sm mt-0.5">{alerts.length} {showResolved ? 'resolved' : 'active'} alert{alerts.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && (
@@ -74,7 +74,7 @@ export default function Alerts() {
           )}
           <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />} onClick={load}>Refresh</Button>
           <button onClick={() => setShowResolved(!showResolved)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showResolved ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showResolved ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
             {showResolved ? 'Show active' : 'Show resolved'}
           </button>
         </div>
@@ -88,22 +88,22 @@ export default function Alerts() {
       ) : (
         <div className="space-y-3">
           {alerts.map((alert: any) => (
-            <div key={alert.id} className={`bg-white rounded-xl border-l-4 border border-gray-100 shadow-sm p-5 ${severityBg(alert.severity)}`}>
+            <div key={alert.id} className={`bg-white rounded-xl border-l-4 border border-slate-100 shadow-sm p-5 ${severityBg(alert.severity)}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1">
                   <div className="mt-0.5 flex-shrink-0">{severityIcon(alert.severity)}</div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-semibold text-gray-900">{alert.title}</h3>
+                      <h3 className="font-semibold text-slate-900">{alert.title}</h3>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         alert.severity === 'critical' ? 'bg-red-100 text-red-700' :
                         alert.severity === 'warning' ? 'bg-orange-100 text-orange-700' :
                         'bg-blue-100 text-blue-700'
                       }`}>{alert.severity}</span>
-                      {alert.su_name && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{alert.su_name}</span>}
+                      {alert.su_name && <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{alert.su_name}</span>}
                     </div>
-                    <p className="text-sm text-gray-600">{alert.description}</p>
-                    <p className="text-xs text-gray-400 mt-1">{format(new Date(alert.created_at), 'd MMM yyyy, HH:mm')}</p>
+                    <p className="text-sm text-slate-600">{alert.description}</p>
+                    <p className="text-xs text-slate-400 mt-1">{format(new Date(alert.created_at), 'd MMM yyyy, HH:mm')}</p>
                     {alert.resolution_notes && (
                       <p className="text-xs text-green-700 bg-green-50 rounded p-2 mt-2">✓ {alert.resolution_notes}</p>
                     )}

@@ -29,7 +29,7 @@ export default function PersonalCareForm({ suId, onSaved }: { suId: string; onSa
         <div className="flex flex-wrap gap-2 mt-1">
           {CARE_OPTIONS.map(t => (
             <button key={t} type="button" onClick={() => toggleCare(t.toLowerCase().replace(' ', '_'))}
-              className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${careTypes.includes(t.toLowerCase().replace(' ', '_')) ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-gray-700 border-gray-200 hover:border-navy-900'}`}>
+              className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${careTypes.includes(t.toLowerCase().replace(' ', '_')) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
               {t}
             </button>
           ))}
@@ -38,7 +38,7 @@ export default function PersonalCareForm({ suId, onSaved }: { suId: string; onSa
       <Select label="Assistance level" value={form.assistanceLevel} onChange={e => setForm(p => ({ ...p, assistanceLevel: e.target.value }))} options={ASSIST_LEVELS} placeholder="Select level" />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="cont" checked={form.continenceCare} onChange={e => setForm(p => ({ ...p, continenceCare: e.target.checked }))} className="rounded" />
-        <label htmlFor="cont" className="text-sm text-gray-700">Continence care provided</label>
+        <label htmlFor="cont" className="text-sm text-slate-700">Continence care provided</label>
       </div>
       {form.continenceCare && <Input label="Continence notes" value={form.continenceNotes} onChange={e => setForm(p => ({ ...p, continenceNotes: e.target.value }))} placeholder="Details..." />}
       <Input label="Skin condition notes (optional)" value={form.skinCondition} onChange={e => setForm(p => ({ ...p, skinCondition: e.target.value }))} placeholder="Any concerns observed..." />

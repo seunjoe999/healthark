@@ -49,7 +49,7 @@ export default function PPE() {
           <h1 className="text-2xl font-bold text-purple-900 flex items-center gap-2">
             <Package className="w-6 h-6 text-purple-600" /> PPE Stock
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{items.length} item{items.length !== 1 ? 's' : ''} tracked</p>
+          <p className="text-slate-500 text-sm mt-0.5">{items.length} item{items.length !== 1 ? 's' : ''} tracked</p>
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
@@ -75,25 +75,25 @@ export default function PPE() {
           {items.map((item: any) => {
             const level = stockLevel(item)
             return (
-              <div key={item.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div key={item.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{item.item_name}</h3>
-                    {item.item_variant && <p className="text-xs text-gray-500 mt-0.5">{item.item_variant}</p>}
+                    <h3 className="font-semibold text-slate-900">{item.item_name}</h3>
+                    {item.item_variant && <p className="text-xs text-slate-500 mt-0.5">{item.item_variant}</p>}
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${level.color}`}>{level.label}</span>
                 </div>
                 <div className="flex items-center gap-6 mb-4">
                   <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900">{item.current_stock}</p>
-                    <p className="text-xs text-gray-500">{item.unit}</p>
+                    <p className="text-3xl font-bold text-slate-900">{item.current_stock}</p>
+                    <p className="text-xs text-slate-500">{item.unit}</p>
                   </div>
-                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                  <div className="flex-1 bg-slate-100 rounded-full h-2">
                     <div className={`h-2 rounded-full transition-all ${item.current_stock === 0 ? 'bg-red-500' : item.current_stock <= item.min_stock ? 'bg-orange-400' : 'bg-green-500'}`}
                       style={{ width: `${Math.min(100, (item.current_stock / (item.min_stock * 3)) * 100)}%` }} />
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-500">Min: {item.min_stock}</p>
+                    <p className="text-sm font-medium text-slate-500">Min: {item.min_stock}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -106,7 +106,7 @@ export default function PPE() {
                     <TrendingDown className="w-4 h-4" /> Stock out
                   </button>
                 </div>
-                {item.updated_at && <p className="text-xs text-gray-400 mt-2">Last updated {format(new Date(item.updated_at), 'd MMM yyyy, HH:mm')}</p>}
+                {item.updated_at && <p className="text-xs text-slate-400 mt-2">Last updated {format(new Date(item.updated_at), 'd MMM yyyy, HH:mm')}</p>}
               </div>
             )
           })}
@@ -175,9 +175,9 @@ function TransactionModal({ item, onClose, onSaved }: { item: any; onClose: () =
   return (
     <Modal open={true} onClose={onClose} title={`${isIn ? 'Stock in' : 'Stock out'} — ${item.item_name}`} size="sm">
       <form onSubmit={save} className="space-y-4">
-        <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-500">Current stock</p>
-          <p className="text-3xl font-bold text-gray-900">{item.current_stock} {item.unit}</p>
+        <div className="text-center p-4 bg-slate-50 rounded-lg">
+          <p className="text-sm text-slate-500">Current stock</p>
+          <p className="text-3xl font-bold text-slate-900">{item.current_stock} {item.unit}</p>
           {!isIn && parseInt(qty) > item.current_stock && <p className="text-xs text-red-600 mt-1">⚠ Exceeds current stock</p>}
         </div>
         <Input label="Quantity" type="number" required min="1" value={qty} onChange={e => setQty(e.target.value)} />

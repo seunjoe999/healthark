@@ -34,7 +34,7 @@ export default function BehaviourForm({ suId, onSaved }: { suId: string; onSaved
       </div>
       <div className="flex items-center gap-2">
         <input type="checkbox" id="esc" checked={form.escalated} onChange={e => set('escalated', e.target.checked)} className="rounded" />
-        <label htmlFor="esc" className="text-sm text-gray-700 font-medium">Escalated to manager</label>
+        <label htmlFor="esc" className="text-sm text-slate-700 font-medium">Escalated to manager</label>
       </div>
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>

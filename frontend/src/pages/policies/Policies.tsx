@@ -38,7 +38,7 @@ export default function Policies() {
           <h1 className="text-2xl font-bold text-purple-900 flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-purple-600" /> Policies & Procedures
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{policies.length} polic{policies.length !== 1 ? 'ies' : 'y'} on file</p>
+          <p className="text-slate-500 text-sm mt-0.5">{policies.length} polic{policies.length !== 1 ? 'ies' : 'y'} on file</p>
         </div>
         {isRole('home_manager', 'group_admin') && (
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add policy</Button>
@@ -51,17 +51,17 @@ export default function Policies() {
       ) : (
         <div className="space-y-3">
           {policies.map((p: any) => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <div key={p.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <BookOpen className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                    <h3 className="font-semibold text-gray-900">{p.title}</h3>
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">v{p.version}</span>
+                    <h3 className="font-semibold text-slate-900">{p.title}</h3>
+                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">v{p.version}</span>
                     {p.signed_by_me && <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle className="w-3 h-3" />Signed</span>}
                     {p.requires_sign && !p.signed_by_me && <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Clock className="w-3 h-3" />Sign-off required</span>}
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
+                  <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
                     <span>Added by {p.uploaded_by_name || 'System'}</span>
                     <span>Effective {p.effective_date ? format(new Date(p.effective_date), 'd MMM yyyy') : '—'}</span>
                     {p.review_date && <span>Review due {format(new Date(p.review_date), 'd MMM yyyy')}</span>}
@@ -113,7 +113,7 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
         <Input label="Review due date" type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         <div className="flex items-center gap-2">
           <input type="checkbox" id="req" checked={form.requiresSign} onChange={e => set('requiresSign', e.target.checked)} className="rounded" />
-          <label htmlFor="req" className="text-sm text-gray-700">Requires staff sign-off</label>
+          <label htmlFor="req" className="text-sm text-slate-700">Requires staff sign-off</label>
         </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>

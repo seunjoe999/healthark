@@ -23,10 +23,19 @@ function fromToken(req: Request, field: string): string {
 router.get('/leave', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const staffId = fromToken(req, 'staffId');
+    const queryStaffId = req.query.staffId as string;
+    const tokenStaffId = fromToken(req, 'staffId');
     const role = fromToken(req, 'role');
     let rows;
-    if (role === 'group_admin' || role === 'home_manager') {
+    if (queryStaffId) {
+      // Fetch leave for a specific staff member (manager viewing someone's profile)
+      rows = await query(
+        `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name
+         FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
+         WHERE sl.staff_id = $1 ORDER BY sl.created_at DESC`,
+        [queryStaffId]
+      );
+    } else if (role === 'group_admin' || role === 'home_manager') {
       rows = await query(
         `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name, s.photo_url
          FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
@@ -35,7 +44,7 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
       );
     } else {
       rows = await query(
-        `SELECT * FROM staff_leave WHERE staff_id = $1 ORDER BY created_at DESC`, [staffId]
+        `SELECT * FROM staff_leave WHERE staff_id = $1 ORDER BY created_at DESC`, [tokenStaffId]
       );
     }
     res.json({ success: true, data: rows } as ApiResponse);
@@ -60,34 +69,6 @@ router.post('/leave',
   }
 );
 
-router.put('/leave/:id/approve', requireRole('home_manager', 'group_admin'),
-  param('id').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const staffId = fromToken(req, 'staffId');
-      const { action, declineReason } = req.body; // action: 'approve' | 'decline'
-      const leaveRows = await query<{ staff_id: string; hours_requested: number }>(
-        'SELECT staff_id, hours_requested FROM staff_leave WHERE id = $1', [req.params.id]
-      );
-      if (!leaveRows.length) throw new AppError('Leave request not found', 404);
-
-      const status = action === 'approve' ? 'approved' : 'declined';
-      await query(
-        `UPDATE staff_leave SET status=$1, approved_by=$2, approved_at=NOW(), decline_reason=$3 WHERE id=$4`,
-        [status, staffId, declineReason || null, req.params.id]
-      );
-
-      // Auto-deduct hours when approved
-      if (action === 'approve') {
-        await query(
-          'UPDATE staff SET leave_hours_used = leave_hours_used + $1 WHERE id = $2',
-          [leaveRows[0].hours_requested, leaveRows[0].staff_id]
-        );
-      }
-      res.json({ success: true, message: `Leave ${status}` } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
 
 // ── Training ──────────────────────────────────────────────────────
 router.get('/training/:staffId', param('staffId').isUUID(), validateRequest,

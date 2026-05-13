@@ -21,7 +21,7 @@ export default function RepositioningForm({ suId, onSaved }: { suId: string; onS
         options={[{ value: 'left_side', label: 'Left side' }, { value: 'right_side', label: 'Right side' }, { value: 'back', label: 'Back' }, { value: 'sitting', label: 'Sitting' }, { value: 'other', label: 'Other' }]} placeholder="Select position" />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="skin" checked={form.skinChecked} onChange={e => set('skinChecked', e.target.checked)} className="rounded" />
-        <label htmlFor="skin" className="text-sm text-gray-700">Skin condition checked</label>
+        <label htmlFor="skin" className="text-sm text-slate-700">Skin condition checked</label>
       </div>
       {form.skinChecked && <Input label="Skin concerns (if any)" value={form.skinConcerns} onChange={e => set('skinConcerns', e.target.value)} placeholder="Any redness, pressure marks..." />}
       <Input label="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any other observations..." />

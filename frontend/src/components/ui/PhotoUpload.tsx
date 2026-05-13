@@ -11,8 +11,7 @@ interface PhotoUploadProps {
 }
 
 export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, size = 'md' }: PhotoUploadProps) {
-  const fixUrl = (u?: string | null) => !u ? null : u.startsWith('http') ? u : `http://localhost:3001${u}`
-  const [preview, setPreview] = useState<string | null>(fixUrl(currentUrl))
+  const [preview, setPreview] = useState<string | null>(currentUrl || null)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -41,9 +40,8 @@ export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, s
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.error)
-      const fullUrl = data.data.photoUrl.startsWith('http') ? data.data.photoUrl : `http://localhost:3001${data.data.photoUrl}`
-      setPreview(fullUrl)
-      onUploaded(fullUrl)
+      setPreview(data.data.photoUrl)
+      onUploaded(data.data.photoUrl)
       toast.success('Photo updated')
     } catch (err: any) {
       toast.error(err.message || 'Upload failed')

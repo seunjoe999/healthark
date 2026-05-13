@@ -27,19 +27,19 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
       <div><label className="label">Full description *</label><textarea required className="input" rows={4} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe exactly what happened..." /></div>
       <div className="flex items-center gap-2">
         <input type="checkbox" id="inj" checked={form.injuries} onChange={e => set('injuries', e.target.checked)} className="rounded" />
-        <label htmlFor="inj" className="text-sm text-gray-700 font-medium">Injuries sustained</label>
+        <label htmlFor="inj" className="text-sm text-slate-700 font-medium">Injuries sustained</label>
       </div>
       {form.injuries && <div><label className="label">Injury details</label><textarea className="input" rows={2} value={form.injuryDetails} onChange={e => set('injuryDetails', e.target.value)} /></div>}
       <div className="flex items-center gap-2">
         <input type="checkbox" id="med" checked={form.medicalNeeded} onChange={e => set('medicalNeeded', e.target.checked)} className="rounded" />
-        <label htmlFor="med" className="text-sm text-gray-700 font-medium">Medical attention required</label>
+        <label htmlFor="med" className="text-sm text-slate-700 font-medium">Medical attention required</label>
       </div>
       {form.medicalNeeded && <Input label="Medical attention details" value={form.medicalDetails} onChange={e => set('medicalDetails', e.target.value)} placeholder="Who attended, when..." />}
       <Input label="Witnesses (if any)" value={form.witnesses} onChange={e => set('witnesses', e.target.value)} placeholder="Names of any witnesses..." />
       <div><label className="label">Immediate action taken *</label><textarea required className="input" rows={3} value={form.immediateAction} onChange={e => set('immediateAction', e.target.value)} placeholder="What did you do immediately after..." /></div>
       <div className="flex items-center gap-2">
         <input type="checkbox" id="safe" checked={form.safeguardingRef} onChange={e => set('safeguardingRef', e.target.checked)} className="rounded" />
-        <label htmlFor="safe" className="text-sm text-gray-700 font-medium">Safeguarding referral required</label>
+        <label htmlFor="safe" className="text-sm text-slate-700 font-medium">Safeguarding referral required</label>
       </div>
       <Button type="submit" loading={loading} className="w-full">Submit incident record</Button>
     </form>

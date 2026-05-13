@@ -17,21 +17,21 @@ export default function PrintQR() {
     if (suInfo) setTimeout(() => window.print(), 500)
   }, [suInfo])
 
-  if (!suInfo) return <div className="flex items-center justify-center h-screen"><p className="text-gray-500">Loading...</p></div>
+  if (!suInfo) return <div className="flex items-center justify-center h-screen"><p className="text-slate-500">Loading...</p></div>
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-8" style={{ fontFamily: 'Arial, sans-serif' }}>
       <div className="max-w-sm w-full text-center border-2 border-gray-800 rounded-2xl p-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Clock In / Out</h1>
-          <p className="text-gray-500 text-sm">CompCare Hub</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">Clock In / Out</h1>
+          <p className="text-slate-500 text-sm">CompCare Hub</p>
         </div>
 
-        <div className="bg-gray-50 rounded-xl p-6 mb-6 border border-gray-200">
+        <div className="bg-slate-50 rounded-xl p-6 mb-6 border border-slate-200">
           <div className="text-5xl mb-3">👤</div>
-          <h2 className="text-xl font-bold text-gray-900">{suInfo.name}</h2>
-          <p className="text-gray-500 text-sm mt-1">{suInfo.homeName}</p>
-          {suInfo.address && <p className="text-gray-400 text-xs mt-1">{suInfo.address}</p>}
+          <h2 className="text-xl font-bold text-slate-900">{suInfo.name}</h2>
+          <p className="text-slate-500 text-sm mt-1">{suInfo.homeName}</p>
+          {suInfo.address && <p className="text-slate-400 text-xs mt-1">{suInfo.address}</p>}
         </div>
 
         {/* QR code placeholder — in production use qrcode.react */}
@@ -57,7 +57,7 @@ export default function PrintQR() {
           </ol>
         </div>
 
-        <div className="text-xs text-gray-400 border-t border-gray-100 pt-4">
+        <div className="text-xs text-slate-400 border-t border-slate-100 pt-4">
           <p className="font-mono break-all">{clockInUrl}</p>
           <p className="mt-2">Or visit the URL above on your phone</p>
         </div>

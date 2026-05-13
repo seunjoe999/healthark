@@ -29,7 +29,7 @@ export default function FoodDrinkForm({ suId, onSaved }: { suId: string; onSaved
       <div className="flex gap-3">
         {(['food', 'drink'] as const).map(t => (
           <button key={t} type="button" onClick={() => setEntryType(t)}
-            className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium capitalize transition-colors ${entryType === t ? 'border-navy-900 bg-navy-50 text-navy-900' : 'border-gray-200 text-gray-600'}`}>
+            className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium capitalize transition-colors ${entryType === t ? 'border-slate-900 bg-slate-900 text-slate-900' : 'border-slate-200 text-slate-600'}`}>
             {t === 'food' ? '🍽 Food' : '💧 Drink'}
           </button>
         ))}
@@ -52,7 +52,7 @@ export default function FoodDrinkForm({ suId, onSaved }: { suId: string; onSaved
       )}
       <div className="flex items-center gap-2">
         <input type="checkbox" id="assisted" checked={form.assisted} onChange={e => setForm(p => ({ ...p, assisted: e.target.checked }))} className="rounded" />
-        <label htmlFor="assisted" className="text-sm text-gray-700">Assistance required</label>
+        <label htmlFor="assisted" className="text-sm text-slate-700">Assistance required</label>
       </div>
       <Input label="Notes (optional)" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Any observations..." />
       <div className="flex gap-3 pt-2">

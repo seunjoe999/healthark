@@ -22,7 +22,7 @@ export default function WelfareCheckForm({ suId, onSaved }: { suId: string; onSa
       <Input label="Current status" value={form.suStatus} onChange={e => set('suStatus', e.target.value)} placeholder="e.g. Settled, sleeping, watching TV..." />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="envok" checked={form.environmentOk} onChange={e => set('environmentOk', e.target.checked)} className="rounded" />
-        <label htmlFor="envok" className="text-sm text-gray-700">Environment is satisfactory (temperature, comfort)</label>
+        <label htmlFor="envok" className="text-sm text-slate-700">Environment is satisfactory (temperature, comfort)</label>
       </div>
       {!form.environmentOk && <Input label="Environment concerns" value={form.environmentNotes} onChange={e => set('environmentNotes', e.target.value)} placeholder="Describe the concern..." />}
       <div><label className="label">Action taken (if any)</label><textarea className="input" rows={2} value={form.actionTaken} onChange={e => set('actionTaken', e.target.value)} /></div>

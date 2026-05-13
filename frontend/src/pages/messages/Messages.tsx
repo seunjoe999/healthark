@@ -38,17 +38,17 @@ export default function Messages() {
   return (
     <div className="flex h-full">
       {/* Left — message list */}
-      <div className="w-80 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col">
-        <div className="p-4 border-b border-gray-100">
+      <div className="w-80 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+        <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-purple-900">Messages</h2>
             <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setComposeOpen(true)}>New</Button>
           </div>
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-            <button onClick={() => setView('inbox')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'inbox' ? 'bg-white text-purple-900 shadow-sm' : 'text-gray-600'}`}>
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+            <button onClick={() => setView('inbox')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'inbox' ? 'bg-white text-purple-900 shadow-sm' : 'text-slate-600'}`}>
               Inbox
             </button>
-            <button onClick={() => setView('sent')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'sent' ? 'bg-white text-purple-900 shadow-sm' : 'text-gray-600'}`}>
+            <button onClick={() => setView('sent')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'sent' ? 'bg-white text-purple-900 shadow-sm' : 'text-slate-600'}`}>
               Sent
             </button>
           </div>
@@ -56,19 +56,19 @@ export default function Messages() {
         <div className="flex-1 overflow-y-auto">
           {loading ? <Spinner /> : messages.length === 0 ? (
             <div className="text-center p-8">
-              <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">No messages</p>
+              <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">No messages</p>
             </div>
           ) : messages.map((msg: any) => (
             <button key={msg.id} onClick={() => { setSelected(msg); if (!msg.is_read && view === 'inbox') markRead(msg.id) }}
-              className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${selected?.id === msg.id ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
+              className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${selected?.id === msg.id ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${!msg.is_read && view === 'inbox' ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+                  <p className={`text-sm truncate ${!msg.is_read && view === 'inbox' ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
                     {view === 'inbox' ? (msg.sender_name || 'Unknown') : (msg.recipient_name || 'Unknown')}
                   </p>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{msg.subject || msg.message?.substring(0, 50)}</p>
-                  <p className="text-xs text-gray-400 mt-1">{msg.created_at ? format(new Date(msg.created_at), 'd MMM, HH:mm') : ''}</p>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{msg.subject || msg.message?.substring(0, 50)}</p>
+                  <p className="text-xs text-slate-400 mt-1">{msg.created_at ? format(new Date(msg.created_at), 'd MMM, HH:mm') : ''}</p>
                 </div>
                 {!msg.is_read && view === 'inbox' && <span className="w-2 h-2 rounded-full bg-purple-600 flex-shrink-0 mt-1.5" />}
               </div>
@@ -78,22 +78,22 @@ export default function Messages() {
       </div>
 
       {/* Right — message detail */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
         {!selected ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a message" description="Choose a message from the list to read it" />
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-            <div className="border-b border-gray-100 pb-4 mb-4">
-              <h2 className="text-lg font-bold text-gray-900 mb-2">{selected.subject || '(No subject)'}</h2>
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>From: <span className="font-medium text-gray-700">{selected.sender_name || 'Unknown'}</span></span>
+          <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-100 shadow-sm p-6">
+            <div className="border-b border-slate-100 pb-4 mb-4">
+              <h2 className="text-lg font-bold text-slate-900 mb-2">{selected.subject || '(No subject)'}</h2>
+              <div className="flex items-center justify-between text-sm text-slate-500">
+                <span>From: <span className="font-medium text-slate-700">{selected.sender_name || 'Unknown'}</span></span>
                 <span>{selected.created_at ? format(new Date(selected.created_at), 'd MMMM yyyy, HH:mm') : ''}</span>
               </div>
-              {selected.recipient_name && <p className="text-sm text-gray-500 mt-1">To: <span className="font-medium text-gray-700">{selected.recipient_name}</span></p>}
+              {selected.recipient_name && <p className="text-sm text-slate-500 mt-1">To: <span className="font-medium text-slate-700">{selected.recipient_name}</span></p>}
             </div>
-            <p className="text-gray-700 whitespace-pre-line leading-relaxed">{selected.message}</p>
+            <p className="text-slate-700 whitespace-pre-line leading-relaxed">{selected.message}</p>
           </div>
         )}
       </div>

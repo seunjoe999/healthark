@@ -86,3 +86,10 @@ export const dailyRecordsApi = {
   getFluidTotal: (suId: string, date?: string) =>
     api.get('/daily-records/fluid-total', { params: { suId, date } }),
 }
+
+// Helper — converts relative upload paths to full backend URL
+export function photoUrl(url?: string | null): string | null {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  return `http://localhost:3001${url}`
+}

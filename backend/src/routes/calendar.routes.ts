@@ -62,3 +62,58 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
 );
 
 export default router;
+
+// GET /api/calendar/:id/notes — get meeting notes
+router.get('/:id/notes', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT mn.*, s.first_name || ' ' || s.last_name as created_by_name
+         FROM meeting_notes mn LEFT JOIN staff s ON s.id = mn.created_by
+         WHERE mn.event_id = $1 ORDER BY mn.created_at DESC`,
+        [req.params.id]
+      );
+      const signoffs = await query(
+        `SELECT ms.*, s.first_name || ' ' || s.last_name as staff_name
+         FROM meeting_signoffs ms JOIN staff s ON s.id = ms.staff_id
+         WHERE ms.event_id = $1`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: { notes: rows, signoffs } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/calendar/:id/notes — add/update meeting notes
+router.post('/:id/notes', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const { notes, actionPoints, concerns, attendees } = req.body;
+      const rows = await query(
+        `INSERT INTO meeting_notes (event_id, created_by, notes, action_points, concerns, attendees)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (event_id) DO UPDATE SET
+           notes=$3, action_points=$4, concerns=$5, attendees=$6, updated_at=NOW()
+         RETURNING *`,
+        [req.params.id, staffId, notes || null, actionPoints || null, concerns || null, attendees || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/calendar/:id/signoff — staff signs off on meeting notes
+router.post('/:id/signoff', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      await query(
+        `INSERT INTO meeting_signoffs (event_id, staff_id, signed_at)
+         VALUES ($1,$2,NOW()) ON CONFLICT (event_id, staff_id) DO NOTHING`,
+        [req.params.id, staffId]
+      );
+      res.json({ success: true, message: 'Signed off' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);

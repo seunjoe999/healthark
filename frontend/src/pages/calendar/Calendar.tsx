@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday, addMonths, subMonths } from 'date-fns'
-import { Spinner, Button, Modal, Input, Select } from '../../components/ui'
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from 'date-fns'
+import { Spinner, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const EVENT_TYPES = [
@@ -24,7 +24,17 @@ const TYPE_COLORS: Record<string, string> = {
   inspection: 'bg-red-500',
   training: 'bg-orange-500',
   review: 'bg-teal-500',
-  other: 'bg-gray-500',
+  other: 'bg-slate-500',
+}
+
+const TYPE_BG: Record<string, string> = {
+  appointment: 'bg-blue-50 border-blue-200 text-blue-800',
+  meeting: 'bg-purple-50 border-purple-200 text-purple-800',
+  activity: 'bg-green-50 border-green-200 text-green-800',
+  inspection: 'bg-red-50 border-red-200 text-red-800',
+  training: 'bg-orange-50 border-orange-200 text-orange-800',
+  review: 'bg-teal-50 border-teal-200 text-teal-800',
+  other: 'bg-slate-50 border-slate-200 text-slate-800',
 }
 
 export default function CalendarPage() {
@@ -33,8 +43,9 @@ export default function CalendarPage() {
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [selectedDay, setSelectedDay] = useState<Date | null>(new Date())
   const [addOpen, setAddOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -58,18 +69,28 @@ export default function CalendarPage() {
     finally { setLoading(false) }
   }
 
+  const deleteEvent = async (id: string) => {
+    if (!confirm('Delete this event?')) return
+    try {
+      await api.delete(`/calendar/${id}`)
+      setEvents(prev => prev.filter(e => e.id !== id))
+      setSelectedEvent(null)
+      toast.success('Event deleted')
+    } catch { toast.error('Failed') }
+  }
+
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) })
   const firstDayOfWeek = startOfMonth(currentMonth).getDay()
   const selectedDayEvents = selectedDay ? events.filter(e => isSameDay(new Date(e.event_date), selectedDay)) : []
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-purple-900 flex items-center gap-2">
+          <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
             <CalIcon className="w-6 h-6 text-purple-600" /> Calendar
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{events.length} event{events.length !== 1 ? 's' : ''} this month</p>
+          <p className="text-slate-400 text-sm mt-0.5">{events.length} event{events.length !== 1 ? 's' : ''} this month</p>
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
@@ -79,44 +100,41 @@ export default function CalendarPage() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Calendar grid */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          {/* Month navigation */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 hover:bg-slate-100 rounded-xl transition-colors">
+              <ChevronLeft className="w-5 h-5 text-slate-600" />
             </button>
-            <h2 className="font-semibold text-gray-900">{format(currentMonth, 'MMMM yyyy')}</h2>
-            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+            <h2 className="font-semibold text-slate-900">{format(currentMonth, 'MMMM yyyy')}</h2>
+            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 hover:bg-slate-100 rounded-xl transition-colors">
+              <ChevronRight className="w-5 h-5 text-slate-600" />
             </button>
           </div>
-
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-gray-100">
+          <div className="grid grid-cols-7 border-b border-slate-50">
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-              <div key={d} className="py-2 text-center text-xs font-medium text-gray-500">{d}</div>
+              <div key={d} className="py-2 text-center text-xs font-semibold text-slate-400">{d}</div>
             ))}
           </div>
-
-          {/* Days grid */}
           <div className="grid grid-cols-7">
-            {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`empty-${i}`} className="min-h-[80px] border-b border-r border-gray-50" />)}
+            {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e${i}`} className="min-h-[80px] border-b border-r border-slate-50" />)}
             {days.map(day => {
               const dayEvents = events.filter(e => isSameDay(new Date(e.event_date), day))
               const isSelected = selectedDay && isSameDay(day, selectedDay)
+              const today = isToday(day)
               return (
                 <button key={day.toString()} onClick={() => setSelectedDay(day)}
-                  className={`min-h-[80px] border-b border-r border-gray-50 p-2 text-left hover:bg-gray-50 transition-colors ${isSelected ? 'bg-purple-50' : ''}`}>
-                  <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1 ${isToday(day) ? 'bg-purple-600 text-white' : isSelected ? 'bg-purple-100 text-purple-900' : 'text-gray-700'}`}>
+                  className={`min-h-[80px] border-b border-r border-slate-50 p-2 text-left hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50' : ''}`}>
+                  <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1 ${today ? 'text-white font-bold' : isSelected ? 'text-purple-900' : 'text-slate-600'}`}
+                    style={today ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : {}}>
                     {format(day, 'd')}
                   </span>
                   <div className="space-y-0.5">
                     {dayEvents.slice(0, 2).map((e: any) => (
-                      <div key={e.id} className={`text-xs text-white px-1.5 py-0.5 rounded truncate ${TYPE_COLORS[e.event_type] || 'bg-gray-500'}`}>
+                      <div key={e.id} className={`text-xs text-white px-1.5 py-0.5 rounded truncate ${TYPE_COLORS[e.event_type] || 'bg-slate-500'}`}>
                         {e.title}
                       </div>
                     ))}
-                    {dayEvents.length > 2 && <p className="text-xs text-gray-400">+{dayEvents.length - 2} more</p>}
+                    {dayEvents.length > 2 && <p className="text-xs text-slate-400">+{dayEvents.length - 2} more</p>}
                   </div>
                 </button>
               )
@@ -124,43 +142,152 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Side panel — selected day events */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">
+        {/* Side panel */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card flex flex-col">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h3 className="font-semibold text-slate-900">
               {selectedDay ? format(selectedDay, 'EEEE, d MMMM') : 'Select a day'}
             </h3>
           </div>
-          <div className="p-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {!selectedDay ? (
-              <p className="text-sm text-gray-400 text-center py-4">Click a day to see events</p>
+              <p className="text-sm text-slate-400 text-center py-4">Click a day to see events</p>
             ) : selectedDayEvents.length === 0 ? (
               <div className="text-center py-6">
-                <p className="text-sm text-gray-400">No events this day</p>
-                <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2">Add event</button>
+                <p className="text-sm text-slate-400">No events this day</p>
+                <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {selectedDayEvents.map((e: any) => (
-                  <div key={e.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${TYPE_COLORS[e.event_type] || 'bg-gray-500'}`} />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{e.title}</p>
-                      {e.start_time && <p className="text-xs text-gray-500">{e.start_time}{e.end_time ? ` — ${e.end_time}` : ''}</p>}
-                      {e.description && <p className="text-xs text-gray-600 mt-1">{e.description}</p>}
-                      <p className="text-xs text-gray-400 mt-1 capitalize">{(e.event_type || '').replace('_', ' ')}</p>
-                    </div>
-                  </div>
-                ))}
+            ) : selectedDayEvents.map((e: any) => (
+              <div key={e.id} className={`p-4 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${TYPE_BG[e.event_type] || TYPE_BG.other}`}
+                onClick={() => setSelectedEvent(e)}>
+                <div className="flex items-start justify-between mb-1">
+                  <p className="font-semibold text-sm">{e.title}</p>
+                  {e.event_type === 'meeting' && <FileText className="w-3.5 h-3.5 opacity-60" />}
+                </div>
+                {e.start_time && <p className="text-xs opacity-70">{e.start_time}{e.end_time ? ` — ${e.end_time}` : ''}</p>}
+                {e.description && <p className="text-xs opacity-60 mt-1 line-clamp-2">{e.description}</p>}
+                {e.event_type === 'meeting' && (
+                  <p className="text-xs font-semibold mt-2 opacity-80">📝 Click to view/add notes</p>
+                )}
               </div>
-            )}
+            ))}
           </div>
         </div>
       </div>
 
       <AddEventModal open={addOpen} onClose={() => setAddOpen(false)} homeId={selectedHome} defaultDate={selectedDay}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Event added') }} />
+
+      {selectedEvent && (
+        <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)}
+          onDeleted={() => { setSelectedEvent(null); deleteEvent(selectedEvent.id) }}
+          onSaved={async () => { setSelectedEvent(null); await load(); toast.success('Notes saved') }} />
+      )}
     </div>
+  )
+}
+
+function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; onClose: () => void; onDeleted: () => void; onSaved: () => void }) {
+  const { user } = useAuth()
+  const [notes, setNotes] = useState({ notes: '', actionPoints: '', concerns: '', attendees: '' })
+  const [signoffs, setSignoffs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [signing, setSigning] = useState(false)
+  const set = (k: string, v: string) => setNotes(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    api.get(`/calendar/${event.id}/notes`).then(res => {
+      const d = res.data.data
+      if (d.notes?.[0]) setNotes({
+        notes: d.notes[0].notes || '',
+        actionPoints: d.notes[0].action_points || '',
+        concerns: d.notes[0].concerns || '',
+        attendees: d.notes[0].attendees || '',
+      })
+      setSignoffs(d.signoffs || [])
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [event.id])
+
+  const save = async () => {
+    setSaving(true)
+    try { await api.post(`/calendar/${event.id}/notes`, notes); onSaved() }
+    catch { toast.error('Failed to save notes') }
+    finally { setSaving(false) }
+  }
+
+  const signOff = async () => {
+    setSigning(true)
+    try {
+      await api.post(`/calendar/${event.id}/signoff`)
+      const res = await api.get(`/calendar/${event.id}/notes`)
+      setSignoffs(res.data.data.signoffs || [])
+      toast.success('Signed off ✓')
+    } catch { toast.error('Failed') }
+    finally { setSigning(false) }
+  }
+
+  const alreadySigned = signoffs.some(s => s.staff_id === user?.id)
+  const typeStyle = {
+    appointment: 'bg-blue-50 text-blue-700', meeting: 'bg-purple-50 text-purple-700',
+    activity: 'bg-green-50 text-green-700', inspection: 'bg-red-50 text-red-700',
+    training: 'bg-orange-50 text-orange-700', review: 'bg-teal-50 text-teal-700',
+    other: 'bg-slate-50 text-slate-700'
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title={event.title} size="lg">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        {/* Event info */}
+        <div className={`flex items-center gap-3 p-3 rounded-xl ${(typeStyle as any)[event.event_type] || typeStyle.other}`}>
+          <div>
+            <p className="text-sm font-semibold capitalize">{(event.event_type || '').replace('_', ' ')}</p>
+            <p className="text-xs opacity-70">{event.event_date ? format(new Date(event.event_date), 'd MMMM yyyy') : ''}{event.start_time ? ` · ${event.start_time}` : ''}{event.end_time ? `–${event.end_time}` : ''}</p>
+            {event.location && <p className="text-xs opacity-70">📍 {event.location}</p>}
+          </div>
+        </div>
+
+        {/* Notes section */}
+        <SectionHeading title="Meeting notes" description="Document what was discussed, actions and concerns" />
+        {loading ? <div className="text-center py-4 text-sm text-slate-400">Loading notes...</div> : (
+          <div className="space-y-3">
+            <div><label className="label">Attendees</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
+            <div><label className="label">Meeting notes</label><textarea className="input" rows={4} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="What was discussed..." /></div>
+            <div><label className="label">Action points</label><textarea className="input" rows={3} value={notes.actionPoints} onChange={e => set('actionPoints', e.target.value)} placeholder="Actions agreed and who is responsible..." /></div>
+            <div><label className="label">Concerns raised</label><textarea className="input" rows={2} value={notes.concerns} onChange={e => set('concerns', e.target.value)} placeholder="Any concerns raised..." /></div>
+          </div>
+        )}
+
+        {/* Sign-offs */}
+        {signoffs.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Signed off by</p>
+            <div className="flex flex-wrap gap-2">
+              {signoffs.map((s: any) => (
+                <span key={s.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold border border-emerald-200">
+                  <Check className="w-3.5 h-3.5" /> {s.staff_name} · {s.signed_at ? format(new Date(s.signed_at), 'd MMM') : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <div className="flex gap-2">
+            <Button variant="danger" size="sm" onClick={onDeleted}>Delete event</Button>
+          </div>
+          <div className="flex gap-2">
+            {!alreadySigned && (
+              <Button variant="outline" size="sm" icon={<Check className="w-3.5 h-3.5" />} loading={signing} onClick={signOff}>
+                Sign off
+              </Button>
+            )}
+            {alreadySigned && <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> You signed off</span>}
+            <Button loading={saving} onClick={save}>Save notes</Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
@@ -168,7 +295,8 @@ function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
   open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; onSaved: () => void
 }) {
   const [form, setForm] = useState({
-    title: '', eventType: 'appointment', eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+    title: '', eventType: 'appointment',
+    eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
     startTime: '', endTime: '', description: '', location: ''
   })
   const [loading, setLoading] = useState(false)
@@ -185,7 +313,7 @@ function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
   return (
     <Modal open={open} onClose={onClose} title="Add calendar event">
       <form onSubmit={save} className="space-y-4">
-        <Input label="Event title *" required value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. GP appointment, Fire drill, Staff meeting..." />
+        <Input label="Event title *" required value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. GP appointment, Fire drill, Staff meeting..." autoFocus />
         <div className="grid grid-cols-2 gap-3">
           <Select label="Event type" value={form.eventType} onChange={e => set('eventType', e.target.value)} options={EVENT_TYPES} />
           <Input label="Date *" type="date" required value={form.eventDate} onChange={e => set('eventDate', e.target.value)} />
@@ -195,9 +323,9 @@ function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
           <Input label="End time" type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
         </div>
         <Input label="Location" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Room, address, online..." />
-        <div><label className="label">Description</label><textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
+        <div><label className="label">Description</label><textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} /></div>
         <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add event</Button>
         </div>
       </form>

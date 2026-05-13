@@ -55,13 +55,14 @@ export default function StaffModule() {
     setTab('profile')
     const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes] = await Promise.all([
       api.get(`/staff-hr/training/${s.id}`),
-      api.get('/staff-hr/leave'),
+      api.get(`/staff-hr/leave?staffId=${s.id}`),
       api.get(`/staff-hr/onboarding/${s.id}`),
       staffApi.clockHistory(s.id),
       api.get(`/documents/staff/${s.id}`),
       api.get(`/reviews/cautions/${s.id}`),
       api.get(`/reviews/supervisions/${s.id}`),
     ])
+    .catch(e => console.error('selectStaff error:', e))
     setTraining(trainingRes.data.data || [])
     setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
     setOnboarding(onboardingRes.data.data)
