@@ -103,4 +103,50 @@ router.put('/:id/complete', param('id').isUUID(), validateRequest,
   }
 );
 
+
+// POST /api/tasks/generate-daily — generate today's tasks from templates (called by scheduler)
+router.post('/generate-daily', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const today = new Date().toISOString().split('T')[0];
+    const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon...
+    
+    // Get active templates
+    const templates = await query(
+      `SELECT * FROM task_templates WHERE home_id = $1 AND is_active = true`,
+      [homeId]
+    );
+    
+    let created = 0;
+    for (const tmpl of templates as any[]) {
+      // Check if task already exists for today
+      const existing = await query(
+        `SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3`,
+        [homeId, today, tmpl.title]
+      );
+      if (existing.length > 0) continue;
+      
+      // Check frequency
+      const freq = tmpl.frequency || 'daily';
+      let shouldCreate = false;
+      if (freq === 'daily') shouldCreate = true;
+      else if (freq === 'weekly' && dayOfWeek === 1) shouldCreate = true; // Monday
+      else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldCreate = true;
+      else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldCreate = true;
+      
+      if (shouldCreate) {
+        await query(
+          `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')`,
+          [homeId, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
+           tmpl.description || null, today, tmpl.due_time || null,
+           tmpl.priority || 'normal', tmpl.assigned_role || null]
+        );
+        created++;
+      }
+    }
+    res.json({ success: true, message: `${created} tasks generated for today` } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 export default router;

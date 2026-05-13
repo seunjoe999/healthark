@@ -101,7 +101,7 @@ export default function ServiceUserList() {
                   <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm font-display"
                     style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
                     {su.photo_url
-                      ? <img src={su.photo_url} alt="" className="w-full h-full object-cover" />
+                      ? <img src={su.photo_url} alt={initials} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
                       : initials}
                   </div>
                   <div className="flex-1 min-w-0">

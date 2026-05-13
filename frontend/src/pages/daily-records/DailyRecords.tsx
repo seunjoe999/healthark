@@ -6,6 +6,7 @@ import { Spinner, EmptyState, Button, Modal, Select } from '../../components/ui'
 import { ClipboardList, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, Droplets, ThermometerSun, Activity, Weight, Utensils, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
+import IncidentForm from './forms/IncidentForm'
 
 const RECORD_TYPES = [
   { value: 'personal_care', label: 'Personal care', icon: '🧼' },
@@ -85,6 +86,7 @@ export default function DailyRecords() {
   }
 
   const changeDate = async (d: Date) => {
+    if (d > new Date()) return // can't go to future
     setViewDate(d)
     if (selectedSu) await loadRecords(selectedSu.id, d)
   }
@@ -259,11 +261,13 @@ function AddRecordModal({ suId, onClose, onSaved }: { suId: string; onClose: () 
 
         {type === 'body_map' ? (
           <BodyMap suId={suId} onSaved={onSaved} />
+        ) : type === 'incident' ? (
+          <IncidentForm suId={suId} onSaved={onSaved} />
         ) : (
           <RecordForm type={type} form={form} set={set} />
         )}
 
-        {type !== 'body_map' && (
+        {type !== 'body_map' && type !== 'incident' && (
           <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button loading={loading} onClick={save}>Save record</Button>

@@ -263,3 +263,29 @@ router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
 );
 
 export default router;
+
+// GET /api/staff-hr/training-modules — get completed inbuilt modules for current staff
+router.get('/training-modules', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const rows = await query(
+      'SELECT * FROM staff_training_modules WHERE staff_id = $1',
+      [staffId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/staff-hr/training-modules — mark inbuilt module as complete
+router.post('/training-modules', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const { moduleId, moduleName } = req.body;
+    const rows = await query(
+      `INSERT INTO staff_training_modules (staff_id, module_id, module_name, completed_at)
+       VALUES ($1,$2,$3,NOW()) ON CONFLICT (staff_id, module_id) DO NOTHING RETURNING *`,
+      [staffId, moduleId, moduleName]
+    );
+    res.json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});

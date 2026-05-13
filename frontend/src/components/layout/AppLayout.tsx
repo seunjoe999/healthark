@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
-  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree
+  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight
 } from 'lucide-react'
 
 const navSections = [
@@ -28,6 +28,7 @@ const navSections = [
       { label: 'Tasks',         to: '/tasks',         icon: CheckSquare,     roles: [] },
       { label: 'Rota',          to: '/rota',          icon: CalendarRange,   roles: ['home_manager','group_admin','senior_carer'] },
       { label: 'Holidays',      to: '/holidays',      icon: Palmtree,        roles: ['home_manager','group_admin'] },
+      { label: 'Training',      to: '/training',      icon: GraduationCap,   roles: [] },
       { label: 'Staff',         to: '/staff',         icon: UserSquare,      roles: ['home_manager','group_admin'] },
       { label: 'Calendar',      to: '/calendar',      icon: Calendar,        roles: ['home_manager','group_admin'] },
       { label: 'Messages',      to: '/messages',      icon: MessageSquare,   roles: [] },
@@ -39,6 +40,7 @@ const navSections = [
     items: [
       { label: 'Reviews',       to: '/reviews',       icon: ClipboardCheck,  roles: [] },
       { label: 'Quality & QA',  to: '/quality',       icon: Star,            roles: ['home_manager','group_admin'] },
+      { label: 'Handover',      to: '/reports/handover', icon: ArrowLeftRight, roles: [] },
       { label: 'Audits',        to: '/audits',        icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
       { label: 'Reports',       to: '/reports',       icon: BarChart3,       roles: ['home_manager','group_admin'] },
       { label: 'Policies',      to: '/policies',      icon: BookOpen,        roles: [] },

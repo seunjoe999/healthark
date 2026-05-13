@@ -28,6 +28,9 @@ import Quality from './pages/quality/Quality'
 import Rota from './pages/rota/Rota'
 import PrintQR from './pages/clockin/PrintQR'
 import Holidays from './pages/holidays/Holidays'
+import Training from './pages/training/Training'
+import PrintCarePlan from './pages/care-plans/PrintCarePlan'
+import HandoverReport from './pages/reports/HandoverReport'
 import Reviews from './pages/reviews/Reviews'
 import ClockIn from './pages/clockin/ClockIn'
 import Settings from './pages/settings/Settings'
@@ -87,6 +90,9 @@ function AppRoutes() {
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
       <Route path="/rota" element={<ProtectedRoute><Rota /></ProtectedRoute>} />
       <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
+      <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
+      <Route path="/care-plans/:id/print" element={<PrintCarePlan />} />
+      <Route path="/reports/handover" element={<ProtectedRoute><HandoverReport /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

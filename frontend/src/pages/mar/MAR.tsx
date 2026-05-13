@@ -1,3 +1,11 @@
+
+const TIME_OF_DAY = [
+  { key: 'morning', label: 'Morning', time: '08:00', icon: '🌅' },
+  { key: 'lunch', label: 'Lunch', time: '12:00', icon: '☀️' },
+  { key: 'evening', label: 'Evening', time: '18:00', icon: '🌆' },
+  { key: 'night', label: 'Night', time: '22:00', icon: '🌙' },
+]
+
 import React, { useEffect, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'

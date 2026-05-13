@@ -7,6 +7,14 @@ import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../c
 import { CheckSquare, Plus, Check, Clock, AlertTriangle, Settings } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+const FREQUENCIES = [
+  { value: 'once', label: 'Once only' },
+  { value: 'daily', label: 'Every day' },
+  { value: 'weekdays', label: 'Weekdays only' },
+  { value: 'weekends', label: 'Weekends only' },
+  { value: 'weekly', label: 'Weekly (Mondays)' },
+]
+
 const CATEGORIES = [{ value: 'housekeeping', label: 'Housekeeping' }, { value: 'medication', label: 'Medication check' }, { value: 'social_visit', label: 'Social visit' }, { value: 'personal_care', label: 'Personal care' }, { value: 'health_check', label: 'Health check' }, { value: 'general', label: 'General' }, { value: 'maintenance', label: 'Maintenance' }]
 const PRIORITIES = [{ value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' }]
 

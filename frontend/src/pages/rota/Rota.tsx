@@ -110,8 +110,10 @@ export default function Rota() {
           <div className="flex flex-wrap gap-3">
             {todayShifts.map((s: any) => (
               <div key={s.id} className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium ${SHIFT_COLORS[s.shift_type] || SHIFT_COLORS.regular}`}>
-                <div className="w-7 h-7 rounded-full bg-white/50 flex items-center justify-center text-xs font-bold">
-                  {(s.staff_name || '?').split(' ').map((n: string) => n[0]).join('')}
+                <div className="w-7 h-7 rounded-full bg-white/50 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
+                  {s.staff_photo
+                    ? <img src={s.staff_photo} style={{width:'100%',height:'100%',objectFit:'cover'}} alt="" />
+                    : (s.staff_name || '?').split(' ').map((n: string) => n[0]).join('')}
                 </div>
                 <div>
                   <p className="font-semibold leading-none">{s.staff_name}</p>
