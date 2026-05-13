@@ -378,4 +378,38 @@ router.post('/:id/messages', param('id').isUUID(),
   }
 );
 
+
+// GET /api/service-users/:id/about-me
+router.get('/:id/about-me', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query('SELECT * FROM su_about_me WHERE su_id=$1', [req.params.id]);
+      res.json({ success: true, data: rows[0] || {} } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/service-users/:id/about-me
+router.put('/:id/about-me', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { life_history, important_people, daily_routine, hobbies_interests,
+              communication, likes_dislikes, beliefs_values, goals_wishes, support_needs } = req.body;
+      await query(
+        `INSERT INTO su_about_me (su_id, life_history, important_people, daily_routine, hobbies_interests,
+           communication, likes_dislikes, beliefs_values, goals_wishes, support_needs, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
+         ON CONFLICT (su_id) DO UPDATE SET
+           life_history=$2, important_people=$3, daily_routine=$4, hobbies_interests=$5,
+           communication=$6, likes_dislikes=$7, beliefs_values=$8, goals_wishes=$9,
+           support_needs=$10, updated_at=NOW()`,
+        [req.params.id, life_history||null, important_people||null, daily_routine||null,
+         hobbies_interests||null, communication||null, likes_dislikes||null,
+         beliefs_values||null, goals_wishes||null, support_needs||null]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

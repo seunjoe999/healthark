@@ -34,6 +34,52 @@ async function checkOverdueCarePlans() {
   } catch (err) { console.error('Overdue care plan check failed:', err); }
 }
 
+
+// Daily at midnight: generate recurring tasks for all homes
+async function generateDailyTasks() {
+  try {
+    const { query } = await import('../config/database');
+    // Get all active homes
+    const homes = await query<any>('SELECT id FROM homes WHERE is_active = true');
+    const today = new Date().toISOString().split('T')[0];
+    const dayOfWeek = new Date().getDay();
+
+    for (const home of homes) {
+      const templates = await query<any>(
+        'SELECT * FROM task_templates WHERE home_id = $1 AND is_active = true',
+        [home.id]
+      );
+
+      for (const tmpl of templates) {
+        // Check if already exists today
+        const existing = await query(
+          'SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3',
+          [home.id, today, tmpl.title]
+        );
+        if (existing.length > 0) continue;
+
+        const freq = tmpl.frequency || 'daily';
+        let create = false;
+        if (freq === 'daily') create = true;
+        else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) create = true;
+        else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) create = true;
+        else if (freq === 'weekly' && dayOfWeek === 1) create = true;
+
+        if (create) {
+          await query(
+            `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')`,
+            [home.id, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
+             tmpl.description || null, today, tmpl.due_time || null,
+             tmpl.priority || 'normal', tmpl.assigned_role || null]
+          );
+        }
+      }
+    }
+    logger.info('Daily tasks generated successfully');
+  } catch (err) { logger.error('Daily task generation failed:', err); }
+}
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
-  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight
+  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search
 } from 'lucide-react'
 
 const navSections = [
@@ -15,6 +15,7 @@ const navSections = [
     label: 'Care',
     items: [
       { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard, roles: [] },
+      { label: 'Search',        to: '/search',        icon: Search,          roles: [] },
       { label: 'Residents',     to: '/service-users', icon: Users,           roles: [] },
       { label: 'Daily Records', to: '/daily-records', icon: ClipboardList,   roles: [] },
       { label: 'MAR Chart',     to: '/mar',           icon: Pill,            roles: [] },

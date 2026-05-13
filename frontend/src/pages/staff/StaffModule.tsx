@@ -160,6 +160,9 @@ export default function StaffModule() {
                 <Link to={`/staff/${selected.id}/edit`} className="flex-shrink-0">
                   <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
                 </Link>
+                <Link to="/settings" className="flex-shrink-0">
+                  <Button variant="ghost" size="sm">Change password</Button>
+                </Link>
               </div>
             </div>
 

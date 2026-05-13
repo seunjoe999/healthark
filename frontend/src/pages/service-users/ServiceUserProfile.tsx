@@ -381,7 +381,7 @@ export default function ServiceUserProfile() {
                     <a href={doc.file_url} target="_blank" rel="noreferrer">
                       <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                     </a>
-                    {isRole('home_manager', 'group_admin') && (
+                    {true && (
                       <Button size="sm" variant="ghost" icon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />} onClick={() => deleteDoc(doc.id)} />
                     )}
                   </div>
