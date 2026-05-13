@@ -140,31 +140,32 @@ export default function StaffModule() {
         ) : (
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4">
+            {/* WhatsApp-style clickable profile header */}
+            <Link to={`/staff/${selected.id}/edit`} className="block bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4 hover:border-purple-200 hover:shadow-md transition-all group">
               <div className="flex items-center gap-4">
-                <PhotoUpload
-                  currentUrl={selected.photo_url || selected.photoUrl}
-                  name={`${selected.first_name || selected.firstName || ''} ${selected.last_name || selected.lastName || ''}`}
-                  uploadUrl={`/api/upload/staff-photo/${selected.id}`}
-                  onUploaded={(url) => setSelected((p: any) => ({ ...p, photo_url: url }))}
-                  size="md"
-                />
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold text-slate-900">{getName(selected)}</h2>
+                <div className="relative">
+                  <PhotoUpload
+                    currentUrl={selected.photo_url || selected.photoUrl}
+                    name={`${selected.first_name || selected.firstName || ''} ${selected.last_name || selected.lastName || ''}`}
+                    uploadUrl={`/api/upload/staff-photo/${selected.id}`}
+                    onUploaded={(url) => { setSelected((p: any) => ({ ...p, photo_url: url })); }}
+                    size="md"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-slate-900 group-hover:text-purple-900 transition-colors">{getName(selected)}</h2>
+                    <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors" />
+                  </div>
                   <p className="text-sm text-slate-500 capitalize">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
                   <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
                     {selected.start_date && <span>Started {format(new Date(selected.start_date), 'd MMM yyyy')}</span>}
-                    <span className="text-green-600 font-medium">{(selected.leave_hours_total || 224) - (selected.leave_hours_used || 0)} hrs leave remaining</span>
+                    <span className="text-emerald-600 font-medium">{(selected.leave_hours_total || 224) - (selected.leave_hours_used || 0)} hrs leave remaining</span>
                   </div>
+                  <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>
                 </div>
-                <Link to={`/staff/${selected.id}/edit`} className="flex-shrink-0">
-                  <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
-                </Link>
-                <Link to="/settings" className="flex-shrink-0">
-                  <Button variant="ghost" size="sm">Change password</Button>
-                </Link>
               </div>
-            </div>
+            </Link>
 
             {/* Tabs */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-5">
