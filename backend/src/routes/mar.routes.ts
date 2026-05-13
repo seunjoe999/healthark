@@ -70,10 +70,10 @@ router.get('/records/:suId', param('suId').isUUID(), validateRequest,
       const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
       const rows = await query(
         `SELECT mr.*, m.medication_name, m.dose, m.frequency, m.route, m.instructions, m.is_prn,
-                s.first_name || ' ' || s.last_name as administered_by_name
+                s.first_name || ' ' || s.last_name as given_by_name
          FROM mar_records mr
          JOIN su_medications m ON m.id = mr.medication_id
-         LEFT JOIN staff s ON s.id = mr.administered_by
+         LEFT JOIN staff s ON s.id = mr.given_by
          WHERE mr.su_id = $1 AND mr.record_date = $2
          ORDER BY mr.scheduled_time`,
         [req.params.suId, date]
@@ -91,8 +91,8 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       const homeId = fromToken(req, 'homeId');
       const { suId, medicationId, given, refused, reason, notes, scheduledTime } = req.body;
       const rows = await query(
-        `INSERT INTO mar_records (su_id, home_id, medication_id, administered_by, given, refused,
-          reason, notes, scheduled_time, record_date)
+        `INSERT INTO mar_records (su_id, home_id, medication_id, given_by, given, refused,
+          refused_reason, notes, scheduled_time, record_date)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,CURRENT_DATE) RETURNING *`,
         [suId, homeId, medicationId, staffId, given ?? null, refused || false,
          reason || null, notes || null, scheduledTime || null]

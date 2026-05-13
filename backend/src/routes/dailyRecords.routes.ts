@@ -18,6 +18,12 @@ function getStaffId(req: Request): string {
   if (token) { const d = jwt.decode(token) as any; return req.staff?.staffId || d?.staffId || ''; }
   return req.staff?.staffId || '';
 }
+function getRole(req: Request): string {
+  const token = req.headers.authorization?.substring(7);
+  if (token) { const d = require('jsonwebtoken').decode(token) as any; return d?.role || ''; }
+  return '';
+}
+
 function getHomeId(req: Request): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return req.staff?.homeId || d?.homeId || ''; }
@@ -228,15 +234,21 @@ router.post('/', [
           break;
         }
         case 'incident': {
-          const { incidentType, location, incidentTime, description, injuries, injuryDetails,
-                  medicalNeeded, medicalDetails, witnesses, immediateAction, reportedTo, safeguardingRef } = req.body;
+          const { incidentType, location, incidentTime, incidentDate, description, injuries, injuryDetails,
+                  injuredBodyPart, medicalNeeded, medicalAttentionRequired, medicalDetails, witnesses,
+                  immediateAction, immediateActions, reportedTo, agenciesContacted, lessonsLearned,
+                  preventionMeasures, reportedToManagement, safeguardingRef } = req.body;
           await client.query(
             `INSERT INTO records_incidents (daily_record_id, incident_type, location, incident_time, description,
               injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action, reported_to, safeguarding_ref)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-            [dr.id, incidentType || null, location || null, incidentTime || new Date(), description,
-             injuries || false, injuryDetails || null, medicalNeeded || false, medicalDetails || null,
-             witnesses || null, immediateAction, reportedTo || null, safeguardingRef || false]
+            [dr.id, incidentType || null, location || null, incidentTime || incidentDate || new Date(),
+             description || req.body.notes,
+             injuries || false, (injuryDetails || '') + (injuredBodyPart ? ' - ' + injuredBodyPart : ''),
+             medicalNeeded || medicalAttentionRequired || false, medicalDetails || null,
+             witnesses || null, immediateAction || immediateActions || null,
+             (agenciesContacted || reportedTo || '') + (lessonsLearned ? ' | Lessons: ' + lessonsLearned : '') + (preventionMeasures ? ' | Prevention: ' + preventionMeasures : '') || null,
+             safeguardingRef || false]
           );
           break;
         }
@@ -337,6 +349,39 @@ router.get('/:id/detail', param('id').isUUID(), validateRequest,
       }
 
       res.json({ success: true, data: dr } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+
+// PUT /api/daily-records/:id — update a record's notes
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { notes, description, recordType, ...rest } = req.body;
+      const updateText = notes || description || '';
+
+      // Update the parent record notes field
+      const rows = await query(
+        `UPDATE daily_records SET notes=$1, updated_at=NOW() WHERE id=$2 RETURNING *`,
+        [updateText, req.params.id]
+      );
+      if (!rows.length) throw new AppError('Record not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/daily-records/:id — delete a record (managers only)
+router.delete('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = getRole(req);
+      if (!['home_manager', 'group_admin', 'senior_carer'].includes(role)) {
+        throw new AppError('Only managers and senior carers can delete records', 403);
+      }
+      await query('DELETE FROM daily_records WHERE id=$1', [req.params.id]);
+      res.json({ success: true, message: 'Record deleted' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

@@ -202,7 +202,7 @@ export default function ServiceUserProfile() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" icon={<QrCode className="w-3.5 h-3.5" />} onClick={() => setQrOpen(true)}>QR clock-in</Button>
-                {isRole('home_manager', 'group_admin') && (
+                {true && (
                   <Link to={`/service-users/${su.id}/edit`}>
                     <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
                   </Link>

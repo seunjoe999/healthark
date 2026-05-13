@@ -32,21 +32,19 @@ export default function HandoverReport() {
   const generate = async () => {
     setLoading(true)
     try {
-      const [recordsRes, alertsRes, tasksRes, marRes] = await Promise.all([
-        api.get('/daily-records', { params: { homeId: selectedHome, date: today } }),
+      const [alertsRes, tasksRes] = await Promise.all([
         api.get('/alerts', { params: { homeId: selectedHome, resolved: false } }),
         api.get('/tasks', { params: { homeId: selectedHome, date: today } }),
-        api.get('/mar/records-summary', { params: { homeId: selectedHome, date: today } }).catch(() => ({ data: { data: [] } })),
       ])
 
-      // Group records by su
-      const records = recordsRes.data.data || []
+      // Fetch records per resident
       const recordsBySu: Record<string, any[]> = {}
-      records.forEach((r: any) => {
-        const suId = r.su_id
-        if (!recordsBySu[suId]) recordsBySu[suId] = []
-        recordsBySu[suId].push(r)
-      })
+      for (const su of sus) {
+        try {
+          const res = await api.get('/daily-records', { params: { suId: su.id, date: today } })
+          recordsBySu[su.id] = res.data.data || []
+        } catch { recordsBySu[su.id] = [] }
+      }
 
       setReport({
         date: today,

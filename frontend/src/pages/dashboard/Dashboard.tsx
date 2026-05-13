@@ -1,3 +1,4 @@
+import StaffDashboard from './StaffDashboard'
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { homesApi, suApi, staffApi } from '../../api'
@@ -12,7 +13,8 @@ import { Link } from 'react-router-dom'
 import { format, isToday } from 'date-fns'
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
+  if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData] = useState<any>(null)

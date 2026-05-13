@@ -26,7 +26,7 @@ const SHIFT_COLORS: Record<string, string> = {
 }
 
 export default function Rota() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const [shifts, setShifts] = useState<any[]>([])
   const [staffList, setStaffList] = useState<any[]>([])
   const [suList, setSuList] = useState<any[]>([])
@@ -97,7 +97,7 @@ export default function Rota() {
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
-          <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setSelectedDay(new Date()); setAddOpen(true) }}>Add shift</Button>
+          {isRole('home_manager', 'group_admin', 'senior_carer') && <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setSelectedDay(new Date()); setAddOpen(true) }}>Add shift</Button>}
         </div>
       </div>
 
@@ -157,10 +157,10 @@ export default function Rota() {
                       <p className="font-semibold truncate">{s.staff_name?.split(' ')[0]}</p>
                       <p className="opacity-70">{s.start_time?.substring(0,5)}–{s.end_time?.substring(0,5)}</p>
                       {s.su_name && <p className="opacity-60 truncate text-[10px]">{s.su_name}</p>}
-                      <button onClick={() => deleteShift(s.id)}
+                      {isRole('home_manager','group_admin','senior_carer') && <button onClick={() => deleteShift(s.id)}
                         className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-600">
                         <Trash2 className="w-3 h-3" />
-                      </button>
+                      </button>}
                     </div>
                   ))}
                   <button onClick={() => { setSelectedDay(day); setAddOpen(true) }}

@@ -101,7 +101,7 @@ router.post('/',
          reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
-    } catch (err) { next(err); }
+    } catch (err: any) { console.error('Care plan CREATE error:', err?.message, err?.detail); next(err); }
   }
 );
 

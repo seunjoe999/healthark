@@ -44,9 +44,12 @@ export default function Holidays() {
   const load = async () => {
     setLoading(true)
     try {
+      // For non-managers, only show own leave
+      const staffId = !isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined
       const res = await api.get('/staff-hr/leave/all', {
         params: {
           homeId: selectedHome,
+          ...(staffId ? { staffId } : {}),
           from: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
           to: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
         }
@@ -200,7 +203,7 @@ export default function Holidays() {
                 <span className={`badge ${l.status === 'approved' ? 'badge-success' : l.status === 'declined' ? 'badge-critical' : 'badge-warning'}`}>
                   {l.status}
                 </span>
-                {l.status === 'pending' && isRole('home_manager', 'group_admin') && (
+                {l.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
                   <>
                     <button onClick={() => approve(l.id)}
                       className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
@@ -219,16 +222,18 @@ export default function Holidays() {
       )}
 
       <AddLeaveRequestModal open={addOpen} onClose={() => setAddOpen(false)}
-        staffList={staffList} homeId={selectedHome}
+        staffList={isRole('home_manager','group_admin','senior_carer') ? staffList : []}
+        defaultStaffId={!isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined}
+        homeId={selectedHome}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Leave request submitted') }} />
     </div>
   )
 }
 
-function AddLeaveRequestModal({ open, onClose, staffList, homeId, onSaved }: {
-  open: boolean; onClose: () => void; staffList: any[]; homeId: string; onSaved: () => void
+function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId, onSaved }: {
+  open: boolean; onClose: () => void; staffList: any[]; homeId: string; defaultStaffId?: string; onSaved: () => void
 }) {
-  const [form, setForm] = useState({ staffId: '', leaveType: 'annual', startDate: '', endDate: '', totalHours: '', notes: '' })
+  const [form, setForm] = useState({ staffId: defaultStaffId || '', leaveType: 'annual', startDate: '', endDate: '', totalHours: '', notes: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const options = staffList.map(s => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
@@ -247,7 +252,7 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, onSaved }: {
   return (
     <Modal open={open} onClose={onClose} title="Request / record leave">
       <form onSubmit={save} className="space-y-4">
-        <Select label="Staff member *" required value={form.staffId} onChange={e => set('staffId', e.target.value)} options={options} placeholder="Select staff member..." />
+        {staffList.length > 0 && <Select label="Staff member *" required value={form.staffId} onChange={e => set('staffId', e.target.value)} options={options} placeholder="Select staff member..." />}
         <Select label="Leave type *" required value={form.leaveType} onChange={e => set('leaveType', e.target.value)} options={LEAVE_TYPES} />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />

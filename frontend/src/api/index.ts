@@ -85,6 +85,8 @@ export const dailyRecordsApi = {
   getDetail: (id: string) => api.get(`/daily-records/${id}/detail`),
   getFluidTotal: (suId: string, date?: string) =>
     api.get('/daily-records/fluid-total', { params: { suId, date } }),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/daily-records/${id}`, data),
+  delete: (id: string) => api.delete(`/daily-records/${id}`),
 }
 
 // Helper — converts relative upload paths to full backend URL

@@ -217,6 +217,9 @@ export default function CarePlans() {
                             </div>
                           </div>
                           <div className="flex gap-2 mt-4">
+                            <a href={`/care-plans/${plan.id}/print`} target="_blank" rel="noreferrer">
+                              <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />}>Print</Button>
+                            </a>
                             <EditPlanModal plan={plan} suId={selectedSu.id} onSaved={async () => {
                               const res = await api.get('/care-plans', { params: { suId: selectedSu.id } })
                               setPlans(res.data.data || [])
@@ -317,7 +320,7 @@ function AddPlanModal({ open, onClose, suId, onSaved }: { open: boolean; onClose
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/care-plans', { suId, ...form }); onSaved() }
+    try { await api.post('/care-plans', { suId, homeId: (window as any).__HA_USER__?.homeId, ...form }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to create') }
     finally { setLoading(false) }
   }

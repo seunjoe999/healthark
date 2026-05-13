@@ -9,8 +9,11 @@ export default function PrintCarePlan() {
 
   useEffect(() => {
     if (!id) return
-    api.get(`/care-plans/${id}`).then(res => {
-      setPlan(res.data.data)
+    const token = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
+    fetch(`/api/care-plans/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+      setPlan(data.data)
       setTimeout(() => window.print(), 800)
     }).catch(console.error)
   }, [id])

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, subDays, parseISO } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Select } from '../../components/ui'
-import { ClipboardList, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, Droplets, ThermometerSun, Activity, Weight, Utensils, RotateCcw } from 'lucide-react'
+import { Spinner, EmptyState, Button, Modal, Select, Input } from '../../components/ui'
+import { ClipboardList, Plus, Search, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
@@ -53,6 +53,8 @@ export default function DailyRecords() {
   const [recordType, setRecordType] = useState('personal_care')
   const [viewDate, setViewDate] = useState(new Date())
   const [search, setSearch] = useState('')
+  const [editingRecord, setEditingRecord] = useState<any>(null)
+  const [editNotes, setEditNotes] = useState('')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -203,6 +205,24 @@ export default function DailyRecords() {
                               <div className="text-right flex-shrink-0">
                                 <p className="text-xs text-slate-400">{r.created_at ? format(new Date(r.created_at), 'HH:mm') : ''}</p>
                                 <p className="text-xs text-slate-400">{r.staff_name || ''}</p>
+                                <div className="flex gap-1 mt-1 justify-end">
+                                  <button onClick={() => setEditingRecord(r)}
+                                    className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"
+                                    title="Edit record">
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={async () => {
+                                    if (!confirm('Delete this record? This cannot be undone.')) return
+                                    try {
+                                      await dailyRecordsApi.delete(r.id)
+                                      await loadRecords(selectedSu.id, viewDate)
+                                      toast.success('Record deleted')
+                                    } catch { toast.error('Failed to delete') }
+                                  }} className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors text-slate-400 hover:text-rose-600"
+                                  title="Delete record">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -221,6 +241,12 @@ export default function DailyRecords() {
       {addOpen && selectedSu && (
         <AddRecordModal suId={selectedSu.id} onClose={() => setAddOpen(false)}
           onSaved={async () => { setAddOpen(false); await loadRecords(selectedSu.id, viewDate); toast.success('Record saved') }} />
+      )}
+
+      {/* Edit record modal */}
+      {editingRecord && selectedSu && (
+        <EditRecordModal record={editingRecord} onClose={() => setEditingRecord(null)}
+          onSaved={async () => { setEditingRecord(null); await loadRecords(selectedSu.id, viewDate); toast.success('Record updated') }} />
       )}
     </div>
   )
@@ -332,4 +358,115 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
       <div><label className="label">Notes / description</label><textarea required className="input" rows={4} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Describe what happened, what was observed..." /></div>
     )
   }
+}
+
+function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<Record<string, any>>(() => {
+    // Pre-populate from existing record
+    return {
+      notes: record.notes || '',
+      fluidType: record.fluid_type || record.meal_type || '',
+      amountMl: record.amount_ml || '',
+      amountEaten: record.amount_eaten || '',
+      mealType: record.meal_type || '',
+      foodDescription: record.food_description || record.description || '',
+      systolic: record.systolic || '',
+      diastolic: record.diastolic || '',
+      pulse: record.pulse || '',
+      tempCelsius: record.temp_celsius || '',
+      spo2Percent: record.spo2_percent || '',
+      weightKg: record.weight_kg || '',
+      bristolType: record.bristol_type || '',
+      supplementalO2: record.supplemental_o2 || false,
+    }
+  })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  const save = async () => {
+    setLoading(true)
+    try {
+      // Build the notes text from the form fields
+      let notesText = form.notes || ''
+      const type = record.record_type
+
+      if (type === 'fluid_intake' || type === 'food_drink') {
+        if (form.amountMl) notesText = `${form.fluidType || 'Fluid'} — ${form.amountMl}ml${form.notes ? '. ' + form.notes : ''}`
+        else if (form.amountEaten) notesText = `${form.mealType || 'Meal'}: ${form.amountEaten}${form.foodDescription ? ' — ' + form.foodDescription : ''}${form.notes ? '. ' + form.notes : ''}`
+      } else if (type === 'vitals_bp') {
+        notesText = `BP: ${form.systolic}/${form.diastolic} mmHg${form.pulse ? ` · Pulse: ${form.pulse}bpm` : ''}${form.notes ? '. ' + form.notes : ''}`
+      } else if (type === 'vitals_temp') {
+        notesText = `Temperature: ${form.tempCelsius}°C${form.notes ? '. ' + form.notes : ''}`
+      } else if (type === 'vitals_oxygen') {
+        notesText = `SpO2: ${form.spo2Percent}%${form.supplementalO2 ? ' (on O₂)' : ''}${form.notes ? '. ' + form.notes : ''}`
+      } else if (type === 'vitals_weight') {
+        notesText = `Weight: ${form.weightKg}kg${form.notes ? '. ' + form.notes : ''}`
+      } else if (type === 'bowel_movement') {
+        notesText = `Bristol type ${form.bristolType}${form.notes ? '. ' + form.notes : ''}`
+      }
+
+      await dailyRecordsApi.update(record.id, { notes: notesText })
+      onSaved()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update')
+    } finally { setLoading(false) }
+  }
+
+  const type = record.record_type
+  const typeInfo = RECORD_TYPES.find(r => r.value === type)
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Edit — ${typeInfo?.label || type?.replace(/_/g, ' ')}`} size="md">
+      <div className="space-y-4">
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
+          Recorded at {record.created_at ? format(new Date(record.created_at), 'HH:mm, d MMM yyyy') : ''}{record.staff_name ? ` by ${record.staff_name}` : ''}
+        </div>
+
+        {/* Show appropriate fields based on type */}
+        {(type === 'fluid_intake') && (
+          <div className="space-y-3">
+            <Select label="Drink type" value={form.fluidType} onChange={e => set('fluidType', e.target.value)}
+              options={[{value:'Water',label:'Water'},{value:'Tea',label:'Tea'},{value:'Coffee',label:'Coffee'},{value:'Juice',label:'Juice'},{value:'Milk',label:'Milk'},{value:'Soup',label:'Soup'},{value:'Supplement drink',label:'Supplement drink'},{value:'Other',label:'Other'}]}
+              placeholder="Select drink" />
+            <Input label="Amount (ml)" type="number" value={String(form.amountMl)} onChange={e => set('amountMl', e.target.value)} />
+          </div>
+        )}
+        {(type === 'food_intake') && (
+          <div className="space-y-3">
+            <Select label="Meal" value={form.mealType} onChange={e => set('mealType', e.target.value)}
+              options={[{value:'breakfast',label:'Breakfast'},{value:'lunch',label:'Lunch'},{value:'dinner',label:'Dinner'},{value:'snack',label:'Snack'}]} placeholder="Select meal" />
+            <Select label="Amount eaten" value={form.amountEaten} onChange={e => set('amountEaten', e.target.value)}
+              options={['None','Quarter','Half','Three quarters','Full'].map(a=>({value:a,label:a}))} placeholder="How much?" />
+            <Input label="What was served" value={form.foodDescription} onChange={e => set('foodDescription', e.target.value)} />
+          </div>
+        )}
+        {type === 'vitals_bp' && (
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Systolic" type="number" value={String(form.systolic)} onChange={e => set('systolic', e.target.value)} />
+            <Input label="Diastolic" type="number" value={String(form.diastolic)} onChange={e => set('diastolic', e.target.value)} />
+            <Input label="Pulse" type="number" value={String(form.pulse)} onChange={e => set('pulse', e.target.value)} />
+          </div>
+        )}
+        {type === 'vitals_temp' && <Input label="Temperature (°C)" type="number" step="0.1" value={String(form.tempCelsius)} onChange={e => set('tempCelsius', e.target.value)} />}
+        {type === 'vitals_oxygen' && (
+          <div className="space-y-2">
+            <Input label="SpO2 (%)" type="number" value={String(form.spo2Percent)} onChange={e => set('spo2Percent', e.target.value)} />
+            <div className="flex items-center gap-2"><input type="checkbox" checked={form.supplementalO2} onChange={e => set('supplementalO2', e.target.checked)} /><label className="text-sm text-slate-700">On supplemental oxygen</label></div>
+          </div>
+        )}
+        {type === 'vitals_weight' && <Input label="Weight (kg)" type="number" step="0.1" value={String(form.weightKg)} onChange={e => set('weightKg', e.target.value)} />}
+        {type === 'bowel_movement' && (
+          <Select label="Bristol stool type" value={String(form.bristolType)} onChange={e => set('bristolType', e.target.value)}
+            options={[1,2,3,4,5,6,7].map(n=>({value:String(n),label:`Type ${n}`}))} placeholder="Select type" />
+        )}
+
+        <div><label className="label">Notes</label><textarea className="input" rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Add or update notes..." /></div>
+
+        <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button loading={loading} onClick={save}>Save changes</Button>
+        </div>
+      </div>
+    </Modal>
+  )
 }

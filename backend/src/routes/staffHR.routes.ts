@@ -58,11 +58,11 @@ router.post('/leave',
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { leaveType, startDate, endDate, hoursRequested, reason } = req.body;
+      const { leaveType, startDate, endDate, hoursRequested, totalHours, reason, notes, status } = req.body;
       const rows = await query(
         `INSERT INTO staff_leave (staff_id, home_id, leave_type, start_date, end_date, hours_requested, reason)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [staffId, homeId, leaveType, startDate, endDate, hoursRequested, reason || null]
+        [req.body.staffId || staffId, homeId, leaveType, nd(startDate), nd(endDate), hoursRequested || totalHours || null, reason || notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

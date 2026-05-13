@@ -19,7 +19,7 @@ const FREQUENCIES = [{ value: 'once_daily', label: 'Once daily' }, { value: 'twi
 const ROUTES = [{ value: 'oral', label: 'Oral' }, { value: 'topical', label: 'Topical' }, { value: 'inhaled', label: 'Inhaled' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'eye_drops', label: 'Eye drops' }, { value: 'other', label: 'Other' }]
 
 export default function MAR() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [homes, setHomes] = useState<any[]>([])
