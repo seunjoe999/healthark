@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { authApi } from '../api'
 import { AuthUser } from '../types'
 
@@ -83,7 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { accessToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
     saveSession(accessToken, authUser)
-    setUser(authUser)
+    // flushSync forces React to commit the state update synchronously so
+    // the caller can navigate immediately after and ProtectedRoute will
+    // already see user != null on its first render.
+    flushSync(() => setUser(authUser))
   }
 
   const logout = () => {
