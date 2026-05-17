@@ -14,9 +14,9 @@ function nd(v: any): string | null { return v && String(v).trim() ? String(v).tr
 
 
 const signAccess = (payload: object) =>
-  jwt.sign(payload, process.env.JWT_SECRET!);
+  jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: (process.env.JWT_EXPIRES_IN || '8h') as any });
 const signRefresh = (payload: object) =>
-  jwt.sign(payload, process.env.JWT_REFRESH_SECRET!);
+  jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '30d') as any });
 
 // POST /api/auth/login
 router.post('/login',

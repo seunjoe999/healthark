@@ -89,6 +89,15 @@ export const dailyRecordsApi = {
   delete: (id: string) => api.delete(`/daily-records/${id}`),
 }
 
+export const assessmentsApi = {
+  list: (params?: Record<string, string>) => api.get('/assessments', { params }),
+  get: (id: string) => api.get(`/assessments/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/assessments', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/assessments/${id}`, data),
+  templates: () => api.get('/assessments/templates'),
+  template: (key: string) => api.get(`/assessments/templates/${key}`),
+}
+
 // Helper — converts relative upload paths to full backend URL
 export function photoUrl(url?: string | null): string | null {
   if (!url) return null

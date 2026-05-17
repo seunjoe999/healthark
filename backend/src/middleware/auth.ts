@@ -42,7 +42,6 @@ export async function authenticate(
       return;
     }
 
-    console.log('AUTH PAYLOAD:', JSON.stringify(payload));
     req.staff = payload;
     next();
   } catch (err) {

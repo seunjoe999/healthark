@@ -1207,7 +1207,7 @@ CREATE TABLE su_reviews (
 -- ================================================================
 
 CREATE TABLE audit_log (
-  id           BIGSERIAL PRIMARY KEY,
+  id           BIGSERIAL,
   timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   staff_id     UUID REFERENCES staff(id),
   home_id      UUID REFERENCES homes(id),
@@ -1218,7 +1218,8 @@ CREATE TABLE audit_log (
   new_values   JSONB,
   ip_address   INET,
   user_agent   TEXT,
-  session_id   VARCHAR(255)
+  session_id   VARCHAR(255),
+  PRIMARY KEY (id, timestamp)
 ) PARTITION BY RANGE (timestamp);
 
 -- Create initial partitions (one per month - add more as needed)
