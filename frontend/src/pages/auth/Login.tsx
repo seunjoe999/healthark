@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Eye, EyeOff, AlertCircle, ArrowRight, Shield, Activity, Users } from 'lucide-react'
 
@@ -6,6 +7,7 @@ type Mode = 'login' | 'register' | 'register_success'
 
 export default function Login() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('login')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -26,7 +28,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      window.location.href = '/dashboard'
+      navigate('/dashboard', { replace: true })
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Invalid email or password')
       setLoading(false)
