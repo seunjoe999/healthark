@@ -62,7 +62,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // GET /api/homes/:id
-router.get('/:id', param('id').isUUID(), validateRequest,
+router.get('/:id', param('id').notEmpty(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organisationId = getOrgId(req);
@@ -105,7 +105,7 @@ router.post('/',
 
 // PUT /api/homes/:id
 router.put('/:id', requireRole('group_admin', 'home_manager'),
-  [param('id').isUUID()], validateRequest,
+  [param('id').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organisationId = getOrgId(req);
@@ -132,7 +132,7 @@ router.put('/:id', requireRole('group_admin', 'home_manager'),
 );
 
 // GET /api/homes/:id/qr
-router.get('/:id/qr', param('id').isUUID(), validateRequest,
+router.get('/:id/qr', param('id').notEmpty(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organisationId = getOrgId(req);
@@ -147,7 +147,7 @@ router.get('/:id/qr', param('id').isUUID(), validateRequest,
 );
 
 // GET /api/homes/:id/dashboard
-router.get('/:id/dashboard', param('id').isUUID(), validateRequest,
+router.get('/:id/dashboard', param('id').notEmpty(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.params.id;
