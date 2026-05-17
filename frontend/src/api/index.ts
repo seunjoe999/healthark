@@ -24,8 +24,9 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       ;(window as any).__HA_TOKEN__ = null
-      try { sessionStorage.removeItem('ha_token') } catch {}
-      try { localStorage.removeItem('ha_token') } catch {}
+      ;(window as any).__HA_USER__ = null
+      try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
+      try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
       window.location.href = '/login'
     }
     return Promise.reject(err)
