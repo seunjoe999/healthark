@@ -50,7 +50,14 @@ import NotificationsManager from './pages/notifications/NotificationsManager'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
+  // Check storage directly as a fallback in case React state hasn't caught up
+  const hasToken = !!(
+    (window as any).__HA_TOKEN__ ||
+    sessionStorage.getItem('ha_token') ||
+    localStorage.getItem('ha_token')
+  )
+  if (!user && !hasToken) return <Navigate to="/login" replace />
+  if (!user && hasToken) return null  // token exists, context still initialising
   return <AppLayout>{children}</AppLayout>
 }
 
