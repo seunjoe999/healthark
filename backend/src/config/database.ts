@@ -1,13 +1,20 @@
 import { Pool, PoolConfig } from 'pg';
 
+const dbUser = process.env.DB_USER || 'postgres';
+const dbPassword = process.env.DB_PASSWORD;
+
+if (!dbPassword) {
+  console.error('\n⛔  DB_PASSWORD is not set. Create a .env file in the backend folder.');
+  console.error('    Copy backend/.env.example to backend/.env and fill in your PostgreSQL credentials.\n');
+}
+
 const config: PoolConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'healthark',
-  user: process.env.DB_USER || 'compcare_user',
-  password: process.env.DB_PASSWORD,
+  user: dbUser,
+  password: dbPassword,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
-  // Connection pool settings
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
