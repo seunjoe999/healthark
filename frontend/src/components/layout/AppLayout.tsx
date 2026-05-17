@@ -1,70 +1,86 @@
 import React, { useState, ReactNode } from 'react'
 import NotificationsBell from './NotificationsBell'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
-  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search
+  Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search, FileCheck, QrCode,
+  AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2
 } from 'lucide-react'
 
 const navSections = [
   {
     label: 'Care',
     items: [
-      { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard, roles: [] },
-      { label: 'Search',        to: '/search',        icon: Search,          roles: [] },
-      { label: 'Residents',     to: '/service-users', icon: Users,           roles: [] },
-      { label: 'Daily Records', to: '/daily-records', icon: ClipboardList,   roles: [] },
-      { label: 'MAR Chart',     to: '/mar',           icon: Pill,            roles: [] },
-      { label: 'Care Plans',    to: '/care-plans',    icon: FileText,        roles: [] },
-      { label: 'Safeguarding',  to: '/safeguarding',  icon: ShieldAlert,     roles: [] },
+      { label: 'Dashboard',        to: '/dashboard',          icon: LayoutDashboard, roles: [] },
+      { label: 'Search',           to: '/search',             icon: Search,          roles: [] },
+      { label: 'Residents',        to: '/service-users',      icon: Users,           roles: [] },
+      { label: 'Daily Records',    to: '/daily-records',      icon: ClipboardList,   roles: [] },
+      { label: 'MAR Chart',        to: '/mar',                icon: Pill,            roles: [] },
+      { label: 'Medication Stock', to: '/medication-stock',   icon: Boxes,           roles: ['home_manager','group_admin','senior_carer'] },
+      { label: 'Care Plans',       to: '/care-plans',         icon: FileText,        roles: [] },
+      { label: 'Safeguarding',     to: '/safeguarding',       icon: ShieldAlert,     roles: [] },
+      { label: 'Incidents',        to: '/incidents',          icon: AlertTriangle,   roles: [] },
     ]
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Tasks',         to: '/tasks',         icon: CheckSquare,     roles: [] },
-      { label: 'Rota',          to: '/rota',          icon: CalendarRange,   roles: ['home_manager','group_admin','senior_carer'] },
-      { label: 'Holidays',      to: '/holidays',      icon: Palmtree,        roles: ['home_manager','group_admin'] },
-      { label: 'Training',      to: '/training',      icon: GraduationCap,   roles: [] },
-      { label: 'Staff',         to: '/staff',         icon: UserSquare,      roles: ['home_manager','group_admin'] },
-      { label: 'Calendar',      to: '/calendar',      icon: Calendar,        roles: ['home_manager','group_admin'] },
-      { label: 'Messages',      to: '/messages',      icon: MessageSquare,   roles: [] },
-      { label: 'Alerts',        to: '/alerts',        icon: Bell,            roles: [] },
+      { label: 'Tasks',            to: '/tasks',              icon: CheckSquare,     roles: [] },
+      { label: 'Rota',             to: '/rota',               icon: CalendarRange,   roles: ['home_manager','group_admin','senior_carer'] },
+      { label: 'Holidays',         to: '/holidays',           icon: Palmtree,        roles: ['home_manager','group_admin'] },
+      { label: 'Training',         to: '/training',           icon: GraduationCap,   roles: [] },
+      { label: 'Staff',            to: '/staff',              icon: UserSquare,      roles: ['home_manager','group_admin'] },
+      { label: 'Clock-In',         to: '/clockin-admin',      icon: QrCode,          roles: ['home_manager','group_admin'] },
+      { label: 'Clock Analytics',  to: '/clockin-analytics',  icon: BarChart2,       roles: ['home_manager','group_admin'] },
+      { label: 'Calendar',         to: '/calendar',           icon: Calendar,        roles: ['home_manager','group_admin'] },
+      { label: 'Messages',         to: '/messages',           icon: MessageSquare,   roles: [] },
+      { label: 'Alerts',           to: '/alerts',             icon: Bell,            roles: [] },
+      { label: 'Notifications',    to: '/notifications',      icon: Send,            roles: ['home_manager','group_admin'] },
     ]
   },
   {
     label: 'Quality & Compliance',
     items: [
-      { label: 'Reviews',       to: '/reviews',       icon: ClipboardCheck,  roles: [] },
-      { label: 'Quality & QA',  to: '/quality',       icon: Star,            roles: ['home_manager','group_admin'] },
-      { label: 'Handover',      to: '/reports/handover', icon: ArrowLeftRight, roles: [] },
-      { label: 'Audits',        to: '/audits',        icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
-      { label: 'Reports',       to: '/reports',       icon: BarChart3,       roles: ['home_manager','group_admin'] },
-      { label: 'Policies',      to: '/policies',      icon: BookOpen,        roles: [] },
-      { label: 'PPE Stock',     to: '/ppe',           icon: Package,         roles: ['home_manager','group_admin'] },
-      { label: 'Settings',      to: '/settings',      icon: Settings,        roles: ['group_admin'] },
+      { label: 'Compliance',       to: '/compliance',         icon: ShieldCheck,     roles: ['home_manager','group_admin','auditor'] },
+      { label: 'Reviews',          to: '/reviews',            icon: ClipboardCheck,  roles: [] },
+      { label: 'Assessments',      to: '/assessments',        icon: FileCheck,       roles: [] },
+      { label: 'Quality & QA',     to: '/quality',            icon: Star,            roles: ['home_manager','group_admin'] },
+      { label: 'Handover',         to: '/reports/handover',   icon: ArrowLeftRight,  roles: [] },
+      { label: 'Audits',           to: '/audits',             icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
+      { label: 'Reports',          to: '/reports',            icon: BarChart3,       roles: ['home_manager','group_admin'] },
+      { label: 'Policies',         to: '/policies',           icon: BookOpen,        roles: [] },
+      { label: 'PPE Stock',        to: '/ppe',                icon: Package,         roles: ['home_manager','group_admin'] },
+      { label: 'Family Portal',    to: '/family-portal',      icon: Users2,          roles: ['home_manager','group_admin'] },
+      { label: 'Settings',         to: '/settings',           icon: Settings,        roles: ['group_admin'] },
     ]
   }
 ]
 
-export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout, isRole } = useAuth()
-  const [mobileOpen, setMobileOpen] = useState(false)
+// Flat list of all nav items used for mobile header title lookup
+const allNavItems = navSections.flatMap(s => s.items)
 
-  const SidebarContent = () => (
+interface SidebarProps {
+  user: { firstName?: string; lastName?: string; role?: string } | null
+  logout: () => void
+  isRole: (...roles: string[]) => boolean
+  onNavClick: () => void
+}
+
+function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
+  return (
     <div className="flex flex-col h-full" style={{ background: 'linear-gradient(160deg, #151f35 0%, #1e2d4a 40%, #27334d 100%)' }}>
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
-          <img src="/logo.jpeg" alt="CompCare Hub" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
-          <div>
-            <h1 className="text-white font-display text-lg leading-none">CompCare Hub</h1>
-            <p className="text-slate-500 text-xs mt-0.5">Your Care Our Priority</p>
-          </div>
+            <img src="/logo.jpeg" alt="CompCare Hub" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
+            <div>
+              <h1 className="text-white font-display text-lg leading-none">CompCare Hub</h1>
+              <p className="text-slate-500 text-xs mt-0.5">Your Care Our Priority</p>
+            </div>
           </div>
           <NotificationsBell />
         </div>
@@ -83,7 +99,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 {visible.map(item => {
                   const Icon = item.icon
                   return (
-                    <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}
+                    <NavLink key={item.to} to={item.to} onClick={onNavClick}
                       className={({ isActive }) => clsx(
                         'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group',
                         isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
@@ -106,33 +122,45 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="border-t border-white/8 p-4">
-        <div className="flex items-center gap-3 mb-3 px-1">
+        <NavLink to={user?.id ? `/staff/${user.id}/edit` : '#'}
+          className="flex items-center gap-3 mb-3 px-1 py-1.5 rounded-xl hover:bg-white/8 transition-all duration-150 group cursor-pointer">
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate leading-tight">{user?.firstName} {user?.lastName}</p>
-            <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
+            <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5 group-hover:text-slate-400">{user?.role?.replace(/_/g, ' ')} · <span className="text-gold-400/70 group-hover:text-gold-400">edit profile</span></p>
           </div>
-        </div>
+        </NavLink>
         <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/8 rounded-xl text-sm transition-all duration-150 font-medium">
           <LogOut className="w-4 h-4" /> Sign out
         </button>
       </div>
     </div>
   )
+}
+
+export default function AppLayout({ children }: { children: ReactNode }) {
+  const { user, logout, isRole } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
+
+  const pageTitle = allNavItems.find(item => location.pathname.startsWith(item.to) && item.to !== '/dashboard')?.label
+    ?? (location.pathname === '/dashboard' ? 'Dashboard' : 'CompCare Hub')
+
+  const sidebarProps: SidebarProps = { user, logout, isRole, onNavClick: () => setMobileOpen(false) }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <aside className="hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(21,31,53,0.12)' }}>
-        <SidebarContent />
+        <Sidebar {...sidebarProps} />
       </aside>
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <div className="relative w-64 flex flex-col z-10 shadow-2xl">
             <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
-            <SidebarContent />
+            <Sidebar {...sidebarProps} />
           </div>
         </div>
       )}
@@ -140,7 +168,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <header className="lg:hidden bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
           <button onClick={() => setMobileOpen(true)} className="text-slate-500 p-1 hover:text-slate-900"><Menu className="w-5 h-5" /></button>
           <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
-          <span className="font-display text-slate-900 text-base">CompCare Hub</span>
+          <span className="font-display text-slate-900 text-base flex-1 truncate">{pageTitle}</span>
+          <NotificationsBell />
         </header>
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>

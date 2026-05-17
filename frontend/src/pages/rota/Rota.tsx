@@ -4,7 +4,7 @@ import { homesApi, staffApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Users, Plus, ChevronLeft, ChevronRight, Trash2, Clock } from 'lucide-react'
+import { Users, Plus, ChevronLeft, ChevronRight, Trash2, Clock, Wand2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const SHIFT_TYPES = [
@@ -36,6 +36,8 @@ export default function Rota() {
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [autoOpen, setAutoOpen] = useState(false)
+  const [autoLoading, setAutoLoading] = useState(false)
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
   useEffect(() => {
@@ -78,6 +80,26 @@ export default function Rota() {
     } catch { toast.error('Failed') }
   }
 
+  const runAutoSchedule = async () => {
+    setAutoLoading(true)
+    try {
+      const res = await api.post('/shifts/auto-schedule', {
+        homeId: selectedHome,
+        weekStart: format(weekStart, 'yyyy-MM-dd'),
+      })
+      const { created, errors } = res.data.data || {}
+      setAutoOpen(false)
+      await load()
+      if (created === 0) toast('No new shifts needed — week already covered', { icon: 'ℹ️' })
+      else toast.success(`${created} shift${created !== 1 ? 's' : ''} scheduled`)
+      if (errors?.length) console.warn('Auto-schedule errors:', errors)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Auto-schedule failed')
+    } finally {
+      setAutoLoading(false)
+    }
+  }
+
   const getDayShifts = (day: Date) => shifts.filter(s => isSameDay(parseISO(s.shift_date), day))
 
   const todayShifts = getDayShifts(new Date())
@@ -96,6 +118,11 @@ export default function Rota() {
             <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
+          )}
+          {isRole('home_manager', 'group_admin') && (
+            <Button variant="outline" icon={<Wand2 className="w-4 h-4" />} onClick={() => setAutoOpen(true)}>
+              Auto-schedule week
+            </Button>
           )}
           {isRole('home_manager', 'group_admin', 'senior_carer') && <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setSelectedDay(new Date()); setAddOpen(true) }}>Add shift</Button>}
         </div>
@@ -178,6 +205,26 @@ export default function Rota() {
         defaultDate={selectedDay ? format(selectedDay, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
         staffList={staffList} suList={suList} homeId={selectedHome}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Shift added') }} />
+
+      {/* Auto-schedule confirmation modal */}
+      <Modal open={autoOpen} onClose={() => setAutoOpen(false)} title="Auto-schedule week">
+        <div className="space-y-4">
+          <p className="text-slate-600 text-sm">
+            This will fill empty shifts for the week of{' '}
+            <span className="font-semibold text-slate-800">{format(weekStart, 'd MMM')} – {format(addDays(weekStart, 6), 'd MMM yyyy')}</span>{' '}
+            by rotating available care staff across early, late and night shifts.
+          </p>
+          <p className="text-slate-500 text-sm bg-slate-50 rounded-xl p-3 border border-slate-100">
+            Existing shifts will not be changed. Staff will not be scheduled for more than 5 days in the week.
+          </p>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button type="button" variant="outline" onClick={() => setAutoOpen(false)}>Cancel</Button>
+            <Button icon={<Wand2 className="w-4 h-4" />} loading={autoLoading} onClick={runAutoSchedule}>
+              Schedule now
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

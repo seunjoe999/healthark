@@ -99,6 +99,7 @@ import uploadRoutes from './routes/upload.routes';
 import reviewsRoutes from './routes/reviews.routes';
 import tasksRoutes from './routes/tasks.routes';
 import qualityRoutes from './routes/quality.routes';
+import assessmentsRoutes from './routes/assessments.routes';
 app.use('/api/mar', marRoutes);
 app.use('/api/clockin', clockinRoutes);
 app.use('/api/shifts', shiftsRoutes);
@@ -108,6 +109,16 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/quality', qualityRoutes);
+app.use('/api/assessments', assessmentsRoutes);
+
+import incidentsRoutes from './routes/incidents.routes';
+import complianceRoutes from './routes/compliance.routes';
+import medicationStockRoutes from './routes/medicationStock.routes';
+import signaturesRoutes from './routes/signatures.routes';
+app.use('/api/incidents', incidentsRoutes);
+app.use('/api/compliance', complianceRoutes);
+app.use('/api/medication-stock', medicationStockRoutes);
+app.use('/api/signatures', signaturesRoutes);
 
 // ── Error handling ────────────────────────────────────────────────
 app.use(notFound);

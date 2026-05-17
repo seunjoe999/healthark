@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { NotificationsProvider } from './context/NotificationsContext'
 import AppLayout from './components/layout/AppLayout'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
@@ -35,7 +36,17 @@ import GlobalSearch from './pages/search/Search'
 import AboutMe from './pages/service-users/AboutMe'
 import Reviews from './pages/reviews/Reviews'
 import ClockIn from './pages/clockin/ClockIn'
+import ClockInAdmin from './pages/clockin/ClockInAdmin'
 import Settings from './pages/settings/Settings'
+import Assessments from './pages/assessments/Assessments'
+import AssessmentForm from './pages/assessments/AssessmentForm'
+import AssessmentView from './pages/assessments/AssessmentView'
+import Incidents from './pages/incidents/Incidents'
+import ClockInAnalytics from './pages/clockin/ClockInAnalytics'
+import Compliance from './pages/compliance/Compliance'
+import MedicationStock from './pages/medication-stock/MedicationStock'
+import FamilyPortal from './pages/family/FamilyPortal'
+import NotificationsManager from './pages/notifications/NotificationsManager'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -66,7 +77,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/clockin/home/:token" element={<ClockIn />} />
       <Route path="/clockin/:token" element={<ClockIn />} />
+      <Route path="/clockin-admin" element={<ProtectedRoute><ClockInAdmin /></ProtectedRoute>} />
       <Route path="/clockin/:token/print" element={<PrintQR />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/service-users" element={<ProtectedRoute><ServiceUserList /></ProtectedRoute>} />
@@ -98,6 +111,15 @@ function AppRoutes() {
       <Route path="/service-users/:id/about-me" element={<ProtectedRoute><AboutMe /></ProtectedRoute>} />
       <Route path="/reports/handover" element={<ProtectedRoute><HandoverReport /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />
+      <Route path="/assessments/new" element={<ProtectedRoute><AssessmentForm /></ProtectedRoute>} />
+      <Route path="/assessments/:id" element={<ProtectedRoute><AssessmentView /></ProtectedRoute>} />
+      <Route path="/incidents" element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
+      <Route path="/clockin-analytics" element={<ProtectedRoute><ClockInAnalytics /></ProtectedRoute>} />
+      <Route path="/compliance" element={<ProtectedRoute><Compliance /></ProtectedRoute>} />
+      <Route path="/medication-stock" element={<ProtectedRoute><MedicationStock /></ProtectedRoute>} />
+      <Route path="/family-portal" element={<ProtectedRoute><FamilyPortal /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
@@ -105,10 +127,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
-        <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
-        <AppRoutes />
+        <NotificationsProvider>
+          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
+          <AppRoutes />
+        </NotificationsProvider>
       </AuthProvider>
     </BrowserRouter>
   )

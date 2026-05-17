@@ -50,6 +50,20 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction) 
   } catch (err) { next(err); }
 });
 
+// POST /api/notifications/send — send to a specific staff member
+router.post('/send', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const { recipientId, title, body: msgBody, type, link } = req.body;
+    if (!recipientId || !title) throw new Error('recipientId and title are required');
+    await query(
+      'INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,$5,$6)',
+      [recipientId, homeId, title, msgBody || null, type || 'info', link || null]
+    );
+    res.status(201).json({ success: true } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // POST /api/notifications/broadcast — send to all home staff
 router.post('/broadcast', async (req: Request, res: Response, next: NextFunction) => {
   try {

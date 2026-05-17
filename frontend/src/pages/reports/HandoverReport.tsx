@@ -4,7 +4,70 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Select } from '../../components/ui'
-import { FileText, Printer } from 'lucide-react'
+import { FileText, Printer, X } from 'lucide-react'
+import SignaturePad from '../../components/SignaturePad'
+
+function SignOffSection({ homeId, shiftDate, shiftType }: { homeId: string; shiftDate: string; shiftType: string }) {
+  const { user } = useAuth()
+  const [sigs, setSigs] = useState<Record<string, any>>({})
+  const [saving, setSaving] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!homeId || !shiftDate || !shiftType) return
+    api.get('/signatures/handover', { params: { homeId, shiftDate, shiftType } })
+      .then(res => {
+        const map: Record<string, any> = {}
+        for (const s of res.data.data || []) map[s.role] = s
+        setSigs(map)
+      }).catch(() => {})
+  }, [homeId, shiftDate, shiftType])
+
+  const saveSignature = async (role: 'outgoing' | 'incoming', dataUrl: string) => {
+    setSaving(role)
+    try {
+      const res = await api.post('/signatures/handover', {
+        homeId, shiftDate, shiftType, role, signatureData: dataUrl,
+        staffId: user?.id,
+      })
+      setSigs(prev => ({ ...prev, [role]: res.data.data }))
+    } catch (e) { console.error(e) }
+    finally { setSaving(null) }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border-2 border-slate-200 p-5">
+      <h3 className="font-bold text-slate-800 mb-4">Handover Sign-off</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <SignaturePad
+            label="Handing over (outgoing)"
+            savedSignature={sigs['outgoing']?.signature_data}
+            onSave={(dataUrl) => saveSignature('outgoing', dataUrl)}
+            disabled={saving === 'outgoing'}
+          />
+          {sigs['outgoing'] && (
+            <p className="text-xs text-slate-400 mt-1">
+              Signed by {sigs['outgoing'].staff_name} at {format(new Date(sigs['outgoing'].signed_at), 'HH:mm, d MMM')}
+            </p>
+          )}
+        </div>
+        <div>
+          <SignaturePad
+            label="Taking over (incoming)"
+            savedSignature={sigs['incoming']?.signature_data}
+            onSave={(dataUrl) => saveSignature('incoming', dataUrl)}
+            disabled={saving === 'incoming'}
+          />
+          {sigs['incoming'] && (
+            <p className="text-xs text-slate-400 mt-1">
+              Signed by {sigs['incoming'].staff_name} at {format(new Date(sigs['incoming'].signed_at), 'HH:mm, d MMM')}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function HandoverReport() {
   const { user } = useAuth()
@@ -14,7 +77,9 @@ export default function HandoverReport() {
   const [shift, setShift] = useState<'early' | 'late' | 'night'>('early')
   const [loading, setLoading] = useState(false)
   const [report, setReport] = useState<any>(null)
+  const [notes, setNotes] = useState('')
   const today = format(new Date(), 'yyyy-MM-dd')
+  const notesKey = `handover_notes_${today}_${shift}`
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -28,6 +93,14 @@ export default function HandoverReport() {
     if (!selectedHome) return
     suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
   }, [selectedHome])
+
+  useEffect(() => {
+    if (sus.length > 0 && selectedHome) generate()
+  }, [sus, shift])
+
+  useEffect(() => {
+    setNotes(localStorage.getItem(notesKey) || '')
+  }, [notesKey])
 
   const generate = async () => {
     setLoading(true)
@@ -86,6 +159,13 @@ export default function HandoverReport() {
             options={[{ value: 'early', label: 'Early (07:00–14:00)' }, { value: 'late', label: 'Late (14:00–22:00)' }, { value: 'night', label: 'Night (22:00–07:00)' }]} />
           <Button icon={<FileText className="w-4 h-4" />} loading={loading} onClick={generate}>Generate handover</Button>
           {report && <Button variant="outline" icon={<Printer className="w-4 h-4" />} onClick={() => window.print()}>Print</Button>}
+          {report && (
+            <Button variant="outline" icon={<X className="w-4 h-4" />} onClick={() => {
+              setReport(null)
+              setNotes('')
+              localStorage.removeItem(notesKey)
+            }}>Clear</Button>
+          )}
         </div>
       </div>
 
@@ -183,24 +263,20 @@ export default function HandoverReport() {
             </div>
           </div>
 
-          {/* Sign off section */}
-          <div className="bg-white rounded-2xl border-2 border-slate-200 p-5">
-            <h3 className="font-bold text-slate-800 mb-4">Handover Sign-off</h3>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <p className="text-sm font-semibold text-slate-600 mb-3">Handing over (outgoing)</p>
-                <div className="border-b-2 border-slate-400 h-12 mb-2" />
-                <p className="text-xs text-slate-400">Signature: ____________________</p>
-                <p className="text-xs text-slate-400 mt-1">Name: ________________________ Time: _______</p>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-600 mb-3">Taking over (incoming)</p>
-                <div className="border-b-2 border-slate-400 h-12 mb-2" />
-                <p className="text-xs text-slate-400">Signature: ____________________</p>
-                <p className="text-xs text-slate-400 mt-1">Name: ________________________ Time: _______</p>
-              </div>
-            </div>
+          {/* Handover notes */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 no-print">
+            <h3 className="font-bold text-slate-800 mb-3">Handover Notes</h3>
+            <textarea
+              className="input w-full"
+              rows={5}
+              placeholder="Write handover notes for the incoming shift — key events, concerns, actions needed..."
+              value={notes}
+              onChange={e => { setNotes(e.target.value); localStorage.setItem(notesKey, e.target.value) }}
+            />
           </div>
+
+          {/* Digital Sign-off */}
+          <SignOffSection homeId={selectedHome} shiftDate={today} shiftType={shift} />
         </div>
       )}
       <style>{`@media print { .no-print { display: none } @page { margin: 1.5cm } }`}</style>
