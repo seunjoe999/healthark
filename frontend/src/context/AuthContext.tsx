@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authApi } from '../api'
 import { AuthUser } from '../types'
 
@@ -70,6 +70,13 @@ function clearSession() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => loadSession().user)
+
+  // Listen for 401 events dispatched by the axios interceptor
+  useEffect(() => {
+    const handle = () => { clearSession(); setUser(null) }
+    window.addEventListener('ha:unauthorized', handle)
+    return () => window.removeEventListener('ha:unauthorized', handle)
+  }, [])
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password)

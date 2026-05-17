@@ -27,7 +27,9 @@ api.interceptors.response.use(
       ;(window as any).__HA_USER__ = null
       try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
       try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
-      window.location.href = '/login'
+      // Dispatch event so AuthContext can handle logout via React Router
+      // instead of a hard reload which races with React state
+      window.dispatchEvent(new CustomEvent('ha:unauthorized'))
     }
     return Promise.reject(err)
   }

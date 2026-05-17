@@ -15,8 +15,6 @@ import { format, isToday } from 'date-fns'
 export default function Dashboard() {
   const { user, isRole } = useAuth()
   const isGroupAdmin = isRole('group_admin')
-
-  if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData] = useState<any>(null)
@@ -24,6 +22,8 @@ export default function Dashboard() {
   const [pendingHolidays, setPendingHolidays] = useState<any[]>([])
   const [overdueCarePlans, setOverdueCarePlans] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
 
   useEffect(() => {
     homesApi.list().then(res => {
