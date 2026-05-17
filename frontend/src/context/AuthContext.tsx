@@ -24,11 +24,31 @@ function parseUser(staff: Record<string, unknown>): AuthUser {
   }
 }
 
+function setCookie(name: string, value: string, days: number) {
+  try {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString()
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Strict`
+  } catch {}
+}
+
+function getCookie(name: string): string | null {
+  try {
+    const match = document.cookie.split(';').find(c => c.trim().startsWith(name + '='))
+    return match ? decodeURIComponent(match.trim().slice(name.length + 1)) : null
+  } catch { return null }
+}
+
+function deleteCookie(name: string) {
+  try { document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict` } catch {}
+}
+
 function saveSession(token: string, user: AuthUser) {
   ;(window as any).__HA_TOKEN__ = token
   ;(window as any).__HA_USER__ = user
   try { sessionStorage.setItem('ha_token', token); sessionStorage.setItem('ha_user', JSON.stringify(user)) } catch {}
   try { localStorage.setItem('ha_token', token); localStorage.setItem('ha_user', JSON.stringify(user)) } catch {}
+  setCookie('ha_token', token, 1)
+  setCookie('ha_user', JSON.stringify(user), 1)
 }
 
 function loadSession(): { token: string | null; user: AuthUser | null } {
@@ -58,6 +78,17 @@ function loadSession(): { token: string | null; user: AuthUser | null } {
       return { token: t, user }
     }
   } catch {}
+  // 4. Cookies (fallback when storage is blocked)
+  const t = getCookie('ha_token')
+  const u = getCookie('ha_user')
+  if (t && u) {
+    try {
+      const user = JSON.parse(u)
+      ;(window as any).__HA_TOKEN__ = t
+      ;(window as any).__HA_USER__ = user
+      return { token: t, user }
+    } catch {}
+  }
   return { token: null, user: null }
 }
 
@@ -66,6 +97,8 @@ function clearSession() {
   ;(window as any).__HA_USER__ = null
   try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
   try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
+  deleteCookie('ha_token')
+  deleteCookie('ha_user')
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

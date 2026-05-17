@@ -48,14 +48,20 @@ import MedicationStock from './pages/medication-stock/MedicationStock'
 import FamilyPortal from './pages/family/FamilyPortal'
 import NotificationsManager from './pages/notifications/NotificationsManager'
 
+function getStoredToken(): string | null {
+  if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
+  try { const t = sessionStorage.getItem('ha_token'); if (t) return t } catch {}
+  try { const t = localStorage.getItem('ha_token'); if (t) return t } catch {}
+  try {
+    const match = document.cookie.split(';').find(c => c.trim().startsWith('ha_token='))
+    if (match) return decodeURIComponent(match.trim().slice('ha_token='.length))
+  } catch {}
+  return null
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  // Check storage directly as a fallback in case React state hasn't caught up
-  const hasToken = !!(
-    (window as any).__HA_TOKEN__ ||
-    sessionStorage.getItem('ha_token') ||
-    localStorage.getItem('ha_token')
-  )
+  const hasToken = !!getStoredToken()
   if (!user && !hasToken) return <Navigate to="/login" replace />
   if (!user && hasToken) return null  // token exists, context still initialising
   return <AppLayout>{children}</AppLayout>
