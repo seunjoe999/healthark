@@ -73,9 +73,9 @@ async function main() {
     }
 
     // Check if admin already exists
-    const existing = await client.query(`SELECT id FROM staff WHERE email='admin@healthark.com'`);
+    const existing = await client.query(`SELECT id FROM staff WHERE email='admin@compcarehub.co.uk'`);
     if (existing.rows.length) {
-      console.log('✅  Admin account already exists (admin@healthark.com)');
+      console.log('✅  Admin account already exists (admin@compcarehub.co.uk)');
     } else {
       // Get or create org
       let orgId;
@@ -107,18 +107,18 @@ async function main() {
       }
 
       // Create admin
-      const hash = await bcrypt.hash('Admin1234!', 12);
+      const hash = await bcrypt.hash('Admin1234', 12);
       await client.query(
         `INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, last_name, role, status, is_active)
-         VALUES ($1,$2,'admin@healthark.com',$3,'Admin','User','group_admin','active',true)`,
+         VALUES ($1,$2,'admin@compcarehub.co.uk',$3,'Admin','User','group_admin','active',true)`,
         [orgId, homeId, hash]
       );
       console.log('✅  Admin account created');
     }
 
     console.log('\n🎉  Setup complete!');
-    console.log('   Email:    admin@healthark.com');
-    console.log('   Password: Admin1234!\n');
+    console.log('   Email:    admin@compcarehub.co.uk');
+    console.log('   Password: Admin1234\n');
   } catch (err) {
     console.error('❌  Setup failed:', err.message);
     process.exit(1);
