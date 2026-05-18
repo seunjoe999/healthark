@@ -130,6 +130,8 @@ CREATE TABLE IF NOT EXISTS medication_stock (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS home_id UUID REFERENCES homes(id) ON DELETE CASCADE;
+ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS su_id  UUID REFERENCES service_users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_med_stock_home ON medication_stock(home_id);
 CREATE INDEX IF NOT EXISTS idx_med_stock_su   ON medication_stock(su_id);
 
