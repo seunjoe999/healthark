@@ -1,15 +1,20 @@
 import axios from 'axios'
 
-function getToken(): string | null {
-  if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
+export function getToken(): string | null {
+  try {
+    const t = (window as any).__HA_TOKEN__
+    if (t) return t
+  } catch {}
   try { const t = sessionStorage.getItem('ha_token'); if (t) return t } catch {}
   try { const t = localStorage.getItem('ha_token'); if (t) return t } catch {}
-  try {
-    const match = document.cookie.split(';').find(c => c.trim().startsWith('ha_token='))
-    if (match) return decodeURIComponent(match.trim().slice('ha_token='.length))
-  } catch {}
   return null
 }
+
+// Set token immediately on module load
+try {
+  const t = sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
+  if (t) (window as any).__HA_TOKEN__ = t
+} catch {}
 
 const api = axios.create({
   baseURL: '/api',
@@ -23,27 +28,10 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// NEVER redirect on 401 - let components handle their own auth errors
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      const url: string = err.config?.url || ''
-      // Don't clear session for login/register endpoints — those 401s are expected
-      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
-      if (!isAuthEndpoint) {
-        ;(window as any).__HA_TOKEN__ = null
-        ;(window as any).__HA_USER__ = null
-        try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
-        try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
-        try {
-          document.cookie = 'ha_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict'
-          document.cookie = 'ha_user=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict'
-        } catch {}
-        window.dispatchEvent(new CustomEvent('ha:unauthorized'))
-      }
-    }
-    return Promise.reject(err)
-  }
+  (err) => Promise.reject(err)
 )
 
 export default api
@@ -103,18 +91,16 @@ export const dailyRecordsApi = {
   delete: (id: string) => api.delete(`/daily-records/${id}`),
 }
 
-export const assessmentsApi = {
-  list: (params?: Record<string, string>) => api.get('/assessments', { params }),
-  get: (id: string) => api.get(`/assessments/${id}`),
-  create: (data: Record<string, unknown>) => api.post('/assessments', data),
-  update: (id: string, data: Record<string, unknown>) => api.put(`/assessments/${id}`, data),
-  templates: () => api.get('/assessments/templates'),
-  template: (key: string) => api.get(`/assessments/templates/${key}`),
-}
-
-// Helper — converts relative upload paths to full backend URL
 export function photoUrl(url?: string | null): string | null {
   if (!url) return null
   if (url.startsWith('http')) return url
   return `http://localhost:3001${url}`
+}
+
+export const assessmentsApi = {
+  list: (params?: Record<string, unknown>) => api.get('/assessments', { params }),
+  get: (id: string) => api.get(`/assessments/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/assessments', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/assessments/${id}`, data),
+  delete: (id: string) => api.delete(`/assessments/${id}`),
 }

@@ -26,20 +26,16 @@ async function seedDemo() {
       homeId = existingHome.rows[0].id;
       logger.info('Using existing home: ' + homeId);
 
-      // Get or create staff
-      const existingAdmin = await client.query(`SELECT id FROM staff WHERE email='admin@healthark.co.uk' OR email='admin@compcarehub.co.uk' LIMIT 1`);
-      if (existingAdmin.rows.length) {
-        adminId = existingAdmin.rows[0].id;
-      } else {
-        const h = await bcrypt.hash('Admin1234', 12);
-        const r = await client.query(
-          `INSERT INTO staff (organisation_id,home_id,email,password_hash,first_name,last_name,role,is_active,status)
-           VALUES ($1,$2,'admin@healthark.co.uk',$3,'System','Admin','group_admin',true,'active') RETURNING id`,
-          [ORG_ID, homeId, h]
-        );
-        adminId = r.rows[0].id;
-        await client.query(`INSERT INTO staff_onboarding (staff_id) VALUES ($1) ON CONFLICT DO NOTHING`, [adminId]);
-      }
+      const adminHash = await bcrypt.hash('Admin1234', 12);
+      const r = await client.query(
+        `INSERT INTO staff (organisation_id,home_id,email,password_hash,first_name,last_name,role,is_active,status)
+         VALUES ($1,$2,'admin@healthark.co.uk',$3,'System','Admin','group_admin',true,'active')
+         ON CONFLICT (email) DO UPDATE SET password_hash=$3, is_active=true, status='active', home_id=$2
+         RETURNING id`,
+        [ORG_ID, homeId, adminHash]
+      );
+      adminId = r.rows[0].id;
+      await client.query(`INSERT INTO staff_onboarding (staff_id) VALUES ($1) ON CONFLICT DO NOTHING`, [adminId]);
     } else {
       // Create home
       const homeRes = await client.query(
@@ -65,7 +61,7 @@ async function seedDemo() {
     const mgRes = await client.query(
       `INSERT INTO staff (organisation_id,home_id,email,password_hash,first_name,last_name,role,phone,is_active,status,date_of_birth)
        VALUES ($1,$2,'manager@healthark.co.uk',$3,'Sarah','Johnson','home_manager','07700900001',true,'active','1985-03-12')
-       ON CONFLICT (email) DO UPDATE SET home_id=$2 RETURNING id`,
+       ON CONFLICT (email) DO UPDATE SET password_hash=$3, home_id=$2, is_active=true, status='active' RETURNING id`,
       [ORG_ID, homeId, mgHash]
     );
     managerId = mgRes.rows[0].id;
@@ -76,7 +72,7 @@ async function seedDemo() {
     const seniorRes = await client.query(
       `INSERT INTO staff (organisation_id,home_id,email,password_hash,first_name,last_name,role,phone,is_active,status,date_of_birth)
        VALUES ($1,$2,'senior@healthark.co.uk',$3,'Michael','Okafor','senior_carer','07700900002',true,'active','1990-07-22')
-       ON CONFLICT (email) DO UPDATE SET home_id=$2 RETURNING id`,
+       ON CONFLICT (email) DO UPDATE SET password_hash=$3, home_id=$2, is_active=true, status='active' RETURNING id`,
       [ORG_ID, homeId, seniorHash]
     );
     seniorId = seniorRes.rows[0].id;
@@ -87,7 +83,7 @@ async function seedDemo() {
     const care1Res = await client.query(
       `INSERT INTO staff (organisation_id,home_id,email,password_hash,first_name,last_name,role,phone,is_active,status,date_of_birth)
        VALUES ($1,$2,'care1@healthark.co.uk',$3,'Priya','Sharma','care_staff','07700900003',true,'active','1995-11-05')
-       ON CONFLICT (email) DO UPDATE SET home_id=$2 RETURNING id`,
+       ON CONFLICT (email) DO UPDATE SET password_hash=$3, home_id=$2, is_active=true, status='active' RETURNING id`,
       [ORG_ID, homeId, care1Hash]
     );
     careId = care1Res.rows[0].id;
@@ -98,7 +94,7 @@ async function seedDemo() {
     const care2Res = await client.query(
       `INSERT INTO staff (organisation_id,home_id,email,password_hash,first_name,last_name,role,phone,is_active,status,date_of_birth)
        VALUES ($1,$2,'care2@healthark.co.uk',$3,'David','Mensah','care_staff','07700900004',true,'active','1992-05-18')
-       ON CONFLICT (email) DO UPDATE SET home_id=$2 RETURNING id`,
+       ON CONFLICT (email) DO UPDATE SET password_hash=$3, home_id=$2, is_active=true, status='active' RETURNING id`,
       [ORG_ID, homeId, care2Hash]
     );
     care2Id = care2Res.rows[0].id;
@@ -120,12 +116,12 @@ async function seedDemo() {
       const res = await client.query(
         `INSERT INTO service_users
            (home_id, first_name, last_name, date_of_birth, gender, nhs_number,
-            room_number, primary_diagnosis, allergies, status, admission_date,
-            fluid_target_ml, weight_kg)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'live',NOW()-INTERVAL '3 months',$10,$11)
+            medical_history, med_allergies, status, admission_date,
+            min_fluid_ml, weight_kg)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'live',NOW()-INTERVAL '3 months',$9,$10)
          ON CONFLICT DO NOTHING RETURNING id`,
         [homeId, r.first, r.last, r.dob, r.gender, r.nhs,
-         r.room, r.diagnosis, r.allergies, 1500, 65 + Math.random() * 30]
+         r.diagnosis, r.allergies, 1500, 65 + Math.random() * 30]
       );
       if (res.rows.length) suIds.push(res.rows[0].id);
     }
@@ -141,12 +137,11 @@ async function seedDemo() {
     for (const suId of suIds) {
       for (const pt of planTypes.slice(0, 3)) {
         await client.query(
-          `INSERT INTO care_plans (home_id, su_id, plan_type, title, goals, interventions,
+          `INSERT INTO care_plans (home_id, su_id, plan_type, aims_outcomes, how_to_support,
              created_by, next_review_date, is_active)
-           VALUES ($1,$2,$3,$4,$5,$6,$7, NOW() + INTERVAL '30 days', true)
+           VALUES ($1,$2,$3,$4,$5,$6, NOW() + INTERVAL '30 days', true)
            ON CONFLICT DO NOTHING`,
           [homeId, suId, pt,
-           `${pt.replace(/_/g,' ')} care plan`,
            'Maintain independence and dignity',
            'Assist with daily activities as needed',
            managerId]
@@ -154,9 +149,9 @@ async function seedDemo() {
       }
       // One overdue plan per resident
       await client.query(
-        `INSERT INTO care_plans (home_id, su_id, plan_type, title, goals, interventions,
+        `INSERT INTO care_plans (home_id, su_id, plan_type, aims_outcomes, how_to_support,
            created_by, next_review_date, is_active)
-         VALUES ($1,$2,'medical','Medical Review Plan','Monitor health conditions','Regular observations',$3, NOW()-INTERVAL '5 days', true)
+         VALUES ($1,$2,'medical','Monitor health conditions','Regular observations',$3, NOW()-INTERVAL '5 days', true)
          ON CONFLICT DO NOTHING`,
         [homeId, suId, managerId]
       );
@@ -191,10 +186,10 @@ async function seedDemo() {
     ];
     for (const t of tasks) {
       await client.query(
-        `INSERT INTO tasks (home_id, title, priority, assigned_to, created_by, due_date, status)
+        `INSERT INTO tasks (home_id, title, priority, assigned_to, created_by, task_date, status)
          VALUES ($1,$2,$3,$4,$5, NOW()+INTERVAL '3 days','pending')
          ON CONFLICT DO NOTHING`,
-        [homeId, t.title, t.priority, t.assigned, adminId]
+        [homeId, t.title, t.priority === 'medium' ? 'normal' : t.priority, t.assigned, adminId]
       );
     }
 
@@ -202,20 +197,20 @@ async function seedDemo() {
     await client.query(
       `INSERT INTO business_alerts (home_id, alert_type, severity, title, description)
        VALUES
-         ($1,'care_plan_overdue','high','Care plan review overdue','4 residents have care plans due for review'),
-         ($1,'medication_gap','high','MAR chart gap detected','Medication not recorded for Arthur Davies - 08:00 dose'),
-         ($1,'task_missed','medium','Tasks pending','3 tasks are overdue and require attention'),
-         ($1,'fluid_below_threshold','medium','Low fluid intake','Margaret Clarke fluid intake below daily target')
+         ($1,'care_plan_overdue','critical','Care plan review overdue','4 residents have care plans due for review'),
+         ($1,'medication_gap','critical','MAR chart gap detected','Medication not recorded for Arthur Davies - 08:00 dose'),
+         ($1,'task_missed','warning','Tasks pending','3 tasks are overdue and require attention'),
+         ($1,'fluid_below_threshold','warning','Low fluid intake','Margaret Clarke fluid intake below daily target')
        ON CONFLICT DO NOTHING`,
       [homeId]
     );
 
     // ── Staff Leave Requests ──────────────────────────────────────
     await client.query(
-      `INSERT INTO staff_leave (home_id, staff_id, leave_type, start_date, end_date, days_requested, reason, status)
+      `INSERT INTO staff_leave (home_id, staff_id, leave_type, start_date, end_date, hours_requested, reason, status)
        VALUES
-         ($1,$2,'annual', NOW()+INTERVAL '14 days', NOW()+INTERVAL '21 days', 7, 'Family holiday', 'pending'),
-         ($1,$3,'sick', NOW()-INTERVAL '1 day', NOW()+INTERVAL '2 days', 3, 'Flu', 'approved')
+         ($1,$2,'annual', NOW()+INTERVAL '14 days', NOW()+INTERVAL '21 days', 56, 'Family holiday', 'pending'),
+         ($1,$3,'sick', NOW()-INTERVAL '1 day', NOW()+INTERVAL '2 days', 24, 'Flu', 'approved')
        ON CONFLICT DO NOTHING`,
       [homeId, careId, care2Id]
     );
@@ -232,15 +227,19 @@ async function seedDemo() {
 
     // ── MAR (medication records) ──────────────────────────────────
     if (suIds.length >= 2) {
-      await client.query(
-        `INSERT INTO mar_medications (home_id, su_id, medication_name, dosage, frequency, route, prescribed_by, start_date, is_active)
-         VALUES
-           ($1,$2,'Amlodipine 5mg','5mg','Once daily','oral','Dr. Patel', NOW()-INTERVAL '60 days', true),
-           ($1,$2,'Metformin 500mg','500mg','Twice daily','oral','Dr. Patel', NOW()-INTERVAL '60 days', true),
-           ($1,$3,'Levodopa 100mg','100mg','Three times daily','oral','Dr. Williams', NOW()-INTERVAL '90 days', true)
-         ON CONFLICT DO NOTHING`,
-        [homeId, suIds[0], suIds[1]]
-      );
+      const marEntries = [
+        { suId: suIds[0], name: 'Amlodipine 5mg', dose: '5mg', freq: 'Once daily', time: '08:00' },
+        { suId: suIds[0], name: 'Metformin 500mg', dose: '500mg', freq: 'Twice daily', time: '08:00' },
+        { suId: suIds[1], name: 'Levodopa 100mg', dose: '100mg', freq: 'Three times daily', time: '08:00' },
+      ];
+      for (const m of marEntries) {
+        await client.query(
+          `INSERT INTO mar_records (home_id, su_id, medication_name, dose, route, frequency, scheduled_time, record_date)
+           VALUES ($1,$2,$3,$4,'oral',$5,$6::time, CURRENT_DATE)
+           ON CONFLICT DO NOTHING`,
+          [homeId, m.suId, m.name, m.dose, m.freq, m.time]
+        );
+      }
     }
 
     await client.query('COMMIT');
