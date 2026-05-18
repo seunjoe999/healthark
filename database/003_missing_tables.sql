@@ -59,13 +59,22 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS idx_tasks_home_date ON tasks(home_id, task_date);
 CREATE INDEX IF NOT EXISTS idx_tasks_status    ON tasks(status);
 
--- Add missing columns to task_templates if they exist with old schema
+-- Add missing columns to task_templates
 ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS title        VARCHAR(255);
 ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS due_time     TIME;
 ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS priority     VARCHAR(20) DEFAULT 'normal';
 ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS su_id        UUID REFERENCES service_users(id) ON DELETE SET NULL;
--- Back-fill title from task_name where null
-UPDATE task_templates SET title = task_name WHERE title IS NULL;
+
+-- Add missing columns to organisations table
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS reg_number   VARCHAR(100);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS cqc_provider VARCHAR(100);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS address1     VARCHAR(255);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS address2     VARCHAR(255);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS address3     VARCHAR(255);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS postcode     VARCHAR(10);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS phone        VARCHAR(20);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS email        VARCHAR(255);
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS logo_url     VARCHAR(500);
 
 -- ── STAFF SUPERVISIONS ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS staff_supervisions (
