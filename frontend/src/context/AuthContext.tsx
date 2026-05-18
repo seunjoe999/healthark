@@ -51,42 +51,56 @@ function saveSession(token: string, user: AuthUser) {
   setCookie('ha_user', JSON.stringify(user), 1)
 }
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()
+  } catch { return true }
+}
+
 function loadSession(): { token: string | null; user: AuthUser | null } {
-  // 1. Memory (survives tab navigation, not full reload)
-  if ((window as any).__HA_TOKEN__ && (window as any).__HA_USER__) {
-    return { token: (window as any).__HA_TOKEN__, user: (window as any).__HA_USER__ }
-  }
-  // 2. sessionStorage (survives page refresh within same tab)
-  try {
-    const t = sessionStorage.getItem('ha_token')
-    const u = sessionStorage.getItem('ha_user')
-    if (t && u) {
-      const user = JSON.parse(u)
-      ;(window as any).__HA_TOKEN__ = t
-      ;(window as any).__HA_USER__ = user
-      return { token: t, user }
-    }
-  } catch {}
-  // 3. localStorage (survives closing and reopening)
-  try {
-    const t = localStorage.getItem('ha_token')
-    const u = localStorage.getItem('ha_user')
-    if (t && u) {
-      const user = JSON.parse(u)
-      ;(window as any).__HA_TOKEN__ = t
-      ;(window as any).__HA_USER__ = user
-      return { token: t, user }
-    }
-  } catch {}
-  // 4. Cookies (fallback when storage is blocked)
-  const t = getCookie('ha_token')
-  const u = getCookie('ha_user')
-  if (t && u) {
+  const candidates: Array<() => { token: string | null; user: AuthUser | null }> = [
+    // 1. Memory
+    () => {
+      const t = (window as any).__HA_TOKEN__
+      const u = (window as any).__HA_USER__
+      return t && u ? { token: t, user: u } : { token: null, user: null }
+    },
+    // 2. sessionStorage
+    () => {
+      const t = sessionStorage.getItem('ha_token')
+      const u = sessionStorage.getItem('ha_user')
+      if (t && u) return { token: t, user: JSON.parse(u) }
+      return { token: null, user: null }
+    },
+    // 3. localStorage
+    () => {
+      const t = localStorage.getItem('ha_token')
+      const u = localStorage.getItem('ha_user')
+      if (t && u) return { token: t, user: JSON.parse(u) }
+      return { token: null, user: null }
+    },
+    // 4. Cookies
+    () => {
+      const t = getCookie('ha_token')
+      const u = getCookie('ha_user')
+      if (t && u) return { token: t, user: JSON.parse(u) }
+      return { token: null, user: null }
+    },
+  ]
+
+  for (const fn of candidates) {
     try {
-      const user = JSON.parse(u)
-      ;(window as any).__HA_TOKEN__ = t
+      const { token, user } = fn()
+      if (!token || !user) continue
+      if (isTokenExpired(token)) {
+        // Stale token — wipe everything and bail
+        clearSession()
+        return { token: null, user: null }
+      }
+      ;(window as any).__HA_TOKEN__ = token
       ;(window as any).__HA_USER__ = user
-      return { token: t, user }
+      return { token, user }
     } catch {}
   }
   return { token: null, user: null }

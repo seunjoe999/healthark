@@ -393,7 +393,8 @@ INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, l
 VALUES (v_org_id, v_home_id, 'admin@healthark.co.uk',
   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi',
   'System', 'Admin', 'group_admin', true, 'active')
-ON CONFLICT (email) DO UPDATE SET home_id=v_home_id, is_active=true,
+ON CONFLICT (email) DO UPDATE SET
+  organisation_id=v_org_id, home_id=v_home_id, is_active=true, status='active',
   password_hash='$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi';
 SELECT id INTO v_admin_id FROM staff WHERE email='admin@healthark.co.uk';
 INSERT INTO staff_onboarding (staff_id) VALUES (v_admin_id) ON CONFLICT DO NOTHING;
@@ -403,7 +404,8 @@ INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, l
 VALUES (v_org_id, v_home_id, 'manager@healthark.co.uk',
   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi',
   'Sarah', 'Johnson', 'home_manager', '07700900001', true, 'active', '1985-03-12')
-ON CONFLICT (email) DO UPDATE SET home_id=v_home_id, is_active=true,
+ON CONFLICT (email) DO UPDATE SET
+  organisation_id=v_org_id, home_id=v_home_id, is_active=true, status='active',
   password_hash='$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi';
 SELECT id INTO v_mgr_id FROM staff WHERE email='manager@healthark.co.uk';
 INSERT INTO staff_onboarding (staff_id) VALUES (v_mgr_id) ON CONFLICT DO NOTHING;
@@ -414,7 +416,8 @@ INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, l
 VALUES (v_org_id, v_home_id, 'senior@healthark.co.uk',
   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi',
   'Michael', 'Okafor', 'senior_carer', '07700900002', true, 'active', '1990-07-22')
-ON CONFLICT (email) DO UPDATE SET home_id=v_home_id, is_active=true,
+ON CONFLICT (email) DO UPDATE SET
+  organisation_id=v_org_id, home_id=v_home_id, is_active=true, status='active',
   password_hash='$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi';
 SELECT id INTO v_senior_id FROM staff WHERE email='senior@healthark.co.uk';
 INSERT INTO staff_onboarding (staff_id) VALUES (v_senior_id) ON CONFLICT DO NOTHING;
@@ -425,7 +428,8 @@ INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, l
 VALUES (v_org_id, v_home_id, 'care1@healthark.co.uk',
   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi',
   'Priya', 'Sharma', 'care_staff', '07700900003', true, 'active', '1995-11-05')
-ON CONFLICT (email) DO UPDATE SET home_id=v_home_id, is_active=true,
+ON CONFLICT (email) DO UPDATE SET
+  organisation_id=v_org_id, home_id=v_home_id, is_active=true, status='active',
   password_hash='$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi';
 SELECT id INTO v_care1_id FROM staff WHERE email='care1@healthark.co.uk';
 INSERT INTO staff_onboarding (staff_id) VALUES (v_care1_id) ON CONFLICT DO NOTHING;
@@ -436,7 +440,8 @@ INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, l
 VALUES (v_org_id, v_home_id, 'care2@healthark.co.uk',
   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi',
   'David', 'Mensah', 'care_staff', '07700900004', true, 'active', '1992-05-18')
-ON CONFLICT (email) DO UPDATE SET home_id=v_home_id, is_active=true,
+ON CONFLICT (email) DO UPDATE SET
+  organisation_id=v_org_id, home_id=v_home_id, is_active=true, status='active',
   password_hash='$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVKhB7fRCi';
 SELECT id INTO v_care2_id FROM staff WHERE email='care2@healthark.co.uk';
 INSERT INTO staff_onboarding (staff_id) VALUES (v_care2_id) ON CONFLICT DO NOTHING;

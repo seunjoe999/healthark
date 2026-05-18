@@ -4,6 +4,10 @@ function getToken(): string | null {
   if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
   try { const t = sessionStorage.getItem('ha_token'); if (t) return t } catch {}
   try { const t = localStorage.getItem('ha_token'); if (t) return t } catch {}
+  try {
+    const match = document.cookie.split(';').find(c => c.trim().startsWith('ha_token='))
+    if (match) return decodeURIComponent(match.trim().slice('ha_token='.length))
+  } catch {}
   return null
 }
 
