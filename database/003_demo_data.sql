@@ -78,28 +78,28 @@ INSERT INTO staff_onboarding (staff_id) VALUES (v_care2_id) ON CONFLICT DO NOTHI
 INSERT INTO staff_home_access (staff_id, home_id) VALUES (v_care2_id, v_home_id) ON CONFLICT DO NOTHING;
 
 -- ── Service Users (Residents) ─────────────────────────────────────
-INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, room_number, primary_diagnosis, allergies, status, admission_date, fluid_target_ml, weight_kg)
-VALUES (v_home_id, 'Dorothy', 'Williams', '1938-04-15', 'female', 'NHS-001-DW', '1', 'Dementia, Type 2 Diabetes', 'Penicillin', 'live', NOW()-INTERVAL '6 months', 1500, 62)
+INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, medical_history, med_allergies, status, admission_date, min_fluid_ml, weight_kg, need_to_know)
+VALUES (v_home_id, 'Dorothy', 'Williams', '1938-04-15', 'female', 'NHS-001-DW', 'Dementia, Type 2 Diabetes', 'Penicillin', 'live', NOW()-INTERVAL '6 months', 1500, 62, 'Prefers to be called Dot. Enjoys music and gardening.')
 RETURNING id INTO su1;
 
-INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, room_number, primary_diagnosis, allergies, status, admission_date, fluid_target_ml, weight_kg)
-VALUES (v_home_id, 'Harold', 'Thompson', '1934-09-03', 'male', 'NHS-002-HT', '2', 'Parkinson''s disease, Hypertension', 'Aspirin', 'live', NOW()-INTERVAL '8 months', 1500, 74)
+INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, medical_history, med_allergies, status, admission_date, min_fluid_ml, weight_kg, need_to_know)
+VALUES (v_home_id, 'Harold', 'Thompson', '1934-09-03', 'male', 'NHS-002-HT', 'Parkinson''s disease, Hypertension', 'Aspirin', 'live', NOW()-INTERVAL '8 months', 1500, 74, 'Former teacher. Loves crosswords and cricket.')
 RETURNING id INTO su2;
 
-INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, room_number, primary_diagnosis, allergies, status, admission_date, fluid_target_ml, weight_kg)
-VALUES (v_home_id, 'Margaret', 'Clarke', '1940-12-20', 'female', 'NHS-003-MC', '3', 'COPD, Osteoarthritis', 'None known', 'live', NOW()-INTERVAL '4 months', 1500, 58)
+INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, medical_history, med_allergies, status, admission_date, min_fluid_ml, weight_kg, need_to_know)
+VALUES (v_home_id, 'Margaret', 'Clarke', '1940-12-20', 'female', 'NHS-003-MC', 'COPD, Osteoarthritis', 'None known', 'live', NOW()-INTERVAL '4 months', 1500, 58, 'Breathless on exertion. Needs rest periods during personal care.')
 RETURNING id INTO su3;
 
-INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, room_number, primary_diagnosis, allergies, status, admission_date, fluid_target_ml, weight_kg)
-VALUES (v_home_id, 'Arthur', 'Davies', '1936-06-08', 'male', 'NHS-004-AD', '4', 'Vascular dementia, Heart failure', 'Sulfa drugs', 'live', NOW()-INTERVAL '12 months', 1500, 68)
+INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, medical_history, med_allergies, status, admission_date, min_fluid_ml, weight_kg, need_to_know)
+VALUES (v_home_id, 'Arthur', 'Davies', '1936-06-08', 'male', 'NHS-004-AD', 'Vascular dementia, Heart failure', 'Sulfa drugs', 'live', NOW()-INTERVAL '12 months', 1500, 68, 'Can become distressed in the evenings. Calm approach essential.')
 RETURNING id INTO su4;
 
-INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, room_number, primary_diagnosis, allergies, status, admission_date, fluid_target_ml, weight_kg)
-VALUES (v_home_id, 'Edna', 'Morrison', '1942-02-28', 'female', 'NHS-005-EM', '5', 'Stroke recovery, Depression', 'Latex', 'live', NOW()-INTERVAL '3 months', 1500, 55)
+INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, medical_history, med_allergies, status, admission_date, min_fluid_ml, weight_kg, need_to_know)
+VALUES (v_home_id, 'Edna', 'Morrison', '1942-02-28', 'female', 'NHS-005-EM', 'Stroke recovery, Depression', 'Latex', 'live', NOW()-INTERVAL '3 months', 1500, 55, 'Left-sided weakness following stroke. Physiotherapy twice daily.')
 RETURNING id INTO su5;
 
-INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, room_number, primary_diagnosis, allergies, status, admission_date, fluid_target_ml, weight_kg)
-VALUES (v_home_id, 'George', 'Bennett', '1933-11-14', 'male', 'NHS-006-GB', '6', 'Alzheimer''s disease', 'None known', 'live', NOW()-INTERVAL '10 months', 1500, 71)
+INSERT INTO service_users (home_id, first_name, last_name, date_of_birth, gender, nhs_number, medical_history, med_allergies, status, admission_date, min_fluid_ml, weight_kg, need_to_know)
+VALUES (v_home_id, 'George', 'Bennett', '1933-11-14', 'male', 'NHS-006-GB', 'Alzheimer''s disease', 'None known', 'live', NOW()-INTERVAL '10 months', 1500, 71, 'Wanders at night. Sensor mat in place. Loves Frank Sinatra.')
 RETURNING id INTO su6;
 
 -- ── Care Plans ────────────────────────────────────────────────────
