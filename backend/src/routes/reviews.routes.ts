@@ -107,21 +107,19 @@ router.get('/supervisions/:staffId', param('staffId').isUUID(), validateRequest,
   }
 );
 
-router.post('/supervisions', [body('staffId').isUUID(), body('supervisionDate').isDate()], validateRequest,
+router.post('/supervisions', [body('staffId').isUUID(), body('supervisionDate').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const conductedBy = fromToken(req, 'staffId');
       const homeId = fromToken(req, 'homeId');
-      const { staffId, supervisionType, supervisionDate, summary, strengths,
-              areasForImprovement, actionPoints, staffComments, nextDate } = req.body;
+      const { staffId, supervisionType, supervisionDate, summary,
+              actionPoints, nextDate } = req.body;
       const rows = await query(
         `INSERT INTO staff_supervisions (staff_id, home_id, conducted_by, supervision_type,
-          supervision_date, summary, strengths, areas_for_improvement, action_points,
-          staff_comments, next_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+          supervision_date, summary, action_points, next_supervision_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
         [staffId, homeId, conductedBy, supervisionType || 'supervision', supervisionDate,
-         summary || null, strengths || null, areasForImprovement || null,
-         actionPoints || null, staffComments || null, nd(nextDate)]
+         summary || null, actionPoints || null, nd(nextDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

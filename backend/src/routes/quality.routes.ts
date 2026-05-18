@@ -43,15 +43,13 @@ router.post('/', [body('recordType').notEmpty(), body('summary').notEmpty()], va
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { recordType, suId, relatedStaffId, summary, detail, actionTaken,
-              reportedBy, reportedAt, severity } = req.body;
+      const { recordType, suId, relatedStaffId, summary, detail, actionTaken } = req.body;
       const rows = await query(
         `INSERT INTO quality_records (home_id, su_id, related_staff_id, created_by, record_type,
-          summary, detail, action_taken, reported_by, reported_at, severity)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+          summary, detail, action_taken)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
         [homeId, suId || null, relatedStaffId || null, staffId, recordType,
-         summary, detail || null, actionTaken || null,
-         reportedBy || null, reportedAt || new Date(), severity || 'low']
+         summary, detail || null, actionTaken || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

@@ -49,8 +49,8 @@ router.post('/generate',
 
       // Create pending audit record
       const auditRows = await query(
-        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, is_ai_generated)
-         VALUES ($1,$2,$3,$4,$5,$6,'generating',true) RETURNING *`,
+        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status)
+         VALUES ($1,$2,$3,$4,$5,$6,'generating') RETURNING *`,
         [homeId, auditType, customName || null, from, to, staffId]
       );
       const auditId = (auditRows[0] as any).id;
