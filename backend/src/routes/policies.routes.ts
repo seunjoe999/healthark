@@ -36,7 +36,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
 router.post('/',
   requireRole('group_admin', 'home_manager'),
-  [body('title').notEmpty(), body('documentUrl').notEmpty()],
+  [body('title').notEmpty(), body('documentUrl').optional()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -78,6 +78,17 @@ router.get('/:id/sign-offs', param('id').isUUID(), validateRequest,
         [req.params.id]
       );
       res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+
+router.delete('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM policy_sign_offs WHERE policy_id=$1', [req.params.id]);
+      await query('DELETE FROM policies WHERE id=$1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

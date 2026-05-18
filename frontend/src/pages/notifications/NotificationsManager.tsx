@@ -15,7 +15,7 @@ const TYPE_OPTIONS = [
 ]
 
 export default function NotificationsManager() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [staff, setStaff] = useState<any[]>([])
@@ -72,6 +72,14 @@ export default function NotificationsManager() {
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to send')
     } finally { setSending(false) }
+  }
+
+  const deleteNotif = async (id: string) => {
+    try {
+      await api.delete(`/notifications/${id}`)
+      setSent(prev => prev.filter(n => n.id !== id))
+      toast.success('Notification deleted')
+    } catch { toast.error('Failed to delete') }
   }
 
   const markAllRead = async () => {
@@ -211,6 +219,11 @@ export default function NotificationsManager() {
                       <p className="text-xs text-slate-400 mt-1">{format(new Date(n.created_at), 'd MMM, HH:mm')}</p>
                     </div>
                     {!n.is_read && <div className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 mt-1.5" />}
+                    {isRole('home_manager', 'group_admin') && (
+                      <button onClick={() => deleteNotif(n.id)} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )
               })}

@@ -401,7 +401,9 @@ export default function StaffModule() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-slate-800">Cautions & Disciplinary ({cautions.length})</h3>
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
+                  {isRole('home_manager', 'group_admin') && (
+                    <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
+                  )}
                 </div>
                 {cautions.length === 0 ? (
                   <EmptyState title="No cautions recorded" description="Record verbal warnings, written warnings or disciplinary actions"
@@ -412,7 +414,22 @@ export default function StaffModule() {
                       <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
                         <div className="flex items-start justify-between mb-3">
                           <span className="badge badge-warning capitalize">{(c.caution_type || '').replace('_', ' ')}</span>
-                          <p className="text-xs text-slate-400">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-slate-400">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''}</p>
+                            {isRole('home_manager', 'group_admin') && (
+                              <button onClick={async () => {
+                                if (!window.confirm('Delete this caution?')) return
+                                try {
+                                  await api.delete(`/reviews/cautions/${c.id}`)
+                                  const res = await api.get(`/reviews/cautions/${selected.id}`)
+                                  setCautions(res.data.data || [])
+                                  toast.success('Caution deleted')
+                                } catch { toast.error('Failed to delete') }
+                              }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overview</p><p className="text-slate-700 mt-0.5">{c.overview}</p></div>

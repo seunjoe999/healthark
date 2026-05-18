@@ -149,4 +149,14 @@ router.post('/generate-daily', async (req: Request, res: Response, next: NextFun
   } catch (err) { next(err); }
 });
 
+
+router.delete('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM tasks WHERE id=$1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

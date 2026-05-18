@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -63,6 +63,16 @@ router.post('/send', async (req: Request, res: Response, next: NextFunction) => 
     res.status(201).json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// DELETE /api/notifications/:id — delete a notification (admin only)
+router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM notifications WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // POST /api/notifications/broadcast — send to all home staff
 router.post('/broadcast', async (req: Request, res: Response, next: NextFunction) => {

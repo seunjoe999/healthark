@@ -3,7 +3,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
-import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2 } from 'lucide-react'
+import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2, Eye, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Policies() {
@@ -11,6 +11,9 @@ export default function Policies() {
   const [policies, setPolicies] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const [viewPolicy, setViewPolicy] = useState<any>(null)
+  const [signOffs, setSignOffs] = useState<any[]>([])
+  const [signOffsLoading, setSignOffsLoading] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -23,11 +26,23 @@ export default function Policies() {
     finally { setLoading(false) }
   }
 
+  const openDetail = async (p: any) => {
+    setViewPolicy(p)
+    setSignOffs([])
+    setSignOffsLoading(true)
+    try {
+      const res = await api.get(`/policies/${p.id}/sign-offs`)
+      setSignOffs(res.data.data || [])
+    } catch { /* sign-offs are optional */ }
+    finally { setSignOffsLoading(false) }
+  }
+
   const deletePolicy = async (id: string) => {
     if (!window.confirm('Delete this policy? This cannot be undone.')) return
     try {
       await api.delete(`/policies/${id}`)
       toast.success('Policy deleted')
+      setViewPolicy(null)
       await load()
     } catch { toast.error('Failed to delete policy') }
   }
@@ -37,6 +52,10 @@ export default function Policies() {
       await api.post(`/policies/${id}/sign`)
       toast.success('Policy signed off')
       await load()
+      if (viewPolicy?.id === id) {
+        const res = await api.get(`/policies/${id}/sign-offs`)
+        setSignOffs(res.data.data || [])
+      }
     } catch { toast.error('Failed to sign policy') }
   }
 
@@ -77,11 +96,7 @@ export default function Policies() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0 items-center">
-                  {p.document_url && (
-                    <a href={/^https?:\/\//i.test(p.document_url) ? p.document_url : `https://${p.document_url}`} target="_blank" rel="noreferrer">
-                      <Button size="sm" variant="outline" icon={<ExternalLink className="w-3.5 h-3.5" />}>View</Button>
-                    </a>
-                  )}
+                  <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => openDetail(p)}>View</Button>
                   {p.requires_sign && !p.signed_by_me && (
                     <Button size="sm" icon={<CheckCircle className="w-3.5 h-3.5" />} onClick={() => signPolicy(p.id)}>Sign off</Button>
                   )}
@@ -95,6 +110,77 @@ export default function Policies() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Policy detail modal */}
+      {viewPolicy && (
+        <Modal open={!!viewPolicy} onClose={() => setViewPolicy(null)} title="Policy details" size="md">
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Title</p>
+              <p className="text-base font-semibold text-slate-900">{viewPolicy.title}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Version</p>
+                <p className="text-sm text-slate-700">v{viewPolicy.version}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Effective date</p>
+                <p className="text-sm text-slate-700">{viewPolicy.effective_date ? format(new Date(viewPolicy.effective_date), 'd MMM yyyy') : '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Review due</p>
+                <p className="text-sm text-slate-700">{viewPolicy.review_date ? format(new Date(viewPolicy.review_date), 'd MMM yyyy') : '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Added by</p>
+                <p className="text-sm text-slate-700">{viewPolicy.uploaded_by_name || 'System'}</p>
+              </div>
+            </div>
+
+            {viewPolicy.requires_sign && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" /> Sign-offs
+                </p>
+                {signOffsLoading ? (
+                  <p className="text-xs text-slate-400">Loading...</p>
+                ) : signOffs.length === 0 ? (
+                  <p className="text-xs text-slate-400">No sign-offs yet</p>
+                ) : (
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {signOffs.map((so: any) => (
+                      <div key={so.id} className="flex items-center gap-2 text-xs text-slate-600">
+                        <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        <span>{so.staff_name}</span>
+                        <span className="text-slate-400 capitalize">{so.role?.replace(/_/g, ' ')}</span>
+                        {so.signed_at && <span className="text-slate-400 ml-auto">{format(new Date(so.signed_at), 'd MMM yyyy')}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2 border-t border-slate-100">
+              {viewPolicy.requires_sign && !viewPolicy.signed_by_me && (
+                <Button size="sm" icon={<CheckCircle className="w-3.5 h-3.5" />} onClick={() => signPolicy(viewPolicy.id)}>Sign off</Button>
+              )}
+              {viewPolicy.document_url && (
+                <a href={/^https?:\/\//i.test(viewPolicy.document_url) ? viewPolicy.document_url : `https://${viewPolicy.document_url}`} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" icon={<ExternalLink className="w-3.5 h-3.5" />}>Open document</Button>
+                </a>
+              )}
+              {isRole('home_manager', 'group_admin') && (
+                <button onClick={() => deletePolicy(viewPolicy.id)}
+                  className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors flex items-center gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete policy
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
 
       <AddPolicyModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={async () => { setAddOpen(false); await load(); toast.success('Policy added') }} />
@@ -129,7 +215,7 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
           <Input label="Version" value={form.version} onChange={e => set('version', e.target.value)} placeholder="1.0" />
           <Input label="Effective date" type="date" value={form.effectiveDate} onChange={e => set('effectiveDate', e.target.value)} />
         </div>
-        <Input label="Document URL (link to document)" value={form.documentUrl} onChange={e => set('documentUrl', e.target.value)} placeholder="https://..." hint="Link to your document in Google Drive, OneDrive, etc." />
+        <Input label="Document URL (optional)" value={form.documentUrl} onChange={e => set('documentUrl', e.target.value)} placeholder="https://..." hint="Link to document in Google Drive, OneDrive, etc." />
         <Input label="Review due date" type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         <div className="flex items-center gap-2">
           <input type="checkbox" id="req" checked={form.requiresSign} onChange={e => set('requiresSign', e.target.checked)} className="rounded" />

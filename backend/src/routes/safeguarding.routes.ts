@@ -86,6 +86,16 @@ router.post('/',
   }
 );
 
+router.delete('/:id', requireRole('home_manager', 'group_admin'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM safeguarding_concerns WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 router.put('/:id/acknowledge', requireRole('home_manager', 'group_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

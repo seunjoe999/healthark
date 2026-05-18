@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Plus, AlertTriangle, CheckCircle, Shield } from 'lucide-react'
+import { Plus, AlertTriangle, CheckCircle, Shield, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Safeguarding() {
@@ -36,6 +36,16 @@ export default function Safeguarding() {
       setSus(suRes.data.data || [])
     }).catch(console.error).finally(() => setLoading(false))
   }, [selectedHome])
+
+  const deleteConcern = async (id: string) => {
+    if (!window.confirm('Delete this safeguarding concern? This cannot be undone.')) return
+    try {
+      await api.delete(`/safeguarding/${id}`)
+      setConcerns(prev => prev.filter(c => c.id !== id))
+      setSelected(null)
+      toast.success('Safeguarding concern deleted')
+    } catch { toast.error('Failed to delete') }
+  }
 
   const acknowledge = async (id: string) => {
     try {
@@ -104,11 +114,18 @@ export default function Safeguarding() {
                   <Field label="Outside agencies contacted" value={c.outside_agency ? `Yes — ${c.agency_details || ''}` : 'No'} />
                   <Field label="Management recommendations" value={c.management_recs} />
                   <Field label="Prevention actions" value={c.prevention_actions} />
-                  {!c.manager_ack && isRole('home_manager', 'group_admin') && (
-                    <Button size="sm" icon={<CheckCircle className="w-4 h-4" />} onClick={() => acknowledge(c.id)}>
-                      Acknowledge this concern
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {!c.manager_ack && isRole('home_manager', 'group_admin') && (
+                      <Button size="sm" icon={<CheckCircle className="w-4 h-4" />} onClick={() => acknowledge(c.id)}>
+                        Acknowledge this concern
+                      </Button>
+                    )}
+                    {isRole('home_manager', 'group_admin') && (
+                      <Button size="sm" variant="danger" icon={<Trash2 className="w-4 h-4" />} onClick={() => deleteConcern(c.id)}>
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

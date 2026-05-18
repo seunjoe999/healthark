@@ -92,6 +92,7 @@ app.use('/api/calendar', calendarRoutes);
 
 import marRoutes from './routes/mar.routes';
 import clockinRoutes from './routes/clockin.routes';
+import familyRoutes from './routes/family.routes';
 import shiftsRoutes from './routes/shifts.routes';
 import searchRoutes from './routes/search.routes';
 import notificationsRoutes from './routes/notifications.routes';
@@ -102,6 +103,7 @@ import qualityRoutes from './routes/quality.routes';
 import assessmentsRoutes from './routes/assessments.routes';
 app.use('/api/mar', marRoutes);
 app.use('/api/clockin', clockinRoutes);
+app.use('/api/family', familyRoutes);
 app.use('/api/shifts', shiftsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationsRoutes);

@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, ChevronDown, ChevronUp , Printer } from 'lucide-react'
+import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, ChevronDown, ChevronUp, Printer, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const PLAN_TYPES = [
@@ -71,6 +71,26 @@ function RiskBadge({ level }: { level: string }) {
 
 export default function CarePlans() {
   const { user, isRole } = useAuth()
+
+  const deletePlan = async (id: string) => {
+    if (!window.confirm('Delete this care plan?')) return
+    try {
+      await api.delete(`/care-plans/${id}`)
+      setPlans(prev => prev.filter(p => p.id !== id))
+      setSelectedPlan(null)
+      toast.success('Care plan deleted')
+    } catch { toast.error('Failed to delete') }
+  }
+
+  const deleteRisk = async (id: string) => {
+    if (!window.confirm('Delete this risk assessment?')) return
+    try {
+      await api.delete(`/risk-assessments/${id}`)
+      setRisks(prev => prev.filter(r => r.id !== id))
+      setSelectedPlan(null)
+      toast.success('Risk assessment deleted')
+    } catch { toast.error('Failed to delete') }
+  }
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [plans, setPlans] = useState<any[]>([])
@@ -225,6 +245,9 @@ export default function CarePlans() {
                               setPlans(res.data.data || [])
                               toast.success('Care plan updated')
                             }} />
+                            {isRole('home_manager', 'group_admin') && (
+                              <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => deletePlan(plan.id)}>Delete</Button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -276,6 +299,11 @@ export default function CarePlans() {
                               <p className="text-sm text-slate-700 whitespace-pre-line">{risk.management_plan || '—'}</p>
                             </div>
                           </div>
+                          {isRole('home_manager', 'group_admin') && (
+                            <div className="flex gap-2 mt-4">
+                              <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => deleteRisk(risk.id)}>Delete</Button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

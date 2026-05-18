@@ -10,6 +10,7 @@ const MIGRATION_FILES = [
   '003_missing_tables.sql',
   '004_demo_data.sql',
   '005_fix_and_seed.sql',
+  '006_app_tables.sql',
 ];
 
 async function migrate() {

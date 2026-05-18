@@ -262,9 +262,7 @@ router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
   }
 );
 
-export default router;
-
-// GET /api/staff-hr/training-modules — get completed inbuilt modules for current staff
+// GET /api/staff-hr/training-modules
 router.get('/training-modules', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = fromToken(req, 'staffId');
@@ -289,3 +287,22 @@ router.post('/training-modules', async (req: Request, res: Response, next: NextF
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// DELETE /api/staff-hr/training-modules/:moduleId — reset a module (admin only)
+router.delete('/training-modules/:moduleId',
+  requireRole('home_manager', 'group_admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { staffId: targetStaffId } = req.query as Record<string, string>;
+      const callerStaffId = fromToken(req, 'staffId');
+      const staffId = targetStaffId || callerStaffId;
+      await query(
+        'DELETE FROM staff_training_modules WHERE staff_id = $1 AND module_id = $2',
+        [staffId, req.params.moduleId]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+export default router;

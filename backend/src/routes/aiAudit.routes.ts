@@ -36,7 +36,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // POST /api/audits/generate — trigger AI audit
 router.post('/generate',
   requireRole('home_manager', 'group_admin'),
-  [body('auditType').notEmpty(), body('homeId').optional().isUUID()],
+  [body('auditType').notEmpty(), body('homeId').optional({ checkFalsy: true }).isUUID()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

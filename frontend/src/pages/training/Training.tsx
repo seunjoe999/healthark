@@ -91,7 +91,7 @@ const MODULES = [
 ]
 
 export default function Training() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const [completions, setCompletions] = useState<Record<string, boolean>>({})
   const [activeModule, setActiveModule] = useState<typeof MODULES[0] | null>(null)
   const [activeSection, setActiveSection] = useState(0)
@@ -106,6 +106,15 @@ export default function Training() {
       setCompletions(map)
     }).catch(() => {})
   }, [])
+
+  const resetModule = async (moduleId: string) => {
+    if (!window.confirm('Reset this module? The staff member will need to complete it again.')) return
+    try {
+      await api.delete(`/staff-hr/training-modules/${moduleId}`)
+      setCompletions(p => { const n = { ...p }; delete n[moduleId]; return n })
+      toast.success('Module reset')
+    } catch { toast.error('Failed to reset') }
+  }
 
   const completeModule = async (moduleId: string) => {
     setLoading(true)
@@ -179,7 +188,15 @@ export default function Training() {
                       <Play className="w-3 h-3" /> {mod.duration} · {mod.sections.length} sections
                     </span>
                     {!locked && !done && <ChevronRight className="w-4 h-4 text-slate-400" />}
-                    {done && <span className="text-xs text-emerald-600 font-semibold">Completed</span>}
+                    {done && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-emerald-600 font-semibold">Completed</span>
+                        {isRole('home_manager', 'group_admin') && (
+                          <button onClick={e => { e.stopPropagation(); resetModule(mod.id) }}
+                            className="text-xs text-slate-400 hover:text-rose-500 underline">reset</button>
+                        )}
+                      </div>
+                    )}
                     {locked && <span className="text-xs text-slate-400">Complete previous module first</span>}
                   </div>
                 </div>
