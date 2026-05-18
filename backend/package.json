@@ -9,6 +9,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "migrate": "node -r ts-node/register src/database/migrate.ts",
     "seed": "node -r ts-node/register src/database/seed.ts",
+    "seed:demo": "node -r ts-node/register src/database/seedDemo.ts",
     "test": "jest --runInBand",
     "lint": "eslint src --ext .ts"
   },
