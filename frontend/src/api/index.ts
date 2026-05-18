@@ -27,13 +27,20 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      ;(window as any).__HA_TOKEN__ = null
-      ;(window as any).__HA_USER__ = null
-      try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
-      try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
-      // Dispatch event so AuthContext can handle logout via React Router
-      // instead of a hard reload which races with React state
-      window.dispatchEvent(new CustomEvent('ha:unauthorized'))
+      const url: string = err.config?.url || ''
+      // Don't clear session for login/register endpoints — those 401s are expected
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+      if (!isAuthEndpoint) {
+        ;(window as any).__HA_TOKEN__ = null
+        ;(window as any).__HA_USER__ = null
+        try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
+        try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
+        try {
+          document.cookie = 'ha_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict'
+          document.cookie = 'ha_user=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict'
+        } catch {}
+        window.dispatchEvent(new CustomEvent('ha:unauthorized'))
+      }
     }
     return Promise.reject(err)
   }

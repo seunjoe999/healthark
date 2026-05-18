@@ -32,14 +32,19 @@ export async function authenticate(
     const payload = jwt.verify(token, secret) as JwtPayload;
 
     // Verify staff still active in database (not terminated/suspended since token issued)
-    const rows = await query<{ is_active: boolean; status: string }>(
-      'SELECT is_active, status FROM staff WHERE id = $1 AND organisation_id = $2',
-      [payload.staffId, payload.organisationId]
+    const rows = await query<{ is_active: boolean; status: string; organisation_id: string }>(
+      'SELECT is_active, status, organisation_id FROM staff WHERE id = $1',
+      [payload.staffId]
     );
 
     if (!rows.length || !rows[0].is_active || rows[0].status === 'terminated') {
       res.status(401).json({ success: false, error: 'Account is inactive' } as ApiResponse);
       return;
+    }
+
+    // Keep organisationId in payload in sync with DB (handles migration edge cases)
+    if (rows[0].organisation_id && !payload.organisationId) {
+      payload.organisationId = rows[0].organisation_id;
     }
 
     req.staff = payload;
