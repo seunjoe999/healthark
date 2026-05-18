@@ -401,9 +401,7 @@ export default function StaffModule() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-slate-800">Cautions & Disciplinary ({cautions.length})</h3>
-                  {isRole('home_manager', 'group_admin') && (
-                    <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
-                  )}
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
                 </div>
                 {cautions.length === 0 ? (
                   <EmptyState title="No cautions recorded" description="Record verbal warnings, written warnings or disciplinary actions"

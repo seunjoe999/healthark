@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -34,7 +34,7 @@ router.get('/su/:suId', param('suId').isUUID(), validateRequest,
   }
 );
 
-router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('reviewDate').isDate()], validateRequest,
+router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('reviewDate').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
@@ -228,7 +228,7 @@ router.delete('/su/:id', param('id').isUUID(), validateRequest,
     catch (err) { next(err); }
   }
 );
-router.delete('/cautions/:id', param('id').isUUID(), validateRequest,
+router.delete('/cautions/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try { await query('DELETE FROM staff_cautions WHERE id=$1', [req.params.id]); res.json({ success: true } as ApiResponse); }
     catch (err) { next(err); }

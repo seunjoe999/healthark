@@ -34,7 +34,7 @@ router.get('/daily-records', async (req: Request, res: Response, next: NextFunct
     let idx = 4;
     if (suId) { sql += ` AND dr.su_id = $${idx++}`; params.push(suId); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
-    sql += ' ORDER BY dr.recorded_at DESC LIMIT 500';
+    sql += ' ORDER BY dr.record_date DESC, dr.id DESC LIMIT 500';
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

@@ -71,26 +71,6 @@ function RiskBadge({ level }: { level: string }) {
 
 export default function CarePlans() {
   const { user, isRole } = useAuth()
-
-  const deletePlan = async (id: string) => {
-    if (!window.confirm('Delete this care plan?')) return
-    try {
-      await api.delete(`/care-plans/${id}`)
-      setPlans(prev => prev.filter(p => p.id !== id))
-      setSelectedPlan(null)
-      toast.success('Care plan deleted')
-    } catch { toast.error('Failed to delete') }
-  }
-
-  const deleteRisk = async (id: string) => {
-    if (!window.confirm('Delete this risk assessment?')) return
-    try {
-      await api.delete(`/risk-assessments/${id}`)
-      setRisks(prev => prev.filter(r => r.id !== id))
-      setSelectedPlan(null)
-      toast.success('Risk assessment deleted')
-    } catch { toast.error('Failed to delete') }
-  }
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [plans, setPlans] = useState<any[]>([])
@@ -116,6 +96,26 @@ export default function CarePlans() {
     if (!selectedHome) return
     suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
   }, [selectedHome])
+
+  const deletePlan = async (id: string) => {
+    if (!window.confirm('Delete this care plan?')) return
+    try {
+      await api.delete(`/care-plans/${id}`)
+      setPlans(prev => prev.filter(p => p.id !== id))
+      setSelectedPlan(null)
+      toast.success('Care plan deleted')
+    } catch { toast.error('Failed to delete') }
+  }
+
+  const deleteRisk = async (id: string) => {
+    if (!window.confirm('Delete this risk assessment?')) return
+    try {
+      await api.delete(`/risk-assessments/${id}`)
+      setRisks(prev => prev.filter(r => r.id !== id))
+      setSelectedPlan(null)
+      toast.success('Risk assessment deleted')
+    } catch { toast.error('Failed to delete') }
+  }
 
   const selectSu = async (su: any) => {
     setSelectedSu(su)
