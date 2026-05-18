@@ -168,6 +168,52 @@ CREATE TABLE IF NOT EXISTS su_medications (
 CREATE INDEX IF NOT EXISTS idx_su_meds_su   ON su_medications(su_id);
 CREATE INDEX IF NOT EXISTS idx_su_meds_home ON su_medications(home_id);
 
+-- ── SERVICE USERS — add missing columns ──────────────────────────
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS medical_history   TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS med_allergies     TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS food_allergies    TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS special_diet      TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS fluid_consistency VARCHAR(100);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS min_fluid_ml      INTEGER NOT NULL DEFAULT 1500;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS diet_instructions TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS need_to_know      TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS my_instructions   TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS height_cm         DECIMAL(5,1);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS weight_kg         DECIMAL(5,2);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bmi               DECIMAL(4,1);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS requires_oxygen   BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS has_catheter      BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS has_peg           BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS nil_by_mouth      BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS life_history      TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS hobbies           TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS daily_routine     TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS has_lpa           BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS lpa_type          VARCHAR(100);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS lpa_attorney      VARCHAR(255);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS has_cop_order     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS cop_details       TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dnar              BOOLEAN;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dnar_form_url     VARCHAR(500);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dnar_location     TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS local_authority   VARCHAR(255);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS service_name      VARCHAR(255);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS acp_url           VARCHAR(500);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS acp_date          DATE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS funeral_noted     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS funeral_details   TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS key_safe_code     VARCHAR(100);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS religion          VARCHAR(100);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS ethnicity         VARCHAR(100);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS marital_status    VARCHAR(50);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS comms_prefs       TEXT;
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS emergency_rating  VARCHAR(20) NOT NULL DEFAULT 'low';
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS preferred_name    VARCHAR(100);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS pronouns          VARCHAR(50);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS ni_number         VARCHAR(20);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS capacity_doc_url  VARCHAR(500);
+ALTER TABLE service_users ADD COLUMN IF NOT EXISTS best_interest_url VARCHAR(500);
+
 -- ── STAFF CAUTIONS — add home_id if missing ───────────────────────
 ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS home_id UUID REFERENCES homes(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_cautions_home ON staff_cautions(home_id);
