@@ -61,8 +61,6 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
-export default router;
-
 // GET /api/calendar/:id/notes — get meeting notes
 router.get('/:id/notes', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -117,3 +115,5 @@ router.post('/:id/signoff', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
+
+export default router;

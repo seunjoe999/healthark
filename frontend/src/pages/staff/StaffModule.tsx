@@ -313,7 +313,7 @@ export default function StaffModule() {
                               toast.success('Leave approved')
                             }}>Approve</Button>
                             <Button size="sm" variant="danger" onClick={async () => {
-                              await api.put(`/staff-hr/leave/${l.id}/approve`, { action: 'decline' })
+                              await api.put(`/staff-hr/leave/${l.id}/decline`)
                               const res = await api.get('/staff-hr/leave')
                               setLeave((res.data.data || []).filter((x: any) => x.staff_id === selected.id))
                               toast.success('Leave declined')

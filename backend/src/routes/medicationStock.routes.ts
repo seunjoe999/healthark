@@ -22,23 +22,40 @@ function fromToken(req: Request, field: string): string {
     await query(`
       CREATE TABLE IF NOT EXISTS medication_stock (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        home_id UUID NOT NULL REFERENCES homes(id),
+        home_id UUID REFERENCES homes(id),
         su_id UUID REFERENCES service_users(id),
-        medication_name VARCHAR(255) NOT NULL,
+        medication_name VARCHAR(255),
+        medication_id UUID REFERENCES su_medications(id) ON DELETE CASCADE,
         form VARCHAR(50),
         strength VARCHAR(100),
         quantity_remaining DECIMAL(10,2) NOT NULL DEFAULT 0,
+        current_count DECIMAL(10,2),
         unit VARCHAR(50) DEFAULT 'tablets',
         expiry_date DATE,
         reorder_threshold DECIMAL(10,2) DEFAULT 7,
         batch_number VARCHAR(100),
         supplier VARCHAR(255),
         last_updated_by UUID REFERENCES staff(id),
+        last_counted_by UUID REFERENCES staff(id),
+        last_counted_at TIMESTAMPTZ,
         notes TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `, []);
+    // Add columns that may be missing on existing installs
+    const alterStmts = [
+      `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS medication_id UUID REFERENCES su_medications(id) ON DELETE CASCADE`,
+      `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS current_count DECIMAL(10,2)`,
+      `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS last_counted_by UUID REFERENCES staff(id)`,
+      `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS last_counted_at TIMESTAMPTZ`,
+      `ALTER TABLE medication_stock ALTER COLUMN medication_name DROP NOT NULL`,
+      `ALTER TABLE medication_stock ALTER COLUMN home_id DROP NOT NULL`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_med_stock_su_med ON medication_stock(su_id, medication_id) WHERE medication_id IS NOT NULL`,
+    ];
+    for (const stmt of alterStmts) {
+      try { await query(stmt, []); } catch (_) { /* column/index already exists */ }
+    }
     await query(`
       CREATE TABLE IF NOT EXISTS medication_stock_log (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -53,7 +70,6 @@ function fromToken(req: Request, field: string): string {
       )
     `, []);
   } catch (err) {
-    // Tables may already exist — non-fatal
     console.warn('medication_stock table init warning:', err);
   }
 })();

@@ -123,13 +123,21 @@ router.post('/stock/:medicationId/count', param('medicationId').isUUID(), valida
     try {
       const staffId = fromToken(req, 'staffId');
       const { suId, currentCount, notes } = req.body;
-      await query(
-        `INSERT INTO medication_stock (su_id, medication_id, current_count, last_counted_by, last_counted_at, notes)
-         VALUES ($1,$2,$3,$4,NOW(),$5)
-         ON CONFLICT (su_id, medication_id) DO UPDATE SET
-           current_count=$3, last_counted_by=$4, last_counted_at=NOW(), notes=$5`,
-        [suId, req.params.medicationId, currentCount, staffId, notes || null]
+      const existing = await query<any>(
+        'SELECT id FROM medication_stock WHERE su_id=$1 AND medication_id=$2',
+        [suId, req.params.medicationId]
       );
+      if (existing.length) {
+        await query(
+          `UPDATE medication_stock SET current_count=$1, last_counted_by=$2, last_counted_at=NOW(), notes=$3 WHERE su_id=$4 AND medication_id=$5`,
+          [currentCount, staffId, notes || null, suId, req.params.medicationId]
+        );
+      } else {
+        await query(
+          `INSERT INTO medication_stock (su_id, medication_id, current_count, last_counted_by, last_counted_at, notes) VALUES ($1,$2,$3,$4,NOW(),$5)`,
+          [suId, req.params.medicationId, currentCount, staffId, notes || null]
+        );
+      }
       res.json({ success: true, message: 'Stock count updated' } as ApiResponse);
     } catch (err) { next(err); }
   }

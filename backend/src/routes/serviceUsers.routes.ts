@@ -281,13 +281,6 @@ router.post('/:id/contacts', param('id').isUUID(),
          address1 || null, address2 || null, postcode || null,
          isPrimary || false, notes || null, displayOrder || 0]
       );
-      // Auto-lookup postcode GPS for geofence
-      if (postcode) {
-        const gps = await lookupPostcodeGPS(postcode);
-        if (gps) {
-          await query('UPDATE service_users SET latitude=$1, longitude=$2 WHERE id=$3', [gps.lat, gps.lng, (rows[0] as any).id]);
-        }
-      }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

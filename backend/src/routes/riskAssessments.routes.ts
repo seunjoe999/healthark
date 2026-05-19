@@ -127,4 +127,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+router.delete('/:id', requireRole('home_manager', 'group_admin'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('UPDATE risk_assessments SET is_active = false WHERE id = $1', [req.params.id]);
+      res.json({ success: true, message: 'Risk assessment archived' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

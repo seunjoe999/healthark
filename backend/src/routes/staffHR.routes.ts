@@ -230,12 +230,12 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
       const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
       if (!rows.length) throw new AppError('Leave not found', 404);
       const leave = rows[0];
-      await query('UPDATE leave_requests SET status=$1, approved_by=$2, approved_at=NOW() WHERE id=$3',
+      await query('UPDATE staff_leave SET status=$1, approved_by=$2, approved_at=NOW() WHERE id=$3',
         ['approved', managerId, req.params.id]);
       // Deduct hours from staff annual leave
-      if (leave.total_hours) {
+      if (leave.hours_requested) {
         await query('UPDATE staff SET leave_hours_remaining = COALESCE(leave_hours_remaining, leave_hours_total) - $1 WHERE id = $2',
-          [leave.total_hours, leave.staff_id]);
+          [leave.hours_requested, leave.staff_id]);
       }
       // Send notification to staff
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
@@ -253,7 +253,7 @@ router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
       const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
       if (!rows.length) throw new AppError('Leave not found', 404);
       const leave = rows[0];
-      await query('UPDATE leave_requests SET status=$1 WHERE id=$2', ['declined', req.params.id]);
+      await query('UPDATE staff_leave SET status=$1 WHERE id=$2', ['declined', req.params.id]);
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
         VALUES ($1,$2,'Leave request declined','Your leave request has been declined. Please speak to your manager.','warning','/staff')`,
         [leave.staff_id, leave.home_id]);

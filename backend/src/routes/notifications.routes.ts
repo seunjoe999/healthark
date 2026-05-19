@@ -31,6 +31,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+// PUT /api/notifications/read-all  — must be before /:id/read to avoid UUID param shadowing
+router.put('/read-all', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    await query('UPDATE notifications SET is_read=true, read_at=NOW() WHERE recipient_id=$1', [staffId]);
+    res.json({ success: true } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // PUT /api/notifications/:id/read
 router.put('/:id/read', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -40,15 +49,6 @@ router.put('/:id/read', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
-
-// PUT /api/notifications/read-all
-router.put('/read-all', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const staffId = fromToken(req, 'staffId');
-    await query('UPDATE notifications SET is_read=true, read_at=NOW() WHERE recipient_id=$1', [staffId]);
-    res.json({ success: true } as ApiResponse);
-  } catch (err) { next(err); }
-});
 
 // POST /api/notifications/send — send to a specific staff member
 router.post('/send', async (req: Request, res: Response, next: NextFunction) => {
