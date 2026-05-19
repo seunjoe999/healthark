@@ -78,8 +78,8 @@ export default function Policies() {
                 </div>
                 <div className="flex gap-2 flex-shrink-0 items-center">
                   {p.document_url && (
-                    <a href={p.document_url} target="_blank" rel="noreferrer">
-                      <Button size="sm" variant="secondary" icon={<ExternalLink className="w-3.5 h-3.5" />}>View</Button>
+                    <a href={/^https?:\/\//i.test(p.document_url) ? p.document_url : `https://${p.document_url}`} target="_blank" rel="noreferrer">
+                      <Button size="sm" variant="outline" icon={<ExternalLink className="w-3.5 h-3.5" />}>View</Button>
                     </a>
                   )}
                   {p.requires_sign && !p.signed_by_me && (
@@ -110,7 +110,13 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/policies', form); onSaved() }
+    try {
+      const payload = { ...form }
+      if (payload.documentUrl && !/^https?:\/\//i.test(payload.documentUrl)) {
+        payload.documentUrl = `https://${payload.documentUrl}`
+      }
+      await api.post('/policies', payload); onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }

@@ -38,9 +38,14 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const homeId = fromToken(req, 'homeId');
+      let homeId = fromToken(req, 'homeId');
       const { suId, reviewType, reviewDate, summary, residentFeedback, familyFeedback,
               outcomes, nextReviewDate, attendees } = req.body;
+      // Fall back to the SU's home_id if the token doesn't have one (e.g. group_admin)
+      if (!homeId) {
+        const suRows = await query<any>('SELECT home_id FROM service_users WHERE id=$1', [suId]);
+        homeId = suRows[0]?.home_id || '';
+      }
       const rows = await query(
         `INSERT INTO su_reviews (su_id, home_id, created_by, review_type, review_date, summary,
           resident_feedback, family_feedback, outcomes, next_review_date, attendees)
@@ -215,5 +220,38 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
     res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+
+router.delete('/su/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try { await query('DELETE FROM su_reviews WHERE id=$1', [req.params.id]); res.json({ success: true } as ApiResponse); }
+    catch (err) { next(err); }
+  }
+);
+router.delete('/cautions/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try { await query('DELETE FROM staff_cautions WHERE id=$1', [req.params.id]); res.json({ success: true } as ApiResponse); }
+    catch (err) { next(err); }
+  }
+);
+router.delete('/supervisions/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try { await query('DELETE FROM staff_supervisions WHERE id=$1', [req.params.id]); res.json({ success: true } as ApiResponse); }
+    catch (err) { next(err); }
+  }
+);
+router.put('/su/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { reviewType, reviewDate, summary, residentFeedback, familyFeedback, outcomes, nextReviewDate, attendees } = req.body;
+      const nd = (d: any) => (d && String(d).trim()) ? d : null;
+      await query(
+        `UPDATE su_reviews SET review_type=$1, review_date=$2, summary=$3, resident_feedback=$4, family_feedback=$5, outcomes=$6, next_review_date=$7, attendees=$8 WHERE id=$9`,
+        [reviewType||null, nd(reviewDate), summary||null, residentFeedback||null, familyFeedback||null, outcomes||null, nd(nextReviewDate), attendees||null, req.params.id]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 export default router;
