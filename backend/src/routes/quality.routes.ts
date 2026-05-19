@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -147,6 +147,16 @@ router.post('/professionals', [body('suId').isUUID(), body('roleTitle').notEmpty
         [suId, roleTitle, fullName, organisation || null, phone || null, email || null, notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/quality/:id — admin only
+router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM quality_records WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

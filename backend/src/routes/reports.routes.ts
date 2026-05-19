@@ -52,7 +52,7 @@ router.get('/fluid', async (req: Request, res: Response, next: NextFunction) => 
     const rows = await query(
       `SELECT ft.*, su.first_name || ' ' || su.last_name as su_name, su.min_fluid_ml
        FROM su_daily_fluid_totals ft JOIN service_users su ON su.id = ft.su_id
-       WHERE ft.home_id = $1 AND ft.record_date BETWEEN $2 AND $3
+       WHERE su.home_id = $1 AND ft.record_date BETWEEN $2 AND $3
        ORDER BY ft.record_date DESC, su.last_name`,
       [homeId, fromDate, toDate]
     );
@@ -94,7 +94,7 @@ router.get('/care-plan-compliance', async (req: Request, res: Response, next: Ne
                    WHEN cp.next_review_date < CURRENT_DATE + INTERVAL '7 days' THEN 'due_soon'
                    ELSE 'current' END as review_status
        FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
-       WHERE cp.home_id = $1 AND cp.is_active = true
+       WHERE cp.home_id = $1 AND cp.is_active IS NOT FALSE
        ORDER BY review_status DESC, cp.next_review_date`,
       [homeId]
     );
@@ -152,8 +152,8 @@ router.get('/monthly-summary', async (req: Request, res: Response, next: NextFun
     const [totalRecords, incidents, fluidBelow, carePlans, staffActive] = await Promise.all([
       query<{ count: string }>(`SELECT COUNT(*) FROM daily_records WHERE home_id=$1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]),
       query<{ count: string }>(`SELECT COUNT(*) FROM records_incidents ri JOIN daily_records dr ON dr.id=ri.daily_record_id WHERE dr.home_id=$1 AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]),
-      query<{ count: string }>(`SELECT COUNT(*) FROM su_daily_fluid_totals WHERE home_id=$1 AND record_date BETWEEN $2 AND $3 AND below_threshold=true`, [homeId, from, to]),
-      query<{ count: string; overdue: string }>(`SELECT COUNT(*) as count, COUNT(CASE WHEN next_review_date < CURRENT_DATE THEN 1 END) as overdue FROM care_plans WHERE home_id=$1 AND is_active=true`, [homeId]),
+      query<{ count: string }>(`SELECT COUNT(*) FROM su_daily_fluid_totals ft JOIN service_users su ON su.id = ft.su_id WHERE su.home_id=$1 AND ft.record_date BETWEEN $2 AND $3 AND ft.below_threshold=true`, [homeId, from, to]),
+      query<{ count: string; overdue: string }>(`SELECT COUNT(*) as count, COUNT(CASE WHEN next_review_date < CURRENT_DATE THEN 1 END) as overdue FROM care_plans WHERE home_id=$1 AND is_active IS NOT FALSE`, [homeId]),
       query<{ count: string }>(`SELECT COUNT(DISTINCT staff_id) FROM staff_clock_events WHERE home_id=$1 AND DATE(event_time) BETWEEN $2 AND $3`, [homeId, from, to]),
     ]);
 

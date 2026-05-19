@@ -47,7 +47,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     if (date) { sql += ` AND dr.record_date = $${idx++}`; params.push(date); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
-    sql += ' ORDER BY dr.recorded_at DESC';
+    sql += ' ORDER BY dr.record_date DESC, dr.id DESC';
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
@@ -129,7 +129,7 @@ router.post('/', [
           const prevRows = await client.query(
             `SELECT rv.weight_kg FROM records_vitals rv JOIN daily_records dr2 ON dr2.id = rv.daily_record_id
              WHERE dr2.su_id = $1 AND rv.vital_type = 'weight' AND dr2.id != $2
-             ORDER BY dr2.recorded_at DESC LIMIT 1`,
+             ORDER BY dr2.record_date DESC, dr2.id DESC LIMIT 1`,
             [suId, dr.id]
           );
           const prevWeight = prevRows.rows[0]?.weight_kg || null;

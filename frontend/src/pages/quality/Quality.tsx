@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Star, AlertTriangle, MessageSquare, Plus, Lock, Users, Brain } from 'lucide-react'
+import { Star, AlertTriangle, MessageSquare, Plus, Lock, Users, Brain, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type QATab = 'qa' | 'capacity' | 'professionals' | 'sensitive'
@@ -114,7 +114,18 @@ export default function Quality() {
                           <span className={`badge ${r.record_type === 'compliment' ? 'badge-success' : r.record_type === 'complaint' ? 'badge-critical' : 'badge-info'}`}>{r.record_type}</span>
                           {r.su_name && <span className="text-xs text-slate-500">· {r.su_name}</span>}
                         </div>
-                        <span className="text-xs text-slate-400">{format(new Date(r.created_at), 'd MMM yyyy')}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-400">{format(new Date(r.created_at), 'd MMM yyyy')}</span>
+                          {isRole('home_manager', 'group_admin') && (
+                            <button onClick={async () => {
+                              if (!window.confirm('Delete this record?')) return
+                              try { await api.delete(`/quality/${r.id}`); const res = await api.get('/quality', { params: { homeId: selectedHome } }); setQaRecords(res.data.data || []); toast.success('Record deleted') }
+                              catch { toast.error('Failed to delete') }
+                            }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm font-semibold text-slate-800">{r.summary}</p>
                       {r.detail && <p className="text-sm text-slate-600 mt-1">{r.detail}</p>}

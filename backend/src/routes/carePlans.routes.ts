@@ -31,7 +31,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                FROM care_plans cp
                JOIN service_users su ON su.id = cp.su_id
                LEFT JOIN staff s ON s.id = cp.created_by
-               WHERE cp.is_active = true`;
+               WHERE cp.is_active IS NOT FALSE`;
     const params: unknown[] = [];
     let idx = 1;
 

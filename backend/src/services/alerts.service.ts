@@ -72,7 +72,7 @@ export async function checkFluidIntake(): Promise<void> {
     su_id: string; home_id: string; total_ml: number;
     first_name: string; last_name: string; min_fluid_ml: number;
   }>(
-    `SELECT ft.su_id, ft.home_id, ft.total_ml, su.first_name, su.last_name, su.min_fluid_ml
+    `SELECT ft.su_id, su.home_id, ft.total_ml, su.first_name, su.last_name, su.min_fluid_ml
      FROM su_daily_fluid_totals ft JOIN service_users su ON su.id = ft.su_id
      WHERE ft.record_date = $1 AND ft.below_threshold = TRUE
        AND NOT EXISTS (
