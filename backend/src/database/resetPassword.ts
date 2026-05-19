@@ -20,7 +20,7 @@ async function reset() {
   console.log('Passwords reset:');
   console.log('  admin@healthark.co.uk   -> Admin1234');
   console.log('  manager@healthark.co.uk -> Manager1234');
-  console.log('  care1@healthark.co.uk   -> Staff1234';
+  console.log('  care1@healthark.co.uk   -> Staff1234');
   await pool.end();
 }
 

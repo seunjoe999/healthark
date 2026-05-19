@@ -342,7 +342,7 @@ router.get('/home-qr/:homeId', authenticate, param('homeId').isUUID(), validateR
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query<any>(
-        'SELECT id, name, qr_token, address1, address2, address3, postcode, latitude, longitude, geofence_radius FROM homes WHERE id = $1',
+        'SELECT id, name, qr_token, address1, address2, postcode, latitude, longitude, geofence_radius FROM homes WHERE id = $1',
         [req.params.homeId]
       );
       if (!rows.length) throw new AppError('Home not found', 404);
@@ -365,7 +365,6 @@ router.get('/home-qr/:homeId', authenticate, param('homeId').isUUID(), validateR
           qrUrl,
           address1: home.address1,
           address2: home.address2,
-          address3: home.address3,
           postcode: home.postcode,
           latitude: home.latitude,
           longitude: home.longitude,
