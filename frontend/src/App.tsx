@@ -46,6 +46,7 @@ import ClockInAnalytics from './pages/clockin/ClockInAnalytics'
 import Compliance from './pages/compliance/Compliance'
 import MedicationStock from './pages/medication-stock/MedicationStock'
 import FamilyPortal from './pages/family/FamilyPortal'
+import FamilyView from './pages/family/FamilyView'
 import NotificationsManager from './pages/notifications/NotificationsManager'
 
 function getStoredToken(): string | null {
@@ -133,6 +134,7 @@ function AppRoutes() {
       <Route path="/medication-stock" element={<ProtectedRoute><MedicationStock /></ProtectedRoute>} />
       <Route path="/family-portal" element={<ProtectedRoute><FamilyPortal /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
+      <Route path="/family/:token" element={<FamilyView />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

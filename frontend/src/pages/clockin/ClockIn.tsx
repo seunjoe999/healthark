@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { MapPin, CheckCircle, XCircle, AlertTriangle, Loader2, LogIn, LogOut } from 'lucide-react'
 
@@ -9,6 +9,8 @@ export default function ClockIn() {
   const { token } = useParams<{ token: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isHomeBased = location.pathname.startsWith('/clockin/home/')
   const [state, setState] = useState<State>('loading')
   const [suInfo, setSuInfo] = useState<any>(null)
   const [result, setResult] = useState<any>(null)
@@ -17,12 +19,16 @@ export default function ClockIn() {
 
   useEffect(() => {
     if (!token) return
-    // Load SU info from QR token
-    fetch(`/api/clockin/qr/${token}`)
+    const endpoint = isHomeBased ? `/api/clockin/home/${token}` : `/api/clockin/qr/${token}`
+    fetch(endpoint)
       .then(r => r.json())
       .then(data => {
         if (!data.success) { setError(data.error || 'Invalid QR code'); setState('error'); return }
-        setSuInfo(data.data)
+        // Normalise home-based response to match SU-based shape
+        const info = isHomeBased
+          ? { ...data.data, name: data.data.homeName, hasLocation: data.data.hasPostcodes }
+          : data.data
+        setSuInfo(info)
         setState(user ? 'confirming' : 'login_required')
       })
       .catch(() => { setError('Could not load. Check your connection.'); setState('error') })
@@ -39,11 +45,11 @@ export default function ClockIn() {
       async (pos) => {
         try {
           const authToken = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
-          const res = await fetch('/api/clockin/qr', {
+          const res = await fetch('/api/clockin/event', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
             body: JSON.stringify({
-              suId: suInfo.suId,
+              homeId: suInfo.homeId,
               staffLat: pos.coords.latitude,
               staffLng: pos.coords.longitude,
               eventType,
@@ -171,8 +177,8 @@ export default function ClockIn() {
               <div className="w-16 h-16 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
-              <h2 className="text-white font-display text-2xl mb-1">{result.eventType === 'clock_out' ? 'Clocked out' : 'Clocked in'}!</h2>
-              <p className="text-slate-300 text-sm mb-4">{result.suName}</p>
+              <h2 className="text-white font-display text-2xl mb-1">{result.event_type === 'clock_out' ? 'Clocked out' : 'Clocked in'}!</h2>
+              <p className="text-slate-300 text-sm mb-4">{result.staffName || suInfo?.homeName || suInfo?.name || ''}</p>
               <div className="space-y-2 mb-6">
                 {result.distanceMetres !== null && (
                   <p className="text-xs text-slate-400 flex items-center justify-center gap-1">

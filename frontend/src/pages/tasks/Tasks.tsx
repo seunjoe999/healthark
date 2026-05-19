@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Settings } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQUENCIES = [
@@ -60,6 +60,15 @@ export default function Tasks() {
       await load()
       toast.success('Task completed')
     } catch { toast.error('Failed') }
+  }
+
+  const deleteTask = async (taskId: string) => {
+    if (!window.confirm('Delete this task?')) return
+    try {
+      await api.delete(`/tasks/${taskId}`)
+      await load()
+      toast.success('Task deleted')
+    } catch { toast.error('Failed to delete task') }
   }
 
   const filtered = tasks.filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
@@ -135,6 +144,11 @@ export default function Tasks() {
                   {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium">✓ {task.completed_by_name}</span>}
                 </div>
               </div>
+              {isRole('home_manager', 'group_admin') && (
+                <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>

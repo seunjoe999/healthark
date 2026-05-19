@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
-import { FileText, Plus, Star, Search } from 'lucide-react'
+import { FileText, Plus, Trash2, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const REVIEW_TYPES = [
@@ -40,6 +40,15 @@ export default function Reviews() {
     if (!selectedHome) return
     suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
   }, [selectedHome])
+
+  const deleteReview = async (id: string) => {
+    if (!window.confirm('Delete this review?')) return
+    try {
+      await api.delete(`/reviews/su/${id}`)
+      if (selectedSu) { const res = await api.get(`/reviews/su/${selectedSu.id}`); setReviews(res.data.data || []) }
+      toast.success('Review deleted')
+    } catch { toast.error('Failed to delete review') }
+  }
 
   const selectSu = async (su: any) => {
     setSelectedSu(su)
@@ -113,11 +122,16 @@ export default function Reviews() {
                         </p>
                         {r.attendees && <p className="text-xs text-slate-400 mt-0.5">Attendees: {r.attendees}</p>}
                       </div>
-                      {r.next_review_date && (
-                        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg font-medium">
-                          Next: {format(new Date(r.next_review_date), 'd MMM yyyy')}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {r.next_review_date && (
+                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg font-medium">
+                            Next: {format(new Date(r.next_review_date), 'd MMM yyyy')}
+                          </span>
+                        )}
+                        <button onClick={() => deleteReview(r.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       <div>

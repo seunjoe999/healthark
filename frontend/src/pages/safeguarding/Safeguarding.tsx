@@ -116,7 +116,7 @@ export default function Safeguarding() {
         </div>
       )}
 
-      <AddConcernModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus}
+      <AddConcernModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome}
         onSaved={async () => {
           setAddOpen(false)
           const res = await api.get('/safeguarding', { params: { homeId: selectedHome } })
@@ -137,7 +137,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-function AddConcernModal({ open, onClose, sus, onSaved }: { open: boolean; onClose: () => void; sus: any[]; onSaved: () => void }) {
+function AddConcernModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; onSaved: () => void }) {
   const [form, setForm] = useState({ suId: '', incidentDate: new Date().toISOString().split('T')[0], incidentTime: '', suLocation: '', incidentLocation: '', overview: '', witnesses: '', medicalRequired: false, medicalDetails: '', injuryDetails: '', immediateActions: '', decisionsBReached: '', lessonsLearnt: '', outsideAgency: false, agencyDetails: '', managementRecs: '', preventionActions: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -146,7 +146,7 @@ function AddConcernModal({ open, onClose, sus, onSaved }: { open: boolean; onClo
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/safeguarding', form); onSaved() }
+    try { await api.post('/safeguarding', { ...form, homeId }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }

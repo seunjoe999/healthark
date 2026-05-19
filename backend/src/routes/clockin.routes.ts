@@ -346,7 +346,14 @@ router.get('/home-qr/:homeId', authenticate, param('homeId').isUUID(), validateR
         [req.params.homeId]
       );
       if (!rows.length) throw new AppError('Home not found', 404);
-      const home = rows[0];
+      let home = rows[0];
+      // Auto-generate qr_token if missing
+      if (!home.qr_token) {
+        const crypto = require('crypto');
+        const newToken = crypto.randomBytes(16).toString('hex');
+        await query('UPDATE homes SET qr_token = $1 WHERE id = $2', [newToken, req.params.homeId]);
+        home = { ...home, qr_token: newToken };
+      }
       const base = process.env.FRONTEND_URL || 'http://localhost:3000';
       const qrUrl = `${base}/clockin/home/${home.qr_token}`;
       res.json({
@@ -449,5 +456,16 @@ router.get('/generate/:suId', authenticate, param('suId').isUUID(), validateRequ
     } catch (err) { next(err); }
   }
 );
+
+
+router.post('/generate-qr', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId } = req.body;
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(16).toString('hex');
+    await query('UPDATE homes SET qr_token=$1 WHERE id=$2', [token, homeId]);
+    res.json({ success: true, data: { token } } as ApiResponse);
+  } catch (err) { next(err); }
+});
 
 export default router;

@@ -11,6 +11,22 @@ import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]
 
+const STAFF_DOC_TYPES = [
+  { value: 'dbs_certificate', label: 'DBS certificate' },
+  { value: 'application_form', label: 'Application form' },
+  { value: 'care_certificate', label: 'Care certificate' },
+  { value: 'induction_record', label: 'Induction record' },
+  { value: 'reference', label: 'Reference' },
+  { value: 'contract', label: 'Employment contract' },
+  { value: 'training_certificate', label: 'Training certificate' },
+  { value: 'right_to_work', label: 'Right to work document' },
+  { value: 'id_document', label: 'ID / Passport' },
+  { value: 'disciplinary', label: 'Disciplinary record' },
+  { value: 'appraisal', label: 'Appraisal document' },
+  { value: 'medical_clearance', label: 'Medical clearance' },
+  { value: 'other', label: 'Other document' },
+]
+
 type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions'
 
 export default function StaffModule() {
@@ -40,7 +56,7 @@ export default function StaffModule() {
       const h = res.data.data || []
       setHomes(h)
       setSelectedHome(user?.homeId || h[0]?.id || '')
-    })
+    }).catch(e => { console.error('homes load error:', e); setLoading(false) })
   }, [user])
 
   useEffect(() => {
@@ -53,23 +69,26 @@ export default function StaffModule() {
   const selectStaff = async (s: any) => {
     setSelected(s)
     setTab('profile')
-    const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes] = await Promise.all([
-      api.get(`/staff-hr/training/${s.id}`),
-      api.get(`/staff-hr/leave?staffId=${s.id}`),
-      api.get(`/staff-hr/onboarding/${s.id}`),
-      staffApi.clockHistory(s.id),
-      api.get(`/documents/staff/${s.id}`),
-      api.get(`/reviews/cautions/${s.id}`),
-      api.get(`/reviews/supervisions/${s.id}`),
-    ])
-    .catch(e => console.error('selectStaff error:', e))
-    setTraining(trainingRes.data.data || [])
-    setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
-    setOnboarding(onboardingRes.data.data)
-    setClockHistory(clockRes.data.data || [])
-    setStaffDocs(docsRes.data.data || [])
-    setCautions((await api.get(`/reviews/cautions/${s.id}`)).data.data || [])
-    setSupervisions((await api.get(`/reviews/supervisions/${s.id}`)).data.data || [])
+    try {
+      const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes] = await Promise.all([
+        api.get(`/staff-hr/training/${s.id}`),
+        api.get(`/staff-hr/leave?staffId=${s.id}`),
+        api.get(`/staff-hr/onboarding/${s.id}`),
+        staffApi.clockHistory(s.id),
+        api.get(`/documents/staff/${s.id}`),
+        api.get(`/reviews/cautions/${s.id}`),
+        api.get(`/reviews/supervisions/${s.id}`),
+      ])
+      setTraining(trainingRes.data.data || [])
+      setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
+      setOnboarding(onboardingRes.data.data)
+      setClockHistory(clockRes.data.data || [])
+      setStaffDocs(docsRes.data.data || [])
+      setCautions(cautionsRes.data.data || [])
+      setSupervisions(supervisionsRes.data.data || [])
+    } catch (e) {
+      console.error('selectStaff error:', e)
+    }
   }
 
   const getName = (s: any) => `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()
@@ -629,7 +648,7 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
   )
 }
 
-function StaffDocUploadModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: (doc: any) => void }) {
+function StaffDocUploadModal({ open, onClose, staffId, onUploaded }: { open: boolean; onClose: () => void; staffId: string; onUploaded: (doc: any) => void }) {
   const [docType, setDocType] = React.useState('')
   const [title, setTitle] = React.useState('')
   const [notes, setNotes] = React.useState('')
@@ -637,21 +656,6 @@ function StaffDocUploadModal({ open, onClose, staffId, onSaved }: { open: boolea
   const [file, setFile] = React.useState<File | null>(null)
   const [loading, setLoading] = React.useState(false)
   const fileRef = React.useRef<HTMLInputElement>(null)
-  const STAFF_DOC_TYPES = [
-    { value: 'dbs_certificate', label: 'DBS certificate' },
-    { value: 'application_form', label: 'Application form' },
-    { value: 'care_certificate', label: 'Care certificate' },
-    { value: 'induction_record', label: 'Induction record' },
-    { value: 'reference', label: 'Reference' },
-    { value: 'contract', label: 'Employment contract' },
-    { value: 'training_certificate', label: 'Training certificate' },
-    { value: 'right_to_work', label: 'Right to work document' },
-    { value: 'id_document', label: 'ID / Passport' },
-    { value: 'disciplinary', label: 'Disciplinary record' },
-    { value: 'appraisal', label: 'Appraisal document' },
-    { value: 'medical_clearance', label: 'Medical clearance' },
-    { value: 'other', label: 'Other document' },
-  ]
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -672,7 +676,7 @@ function StaffDocUploadModal({ open, onClose, staffId, onSaved }: { open: boolea
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.error)
-      onSaved(data.data)
+      onUploaded(data.data)
     } catch (err: any) { toast.error(err?.message || 'Upload failed') }
     finally { setLoading(false) }
   }

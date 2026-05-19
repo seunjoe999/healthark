@@ -10,6 +10,9 @@
     "migrate": "node -r ts-node/register src/database/migrate.ts",
     "seed": "node -r ts-node/register src/database/seed.ts",
     "seed:demo": "node -r ts-node/register src/database/seedDemo.ts",
+    "init-db": "node src/database/init-db.js",
+    "reset-password": "node -r ts-node/register src/database/resetPassword.ts",
+    "diagnose": "node diagnose.js",
     "test": "jest --runInBand",
     "lint": "eslint src --ext .ts"
   },

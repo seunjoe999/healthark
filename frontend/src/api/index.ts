@@ -103,4 +103,6 @@ export const assessmentsApi = {
   create: (data: Record<string, unknown>) => api.post('/assessments', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/assessments/${id}`, data),
   delete: (id: string) => api.delete(`/assessments/${id}`),
+  templates: () => api.get('/assessments/templates'),
+  template: (key: string) => api.get(`/assessments/templates/${key}`),
 }

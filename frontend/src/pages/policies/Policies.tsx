@@ -3,7 +3,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
-import { BookOpen, Plus, CheckCircle, Clock, ExternalLink } from 'lucide-react'
+import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Policies() {
@@ -21,6 +21,15 @@ export default function Policies() {
       setPolicies(res.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
+  }
+
+  const deletePolicy = async (id: string) => {
+    if (!window.confirm('Delete this policy? This cannot be undone.')) return
+    try {
+      await api.delete(`/policies/${id}`)
+      toast.success('Policy deleted')
+      await load()
+    } catch { toast.error('Failed to delete policy') }
   }
 
   const signPolicy = async (id: string) => {
@@ -67,7 +76,7 @@ export default function Policies() {
                     {p.review_date && <span>Review due {format(new Date(p.review_date), 'd MMM yyyy')}</span>}
                   </div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2 flex-shrink-0 items-center">
                   {p.document_url && (
                     <a href={p.document_url} target="_blank" rel="noreferrer">
                       <Button size="sm" variant="secondary" icon={<ExternalLink className="w-3.5 h-3.5" />}>View</Button>
@@ -75,6 +84,11 @@ export default function Policies() {
                   )}
                   {p.requires_sign && !p.signed_by_me && (
                     <Button size="sm" icon={<CheckCircle className="w-3.5 h-3.5" />} onClick={() => signPolicy(p.id)}>Sign off</Button>
+                  )}
+                  {isRole('home_manager', 'group_admin') && (
+                    <button onClick={() => deletePolicy(p.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
               </div>

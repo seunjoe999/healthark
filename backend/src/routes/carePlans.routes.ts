@@ -25,14 +25,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const { suId, homeId } = req.query as Record<string, string>;
     const targetHomeId = homeId || fromToken(req, 'homeId');
 
-    let sql = `SELECT cp.*, 
+    let sql = `SELECT cp.*,
                       su.first_name || ' ' || su.last_name as su_name,
-                      s.first_name || ' ' || s.last_name as created_by_name,
-                      r.first_name || ' ' || r.last_name as reviewed_by_name
+                      s.first_name || ' ' || s.last_name as created_by_name
                FROM care_plans cp
                JOIN service_users su ON su.id = cp.su_id
                LEFT JOIN staff s ON s.id = cp.created_by
-               LEFT JOIN staff r ON r.id = cp.reviewed_by
                WHERE cp.is_active = true`;
     const params: unknown[] = [];
     let idx = 1;
@@ -110,8 +108,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
-              reviewFrequency, updateNotes } = req.body;
+      const { aimsOutcomes, whatICanDo, howToSupport, reviewFrequency, updateNotes } = req.body;
 
       // Calculate next review
       const freqDays: Record<string, number> = {
@@ -127,15 +124,13 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           aims_outcomes = COALESCE($1, aims_outcomes),
           what_i_can_do = COALESCE($2, what_i_can_do),
           how_to_support = COALESCE($3, how_to_support),
-          outcome_achieved = COALESCE($4, outcome_achieved),
-          review_frequency = $5,
+          review_frequency = $4,
           last_review_date = CURRENT_DATE,
-          next_review_date = $6,
-          reviewed_by = $7,
+          next_review_date = $5,
           updated_at = NOW()
-         WHERE id = $8 RETURNING *`,
-        [aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved || null,
-         freq, nextReview.toISOString().split('T')[0], staffId, req.params.id]
+         WHERE id = $6 RETURNING *`,
+        [aimsOutcomes, whatICanDo, howToSupport,
+         freq, nextReview.toISOString().split('T')[0], req.params.id]
       );
       if (!rows.length) throw new AppError('Care plan not found', 404);
 

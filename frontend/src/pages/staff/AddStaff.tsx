@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { homesApi } from '../../api'
 import api from '../../api'
-import { Button, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { ArrowLeft, UserPlus } from 'lucide-react'
+import { Button, Input, Select, Card, SectionHeading, Modal } from '../../components/ui'
+import { ArrowLeft, UserPlus, Copy, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
@@ -19,6 +19,7 @@ export default function AddStaff() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
+  const [createdStaff, setCreatedStaff] = useState<{ email: string; temporaryPassword: string } | null>(null)
   const [form, setForm] = useState({
     homeId: '', firstName: '', lastName: '', email: '', phone: '',
     role: 'care_staff', startDate: '', dateOfBirth: '', gender: '',
@@ -52,8 +53,13 @@ export default function AddStaff() {
     setSaving(true)
     try {
       const res = await api.post('/staff', form)
-      toast.success('Staff member added')
-      navigate('/staff')
+      const data = res.data.data
+      if (data?.temporaryPassword) {
+        setCreatedStaff({ email: data.email, temporaryPassword: data.temporaryPassword })
+      } else {
+        toast.success('Staff member added')
+        navigate('/staff')
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to add staff')
     } finally { setSaving(false) }
@@ -128,6 +134,36 @@ export default function AddStaff() {
         <Link to="/staff"><Button variant="outline" icon={<ArrowLeft className="w-4 h-4" />}>Cancel</Button></Link>
         <Button icon={<UserPlus className="w-4 h-4" />} loading={saving} onClick={save}>Add staff member</Button>
       </div>
+
+      {/* Show generated credentials before navigating */}
+      {createdStaff && (
+        <Modal open={true} onClose={() => { setCreatedStaff(null); navigate('/staff') }} title="Staff member created">
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+              <CheckCircle className="w-5 h-5 text-amber-600 inline mr-2" />
+              No password was set — a temporary one was generated. Share these credentials with the staff member.
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Email</p>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                <span className="flex-1 text-sm font-mono text-slate-900">{createdStaff.email}</span>
+                <button onClick={() => { navigator.clipboard.writeText(createdStaff.email); toast.success('Copied') }} className="text-slate-400 hover:text-slate-700"><Copy className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium mb-1">Temporary password</p>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                <span className="flex-1 text-sm font-mono text-slate-900 font-bold">{createdStaff.temporaryPassword}</span>
+                <button onClick={() => { navigator.clipboard.writeText(createdStaff.temporaryPassword); toast.success('Copied') }} className="text-slate-400 hover:text-slate-700"><Copy className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">The staff member should change their password after first login.</p>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => { setCreatedStaff(null); navigate('/staff') }}>Done</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
