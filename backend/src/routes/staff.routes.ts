@@ -29,7 +29,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
                 home_id, photo_url, start_date, leave_date, is_active, last_login,
-                leave_hours_total, leave_hours_remaining
+                leave_hours_total, leave_hours_used,
+                leave_hours_total - COALESCE(leave_hours_used, 0) AS leave_hours_remaining
          FROM staff WHERE organisation_id = $1
          ${filterHomeId ? 'AND home_id = $2' : ''}
          ORDER BY last_name, first_name`,
