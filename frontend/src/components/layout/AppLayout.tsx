@@ -64,7 +64,7 @@ const navSections = [
 const allNavItems = navSections.flatMap(s => s.items)
 
 interface SidebarProps {
-  user: { firstName?: string; lastName?: string; role?: string } | null
+  user: { id?: string; firstName?: string; lastName?: string; role?: string } | null
   logout: () => void
   isRole: (...roles: string[]) => boolean
   onNavClick: () => void

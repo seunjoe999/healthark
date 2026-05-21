@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { dailyRecordsApi } from '../../../api'
-import { Button, Input, Select, Toggle } from '../../../components/ui'
+import { dailyRecordsApi } from '../../api'
+import { Button, Input, Select, Toggle } from '../../components/ui'
 import { AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 

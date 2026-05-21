@@ -4,7 +4,7 @@ import clsx from 'clsx'
 
 // ── Button ────────────────────────────────────────────────────────
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'gold' | 'outline' | 'ghost' | 'danger' | 'teal'
+  variant?: 'primary' | 'secondary' | 'gold' | 'outline' | 'ghost' | 'danger' | 'teal'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
   icon?: ReactNode
@@ -14,6 +14,7 @@ export function Button({ variant = 'primary', size = 'md', loading, icon, childr
   const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed select-none'
   const variants: Record<string, string> = {
     primary: 'bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white shadow-sm',
+    secondary: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm',
     gold: 'text-slate-900 font-semibold shadow-sm',
     outline: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm',
     ghost: 'bg-transparent hover:bg-slate-100 text-slate-700',
