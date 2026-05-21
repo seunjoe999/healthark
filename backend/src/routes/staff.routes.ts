@@ -29,8 +29,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
                 home_id, photo_url, start_date, leave_date, is_active, last_login,
-                leave_hours_total, leave_hours_used,
-                leave_hours_total - COALESCE(leave_hours_used, 0) AS leave_hours_remaining
+                leave_hours_total, leave_hours_remaining
          FROM staff WHERE organisation_id = $1
          ${filterHomeId ? 'AND home_id = $2' : ''}
          ORDER BY last_name, first_name`,
@@ -177,7 +176,11 @@ router.put(
       const { firstName, lastName, preferredName, phone, address1, address2,
               address3, postcode, dateOfBirth, gender, nationality,
               maritalStatus, emergencyName, emergencyPhone, emergencyNotes,
-              photoUrl, status, leaveDate, homeId } = req.body;
+              photoUrl, status, isActive, leaveDate, homeId } = req.body;
+
+      const canManage = role === 'group_admin' || role === 'home_manager';
+      const newStatus = canManage ? (status || null) : null;
+      const newIsActive = isActive !== undefined ? isActive : (status === 'inactive' || status === 'terminated' ? false : status === 'active' ? true : null);
 
       const rows = await query(
         `UPDATE staff SET
@@ -198,18 +201,19 @@ router.put(
           emergency_notes = COALESCE($15, emergency_notes),
           photo_url = COALESCE($16, photo_url),
           status = COALESCE($17, status),
-          leave_date = COALESCE($18, leave_date),
-          home_id = COALESCE($19, home_id),
-          updated_at = NOW()
-         WHERE id = $20
-         RETURNING id, first_name, last_name, email, role, status`,
+          is_active = COALESCE($18, is_active),
+          leave_date = COALESCE($19, leave_date),
+          home_id = COALESCE($20, home_id)
+         WHERE id = $21
+         RETURNING id, first_name, last_name, email, role, status, is_active`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
          address1 || null, address2 || null, address3 || null, postcode || null,
          nd(dateOfBirth), gender || null, nationality || null, maritalStatus || null,
          emergencyName || null, emergencyPhone || null, emergencyNotes || null, photoUrl || null,
-         role === 'group_admin' || role === 'home_manager' ? (status || null) : undefined,
-         role === 'group_admin' ? nd(leaveDate) : undefined,
-         role === 'group_admin' ? (homeId || null) : undefined,
+         newStatus,
+         newIsActive,
+         role === 'group_admin' ? nd(leaveDate) : null,
+         role === 'group_admin' ? (homeId || null) : null,
          targetId]
       );
 
@@ -271,6 +275,21 @@ router.put('/:id/access/:homeId',
          canViewFinancials ?? false]
       );
       res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/staff/:id/password — reset staff password (managers only)
+router.put('/:id/password', requireRole('group_admin', 'home_manager'),
+  [param('id').isUUID(), body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { newPassword } = req.body;
+      const hash = await authService.hashPassword(newPassword);
+      const rows = await query('UPDATE staff SET password_hash=$1 WHERE id=$2 RETURNING id', [hash, req.params.id]);
+      if (!rows.length) throw new AppError('Staff not found', 404);
+      res.json({ success: true, message: 'Password updated' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

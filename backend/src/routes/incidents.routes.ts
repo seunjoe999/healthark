@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticate } from '../middleware/auth';
+import { param } from 'express-validator';
+import { authenticate, requireRole } from '../middleware/auth';
+import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
@@ -106,5 +108,22 @@ router.get('/stats', async (req: Request, res: Response, next: NextFunction) => 
     } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// DELETE /api/incidents/:id — delete an incident record (managers and admins only)
+router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Deletes the records_incidents row; the parent daily_record is kept for audit
+      const rows = await query<{ daily_record_id: string }>(
+        'DELETE FROM records_incidents WHERE id = $1 RETURNING daily_record_id', [req.params.id]
+      );
+      if (!rows.length) {
+        // Try deleting by daily_record_id in case client sends the daily_record id
+        await query('DELETE FROM records_incidents WHERE daily_record_id = $1', [req.params.id]);
+      }
+      res.json({ success: true, message: 'Incident deleted' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 export default router;

@@ -4,7 +4,7 @@ import { homesApi, staffApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Users, Plus, ChevronLeft, ChevronRight, Trash2, Clock, Wand2 } from 'lucide-react'
+import { Users, Plus, ChevronLeft, ChevronRight, Trash2, Clock, Wand2, BarChart2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const SHIFT_TYPES = [
@@ -104,6 +104,24 @@ export default function Rota() {
 
   const todayShifts = getDayShifts(new Date())
 
+  // Calculate shift duration in hours (handles overnight shifts)
+  const shiftHours = (startTime: string, endTime: string): number => {
+    if (!startTime || !endTime) return 0
+    const [sh, sm] = startTime.split(':').map(Number)
+    const [eh, em] = endTime.split(':').map(Number)
+    let mins = (eh * 60 + em) - (sh * 60 + sm)
+    if (mins < 0) mins += 24 * 60
+    return Math.round((mins / 60) * 10) / 10
+  }
+
+  // Weekly hours per staff member
+  const weeklyHours = shifts.reduce((acc: Record<string, { name: string; hours: number }>, s: any) => {
+    const id = s.staff_id
+    if (!acc[id]) acc[id] = { name: s.staff_name || '', hours: 0 }
+    acc[id].hours += shiftHours(s.start_time?.substring(0,5), s.end_time?.substring(0,5))
+    return acc
+  }, {})
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -182,7 +200,7 @@ export default function Rota() {
                   {dayShifts.map((s: any) => (
                     <div key={s.id} className={`group relative px-2 py-1.5 rounded-lg border text-xs ${SHIFT_COLORS[s.shift_type] || SHIFT_COLORS.regular}`}>
                       <p className="font-semibold truncate">{s.staff_name?.split(' ')[0]}</p>
-                      <p className="opacity-70">{s.start_time?.substring(0,5)}–{s.end_time?.substring(0,5)}</p>
+                      <p className="opacity-70">{s.start_time?.substring(0,5)}–{s.end_time?.substring(0,5)} <span className="font-semibold">({shiftHours(s.start_time?.substring(0,5), s.end_time?.substring(0,5))}h)</span></p>
                       {s.su_name && <p className="opacity-60 truncate text-[10px]">{s.su_name}</p>}
                       {isRole('home_manager','group_admin','senior_carer') && <button onClick={() => deleteShift(s.id)}
                         className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-600">
@@ -198,6 +216,24 @@ export default function Rota() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Weekly hours summary */}
+      {Object.keys(weeklyHours).length > 0 && (
+        <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+          <h2 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-purple-600" /> Staff hours this week
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {Object.values(weeklyHours).sort((a, b) => b.hours - a.hours).map((sw: any) => (
+              <div key={sw.name} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ${sw.hours > 40 ? 'bg-red-50 border-red-200 text-red-700' : sw.hours > 35 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                <span className="font-medium">{sw.name}</span>
+                <span className="font-bold">{sw.hours}h</span>
+                {sw.hours > 40 && <span className="text-xs font-semibold">⚠ Over 40h</span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -4,7 +4,7 @@ import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, FileText } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ── Severity helpers ──────────────────────────────────────────────
@@ -65,7 +65,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 // ── Main component ────────────────────────────────────────────────
 
 export default function Incidents() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [incidents, setIncidents] = useState<any[]>([])
@@ -115,6 +115,22 @@ export default function Incidents() {
   const toggleExpand = (id: string) => setExpandedId(prev => prev === id ? null : id)
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault() }
+
+  const deleteIncident = async (inc: any) => {
+    if (!window.confirm(`Delete this incident report for ${inc.resident_name || 'this resident'}? This cannot be undone.`)) return
+    try {
+      // Try deleting by incident record id first, fallback to daily_record_id
+      await api.delete(`/incidents/${inc.id}`)
+      setIncidents(prev => prev.filter(i => i.id !== inc.id))
+      toast.success('Incident deleted')
+    } catch {
+      try {
+        await api.delete(`/incidents/${inc.daily_record_id}`)
+        setIncidents(prev => prev.filter(i => i.id !== inc.id))
+        toast.success('Incident deleted')
+      } catch { toast.error('Failed to delete incident') }
+    }
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -278,6 +294,14 @@ export default function Incidents() {
                     {inc.description && <IncidentField label="Description" value={inc.description} />}
                     {inc.witnesses && <IncidentField label="Witnesses" value={inc.witnesses} />}
                     {inc.immediate_action && <IncidentField label="Immediate action taken" value={inc.immediate_action} />}
+                    {isRole('home_manager', 'group_admin') && (
+                      <div className="flex justify-end pt-2 border-t border-slate-50">
+                        <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
+                          onClick={() => deleteIncident(inc)}>
+                          Delete incident
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

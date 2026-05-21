@@ -234,7 +234,7 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
         ['approved', managerId, req.params.id]);
       // Deduct hours from staff annual leave
       if (leave.hours_requested) {
-        await query('UPDATE staff SET leave_hours_used = COALESCE(leave_hours_used, 0) + $1 WHERE id = $2',
+        await query('UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) - $1, 0) WHERE id = $2',
           [leave.hours_requested, leave.staff_id]);
       }
       // Send notification to staff

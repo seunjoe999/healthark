@@ -8,7 +8,7 @@ import {
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
   Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search, FileCheck, QrCode,
-  AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2
+  AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield
 } from 'lucide-react'
 
 const navSections = [
@@ -56,6 +56,7 @@ const navSections = [
       { label: 'PPE Stock',        to: '/ppe',                icon: Package,         roles: ['home_manager','group_admin'] },
       { label: 'Family Portal',    to: '/family-portal',      icon: Users2,          roles: ['home_manager','group_admin'] },
       { label: 'Settings',         to: '/settings',           icon: Settings,        roles: ['group_admin'] },
+      { label: 'Admin Accounts',   to: '/admin/accounts',     icon: Shield,          roles: ['group_admin'] },
     ]
   }
 ]

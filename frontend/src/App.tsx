@@ -48,6 +48,7 @@ import MedicationStock from './pages/medication-stock/MedicationStock'
 import FamilyPortal from './pages/family/FamilyPortal'
 import FamilyView from './pages/family/FamilyView'
 import NotificationsManager from './pages/notifications/NotificationsManager'
+import AdminAccounts from './pages/admin/AdminAccounts'
 
 function getStoredToken(): string | null {
   if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
@@ -135,6 +136,7 @@ function AppRoutes() {
       <Route path="/family-portal" element={<ProtectedRoute><FamilyPortal /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
       <Route path="/family/:token" element={<FamilyView />} />
+      <Route path="/admin/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
