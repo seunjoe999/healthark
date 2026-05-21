@@ -193,7 +193,7 @@ router.post('/', [
           await client.query(
             `INSERT INTO records_oral_care (daily_record_id, care_types, mouth_condition, has_dentures, denture_type, notes)
              VALUES ($1,$2,$3,$4,$5,$6)`,
-            [dr.id, careTypes || [], mouthCondition || null, hasDentures ?? null, dentureType || null, notes || null]
+            [dr.id, careTypes || [], mouthCondition || null, hasDentures ?? false, dentureType || null, notes || null]
           );
           break;
         }
@@ -248,7 +248,7 @@ router.post('/', [
              medicalNeeded || medicalAttentionRequired || false, medicalDetails || null,
              witnesses || null, immediateAction || immediateActions || null,
              (agenciesContacted || reportedTo || '') + (lessonsLearned ? ' | Lessons: ' + lessonsLearned : '') + (preventionMeasures ? ' | Prevention: ' + preventionMeasures : '') || null,
-             safeguardingRef || false]
+             safeguardingRef || null]
           );
           break;
         }

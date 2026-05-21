@@ -133,7 +133,7 @@ router.get('/must/:suId', param('suId').isUUID(), validateRequest,
       const rows = await query(
         `SELECT ms.*, s.first_name || ' ' || s.last_name as assessed_by_name
          FROM must_scores ms LEFT JOIN staff s ON s.id = ms.assessed_by
-         WHERE ms.su_id = $1 ORDER BY ms.assessed_date DESC LIMIT 10`,
+         WHERE ms.su_id = $1 ORDER BY ms.created_at DESC LIMIT 10`,
         [req.params.suId]
       );
       res.json({ success: true, data: rows } as ApiResponse);
@@ -155,7 +155,7 @@ router.post('/must', [body('suId').isUUID()], validateRequest,
       const rows = await query(
         `INSERT INTO must_scores (su_id, home_id, assessed_by, weight_kg, height_cm, bmi,
           bmi_score, weight_loss_score, acute_disease_score, total_score, risk_level,
-          management_plan, next_assessment)
+          action_plan, next_assessment_date)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
         [suId, homeId, staffId, weightKg || null, heightCm || null, bmi,
          bmiScore || 0, weightLossScore || 0, acuteDiseaseScore || 0,
