@@ -30,7 +30,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     let idx = 1;
     if (suId) { sql += ` AND ra.su_id = $${idx++}`; params.push(suId); }
     else { sql += ` AND ra.home_id = $${idx++}`; params.push(targetHomeId); }
-    sql += ' ORDER BY ra.current_risk_level DESC, ra.created_at DESC';
+    sql += ' ORDER BY ra.created_at DESC';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
