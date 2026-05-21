@@ -122,12 +122,12 @@ export default function CarePlans() {
     setSelectedPlan(null)
     setLoading(true)
     try {
-      const [planRes, riskRes] = await Promise.all([
+      const [planRes, riskRes] = await Promise.allSettled([
         api.get('/care-plans', { params: { suId: su.id } }),
         api.get('/risk-assessments', { params: { suId: su.id } }),
       ])
-      setPlans(planRes.data.data || [])
-      setRisks(riskRes.data.data || [])
+      if (planRes.status === 'fulfilled') setPlans(planRes.value.data.data || [])
+      if (riskRes.status === 'fulfilled') setRisks(riskRes.value.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -269,7 +269,7 @@ export default function CarePlans() {
                           <div className="flex items-center gap-2 mb-1">
                             <AlertTriangle className="w-4 h-4 text-orange-600" />
                             <h3 className="font-semibold text-slate-900">{risk.assessment_name}</h3>
-                            <RiskBadge level={risk.current_risk_level} />
+                            <RiskBadge level={risk.current_risk_level || risk.risk_level} />
                           </div>
                           <ReviewStatus nextReviewDate={risk.next_review_date} />
                         </div>

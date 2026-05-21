@@ -35,3 +35,12 @@ ALTER TABLE su_reviews ADD COLUMN IF NOT EXISTS resident_feedback TEXT;
 ALTER TABLE su_reviews ADD COLUMN IF NOT EXISTS family_feedback  TEXT;
 ALTER TABLE su_reviews ALTER COLUMN conducted_by DROP NOT NULL;
 ALTER TABLE su_reviews DROP CONSTRAINT IF EXISTS su_reviews_review_type_check;
+
+-- ── risk_assessments: add missing optional columns ────────────────
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS current_risk_level VARCHAR(20) NOT NULL DEFAULT 'low';
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS who_is_at_risk TEXT;
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS is_historical BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS what_could_happen TEXT;
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS triggers TEXT;
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS protective_factors TEXT;
+ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS reviewed_by UUID;
