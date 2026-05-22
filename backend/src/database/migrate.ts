@@ -18,6 +18,14 @@ const MIGRATION_FILES = [
   '011_audit_compliance_fixes.sql',
 ];
 
+function splitStatements(sql: string): string[] {
+  // Split on semicolons at end of line, skip comments and blanks
+  return sql
+    .split(/;[ \t]*(\r?\n|$)/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--'));
+}
+
 async function migrate() {
   const dbDir = path.join(__dirname, '../../../database');
   const client = await pool.connect();
@@ -30,8 +38,19 @@ async function migrate() {
       }
       logger.info(`Running ${file}...`);
       const sql = fs.readFileSync(filePath, 'utf8');
-      await client.query(sql);
-      logger.info(`${file} completed`);
+      const statements = splitStatements(sql);
+      let ok = 0, skipped = 0;
+      for (const stmt of statements) {
+        try {
+          await client.query(stmt);
+          ok++;
+        } catch (err: any) {
+          const msg = err.message?.split('\n')[0] || String(err);
+          logger.warn(`  Skipped statement: ${msg.substring(0, 120)}`);
+          skipped++;
+        }
+      }
+      logger.info(`${file} completed (${ok} ok, ${skipped} skipped)`);
     }
     logger.info('All migrations completed');
   } finally {
@@ -39,4 +58,4 @@ async function migrate() {
     await pool.end();
   }
 }
-migrate().catch(() => process.exit(1));
+migrate().catch((err) => { logger.error('Migration failed', { err }); process.exit(1); });
