@@ -107,185 +107,193 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').is
 
 async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string) {
   try {
-    console.log('AUDIT START: homeId=', homeId, 'type=', auditType, 'from=', from, 'to=', to);
-    // Gather data for the audit — run separately to identify failures
-    let carePlans: any[] = [], incidents: any[] = [], dailyRecords: any[] = [];
-    let fluidData: any[] = [], staffTraining: any[] = [], marRecords: any[] = [], missingRecords: any[] = [];
-    try { carePlans = await query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active, su.first_name || ' ' || su.last_name as su_name FROM care_plans cp JOIN service_users su ON su.id = cp.su_id WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]); console.log('Q1 ok', carePlans.length); } catch(e: any) { console.error('Q1 failed:', e.message); }
-    try { incidents = await query(`SELECT dr.notes as incident_type, false as manager_reviewed, dr.record_date, su.first_name || ' ' || su.last_name as su_name FROM daily_records dr JOIN service_users su ON su.id = dr.su_id WHERE dr.home_id = $1 AND dr.record_type = 'incident' AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]); console.log('Q2 ok', incidents.length); } catch(e: any) { console.error('Q2 failed:', e.message); }
-    try { dailyRecords = await query(`SELECT record_type, COUNT(*) as count FROM daily_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3 GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]); console.log('Q3 ok', dailyRecords.length); } catch(e: any) { console.error('Q3 failed:', e.message); }
-    try { fluidData = await query(`SELECT su.first_name || ' ' || su.last_name as su_name, SUM(COALESCE(dr.amount_ml,0)) as total_ml, dr.record_date FROM daily_records dr JOIN service_users su ON su.id = dr.su_id WHERE dr.home_id = $1 AND dr.record_type = 'fluid_intake' AND dr.record_date BETWEEN $2 AND $3 GROUP BY su.id, su.first_name, su.last_name, su.min_fluid_ml, dr.record_date HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, [homeId, from, to]); console.log('Q4 ok', fluidData.length); } catch(e: any) { console.error('Q4 failed:', e.message); }
-    try { staffTraining = await query(`SELECT s.first_name || ' ' || s.last_name as staff_name, st.course_name, st.expiry_date FROM staff_training st JOIN staff s ON s.id = st.staff_id WHERE s.home_id = $1 AND st.expiry_date IS NOT NULL AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]); console.log('Q5 ok', staffTraining.length); } catch(e: any) { console.error('Q5 failed:', e.message); }
-    try { marRecords = await query(`SELECT COUNT(*) as total, COUNT(CASE WHEN given = true THEN 1 END) as given, COUNT(CASE WHEN refused = true THEN 1 END) as refused FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]); console.log('Q6 ok'); } catch(e: any) { console.error('Q6 failed:', e.message); marRecords = [{ total: 0, given: 0, refused: 0 }]; }
-    try { missingRecords = await query(`SELECT su.first_name || ' ' || su.last_name as su_name FROM service_users su WHERE su.home_id = $1 AND su.status = 'live' AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]); console.log('Q7 ok', missingRecords.length); } catch(e: any) { console.error('Q7 failed:', e.message); }
+    // ── Gather live data ──────────────────────────────────────────────────────
+    let carePlans: any[] = [], incidents: any[] = [], dailyRecords: any[] = []
+    let fluidData: any[] = [], staffTraining: any[] = [], marRecords: any[] = [], missingRecords: any[] = []
+    let safeguardingRows: any[] = []
 
-    if (false) { // dead code to satisfy destructuring removal
-    const [___a] = await Promise.all([
+    await Promise.allSettled([
       query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active,
                     su.first_name || ' ' || su.last_name as su_name
              FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
-             WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]),
+             WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]).then(r => { carePlans = r }),
       query(`SELECT dr.notes as incident_type, false as manager_reviewed, dr.record_date,
                     su.first_name || ' ' || su.last_name as su_name
-             FROM daily_records dr
-             JOIN service_users su ON su.id = dr.su_id
+             FROM daily_records dr JOIN service_users su ON su.id = dr.su_id
              WHERE dr.home_id = $1 AND dr.record_type = 'incident'
-             AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]),
+             AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { incidents = r }),
       query(`SELECT record_type, COUNT(*) as count FROM daily_records
              WHERE home_id = $1 AND record_date BETWEEN $2 AND $3
-             GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]),
+             GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]).then(r => { dailyRecords = r }),
       query(`SELECT su.first_name || ' ' || su.last_name as su_name,
-                    SUM(CASE WHEN dr.amount_ml IS NOT NULL THEN dr.amount_ml ELSE 0 END) as total_ml,
-                    dr.record_date,
-                    CASE WHEN SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500) THEN true ELSE false END as below_threshold
-             FROM daily_records dr
-             JOIN service_users su ON su.id = dr.su_id
+                    SUM(COALESCE(dr.amount_ml,0)) as total_ml, dr.record_date
+             FROM daily_records dr JOIN service_users su ON su.id = dr.su_id
              WHERE dr.home_id = $1 AND dr.record_type = 'fluid_intake'
              AND dr.record_date BETWEEN $2 AND $3
              GROUP BY su.id, su.first_name, su.last_name, su.min_fluid_ml, dr.record_date
-             HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, [homeId, from, to]),
+             HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, [homeId, from, to]).then(r => { fluidData = r }),
       query(`SELECT s.first_name || ' ' || s.last_name as staff_name, st.course_name, st.expiry_date
              FROM staff_training st JOIN staff s ON s.id = st.staff_id
              WHERE s.home_id = $1 AND st.expiry_date IS NOT NULL
-             AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]),
+             AND st.expiry_date < CURRENT_DATE + INTERVAL '60 days'`, [homeId]).then(r => { staffTraining = r }),
       query(`SELECT COUNT(*) as total,
                     COUNT(CASE WHEN given = true THEN 1 END) as given,
-                    COUNT(CASE WHEN refused = true THEN 1 END) as refused,
-                    COUNT(CASE WHEN given IS NULL AND refused = false THEN 1 END) as pending
-             FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]),
+                    COUNT(CASE WHEN refused = true THEN 1 END) as refused
+             FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { marRecords = r }),
       query(`SELECT su.first_name || ' ' || su.last_name as su_name
-             FROM service_users su
-             WHERE su.home_id = $1 AND su.status = 'live'
-             AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]),
-    ]); } // end dead code
-    console.log('AUDIT: data gathered', { carePlans: (carePlans as any[]).length, incidents: (incidents as any[]).length, dailyRecords: (dailyRecords as any[]).length });
-    // Build structured findings
-    const overduePlans = (carePlans as any[]).filter(cp => cp.next_review_date && new Date(cp.next_review_date) < new Date());
-    const unreviewedIncidents = (incidents as any[]).filter(i => !i.manager_reviewed);
-    const fluidFlags = fluidData as any[];
-    const expiringTraining = staffTraining as any[];
-    console.log('AUDIT: building findings for type:', auditType);
-    const marStats = (marRecords as any[])[0] || {};
-    const todayMissing = missingRecords as any[];
+             FROM service_users su WHERE su.home_id = $1 AND su.status = 'live'
+             AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]).then(r => { missingRecords = r }),
+      query(`SELECT sc.overview, sc.incident_date, sc.manager_ack,
+                    su.first_name || ' ' || su.last_name as su_name
+             FROM safeguarding_concerns sc JOIN service_users su ON su.id = sc.su_id
+             WHERE sc.home_id = $1 AND sc.incident_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { safeguardingRows = r }),
+    ])
 
-    // Build report text
-    const auditLabel = auditType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-    let findings = `## ${auditLabel} Audit Report\n**Period:** ${from} to ${to}\n\n`;
+    // ── Derived metrics ───────────────────────────────────────────────────────
+    const overduePlans    = carePlans.filter(cp => cp.next_review_date && new Date(cp.next_review_date) < new Date())
+    const fluidFlags      = fluidData
+    const expiringTraining = staffTraining
+    const marStat         = (marRecords[0] || {}) as any
+    const totalRecords    = dailyRecords.reduce((s, r) => s + parseInt(r.count), 0)
+    const marPct          = marStat.total > 0 ? Math.round((parseInt(marStat.given || 0) / parseInt(marStat.total)) * 100) : 0
+    const auditLabel      = auditType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
 
-    switch (auditType) {
-      case 'care_plan':
-        findings += `### Care Plan Review Compliance\n`;
-        findings += `- Total active care plans: **${(carePlans as any[]).length}**\n`;
-        findings += `- Overdue for review: **${overduePlans.length}**\n`;
-        if (overduePlans.length > 0) {
-          findings += `\n**Overdue plans:**\n`;
-          overduePlans.forEach((cp: any) => findings += `- ${cp.su_name}: ${cp.plan_type} (due ${cp.next_review_date})\n`);
-        }
-        findings += overduePlans.length === 0 ? '\n✅ All care plans are current and within review dates.\n' : '\n⚠️ Action required: review overdue care plans immediately.\n';
-        break;
+    // ── Scoring (based on real data, not AI) ─────────────────────────────────
+    const checksTotal  = Math.max(10,
+      carePlans.length + incidents.length + dailyRecords.length +
+      (marStat.total > 0 ? 5 : 0) + safeguardingRows.length + staffTraining.length + missingRecords.length
+    )
+    const checksFailed = overduePlans.length + fluidFlags.length + expiringTraining.length +
+      missingRecords.length + safeguardingRows.filter((s: any) => !s.manager_ack).length +
+      (marPct > 0 && marPct < 95 ? 2 : 0)
 
-      case 'documentation':
-        const totalRecords = (dailyRecords as any[]).reduce((sum: number, r: any) => sum + parseInt(r.count), 0);
-        findings += `### Documentation Audit\n`;
-        findings += `- Total records logged in period: **${totalRecords}**\n`;
-        findings += `- Residents with no record today: **${todayMissing.length}**\n\n`;
-        findings += `**Record types logged:**\n`;
-        (dailyRecords as any[]).forEach((r: any) => findings += `- ${r.record_type.replace(/_/g, ' ')}: ${r.count} records\n`);
-        if (todayMissing.length > 0) {
-          findings += `\n**Missing today's records:**\n`;
-          todayMissing.forEach((su: any) => findings += `- ${su.su_name}\n`);
-        }
-        break;
+    // ── Build data context for AI ─────────────────────────────────────────────
+    const ctx = `
+AUDIT TYPE: ${auditLabel}
+PERIOD: ${from} to ${to}
 
-      case 'medication':
-      case 'mar_chart':
-        findings += `### Medication Administration Records\n`;
-        findings += `- Total MAR entries: **${marStats.total || 0}**\n`;
-        findings += `- Given: **${marStats.given || 0}**\n`;
-        findings += `- Refused: **${marStats.refused || 0}**\n`;
-        findings += `- Pending/unsigned: **${marStats.pending || 0}**\n`;
-        const compliance = marStats.total > 0 ? Math.round((parseInt(marStats.given || 0) / parseInt(marStats.total)) * 100) : 0;
-        findings += `\n**Compliance rate: ${compliance}%**\n`;
-        findings += compliance >= 95 ? '\n✅ MAR compliance is within acceptable range.\n' : '\n⚠️ MAR compliance is below 95% — review unsigned entries.\n';
-        break;
+CARE PLANS: ${carePlans.length} active, ${overduePlans.length} overdue
+${overduePlans.map((cp: any) => `  - ${cp.su_name}: ${cp.plan_type} plan (due ${cp.next_review_date})`).join('\n')}
 
-      case 'incident_analysis':
-        findings += `### Incident Analysis\n`;
-        findings += `- Total incidents in period: **${(incidents as any[]).length}**\n`;
-        findings += `- Not reviewed by management: **${unreviewedIncidents.length}**\n`;
-        if (unreviewedIncidents.length > 0) {
-          findings += `\n**Unreviewed incidents:**\n`;
-          unreviewedIncidents.forEach((i: any) => findings += `- ${i.su_name}: ${i.incident_type} on ${i.record_date}\n`);
-        }
-        const byType: Record<string, number> = {};
-        (incidents as any[]).forEach((i: any) => { byType[i.incident_type] = (byType[i.incident_type] || 0) + 1; });
-        if (Object.keys(byType).length > 0) {
-          findings += `\n**By type:**\n`;
-          Object.entries(byType).forEach(([type, count]) => findings += `- ${type}: ${count}\n`);
-        }
-        break;
+DAILY RECORDS: ${totalRecords} total records logged
+${dailyRecords.map((r: any) => `  - ${r.record_type.replace(/_/g,' ')}: ${r.count} records`).join('\n')}
 
-      case 'nutrition_hydration':
-        findings += `### Nutrition & Hydration Audit\n`;
-        findings += `- Fluid intake below threshold (in period): **${fluidFlags.length} instances**\n`;
-        if (fluidFlags.length > 0) {
-          findings += `\n**Below threshold instances:**\n`;
-          fluidFlags.forEach((f: any) => findings += `- ${f.su_name}: ${f.total_ml}ml on ${f.record_date}\n`);
-        }
-        findings += fluidFlags.length === 0 ? '\n✅ All residents met their fluid intake targets.\n' : '\n⚠️ Action required: review fluid intake for affected residents.\n';
-        break;
+RESIDENTS WITH NO RECORD TODAY: ${missingRecords.length}
+${missingRecords.map((s: any) => `  - ${s.su_name}`).join('\n')}
 
-      case 'safeguarding':
-        const safeguardingRows = await query(
-          `SELECT sc.*, su.first_name || ' ' || su.last_name as su_name
-           FROM safeguarding_concerns sc JOIN service_users su ON su.id = sc.su_id
-           WHERE sc.home_id = $1 AND sc.incident_date BETWEEN $2 AND $3`,
-          [homeId, from, to]
-        );
-        findings += `### Safeguarding Audit\n`;
-        findings += `- Total concerns raised: **${(safeguardingRows as any[]).length}**\n`;
-        findings += `- Not yet acknowledged: **${(safeguardingRows as any[]).filter((s: any) => !s.manager_ack).length}**\n`;
-        (safeguardingRows as any[]).forEach((s: any) => {
-          findings += `\n**${s.su_name}** (${s.incident_date})\n`;
-          findings += `- ${s.overview?.substring(0, 100)}...\n`;
-          findings += `- Status: ${s.manager_ack ? '✅ Acknowledged' : '⚠️ Pending acknowledgement'}\n`;
-        });
-        break;
+INCIDENTS: ${incidents.length}
+${incidents.map((i: any) => `  - ${i.su_name}: ${String(i.incident_type).substring(0,80)} on ${i.record_date}`).join('\n')}
 
-      default:
-        findings += `### ${auditLabel}\n`;
-        findings += `- Total daily records in period: **${(dailyRecords as any[]).reduce((s: number, r: any) => s + parseInt(r.count), 0)}**\n`;
-        findings += `- Active care plans: **${(carePlans as any[]).length}**\n`;
-        findings += `- Overdue care plan reviews: **${overduePlans.length}**\n`;
-        findings += `- Incidents: **${(incidents as any[]).length}**\n`;
-        findings += `- Fluid below threshold: **${fluidFlags.length}**\n`;
-        findings += `- Training expiring: **${expiringTraining.length}**\n`;
+FLUID INTAKE BELOW THRESHOLD: ${fluidFlags.length} instances
+${fluidFlags.map((f: any) => `  - ${f.su_name}: ${f.total_ml}ml on ${f.record_date}`).join('\n')}
+
+MAR (MEDICATION): ${marStat.total || 0} entries — ${marStat.given || 0} given (${marPct}%), ${marStat.refused || 0} refused
+
+STAFF TRAINING EXPIRING (<60 days): ${expiringTraining.length}
+${expiringTraining.map((t: any) => `  - ${t.staff_name}: ${t.course_name} expires ${t.expiry_date}`).join('\n')}
+
+SAFEGUARDING CONCERNS: ${safeguardingRows.length}
+${safeguardingRows.map((s: any) => `  - ${s.su_name}: ${String(s.overview||'').substring(0,80)} (${s.manager_ack ? 'acknowledged' : 'PENDING'})`).join('\n')}
+`.trim()
+
+    // ── AI prompt ─────────────────────────────────────────────────────────────
+    const prompt = `You are a senior UK care home compliance inspector writing a formal ${auditLabel} audit report for CQC purposes.
+
+${ctx}
+
+Write a comprehensive, professional audit report. Use EXACTLY this format:
+
+## ${auditLabel} Audit Report
+
+### Executive Summary
+[3-4 sentences: overall compliance status, key strengths, key concerns, CQC rating implication]
+
+### Detailed Findings
+
+#### Care Planning & Reviews
+[Use ✅ for each compliant item, ⚠️ for concerns, ❌ for critical failures — be specific with names/dates from the data]
+
+#### Daily Care & Documentation
+[Assess the volume and types of records, missing records, continuity of care]
+
+#### Medication Management
+[Assess MAR compliance rate and any concerns]
+
+#### Nutrition & Hydration
+[Assess fluid intake records and any residents below threshold]
+
+#### Staff Training & Competency
+[Assess expiring training and implications]
+
+#### Safeguarding
+[Assess any concerns, acknowledgement status]
+
+### Summary of Key Risks
+[List the top 3-5 risks as bullet points with ⚠️ or ❌]
+
+### Good Practice Identified
+[List 2-4 things the home is doing well with ✅]
+
+## RECOMMENDATIONS
+- [Specific actionable recommendation 1 — reference actual data]
+- [Specific actionable recommendation 2]
+- [Specific actionable recommendation 3]
+- [Add more as needed — max 8]
+[Each recommendation must be specific, measurable, and directly tied to the data above. Include CQC regulation reference where relevant (e.g. Regulation 9, 12, 17).]
+
+Be thorough, professional, and constructive. Use British English. Total: 500-700 words.`
+
+    // ── Call AI ────────────────────────────────────────────────────────────────
+    let findings = ''
+    let recommendations = ''
+
+    try {
+      const aiText = await callAI(prompt)
+      // Split findings from recommendations at the ## RECOMMENDATIONS marker
+      const recIdx = aiText.search(/##\s*RECOMMENDATIONS?\s*\n/i)
+      if (recIdx !== -1) {
+        findings = aiText.substring(0, recIdx).trim()
+        recommendations = aiText.substring(recIdx).replace(/##\s*RECOMMENDATIONS?\s*\n/i, '').trim()
+      } else {
+        findings = aiText
+        recommendations = ''
+      }
+    } catch (aiErr: any) {
+      console.error('AI audit generation failed, using fallback:', aiErr?.message)
+      // Fallback template when AI is unavailable
+      findings = `## ${auditLabel} Audit Report\n**Period:** ${from} to ${to}\n\n`
+      findings += `### Summary\n`
+      findings += `- Active care plans: **${carePlans.length}** (${overduePlans.length} overdue)\n`
+      findings += `- Daily records logged: **${totalRecords}**\n`
+      findings += `- Incidents: **${incidents.length}**\n`
+      findings += `- Fluid below threshold: **${fluidFlags.length}**\n`
+      findings += `- MAR compliance: **${marPct}%**\n`
+      findings += `- Training expiring: **${expiringTraining.length}**\n`
+      if (overduePlans.length === 0 && fluidFlags.length === 0) {
+        findings += `\n✅ No critical issues identified in this audit period.\n`
+      } else {
+        if (overduePlans.length > 0) findings += `\n⚠️ ${overduePlans.length} care plan(s) are overdue for review.\n`
+        if (fluidFlags.length > 0) findings += `\n⚠️ ${fluidFlags.length} fluid intake recording(s) below threshold.\n`
+        if (marPct > 0 && marPct < 95) findings += `\n⚠️ MAR compliance rate ${marPct}% is below the 95% target.\n`
+      }
+      if (overduePlans.length > 0) recommendations += `- Review and update ${overduePlans.length} overdue care plan(s) immediately\n`
+      if (fluidFlags.length > 0) recommendations += `- Investigate and address fluid intake below threshold\n`
+      if (expiringTraining.length > 0) recommendations += `- Arrange renewal for ${expiringTraining.length} expiring training certificate(s)\n`
+      if (!recommendations) recommendations = '- Continue current monitoring — no immediate actions required.'
     }
-
-    // Build recommendations
-    let recommendations = '';
-    if (overduePlans.length > 0) recommendations += `- Review and update ${overduePlans.length} overdue care plan(s) immediately\n`;
-    if (unreviewedIncidents.length > 0) recommendations += `- Review and sign off ${unreviewedIncidents.length} unreviewed incident(s)\n`;
-    if (fluidFlags.length > 0) recommendations += `- Investigate fluid intake for residents with below-threshold recordings\n`;
-    if (expiringTraining.length > 0) recommendations += `- Arrange renewal for ${expiringTraining.length} expiring training certificate(s)\n`;
-    if (!recommendations) recommendations = '- No immediate actions required. Continue monitoring.';
-
-    console.log('AUDIT: findings built, saving...');
-    const checksTotal = (carePlans as any[]).length + (incidents as any[]).length + (dailyRecords as any[]).length;
-    const checksFailed = overduePlans.length + unreviewedIncidents.length + fluidFlags.length;
 
     await query(
       `UPDATE audit_reports SET
         status = 'completed', findings = $1, recommendations = $2, raw_report = $3,
         total_checks = $4, checks_passed = $5, checks_failed = $6, generated_at = NOW()
        WHERE id = $7`,
-      [findings, recommendations, findings, checksTotal, checksTotal - checksFailed, checksFailed, auditId]
-    );
+      [findings, recommendations, findings, checksTotal, Math.max(0, checksTotal - checksFailed), checksFailed, auditId]
+    )
+    console.log('AUDIT COMPLETE:', auditId, `score=${checksTotal - checksFailed}/${checksTotal}`)
   } catch (err: any) {
-    console.error('Audit generation failed:', err?.message || err);
-    console.error('Stack:', err?.stack);
+    console.error('Audit generation failed:', err?.message || err)
     await query(`UPDATE audit_reports SET status = 'failed', findings = $1 WHERE id = $2`,
-      [`Audit failed: ${err?.message || 'Unknown error'}`, auditId]);
+      [`Audit failed: ${err?.message || 'Unknown error'}`, auditId])
   }
 }
 
@@ -352,28 +360,46 @@ router.post('/:id/ai-compliance-fix', requireRole('home_manager', 'group_admin')
 
       const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : 0;
 
-      const prompt = `You are a UK care home compliance expert. A care home has completed an audit and needs a targeted improvement plan to raise their compliance score.
+      const currentRating = score >= 90 ? 'Outstanding' : score >= 75 ? 'Good' : score >= 60 ? 'Requires Improvement' : 'Inadequate'
 
-Audit type: ${audit.audit_type?.replace(/_/g, ' ')}
-Current compliance score: ${score}%
-Total checks: ${audit.total_checks}
-Passed: ${audit.checks_passed}
-Failed: ${audit.checks_failed}
+      const prompt = `You are a senior UK care home compliance consultant. A care home's AI audit has identified issues and they need a precise, actionable improvement plan to raise their compliance score from ${score}% to at least 85%.
 
-Audit findings:
+AUDIT DATA:
+- Audit type: ${audit.audit_type?.replace(/_/g, ' ')}
+- Period: ${audit.period_from} to ${audit.period_to}
+- Current score: ${score}% (${currentRating})
+- Total checks: ${audit.total_checks} | Passed: ${audit.checks_passed} | Failed: ${audit.checks_failed}
+
+AUDIT FINDINGS (what was found):
 ${(audit.findings || '').substring(0, 2000)}
 
-Create a compliance improvement plan. Return JSON only (no markdown) with this structure:
+CURRENT RECOMMENDATIONS:
+${(audit.recommendations || '').substring(0, 800)}
+
+Your task: Create a SPECIFIC, TARGETED improvement plan that will genuinely raise their compliance. Each action must directly address a real finding above. Do not give generic advice.
+
+Return valid JSON only (no markdown, no code fences) with this exact structure:
 {
-  "current_rating": "Outstanding | Good | Requires Improvement | Inadequate",
-  "target_rating": "what rating is achievable",
-  "projected_score": number (realistic target score percentage),
-  "summary": "2-3 sentence executive summary of the situation",
-  "immediate_actions": ["specific action string 1", "action string 2"],
-  "short_term": ["action within 1-4 weeks string 1", "action string 2"],
-  "long_term": ["action within 1-3 months string 1", "action string 2"],
-  "cqc_notes": "brief note on CQC implications and what inspectors would look for"
-}`;
+  "current_rating": "${currentRating}",
+  "target_rating": "Good or Outstanding — be realistic based on the data",
+  "projected_score": <number between ${Math.min(score + 15, 95)} and 95>,
+  "summary": "2-3 sentences: what the main problems are and how the plan will fix them — be specific to the actual findings",
+  "immediate_actions": [
+    "Specific action referencing real data from the findings — do within 24-48 hours",
+    "Another specific action"
+  ],
+  "short_term": [
+    "Specific action to complete within 1-4 weeks",
+    "Another specific action"
+  ],
+  "long_term": [
+    "Systemic change to implement within 1-3 months",
+    "Another systemic change"
+  ],
+  "cqc_notes": "What a CQC inspector would specifically look for when they visit based on these findings — reference relevant Regulations (9, 10, 12, 17 etc)"
+}
+
+Each array must have 2-4 items. All items must be specific to the actual findings, not generic advice.`;
 
       const raw = await callAI(prompt);
       let plan: any = {};
