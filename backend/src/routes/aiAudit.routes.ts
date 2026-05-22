@@ -6,18 +6,26 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-function getGenAI() {
-  const key = process.env.GEMINI_API_KEY || '';
-  if (!key || key === 'placeholder') throw Object.assign(new Error('GEMINI_API_KEY not configured'), { isKeyMissing: true });
-  return new GoogleGenerativeAI(key);
-}
-
 async function callAI(prompt: string): Promise<string> {
-  const model = getGenAI().getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  const key = process.env.GROQ_API_KEY || '';
+  if (!key || key === 'placeholder') throw Object.assign(new Error('GROQ_API_KEY not configured'), { isKeyMissing: true });
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2000,
+      temperature: 0.3,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as any;
+    throw Object.assign(new Error(err?.error?.message || `Groq API error ${res.status}`), { isKeyMissing: res.status === 401 });
+  }
+  const data = await res.json() as any;
+  return data.choices?.[0]?.message?.content || '';
 }
 
 const router = Router();
@@ -326,8 +334,8 @@ For each recommendation, create a specific, practical action plan item. Return a
 
       res.json({ success: true, data: items } as ApiResponse);
     } catch (err: any) {
-      if (err?.isKeyMissing || err?.status === 401 || err?.message?.includes('API key') || err?.message?.includes('GEMINI_API_KEY')) {
-        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set GEMINI_API_KEY in your backend/.env file. Get a free key at https://aistudio.google.com/app/apikey' } as ApiResponse);
+      if (err?.isKeyMissing || err?.message?.includes('GROQ_API_KEY')) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Set GROQ_API_KEY in backend/.env — get a free key at https://console.groq.com' } as ApiResponse);
       }
       next(err);
     }
@@ -378,8 +386,8 @@ Create a compliance improvement plan. Return JSON only (no markdown) with this s
 
       res.json({ success: true, data: plan } as ApiResponse);
     } catch (err: any) {
-      if (err?.isKeyMissing || err?.status === 401 || err?.message?.includes('API key') || err?.message?.includes('GEMINI_API_KEY')) {
-        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set GEMINI_API_KEY in your backend/.env file. Get a free key at https://aistudio.google.com/app/apikey' } as ApiResponse);
+      if (err?.isKeyMissing || err?.message?.includes('GROQ_API_KEY')) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Set GROQ_API_KEY in backend/.env — get a free key at https://console.groq.com' } as ApiResponse);
       }
       next(err);
     }
