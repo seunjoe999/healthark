@@ -6,18 +6,18 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getGenAI() {
+  const key = process.env.GEMINI_API_KEY || '';
+  if (!key || key === 'placeholder') throw Object.assign(new Error('GEMINI_API_KEY not configured'), { isKeyMissing: true });
+  return new GoogleGenerativeAI(key);
+}
 
-async function callClaude(prompt: string): Promise<string> {
-  const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  const block = msg.content[0];
-  return block.type === 'text' ? block.text : '';
+async function callAI(prompt: string): Promise<string> {
+  const model = getGenAI().getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const result = await model.generateContent(prompt);
+  return result.response.text();
 }
 
 const router = Router();
@@ -315,7 +315,7 @@ For each recommendation, create a specific, practical action plan item. Return a
   }
 ]`;
 
-      const raw = await callClaude(prompt);
+      const raw = await callAI(prompt);
       let items: any[] = [];
       try {
         const match = raw.match(/\[[\s\S]*\]/);
@@ -326,8 +326,8 @@ For each recommendation, create a specific, practical action plan item. Return a
 
       res.json({ success: true, data: items } as ApiResponse);
     } catch (err: any) {
-      if (err?.status === 401 || err?.message?.includes('API key')) {
-        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set ANTHROPIC_API_KEY in your .env file.' } as ApiResponse);
+      if (err?.isKeyMissing || err?.status === 401 || err?.message?.includes('API key') || err?.message?.includes('GEMINI_API_KEY')) {
+        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set GEMINI_API_KEY in your backend/.env file. Get a free key at https://aistudio.google.com/app/apikey' } as ApiResponse);
       }
       next(err);
     }
@@ -361,19 +361,13 @@ Create a compliance improvement plan. Return JSON only (no markdown) with this s
   "target_rating": "what rating is achievable",
   "projected_score": number (realistic target score percentage),
   "summary": "2-3 sentence executive summary of the situation",
-  "immediate_actions": [
-    { "action": "specific action", "impact": "how many checks this will fix", "effort": "low | medium | high" }
-  ],
-  "short_term": [
-    { "action": "action within 1-4 weeks", "impact": "expected improvement", "effort": "low | medium | high" }
-  ],
-  "long_term": [
-    { "action": "action within 1-3 months", "impact": "expected improvement", "effort": "low | medium | high" }
-  ],
+  "immediate_actions": ["specific action string 1", "action string 2"],
+  "short_term": ["action within 1-4 weeks string 1", "action string 2"],
+  "long_term": ["action within 1-3 months string 1", "action string 2"],
   "cqc_notes": "brief note on CQC implications and what inspectors would look for"
 }`;
 
-      const raw = await callClaude(prompt);
+      const raw = await callAI(prompt);
       let plan: any = {};
       try {
         const match = raw.match(/\{[\s\S]*\}/);
@@ -384,8 +378,8 @@ Create a compliance improvement plan. Return JSON only (no markdown) with this s
 
       res.json({ success: true, data: plan } as ApiResponse);
     } catch (err: any) {
-      if (err?.status === 401 || err?.message?.includes('API key')) {
-        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set ANTHROPIC_API_KEY in your .env file.' } as ApiResponse);
+      if (err?.isKeyMissing || err?.status === 401 || err?.message?.includes('API key') || err?.message?.includes('GEMINI_API_KEY')) {
+        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set GEMINI_API_KEY in your backend/.env file. Get a free key at https://aistudio.google.com/app/apikey' } as ApiResponse);
       }
       next(err);
     }
