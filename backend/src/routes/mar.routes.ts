@@ -102,6 +102,86 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
   }
 );
 
+// GET /api/mar/chart-report/:suId?startDate=&endDate= — MAR chart report for date range
+router.get('/chart-report/:suId', param('suId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { startDate, endDate } = req.query as Record<string, string>;
+      const now = new Date();
+      const start = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const end = endDate || now.toISOString().split('T')[0];
+
+      const suRows = await query(
+        `SELECT su.*, h.name as home_name, h.address1 as home_address, h.postcode as home_postcode,
+                h.phone as home_phone
+         FROM service_users su LEFT JOIN homes h ON h.id = su.home_id WHERE su.id = $1`,
+        [req.params.suId]
+      );
+      if (!suRows.length) throw new AppError('Service user not found', 404);
+
+      const meds = await query(
+        'SELECT * FROM su_medications WHERE su_id = $1 AND is_active = true ORDER BY medication_name',
+        [req.params.suId]
+      );
+
+      const records = await query(
+        `SELECT mr.*,
+                s.first_name || ' ' || s.last_name as given_by_name,
+                UPPER(LEFT(s.first_name,1) || LEFT(s.last_name,1)) as initials
+         FROM mar_records mr
+         LEFT JOIN staff s ON s.id = mr.given_by
+         WHERE mr.su_id = $1 AND mr.record_date BETWEEN $2 AND $3
+         ORDER BY mr.record_date, mr.scheduled_time NULLS LAST`,
+        [req.params.suId, start, end]
+      );
+
+      // Build array of dates in range
+      const dates: string[] = [];
+      const cur = new Date(start + 'T00:00:00Z');
+      const endD = new Date(end + 'T00:00:00Z');
+      while (cur <= endD) {
+        dates.push(cur.toISOString().split('T')[0]);
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+
+      // Group records by medication_id → date → array
+      const recordMap: Record<string, Record<string, any[]>> = {};
+      for (const rec of records as any[]) {
+        const medId = rec.medication_id;
+        if (!medId) continue;
+        const d = rec.record_date instanceof Date
+          ? rec.record_date.toISOString().split('T')[0]
+          : String(rec.record_date).split('T')[0];
+        if (!recordMap[medId]) recordMap[medId] = {};
+        if (!recordMap[medId][d]) recordMap[medId][d] = [];
+        recordMap[medId][d].push(rec);
+      }
+
+      // Derive expected time slots from frequency
+      const freqTimes: Record<string, string[]> = {
+        once_daily: ['08:00'],
+        twice_daily: ['08:00', '20:00'],
+        three_times_daily: ['08:00', '14:00', '20:00'],
+        four_times_daily: ['08:00', '12:00', '16:00', '20:00'],
+        weekly: ['08:00'],
+        as_required: ['PRN'],
+        other: [''],
+      };
+
+      const medsWithRecords = (meds as any[]).map(med => ({
+        ...med,
+        time_slots: freqTimes[med.frequency] || ['08:00'],
+        records: recordMap[med.id] || {},
+      }));
+
+      res.json({
+        success: true,
+        data: { serviceUser: suRows[0], startDate: start, endDate: end, dates, medications: medsWithRecords },
+      } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // DELETE /api/mar/records/:id — delete a MAR record
 router.delete('/records/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

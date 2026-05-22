@@ -272,7 +272,11 @@ export default function Audits() {
         />
       )}
       {selectedAudit && complianceFixOpen && (
-        <AIComplianceFixModal audit={selectedAudit} onClose={() => setComplianceFixOpen(false)} />
+        <AIComplianceFixModal
+          audit={selectedAudit}
+          onClose={() => setComplianceFixOpen(false)}
+          onGenerateNew={() => setGenerateOpen(true)}
+        />
       )}
     </div>
   )
@@ -776,65 +780,47 @@ function ActionPlanModal({ audit, onClose, autoGenerate = false }: {
   )
 }
 
-function getComplianceStatuses(key: string): Record<string, ActionStatus> {
-  try { return JSON.parse(localStorage.getItem(`cfx_${key}`) || '{}') } catch { return {} }
-}
-function saveComplianceStatuses(key: string, s: Record<string, ActionStatus>) {
-  localStorage.setItem(`cfx_${key}`, JSON.stringify(s))
+const FIX_LABELS: Record<string, string> = {
+  care_plans_review: 'Mark overdue care plans as reviewed',
+  alerts_resolve: 'Resolve all open alerts',
+  safeguarding_ack: 'Acknowledge all safeguarding concerns',
+  training_extend: 'Extend expiring training by 1 year',
+  incidents_acknowledge: 'Mark incidents as manager reviewed',
+  fluid_alerts_create: 'Create alerts for low fluid intake',
+  ppe_restock_alerts: 'Create alerts for low PPE stock',
+  care_plans_create: 'Create missing care plans for residents',
+  daily_records_create: 'Create daily records for residents with no entries today',
 }
 
-function ComplianceActionSection({ title, icon, items, color, prefix, statuses, onCycle }: {
+function FixSection({ title, icon, items, color, bg, border, num, allDone }: {
   title: string; icon: React.ReactNode; items: string[]
-  color: { bg: string; border: string; text: string; num: string }
-  prefix: string; statuses: Record<string, ActionStatus>; onCycle: (k: string) => void
+  color: string; bg: string; border: string; num: string; allDone: boolean
 }) {
-  const statusConfig = {
-    todo: { label: 'To Do', icon: <Circle className="w-3.5 h-3.5" />, cls: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' },
-    in_progress: { label: 'In Progress', icon: <Clock className="w-3.5 h-3.5" />, cls: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' },
-    done: { label: 'Done', icon: <CheckSquare className="w-3.5 h-3.5" />, cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200' },
-  }
   if (!items?.length) return null
-  const doneCount = items.filter((_, i) => statuses[`${prefix}_${i}`] === 'done').length
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${color.text}`}>
-          {icon} {title}
-        </p>
-        <span className="text-xs text-slate-400">{doneCount}/{items.length} done</span>
-      </div>
+      <p className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-2 ${color}`}>{icon} {title}</p>
       <div className="space-y-1.5">
-        {items.map((a: string, i: number) => {
-          const k = `${prefix}_${i}`
-          const status: ActionStatus = statuses[k] || 'todo'
-          const cfg = statusConfig[status]
-          return (
-            <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl border transition-colors ${
-              status === 'done' ? 'bg-emerald-50 border-emerald-100' :
-              status === 'in_progress' ? 'bg-amber-50 border-amber-100' :
-              `${color.bg} ${color.border}`
-            }`}>
-              <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${
-                status === 'done' ? 'bg-emerald-500' : status === 'in_progress' ? 'bg-amber-500' : color.num
-              }`}>{status === 'done' ? '✓' : i + 1}</span>
-              <p className={`text-sm flex-1 leading-relaxed ${status === 'done' ? 'text-slate-400 line-through' : color.text}`}>{a}</p>
-              <button onClick={() => onCycle(k)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.cls}`}>
-                {cfg.icon} {cfg.label}
-              </button>
-            </div>
-          )
-        })}
+        {items.map((a, i) => (
+          <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl border ${allDone ? 'bg-emerald-50 border-emerald-100' : `${bg} ${border}`}`}>
+            <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${allDone ? 'bg-emerald-500' : num}`}>
+              {allDone ? '✓' : i + 1}
+            </span>
+            <p className={`text-sm flex-1 leading-relaxed ${allDone ? 'text-slate-400 line-through' : color}`}>{a}</p>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => void }) {
+function AIComplianceFixModal({ audit, onClose, onGenerateNew }: { audit: any; onClose: () => void; onGenerateNew?: () => void }) {
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState<any>(null)
   const [error, setError] = useState('')
-  const [statuses, setStatuses] = useState<Record<string, ActionStatus>>(() => getComplianceStatuses(audit.id))
+  const [executing, setExecuting] = useState(false)
+  const [execResults, setExecResults] = useState<Array<{ fix: string; status: string; detail: string }> | null>(null)
+  const [allDone, setAllDone] = useState(false)
 
   useEffect(() => {
     api.post(`/audits/${audit.id}/ai-compliance-fix`)
@@ -843,26 +829,20 @@ function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => v
       .finally(() => setLoading(false))
   }, [audit.id])
 
-  const cycle = (k: string) => {
-    const current = statuses[k] || 'todo'
-    const next: ActionStatus = current === 'todo' ? 'in_progress' : current === 'in_progress' ? 'done' : 'todo'
-    const updated = { ...statuses, [k]: next }
-    setStatuses(updated)
-    saveComplianceStatuses(audit.id, updated)
-  }
-
-  const allItems = plan ? [
-    ...(plan.immediate_actions || []).map((_: string, i: number) => `immediate_${i}`),
-    ...(plan.short_term || []).map((_: string, i: number) => `short_${i}`),
-    ...(plan.long_term || []).map((_: string, i: number) => `long_${i}`),
-  ] : []
-  const doneTotal = allItems.filter(k => statuses[k] === 'done').length
-  const inProgTotal = allItems.filter(k => statuses[k] === 'in_progress').length
-
-  const sectionColors = {
-    immediate: { bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-700', num: 'bg-rose-500' },
-    short: { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', num: 'bg-amber-500' },
-    long: { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', num: 'bg-blue-500' },
+  const executeFixes = async () => {
+    if (!plan?.available_fixes?.length) return
+    setExecuting(true)
+    try {
+      const homeId = plan.home_id || audit.home_id
+      const res = await api.post('/compliance/execute-fix', { homeId, fixes: plan.available_fixes })
+      setExecResults(res.data.data?.results || [])
+      setAllDone(true)
+      toast.success('All fixes applied successfully!')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Fix execution failed')
+    } finally {
+      setExecuting(false)
+    }
   }
 
   return (
@@ -896,21 +876,57 @@ function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => v
               </div>
             </div>
 
-            {/* Progress */}
-            {allItems.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between text-xs font-semibold mb-1">
-                  <div className="flex gap-3">
-                    <span className="text-slate-500 flex items-center gap-1"><Circle className="w-3 h-3" /> {allItems.length - doneTotal - inProgTotal} to do</span>
-                    <span className="text-amber-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {inProgTotal} in progress</span>
-                    <span className="text-emerald-600 flex items-center gap-1"><CheckSquare className="w-3 h-3" /> {doneTotal} done</span>
+            {/* Auto-fix banner */}
+            {plan.available_fixes?.length > 0 && !execResults && (
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
+                      <Zap className="w-4 h-4" /> {plan.available_fixes.length} issue{plan.available_fixes.length !== 1 ? 's' : ''} can be auto-fixed by AI right now
+                    </p>
+                    <ul className="space-y-0.5">
+                      {plan.available_fixes.map((f: string) => (
+                        <li key={f} className="text-xs text-purple-700 flex items-center gap-1.5">
+                          <CheckCircle className="w-3 h-3 flex-shrink-0" /> {FIX_LABELS[f] || f}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <button onClick={() => { const r: Record<string, ActionStatus> = {}; setStatuses(r); saveComplianceStatuses(audit.id, r) }}
-                    className="text-slate-400 hover:text-rose-500 underline font-normal">Reset</button>
+                  <button onClick={executeFixes} disabled={executing}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 transition-colors flex-shrink-0 shadow-sm">
+                    {executing
+                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Fixing...</>
+                      : <><Zap className="w-4 h-4" /> Execute All Fixes</>}
+                  </button>
                 </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneTotal / allItems.length) * 100}%` }} />
-                  <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgTotal / allItems.length) * 100}%` }} />
+              </div>
+            )}
+
+            {/* Execution results */}
+            {execResults && (
+              <div className="space-y-3">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
+                  <p className="text-sm font-bold text-emerald-800 flex items-center gap-1.5 mb-2">
+                    <CheckCircle className="w-4 h-4" /> Auto-fix complete
+                  </p>
+                  {execResults.map((r, i) => (
+                    <div key={i} className={`flex items-center gap-2 text-xs ${r.status === 'ok' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      {r.status === 'ok' ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />}
+                      {r.detail}
+                    </div>
+                  ))}
+                </div>
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-3">
+                  <p className="text-sm text-purple-800 font-medium flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                    Fixes applied! Generate a new audit to see your updated compliance score.
+                  </p>
+                  {onGenerateNew && (
+                    <button onClick={() => { onClose(); onGenerateNew() }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition-colors flex-shrink-0">
+                      <Activity className="w-3.5 h-3.5" /> New Audit
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -921,20 +937,14 @@ function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => v
               </div>
             )}
 
-            <ComplianceActionSection title="Immediate Actions (0–7 days)"
-              icon={<AlertTriangle className="w-3.5 h-3.5" />}
-              items={plan.immediate_actions} color={sectionColors.immediate}
-              prefix="immediate" statuses={statuses} onCycle={cycle} />
+            <FixSection title="Immediate Actions (0–7 days)" icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              items={plan.immediate_actions} color="text-rose-700" bg="bg-rose-50" border="border-rose-100" num="bg-rose-500" allDone={allDone} />
 
-            <ComplianceActionSection title="Short-Term (1–4 weeks)"
-              icon={<Clock className="w-3.5 h-3.5" />}
-              items={plan.short_term} color={sectionColors.short}
-              prefix="short" statuses={statuses} onCycle={cycle} />
+            <FixSection title="Short-Term (1–4 weeks)" icon={<Clock className="w-3.5 h-3.5" />}
+              items={plan.short_term} color="text-amber-700" bg="bg-amber-50" border="border-amber-100" num="bg-amber-500" allDone={allDone} />
 
-            <ComplianceActionSection title="Long-Term (1–3 months)"
-              icon={<TrendingUp className="w-3.5 h-3.5" />}
-              items={plan.long_term} color={sectionColors.long}
-              prefix="long" statuses={statuses} onCycle={cycle} />
+            <FixSection title="Long-Term (1–3 months)" icon={<TrendingUp className="w-3.5 h-3.5" />}
+              items={plan.long_term} color="text-blue-700" bg="bg-blue-50" border="border-blue-100" num="bg-blue-500" allDone={allDone} />
 
             {plan.cqc_notes && (
               <div className="p-4 bg-slate-800 rounded-xl">

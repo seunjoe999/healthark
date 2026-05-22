@@ -31,6 +31,7 @@ import PrintQR from './pages/clockin/PrintQR'
 import Holidays from './pages/holidays/Holidays'
 import Training from './pages/training/Training'
 import PrintCarePlan from './pages/care-plans/PrintCarePlan'
+import PrintMARChart from './pages/mar/PrintMARChart'
 import HandoverReport from './pages/reports/HandoverReport'
 import GlobalSearch from './pages/search/Search'
 import AboutMe from './pages/service-users/AboutMe'
@@ -122,6 +123,7 @@ function AppRoutes() {
       <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
       <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
       <Route path="/care-plans/:id/print" element={<PrintCarePlan />} />
+      <Route path="/mar/:suId/print" element={<PrintMARChart />} />
       <Route path="/search" element={<ProtectedRoute><GlobalSearch /></ProtectedRoute>} />
       <Route path="/service-users/:id/about-me" element={<ProtectedRoute><AboutMe /></ProtectedRoute>} />
       <Route path="/reports/handover" element={<ProtectedRoute><HandoverReport /></ProtectedRoute>} />

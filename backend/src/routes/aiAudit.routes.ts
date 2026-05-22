@@ -6,26 +6,61 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-async function callAI(prompt: string): Promise<string> {
+
+function parseAIJson(raw: string): any {
+  const cleaned = raw.replace(/```(?:json|javascript|js)?\s*/gi, '').replace(/```\s*/g, '').trim();
+  try { return JSON.parse(cleaned); } catch { /* fall through */ }
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* fall through */ } }
+  throw new Error('AI returned unexpected format — please try again');
+}
+
+function parseAIArray(raw: string): any[] {
+  const cleaned = raw.replace(/```(?:json|javascript|js)?\s*/gi, '').replace(/```\s*/g, '').trim();
+  try { const r = JSON.parse(cleaned); if (Array.isArray(r)) return r; } catch { /* fall through */ }
+  const m = cleaned.match(/\[[\s\S]*\]/);
+  if (m) { try { const r = JSON.parse(m[0]); if (Array.isArray(r)) return r; } catch { /* fall through */ } }
+  throw new Error('AI returned unexpected format — please try again');
+}
+async function callAI(prompt: string, maxTokens = 900): Promise<string> {
   const key = process.env.GROQ_API_KEY || '';
   if (!key || key === 'placeholder') throw Object.assign(new Error('GROQ_API_KEY not configured'), { isKeyMissing: true });
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2000,
-      temperature: 0.3,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as any;
-    throw Object.assign(new Error(err?.error?.message || `Groq API error ${res.status}`), { isKeyMissing: res.status === 401 });
+  const MAX_RETRIES = 3;
+  let lastErr: any;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens,
+        temperature: 0.3,
+      }),
+    });
+
+    if (res.status === 429) {
+      // Rate limited — wait for the retry-after period then try again
+      const retryAfter = parseFloat(res.headers.get('retry-after') || '12');
+      const waitMs = Math.ceil(retryAfter * 1000) + 500;
+      console.log(`Groq rate limit hit, waiting ${waitMs}ms before retry ${attempt + 1}/${MAX_RETRIES}`);
+      await new Promise(r => setTimeout(r, waitMs));
+      lastErr = new Error(`Groq rate limit — retrying`);
+      continue;
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as any;
+      throw Object.assign(new Error(err?.error?.message || `Groq API error ${res.status}`), { isKeyMissing: res.status === 401 });
+    }
+
+    const data = await res.json() as any;
+    return data.choices?.[0]?.message?.content || '';
   }
-  const data = await res.json() as any;
-  return data.choices?.[0]?.message?.content || '';
+
+  throw lastErr || new Error('Groq rate limit exceeded after retries — please wait a moment and try again');
 }
 
 const router = Router();
@@ -117,11 +152,12 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
                     su.first_name || ' ' || su.last_name as su_name
              FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
              WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]).then(r => { carePlans = r }),
-      query(`SELECT dr.notes as incident_type, false as manager_reviewed, dr.record_date,
+      query(`SELECT ri.incident_type, ri.manager_reviewed, dr.record_date,
                     su.first_name || ' ' || su.last_name as su_name
-             FROM daily_records dr JOIN service_users su ON su.id = dr.su_id
-             WHERE dr.home_id = $1 AND dr.record_type = 'incident'
-             AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { incidents = r }),
+             FROM records_incidents ri 
+             JOIN daily_records dr ON dr.id = ri.daily_record_id
+             JOIN service_users su ON su.id = dr.su_id
+             WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { incidents = r }),
       query(`SELECT record_type, COUNT(*) as count FROM daily_records
              WHERE home_id = $1 AND record_date BETWEEN $2 AND $3
              GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]).then(r => { dailyRecords = r }),
@@ -164,91 +200,55 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
       (marStat.total > 0 ? 5 : 0) + safeguardingRows.length + staffTraining.length + missingRecords.length
     )
     const checksFailed = overduePlans.length + fluidFlags.length + expiringTraining.length +
-      missingRecords.length + safeguardingRows.filter((s: any) => !s.manager_ack).length +
+      missingRecords.length + safeguardingRows.filter((s: any) => !s.manager_ack).length + 
+      incidents.filter((i: any) => !i.manager_reviewed).length +
       (marPct > 0 && marPct < 95 ? 2 : 0)
 
-    // ── Build data context for AI ─────────────────────────────────────────────
-    const ctx = `
-AUDIT TYPE: ${auditLabel}
-PERIOD: ${from} to ${to}
+    // ── Build compact data context for AI (kept short to stay under token limits) ──
+    const limit5 = (arr: any[], fn: (x: any) => string) => arr.slice(0, 5).map(fn).join('; ') || 'none'
 
-CARE PLANS: ${carePlans.length} active, ${overduePlans.length} overdue
-${overduePlans.map((cp: any) => `  - ${cp.su_name}: ${cp.plan_type} plan (due ${cp.next_review_date})`).join('\n')}
+    const ctx = [
+      `Audit: ${auditLabel} | Period: ${from} to ${to}`,
+      `Care plans: ${carePlans.length} active, ${overduePlans.length} overdue` +
+        (overduePlans.length ? ` (${limit5(overduePlans, cp => `${cp.su_name} ${cp.plan_type} due ${cp.next_review_date}`)})` : ''),
+      `Records: ${totalRecords} logged today; ${missingRecords.length} residents with no entry` +
+        (missingRecords.length ? ` (${limit5(missingRecords, s => s.su_name)})` : ''),
+      `Incidents: ${incidents.length}` +
+        (incidents.length ? ` (${limit5(incidents, i => `${i.su_name}: ${String(i.incident_type).substring(0,40)}`)})` : ''),
+      `Fluid below threshold: ${fluidFlags.length}` +
+        (fluidFlags.length ? ` (${limit5(fluidFlags, f => `${f.su_name} ${f.total_ml}ml`)})` : ''),
+      `MAR: ${marStat.total || 0} entries, ${marPct}% given, ${marStat.refused || 0} refused`,
+      `Training expiring <60d: ${expiringTraining.length}` +
+        (expiringTraining.length ? ` (${limit5(expiringTraining, t => `${t.staff_name}: ${t.course_name}`)})` : ''),
+      `Safeguarding: ${safeguardingRows.length}` +
+        (safeguardingRows.length ? ` (${limit5(safeguardingRows, s => `${s.su_name}: ${s.manager_ack ? 'acked' : 'PENDING'}`)})` : ''),
+    ].join('\n')
 
-DAILY RECORDS: ${totalRecords} total records logged
-${dailyRecords.map((r: any) => `  - ${r.record_type.replace(/_/g,' ')}: ${r.count} records`).join('\n')}
+    // ── AI prompt (concise to stay within Groq free-tier token limits) ─────────
+    const prompt = `UK CQC care home compliance inspector. Write a formal ${auditLabel} audit report.
 
-RESIDENTS WITH NO RECORD TODAY: ${missingRecords.length}
-${missingRecords.map((s: any) => `  - ${s.su_name}`).join('\n')}
-
-INCIDENTS: ${incidents.length}
-${incidents.map((i: any) => `  - ${i.su_name}: ${String(i.incident_type).substring(0,80)} on ${i.record_date}`).join('\n')}
-
-FLUID INTAKE BELOW THRESHOLD: ${fluidFlags.length} instances
-${fluidFlags.map((f: any) => `  - ${f.su_name}: ${f.total_ml}ml on ${f.record_date}`).join('\n')}
-
-MAR (MEDICATION): ${marStat.total || 0} entries — ${marStat.given || 0} given (${marPct}%), ${marStat.refused || 0} refused
-
-STAFF TRAINING EXPIRING (<60 days): ${expiringTraining.length}
-${expiringTraining.map((t: any) => `  - ${t.staff_name}: ${t.course_name} expires ${t.expiry_date}`).join('\n')}
-
-SAFEGUARDING CONCERNS: ${safeguardingRows.length}
-${safeguardingRows.map((s: any) => `  - ${s.su_name}: ${String(s.overview||'').substring(0,80)} (${s.manager_ack ? 'acknowledged' : 'PENDING'})`).join('\n')}
-`.trim()
-
-    // ── AI prompt ─────────────────────────────────────────────────────────────
-    const prompt = `You are a senior UK care home compliance inspector writing a formal ${auditLabel} audit report for CQC purposes.
-
+DATA:
 ${ctx}
 
-Write a comprehensive, professional audit report. Use EXACTLY this format:
-
+Format:
 ## ${auditLabel} Audit Report
-
 ### Executive Summary
-[3-4 sentences: overall compliance status, key strengths, key concerns, CQC rating implication]
-
-### Detailed Findings
-
-#### Care Planning & Reviews
-[Use ✅ for each compliant item, ⚠️ for concerns, ❌ for critical failures — be specific with names/dates from the data]
-
-#### Daily Care & Documentation
-[Assess the volume and types of records, missing records, continuity of care]
-
-#### Medication Management
-[Assess MAR compliance rate and any concerns]
-
-#### Nutrition & Hydration
-[Assess fluid intake records and any residents below threshold]
-
-#### Staff Training & Competency
-[Assess expiring training and implications]
-
-#### Safeguarding
-[Assess any concerns, acknowledgement status]
-
-### Summary of Key Risks
-[List the top 3-5 risks as bullet points with ⚠️ or ❌]
-
-### Good Practice Identified
-[List 2-4 things the home is doing well with ✅]
-
+[2-3 sentences: overall status, key strength, key concern]
+### Key Findings
+[Use ✅ compliant ⚠️ concern ❌ critical — be specific using the data above, 1 line each]
+### Key Risks
+[3 bullet risks with ⚠️/❌]
 ## RECOMMENDATIONS
-- [Specific actionable recommendation 1 — reference actual data]
-- [Specific actionable recommendation 2]
-- [Specific actionable recommendation 3]
-- [Add more as needed — max 8]
-[Each recommendation must be specific, measurable, and directly tied to the data above. Include CQC regulation reference where relevant (e.g. Regulation 9, 12, 17).]
+- [Specific action tied to data — max 5 bullets, include CQC Reg number]
 
-Be thorough, professional, and constructive. Use British English. Total: 500-700 words.`
+British English. Max 400 words total.`
 
     // ── Call AI ────────────────────────────────────────────────────────────────
     let findings = ''
     let recommendations = ''
 
     try {
-      const aiText = await callAI(prompt)
+      const aiText = await callAI(prompt, 900)
       // Split findings from recommendations at the ## RECOMMENDATIONS marker
       const recIdx = aiText.search(/##\s*RECOMMENDATIONS?\s*\n/i)
       if (recIdx !== -1) {
@@ -307,36 +307,24 @@ router.post('/:id/ai-action-plan', requireRole('home_manager', 'group_admin'),
 
       if (!audit.recommendations) throw new AppError('No recommendations to process', 400);
 
-      const prompt = `You are a care home compliance expert helping a UK care home create a detailed action plan from audit recommendations.
+      const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : 0
+      const recs = (audit.recommendations || '').substring(0, 600)
+      const findings = (audit.findings || '').substring(0, 400)
 
-Audit type: ${audit.audit_type?.replace(/_/g, ' ')}
-Audit period: ${audit.period_from} to ${audit.period_to}
-Compliance score: ${audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : 'N/A'}%
+      const prompt = `UK care home compliance expert. Create an action plan from these audit recommendations.
 
-Recommendations from the audit:
-${audit.recommendations}
+Audit: ${audit.audit_type?.replace(/_/g, ' ')} | Score: ${score}% | Period: ${audit.period_from} to ${audit.period_to}
+Recommendations: ${recs}
+Key findings: ${findings}
 
-Findings context:
-${(audit.findings || '').substring(0, 1500)}
+Return JSON array only (no markdown):
+[{"recommendation":"brief rec","action":"specific step","who":"Home Manager|Senior Carer|All Staff","priority":"high|medium|low","deadline":"Within 24h|1 week|1 month","expected_outcome":"improvement"}]
 
-For each recommendation, create a specific, practical action plan item. Return a JSON array only (no markdown, no explanation) with this exact structure:
-[
-  {
-    "recommendation": "brief version of the original recommendation",
-    "action": "specific step-by-step action to take",
-    "who": "who is responsible (e.g. Home Manager, Senior Carer, All Staff)",
-    "priority": "high | medium | low",
-    "deadline": "e.g. Within 24 hours | Within 1 week | Within 1 month",
-    "expected_outcome": "what improvement this will achieve"
-  }
-]`;
+Max 5 items. Be specific to the actual data above.`
 
-      const raw = await callAI(prompt);
+      const raw = await callAI(prompt, 700);
       let items: any[] = [];
-      try {
-        const match = raw.match(/\[[\s\S]*\]/);
-        items = JSON.parse(match ? match[0] : raw);
-      } catch {
+      try { items = parseAIArray(raw); } catch {
         throw new AppError('AI returned unexpected format — please try again', 500);
       }
 
@@ -362,55 +350,34 @@ router.post('/:id/ai-compliance-fix', requireRole('home_manager', 'group_admin')
 
       const currentRating = score >= 90 ? 'Outstanding' : score >= 75 ? 'Good' : score >= 60 ? 'Requires Improvement' : 'Inadequate'
 
-      const prompt = `You are a senior UK care home compliance consultant. A care home's AI audit has identified issues and they need a precise, actionable improvement plan to raise their compliance score from ${score}% to at least 85%.
+      const findings = (audit.findings || '').substring(0, 500)
+      const recs = (audit.recommendations || '').substring(0, 300)
 
-AUDIT DATA:
-- Audit type: ${audit.audit_type?.replace(/_/g, ' ')}
-- Period: ${audit.period_from} to ${audit.period_to}
-- Current score: ${score}% (${currentRating})
-- Total checks: ${audit.total_checks} | Passed: ${audit.checks_passed} | Failed: ${audit.checks_failed}
+      const prompt = `UK care home CQC compliance consultant. Raise compliance from ${score}% (${currentRating}) to 85%+.
 
-AUDIT FINDINGS (what was found):
-${(audit.findings || '').substring(0, 2000)}
+Audit: ${audit.audit_type?.replace(/_/g, ' ')} | Checks: ${audit.total_checks} total, ${audit.checks_passed} passed, ${audit.checks_failed} failed
+Findings: ${findings}
+Recommendations: ${recs}
 
-CURRENT RECOMMENDATIONS:
-${(audit.recommendations || '').substring(0, 800)}
+Return JSON only (no markdown):
+{"current_rating":"${currentRating}","target_rating":"Good","projected_score":${Math.min(score + 18, 92)},"summary":"2 sentences on main problems and fix","immediate_actions":["action1 tied to data","action2"],"short_term":["1-4 week action","another"],"long_term":["1-3 month systemic change","another"],"cqc_notes":"CQC inspector focus areas, cite Reg 9/12/17 etc"}
 
-Your task: Create a SPECIFIC, TARGETED improvement plan that will genuinely raise their compliance. Each action must directly address a real finding above. Do not give generic advice.
+2-3 items per array. Specific to actual findings only.`
 
-Return valid JSON only (no markdown, no code fences) with this exact structure:
-{
-  "current_rating": "${currentRating}",
-  "target_rating": "Good or Outstanding — be realistic based on the data",
-  "projected_score": <number between ${Math.min(score + 15, 95)} and 95>,
-  "summary": "2-3 sentences: what the main problems are and how the plan will fix them — be specific to the actual findings",
-  "immediate_actions": [
-    "Specific action referencing real data from the findings — do within 24-48 hours",
-    "Another specific action"
-  ],
-  "short_term": [
-    "Specific action to complete within 1-4 weeks",
-    "Another specific action"
-  ],
-  "long_term": [
-    "Systemic change to implement within 1-3 months",
-    "Another systemic change"
-  ],
-  "cqc_notes": "What a CQC inspector would specifically look for when they visit based on these findings — reference relevant Regulations (9, 10, 12, 17 etc)"
-}
-
-Each array must have 2-4 items. All items must be specific to the actual findings, not generic advice.`;
-
-      const raw = await callAI(prompt);
+      const raw = await callAI(prompt, 700);
       let plan: any = {};
-      try {
-        const match = raw.match(/\{[\s\S]*\}/);
-        plan = JSON.parse(match ? match[0] : raw);
-      } catch {
+      try { plan = parseAIJson(raw); } catch {
         throw new AppError('AI returned unexpected format — please try again', 500);
       }
 
-      res.json({ success: true, data: plan } as ApiResponse);
+      // Always offer all fix types the audit can address — execute-fix reports actual counts per operation
+      // We don't filter by current DB state here because the audit may have flagged issues in a past period
+      const available_fixes = (audit.checks_failed || 0) > 0
+        ? ['care_plans_review', 'alerts_resolve', 'safeguarding_ack', 'training_extend',
+           'incidents_acknowledge', 'fluid_alerts_create', 'ppe_restock_alerts', 'care_plans_create', 'daily_records_create']
+        : [];
+
+      res.json({ success: true, data: { ...plan, available_fixes, home_id: audit.home_id } } as ApiResponse);
     } catch (err: any) {
       if (err?.isKeyMissing || err?.message?.includes('GROQ_API_KEY')) {
         return res.status(400).json({ success: false, error: 'AI not configured. Set GROQ_API_KEY in backend/.env — get a free key at https://console.groq.com' } as ApiResponse);

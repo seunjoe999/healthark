@@ -376,6 +376,7 @@ export default function Compliance() {
           homeId={selectedHome}
           dashboardData={data}
           onClose={() => setAiFixOpen(false)}
+          onRefresh={() => load(selectedHome)}
         />
       )}
     </div>
@@ -392,15 +393,22 @@ function SummaryTile({ label, value, sub, colour }: { label: string; value: any;
   )
 }
 
+const FIX_LABELS: Record<string, string> = {
+  care_plans_review: 'Mark overdue care plans as reviewed',
+  alerts_resolve: 'Resolve all open alerts',
+  safeguarding_ack: 'Acknowledge all safeguarding concerns',
+  training_extend: 'Extend expiring training by 1 year',
+  incidents_acknowledge: 'Mark incidents as manager reviewed',
+  fluid_alerts_create: 'Create alerts for low fluid intake',
+  ppe_restock_alerts: 'Create alerts for low PPE stock',
+  care_plans_create: 'Create missing care plans for residents',
+  daily_records_create: 'Create daily records for residents with no entries today',
+}
+
 function CFActionSection({ title, icon, items, colors, prefix, statuses, onCycle }: {
   title: string; icon: React.ReactNode; items: string[]; colors: { bg: string; border: string; text: string; num: string }
   prefix: string; statuses: Record<string, ActionStatus>; onCycle: (k: string) => void
 }) {
-  const statusConfig = {
-    todo: { label: 'To Do', icon: <Circle className="w-3.5 h-3.5" />, cls: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' },
-    in_progress: { label: 'In Progress', icon: <Clock className="w-3.5 h-3.5" />, cls: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' },
-    done: { label: 'Done', icon: <CheckSquare className="w-3.5 h-3.5" />, cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200' },
-  }
   if (!items?.length) return null
   const doneCount = items.filter((_, i) => statuses[`${prefix}_${i}`] === 'done').length
   return (
@@ -412,21 +420,20 @@ function CFActionSection({ title, icon, items, colors, prefix, statuses, onCycle
       <div className="space-y-1.5">
         {items.map((a, i) => {
           const k = `${prefix}_${i}`
-          const status: ActionStatus = statuses[k] || 'todo'
-          const cfg = statusConfig[status]
+          const done = statuses[k] === 'done'
           return (
             <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl border transition-colors ${
-              status === 'done' ? 'bg-emerald-50 border-emerald-100' :
-              status === 'in_progress' ? 'bg-amber-50 border-amber-100' :
-              `${colors.bg} ${colors.border}`
+              done ? 'bg-emerald-50 border-emerald-100' : `${colors.bg} ${colors.border}`
             }`}>
               <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${
-                status === 'done' ? 'bg-emerald-500' : status === 'in_progress' ? 'bg-amber-500' : colors.num
-              }`}>{status === 'done' ? '✓' : i + 1}</span>
-              <p className={`text-sm flex-1 leading-relaxed ${status === 'done' ? 'text-slate-400 line-through' : colors.text}`}>{a}</p>
+                done ? 'bg-emerald-500' : colors.num
+              }`}>{done ? '✓' : i + 1}</span>
+              <p className={`text-sm flex-1 leading-relaxed ${done ? 'text-slate-400 line-through' : colors.text}`}>{a}</p>
               <button onClick={() => onCycle(k)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.cls}`}>
-                {cfg.icon} {cfg.label}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${
+                  done ? 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                }`}>
+                {done ? <><CheckSquare className="w-3.5 h-3.5" /> Done</> : <><Circle className="w-3.5 h-3.5" /> Mark Done</>}
               </button>
             </div>
           )
@@ -436,11 +443,15 @@ function CFActionSection({ title, icon, items, colors, prefix, statuses, onCycle
   )
 }
 
-function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: string; dashboardData: any; onClose: () => void }) {
+function ComplianceAIFixModal({ homeId, dashboardData, onClose, onRefresh }: {
+  homeId: string; dashboardData: any; onClose: () => void; onRefresh: () => void
+}) {
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState<any>(null)
   const [error, setError] = useState('')
   const [statuses, setStatuses] = useState<Record<string, ActionStatus>>(() => getCFStatuses(homeId))
+  const [executing, setExecuting] = useState(false)
+  const [execResults, setExecResults] = useState<Array<{ fix: string; status: string; detail: string }> | null>(null)
 
   useEffect(() => {
     api.post('/compliance/ai-improvement', { homeId, dashboardData })
@@ -449,12 +460,36 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: stri
       .finally(() => setLoading(false))
   }, [homeId])
 
-  const cycle = (k: string) => {
-    const current = statuses[k] || 'todo'
-    const next: ActionStatus = current === 'todo' ? 'in_progress' : current === 'in_progress' ? 'done' : 'todo'
-    const updated = { ...statuses, [k]: next }
+  const markDone = (k: string) => {
+    const updated = { ...statuses, [k]: statuses[k] === 'done' ? ('todo' as ActionStatus) : ('done' as ActionStatus) }
     setStatuses(updated)
     saveCFStatuses(homeId, updated)
+  }
+
+  const executeFixes = async () => {
+    if (!plan?.available_fixes?.length) return
+    setExecuting(true)
+    try {
+      const res = await api.post('/compliance/execute-fix', { homeId, fixes: plan.available_fixes })
+      const results = res.data.data?.results || []
+      setExecResults(results)
+
+      // Auto-mark all items across all sections as done
+      const updated = { ...statuses }
+      ;['immediate', 'short', 'long'].forEach((prefix, si) => {
+        const arr = [plan.immediate_actions, plan.short_term, plan.long_term][si] || []
+        arr.forEach((_: string, i: number) => { updated[`${prefix}_${i}`] = 'done' })
+      })
+      setStatuses(updated)
+      saveCFStatuses(homeId, updated)
+
+      toast.success('Auto-fixes applied! Refreshing compliance data...')
+      onRefresh()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Fix execution failed')
+    } finally {
+      setExecuting(false)
+    }
   }
 
   const allKeys = plan ? [
@@ -463,7 +498,6 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: stri
     ...(plan.long_term || []).map((_: string, i: number) => `long_${i}`),
   ] : []
   const doneTotal = allKeys.filter(k => statuses[k] === 'done').length
-  const inProgTotal = allKeys.filter(k => statuses[k] === 'in_progress').length
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -498,9 +532,7 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: stri
                 <div className="flex flex-col items-center gap-1">
                   <div className="text-slate-300 text-3xl font-light">→</div>
                   {plan.projected_score && (
-                    <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
-                      ~{plan.projected_score}%
-                    </span>
+                    <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">~{plan.projected_score}%</span>
                   )}
                 </div>
                 <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-200">
@@ -509,23 +541,49 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: stri
                 </div>
               </div>
 
-              {/* Progress tracker */}
-              {allKeys.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                    <div className="flex gap-4">
-                      <span className="text-slate-500 flex items-center gap-1"><Circle className="w-3 h-3" /> {allKeys.length - doneTotal - inProgTotal} to do</span>
-                      <span className="text-amber-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {inProgTotal} in progress</span>
-                      <span className="text-emerald-600 flex items-center gap-1"><CheckSquare className="w-3 h-3" /> {doneTotal} done</span>
+              {/* Auto-fix banner */}
+              {plan.available_fixes?.length > 0 && !execResults && (
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4" /> {plan.available_fixes.length} issue{plan.available_fixes.length !== 1 ? 's' : ''} can be auto-fixed by AI right now
+                      </p>
+                      <ul className="space-y-0.5">
+                        {plan.available_fixes.map((f: string) => (
+                          <li key={f} className="text-xs text-purple-700 flex items-center gap-1.5">
+                            <CheckCircle className="w-3 h-3 flex-shrink-0" /> {FIX_LABELS[f] || f}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <button onClick={() => { const r: Record<string, ActionStatus> = {}; setStatuses(r); saveCFStatuses(homeId, r) }}
-                      className="text-slate-400 hover:text-rose-500 underline font-normal text-xs">Reset all</button>
+                    <button
+                      onClick={executeFixes}
+                      disabled={executing}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 transition-colors flex-shrink-0 shadow-sm"
+                    >
+                      {executing ? (
+                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Fixing...</>
+                      ) : (
+                        <><Zap className="w-4 h-4" /> Execute All Fixes</>
+                      )}
+                    </button>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneTotal / allKeys.length) * 100}%` }} />
-                    <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgTotal / allKeys.length) * 100}%` }} />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">Click a status button to track progress: To Do → In Progress → Done</p>
+                </div>
+              )}
+
+              {/* Execution results */}
+              {execResults && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
+                  <p className="text-sm font-bold text-emerald-800 flex items-center gap-1.5 mb-2">
+                    <CheckCircle className="w-4 h-4" /> Auto-fix complete
+                  </p>
+                  {execResults.map((r, i) => (
+                    <div key={i} className={`flex items-center gap-2 text-xs ${r.status === 'ok' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      {r.status === 'ok' ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />}
+                      {r.detail}
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -535,23 +593,37 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: stri
                 </div>
               )}
 
+              {/* Progress bar */}
+              {allKeys.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                    <span className="text-emerald-600 flex items-center gap-1"><CheckSquare className="w-3 h-3" /> {doneTotal}/{allKeys.length} done</span>
+                    <button onClick={() => { const r: Record<string, ActionStatus> = {}; setStatuses(r); saveCFStatuses(homeId, r) }}
+                      className="text-slate-400 hover:text-rose-500 underline font-normal text-xs">Reset all</button>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneTotal / allKeys.length) * 100}%` }} />
+                  </div>
+                </div>
+              )}
+
               <CFActionSection title="Immediate Actions (0–7 days)"
                 icon={<AlertTriangle className="w-3.5 h-3.5" />}
                 items={plan.immediate_actions}
                 colors={{ bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-700', num: 'bg-rose-500' }}
-                prefix="immediate" statuses={statuses} onCycle={cycle} />
+                prefix="immediate" statuses={statuses} onCycle={markDone} />
 
               <CFActionSection title="Short-Term (1–4 weeks)"
                 icon={<Clock className="w-3.5 h-3.5" />}
                 items={plan.short_term}
                 colors={{ bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', num: 'bg-amber-500' }}
-                prefix="short" statuses={statuses} onCycle={cycle} />
+                prefix="short" statuses={statuses} onCycle={markDone} />
 
               <CFActionSection title="Long-Term (1–3 months)"
                 icon={<TrendingUp className="w-3.5 h-3.5" />}
                 items={plan.long_term}
                 colors={{ bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', num: 'bg-blue-500' }}
-                prefix="long" statuses={statuses} onCycle={cycle} />
+                prefix="long" statuses={statuses} onCycle={markDone} />
 
               {plan.cqc_notes && (
                 <div className="p-4 bg-slate-800 rounded-xl">

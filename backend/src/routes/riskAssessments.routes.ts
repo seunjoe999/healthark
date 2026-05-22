@@ -56,8 +56,10 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.post('/',
-  [body('suId').isUUID(), body('assessmentName').notEmpty()],
+  [body('assessmentName').notEmpty().withMessage('assessmentName is required')],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -66,6 +68,11 @@ router.post('/',
       const { suId, assessmentName, description, riskLevel, currentRiskLevel,
               whoIsAtRisk, isHistorical, whatCouldHappen, triggers,
               protectiveFactors, managementPlan, reviewFrequency } = req.body;
+
+      if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
+        res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
+      }
+      const trimmedSuId = suId.trim();
 
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const days = freqDays[reviewFrequency || 'monthly'] || 30;
@@ -77,7 +84,7 @@ router.post('/',
           current_risk_level, who_is_at_risk, is_historical, what_could_happen, triggers,
           protective_factors, management_plan, review_frequency, next_review_date, created_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
-        [suId, homeId, assessmentName, description || null, riskLevel || 'low',
+        [trimmedSuId, homeId, assessmentName, description || null, riskLevel || 'low',
          currentRiskLevel || riskLevel || 'low', whoIsAtRisk || null,
          isHistorical || false, whatCouldHappen || null, triggers || null,
          protectiveFactors || null, managementPlan || null,

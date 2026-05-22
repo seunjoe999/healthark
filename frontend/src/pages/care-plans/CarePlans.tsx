@@ -316,7 +316,8 @@ export default function CarePlans() {
       </div>
 
       {/* Add care plan modal */}
-      <AddPlanModal open={addPlanOpen} onClose={() => setAddPlanOpen(false)} suId={selectedSu?.id}
+      <AddPlanModal open={addPlanOpen} onClose={() => setAddPlanOpen(false)}
+        suId={selectedSu?.id} homeId={selectedHome}
         onSaved={async () => {
           setAddPlanOpen(false)
           if (selectedSu) {
@@ -340,16 +341,23 @@ export default function CarePlans() {
   )
 }
 
-function AddPlanModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
+function AddPlanModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
   const [form, setForm] = useState({ planType: '', customName: '', aimsOutcomes: '', whatICanDo: '', howToSupport: '', reviewFrequency: 'monthly' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!suId) { toast.error('Please select a resident first'); return }
+    if (!form.planType) { toast.error('Please select a care plan type'); return }
     setLoading(true)
-    try { await api.post('/care-plans', { suId, homeId: (window as any).__HA_USER__?.homeId, ...form }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to create') }
+    try {
+      await api.post('/care-plans', { suId, homeId, ...form })
+      onSaved()
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to create care plan'
+      toast.error(msg)
+    }
     finally { setLoading(false) }
   }
 
@@ -414,9 +422,10 @@ function AddRiskModal({ open, onClose, suId, onSaved }: { open: boolean; onClose
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!suId) { toast.error('Please select a resident first'); return }
     setLoading(true)
     try { await api.post('/risk-assessments', { suId, ...form }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    catch (err: any) { toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed') }
     finally { setLoading(false) }
   }
 

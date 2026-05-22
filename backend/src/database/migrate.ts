@@ -12,6 +12,10 @@ const MIGRATION_FILES = [
   '005_fix_and_seed.sql',
   '006_app_tables.sql',
   '007_more_fixes.sql',
+  '008_missing_tables.sql',
+  '009_schema_alignment.sql',
+  '010_add_all_missing_columns.sql',
+  '011_audit_compliance_fixes.sql',
 ];
 
 async function migrate() {

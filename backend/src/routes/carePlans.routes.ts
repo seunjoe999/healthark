@@ -71,9 +71,11 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // POST /api/care-plans
 router.post('/',
-  [body('suId').isUUID(), body('planType').notEmpty(), body('homeId').optional().isUUID()],
+  [body('planType').notEmpty().withMessage('planType is required')],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -81,6 +83,17 @@ router.post('/',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, planType, customName, aimsOutcomes, whatICanDo, howToSupport,
               reviewFrequency } = req.body;
+
+      if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
+        res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
+      }
+      if (!planType) throw new AppError('planType is required', 400);
+      if (!homeId) throw new AppError('homeId is required', 400);
+
+      const trimmedSuId = suId.trim();
+      // Verify the service user exists
+      const suCheck = await query('SELECT id FROM service_users WHERE id = $1 AND home_id = $2', [trimmedSuId, homeId]);
+      if (suCheck.length === 0) throw new AppError('Service user not found', 404);
 
       // Calculate next review date
       const freqDays: Record<string, number> = {
@@ -92,9 +105,9 @@ router.post('/',
 
       const rows = await query(
         `INSERT INTO care_plans (su_id, home_id, plan_type, custom_name, aims_outcomes,
-          what_i_can_do, how_to_support, review_frequency, next_review_date, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-        [suId, homeId, planType, customName || null, aimsOutcomes || null,
+          what_i_can_do, how_to_support, review_frequency, last_review_date, next_review_date, created_by, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true) RETURNING *`,
+        [trimmedSuId, homeId, planType, customName || null, aimsOutcomes || null,
          whatICanDo || null, howToSupport || null,
          reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId]
       );

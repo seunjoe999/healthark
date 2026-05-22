@@ -127,6 +127,65 @@ app.use(notFound);
 app.use(errorHandler);
 
 // â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function ensureColumns() {
+  const stmts = [
+    // ── New tables ─────────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS staff_training (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       course_name VARCHAR(255) NOT NULL,
+       expiry_date DATE,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_st_staff  ON staff_training(staff_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_st_expiry ON staff_training(expiry_date)`,
+    `CREATE TABLE IF NOT EXISTS mar_records (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id       UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       record_date DATE NOT NULL DEFAULT CURRENT_DATE,
+       given       BOOLEAN NOT NULL DEFAULT FALSE,
+       refused     BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_home ON mar_records(home_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_su   ON mar_records(su_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_date ON mar_records(record_date)`,
+    `CREATE TABLE IF NOT EXISTS safeguarding_concerns (
+       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id       UUID NOT NULL REFERENCES homes(id),
+       su_id         UUID NOT NULL REFERENCES service_users(id),
+       overview      TEXT,
+       incident_date DATE NOT NULL,
+       manager_ack   BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_safe_home ON safeguarding_concerns(home_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_safe_su   ON safeguarding_concerns(su_id)`,
+    // ── New columns ────────────────────────────────────────────────────────────
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed    BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed_at TIMESTAMPTZ`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS last_review_date DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS next_review_date DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS is_active        BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS reviewed_by      UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE daily_records ADD COLUMN IF NOT EXISTS amount_ml     INTEGER`,
+    `ALTER TABLE business_alerts ADD COLUMN IF NOT EXISTS data        JSONB`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS min_fluid_ml  INTEGER NOT NULL DEFAULT 1500`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS total_checks  INTEGER`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checks_passed INTEGER`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checks_failed INTEGER`,
+    `ALTER TABLE safeguarding_concerns ADD COLUMN IF NOT EXISTS manager_ack BOOLEAN NOT NULL DEFAULT FALSE`,
+  ];
+  for (const sql of stmts) {
+    await pool.query(sql).catch((err: any) => {
+      logger.warn(`ensureSchema skipped: ${err?.message?.split('\n')[0]}`);
+    });
+  }
+  logger.info('Schema verified');
+}
+
 async function bootstrap() {
   try {
     await pool.query('SELECT 1');
@@ -135,6 +194,8 @@ async function bootstrap() {
     logger.error('Database connection failed', { err });
     process.exit(1);
   }
+
+  await ensureColumns();
 
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
