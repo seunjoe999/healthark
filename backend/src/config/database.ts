@@ -1,24 +1,34 @@
 import { Pool, PoolConfig } from 'pg';
 
-const dbUser = process.env.DB_USER || 'postgres';
-const dbPassword = process.env.DB_PASSWORD;
+let config: PoolConfig;
 
-if (!dbPassword) {
-  console.error('\n⛔  DB_PASSWORD is not set. Create a .env file in the backend folder.');
-  console.error('    Copy backend/.env.example to backend/.env and fill in your PostgreSQL credentials.\n');
+if (process.env.DATABASE_URL) {
+  // Render / Railway / cloud hosting — provides a single connection string
+  config = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  };
+} else {
+  const dbPassword = process.env.DB_PASSWORD;
+  if (!dbPassword) {
+    console.error('\n⛔  DB_PASSWORD is not set. Create a .env file in the backend folder.');
+    console.error('    Copy backend/.env.example to backend/.env and fill in your PostgreSQL credentials.\n');
+  }
+  config = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    database: process.env.DB_NAME || 'healthark',
+    user: process.env.DB_USER || 'postgres',
+    password: dbPassword,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  };
 }
-
-const config: PoolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'healthark',
-  user: dbUser,
-  password: dbPassword,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-};
 
 export const pool = new Pool(config);
 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Eye, EyeOff, AlertCircle, ArrowRight, Shield, Activity, Users } from 'lucide-react'
+import api from '../../api'
 
 type Mode = 'login' | 'register' | 'register_success'
 
@@ -17,6 +18,13 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
+
+  // Redirect to setup page if no organisation exists yet
+  useEffect(() => {
+    api.get('/auth/setup-status').then(res => {
+      if (res.data.data?.needsSetup) navigate('/setup', { replace: true })
+    }).catch(() => {})
+  }, [navigate])
 
   // Register state
   const [reg, setReg] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', phone: '', registrationCode: '' })

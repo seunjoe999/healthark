@@ -94,7 +94,8 @@ export const dailyRecordsApi = {
 export function photoUrl(url?: string | null): string | null {
   if (!url) return null
   if (url.startsWith('http')) return url
-  return `http://localhost:3001${url}`
+  const base = (import.meta as any).env?.VITE_API_URL || ''
+  return `${base}${url}`
 }
 
 export const assessmentsApi = {

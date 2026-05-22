@@ -122,7 +122,16 @@ app.use('/api/compliance', complianceRoutes);
 app.use('/api/medication-stock', medicationStockRoutes);
 app.use('/api/signatures', signaturesRoutes);
 
-// â”€â”€ Error handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Serve React frontend in production ────────────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const frontendDist = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendDist));
+  app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
+// ── Error handling ────────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 

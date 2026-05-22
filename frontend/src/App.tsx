@@ -50,6 +50,7 @@ import FamilyPortal from './pages/family/FamilyPortal'
 import FamilyView from './pages/family/FamilyView'
 import NotificationsManager from './pages/notifications/NotificationsManager'
 import AdminAccounts from './pages/admin/AdminAccounts'
+import Setup from './pages/auth/Setup'
 
 function getStoredToken(): string | null {
   if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
@@ -91,6 +92,7 @@ function ComingSoon({ title }: { title: string }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/setup" element={<Setup />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/clockin/home/:token" element={<ClockIn />} />

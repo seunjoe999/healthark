@@ -128,6 +128,64 @@ router.post('/register',
   }
 );
 
+// GET /api/auth/setup-status — check if first-time setup is needed
+router.get('/setup-status', async (_req, res, next) => {
+  try {
+    const orgs = await query('SELECT id FROM organisations LIMIT 1');
+    res.json({ success: true, data: { needsSetup: orgs.length === 0 } });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/setup — create first organisation, home, and admin (only works on empty DB)
+router.post('/setup',
+  [
+    body('orgName').notEmpty().trim().withMessage('Organisation name is required'),
+    body('homeName').notEmpty().trim().withMessage('Care home name is required'),
+    body('firstName').notEmpty().trim(),
+    body('lastName').notEmpty().trim(),
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  ],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await query('SELECT id FROM organisations LIMIT 1');
+      if (existing.length) {
+        res.status(403).json({ success: false, error: 'Setup has already been completed. Please log in.' });
+        return;
+      }
+      const { orgName, homeName, firstName, lastName, email, password, homeAddress, homeCity, homePostcode } = req.body;
+      const passwordHash = await bcrypt.hash(password, 12);
+      const qrToken = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+      const orgRows = await query<any>(
+        'INSERT INTO organisations (name) VALUES ($1) RETURNING id',
+        [orgName]
+      );
+      const orgId = orgRows[0].id;
+
+      const homeRows = await query<any>(
+        `INSERT INTO homes (organisation_id, name, address1, city, postcode, qr_token, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING id`,
+        [orgId, homeName, homeAddress || null, homeCity || null, homePostcode || null, qrToken]
+      );
+      const homeId = homeRows[0].id;
+
+      await query(
+        `INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, last_name, role, status, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,'group_admin','active',true)`,
+        [orgId, homeId, email, passwordHash, firstName, lastName]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Setup complete! You can now log in with your credentials.',
+        data: { email },
+      } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/auth/logout
 router.post('/logout', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
