@@ -29,12 +29,12 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
 
     const [records, medications, carePlans, riskAssessments] = await Promise.all([
       query<any>(
-        `SELECT dr.record_type, dr.notes, dr.record_date, dr.shift, dr.created_at,
+        `SELECT dr.record_type, dr.notes, dr.record_date, dr.shift,
                 s.first_name || ' ' || s.last_name as staff_name
          FROM daily_records dr
-         LEFT JOIN staff s ON s.id = dr.created_by
+         LEFT JOIN staff s ON s.id = dr.staff_id
          WHERE dr.su_id = $1 AND dr.record_date >= CURRENT_DATE - INTERVAL '14 days'
-         ORDER BY dr.record_date DESC, dr.created_at DESC LIMIT 60`,
+         ORDER BY dr.record_date DESC, dr.id DESC LIMIT 60`,
         [su.id]
       ),
       query<any>(

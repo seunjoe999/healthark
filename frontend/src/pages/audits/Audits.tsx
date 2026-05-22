@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -8,7 +8,8 @@ import {
   Activity, Plus, CheckCircle, XCircle, AlertTriangle,
   ClipboardList, Shield, Pill, Users, FileText,
   Flame, Zap, Heart, Home, RefreshCw, Trash2, TrendingUp,
-  Calendar, User, Award, ChevronRight, Printer, Building2
+  Calendar, User, Award, ChevronRight, Building2,
+  ListChecks, Circle, Clock, CheckSquare
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -32,29 +33,38 @@ const AUDIT_TYPES = [
   { value: 'free_template', label: 'Free Template', icon: <FileText className="w-4 h-4" />, color: 'bg-slate-100 text-slate-700', accent: '#475569' },
 ]
 
+type ActionStatus = 'todo' | 'in_progress' | 'done'
+
+function getActionPlan(auditId: string): Record<number, ActionStatus> {
+  try { return JSON.parse(localStorage.getItem(`audit_ap_${auditId}`) || '{}') } catch { return {} }
+}
+function saveActionPlan(auditId: string, plan: Record<number, ActionStatus>) {
+  localStorage.setItem(`audit_ap_${auditId}`, JSON.stringify(plan))
+}
+
+function parseRecommendations(text: string): string[] {
+  return (text || '').split('\n').map(l => l.replace(/^[-*•] /, '').trim()).filter(Boolean)
+}
+
 function parseFindings(text: string) {
   if (!text) return []
-  const sections: Array<{ type: string; content: string; heading?: string }> = []
-  let currentHeading = ''
+  const sections: Array<{ type: string; content: string }> = []
   for (const raw of text.split('\n')) {
     const line = raw.trim()
     if (!line) continue
     if (line.startsWith('## ') || line.startsWith('# ')) {
-      currentHeading = line.replace(/^#+\s*/, '')
-      sections.push({ type: 'heading', content: currentHeading })
+      sections.push({ type: 'heading', content: line.replace(/^#+\s*/, '') })
     } else if (line.startsWith('### ')) {
       sections.push({ type: 'subheading', content: line.replace('### ', '') })
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
-      sections.push({ type: 'bullet', content: line.replace(/^[-*] /, ''), heading: currentHeading })
+      sections.push({ type: 'bullet', content: line.replace(/^[-*] /, '') })
     } else if (line.startsWith('✅')) {
       sections.push({ type: 'pass', content: line.replace('✅', '').trim() })
     } else if (line.startsWith('⚠️')) {
       sections.push({ type: 'warn', content: line.replace('⚠️', '').trim() })
     } else if (line.startsWith('❌')) {
       sections.push({ type: 'fail', content: line.replace('❌', '').trim() })
-    } else if (line.startsWith('**Period:**')) {
-      sections.push({ type: 'meta', content: line.replace('**Period:**', '').trim() })
-    } else {
+    } else if (!line.startsWith('**Period:**')) {
       sections.push({ type: 'text', content: line })
     }
   }
@@ -68,14 +78,11 @@ function renderBold(text: string) {
     : <span key={i}>{part}</span>)
 }
 
-function ComplianceRating({ score }: { score: number }) {
-  const label = score >= 90 ? 'Outstanding' : score >= 75 ? 'Good' : score >= 60 ? 'Requires Improvement' : 'Inadequate'
-  const color = score >= 90 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-    : score >= 75 ? 'text-blue-700 bg-blue-50 border-blue-200'
-    : score >= 60 ? 'text-amber-700 bg-amber-50 border-amber-200'
-    : 'text-rose-700 bg-rose-50 border-rose-200'
-  const barColor = score >= 90 ? '#059669' : score >= 75 ? '#2563eb' : score >= 60 ? '#d97706' : '#dc2626'
-  return { label, color, barColor }
+function ratingFromScore(score: number) {
+  if (score >= 90) return { label: 'Outstanding', bar: '#059669', badge: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+  if (score >= 75) return { label: 'Good', bar: '#2563eb', badge: 'text-blue-700 bg-blue-50 border-blue-200' }
+  if (score >= 60) return { label: 'Requires Improvement', bar: '#d97706', badge: 'text-amber-700 bg-amber-50 border-amber-200' }
+  return { label: 'Inadequate', bar: '#dc2626', badge: 'text-rose-700 bg-rose-50 border-rose-200' }
 }
 
 export default function Audits() {
@@ -88,6 +95,7 @@ export default function Audits() {
   const [generateOpen, setGenerateOpen] = useState(false)
   const [selectedAudit, setSelectedAudit] = useState<any>(null)
   const [polling, setPolling] = useState<string | null>(null)
+  const [actionPlanOpen, setActionPlanOpen] = useState(false)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -145,12 +153,11 @@ export default function Audits() {
   }
 
   const completedCount = audits.filter(a => a.status === 'completed').length
-
-  const selectedHome_obj = homes.find(h => h.id === selectedHome)
+  const selectedHomeObj = homes.find(h => h.id === selectedHome)
 
   return (
     <div className="flex h-full">
-      {/* Left panel — audit list */}
+      {/* Left panel */}
       <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-3">
@@ -171,7 +178,6 @@ export default function Audits() {
           </Button>
           <p className="text-xs text-slate-400 mt-2">{completedCount} completed report{completedCount !== 1 ? 's' : ''}</p>
         </div>
-
         <div className="flex-1 overflow-y-auto">
           {loading ? <Spinner size="sm" /> : audits.length === 0 ? (
             <div className="text-center py-8 px-4">
@@ -182,15 +188,16 @@ export default function Audits() {
             const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
             const isSelected = selectedAudit?.id === audit.id
             const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
+            const ap = audit.id ? getActionPlan(audit.id) : {}
+            const apDone = Object.values(ap).filter(s => s === 'done').length
+            const recs = parseRecommendations(audit.recommendations || '')
             return (
               <button key={audit.id} onClick={() => setSelectedAudit(audit)}
                 className={`w-full text-left px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
                 <div className="flex items-start gap-2.5">
                   <div className="flex-shrink-0 mt-0.5">
-                    {audit.status === 'completed'
-                      ? <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      : audit.status === 'failed'
-                      ? <XCircle className="w-4 h-4 text-rose-400" />
+                    {audit.status === 'completed' ? <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      : audit.status === 'failed' ? <XCircle className="w-4 h-4 text-rose-400" />
                       : <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -198,8 +205,7 @@ export default function Audits() {
                       {audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {audit.generated_at
-                        ? format(new Date(audit.generated_at), 'd MMM yyyy')
+                      {audit.generated_at ? format(new Date(audit.generated_at), 'd MMM yyyy')
                         : audit.created_at ? format(new Date(audit.created_at), 'd MMM yyyy') : ''}
                     </p>
                     {score !== null && (
@@ -209,9 +215,12 @@ export default function Audits() {
                             style={{ width: `${score}%`, background: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }} />
                         </div>
                         <p className="text-xs font-semibold mt-0.5" style={{ color: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }}>
-                          {score}% compliance
+                          {score}%
                         </p>
                       </div>
+                    )}
+                    {recs.length > 0 && apDone > 0 && (
+                      <p className="text-xs text-emerald-600 font-medium mt-0.5">{apDone}/{recs.length} actions done</p>
                     )}
                   </div>
                 </div>
@@ -221,52 +230,61 @@ export default function Audits() {
         </div>
       </div>
 
-      {/* Right panel — audit detail */}
+      {/* Right panel */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         {!selectedAudit ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <ClipboardList className="w-14 h-14 text-slate-200 mx-auto mb-3" />
               <p className="text-slate-400 font-medium">Select an audit report</p>
-              <p className="text-slate-300 text-sm mt-1">Or generate a new compliance audit above</p>
+              <p className="text-slate-300 text-sm mt-1">Or generate a new compliance audit</p>
             </div>
           </div>
         ) : (
           <AuditReport
             audit={selectedAudit}
-            homeName={selectedHome_obj?.name}
-            homeAddress={selectedHome_obj?.address1}
-            onDelete={isRole('home_manager', 'group_admin') ? deleteAudit : undefined}
+            homeName={selectedHomeObj?.name}
+            homeAddress={selectedHomeObj?.address1}
+            canDelete={isRole('home_manager', 'group_admin')}
+            onDelete={deleteAudit}
+            onOpenActionPlan={() => setActionPlanOpen(true)}
           />
         )}
       </div>
 
       <GenerateModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={generate} loading={generating} />
+
+      {selectedAudit && actionPlanOpen && (
+        <ActionPlanModal
+          audit={selectedAudit}
+          onClose={() => setActionPlanOpen(false)}
+        />
+      )}
     </div>
   )
 }
 
-function AuditReport({ audit, homeName, homeAddress, onDelete }: {
-  audit: any; homeName?: string; homeAddress?: string; onDelete?: (id: string) => void
+function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpenActionPlan }: {
+  audit: any; homeName?: string; homeAddress?: string
+  canDelete?: boolean; onDelete: (id: string) => void; onOpenActionPlan: () => void
 }) {
   const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
   const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
-  const rating = score !== null ? ComplianceRating({ score }) : null
+  const rating = score !== null ? ratingFromScore(score) : null
   const findings = parseFindings(audit.findings || '')
-  const recommendations = (audit.recommendations || '').split('\n').filter((l: string) => l.trim()).map((l: string) => l.replace(/^[-*•] /, '').trim())
-
+  const recommendations = parseRecommendations(audit.recommendations || '')
+  const actionPlan = audit.id ? getActionPlan(audit.id) : {}
+  const apDone = Object.values(actionPlan).filter(s => s === 'done').length
+  const apInProgress = Object.values(actionPlan).filter(s => s === 'in_progress').length
   const isGenerating = audit.status === 'generating'
 
   return (
     <div className="max-w-3xl mx-auto p-6">
 
-      {/* Report cover header */}
+      {/* Cover card */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-5">
-        {/* Accent bar */}
-        <div className="h-1.5 w-full" style={{ background: typeInfo?.accent ? `linear-gradient(90deg, ${typeInfo.accent}, ${typeInfo.accent}80)` : 'linear-gradient(90deg, #9333ea, #9333ea80)' }} />
-
+        <div className="h-1.5 w-full" style={{ background: typeInfo?.accent ? `linear-gradient(90deg, ${typeInfo.accent}, ${typeInfo.accent}80)` : 'linear-gradient(90deg, #9333ea, #9333ea50)' }} />
         <div className="p-6">
-          {/* Report meta */}
           <div className="flex items-start justify-between mb-5">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -292,9 +310,9 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
               <h1 className="font-display text-2xl text-slate-900 font-bold leading-tight">
                 {audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}
               </h1>
-              <p className="text-slate-400 text-sm mt-0.5">Internal Audit Report</p>
+              <p className="text-slate-400 text-sm mt-0.5">Internal Compliance Audit Report</p>
             </div>
-            {onDelete && (
+            {canDelete && (
               <button onClick={() => onDelete(audit.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors flex-shrink-0 ml-4">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -302,7 +320,6 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
             )}
           </div>
 
-          {/* Report info grid */}
           <div className="grid grid-cols-2 gap-3 mb-5">
             {homeName && (
               <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -341,7 +358,7 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
                   <p className="text-xs text-slate-400 font-medium">Audit Period</p>
                   <p className="text-sm text-slate-800 font-semibold">
                     {audit.period_from ? format(new Date(audit.period_from), 'd MMM yyyy') : '—'}
-                    {' to '}
+                    {' – '}
                     {audit.period_to ? format(new Date(audit.period_to), 'd MMM yyyy') : '—'}
                   </p>
                 </div>
@@ -349,14 +366,13 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
             )}
           </div>
 
-          {/* Compliance score */}
           {audit.status === 'completed' && score !== null && rating && (
             <div className="border-t border-slate-100 pt-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5" /> Overall Compliance Score
+                  <TrendingUp className="w-3.5 h-3.5" /> Compliance Score
                 </p>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${rating.color}`}>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${rating.badge}`}>
                   {rating.label}
                 </span>
               </div>
@@ -364,7 +380,7 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
                 <div className="flex-1">
                   <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${score}%`, background: rating.barColor }} />
+                      style={{ width: `${score}%`, background: rating.bar }} />
                   </div>
                 </div>
                 <p className="text-2xl font-bold font-display text-slate-900 w-16 text-right">{score}%</p>
@@ -400,16 +416,15 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
         </div>
       )}
 
-      {/* Audit Findings */}
+      {/* Findings */}
       {audit.findings && !isGenerating && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-5 overflow-hidden">
-          <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 bg-slate-50">
+          <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 bg-slate-50/80">
             <ClipboardList className="w-4 h-4 text-purple-600" />
             <h2 className="font-semibold text-slate-800 text-sm uppercase tracking-wide">Audit Findings</h2>
           </div>
           <div className="p-6 space-y-2">
             {findings.map((item, i) => {
-              if (item.type === 'meta') return null
               if (item.type === 'heading') return (
                 <div key={i} className="pt-4 first:pt-0">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
@@ -456,24 +471,73 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
         </div>
       )}
 
-      {/* Recommendations / Action Plan */}
-      {audit.recommendations && !isGenerating && recommendations.length > 0 && (
+      {/* Recommendations & Action Plan button */}
+      {recommendations.length > 0 && !isGenerating && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-5 overflow-hidden">
-          <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 bg-amber-50">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            <h2 className="font-semibold text-amber-800 text-sm uppercase tracking-wide">Recommendations & Action Plan</h2>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-amber-50/60">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <h2 className="font-semibold text-amber-800 text-sm uppercase tracking-wide">
+                Recommendations & Action Plan
+              </h2>
+              <span className="text-xs bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                {recommendations.length}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              icon={<ListChecks className="w-3.5 h-3.5" />}
+              onClick={onOpenActionPlan}
+            >
+              Manage action plan
+            </Button>
           </div>
-          <div className="p-6 space-y-3">
-            {recommendations.map((line: string, i: number) => {
+
+          {/* Action plan summary bar */}
+          {Object.keys(actionPlan).length > 0 && (
+            <div className="px-6 pt-4 pb-2">
+              <div className="flex items-center gap-4 text-xs font-semibold">
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <Circle className="w-3.5 h-3.5" /> {recommendations.length - apDone - apInProgress} to do
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-600">
+                  <Clock className="w-3.5 h-3.5" /> {apInProgress} in progress
+                </span>
+                <span className="flex items-center gap-1.5 text-emerald-600">
+                  <CheckSquare className="w-3.5 h-3.5" /> {apDone} done
+                </span>
+              </div>
+              <div className="mt-2 h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(apDone / recommendations.length) * 100}%` }} />
+                <div className="h-full bg-amber-400 transition-all" style={{ width: `${(apInProgress / recommendations.length) * 100}%` }} />
+              </div>
+            </div>
+          )}
+
+          <div className="p-6 pt-4 space-y-2">
+            {recommendations.map((line, i) => {
+              const status: ActionStatus = actionPlan[i] || 'todo'
               const isPositive = line.toLowerCase().includes('no immediate') || line.toLowerCase().includes('no action')
               return (
-                <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${isPositive ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-200'}`}>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${isPositive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {isPositive ? '✓' : i + 1}
+                <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${
+                  status === 'done' ? 'bg-emerald-50 border-emerald-100'
+                  : status === 'in_progress' ? 'bg-amber-50 border-amber-100'
+                  : isPositive ? 'bg-emerald-50 border-emerald-100'
+                  : 'bg-white border-slate-200'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold flex-shrink-0 ${
+                    status === 'done' ? 'bg-emerald-500 text-white'
+                    : status === 'in_progress' ? 'bg-amber-500 text-white'
+                    : isPositive ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {status === 'done' ? '✓' : i + 1}
                   </div>
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${isPositive ? 'text-emerald-700' : 'text-slate-800'}`}>{line}</p>
-                  </div>
+                  <p className={`text-sm font-medium flex-1 ${
+                    status === 'done' ? 'text-emerald-700 line-through decoration-emerald-400'
+                    : status === 'in_progress' ? 'text-amber-800'
+                    : isPositive ? 'text-emerald-700' : 'text-slate-800'
+                  }`}>{line}</p>
                 </div>
               )
             })}
@@ -481,14 +545,14 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
         </div>
       )}
 
-      {/* Report footer */}
+      {/* Footer */}
       {audit.status === 'completed' && (
         <div className="bg-slate-800 rounded-2xl p-5 mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Award className="w-5 h-5 text-amber-400" />
             <div>
               <p className="text-white text-sm font-semibold">Audit complete</p>
-              <p className="text-slate-400 text-xs">Report generated by CompCare Hub AI audit engine</p>
+              <p className="text-slate-400 text-xs">Generated by CompCare Hub AI audit engine</p>
             </div>
           </div>
           {score !== null && (
@@ -500,6 +564,91 @@ function AuditReport({ audit, homeName, homeAddress, onDelete }: {
         </div>
       )}
     </div>
+  )
+}
+
+function ActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }) {
+  const recommendations = parseRecommendations(audit.recommendations || '')
+  const [plan, setPlan] = useState<Record<number, ActionStatus>>(() => getActionPlan(audit.id))
+
+  const cycle = (idx: number) => {
+    const current = plan[idx] || 'todo'
+    const next: ActionStatus = current === 'todo' ? 'in_progress' : current === 'in_progress' ? 'done' : 'todo'
+    const updated = { ...plan, [idx]: next }
+    setPlan(updated)
+    saveActionPlan(audit.id, updated)
+  }
+
+  const reset = () => {
+    const cleared: Record<number, ActionStatus> = {}
+    setPlan(cleared)
+    saveActionPlan(audit.id, cleared)
+  }
+
+  const done = Object.values(plan).filter(s => s === 'done').length
+  const inProgress = Object.values(plan).filter(s => s === 'in_progress').length
+  const todo = recommendations.length - done - inProgress
+
+  const statusConfig = {
+    todo: { label: 'To Do', icon: <Circle className="w-4 h-4" />, color: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' },
+    in_progress: { label: 'In Progress', icon: <Clock className="w-4 h-4" />, color: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' },
+    done: { label: 'Done', icon: <CheckSquare className="w-4 h-4" />, color: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200' },
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Action Plan" size="lg">
+      <div className="space-y-4">
+        {/* Summary */}
+        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl text-sm font-semibold">
+          <span className="text-slate-500 flex items-center gap-1.5"><Circle className="w-4 h-4" /> {todo} to do</span>
+          <span className="text-amber-600 flex items-center gap-1.5"><Clock className="w-4 h-4" /> {inProgress} in progress</span>
+          <span className="text-emerald-600 flex items-center gap-1.5"><CheckSquare className="w-4 h-4" /> {done} done</span>
+          <div className="flex-1" />
+          <button onClick={reset} className="text-xs text-slate-400 hover:text-rose-500 underline">Reset all</button>
+        </div>
+
+        {/* Progress bar */}
+        {recommendations.length > 0 && (
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
+            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(done / recommendations.length) * 100}%` }} />
+            <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgress / recommendations.length) * 100}%` }} />
+          </div>
+        )}
+
+        <p className="text-xs text-slate-400">Click a status button to cycle through: To Do → In Progress → Done</p>
+
+        {/* Items */}
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {recommendations.map((rec, i) => {
+            const status: ActionStatus = plan[i] || 'todo'
+            const cfg = statusConfig[status]
+            return (
+              <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${
+                status === 'done' ? 'bg-emerald-50 border-emerald-100'
+                : status === 'in_progress' ? 'bg-amber-50 border-amber-100'
+                : 'bg-white border-slate-100'
+              }`}>
+                <span className="text-slate-400 text-xs font-bold w-5 flex-shrink-0 mt-0.5">{i + 1}</span>
+                <p className={`text-sm flex-1 leading-relaxed ${
+                  status === 'done' ? 'text-slate-400 line-through' : 'text-slate-700'
+                }`}>{rec}</p>
+                <button
+                  onClick={() => cycle(i)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.color}`}
+                >
+                  {cfg.icon}
+                  {cfg.label}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-slate-100">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

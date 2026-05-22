@@ -281,7 +281,7 @@ router.put('/:id/access/:homeId',
 
 // PUT /api/staff/:id/password — reset staff password (managers only)
 router.put('/:id/password', requireRole('group_admin', 'home_manager'),
-  [param('id').isUUID(), body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')],
+  [body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
