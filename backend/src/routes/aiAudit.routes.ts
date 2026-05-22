@@ -74,6 +74,16 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// DELETE /api/audits/:id — delete audit (manager+)
+router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM audit_reports WHERE id = $1', [req.params.id]);
+      res.json({ success: true, message: 'Audit deleted' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string) {
   try {
     console.log('AUDIT START: homeId=', homeId, 'type=', auditType, 'from=', from, 'to=', to);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Card, SectionHeading, Modal, Input } from '../../components/ui'
-import { BookOpen, CheckCircle, Lock, Play, Award, ChevronRight, X } from 'lucide-react'
+import { BookOpen, CheckCircle, Lock, Play, Award, ChevronRight, X, RotateCcw } from 'lucide-react'
 import api from '../../api'
 import toast from 'react-hot-toast'
 
@@ -108,7 +108,7 @@ export default function Training() {
   }, [])
 
   const resetModule = async (moduleId: string) => {
-    if (!window.confirm('Reset this module? The staff member will need to complete it again.')) return
+    if (!window.confirm('Reset this module? You will need to complete it again.')) return
     try {
       await api.delete(`/staff-hr/training-modules/${moduleId}`)
       setCompletions(p => { const n = { ...p }; delete n[moduleId]; return n })
@@ -191,10 +191,10 @@ export default function Training() {
                     {done && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-emerald-600 font-semibold">Completed</span>
-                        {isRole('home_manager', 'group_admin') && (
-                          <button onClick={e => { e.stopPropagation(); resetModule(mod.id) }}
-                            className="text-xs text-slate-400 hover:text-rose-500 underline">reset</button>
-                        )}
+                        <button onClick={e => { e.stopPropagation(); resetModule(mod.id) }}
+                          className="flex items-center gap-1 text-xs text-slate-400 hover:text-rose-500 border border-slate-200 hover:border-rose-300 rounded-lg px-2 py-1 transition-colors">
+                          <RotateCcw className="w-3 h-3" /> Reset
+                        </button>
                       </div>
                     )}
                     {locked && <span className="text-xs text-slate-400">Complete previous module first</span>}

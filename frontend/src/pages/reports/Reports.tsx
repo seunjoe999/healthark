@@ -145,37 +145,45 @@ function MonthlySummary({ data }: { data: any }) {
 }
 
 function CarePlanCompliance({ data }: { data: any }) {
-  const { plans, summary } = data
+  const plans: any[] = data?.plans || []
+  const summary = data?.summary || { total: 0, current: 0, dueSoon: 0, overdue: 0 }
   return (
     <div>
       <div className="grid grid-cols-4 gap-4 mb-4">
-        <div className="bg-white rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-slate-900">{summary.total}</p><p className="text-sm text-slate-500">Total plans</p></div>
-        <div className="bg-green-50 rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-green-700">{summary.current}</p><p className="text-sm text-slate-500">Current</p></div>
-        <div className="bg-orange-50 rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-orange-700">{summary.dueSoon}</p><p className="text-sm text-slate-500">Due soon</p></div>
-        <div className="bg-red-50 rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-red-700">{summary.overdue}</p><p className="text-sm text-slate-500">Overdue</p></div>
+        <div className="bg-white rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-slate-900">{summary.total ?? 0}</p><p className="text-sm text-slate-500">Total plans</p></div>
+        <div className="bg-green-50 rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-green-700">{summary.current ?? 0}</p><p className="text-sm text-slate-500">Current</p></div>
+        <div className="bg-orange-50 rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-orange-700">{summary.dueSoon ?? 0}</p><p className="text-sm text-slate-500">Due soon</p></div>
+        <div className="bg-red-50 rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-red-700">{summary.overdue ?? 0}</p><p className="text-sm text-slate-500">Overdue</p></div>
       </div>
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-100">
-            <tr>{['Resident','Plan type','Review frequency','Next review','Status'].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-slate-600 text-xs">{h}</th>)}</tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {plans.map((p: any, i: number) => (
-              <tr key={i} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium">{p.su_name}</td>
-                <td className="px-4 py-3 capitalize">{(p.plan_type || '').replace(/_/g, ' ')}</td>
-                <td className="px-4 py-3 capitalize">{(p.review_frequency || '').replace(/_/g, ' ')}</td>
-                <td className="px-4 py-3">{p.next_review_date ? format(new Date(p.next_review_date), 'd MMM yyyy') : '—'}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.review_status === 'overdue' ? 'bg-red-100 text-red-700' : p.review_status === 'due_soon' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                    {p.review_status?.replace('_', ' ')}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {plans.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-10 text-center text-slate-400">
+          <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No care plans found for this home</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>{['Resident','Plan type','Review frequency','Next review','Status'].map(h => <th key={h} className="px-4 py-3 text-left font-medium text-slate-600 text-xs">{h}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {plans.map((p: any, i: number) => (
+                <tr key={i} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium">{p.su_name}</td>
+                  <td className="px-4 py-3 capitalize">{(p.plan_type || '').replace(/_/g, ' ')}</td>
+                  <td className="px-4 py-3 capitalize">{(p.review_frequency || '').replace(/_/g, ' ')}</td>
+                  <td className="px-4 py-3">{p.next_review_date ? format(new Date(p.next_review_date), 'd MMM yyyy') : '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.review_status === 'overdue' ? 'bg-red-100 text-red-700' : p.review_status === 'due_soon' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                      {(p.review_status || '').replace('_', ' ')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

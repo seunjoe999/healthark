@@ -3,8 +3,8 @@ import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Star, AlertTriangle, MessageSquare, Plus, Lock, Users, Brain, Trash2 } from 'lucide-react'
+import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
+import { Star, AlertTriangle, Plus, Lock, Users, Brain, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type QATab = 'qa' | 'capacity' | 'professionals' | 'sensitive'
@@ -13,7 +13,7 @@ const QA_TYPES = [{ value: 'complaint', label: 'Complaint' }, { value: 'complime
 const SEVERITIES = [{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]
 
 export default function Quality() {
-  const { user, isRole } = useAuth()
+  const { user } = useAuth()
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [homes, setHomes] = useState<any[]>([])
@@ -116,15 +116,13 @@ export default function Quality() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-slate-400">{format(new Date(r.created_at), 'd MMM yyyy')}</span>
-                          {isRole('home_manager', 'group_admin') && (
-                            <button onClick={async () => {
-                              if (!window.confirm('Delete this record?')) return
-                              try { await api.delete(`/quality/${r.id}`); const res = await api.get('/quality', { params: { homeId: selectedHome } }); setQaRecords(res.data.data || []); toast.success('Record deleted') }
-                              catch { toast.error('Failed to delete') }
-                            }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button onClick={async () => {
+                            if (!window.confirm('Delete this record?')) return
+                            try { await api.delete(`/quality/${r.id}`); const res = await api.get('/quality', { params: { homeId: selectedHome } }); setQaRecords(res.data.data || []); toast.success('Record deleted') }
+                            catch { toast.error('Failed to delete') }
+                          }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                       <p className="text-sm font-semibold text-slate-800">{r.summary}</p>
@@ -163,9 +161,18 @@ export default function Quality() {
                         <Card key={r.id} className="p-4">
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-semibold text-slate-900">{r.decision_area}</h4>
-                            <span className={`badge ${r.has_capacity === true ? 'badge-success' : r.has_capacity === false ? 'badge-critical' : 'badge-info'}`}>
-                              {r.has_capacity === true ? 'Has capacity' : r.has_capacity === false ? 'Lacks capacity' : 'Under review'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`badge ${r.has_capacity === true ? 'badge-success' : r.has_capacity === false ? 'badge-critical' : 'badge-info'}`}>
+                                {r.has_capacity === true ? 'Has capacity' : r.has_capacity === false ? 'Lacks capacity' : 'Under review'}
+                              </span>
+                              <button onClick={async () => {
+                                if (!window.confirm('Delete this assessment?')) return
+                                try { await api.delete(`/quality/capacity/${r.id}`); const res = await api.get(`/quality/capacity/${selectedSu.id}`); setCapacityRecords(res.data.data || []); toast.success('Deleted') }
+                                catch { toast.error('Failed to delete') }
+                              }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                           {r.best_interest_decision && <p className="text-sm text-slate-600 mb-1"><strong>Best interest:</strong> {r.best_interest_decision}</p>}
                           {r.consulted_with && <p className="text-sm text-slate-600 mb-1"><strong>Consulted:</strong> {r.consulted_with}</p>}
@@ -224,7 +231,16 @@ export default function Quality() {
                     <div className="space-y-3">
                       {sensitiveNotes.map((n: any) => (
                         <Card key={n.id} className="p-4">
-                          <p className="text-sm text-slate-800 whitespace-pre-line">{n.note}</p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm text-slate-800 whitespace-pre-line flex-1">{n.note}</p>
+                            <button onClick={async () => {
+                              if (!window.confirm('Delete this note?')) return
+                              try { await api.delete(`/quality/sensitive-notes/${n.id}`); const res = await api.get(`/quality/sensitive-notes/${selectedSu.id}`); setSensitiveNotes(res.data.data || []); toast.success('Deleted') }
+                              catch { toast.error('Failed to delete') }
+                            }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           <p className="text-xs text-slate-400 mt-2">{n.created_by_name} · {format(new Date(n.created_at), 'd MMM yyyy, HH:mm')}</p>
                         </Card>
                       ))}

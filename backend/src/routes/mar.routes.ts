@@ -102,6 +102,16 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
   }
 );
 
+// DELETE /api/mar/records/:id — delete a MAR record
+router.delete('/records/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM mar_records WHERE id = $1', [req.params.id]);
+      res.json({ success: true, message: 'MAR record deleted' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/mar/stock/:suId — medication stock counts
 router.get('/stock/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

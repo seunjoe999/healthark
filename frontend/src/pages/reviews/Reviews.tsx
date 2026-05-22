@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
-import { FileText, Plus, Trash2, Search } from 'lucide-react'
+import { FileText, Plus, Trash2, Search, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const REVIEW_TYPES = [
@@ -26,6 +26,7 @@ export default function Reviews() {
   const [selectedHome, setSelectedHome] = useState('')
   const [loading, setLoading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [previewReview, setPreviewReview] = useState<any>(null)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -122,13 +123,16 @@ export default function Reviews() {
                         </p>
                         {r.attendees && <p className="text-xs text-slate-400 mt-0.5">Attendees: {r.attendees}</p>}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {r.next_review_date && (
                           <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg font-medium">
                             Next: {format(new Date(r.next_review_date), 'd MMM yyyy')}
                           </span>
                         )}
-                        <button onClick={() => deleteReview(r.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                        <button onClick={() => setPreviewReview(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Preview">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => deleteReview(r.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -171,6 +175,94 @@ export default function Reviews() {
           if (selectedSu) { const res = await api.get(`/reviews/su/${selectedSu.id}`); setReviews(res.data.data || []) }
           toast.success('Review recorded')
         }} />
+
+      {/* Preview modal */}
+      {previewReview && (
+        <ReviewPreviewModal review={previewReview} suName={selectedSu ? getName(selectedSu) : ''} onClose={() => setPreviewReview(null)} />
+      )}
+    </div>
+  )
+}
+
+function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: string; onClose: () => void }) {
+  const typeLabel = REVIEW_TYPES.find(t => t.value === review.review_type)?.label || review.review_type
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 text-purple-500" />
+              <span className="font-semibold text-slate-900">{typeLabel}</span>
+            </div>
+            <p className="text-xs text-slate-500">{suName} · {review.review_date ? format(new Date(review.review_date), 'd MMMM yyyy') : ''}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Meta info */}
+          <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl text-sm">
+            <div className="flex items-center gap-2 text-slate-600">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <span><strong>Date:</strong> {review.review_date ? format(new Date(review.review_date), 'd MMMM yyyy') : '—'}</span>
+            </div>
+            {review.next_review_date && (
+              <div className="flex items-center gap-2 text-blue-600">
+                <Calendar className="w-4 h-4 text-blue-400" />
+                <span><strong>Next review:</strong> {format(new Date(review.next_review_date), 'd MMMM yyyy')}</span>
+              </div>
+            )}
+            {review.created_by_name && (
+              <div className="flex items-center gap-2 text-slate-600">
+                <FileText className="w-4 h-4 text-slate-400" />
+                <span><strong>Recorded by:</strong> {review.created_by_name}</span>
+              </div>
+            )}
+            {review.attendees && (
+              <div className="flex items-center gap-2 text-slate-600">
+                <Users className="w-4 h-4 text-slate-400" />
+                <span><strong>Attendees:</strong> {review.attendees}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Summary */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <ClipboardList className="w-3.5 h-3.5" /> Summary
+            </p>
+            <p className="text-sm text-slate-700 whitespace-pre-line bg-white border border-slate-100 rounded-xl p-4">{review.summary}</p>
+          </div>
+
+          {review.resident_feedback && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Resident's feedback</p>
+              <blockquote className="text-sm text-slate-700 italic border-l-4 border-purple-200 pl-4 py-1">"{review.resident_feedback}"</blockquote>
+            </div>
+          )}
+
+          {review.family_feedback && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Family / advocate feedback</p>
+              <blockquote className="text-sm text-slate-700 italic border-l-4 border-blue-200 pl-4 py-1">"{review.family_feedback}"</blockquote>
+            </div>
+          )}
+
+          {review.outcomes && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Outcomes & action points</p>
+              <p className="text-sm text-slate-700 whitespace-pre-line bg-emerald-50 border border-emerald-100 rounded-xl p-4">{review.outcomes}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-slate-100 flex justify-end">
+          <button onClick={onClose} className="px-5 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors">Close</button>
+        </div>
+      </div>
     </div>
   )
 }

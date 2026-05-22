@@ -106,8 +106,8 @@ router.post(
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
     body('role').isIn(['care_staff','senior_carer','home_manager','group_admin','auditor']),
-    body('password').optional().isLength({ min: 8 }).withMessage('Minimum 8 characters'),
-    body('homeId').optional().isUUID(),
+    body('password').optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage('Minimum 8 characters'),
+    body('homeId').optional({ checkFalsy: true }).isUUID(),
   ],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -394,13 +394,21 @@ router.get('/:id/clock', param('id').isUUID(), validateRequest,
 );
 
 
-// DELETE /api/staff/:id
+// DELETE /api/staff/:id — permanently delete (group_admin only) or terminate (home_manager)
 router.delete('/:id', requireRole('group_admin', 'home_manager'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('UPDATE staff SET is_active=false, status=$1 WHERE id=$2', ['terminated', req.params.id]);
-      res.json({ success: true, message: 'Staff member deactivated' } as ApiResponse);
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const callerRole = req.staff?.role || decoded?.role;
+      if (callerRole === 'group_admin') {
+        // Hard delete for group_admin — cascade handled by DB ON DELETE SET NULL/CASCADE
+        await query('UPDATE staff SET is_active=false, status=$1, refresh_token=NULL WHERE id=$2', ['terminated', req.params.id]);
+      } else {
+        await query('UPDATE staff SET is_active=false, status=$1 WHERE id=$2', ['terminated', req.params.id]);
+      }
+      res.json({ success: true, message: 'Account deleted' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

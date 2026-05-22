@@ -288,13 +288,18 @@ router.post('/training-modules', async (req: Request, res: Response, next: NextF
   } catch (err) { next(err); }
 });
 
-// DELETE /api/staff-hr/training-modules/:moduleId — reset a module (admin only)
+// DELETE /api/staff-hr/training-modules/:moduleId — reset a module
+// Any user can reset their own progress; managers can reset others'
 router.delete('/training-modules/:moduleId',
-  requireRole('home_manager', 'group_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { staffId: targetStaffId } = req.query as Record<string, string>;
       const callerStaffId = fromToken(req, 'staffId');
+      const callerRole = fromToken(req, 'role');
+      const isManager = callerRole === 'home_manager' || callerRole === 'group_admin';
+      if (targetStaffId && targetStaffId !== callerStaffId && !isManager) {
+        return res.status(403).json({ success: false, error: 'Managers only can reset other staff modules' });
+      }
       const staffId = targetStaffId || callerStaffId;
       await query(
         'DELETE FROM staff_training_modules WHERE staff_id = $1 AND module_id = $2',

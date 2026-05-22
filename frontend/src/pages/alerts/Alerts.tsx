@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { Bell, CheckCircle, AlertTriangle, Info, RefreshCw } from 'lucide-react'
+import { Bell, CheckCircle, AlertTriangle, Info, RefreshCw, Eye, X, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Alerts() {
@@ -15,6 +15,7 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true)
   const [showResolved, setShowResolved] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [previewAlert, setPreviewAlert] = useState<any>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -40,6 +41,7 @@ export default function Alerts() {
     try {
       await api.put(`/alerts/${id}/resolve`, { resolutionNotes: 'Resolved via alerts dashboard' })
       toast.success('Alert resolved')
+      setPreviewAlert(null)
       await load()
     } catch { toast.error('Failed to resolve') }
     finally { setResolvingId(null) }
@@ -55,6 +57,18 @@ export default function Alerts() {
     if (s === 'critical') return 'border-l-red-500 bg-red-50/30'
     if (s === 'warning') return 'border-l-orange-400 bg-orange-50/30'
     return 'border-l-blue-400 bg-blue-50/30'
+  }
+
+  const severityModalBg = (s: string) => {
+    if (s === 'critical') return 'bg-red-50 border-red-200'
+    if (s === 'warning') return 'bg-orange-50 border-orange-200'
+    return 'bg-blue-50 border-blue-200'
+  }
+
+  const severityTextColor = (s: string) => {
+    if (s === 'critical') return 'text-red-700'
+    if (s === 'warning') return 'text-orange-700'
+    return 'text-blue-700'
   }
 
   return (
@@ -102,24 +116,94 @@ export default function Alerts() {
                       }`}>{alert.severity}</span>
                       {alert.su_name && <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{alert.su_name}</span>}
                     </div>
-                    <p className="text-sm text-slate-600">{alert.description}</p>
+                    <p className="text-sm text-slate-600 line-clamp-2">{alert.description}</p>
                     <p className="text-xs text-slate-400 mt-1">{format(new Date(alert.created_at), 'd MMM yyyy, HH:mm')}</p>
                     {alert.resolution_notes && (
                       <p className="text-xs text-green-700 bg-green-50 rounded p-2 mt-2">✓ {alert.resolution_notes}</p>
                     )}
                   </div>
                 </div>
-                {!alert.is_resolved && (
-                  <Button size="sm" variant="secondary" loading={resolvingId === alert.id}
-                    icon={<CheckCircle className="w-4 h-4" />}
-                    onClick={() => resolve(alert.id)}>
-                    Resolve
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button size="sm" variant="secondary" icon={<Eye className="w-4 h-4" />} onClick={() => setPreviewAlert(alert)}>
+                    View
                   </Button>
-                )}
-                {alert.is_resolved && <span className="text-xs text-green-600 font-medium flex-shrink-0 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Resolved</span>}
+                  {!alert.is_resolved && (
+                    <Button size="sm" variant="secondary" loading={resolvingId === alert.id}
+                      icon={<CheckCircle className="w-4 h-4" />}
+                      onClick={() => resolve(alert.id)}>
+                      Resolve
+                    </Button>
+                  )}
+                  {alert.is_resolved && <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Resolved</span>}
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Alert detail modal */}
+      {previewAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className={`rounded-t-2xl p-5 border-b ${severityModalBg(previewAlert.severity)}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  {severityIcon(previewAlert.severity)}
+                  <div>
+                    <h2 className={`font-bold text-lg ${severityTextColor(previewAlert.severity)}`}>{previewAlert.title}</h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${severityModalBg(previewAlert.severity)} ${severityTextColor(previewAlert.severity)}`}>
+                        {previewAlert.severity}
+                      </span>
+                      {previewAlert.alert_type && (
+                        <span className="text-xs text-slate-500 capitalize">{previewAlert.alert_type.replace(/_/g, ' ')}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setPreviewAlert(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{previewAlert.description}</p>
+              </div>
+
+              {previewAlert.su_name && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Resident</p>
+                  <p className="text-sm text-slate-700">{previewAlert.su_name}</p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {format(new Date(previewAlert.created_at), 'd MMMM yyyy, HH:mm')}</span>
+                {previewAlert.is_resolved && <span className="flex items-center gap-1 text-green-600 font-semibold"><CheckCircle className="w-3.5 h-3.5" /> Resolved</span>}
+              </div>
+
+              {previewAlert.resolution_notes && (
+                <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+                  <p className="text-xs font-semibold text-green-700 mb-0.5">Resolution</p>
+                  <p className="text-sm text-green-700">{previewAlert.resolution_notes}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setPreviewAlert(null)}>Close</Button>
+              {!previewAlert.is_resolved && (
+                <Button loading={resolvingId === previewAlert.id} icon={<CheckCircle className="w-4 h-4" />}
+                  onClick={() => resolve(previewAlert.id)}>
+                  Resolve alert
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

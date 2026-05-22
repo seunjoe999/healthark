@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
-import { MessageSquare, Plus, Send, Inbox } from 'lucide-react'
+import { MessageSquare, Plus, Send, Inbox, Trash2, Reply } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Messages() {
@@ -15,6 +15,7 @@ export default function Messages() {
   const [composeOpen, setComposeOpen] = useState(false)
   const [selected, setSelected] = useState<any>(null)
   const [view, setView] = useState<'inbox' | 'sent'>('inbox')
+  const [replyDefaults, setReplyDefaults] = useState<{ recipientId: string; subject: string } | null>(null)
 
   useEffect(() => { load() }, [view])
 
@@ -35,6 +36,23 @@ export default function Messages() {
     try { await api.put(`/messages/${id}/read`) } catch {}
   }
 
+  const deleteMessage = async (id: string) => {
+    if (!window.confirm('Delete this message?')) return
+    try {
+      await api.delete(`/messages/${id}`)
+      setMessages(prev => prev.filter(m => m.id !== id))
+      if (selected?.id === id) setSelected(null)
+      toast.success('Message deleted')
+    } catch { toast.error('Failed to delete') }
+  }
+
+  const reply = (msg: any) => {
+    const recipientId = view === 'inbox' ? msg.sender_id : msg.recipient_id
+    const subject = msg.subject ? (msg.subject.startsWith('Re: ') ? msg.subject : `Re: ${msg.subject}`) : 'Re: (no subject)'
+    setReplyDefaults({ recipientId, subject })
+    setComposeOpen(true)
+  }
+
   return (
     <div className="flex h-full">
       {/* Left — message list */}
@@ -42,7 +60,7 @@ export default function Messages() {
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-purple-900">Messages</h2>
-            <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setComposeOpen(true)}>New</Button>
+            <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => { setReplyDefaults(null); setComposeOpen(true) }}>New</Button>
           </div>
           <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
             <button onClick={() => setView('inbox')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'inbox' ? 'bg-white text-purple-900 shadow-sm' : 'text-slate-600'}`}>
@@ -60,19 +78,27 @@ export default function Messages() {
               <p className="text-sm text-slate-400">No messages</p>
             </div>
           ) : messages.map((msg: any) => (
-            <button key={msg.id} onClick={() => { setSelected(msg); if (!msg.is_read && view === 'inbox') markRead(msg.id) }}
-              className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${selected?.id === msg.id ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${!msg.is_read && view === 'inbox' ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
-                    {view === 'inbox' ? (msg.sender_name || 'Unknown') : (msg.recipient_name || 'Unknown')}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate mt-0.5">{msg.subject || msg.message?.substring(0, 50)}</p>
-                  <p className="text-xs text-slate-400 mt-1">{msg.created_at ? format(new Date(msg.created_at), 'd MMM, HH:mm') : ''}</p>
+            <div key={msg.id} className={`border-b border-slate-50 ${selected?.id === msg.id ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
+              <button onClick={() => { setSelected(msg); if (!msg.is_read && view === 'inbox') markRead(msg.id) }}
+                className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm truncate ${!msg.is_read && view === 'inbox' ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                      {view === 'inbox' ? (msg.sender_name || 'Unknown') : (msg.recipient_name || 'Unknown')}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">{msg.subject || msg.message?.substring(0, 50)}</p>
+                    <p className="text-xs text-slate-400 mt-1">{msg.created_at ? format(new Date(msg.created_at), 'd MMM, HH:mm') : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {!msg.is_read && view === 'inbox' && <span className="w-2 h-2 rounded-full bg-purple-600" />}
+                    <button onClick={e => { e.stopPropagation(); deleteMessage(msg.id) }}
+                      className="p-1 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                {!msg.is_read && view === 'inbox' && <span className="w-2 h-2 rounded-full bg-purple-600 flex-shrink-0 mt-1.5" />}
-              </div>
-            </button>
+              </button>
+            </div>
           ))}
         </div>
       </div>
@@ -94,21 +120,43 @@ export default function Messages() {
               {selected.recipient_name && <p className="text-sm text-slate-500 mt-1">To: <span className="font-medium text-slate-700">{selected.recipient_name}</span></p>}
             </div>
             <p className="text-slate-700 whitespace-pre-line leading-relaxed">{selected.message}</p>
+            <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+              <Button size="sm" variant="secondary" icon={<Reply className="w-4 h-4" />} onClick={() => reply(selected)}>
+                Reply
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => deleteMessage(selected.id)}
+                className="text-rose-600 hover:bg-rose-50 border-rose-200">
+                <Trash2 className="w-4 h-4 mr-1.5" /> Delete
+              </Button>
+            </div>
           </div>
         )}
       </div>
 
-      <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} staffList={staffList}
-        onSaved={async () => { setComposeOpen(false); setView('sent'); await load(); toast.success('Message sent') }} />
+      <ComposeModal open={composeOpen} onClose={() => { setComposeOpen(false); setReplyDefaults(null) }}
+        staffList={staffList} defaults={replyDefaults}
+        onSaved={async () => { setComposeOpen(false); setReplyDefaults(null); setView('sent'); await load(); toast.success('Message sent') }} />
     </div>
   )
 }
 
-function ComposeModal({ open, onClose, staffList, onSaved }: { open: boolean; onClose: () => void; staffList: any[]; onSaved: () => void }) {
+function ComposeModal({ open, onClose, staffList, onSaved, defaults }: {
+  open: boolean; onClose: () => void; staffList: any[]; onSaved: () => void; defaults?: { recipientId: string; subject: string } | null
+}) {
   const [form, setForm] = useState({ recipientId: '', subject: '', message: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const options = staffList.map(s => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        recipientId: defaults?.recipientId || '',
+        subject: defaults?.subject || '',
+        message: '',
+      })
+    }
+  }, [open, defaults])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()

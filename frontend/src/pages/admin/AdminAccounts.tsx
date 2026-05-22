@@ -7,9 +7,12 @@ import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-r
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
-const ADMIN_ROLES = [
+const ALL_ROLES = [
   { value: 'group_admin', label: 'Group Admin — full access to all homes' },
   { value: 'home_manager', label: 'Home Manager — manage a single home' },
+  { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'care_staff', label: 'Care Staff' },
+  { value: 'auditor', label: 'Auditor — read-only access' },
 ]
 
 interface AdminUser {
@@ -22,6 +25,14 @@ interface AdminUser {
   status: string
   last_login: string | null
   created_at: string
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  group_admin: 'Group Admin',
+  home_manager: 'Home Manager',
+  senior_carer: 'Senior Carer',
+  care_staff: 'Care Staff',
+  auditor: 'Auditor',
 }
 
 export default function AdminAccounts() {
@@ -43,8 +54,7 @@ export default function AdminAccounts() {
         api.get('/staff'),
         homesApi.list(),
       ])
-      const all: AdminUser[] = staffRes.data.data || []
-      setAdmins(all.filter(s => s.role === 'group_admin' || s.role === 'home_manager'))
+      setAdmins(staffRes.data.data || [])
       setHomes(homesRes.data.data || [])
     } catch { toast.error('Failed to load accounts') }
     finally { setLoading(false) }
@@ -67,7 +77,16 @@ export default function AdminAccounts() {
       await api.put(`/staff/${admin.id}`, { status: 'inactive', isActive: false })
       toast.success('Account deactivated')
       load()
-    } catch { toast.error('Failed to deactivate') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to deactivate') }
+  }
+
+  const deleteAccount = async (admin: AdminUser) => {
+    if (!window.confirm(`Permanently delete ${admin.first_name} ${admin.last_name}'s account? This cannot be undone.`)) return
+    try {
+      await api.delete(`/staff/${admin.id}`)
+      setAdmins(prev => prev.filter(a => a.id !== admin.id))
+      toast.success('Account deleted')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete account') }
   }
 
   const resetPassword = async () => {
@@ -79,7 +98,7 @@ export default function AdminAccounts() {
       toast.success('Password reset successfully')
       setResetOpen(null)
       setNewPassword('')
-    } catch { toast.error('Failed to reset password') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to reset password') }
     finally { setSaving(false) }
   }
 
@@ -88,25 +107,13 @@ export default function AdminAccounts() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
-            <Shield className="w-6 h-6 text-slate-600" /> Admin Accounts
+            <Shield className="w-6 h-6 text-slate-600" /> Accounts
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">Manage manager and admin accounts with elevated access</p>
+          <p className="text-slate-400 text-sm mt-0.5">Manage all staff accounts — create, view, and delete</p>
         </div>
         <Button icon={<UserPlus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
           Create account
         </Button>
-      </div>
-
-      {/* Role legend */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-slate-900 text-white rounded-2xl p-4">
-          <p className="font-semibold text-sm">Group Admin</p>
-          <p className="text-slate-400 text-xs mt-1">Full access to all homes, staff, reports, and admin settings. Can create and delete accounts.</p>
-        </div>
-        <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-          <p className="font-semibold text-sm text-slate-800">Home Manager</p>
-          <p className="text-slate-400 text-xs mt-1">Manages one home: staff, residents, care records, risk assessments, and reports.</p>
-        </div>
       </div>
 
       {/* Accounts list */}
@@ -118,14 +125,14 @@ export default function AdminAccounts() {
         <div className="space-y-3">
           {admins.map(admin => (
             <div key={admin.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${admin.role === 'group_admin' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${admin.role === 'group_admin' ? 'bg-slate-900 text-white' : admin.role === 'home_manager' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 {admin.first_name?.[0]}{admin.last_name?.[0]}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-slate-900 text-sm">{admin.first_name} {admin.last_name}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${admin.role === 'group_admin' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                    {admin.role === 'group_admin' ? 'Group Admin' : 'Home Manager'}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${admin.role === 'group_admin' ? 'bg-slate-900 text-white' : admin.role === 'home_manager' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700'}`}>
+                    {ROLE_LABELS[admin.role] || admin.role}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${admin.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     {admin.status}
@@ -145,11 +152,15 @@ export default function AdminAccounts() {
                   Reset pwd
                 </Button>
                 {admin.status === 'active' && (
-                  <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
+                  <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
                     onClick={() => deactivate(admin)}>
                     Deactivate
                   </Button>
                 )}
+                <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
+                  onClick={() => deleteAccount(admin)}>
+                  Delete
+                </Button>
               </div>
             </div>
           ))}
@@ -215,14 +226,14 @@ function AddAdminModal({ open, onClose, homes, onCreated }: {
   open: boolean; onClose: () => void; homes: any[]
   onCreated: (creds: { email: string; temporaryPassword: string }) => void
 }) {
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', role: 'home_manager', homeId: '', password: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', role: 'care_staff', homeId: '', password: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.firstName || !form.lastName || !form.email) { toast.error('First name, last name and email are required'); return }
-    if (form.role === 'home_manager' && !form.homeId) { toast.error('Select a home for this manager'); return }
+    if (['home_manager', 'senior_carer', 'care_staff'].includes(form.role) && !form.homeId) { toast.error('Select a home for this account'); return }
     setLoading(true)
     try {
       const payload: any = { firstName: form.firstName, lastName: form.lastName, email: form.email, role: form.role }
@@ -238,15 +249,15 @@ function AddAdminModal({ open, onClose, homes, onCreated }: {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Create admin / manager account" size="md">
+    <Modal open={open} onClose={onClose} title="Create staff account" size="md">
       <form onSubmit={save} className="space-y-4">
-        <Select label="Account type *" value={form.role} onChange={e => set('role', e.target.value)} options={ADMIN_ROLES} />
+        <Select label="Account type *" value={form.role} onChange={e => set('role', e.target.value)} options={ALL_ROLES} />
         <div className="grid grid-cols-2 gap-3">
           <Input label="First name *" required value={form.firstName} onChange={e => set('firstName', e.target.value)} />
           <Input label="Last name *" required value={form.lastName} onChange={e => set('lastName', e.target.value)} />
         </div>
         <Input label="Email address *" type="email" required value={form.email} onChange={e => set('email', e.target.value)} />
-        {form.role === 'home_manager' && (
+        {form.role !== 'group_admin' && form.role !== 'auditor' && (
           <Select label="Assigned home *" value={form.homeId} onChange={e => set('homeId', e.target.value)}
             options={homes.map(h => ({ value: h.id, label: h.name }))} placeholder="Select home..." />
         )}

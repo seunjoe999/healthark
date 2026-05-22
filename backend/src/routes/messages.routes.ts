@@ -66,4 +66,14 @@ router.put('/:id/read', param('id').isUUID(), validateRequest,
   }
 );
 
+router.delete('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      await query('DELETE FROM staff_messages WHERE id = $1 AND (sender_id = $2 OR recipient_id = $2)', [req.params.id, staffId]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

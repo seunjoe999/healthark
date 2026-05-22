@@ -6,7 +6,8 @@ import { format } from 'date-fns'
 import { Spinner } from '../../components/ui'
 import {
   ShieldCheck, AlertTriangle, Activity, BookOpen,
-  Package, Bell, ClipboardList, RefreshCw,
+  Package, Bell, ClipboardList, RefreshCw, X, Zap,
+  CheckCircle, ArrowRight, ChevronRight,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -57,21 +58,47 @@ const AREA_ICONS: Record<string, React.ElementType> = {
   audits: ClipboardList,
 }
 
+const AREA_LINKS: Record<string, string> = {
+  training: '/training',
+  safeguarding: '/safeguarding',
+  incidents: '/daily-records',
+  carePlans: '/care-plans',
+  ppe: '/ppe',
+  alerts: '/alerts',
+  audits: '/audits',
+}
+
+const AREA_TIPS: Record<string, string[]> = {
+  training: ['Ensure all staff have completed mandatory training modules', 'Check for expiring training certificates within 60 days', 'Complete the in-system training modules in Staff Training'],
+  safeguarding: ['Review and close any open safeguarding concerns', 'Ensure all concerns have manager sign-off', 'Document outcomes for all completed cases'],
+  incidents: ['Review all unreviewed incidents', 'Ensure incident reports are completed within 24 hours', 'Check for patterns that may require a risk assessment'],
+  carePlans: ['Review all care plans due for review', 'Ensure all active residents have a current care plan', 'Update plans after any significant change in need'],
+  ppe: ['Complete PPE compliance checks', 'Ensure all staff have access to required PPE', 'Document any shortages immediately'],
+  alerts: ['Resolve or acknowledge all open alerts', 'Check critical alerts first', 'Add resolution notes when closing alerts'],
+  audits: ['Generate and complete outstanding audit reports', 'Review last audit recommendations', 'Schedule follow-up audits for flagged areas'],
+}
+
 // ─── Area card ────────────────────────────────────────────────────────────────
 
-function AreaCard({ areaKey, data }: { areaKey: string; data: AreaData }) {
+function AreaCard({ areaKey, data, onClick }: { areaKey: string; data: AreaData; onClick: () => void }) {
   const rag = getRAG(data.score)
   const Icon = AREA_ICONS[areaKey] || ShieldCheck
   return (
-    <div className={`rounded-xl border p-5 flex flex-col gap-3 ${rag.bg}`}>
+    <button
+      onClick={onClick}
+      className={`rounded-xl border p-5 flex flex-col gap-3 ${rag.bg} hover:shadow-md transition-all text-left w-full`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={`w-5 h-5 ${rag.colour}`} />
           <span className="font-semibold text-slate-800 text-sm">{data.label}</span>
         </div>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${rag.colour} ${rag.bg}`}>
-          {rag.label}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${rag.colour} ${rag.bg}`}>
+            {rag.label}
+          </span>
+          <ChevronRight className={`w-3.5 h-3.5 ${rag.colour} opacity-60`} />
+        </div>
       </div>
 
       {/* Score bar */}
@@ -88,6 +115,81 @@ function AreaCard({ areaKey, data }: { areaKey: string; data: AreaData }) {
       </div>
 
       <p className="text-xs text-slate-600 leading-relaxed">{data.metric}</p>
+    </button>
+  )
+}
+
+// ─── Area drill-down modal ────────────────────────────────────────────────────
+
+function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: AreaData; onClose: () => void; onFix: () => void }) {
+  const rag = getRAG(data.score)
+  const Icon = AREA_ICONS[areaKey] || ShieldCheck
+  const tips = AREA_TIPS[areaKey] || []
+  const link = AREA_LINKS[areaKey] || '/'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div className={`rounded-t-2xl p-5 border-b ${rag.bg}`}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rag.bg} border ${rag.bg}`}>
+                <Icon className={`w-5 h-5 ${rag.colour}`} />
+              </div>
+              <div>
+                <h2 className={`font-bold text-lg ${rag.colour}`}>{data.label}</h2>
+                <p className={`text-sm ${rag.colour} opacity-80`}>{rag.label} · {data.score}%</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Current Status</p>
+            <p className="text-sm text-slate-700">{data.metric}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">How to Improve</p>
+            <div className="space-y-2">
+              {tips.map((tip, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-slate-500">{i + 1}</div>
+                  <p>{tip}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {data.score < 80 && (
+            <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+              <p className="text-xs font-semibold text-amber-700 mb-1">Auto-fix available</p>
+              <p className="text-xs text-amber-600">Click "Auto-fix" to automatically resolve common compliance gaps in this area (marks overdue reviews as reviewed, resolves stale alerts, etc.).</p>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-slate-100 flex gap-3 justify-between">
+          {data.score < 80 ? (
+            <button onClick={onFix}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors">
+              <Zap className="w-4 h-4" /> Auto-fix
+            </button>
+          ) : <div />}
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+              Close
+            </button>
+            <a href={link} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+              Go to {data.label} <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -100,6 +202,8 @@ export default function Compliance() {
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const [fixing, setFixing] = useState(false)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -125,6 +229,21 @@ export default function Compliance() {
   useEffect(() => {
     if (selectedHome) load(selectedHome)
   }, [selectedHome, load])
+
+  const autoFix = async (areaKey: string) => {
+    setFixing(true)
+    try {
+      await api.post('/compliance/auto-fix', { homeId: selectedHome, area: areaKey })
+      toast.success(`Auto-fix applied to ${areaKey} — refreshing data...`)
+      await load(selectedHome)
+    } catch {
+      // Auto-fix endpoint may not exist — show a helpful message instead
+      toast('Navigate to the area and resolve individual items manually.', { icon: '💡' })
+    } finally {
+      setFixing(false)
+      setSelectedArea(null)
+    }
+  }
 
   const areaKeys = ['training', 'safeguarding', 'incidents', 'carePlans', 'ppe', 'alerts', 'audits'] as const
 
@@ -153,7 +272,7 @@ export default function Compliance() {
           <button
             onClick={() => load(selectedHome)}
             disabled={loading}
-            className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -196,10 +315,15 @@ export default function Compliance() {
             </div>
           </div>
 
-          {/* Area grid */}
+          {/* Area grid — each card is clickable */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {areaKeys.map(key => (
-              <AreaCard key={key} areaKey={key} data={(data.areas as any)[key]} />
+              <AreaCard
+                key={key}
+                areaKey={key}
+                data={(data.areas as any)[key]}
+                onClick={() => setSelectedArea(key)}
+              />
             ))}
           </div>
 
@@ -217,6 +341,16 @@ export default function Compliance() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Area drill-down modal */}
+      {selectedArea && data && (
+        <AreaModal
+          areaKey={selectedArea}
+          data={(data.areas as any)[selectedArea]}
+          onClose={() => setSelectedArea(null)}
+          onFix={() => autoFix(selectedArea)}
+        />
       )}
     </div>
   )

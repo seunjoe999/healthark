@@ -151,8 +151,8 @@ router.post('/professionals', [body('suId').isUUID(), body('roleTitle').notEmpty
   }
 );
 
-// DELETE /api/quality/:id — admin only
-router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+// DELETE /api/quality/:id
+router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM quality_records WHERE id = $1', [req.params.id]);
@@ -165,6 +165,24 @@ router.delete('/professionals/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM professional_involvement WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/capacity/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM capacity_assessments WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/sensitive-notes/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM sensitive_notes WHERE id = $1', [req.params.id]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
