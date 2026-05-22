@@ -6,6 +6,19 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+async function callClaude(prompt: string): Promise<string> {
+  const msg = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const block = msg.content[0];
+  return block.type === 'text' ? block.text : '';
+}
 
 const router = Router();
 
@@ -267,5 +280,116 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
       [`Audit failed: ${err?.message || 'Unknown error'}`, auditId]);
   }
 }
+
+// POST /api/audits/:id/ai-action-plan — AI generates detailed action plan
+router.post('/:id/ai-action-plan', requireRole('home_manager', 'group_admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query('SELECT * FROM audit_reports WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Audit not found', 404);
+      const audit = rows[0] as any;
+
+      if (!audit.recommendations) throw new AppError('No recommendations to process', 400);
+
+      const prompt = `You are a care home compliance expert helping a UK care home create a detailed action plan from audit recommendations.
+
+Audit type: ${audit.audit_type?.replace(/_/g, ' ')}
+Audit period: ${audit.period_from} to ${audit.period_to}
+Compliance score: ${audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : 'N/A'}%
+
+Recommendations from the audit:
+${audit.recommendations}
+
+Findings context:
+${(audit.findings || '').substring(0, 1500)}
+
+For each recommendation, create a specific, practical action plan item. Return a JSON array only (no markdown, no explanation) with this exact structure:
+[
+  {
+    "recommendation": "brief version of the original recommendation",
+    "action": "specific step-by-step action to take",
+    "who": "who is responsible (e.g. Home Manager, Senior Carer, All Staff)",
+    "priority": "high | medium | low",
+    "deadline": "e.g. Within 24 hours | Within 1 week | Within 1 month",
+    "expected_outcome": "what improvement this will achieve"
+  }
+]`;
+
+      const raw = await callClaude(prompt);
+      let items: any[] = [];
+      try {
+        const match = raw.match(/\[[\s\S]*\]/);
+        items = JSON.parse(match ? match[0] : raw);
+      } catch {
+        throw new AppError('AI returned unexpected format — please try again', 500);
+      }
+
+      res.json({ success: true, data: items } as ApiResponse);
+    } catch (err: any) {
+      if (err?.status === 401 || err?.message?.includes('API key')) {
+        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set ANTHROPIC_API_KEY in your .env file.' } as ApiResponse);
+      }
+      next(err);
+    }
+  }
+);
+
+// POST /api/audits/:id/ai-compliance-fix — AI generates compliance improvement plan
+router.post('/:id/ai-compliance-fix', requireRole('home_manager', 'group_admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query('SELECT * FROM audit_reports WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Audit not found', 404);
+      const audit = rows[0] as any;
+
+      const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : 0;
+
+      const prompt = `You are a UK care home compliance expert. A care home has completed an audit and needs a targeted improvement plan to raise their compliance score.
+
+Audit type: ${audit.audit_type?.replace(/_/g, ' ')}
+Current compliance score: ${score}%
+Total checks: ${audit.total_checks}
+Passed: ${audit.checks_passed}
+Failed: ${audit.checks_failed}
+
+Audit findings:
+${(audit.findings || '').substring(0, 2000)}
+
+Create a compliance improvement plan. Return JSON only (no markdown) with this structure:
+{
+  "current_rating": "Outstanding | Good | Requires Improvement | Inadequate",
+  "target_rating": "what rating is achievable",
+  "projected_score": number (realistic target score percentage),
+  "summary": "2-3 sentence executive summary of the situation",
+  "immediate_actions": [
+    { "action": "specific action", "impact": "how many checks this will fix", "effort": "low | medium | high" }
+  ],
+  "short_term": [
+    { "action": "action within 1-4 weeks", "impact": "expected improvement", "effort": "low | medium | high" }
+  ],
+  "long_term": [
+    { "action": "action within 1-3 months", "impact": "expected improvement", "effort": "low | medium | high" }
+  ],
+  "cqc_notes": "brief note on CQC implications and what inspectors would look for"
+}`;
+
+      const raw = await callClaude(prompt);
+      let plan: any = {};
+      try {
+        const match = raw.match(/\{[\s\S]*\}/);
+        plan = JSON.parse(match ? match[0] : raw);
+      } catch {
+        throw new AppError('AI returned unexpected format — please try again', 500);
+      }
+
+      res.json({ success: true, data: plan } as ApiResponse);
+    } catch (err: any) {
+      if (err?.status === 401 || err?.message?.includes('API key')) {
+        return res.status(400).json({ success: false, error: 'AI API key not configured. Please set ANTHROPIC_API_KEY in your .env file.' } as ApiResponse);
+      }
+      next(err);
+    }
+  }
+);
 
 export default router;

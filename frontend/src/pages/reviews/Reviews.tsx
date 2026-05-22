@@ -109,7 +109,8 @@ export default function Reviews() {
             ) : (
               <div className="space-y-4">
                 {reviews.map((r: any) => (
-                  <Card key={r.id} className="p-5">
+                  <div key={r.id} className="cursor-pointer" onClick={() => setPreviewReview(r)}>
+                  <Card className="p-5 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -162,6 +163,7 @@ export default function Reviews() {
                       )}
                     </div>
                   </Card>
+                  </div>
                 ))}
               </div>
             )}

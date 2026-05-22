@@ -4,7 +4,7 @@ import { format, differenceInYears } from 'date-fns'
 import {
   Heart, Phone, Calendar, FileText, Loader2, AlertTriangle,
   Pill, ClipboardList, Shield, User, Activity, CheckCircle,
-  Droplets, Utensils, Star, Info, ChevronDown, ChevronUp
+  Star, Info, ChevronDown, ChevronUp, Eye, X
 } from 'lucide-react'
 
 const bgStyle = { minHeight: '100vh', background: 'linear-gradient(135deg, #0d1526 0%, #151f35 40%, #1e2d4a 100%)' }
@@ -73,11 +73,96 @@ function InfoRow({ label, value }: { label: string; value?: string | null | bool
   )
 }
 
+function NoteModal({ note, onClose }: { note: any; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+      <div className="w-full max-w-lg rounded-2xl overflow-hidden" style={{ background: 'rgba(20,30,55,0.98)', border: '1px solid rgba(255,255,255,0.15)' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <div>
+            <p className="text-amber-400 text-xs font-bold uppercase tracking-wider">
+              {RECORD_LABELS[note.record_type] || note.record_type?.replace(/_/g, ' ')}
+            </p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              {note.record_date ? format(new Date(note.record_date), 'EEEE, d MMMM yyyy') : ''}
+              {note.shift ? ` · ${note.shift.charAt(0).toUpperCase() + note.shift.slice(1)} shift` : ''}
+              {note.staff_name ? ` · ${note.staff_name}` : ''}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5">
+          <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{note.notes || 'No details recorded.'}</p>
+        </div>
+        <div className="px-5 pb-5 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CarePlanModal({ plan, onClose }: { plan: any; onClose: () => void }) {
+  const isOverdue = plan.next_review_date && new Date(plan.next_review_date) < new Date()
+  const isDueSoon = !isOverdue && plan.next_review_date && new Date(plan.next_review_date) < new Date(Date.now() + 7 * 86400000)
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+      <div className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[90vh] flex flex-col" style={{ background: 'rgba(20,30,55,0.98)', border: '1px solid rgba(255,255,255,0.15)' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
+          <div>
+            <p className="text-white font-semibold">{plan.custom_name || plan.plan_type?.replace(/_/g, ' ')}</p>
+            <div className="flex items-center gap-2 mt-1">
+              {isOverdue ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">Review overdue</span>
+              ) : isDueSoon ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Review due soon</span>
+              ) : (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Current</span>
+              )}
+              {plan.next_review_date && (
+                <span className="text-xs text-slate-500">Next review: {format(new Date(plan.next_review_date), 'd MMM yyyy')}</span>
+              )}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white p-1"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-4 overflow-y-auto">
+          {plan.aims_outcomes && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">Aims & Outcomes</p>
+              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{plan.aims_outcomes}</p>
+            </div>
+          )}
+          {plan.what_i_can_do && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">What I Can Do Myself</p>
+              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{plan.what_i_can_do}</p>
+            </div>
+          )}
+          {plan.how_to_support && (
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-2">How to Support Me</p>
+              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{plan.how_to_support}</p>
+            </div>
+          )}
+          {!plan.aims_outcomes && !plan.what_i_can_do && !plan.how_to_support && (
+            <p className="text-slate-500 text-sm text-center py-4">No detailed content recorded for this care plan.</p>
+          )}
+        </div>
+        <div className="px-5 pb-5 flex justify-end flex-shrink-0">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FamilyView() {
   const { token } = useParams<{ token: string }>()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [previewNote, setPreviewNote] = useState<any>(null)
+  const [previewPlan, setPreviewPlan] = useState<any>(null)
 
   useEffect(() => {
     if (!token) return
@@ -316,7 +401,8 @@ export default function FamilyView() {
                 const isOverdue = cp.next_review_date && new Date(cp.next_review_date) < new Date()
                 const isDueSoon = !isOverdue && cp.next_review_date && new Date(cp.next_review_date) < new Date(Date.now() + 7 * 86400000)
                 return (
-                  <div key={i} className="rounded-xl p-3 flex items-start justify-between gap-3" style={lightCardStyle}>
+                  <div key={i} className="rounded-xl p-3 flex items-start justify-between gap-3 cursor-pointer hover:opacity-90 transition-opacity" style={lightCardStyle}
+                    onClick={() => setPreviewPlan(cp)}>
                     <div className="flex-1 min-w-0">
                       <p className="text-slate-200 text-sm font-medium">
                         {cp.custom_name || cp.plan_type?.replace(/_/g, ' ')}
@@ -325,24 +411,28 @@ export default function FamilyView() {
                         <p className="text-slate-500 text-xs mt-1 line-clamp-2">{cp.aims_outcomes}</p>
                       )}
                     </div>
-                    <div className="flex-shrink-0 text-right">
-                      {isOverdue ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">Overdue</span>
-                      ) : isDueSoon ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Due soon</span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Current</span>
-                      )}
-                      {cp.next_review_date && (
-                        <p className="text-slate-600 text-xs mt-0.5">
-                          Review: {format(new Date(cp.next_review_date), 'd MMM yyyy')}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="text-right">
+                        {isOverdue ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">Overdue</span>
+                        ) : isDueSoon ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Due soon</span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Current</span>
+                        )}
+                        {cp.next_review_date && (
+                          <p className="text-slate-600 text-xs mt-0.5">
+                            Review: {format(new Date(cp.next_review_date), 'd MMM yyyy')}
+                          </p>
+                        )}
+                      </div>
+                      <Eye className="w-4 h-4 text-slate-600 flex-shrink-0" />
                     </div>
                   </div>
                 )
               })}
             </div>
+            <p className="text-slate-700 text-xs mt-3 text-center">Tap any care plan to view full details</p>
           </Section>
         )}
 
@@ -404,17 +494,21 @@ export default function FamilyView() {
                   </p>
                   <div className="space-y-1.5 ml-1">
                     {recordsByDate[date].map((r: any, i: number) => (
-                      <div key={i} className="rounded-xl p-3" style={lightCardStyle}>
+                      <div key={i} className="rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity" style={lightCardStyle}
+                        onClick={() => setPreviewNote(r)}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
                             {RECORD_LABELS[r.record_type] || r.record_type?.replace(/_/g, ' ')}
                           </span>
-                          <span className="text-xs text-slate-600">
-                            {r.shift ? r.shift.charAt(0).toUpperCase() + r.shift.slice(1) + ' shift' : ''}
-                            {r.staff_name ? ` · ${r.staff_name}` : ''}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-600">
+                              {r.shift ? r.shift.charAt(0).toUpperCase() + r.shift.slice(1) : ''}
+                              {r.staff_name ? ` · ${r.staff_name}` : ''}
+                            </span>
+                            <Eye className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                          </div>
                         </div>
-                        {r.notes && <p className="text-slate-300 text-sm leading-relaxed">{r.notes}</p>}
+                        {r.notes && <p className="text-slate-400 text-sm line-clamp-2">{r.notes}</p>}
                       </div>
                     ))}
                   </div>
@@ -430,6 +524,9 @@ export default function FamilyView() {
           <p className="text-slate-700 text-xs mt-0.5">Powered by CompCare Hub · {format(new Date(), 'd MMM yyyy')}</p>
         </div>
       </div>
+
+      {previewNote && <NoteModal note={previewNote} onClose={() => setPreviewNote(null)} />}
+      {previewPlan && <CarePlanModal plan={previewPlan} onClose={() => setPreviewPlan(null)} />}
     </div>
   )
 }

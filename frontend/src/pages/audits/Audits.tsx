@@ -96,6 +96,8 @@ export default function Audits() {
   const [selectedAudit, setSelectedAudit] = useState<any>(null)
   const [polling, setPolling] = useState<string | null>(null)
   const [actionPlanOpen, setActionPlanOpen] = useState(false)
+  const [aiPlanOpen, setAiPlanOpen] = useState(false)
+  const [complianceFixOpen, setComplianceFixOpen] = useState(false)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -248,6 +250,8 @@ export default function Audits() {
             canDelete={isRole('home_manager', 'group_admin')}
             onDelete={deleteAudit}
             onOpenActionPlan={() => setActionPlanOpen(true)}
+            onAIActionPlan={() => setAiPlanOpen(true)}
+            onAIComplianceFix={() => setComplianceFixOpen(true)}
           />
         )}
       </div>
@@ -260,13 +264,20 @@ export default function Audits() {
           onClose={() => setActionPlanOpen(false)}
         />
       )}
+      {selectedAudit && aiPlanOpen && (
+        <AIActionPlanModal audit={selectedAudit} onClose={() => setAiPlanOpen(false)} />
+      )}
+      {selectedAudit && complianceFixOpen && (
+        <AIComplianceFixModal audit={selectedAudit} onClose={() => setComplianceFixOpen(false)} />
+      )}
     </div>
   )
 }
 
-function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpenActionPlan }: {
+function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpenActionPlan, onAIActionPlan, onAIComplianceFix }: {
   audit: any; homeName?: string; homeAddress?: string
   canDelete?: boolean; onDelete: (id: string) => void; onOpenActionPlan: () => void
+  onAIActionPlan?: () => void; onAIComplianceFix?: () => void
 }) {
   const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
   const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
@@ -372,9 +383,17 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5" /> Compliance Score
                 </p>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${rating.badge}`}>
-                  {rating.label}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full border ${rating.badge}`}>
+                    {rating.label}
+                  </span>
+                  {onAIComplianceFix && (
+                    <button onClick={onAIComplianceFix}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition-colors">
+                      <Zap className="w-3 h-3" /> AI Fix
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex-1">
@@ -484,13 +503,21 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
                 {recommendations.length}
               </span>
             </div>
-            <Button
-              size="sm"
-              icon={<ListChecks className="w-3.5 h-3.5" />}
-              onClick={onOpenActionPlan}
-            >
-              Manage action plan
-            </Button>
+            <div className="flex items-center gap-2">
+              {onAIActionPlan && (
+                <button onClick={onAIActionPlan}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition-colors">
+                  <Zap className="w-3 h-3" /> AI Plan
+                </button>
+              )}
+              <Button
+                size="sm"
+                icon={<ListChecks className="w-3.5 h-3.5" />}
+                onClick={onOpenActionPlan}
+              >
+                Manage action plan
+              </Button>
+            </div>
           </div>
 
           {/* Action plan summary bar */}
@@ -644,6 +671,186 @@ function ActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }
           })}
         </div>
 
+        <div className="flex justify-end pt-2 border-t border-slate-100">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+const PRIORITY_BADGE: Record<string, string> = {
+  high: 'bg-rose-50 text-rose-700 border-rose-200',
+  medium: 'bg-amber-50 text-amber-700 border-amber-200',
+  low: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+}
+
+function AIActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }) {
+  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState<any[]>([])
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.post(`/audits/${audit.id}/ai-action-plan`)
+      .then(res => setItems(res.data.data || []))
+      .catch(err => setError(err?.response?.data?.error || 'AI generation failed'))
+      .finally(() => setLoading(false))
+  }, [audit.id])
+
+  return (
+    <Modal open={true} onClose={onClose} title="AI-Generated Action Plan" size="lg">
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
+            <p className="text-slate-600 font-medium">Generating action plan...</p>
+            <p className="text-slate-400 text-sm mt-1">AI is analysing audit findings</p>
+          </div>
+        ) : error ? (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>
+        ) : (
+          <>
+            <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl">
+              <p className="text-purple-700 text-xs font-semibold flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5" /> {items.length} action item{items.length !== 1 ? 's' : ''} generated by AI
+              </p>
+            </div>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {items.map((item: any, i: number) => (
+                <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-800 flex-1">{item.recommendation}</p>
+                    {item.priority && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border flex-shrink-0 capitalize ${PRIORITY_BADGE[item.priority] || PRIORITY_BADGE.medium}`}>
+                        {item.priority}
+                      </span>
+                    )}
+                  </div>
+                  {item.action && (
+                    <div className="pl-3 border-l-2 border-purple-200">
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Action</p>
+                      <p className="text-sm text-slate-600">{item.action}</p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-3 text-xs text-slate-500 pt-1">
+                    {item.who && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.who}</span>}
+                    {item.deadline && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {item.deadline}</span>}
+                    {item.expected_outcome && <span className="text-emerald-600">{item.expected_outcome}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="flex justify-end pt-2 border-t border-slate-100">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => void }) {
+  const [loading, setLoading] = useState(true)
+  const [plan, setPlan] = useState<any>(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.post(`/audits/${audit.id}/ai-compliance-fix`)
+      .then(res => setPlan(res.data.data))
+      .catch(err => setError(err?.response?.data?.error || 'AI generation failed'))
+      .finally(() => setLoading(false))
+  }, [audit.id])
+
+  return (
+    <Modal open={true} onClose={onClose} title="AI Compliance Improvement Plan" size="lg">
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
+            <p className="text-slate-600 font-medium">Analysing compliance gaps...</p>
+            <p className="text-slate-400 text-sm mt-1">AI is building your improvement plan</p>
+          </div>
+        ) : error ? (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>
+        ) : plan ? (
+          <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+            {/* Score projection */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <p className="text-xs text-slate-400 font-medium mb-1">Current</p>
+                <p className="text-xl font-bold text-slate-800">{plan.current_rating}</p>
+              </div>
+              <div className="flex items-center justify-center text-slate-300 text-2xl">→</div>
+              <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <p className="text-xs text-emerald-500 font-medium mb-1">Target</p>
+                <p className="text-xl font-bold text-emerald-700">{plan.target_rating}</p>
+                {plan.projected_score && <p className="text-xs text-emerald-600 mt-0.5">~{plan.projected_score}%</p>}
+              </div>
+            </div>
+
+            {plan.summary && (
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <p className="text-sm text-purple-800 leading-relaxed">{plan.summary}</p>
+              </div>
+            )}
+
+            {plan.immediate_actions?.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Immediate Actions (0–7 days)
+                </p>
+                <div className="space-y-1.5">
+                  {plan.immediate_actions.map((a: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2.5 p-3 bg-rose-50 border border-rose-100 rounded-lg">
+                      <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                      <p className="text-sm text-rose-800">{a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {plan.short_term?.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" /> Short-Term (1–4 weeks)
+                </p>
+                <div className="space-y-1.5">
+                  {plan.short_term.map((a: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                      <p className="text-sm text-amber-800">{a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {plan.long_term?.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5" /> Long-Term (1–3 months)
+                </p>
+                <div className="space-y-1.5">
+                  {plan.long_term.map((a: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                      <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                      <p className="text-sm text-blue-800">{a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {plan.cqc_notes && (
+              <div className="p-4 bg-slate-800 rounded-xl">
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">CQC Guidance</p>
+                <p className="text-sm text-slate-200 leading-relaxed">{plan.cqc_notes}</p>
+              </div>
+            )}
+          </div>
+        ) : null}
         <div className="flex justify-end pt-2 border-t border-slate-100">
           <Button onClick={onClose}>Close</Button>
         </div>
