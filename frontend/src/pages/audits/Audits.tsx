@@ -776,10 +776,65 @@ function ActionPlanModal({ audit, onClose, autoGenerate = false }: {
   )
 }
 
+function getComplianceStatuses(key: string): Record<string, ActionStatus> {
+  try { return JSON.parse(localStorage.getItem(`cfx_${key}`) || '{}') } catch { return {} }
+}
+function saveComplianceStatuses(key: string, s: Record<string, ActionStatus>) {
+  localStorage.setItem(`cfx_${key}`, JSON.stringify(s))
+}
+
+function ComplianceActionSection({ title, icon, items, color, prefix, statuses, onCycle }: {
+  title: string; icon: React.ReactNode; items: string[]
+  color: { bg: string; border: string; text: string; num: string }
+  prefix: string; statuses: Record<string, ActionStatus>; onCycle: (k: string) => void
+}) {
+  const statusConfig = {
+    todo: { label: 'To Do', icon: <Circle className="w-3.5 h-3.5" />, cls: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' },
+    in_progress: { label: 'In Progress', icon: <Clock className="w-3.5 h-3.5" />, cls: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' },
+    done: { label: 'Done', icon: <CheckSquare className="w-3.5 h-3.5" />, cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200' },
+  }
+  if (!items?.length) return null
+  const doneCount = items.filter((_, i) => statuses[`${prefix}_${i}`] === 'done').length
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${color.text}`}>
+          {icon} {title}
+        </p>
+        <span className="text-xs text-slate-400">{doneCount}/{items.length} done</span>
+      </div>
+      <div className="space-y-1.5">
+        {items.map((a: string, i: number) => {
+          const k = `${prefix}_${i}`
+          const status: ActionStatus = statuses[k] || 'todo'
+          const cfg = statusConfig[status]
+          return (
+            <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl border transition-colors ${
+              status === 'done' ? 'bg-emerald-50 border-emerald-100' :
+              status === 'in_progress' ? 'bg-amber-50 border-amber-100' :
+              `${color.bg} ${color.border}`
+            }`}>
+              <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${
+                status === 'done' ? 'bg-emerald-500' : status === 'in_progress' ? 'bg-amber-500' : color.num
+              }`}>{status === 'done' ? '✓' : i + 1}</span>
+              <p className={`text-sm flex-1 leading-relaxed ${status === 'done' ? 'text-slate-400 line-through' : color.text}`}>{a}</p>
+              <button onClick={() => onCycle(k)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.cls}`}>
+                {cfg.icon} {cfg.label}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => void }) {
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState<any>(null)
   const [error, setError] = useState('')
+  const [statuses, setStatuses] = useState<Record<string, ActionStatus>>(() => getComplianceStatuses(audit.id))
 
   useEffect(() => {
     api.post(`/audits/${audit.id}/ai-compliance-fix`)
@@ -787,6 +842,28 @@ function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => v
       .catch(err => setError(err?.response?.data?.error || 'AI generation failed'))
       .finally(() => setLoading(false))
   }, [audit.id])
+
+  const cycle = (k: string) => {
+    const current = statuses[k] || 'todo'
+    const next: ActionStatus = current === 'todo' ? 'in_progress' : current === 'in_progress' ? 'done' : 'todo'
+    const updated = { ...statuses, [k]: next }
+    setStatuses(updated)
+    saveComplianceStatuses(audit.id, updated)
+  }
+
+  const allItems = plan ? [
+    ...(plan.immediate_actions || []).map((_: string, i: number) => `immediate_${i}`),
+    ...(plan.short_term || []).map((_: string, i: number) => `short_${i}`),
+    ...(plan.long_term || []).map((_: string, i: number) => `long_${i}`),
+  ] : []
+  const doneTotal = allItems.filter(k => statuses[k] === 'done').length
+  const inProgTotal = allItems.filter(k => statuses[k] === 'in_progress').length
+
+  const sectionColors = {
+    immediate: { bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-700', num: 'bg-rose-500' },
+    short: { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', num: 'bg-amber-500' },
+    long: { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', num: 'bg-blue-500' },
+  }
 
   return (
     <Modal open={true} onClose={onClose} title="AI Compliance Improvement Plan" size="lg">
@@ -800,74 +877,64 @@ function AIComplianceFixModal({ audit, onClose }: { audit: any; onClose: () => v
         ) : error ? (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>
         ) : plan ? (
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             {/* Score projection */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 items-center">
               <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <p className="text-xs text-slate-400 font-medium mb-1">Current</p>
-                <p className="text-xl font-bold text-slate-800">{plan.current_rating}</p>
+                <p className="text-lg font-bold text-slate-800">{plan.current_rating}</p>
               </div>
-              <div className="flex items-center justify-center text-slate-300 text-2xl">→</div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-slate-300 text-2xl">→</div>
+                {plan.projected_score && (
+                  <span className="text-xs text-emerald-600 font-semibold">~{plan.projected_score}%</span>
+                )}
+              </div>
               <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-200">
                 <p className="text-xs text-emerald-500 font-medium mb-1">Target</p>
-                <p className="text-xl font-bold text-emerald-700">{plan.target_rating}</p>
-                {plan.projected_score && <p className="text-xs text-emerald-600 mt-0.5">~{plan.projected_score}%</p>}
+                <p className="text-lg font-bold text-emerald-700">{plan.target_rating}</p>
               </div>
             </div>
 
+            {/* Progress */}
+            {allItems.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                  <div className="flex gap-3">
+                    <span className="text-slate-500 flex items-center gap-1"><Circle className="w-3 h-3" /> {allItems.length - doneTotal - inProgTotal} to do</span>
+                    <span className="text-amber-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {inProgTotal} in progress</span>
+                    <span className="text-emerald-600 flex items-center gap-1"><CheckSquare className="w-3 h-3" /> {doneTotal} done</span>
+                  </div>
+                  <button onClick={() => { const r: Record<string, ActionStatus> = {}; setStatuses(r); saveComplianceStatuses(audit.id, r) }}
+                    className="text-slate-400 hover:text-rose-500 underline font-normal">Reset</button>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                  <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneTotal / allItems.length) * 100}%` }} />
+                  <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgTotal / allItems.length) * 100}%` }} />
+                </div>
+              </div>
+            )}
+
             {plan.summary && (
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl">
                 <p className="text-sm text-purple-800 leading-relaxed">{plan.summary}</p>
               </div>
             )}
 
-            {plan.immediate_actions?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Immediate Actions (0–7 days)
-                </p>
-                <div className="space-y-1.5">
-                  {plan.immediate_actions.map((a: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5 p-3 bg-rose-50 border border-rose-100 rounded-lg">
-                      <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                      <p className="text-sm text-rose-800">{a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ComplianceActionSection title="Immediate Actions (0–7 days)"
+              icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              items={plan.immediate_actions} color={sectionColors.immediate}
+              prefix="immediate" statuses={statuses} onCycle={cycle} />
 
-            {plan.short_term?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Short-Term (1–4 weeks)
-                </p>
-                <div className="space-y-1.5">
-                  {plan.short_term.map((a: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                      <p className="text-sm text-amber-800">{a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ComplianceActionSection title="Short-Term (1–4 weeks)"
+              icon={<Clock className="w-3.5 h-3.5" />}
+              items={plan.short_term} color={sectionColors.short}
+              prefix="short" statuses={statuses} onCycle={cycle} />
 
-            {plan.long_term?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5" /> Long-Term (1–3 months)
-                </p>
-                <div className="space-y-1.5">
-                  {plan.long_term.map((a: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                      <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                      <p className="text-sm text-blue-800">{a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ComplianceActionSection title="Long-Term (1–3 months)"
+              icon={<TrendingUp className="w-3.5 h-3.5" />}
+              items={plan.long_term} color={sectionColors.long}
+              prefix="long" statuses={statuses} onCycle={cycle} />
 
             {plan.cqc_notes && (
               <div className="p-4 bg-slate-800 rounded-xl">

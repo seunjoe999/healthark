@@ -207,4 +207,76 @@ router.get('/dashboard', async (req: Request, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 });
 
+// POST /api/compliance/ai-improvement — AI plan to raise overall compliance score
+router.post('/ai-improvement', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const key = process.env.GROQ_API_KEY || '';
+    if (!key || key === 'placeholder') {
+      return res.status(400).json({ success: false, error: 'AI not configured. Set GROQ_API_KEY in backend/.env — get a free key at https://console.groq.com' } as ApiResponse);
+    }
+
+    const { dashboardData } = req.body as any;
+    const overallScore: number = dashboardData?.overallScore || 0;
+    const currentRating = overallScore >= 80 ? 'Compliant' : overallScore >= 60 ? 'Needs Attention' : 'At Risk';
+
+    const ctx = Object.entries(dashboardData?.areas || {}).map(([, v]: [string, any]) =>
+      `  - ${v.label}: ${v.score}% — ${v.metric}`
+    ).join('\n');
+
+    const prompt = `You are a senior UK care home CQC compliance consultant. A care home has the following live compliance scores:
+
+OVERALL COMPLIANCE: ${overallScore}% (${currentRating})
+
+AREA BREAKDOWN:
+${ctx}
+
+Create a targeted improvement plan to raise their overall compliance to at least 85% (CQC "Good" standard). Every action must directly address one of the area scores above.
+
+Return valid JSON only — no markdown, no code fences:
+{
+  "summary": "2-3 sentences: what the main problems are and what the plan will achieve — be specific to the data",
+  "projected_score": <realistic number between ${Math.min(overallScore + 12, 95)} and 95>,
+  "immediate_actions": [
+    "Specific action referencing actual area data — do within 24-48 hours",
+    "Another specific action"
+  ],
+  "short_term": [
+    "Specific action to complete within 1-4 weeks — reference an area score",
+    "Another specific action"
+  ],
+  "long_term": [
+    "Systemic improvement within 1-3 months — reference an area",
+    "Another systemic change"
+  ],
+  "cqc_notes": "What a CQC inspector would look for when visiting — reference specific Regulations (9, 10, 12, 17, 18 etc) tied to the lowest scoring areas"
+}
+
+Each array must have 2-4 items. Be specific, not generic.`;
+
+    const fetchRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1500,
+        temperature: 0.3,
+      }),
+    });
+    if (!fetchRes.ok) {
+      const errData = await fetchRes.json().catch(() => ({})) as any;
+      throw new Error(errData?.error?.message || `Groq API error ${fetchRes.status}`);
+    }
+    const fetchData = await fetchRes.json() as any;
+    const raw: string = fetchData.choices?.[0]?.message?.content || '';
+    let plan: any = {};
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      plan = JSON.parse(match ? match[0] : raw);
+    } catch { throw new Error('AI returned unexpected format — please try again'); }
+
+    res.json({ success: true, data: plan } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 export default router;

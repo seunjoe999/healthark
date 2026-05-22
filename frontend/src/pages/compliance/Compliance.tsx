@@ -7,9 +7,17 @@ import { Spinner } from '../../components/ui'
 import {
   ShieldCheck, AlertTriangle, Activity, BookOpen,
   Package, Bell, ClipboardList, RefreshCw, X, Zap,
-  CheckCircle, ArrowRight, ChevronRight,
+  CheckCircle, ArrowRight, ChevronRight, Circle, Clock, CheckSquare, TrendingUp,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+type ActionStatus = 'todo' | 'in_progress' | 'done'
+function getCFStatuses(homeId: string): Record<string, ActionStatus> {
+  try { return JSON.parse(localStorage.getItem(`cfix_${homeId}`) || '{}') } catch { return {} }
+}
+function saveCFStatuses(homeId: string, s: Record<string, ActionStatus>) {
+  localStorage.setItem(`cfix_${homeId}`, JSON.stringify(s))
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -204,6 +212,7 @@ export default function Compliance() {
   const [loading, setLoading] = useState(false)
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [fixing, setFixing] = useState(false)
+  const [aiFixOpen, setAiFixOpen] = useState(false)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -277,6 +286,14 @@ export default function Compliance() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          {data && (
+            <button
+              onClick={() => setAiFixOpen(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
+            >
+              <Zap className="w-4 h-4" /> AI Fix
+            </button>
+          )}
         </div>
       </div>
 
@@ -352,6 +369,15 @@ export default function Compliance() {
           onFix={() => autoFix(selectedArea)}
         />
       )}
+
+      {/* AI fix modal */}
+      {aiFixOpen && data && (
+        <ComplianceAIFixModal
+          homeId={selectedHome}
+          dashboardData={data}
+          onClose={() => setAiFixOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -362,6 +388,187 @@ function SummaryTile({ label, value, sub, colour }: { label: string; value: any;
       <p className={`text-2xl font-bold ${colour}`}>{value}</p>
       <p className="text-xs font-medium text-slate-700 mt-0.5">{label}</p>
       <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+    </div>
+  )
+}
+
+function CFActionSection({ title, icon, items, colors, prefix, statuses, onCycle }: {
+  title: string; icon: React.ReactNode; items: string[]; colors: { bg: string; border: string; text: string; num: string }
+  prefix: string; statuses: Record<string, ActionStatus>; onCycle: (k: string) => void
+}) {
+  const statusConfig = {
+    todo: { label: 'To Do', icon: <Circle className="w-3.5 h-3.5" />, cls: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' },
+    in_progress: { label: 'In Progress', icon: <Clock className="w-3.5 h-3.5" />, cls: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' },
+    done: { label: 'Done', icon: <CheckSquare className="w-3.5 h-3.5" />, cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200' },
+  }
+  if (!items?.length) return null
+  const doneCount = items.filter((_, i) => statuses[`${prefix}_${i}`] === 'done').length
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${colors.text}`}>{icon} {title}</p>
+        <span className="text-xs text-slate-400">{doneCount}/{items.length} done</span>
+      </div>
+      <div className="space-y-1.5">
+        {items.map((a, i) => {
+          const k = `${prefix}_${i}`
+          const status: ActionStatus = statuses[k] || 'todo'
+          const cfg = statusConfig[status]
+          return (
+            <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl border transition-colors ${
+              status === 'done' ? 'bg-emerald-50 border-emerald-100' :
+              status === 'in_progress' ? 'bg-amber-50 border-amber-100' :
+              `${colors.bg} ${colors.border}`
+            }`}>
+              <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${
+                status === 'done' ? 'bg-emerald-500' : status === 'in_progress' ? 'bg-amber-500' : colors.num
+              }`}>{status === 'done' ? '✓' : i + 1}</span>
+              <p className={`text-sm flex-1 leading-relaxed ${status === 'done' ? 'text-slate-400 line-through' : colors.text}`}>{a}</p>
+              <button onClick={() => onCycle(k)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.cls}`}>
+                {cfg.icon} {cfg.label}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ComplianceAIFixModal({ homeId, dashboardData, onClose }: { homeId: string; dashboardData: any; onClose: () => void }) {
+  const [loading, setLoading] = useState(true)
+  const [plan, setPlan] = useState<any>(null)
+  const [error, setError] = useState('')
+  const [statuses, setStatuses] = useState<Record<string, ActionStatus>>(() => getCFStatuses(homeId))
+
+  useEffect(() => {
+    api.post('/compliance/ai-improvement', { homeId, dashboardData })
+      .then(res => setPlan(res.data.data))
+      .catch(err => setError(err?.response?.data?.error || 'AI generation failed'))
+      .finally(() => setLoading(false))
+  }, [homeId])
+
+  const cycle = (k: string) => {
+    const current = statuses[k] || 'todo'
+    const next: ActionStatus = current === 'todo' ? 'in_progress' : current === 'in_progress' ? 'done' : 'todo'
+    const updated = { ...statuses, [k]: next }
+    setStatuses(updated)
+    saveCFStatuses(homeId, updated)
+  }
+
+  const allKeys = plan ? [
+    ...(plan.immediate_actions || []).map((_: string, i: number) => `immediate_${i}`),
+    ...(plan.short_term || []).map((_: string, i: number) => `short_${i}`),
+    ...(plan.long_term || []).map((_: string, i: number) => `long_${i}`),
+  ] : []
+  const doneTotal = allKeys.filter(k => statuses[k] === 'done').length
+  const inProgTotal = allKeys.filter(k => statuses[k] === 'in_progress').length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-purple-600" />
+            <h2 className="font-bold text-slate-900">AI Compliance Improvement Plan</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
+              <p className="text-slate-700 font-semibold">Analysing all compliance areas...</p>
+              <p className="text-slate-400 text-sm mt-1">AI is reviewing your scores and building a targeted plan</p>
+            </div>
+          ) : error ? (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>
+          ) : plan && (
+            <>
+              {/* Score projection */}
+              <div className="grid grid-cols-3 gap-3 items-center">
+                <div className="text-center p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <p className="text-xs text-slate-400 font-medium mb-1">Current score</p>
+                  <p className="text-3xl font-bold text-slate-800">{dashboardData.overallScore}%</p>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-slate-300 text-3xl font-light">→</div>
+                  {plan.projected_score && (
+                    <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
+                      ~{plan.projected_score}%
+                    </span>
+                  )}
+                </div>
+                <div className="text-center p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <p className="text-xs text-emerald-500 font-medium mb-1">Target rating</p>
+                  <p className="text-xl font-bold text-emerald-700">{plan.target_rating}</p>
+                </div>
+              </div>
+
+              {/* Progress tracker */}
+              {allKeys.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                    <div className="flex gap-4">
+                      <span className="text-slate-500 flex items-center gap-1"><Circle className="w-3 h-3" /> {allKeys.length - doneTotal - inProgTotal} to do</span>
+                      <span className="text-amber-600 flex items-center gap-1"><Clock className="w-3 h-3" /> {inProgTotal} in progress</span>
+                      <span className="text-emerald-600 flex items-center gap-1"><CheckSquare className="w-3 h-3" /> {doneTotal} done</span>
+                    </div>
+                    <button onClick={() => { const r: Record<string, ActionStatus> = {}; setStatuses(r); saveCFStatuses(homeId, r) }}
+                      className="text-slate-400 hover:text-rose-500 underline font-normal text-xs">Reset all</button>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneTotal / allKeys.length) * 100}%` }} />
+                    <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgTotal / allKeys.length) * 100}%` }} />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Click a status button to track progress: To Do → In Progress → Done</p>
+                </div>
+              )}
+
+              {plan.summary && (
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                  <p className="text-sm text-purple-800 leading-relaxed">{plan.summary}</p>
+                </div>
+              )}
+
+              <CFActionSection title="Immediate Actions (0–7 days)"
+                icon={<AlertTriangle className="w-3.5 h-3.5" />}
+                items={plan.immediate_actions}
+                colors={{ bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-700', num: 'bg-rose-500' }}
+                prefix="immediate" statuses={statuses} onCycle={cycle} />
+
+              <CFActionSection title="Short-Term (1–4 weeks)"
+                icon={<Clock className="w-3.5 h-3.5" />}
+                items={plan.short_term}
+                colors={{ bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', num: 'bg-amber-500' }}
+                prefix="short" statuses={statuses} onCycle={cycle} />
+
+              <CFActionSection title="Long-Term (1–3 months)"
+                icon={<TrendingUp className="w-3.5 h-3.5" />}
+                items={plan.long_term}
+                colors={{ bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', num: 'bg-blue-500' }}
+                prefix="long" statuses={statuses} onCycle={cycle} />
+
+              {plan.cqc_notes && (
+                <div className="p-4 bg-slate-800 rounded-xl">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">CQC Guidance</p>
+                  <p className="text-sm text-slate-200 leading-relaxed">{plan.cqc_notes}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-slate-100 flex justify-end flex-shrink-0">
+          <button onClick={onClose} className="px-5 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
