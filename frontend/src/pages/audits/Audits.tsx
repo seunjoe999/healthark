@@ -41,6 +41,12 @@ function getActionPlan(auditId: string): Record<number, ActionStatus> {
 function saveActionPlan(auditId: string, plan: Record<number, ActionStatus>) {
   localStorage.setItem(`audit_ap_${auditId}`, JSON.stringify(plan))
 }
+function getAIPlan(auditId: string): any[] {
+  try { return JSON.parse(localStorage.getItem(`audit_ai_plan_${auditId}`) || '[]') } catch { return [] }
+}
+function saveAIPlan(auditId: string, items: any[]) {
+  localStorage.setItem(`audit_ai_plan_${auditId}`, JSON.stringify(items))
+}
 
 function parseRecommendations(text: string): string[] {
   return (text || '').split('\n').map(l => l.replace(/^[-*•] /, '').trim()).filter(Boolean)
@@ -96,7 +102,7 @@ export default function Audits() {
   const [selectedAudit, setSelectedAudit] = useState<any>(null)
   const [polling, setPolling] = useState<string | null>(null)
   const [actionPlanOpen, setActionPlanOpen] = useState(false)
-  const [aiPlanOpen, setAiPlanOpen] = useState(false)
+  const [actionPlanAutoAI, setActionPlanAutoAI] = useState(false)
   const [complianceFixOpen, setComplianceFixOpen] = useState(false)
 
   useEffect(() => {
@@ -249,8 +255,8 @@ export default function Audits() {
             homeAddress={selectedHomeObj?.address1}
             canDelete={isRole('home_manager', 'group_admin')}
             onDelete={deleteAudit}
-            onOpenActionPlan={() => setActionPlanOpen(true)}
-            onAIActionPlan={() => setAiPlanOpen(true)}
+            onOpenActionPlan={() => { setActionPlanAutoAI(false); setActionPlanOpen(true) }}
+            onAIActionPlan={() => { setActionPlanAutoAI(true); setActionPlanOpen(true) }}
             onAIComplianceFix={() => setComplianceFixOpen(true)}
           />
         )}
@@ -261,11 +267,9 @@ export default function Audits() {
       {selectedAudit && actionPlanOpen && (
         <ActionPlanModal
           audit={selectedAudit}
-          onClose={() => setActionPlanOpen(false)}
+          autoGenerate={actionPlanAutoAI}
+          onClose={() => { setActionPlanOpen(false); setActionPlanAutoAI(false) }}
         />
-      )}
-      {selectedAudit && aiPlanOpen && (
-        <AIActionPlanModal audit={selectedAudit} onClose={() => setAiPlanOpen(false)} />
       )}
       {selectedAudit && complianceFixOpen && (
         <AIComplianceFixModal audit={selectedAudit} onClose={() => setComplianceFixOpen(false)} />
@@ -594,9 +598,46 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
   )
 }
 
-function ActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }) {
+const PRIORITY_BADGE: Record<string, string> = {
+  high: 'bg-rose-50 text-rose-700 border-rose-200',
+  medium: 'bg-amber-50 text-amber-700 border-amber-200',
+  low: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+}
+
+function ActionPlanModal({ audit, onClose, autoGenerate = false }: {
+  audit: any; onClose: () => void; autoGenerate?: boolean
+}) {
   const recommendations = parseRecommendations(audit.recommendations || '')
   const [plan, setPlan] = useState<Record<number, ActionStatus>>(() => getActionPlan(audit.id))
+  const [aiItems, setAiItems] = useState<any[]>(() => getAIPlan(audit.id))
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState('')
+
+  const hasAI = aiItems.length > 0
+  const displayItems: any[] = hasAI ? aiItems : recommendations.map(r => ({ recommendation: r }))
+
+  useEffect(() => {
+    if (autoGenerate && !hasAI && recommendations.length > 0) generateAIPlan()
+  }, [])
+
+  const generateAIPlan = async () => {
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const res = await api.post(`/audits/${audit.id}/ai-action-plan`)
+      const items: any[] = res.data.data || []
+      setAiItems(items)
+      saveAIPlan(audit.id, items)
+      const updated = { ...plan }
+      items.forEach((_: any, i: number) => { if (!updated[i]) updated[i] = 'todo' })
+      setPlan(updated)
+      saveActionPlan(audit.id, updated)
+    } catch (err: any) {
+      setAiError(err?.response?.data?.error || 'AI generation failed — please try again')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const cycle = (idx: number) => {
     const current = plan[idx] || 'todo'
@@ -606,15 +647,12 @@ function ActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }
     saveActionPlan(audit.id, updated)
   }
 
-  const reset = () => {
-    const cleared: Record<number, ActionStatus> = {}
-    setPlan(cleared)
-    saveActionPlan(audit.id, cleared)
-  }
+  const reset = () => { setPlan({}); saveActionPlan(audit.id, {}) }
+  const clearAndRegenerate = () => { setAiItems([]); saveAIPlan(audit.id, []); generateAIPlan() }
 
   const done = Object.values(plan).filter(s => s === 'done').length
   const inProgress = Object.values(plan).filter(s => s === 'in_progress').length
-  const todo = recommendations.length - done - inProgress
+  const todo = displayItems.length - done - inProgress
 
   const statusConfig = {
     todo: { label: 'To Do', icon: <Circle className="w-4 h-4" />, color: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200' },
@@ -625,123 +663,111 @@ function ActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }
   return (
     <Modal open={true} onClose={onClose} title="Action Plan" size="lg">
       <div className="space-y-4">
-        {/* Summary */}
-        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl text-sm font-semibold">
-          <span className="text-slate-500 flex items-center gap-1.5"><Circle className="w-4 h-4" /> {todo} to do</span>
-          <span className="text-amber-600 flex items-center gap-1.5"><Clock className="w-4 h-4" /> {inProgress} in progress</span>
-          <span className="text-emerald-600 flex items-center gap-1.5"><CheckSquare className="w-4 h-4" /> {done} done</span>
-          <div className="flex-1" />
-          <button onClick={reset} className="text-xs text-slate-400 hover:text-rose-500 underline">Reset all</button>
-        </div>
 
-        {/* Progress bar */}
-        {recommendations.length > 0 && (
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
-            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(done / recommendations.length) * 100}%` }} />
-            <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgress / recommendations.length) * 100}%` }} />
+        {/* AI banner */}
+        {!hasAI && !aiLoading && (
+          <div className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-xl">
+            <p className="text-sm text-purple-800 font-medium flex items-center gap-2">
+              <Zap className="w-4 h-4 text-purple-600 flex-shrink-0" />
+              Let AI build a detailed plan with deadlines, who's responsible, and expected outcomes
+            </p>
+            <button onClick={generateAIPlan}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors ml-3 flex-shrink-0">
+              <Zap className="w-3 h-3" /> Generate with AI
+            </button>
           </div>
         )}
 
-        <p className="text-xs text-slate-400">Click a status button to cycle through: To Do → In Progress → Done</p>
-
-        {/* Items */}
-        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-          {recommendations.map((rec, i) => {
-            const status: ActionStatus = plan[i] || 'todo'
-            const cfg = statusConfig[status]
-            return (
-              <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${
-                status === 'done' ? 'bg-emerald-50 border-emerald-100'
-                : status === 'in_progress' ? 'bg-amber-50 border-amber-100'
-                : 'bg-white border-slate-100'
-              }`}>
-                <span className="text-slate-400 text-xs font-bold w-5 flex-shrink-0 mt-0.5">{i + 1}</span>
-                <p className={`text-sm flex-1 leading-relaxed ${
-                  status === 'done' ? 'text-slate-400 line-through' : 'text-slate-700'
-                }`}>{rec}</p>
-                <button
-                  onClick={() => cycle(i)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.color}`}
-                >
-                  {cfg.icon}
-                  {cfg.label}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="flex justify-end pt-2 border-t border-slate-100">
-          <Button onClick={onClose}>Close</Button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-const PRIORITY_BADGE: Record<string, string> = {
-  high: 'bg-rose-50 text-rose-700 border-rose-200',
-  medium: 'bg-amber-50 text-amber-700 border-amber-200',
-  low: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-}
-
-function AIActionPlanModal({ audit, onClose }: { audit: any; onClose: () => void }) {
-  const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState<any[]>([])
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    api.post(`/audits/${audit.id}/ai-action-plan`)
-      .then(res => setItems(res.data.data || []))
-      .catch(err => setError(err?.response?.data?.error || 'AI generation failed'))
-      .finally(() => setLoading(false))
-  }, [audit.id])
-
-  return (
-    <Modal open={true} onClose={onClose} title="AI-Generated Action Plan" size="lg">
-      <div className="space-y-4">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
-            <p className="text-slate-600 font-medium">Generating action plan...</p>
-            <p className="text-slate-400 text-sm mt-1">AI is analysing audit findings</p>
+        {aiLoading && (
+          <div className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+            <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+            <p className="text-sm text-purple-800 font-medium">AI is building your action plan...</p>
           </div>
-        ) : error ? (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>
-        ) : (
+        )}
+
+        {aiError && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm flex items-center justify-between gap-3">
+            <span>{aiError}</span>
+            <button onClick={generateAIPlan} className="text-xs font-semibold underline flex-shrink-0">Retry</button>
+          </div>
+        )}
+
+        {hasAI && (
+          <div className="flex items-center justify-between px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl">
+            <span className="text-xs text-purple-700 font-semibold flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5" /> AI-generated · {aiItems.length} items
+            </span>
+            <button onClick={clearAndRegenerate} className="text-xs text-purple-500 hover:text-purple-700 underline">Regenerate</button>
+          </div>
+        )}
+
+        {/* Stats + progress */}
+        {!aiLoading && displayItems.length > 0 && (
           <>
-            <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl">
-              <p className="text-purple-700 text-xs font-semibold flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5" /> {items.length} action item{items.length !== 1 ? 's' : ''} generated by AI
-              </p>
+            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl text-sm font-semibold">
+              <span className="text-slate-500 flex items-center gap-1.5"><Circle className="w-4 h-4" /> {todo} to do</span>
+              <span className="text-amber-600 flex items-center gap-1.5"><Clock className="w-4 h-4" /> {inProgress} in progress</span>
+              <span className="text-emerald-600 flex items-center gap-1.5"><CheckSquare className="w-4 h-4" /> {done} done</span>
+              <div className="flex-1" />
+              <button onClick={reset} className="text-xs text-slate-400 hover:text-rose-500 underline font-normal">Reset all</button>
             </div>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              {items.map((item: any, i: number) => (
-                <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-800 flex-1">{item.recommendation}</p>
-                    {item.priority && (
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border flex-shrink-0 capitalize ${PRIORITY_BADGE[item.priority] || PRIORITY_BADGE.medium}`}>
-                        {item.priority}
-                      </span>
-                    )}
-                  </div>
-                  {item.action && (
-                    <div className="pl-3 border-l-2 border-purple-200">
-                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Action</p>
-                      <p className="text-sm text-slate-600">{item.action}</p>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-3 text-xs text-slate-500 pt-1">
-                    {item.who && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.who}</span>}
-                    {item.deadline && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {item.deadline}</span>}
-                    {item.expected_outcome && <span className="text-emerald-600">{item.expected_outcome}</span>}
-                  </div>
-                </div>
-              ))}
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
+              <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(done / displayItems.length) * 100}%` }} />
+              <div className="h-full bg-amber-400 transition-all" style={{ width: `${(inProgress / displayItems.length) * 100}%` }} />
             </div>
+            <p className="text-xs text-slate-400">Click a status to cycle: To Do → In Progress → Done</p>
           </>
         )}
+
+        {/* Items */}
+        {!aiLoading && (
+          <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+            {displayItems.map((item: any, i: number) => {
+              const status: ActionStatus = plan[i] || 'todo'
+              const cfg = statusConfig[status]
+              return (
+                <div key={i} className={`rounded-xl border transition-colors ${
+                  status === 'done' ? 'bg-emerald-50 border-emerald-100'
+                  : status === 'in_progress' ? 'bg-amber-50 border-amber-100'
+                  : 'bg-white border-slate-200'
+                }`}>
+                  <div className="flex items-start gap-3 p-3">
+                    <span className="text-slate-400 text-xs font-bold w-5 flex-shrink-0 mt-0.5">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm leading-relaxed ${status === 'done' ? 'text-slate-400 line-through' : 'text-slate-800 font-medium'}`}>
+                        {item.recommendation}
+                      </p>
+                      {hasAI && (
+                        <div className="mt-2 space-y-1.5">
+                          {item.action && (
+                            <p className="text-xs text-slate-600 border-l-2 border-purple-300 pl-2 leading-relaxed">{item.action}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {item.priority && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border capitalize ${PRIORITY_BADGE[item.priority] || PRIORITY_BADGE.medium}`}>
+                                {item.priority}
+                              </span>
+                            )}
+                            {item.who && <span className="text-xs text-slate-500 flex items-center gap-1"><User className="w-3 h-3" />{item.who}</span>}
+                            {item.deadline && <span className="text-xs text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3" />{item.deadline}</span>}
+                          </div>
+                          {item.expected_outcome && (
+                            <p className="text-xs text-emerald-700 font-medium">{item.expected_outcome}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => cycle(i)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${cfg.color}`}>
+                      {cfg.icon} {cfg.label}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         <div className="flex justify-end pt-2 border-t border-slate-100">
           <Button onClick={onClose}>Close</Button>
         </div>
