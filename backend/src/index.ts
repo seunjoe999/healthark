@@ -125,13 +125,17 @@ app.use('/api/compliance', complianceRoutes);
 app.use('/api/medication-stock', medicationStockRoutes);
 app.use('/api/signatures', signaturesRoutes);
 
-// ── Serve React frontend in production ────────────────────────────────────
-if (process.env.NODE_ENV === 'production') {
-  const frontendDist = path.join(__dirname, '../../frontend/dist');
+// ── Serve React frontend ──────────────────────────────────────────────────
+import fs from 'fs';
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  logger.info(`Serving frontend from: ${frontendDist}`);
   app.use(express.static(frontendDist));
   app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
+} else {
+  logger.warn(`Frontend dist not found at: ${frontendDist}`);
 }
 
 // ── Error handling ────────────────────────────────────────────────────────
