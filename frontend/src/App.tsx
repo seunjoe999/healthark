@@ -52,22 +52,10 @@ import NotificationsManager from './pages/notifications/NotificationsManager'
 import AdminAccounts from './pages/admin/AdminAccounts'
 import Setup from './pages/auth/Setup'
 
-function getStoredToken(): string | null {
-  if ((window as any).__HA_TOKEN__) return (window as any).__HA_TOKEN__
-  try { const t = sessionStorage.getItem('ha_token'); if (t) return t } catch {}
-  try { const t = localStorage.getItem('ha_token'); if (t) return t } catch {}
-  try {
-    const match = document.cookie.split(';').find(c => c.trim().startsWith('ha_token='))
-    if (match) return decodeURIComponent(match.trim().slice('ha_token='.length))
-  } catch {}
-  return null
-}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const hasToken = !!getStoredToken()
-  if (!user && !hasToken) return <Navigate to="/login" replace />
-  if (!user && hasToken) return null  // token exists, context still initialising
+  if (!user) return <Navigate to="/login" replace />
   return <AppLayout>{children}</AppLayout>
 }
 
