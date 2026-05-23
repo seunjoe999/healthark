@@ -61,6 +61,10 @@ import Noticeboard from './pages/noticeboard/Noticeboard'
 import Observations from './pages/observations/Observations'
 import SeizureLog from './pages/seizures/SeizureLog'
 import BowelChart from './pages/bowel-chart/BowelChart'
+import ResidentDiary from './pages/diary/ResidentDiary'
+import ProfessionalVisits from './pages/professional-visits/ProfessionalVisits'
+import MedicineRisk from './pages/medicine-risk/MedicineRisk'
+import PerformanceMatrix from './pages/performance/PerformanceMatrix'
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -149,6 +153,10 @@ function AppRoutes() {
       <Route path="/observations" element={<ProtectedRoute><Observations /></ProtectedRoute>} />
       <Route path="/seizures" element={<ProtectedRoute><SeizureLog /></ProtectedRoute>} />
       <Route path="/bowel-chart" element={<ProtectedRoute><BowelChart /></ProtectedRoute>} />
+      <Route path="/diary" element={<ProtectedRoute><ResidentDiary /></ProtectedRoute>} />
+      <Route path="/professional-visits" element={<ProtectedRoute><ProfessionalVisits /></ProtectedRoute>} />
+      <Route path="/medicine-risk" element={<ProtectedRoute><MedicineRisk /></ProtectedRoute>} />
+      <Route path="/performance" element={<ProtectedRoute><PerformanceMatrix /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

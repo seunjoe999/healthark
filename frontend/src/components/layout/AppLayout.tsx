@@ -9,7 +9,8 @@ import {
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
   Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search, FileCheck, QrCode,
   AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
-  Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap
+  Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
+  Stethoscope
 } from 'lucide-react'
 
 const navSections = [
@@ -21,6 +22,8 @@ const navSections = [
       { label: 'Noticeboard',      to: '/noticeboard',        icon: Newspaper,       roles: [] },
       { label: 'Service Users',    to: '/service-users',      icon: Users,           roles: [] },
       { label: 'Daily Records',    to: '/daily-records',      icon: ClipboardList,   roles: [] },
+      { label: 'Resident Diary',   to: '/diary',              icon: BookOpen,        roles: [] },
+      { label: 'Prof. Visits',     to: '/professional-visits',icon: Stethoscope,     roles: [] },
       { label: 'MAR Chart',        to: '/mar',                icon: Pill,            roles: [] },
       { label: 'Medication Stock', to: '/medication-stock',   icon: Boxes,           roles: ['home_manager','group_admin','senior_carer'] },
       { label: 'Support Plans',    to: '/care-plans',         icon: FileText,        roles: [] },
@@ -54,6 +57,8 @@ const navSections = [
       { label: 'Observations',     to: '/observations',       icon: Thermometer,     roles: [] },
       { label: 'Seizure Log',      to: '/seizures',           icon: Zap,             roles: [] },
       { label: 'Bowel Chart',      to: '/bowel-chart',        icon: Droplets,        roles: [] },
+      { label: 'Medicine Risk',    to: '/medicine-risk',      icon: ShieldAlert,     roles: [] },
+      { label: 'Performance',      to: '/performance',        icon: BarChart3,       roles: ['home_manager','group_admin'] },
       { label: 'Care Outcomes',    to: '/outcomes',           icon: Target,          roles: [] },
       { label: 'Reviews',          to: '/reviews',            icon: ClipboardCheck,  roles: [] },
       { label: 'Assessments',      to: '/assessments',        icon: FileCheck,       roles: [] },

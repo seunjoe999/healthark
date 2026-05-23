@@ -148,10 +148,18 @@ import noticeboardRoutes from './routes/noticeboard.routes';
 import observationsRoutes from './routes/observations.routes';
 import seizuresRoutes from './routes/seizures.routes';
 import bowelChartRoutes from './routes/bowelChart.routes';
+import diaryRoutes from './routes/diary.routes';
+import professionalVisitsRoutes from './routes/professionalVisits.routes';
+import medicineRiskRoutes from './routes/medicineRisk.routes';
+import performanceMatrixRoutes from './routes/performanceMatrix.routes';
 app.use('/api/noticeboard', noticeboardRoutes);
 app.use('/api/observations', observationsRoutes);
 app.use('/api/seizures', seizuresRoutes);
 app.use('/api/bowel-chart', bowelChartRoutes);
+app.use('/api/diary', diaryRoutes);
+app.use('/api/professional-visits', professionalVisitsRoutes);
+app.use('/api/medicine-risk', medicineRiskRoutes);
+app.use('/api/performance', performanceMatrixRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
@@ -469,6 +477,99 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_bowel_su ON bowel_charts(su_id, recorded_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_bowel_home ON bowel_charts(home_id, recorded_at DESC)`,
+    // ── Resident Diary ────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS resident_diary (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       diary_date DATE NOT NULL DEFAULT CURRENT_DATE,
+       mood VARCHAR(50),
+       mood_notes TEXT,
+       activities TEXT,
+       food_appetite VARCHAR(50),
+       fluid_intake VARCHAR(50),
+       sleep_quality VARCHAR(50),
+       personal_care_done BOOLEAN NOT NULL DEFAULT FALSE,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_diary_su   ON resident_diary(su_id, diary_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_diary_home ON resident_diary(home_id, diary_date DESC)`,
+    // ── Professional Visits ───────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS professional_visits (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       visit_date DATE NOT NULL,
+       professional_type VARCHAR(100) NOT NULL,
+       professional_name VARCHAR(200),
+       organisation VARCHAR(200),
+       reason TEXT,
+       outcome TEXT,
+       instructions_left TEXT,
+       follow_up_date DATE,
+       follow_up_notes TEXT,
+       follow_up_done BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_pv_su   ON professional_visits(su_id, visit_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_pv_home ON professional_visits(home_id, visit_date DESC)`,
+    // ── Medicine Risk Assessments ─────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS medicine_risk_assessments (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       assessed_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       self_medicate BOOLEAN NOT NULL DEFAULT FALSE,
+       self_medicate_notes TEXT,
+       swallowing_risk VARCHAR(50) NOT NULL DEFAULT 'none',
+       swallowing_notes TEXT,
+       covert_meds BOOLEAN NOT NULL DEFAULT FALSE,
+       covert_notes TEXT,
+       prn_protocol BOOLEAN NOT NULL DEFAULT FALSE,
+       prn_notes TEXT,
+       crushing_required BOOLEAN NOT NULL DEFAULT FALSE,
+       crushing_notes TEXT,
+       administration_route VARCHAR(100) NOT NULL DEFAULT 'oral',
+       known_allergies TEXT,
+       storage_location VARCHAR(200),
+       risk_level VARCHAR(50) NOT NULL DEFAULT 'low',
+       risk_notes TEXT,
+       review_date DATE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mr_su   ON medicine_risk_assessments(su_id, assessed_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_mr_home ON medicine_risk_assessments(home_id, assessed_at DESC)`,
+    // ── Staff Performance Matrix ───────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS staff_performance (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       assessed_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       period VARCHAR(50) NOT NULL,
+       training_compliance INTEGER,
+       supervision_completed BOOLEAN NOT NULL DEFAULT FALSE,
+       supervisions_due INTEGER,
+       supervisions_done INTEGER,
+       incidents_reported INTEGER NOT NULL DEFAULT 0,
+       punctuality_score INTEGER CHECK (punctuality_score BETWEEN 1 AND 5),
+       attitude_score INTEGER CHECK (attitude_score BETWEEN 1 AND 5),
+       care_quality_score INTEGER CHECK (care_quality_score BETWEEN 1 AND 5),
+       documentation_score INTEGER CHECK (documentation_score BETWEEN 1 AND 5),
+       teamwork_score INTEGER CHECK (teamwork_score BETWEEN 1 AND 5),
+       overall_score NUMERIC(4,2),
+       risk_rating VARCHAR(50) NOT NULL DEFAULT 'low',
+       strengths TEXT,
+       areas_improvement TEXT,
+       action_plan TEXT,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_perf_staff ON staff_performance(staff_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_perf_home  ON staff_performance(home_id, created_at DESC)`,
     `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS phone_home VARCHAR(20)`,
     `ALTER TABLE su_contacts DROP CONSTRAINT IF EXISTS su_contacts_contact_tag_check`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gender_at_birth VARCHAR(50)`,
