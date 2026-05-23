@@ -225,6 +225,21 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         dietInstructions: 'diet_instructions', address1: 'address1', address2: 'address2',
         address3: 'address3', postcode: 'postcode', email: 'email', phone: 'phone',
         keySafeCode: 'key_safe_code', needToKnow: 'need_to_know', myInstructions: 'my_instructions',
+        genderAtBirth: 'gender_at_birth', sexuality: 'sexuality',
+        carePlanLiveDate: 'care_plan_live_date', roomNumber: 'room_number',
+        teamInvolvement: 'team_involvement', mcaCapacity: 'mca_capacity',
+        dolsActive: 'dols_active', dolsStartDate: 'dols_start_date',
+        dolsEndDate: 'dols_end_date', dolsNotes: 'dols_notes',
+        cqcInformed: 'cqc_informed', hasLpa: 'has_lpa', lpaType: 'lpa_type',
+        lpaAttorney: 'lpa_attorney', hasCopOrder: 'has_cop_order', copDetails: 'cop_details',
+        banding: 'banding', personId: 'person_id',
+        funeralNoted: 'funeral_noted', funeralDetails: 'funeral_details',
+        funeralDirector: 'funeral_director',
+        bathFrequency: 'bath_frequency', bathPreferredTime: 'bath_preferred_time',
+        bathTeamSupport: 'bath_team_support', bathTypePref: 'bath_type_pref',
+        bathDirections: 'bath_directions', bathPreferredProducts: 'bath_preferred_products',
+        mealFrequency: 'meal_frequency', eatDirections: 'eat_directions',
+        eatTeamPreference: 'eat_team_preference',
       };
 
       const updates: string[] = [];
@@ -270,14 +285,14 @@ router.post('/:id/contacts', param('id').isUUID(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { fullName, relationship, contactTag, phonePrimary, phoneSecondary,
-              email, address1, address2, postcode, isPrimary, notes, displayOrder } = req.body;
+              phoneHome, email, address1, address2, postcode, isPrimary, notes, displayOrder } = req.body;
       const rows = await query(
         `INSERT INTO su_contacts (su_id, full_name, relationship, contact_tag,
-          phone_primary, phone_secondary, email, address1, address2, postcode,
+          phone_primary, phone_secondary, phone_home, email, address1, address2, postcode,
           is_primary, notes, display_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
         [req.params.id, fullName, relationship || null, contactTag || null,
-         phonePrimary || null, phoneSecondary || null, email || null,
+         phonePrimary || null, phoneSecondary || null, phoneHome || null, email || null,
          address1 || null, address2 || null, postcode || null,
          isPrimary || false, notes || null, displayOrder || 0]
       );
@@ -291,17 +306,17 @@ router.put('/:id/contacts/:contactId',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { fullName, relationship, contactTag, phonePrimary, phoneSecondary,
-              email, isPrimary, notes, displayOrder } = req.body;
+              phoneHome, email, isPrimary, notes, displayOrder } = req.body;
       const rows = await query(
         `UPDATE su_contacts SET
           full_name=COALESCE($1,full_name), relationship=COALESCE($2,relationship),
           contact_tag=COALESCE($3,contact_tag), phone_primary=COALESCE($4,phone_primary),
-          phone_secondary=COALESCE($5,phone_secondary), email=COALESCE($6,email),
-          is_primary=COALESCE($7,is_primary), notes=COALESCE($8,notes),
-          display_order=COALESCE($9,display_order)
-         WHERE id=$10 AND su_id=$11 RETURNING *`,
+          phone_secondary=COALESCE($5,phone_secondary), phone_home=COALESCE($6,phone_home),
+          email=COALESCE($7,email), is_primary=COALESCE($8,is_primary),
+          notes=COALESCE($9,notes), display_order=COALESCE($10,display_order)
+         WHERE id=$11 AND su_id=$12 RETURNING *`,
         [fullName, relationship, contactTag, phonePrimary, phoneSecondary,
-         email, isPrimary, notes, displayOrder, req.params.contactId, req.params.id]
+         phoneHome, email, isPrimary, notes, displayOrder, req.params.contactId, req.params.id]
       );
       if (!rows.length) throw new AppError('Contact not found', 404);
       res.json({ success: true, data: rows[0] } as ApiResponse);

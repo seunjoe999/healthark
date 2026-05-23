@@ -103,10 +103,10 @@ router.post('/generate', requireRole('home_manager', 'group_admin', 'senior_care
           await query(`
             INSERT INTO timesheet_entries (timesheet_id, clockin_id, work_date, start_time, end_time, hours_worked)
             VALUES ($1,$2,$3,$4,$5,$6)`,
-            [ts[0].id, s.id, new Date(s.clock_in_time).toISOString().split('T')[0],
-             new Date(s.clock_in_time).toTimeString().substring(0, 5),
-             new Date(s.clock_out_time).toTimeString().substring(0, 5),
-             parseFloat(s.hours_worked || 0).toFixed(2)]
+            [ts[0].id, s.id, new Date(s.clock_in_time as string).toISOString().split('T')[0],
+             new Date(s.clock_in_time as string).toTimeString().substring(0, 5),
+             new Date(s.clock_out_time as string).toTimeString().substring(0, 5),
+             parseFloat(String(s.hours_worked || 0)).toFixed(2)]
           );
         }
       }
