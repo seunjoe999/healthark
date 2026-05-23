@@ -96,7 +96,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/setup" element={<Setup />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/messages" replace />} />
       <Route path="/clockin/home/:token" element={<ClockIn />} />
       <Route path="/clockin/:token" element={<ClockIn />} />
       <Route path="/clockin-admin" element={<ProtectedRoute><ClockInAdmin /></ProtectedRoute>} />

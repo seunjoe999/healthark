@@ -5,12 +5,12 @@ import { homesApi } from '../../api'
 import api from '../../api'
 import {
   Users, UserSquare, Bell, FileText, Clock, AlertTriangle,
-  CheckCircle, Activity, ArrowRight, CalendarDays, Pill,
-  ClipboardList, TrendingUp, Shield, Search, Wrench,
-  Droplets, Target, ShieldCheck, History, MessageSquare,
-  Star, ChevronRight, Stethoscope, UserCheck, Calendar
+  CheckCircle, ArrowRight, CalendarDays, Pill,
+  ClipboardList, Wrench, Droplets, Target, ShieldCheck,
+  MessageSquare, ChevronRight, Stethoscope, UserCheck, Calendar,
+  Star, History, Activity, Search, Gift, BookOpen
 } from 'lucide-react'
-import { Spinner, AlertSeverityBadge } from '../../components/ui'
+import { Spinner } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 
@@ -63,7 +63,9 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-7">
         <div>
           <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
-          <h1 className="text-2xl font-bold text-white">{greeting}, <span style={{ color: '#e8b130' }}>{user?.firstName}</span></h1>
+          <h1 className="text-2xl font-bold text-white">
+            {greeting}, <span style={{ color: '#e8b130' }}>{user?.firstName}</span>
+          </h1>
         </div>
         <div className="flex items-center gap-3">
           {homes.length > 1 && (
@@ -71,7 +73,8 @@ export default function Dashboard() {
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
-          <Link to="/search" className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
+          <Link to="/search"
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
             style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.25)' }} title="Search">
             <Search className="w-4 h-4 text-amber-400" />
           </Link>
@@ -80,21 +83,71 @@ export default function Dashboard() {
 
       {loading ? <Spinner /> : !data ? null : (
         <>
-          {/* Primary KPI Row */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
-            <KPICard label="Service Users" value={stats.suLive ?? 0} icon={<Users className="w-4 h-4" />} color="#10b981" to="/service-users" sub={`${stats.suPreAdmission ?? 0} pre-admission`} />
-            <KPICard label="Staff Active" value={stats.staffActive ?? 0} icon={<UserSquare className="w-4 h-4" />} color="#3b82f6" to="/staff" sub={`${todayShifts.length} on shift today`} />
-            <KPICard label="Unread Alerts" value={stats.alertsUnresolved ?? 0} icon={<Bell className="w-4 h-4" />} color={stats.alertsUnresolved > 0 ? '#ef4444' : '#10b981'} to="/alerts" urgent={stats.alertsUnresolved > 0} />
-            <KPICard label="Support Plans Due" value={stats.carePlansOverdue ?? 0} icon={<FileText className="w-4 h-4" />} color={stats.carePlansOverdue > 0 ? '#f59e0b' : '#10b981'} to="/care-plans" urgent={stats.carePlansOverdue > 0} />
-            <KPICard label="Open Maintenance" value={maintenanceStats?.open_count ?? 0} icon={<Wrench className="w-4 h-4" />} color={maintenanceStats?.urgent_count > 0 ? '#ef4444' : '#8b5cf6'} to="/maintenance" sub={maintenanceStats?.urgent_count > 0 ? `${maintenanceStats.urgent_count} urgent` : undefined} urgent={maintenanceStats?.urgent_count > 0} />
-            <KPICard label="Messages" value={stats.unreadMessages ?? 0} icon={<MessageSquare className="w-4 h-4" />} color="#06b6d4" to="/messages" />
+          {/* ── BIG STAT CARDS (RoundSys style) ── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <BigStatCard
+              label="Service Users"
+              value={stats.suLive ?? 0}
+              sub={stats.suPreAdmission ? `${stats.suPreAdmission} pre-admission` : undefined}
+              color="#e8b130"
+              to="/service-users"
+            />
+            <BigStatCard
+              label="Staff Active"
+              value={stats.staffActive ?? 0}
+              sub={`${todayShifts.length} on shift today`}
+              color="#3b82f6"
+              to="/staff"
+            />
+            <BigStatCard
+              label="Tasks Overdue"
+              value={stats.tasksOverdue ?? 0}
+              color={stats.tasksOverdue > 0 ? '#ef4444' : '#10b981'}
+              to="/tasks"
+              urgent={stats.tasksOverdue > 0}
+            />
+            <BigStatCard
+              label="Unread Messages"
+              value={stats.unreadMessages ?? 0}
+              color="#06b6d4"
+              to="/messages"
+            />
+            <BigStatCard
+              label="Unresolved Alerts"
+              value={stats.alertsUnresolved ?? 0}
+              color={stats.alertsUnresolved > 0 ? '#ef4444' : '#10b981'}
+              to="/alerts"
+              urgent={stats.alertsUnresolved > 0}
+            />
+            <BigStatCard
+              label="Support Plans Due"
+              value={stats.carePlansOverdue ?? 0}
+              color={stats.carePlansOverdue > 0 ? '#f59e0b' : '#10b981'}
+              to="/care-plans"
+              urgent={stats.carePlansOverdue > 0}
+            />
+            <BigStatCard
+              label="Open Maintenance"
+              value={maintenanceStats?.open_count ?? 0}
+              sub={maintenanceStats?.urgent_count > 0 ? `${maintenanceStats.urgent_count} urgent` : undefined}
+              color={maintenanceStats?.urgent_count > 0 ? '#ef4444' : '#8b5cf6'}
+              to="/maintenance"
+              urgent={maintenanceStats?.urgent_count > 0}
+            />
+            <BigStatCard
+              label={`Birthdays (7 days)`}
+              value={birthdays.length}
+              color="#f472b6"
+              to="/service-users"
+            />
           </div>
 
-          {/* Action banners */}
+          {/* ── Action banners ── */}
           {(pendingHolidays.length > 0 || stats.alertsUnresolved > 0 || maintenanceStats?.urgent_count > 0) && (
-            <div className="flex flex-wrap gap-3 mb-5">
+            <div className="flex flex-wrap gap-3 mb-6">
               {pendingHolidays.length > 0 && (
-                <Link to="/holidays" className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                <Link to="/holidays"
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
                   style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}>
                   <CalendarDays className="w-4 h-4" />
                   {pendingHolidays.length} holiday request{pendingHolidays.length > 1 ? 's' : ''} awaiting approval
@@ -102,7 +155,8 @@ export default function Dashboard() {
                 </Link>
               )}
               {stats.alertsUnresolved > 0 && (
-                <Link to="/alerts" className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                <Link to="/alerts"
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
                   style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
                   <AlertTriangle className="w-4 h-4" />
                   {stats.alertsUnresolved} unresolved alert{stats.alertsUnresolved > 1 ? 's' : ''}
@@ -110,18 +164,19 @@ export default function Dashboard() {
                 </Link>
               )}
               {maintenanceStats?.urgent_count > 0 && (
-                <Link to="/maintenance" className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                <Link to="/maintenance"
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
                   style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
                   <Wrench className="w-4 h-4" />
-                  {maintenanceStats.urgent_count} urgent maintenance issue{maintenanceStats.urgent_count > 1 ? 's' : ''}
+                  {maintenanceStats.urgent_count} urgent maintenance
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               )}
             </div>
           )}
 
+          {/* ── Bottom grid: Alerts + Shifts | Quick Actions ── */}
           <div className="grid lg:grid-cols-3 gap-5">
-            {/* LEFT: Alerts + Shifts */}
             <div className="lg:col-span-2 space-y-5">
 
               {/* Active Alerts */}
@@ -138,13 +193,13 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ) : alerts.slice(0, 6).map((alert: any) => (
-                  <div key={alert.id} className="flex items-start gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'rgba(232,177,48,0.08)' }}>
+                  <div key={alert.id} className="flex items-start gap-3 px-4 py-3 border-b last:border-0"
+                    style={{ borderColor: 'rgba(232,177,48,0.08)' }}>
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${alert.severity === 'critical' ? 'bg-rose-500' : alert.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">{alert.title}</p>
                       <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{alert.description}</p>
                     </div>
-                    <AlertSeverityBadge severity={alert.severity} />
                   </div>
                 ))}
               </DashSection>
@@ -154,7 +209,8 @@ export default function Dashboard() {
                 {todayShifts.length === 0 ? (
                   <p className="text-sm text-slate-400 px-4 py-4">No shifts scheduled today</p>
                 ) : todayShifts.slice(0, 8).map((s: any) => (
-                  <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'rgba(232,177,48,0.08)' }}>
+                  <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b last:border-0"
+                    style={{ borderColor: 'rgba(232,177,48,0.08)' }}>
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-slate-900 flex-shrink-0"
                       style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
                       {(s.staff_name || '?').split(' ').map((n: string) => n[0]).join('')}
@@ -173,12 +229,12 @@ export default function Dashboard() {
 
               {/* Birthdays */}
               {birthdays.length > 0 && (
-                <DashSection title="Birthdays This Week" to="" toLabel="">
+                <DashSection title="🎂 Birthdays This Week" to="" toLabel="">
                   <div className="flex flex-wrap gap-3 p-4">
                     {birthdays.map((b: any, i: number) => (
                       <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                        style={{ background: 'rgba(232,177,48,0.08)', border: '1px solid rgba(232,177,48,0.2)' }}>
-                        <span>🎂</span>
+                        style={{ background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.25)' }}>
+                        <Gift className="w-3.5 h-3.5 text-pink-400" />
                         <span className="text-white font-medium">{b.first_name} {b.last_name}</span>
                         <span className="text-slate-400 text-xs capitalize">{(b.type || '').replace('_', ' ')}</span>
                       </div>
@@ -188,20 +244,19 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* RIGHT: Quick Actions + Module shortcuts */}
+            {/* RIGHT: Quick Actions + Modules */}
             <div className="space-y-5">
-              {/* Quick actions */}
               <DashSection title="Quick Actions" to="" toLabel="">
                 <div className="p-3 space-y-1">
                   {[
-                    { label: 'Add Daily Record', to: '/daily-records', icon: <ClipboardList className="w-4 h-4" />, color: '#8b5cf6' },
-                    { label: 'Log Medication (MAR)', to: '/mar', icon: <Pill className="w-4 h-4" />, color: '#3b82f6' },
-                    { label: 'Log Bath / Shower', to: '/bath-chart', icon: <Droplets className="w-4 h-4" />, color: '#06b6d4' },
-                    { label: 'Report Maintenance Issue', to: '/maintenance', icon: <Wrench className="w-4 h-4" />, color: '#f59e0b' },
-                    { label: 'View Support Plans', to: '/care-plans', icon: <FileText className="w-4 h-4" />, color: '#10b981' },
-                    { label: 'Record Incident', to: '/incidents', icon: <AlertTriangle className="w-4 h-4" />, color: '#ef4444' },
-                    { label: 'View Care Outcomes', to: '/outcomes', icon: <Target className="w-4 h-4" />, color: '#f59e0b' },
-                    { label: 'Run Audit', to: '/audits', icon: <Activity className="w-4 h-4" />, color: '#e8b130' },
+                    { label: 'Add Daily Record',       to: '/daily-records',       icon: <ClipboardList className="w-4 h-4" />, color: '#8b5cf6' },
+                    { label: 'Log Medication (MAR)',    to: '/mar',                 icon: <Pill className="w-4 h-4" />,          color: '#3b82f6' },
+                    { label: 'Log Bath / Shower',      to: '/bath-chart',          icon: <Droplets className="w-4 h-4" />,      color: '#06b6d4' },
+                    { label: 'New Diary Entry',        to: '/diary',               icon: <BookOpen className="w-4 h-4" />,      color: '#a78bfa' },
+                    { label: 'Log Professional Visit', to: '/professional-visits', icon: <Stethoscope className="w-4 h-4" />,   color: '#34d399' },
+                    { label: 'Report Maintenance',     to: '/maintenance',         icon: <Wrench className="w-4 h-4" />,        color: '#f59e0b' },
+                    { label: 'Record Incident',        to: '/incidents',           icon: <AlertTriangle className="w-4 h-4" />, color: '#ef4444' },
+                    { label: 'Run Audit',              to: '/audits',              icon: <Activity className="w-4 h-4" />,      color: '#e8b130' },
                   ].map(qa => (
                     <Link key={qa.to} to={qa.to}
                       className="flex items-center gap-3 p-2.5 rounded-xl transition-all group"
@@ -219,16 +274,15 @@ export default function Dashboard() {
                 </div>
               </DashSection>
 
-              {/* Module overview */}
               <DashSection title="Module Overview" to="" toLabel="">
                 <div className="p-3 grid grid-cols-3 gap-2">
                   {[
-                    { label: 'Compliance', to: '/compliance', icon: <ShieldCheck className="w-4 h-4" />, color: '#10b981' },
-                    { label: 'DBS', to: '/dbs', icon: <UserCheck className="w-4 h-4" />, color: '#3b82f6' },
-                    { label: 'Timesheets', to: '/timesheets', icon: <Clock className="w-4 h-4" />, color: '#8b5cf6' },
-                    { label: 'Training', to: '/training', icon: <Star className="w-4 h-4" />, color: '#f59e0b' },
-                    { label: 'Calendar', to: '/calendar', icon: <Calendar className="w-4 h-4" />, color: '#06b6d4' },
-                    { label: 'Audit Trail', to: '/audit-trail', icon: <History className="w-4 h-4" />, color: '#6b7280' },
+                    { label: 'Compliance', to: '/compliance',   icon: <ShieldCheck className="w-4 h-4" />, color: '#10b981' },
+                    { label: 'DBS',        to: '/dbs',          icon: <UserCheck className="w-4 h-4" />,   color: '#3b82f6' },
+                    { label: 'Timesheets', to: '/timesheets',   icon: <Clock className="w-4 h-4" />,       color: '#8b5cf6' },
+                    { label: 'Training',   to: '/training',     icon: <Star className="w-4 h-4" />,        color: '#f59e0b' },
+                    { label: 'Calendar',   to: '/calendar',     icon: <Calendar className="w-4 h-4" />,    color: '#06b6d4' },
+                    { label: 'Audit Trail',to: '/audit-trail',  icon: <History className="w-4 h-4" />,     color: '#6b7280' },
                   ].map(m => (
                     <Link key={m.to} to={m.to}
                       className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-center transition-all"
@@ -252,27 +306,42 @@ export default function Dashboard() {
   )
 }
 
-function KPICard({ label, value, icon, color, to, sub, urgent }: {
-  label: string; value: number | string; icon: React.ReactNode; color: string; to: string; sub?: string; urgent?: boolean
+// ── Big stat card (RoundSys-style) ──────────────────────────────────────────
+function BigStatCard({ label, value, sub, color, to, urgent }: {
+  label: string; value: number | string; sub?: string; color: string; to: string; urgent?: boolean
 }) {
   return (
-    <Link to={to} className="card p-4 block group transition-all duration-200 hover:border-amber-500/30"
-      style={urgent ? { borderColor: `${color}40` } : {}}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}15`, color }}>
-          {icon}
-        </div>
-        {urgent && <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: color }} />}
-      </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-xs text-slate-400 font-medium mt-0.5 leading-tight">{label}</p>
-      {sub && <p className="text-xs mt-1" style={{ color: `${color}` }}>{sub}</p>}
+    <Link to={to}
+      className="block rounded-2xl p-6 transition-all duration-200 group relative overflow-hidden"
+      style={{
+        background: '#111111',
+        border: `1px solid ${urgent ? color + '50' : 'rgba(255,255,255,0.06)'}`,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = color + '60'; e.currentTarget.style.background = '#161616' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = urgent ? color + '50' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = '#111111' }}>
+      {/* Subtle glow blob */}
+      <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 -translate-y-8 translate-x-8 pointer-events-none"
+        style={{ background: color, filter: 'blur(24px)' }} />
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3 leading-tight"
+        style={{ color: color + 'cc' }}>
+        {label}
+      </p>
+      <p className="text-5xl font-black leading-none" style={{ color }}>
+        {value}
+      </p>
+      {sub && (
+        <p className="text-xs mt-2 font-medium" style={{ color: color + '99' }}>{sub}</p>
+      )}
+      {urgent && (
+        <span className="absolute top-3 right-3 w-2 h-2 rounded-full animate-pulse" style={{ background: color }} />
+      )}
     </Link>
   )
 }
 
-function DashSection({ title, to, toLabel, children }: { title: string; to: string; toLabel: string; children: React.ReactNode }) {
+function DashSection({ title, to, toLabel, children }: {
+  title: string; to: string; toLabel: string; children: React.ReactNode
+}) {
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(232,177,48,0.1)' }}>
