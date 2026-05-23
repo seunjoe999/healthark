@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-import { Spinner, EmptyState, Button } from '../../components/ui'
+import { Spinner, EmptyState, Button, PrintButton } from '../../components/ui'
 import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -148,15 +148,18 @@ export default function Incidents() {
             All recorded incidents for {homes.find(h => h.id === selectedHome)?.name || 'the home'}
           </p>
         </div>
-        {homes.length > 1 && (
-          <select
-            className="input w-auto"
-            value={selectedHome}
-            onChange={e => setSelectedHome(e.target.value)}
-          >
-            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          {homes.length > 1 && (
+            <select
+              className="input w-auto"
+              value={selectedHome}
+              onChange={e => setSelectedHome(e.target.value)}
+            >
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
       {/* Stats row */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { Button, Card, SectionHeading, Modal, Input } from '../../components/ui'
+import { Button, Card, SectionHeading, Modal, Input, PrintButton } from '../../components/ui'
 import { BookOpen, CheckCircle, Lock, Play, Award, ChevronRight, X, RotateCcw } from 'lucide-react'
 import api from '../../api'
 import toast from 'react-hot-toast'
@@ -139,9 +139,12 @@ export default function Training() {
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">Learn how to use CompCare Hub</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-slate-900 font-display">{totalCompleted}/{MODULES.length}</p>
-          <p className="text-xs text-slate-400">modules completed</p>
+        <div className="flex items-center gap-4">
+          <PrintButton />
+          <div className="text-right">
+            <p className="text-2xl font-bold text-slate-900 font-display">{totalCompleted}/{MODULES.length}</p>
+            <p className="text-xs text-slate-400">modules completed</p>
+          </div>
         </div>
       </div>
 

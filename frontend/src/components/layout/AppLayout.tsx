@@ -167,7 +167,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
-      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
+      <aside className="no-print hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
         <Sidebar {...sidebarProps} />
       </aside>
       {mobileOpen && (
@@ -180,7 +180,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       )}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="lg:hidden px-4 py-3 flex items-center gap-3" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)' }}>
+        <header className="no-print lg:hidden px-4 py-3 flex items-center gap-3" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)' }}>
           <button onClick={() => setMobileOpen(true)} style={{ color: '#e8b130' }} className="p-1"><Menu className="w-5 h-5" /></button>
           <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
           <span className="text-base flex-1 truncate font-bold" style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}>{pageTitle}</span>

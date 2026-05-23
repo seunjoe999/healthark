@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Stethoscope, Plus, CalendarClock, CheckCircle2 } from 'lucide-react'
-import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import { format, isPast, parseISO } from 'date-fns'
@@ -105,9 +105,12 @@ export default function ProfessionalVisits() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">GP, OT, nursing and other professional visit records</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-          Log Visit
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+            Log Visit
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

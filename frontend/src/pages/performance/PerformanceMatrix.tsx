@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { BarChart3, Plus, Star, CheckCircle2, XCircle } from 'lucide-react'
-import { Button, Modal, Select, Input, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Select, Input, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
@@ -131,11 +131,14 @@ export default function PerformanceMatrix() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Staff performance reviews and compliance tracking</p>
         </div>
-        {canAssess && (
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-            New Review
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          {canAssess && (
+            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+              New Review
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react'
 import { Droplets, Plus, Calendar, Users } from 'lucide-react'
-import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 
@@ -94,9 +94,12 @@ export default function BathChart() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Personal hygiene and bathing records</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-          Log Bath / Shower
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+            Log Bath / Shower
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

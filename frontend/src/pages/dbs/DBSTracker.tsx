@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react'
 import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
-import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
@@ -116,11 +116,14 @@ export default function DBSTracker() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">DBS checks, references & right to work documents</p>
         </div>
-        {isRole('home_manager', 'group_admin') && (
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-            Add Document
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          {isRole('home_manager', 'group_admin') && (
+            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+              Add Document
+            </Button>
+          )}
+        </div>
       </div>
 
       {(expiringSoon > 0 || expired > 0) && (

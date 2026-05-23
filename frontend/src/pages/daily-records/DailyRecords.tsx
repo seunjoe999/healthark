@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, subDays, parseISO } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Select, Input } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Select, Input, PrintButton } from '../../components/ui'
 import { ClipboardList, Plus, Search, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
@@ -176,6 +176,7 @@ export default function DailyRecords() {
                     <ChevronRight className="w-4 h-4 text-slate-600" />
                   </button>
                 </div>
+                <PrintButton />
                 {isToday && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add record</Button>}
               </div>
             </div>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { assessmentsApi, homesApi, suApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Select } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Select, PrintButton } from '../../components/ui'
 import { ClipboardCheck, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -97,11 +97,14 @@ export default function Assessments() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Conduct and manage care assessments</p>
         </div>
-        {homes.length > 1 && (
-          <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          {homes.length > 1 && (
+            <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

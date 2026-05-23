@@ -3,7 +3,7 @@ import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading, PrintButton } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, ChevronDown, ChevronUp, Printer, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -185,7 +185,8 @@ export default function CarePlans() {
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-slate-900">{getName(selectedSu)}</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <PrintButton />
                 <Button size="sm" variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddRiskOpen(true)}>Add risk</Button>
                 <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>
               </div>

@@ -3,7 +3,7 @@ import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
 import { Star, AlertTriangle, Plus, Lock, Users, Brain, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -99,7 +99,10 @@ export default function Quality() {
             <>
               <div className="flex items-center justify-between mb-5">
                 <h2 className="font-display text-xl text-slate-900">Home-level Quality Records</h2>
-                <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddQAOpen(true)}>Record complaint / compliment</Button>
+                <div className="flex items-center gap-2">
+                  <PrintButton />
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddQAOpen(true)}>Record complaint / compliment</Button>
+                </div>
               </div>
               {qaRecords.length === 0 ? (
                 <EmptyState title="No QA records yet" description="Record complaints, compliments, feedback and concerns"

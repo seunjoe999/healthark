@@ -149,3 +149,52 @@
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes slideInLeft { 0% { opacity: 0; transform: translateX(-12px); } 100% { opacity: 1; transform: translateX(0); } }
 @keyframes pulseSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+/* ── Print styles ────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide navigation, sidebar, buttons, and non-content UI */
+  nav, aside, header,
+  [data-sidebar], [data-nav],
+  .no-print, .btn-print-hide,
+  button:not(.print-show) { display: none !important; }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12px !important;
+    margin: 0 !important;
+  }
+
+  /* Make page content full width */
+  main, [data-main], .print-content {
+    margin: 0 !important;
+    padding: 1rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Light theme for cards and tables */
+  .card, [class*="rounded-2xl"], [class*="rounded-xl"] {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; color: #000 !important; background: #fff !important; }
+  th { background: #f3f4f6 !important; font-weight: bold; }
+
+  /* Prevent page breaks inside rows */
+  tr { page-break-inside: avoid; }
+
+  /* Ensure text is readable */
+  * { color: #000 !important; background-color: transparent !important; }
+  .text-slate-400, .text-slate-500 { color: #555 !important; }
+
+  a { color: #000 !important; text-decoration: none !important; }
+  .badge { border: 1px solid #aaa !important; }
+
+  /* Print header */
+  .print-header { display: block !important; }
+}

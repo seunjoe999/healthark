@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ShieldAlert, Plus, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
-import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
@@ -109,9 +109,12 @@ export default function MedicineRisk() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Medication administration risk for each resident</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-          New Assessment
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+            New Assessment
+          </Button>
+        </div>
       </div>
 
       {highRisk > 0 && (

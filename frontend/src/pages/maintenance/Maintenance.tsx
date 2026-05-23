@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react'
 import { Wrench, Plus, AlertTriangle, CheckCircle, Clock, Filter, Search } from 'lucide-react'
-import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
@@ -116,9 +116,12 @@ export default function Maintenance() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Track and resolve facility issues</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNew(true)}>
-          Report Issue
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNew(true)}>
+            Report Issue
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

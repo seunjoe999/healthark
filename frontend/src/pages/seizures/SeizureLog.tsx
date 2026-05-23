@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Zap, Plus, AlertTriangle, Clock } from 'lucide-react'
-import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
@@ -83,9 +83,12 @@ export default function SeizureLog() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Record and track seizure episodes</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-          Log Seizure
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+            Log Seizure
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

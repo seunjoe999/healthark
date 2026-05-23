@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info } from 'lucide-react'
-import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
@@ -91,9 +91,12 @@ export default function Noticeboard() {
             {unread > 0 && <span className="ml-2 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-xs font-bold">{unread} unread</span>}
           </p>
         </div>
-        {canPost && (
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>Post Notice</Button>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintButton />
+          {canPost && (
+            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>Post Notice</Button>
+          )}
+        </div>
       </div>
 
       {/* Filter */}
