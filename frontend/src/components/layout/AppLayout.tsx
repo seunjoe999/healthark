@@ -150,13 +150,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarProps: SidebarProps = { user, logout, isRole, onNavClick: () => setMobileOpen(false) }
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(21,31,53,0.12)' }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
+      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
         <Sidebar {...sidebarProps} />
       </aside>
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <div className="relative w-64 flex flex-col z-10 shadow-2xl">
             <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
             <Sidebar {...sidebarProps} />
@@ -164,13 +164,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       )}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="lg:hidden bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
-          <button onClick={() => setMobileOpen(true)} className="text-slate-500 p-1 hover:text-slate-900"><Menu className="w-5 h-5" /></button>
+        <header className="lg:hidden px-4 py-3 flex items-center gap-3" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)' }}>
+          <button onClick={() => setMobileOpen(true)} style={{ color: '#e8b130' }} className="p-1"><Menu className="w-5 h-5" /></button>
           <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
-          <span className="font-display text-slate-900 text-base flex-1 truncate">{pageTitle}</span>
+          <span className="text-base flex-1 truncate font-bold" style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}>{pageTitle}</span>
           <NotificationsBell />
         </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto" style={{ background: '#0a0a0a' }}>{children}</main>
       </div>
     </div>
   )
