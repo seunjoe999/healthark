@@ -117,7 +117,7 @@ export default function Incidents() {
   const handleSearch = (e: React.FormEvent) => { e.preventDefault() }
 
   const deleteIncident = async (inc: any) => {
-    if (!window.confirm(`Delete this incident report for ${inc.resident_name || 'this resident'}? This cannot be undone.`)) return
+    if (!window.confirm(`Delete this incident report for ${inc.resident_name || 'this service user'}? This cannot be undone.`)) return
     try {
       // Try deleting by incident record id first, fallback to daily_record_id
       await api.delete(`/incidents/${inc.id}`)
@@ -173,13 +173,13 @@ export default function Incidents() {
           {/* Search */}
           <div className="flex-1 min-w-[180px]">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
-              Resident name
+              Service User Name
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 className="input pl-9"
-                placeholder="Search resident..."
+                placeholder="Search service user..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -282,7 +282,7 @@ export default function Incidents() {
                 {isExpanded && (
                   <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <IncidentField label="Resident" value={inc.resident_name} />
+                      <IncidentField label="Service User" value={inc.resident_name} />
                       <IncidentField label="Incident type" value={TYPE_LABELS[incidentType] || incidentType} />
                       <IncidentField label="Date" value={inc.record_date ? format(new Date(inc.record_date), 'd MMMM yyyy') : ''} />
                       {inc.location && <IncidentField label="Location" value={inc.location} />}
@@ -291,7 +291,7 @@ export default function Incidents() {
                       <IncidentField label="Medical attention" value={inc.medical_needed ? `Yes${inc.medical_details ? ` — ${inc.medical_details}` : ''}` : 'No'} />
                       {inc.safeguarding_ref && <IncidentField label="Safeguarding" value="Safeguarding referral made" />}
                     </div>
-                    {inc.description && <IncidentField label="Description" value={inc.description} />}
+                    {inc.description && <IncidentField label="Details of Incident" value={inc.description} />}
                     {inc.witnesses && <IncidentField label="Witnesses" value={inc.witnesses} />}
                     {inc.immediate_action && <IncidentField label="Immediate action taken" value={inc.immediate_action} />}
                     {isRole('home_manager', 'group_admin') && (

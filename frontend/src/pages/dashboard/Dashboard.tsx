@@ -6,7 +6,7 @@ import api from '../../api'
 import {
   Users, UserSquare, Bell, FileText, Clock, AlertTriangle,
   CheckCircle, Activity, ArrowRight, CalendarDays, Pill,
-  ClipboardList, TrendingUp, Shield
+  ClipboardList, TrendingUp, Shield, Search
 } from 'lucide-react'
 import { Spinner, AlertSeverityBadge } from '../../components/ui'
 import { Link } from 'react-router-dom'
@@ -69,18 +69,23 @@ export default function Dashboard() {
           <p className="text-slate-400 text-sm font-medium mb-1">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
           <h1 className="font-display text-3xl text-slate-900">{greeting}, {user?.firstName}</h1>
         </div>
-        {homes.length > 1 && (
-          <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-        )}
+        <div className="flex items-center gap-3">
+          {homes.length > 1 && (
+            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+          <Link to="/search" className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors" title="Search">
+            <Search className="w-4 h-4 text-slate-600" />
+          </Link>
+        </div>
       </div>
 
       {loading ? <Spinner /> : !data ? null : (
         <>
           {/* Stats row */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <StatCard label="Residents" value={data.stats?.suLive ?? 0} icon={<Users className="w-5 h-5" />} accent="#10b981" to="/service-users" />
+            <StatCard label="Service Users" value={data.stats?.suLive ?? 0} icon={<Users className="w-5 h-5" />} accent="#10b981" to="/service-users" />
             <StatCard label="Staff active" value={data.stats?.staffActive ?? 0} icon={<UserSquare className="w-5 h-5" />} accent="#3b82f6" to="/staff" />
             <StatCard label="Alerts" value={data.stats?.alertsUnresolved ?? 0} icon={<Bell className="w-5 h-5" />} accent={data.stats?.alertsUnresolved > 0 ? '#ef4444' : '#10b981'} to="/alerts" highlight={data.stats?.alertsUnresolved > 0} />
             <StatCard label="Plans overdue" value={data.stats?.carePlansOverdue ?? 0} icon={<FileText className="w-5 h-5" />} accent={data.stats?.carePlansOverdue > 0 ? '#f59e0b' : '#10b981'} to="/care-plans" highlight={data.stats?.carePlansOverdue > 0} />

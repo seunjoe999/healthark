@@ -8,32 +8,40 @@ import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, ChevronDown, C
 import toast from 'react-hot-toast'
 
 const PLAN_TYPES = [
-  { value: 'physical', label: 'Physical care plan' },
-  { value: 'communication', label: 'Communication care plan' },
-  { value: 'oral_care', label: 'Oral care plan' },
-  { value: 'medical', label: 'Medical care plan' },
-  { value: 'food_and_fluids', label: 'Food & fluids plan' },
-  { value: 'one_page_profile', label: 'One page profile' },
-  { value: 'finance', label: 'Finance care plan' },
-  { value: 'visitation', label: 'Visitation plan' },
-  { value: 'vulnerability', label: 'Vulnerability plan' },
-  { value: 'personal_hygiene', label: 'Personal hygiene plan' },
-  { value: 'hydration_skin', label: 'Hydration & skin care' },
-  { value: 'social_activities', label: 'Social activities plan' },
-  { value: 'community_access', label: 'Community access plan' },
-  { value: 'distress_behaviour', label: 'Distress behaviour plan' },
-  { value: 'crisis', label: 'Crisis care plan' },
-  { value: 'alcohol_use', label: 'Alcohol use plan' },
-  { value: 'home_safety', label: 'Home safety plan' },
-  { value: 'emotional_breakdown', label: 'Emotional breakdown plan' },
-  { value: 'positive_behaviour', label: 'Positive behaviour plan' },
-  { value: 'oral_care_assessment', label: 'Oral care assessment' },
-  { value: 'autism', label: 'Autism care plan' },
-  { value: 'pen_assessment', label: 'PEN assessment' },
-  { value: 'personal_evacuation', label: 'Personal evacuation plan' },
-  { value: 'end_of_life', label: 'End of life care plan' },
-  { value: 'adhd', label: 'ADHD care plan' },
-  { value: 'custom', label: 'Custom care plan' },
+  { value: 'physical_health', label: 'Physical Health Support Plan' },
+  { value: 'physical', label: 'Physical Support Plan' },
+  { value: 'communication', label: 'Communication Support Plan' },
+  { value: 'oral_care', label: 'Oral Care Support Plan' },
+  { value: 'medical', label: 'Medical Support Plan' },
+  { value: 'food_and_fluids', label: 'Food & Fluids Support Plan' },
+  { value: 'one_page_profile', label: 'One Page Profile' },
+  { value: 'finance', label: 'Finance Support Plan' },
+  { value: 'visitation', label: 'Visitation Support Plan' },
+  { value: 'vulnerability', label: 'Vulnerability Support Plan' },
+  { value: 'personal_hygiene', label: 'Personal Hygiene Support Plan' },
+  { value: 'hydration_skin', label: 'Hydration & Skin Care Support Plan' },
+  { value: 'social_activities', label: 'Social Activities Support Plan' },
+  { value: 'community_access', label: 'Community Access Support Plan' },
+  { value: 'distress_behaviour', label: 'Distress Behaviour Support Plan' },
+  { value: 'crisis', label: 'Crisis Support Plan' },
+  { value: 'alcohol_use', label: 'Alcohol Use Support Plan' },
+  { value: 'home_safety', label: 'Home Safety Support Plan' },
+  { value: 'emotional_breakdown', label: 'Emotional Breakdown Support Plan' },
+  { value: 'positive_behaviour', label: 'Positive Behaviour Support Plan' },
+  { value: 'oral_care_assessment', label: 'Oral Care Assessment' },
+  { value: 'autism', label: 'Autism Support Plan' },
+  { value: 'pen_assessment', label: 'PEN Assessment' },
+  { value: 'personal_evacuation', label: 'Personal Evacuation Support Plan' },
+  { value: 'end_of_life', label: 'End Of Life Support Plan' },
+  { value: 'adhd', label: 'ADHD Support Plan' },
+  { value: 'personal_care', label: 'Personal Care Support Plan' },
+  { value: 'mobility', label: 'Mobility Support Plan' },
+  { value: 'nutrition', label: 'Nutrition Support Plan' },
+  { value: 'continence', label: 'Continence Support Plan' },
+  { value: 'falls_prevention', label: 'Falls Prevention Support Plan' },
+  { value: 'dementia', label: 'Dementia Support Plan' },
+  { value: 'mental_health', label: 'Mental Health Support Plan' },
+  { value: 'custom', label: 'Custom Support Plan' },
 ]
 
 const FREQ_OPTIONS = [
@@ -98,12 +106,12 @@ export default function CarePlans() {
   }, [selectedHome])
 
   const deletePlan = async (id: string) => {
-    if (!window.confirm('Delete this care plan?')) return
+    if (!window.confirm('Delete this support plan?')) return
     try {
       await api.delete(`/care-plans/${id}`)
       setPlans(prev => prev.filter(p => p.id !== id))
       setSelectedPlan(null)
-      toast.success('Care plan deleted')
+      toast.success('Support plan deleted')
     } catch { toast.error('Failed to delete') }
   }
 
@@ -140,13 +148,13 @@ export default function CarePlans() {
       {/* Left — SU selector */}
       <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
         <div className="p-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900 mb-3">Care Plans & Risks</h2>
+          <h2 className="font-semibold text-slate-900 mb-3">Support Plans & Risks</h2>
           {homes.length > 1 && (
             <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
-          <input className="input text-sm" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="input text-sm" placeholder="Search service users..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex-1 overflow-y-auto">
           {filteredSus.map(su => {
@@ -171,7 +179,7 @@ export default function CarePlans() {
       <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
         {!selectedSu ? (
           <div className="flex items-center justify-center h-full">
-            <EmptyState title="Select a resident" description="Choose a resident to view their care plans and risk assessments" />
+            <EmptyState title="Select a service user" description="Choose a service user to view their support plans and risk assessments" />
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
@@ -179,14 +187,14 @@ export default function CarePlans() {
               <h2 className="text-xl font-bold text-slate-900">{getName(selectedSu)}</h2>
               <div className="flex gap-2">
                 <Button size="sm" variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddRiskOpen(true)}>Add risk</Button>
-                <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add care plan</Button>
+                <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>
               </div>
             </div>
 
             {/* Tabs */}
             <div className="flex gap-1 bg-white rounded-xl border border-slate-100 p-1 mb-4">
               <button onClick={() => setTab('plans')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'plans' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-                Care Plans ({plans.length})
+                Support Plans ({plans.length})
               </button>
               <button onClick={() => setTab('risks')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'risks' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
                 Risk Assessments ({risks.length})
@@ -195,8 +203,8 @@ export default function CarePlans() {
 
             {loading ? <Spinner /> : tab === 'plans' ? (
               plans.length === 0 ? (
-                <EmptyState title="No care plans yet" description="Add the first care plan for this resident"
-                  action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add care plan</Button>} />
+                <EmptyState title="No support plans yet" description="Add the first support plan for this service user"
+                  action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>} />
               ) : (
                 <div className="space-y-3">
                   {plans.map((plan: any) => (
@@ -243,7 +251,7 @@ export default function CarePlans() {
                             <EditPlanModal plan={plan} suId={selectedSu.id} onSaved={async () => {
                               const res = await api.get('/care-plans', { params: { suId: selectedSu.id } })
                               setPlans(res.data.data || [])
-                              toast.success('Care plan updated')
+                              toast.success('Support plan updated')
                             }} />
                             {isRole('home_manager', 'group_admin') && (
                               <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => deletePlan(plan.id)}>Delete</Button>
@@ -315,7 +323,7 @@ export default function CarePlans() {
         )}
       </div>
 
-      {/* Add care plan modal */}
+      {/* Add support plan modal */}
       <AddPlanModal open={addPlanOpen} onClose={() => setAddPlanOpen(false)}
         suId={selectedSu?.id} homeId={selectedHome}
         onSaved={async () => {
@@ -324,7 +332,7 @@ export default function CarePlans() {
             const res = await api.get('/care-plans', { params: { suId: selectedSu.id } })
             setPlans(res.data.data || [])
           }
-          toast.success('Care plan created')
+          toast.success('Support plan created')
         }} />
 
       {/* Add risk modal */}
@@ -348,23 +356,23 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: { open: boolean;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!suId) { toast.error('Please select a resident first'); return }
-    if (!form.planType) { toast.error('Please select a care plan type'); return }
+    if (!suId) { toast.error('Please select a service user first'); return }
+    if (!form.planType) { toast.error('Please select a support plan type'); return }
     setLoading(true)
     try {
       await api.post('/care-plans', { suId, homeId, ...form })
       onSaved()
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to create care plan'
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to create support plan'
       toast.error(msg)
     }
     finally { setLoading(false) }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add care plan" size="lg">
+    <Modal open={open} onClose={onClose} title="Add support plan" size="lg">
       <form onSubmit={save} className="space-y-4">
-        <Select label="Care plan type *" required value={form.planType} onChange={e => set('planType', e.target.value)} options={PLAN_TYPES} placeholder="Select type" />
+        <Select label="Support plan type *" required value={form.planType} onChange={e => set('planType', e.target.value)} options={PLAN_TYPES} placeholder="Select type" />
         {form.planType === 'custom' && <Input label="Custom name" required value={form.customName} onChange={e => set('customName', e.target.value)} />}
         <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} placeholder="What are we working towards for this person..." /></div>
         <div><label className="label">What I can do independently</label><textarea className="input" rows={3} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} placeholder="The person's strengths and capabilities..." /></div>
@@ -372,7 +380,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: { open: boolean;
         <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={loading}>Create care plan</Button>
+          <Button type="submit" loading={loading}>Create support plan</Button>
         </div>
       </form>
     </Modal>
@@ -396,7 +404,7 @@ function EditPlanModal({ plan, suId, onSaved }: { plan: any; suId: string; onSav
   return (
     <>
       <Button size="sm" variant="secondary" icon={<Edit className="w-4 h-4" />} onClick={() => setOpen(true)}>Review & update</Button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Review care plan" size="lg">
+      <Modal open={open} onClose={() => setOpen(false)} title="Review support plan" size="lg">
         <form onSubmit={save} className="space-y-4">
           <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
           <div><label className="label">What I can do</label><textarea className="input" rows={3} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
@@ -422,7 +430,7 @@ function AddRiskModal({ open, onClose, suId, onSaved }: { open: boolean; onClose
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!suId) { toast.error('Please select a resident first'); return }
+    if (!suId) { toast.error('Please select a service user first'); return }
     setLoading(true)
     try { await api.post('/risk-assessments', { suId, ...form }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed') }

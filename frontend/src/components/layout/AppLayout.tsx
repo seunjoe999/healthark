@@ -16,12 +16,12 @@ const navSections = [
     label: 'Care',
     items: [
       { label: 'Dashboard',        to: '/dashboard',          icon: LayoutDashboard, roles: [] },
-      { label: 'Search',           to: '/search',             icon: Search,          roles: [] },
-      { label: 'Residents',        to: '/service-users',      icon: Users,           roles: [] },
+      { label: 'Inbox',            to: '/messages',           icon: MessageSquare,   roles: [] },
+      { label: 'Service Users',    to: '/service-users',      icon: Users,           roles: [] },
       { label: 'Daily Records',    to: '/daily-records',      icon: ClipboardList,   roles: [] },
       { label: 'MAR Chart',        to: '/mar',                icon: Pill,            roles: [] },
       { label: 'Medication Stock', to: '/medication-stock',   icon: Boxes,           roles: ['home_manager','group_admin','senior_carer'] },
-      { label: 'Care Plans',       to: '/care-plans',         icon: FileText,        roles: [] },
+      { label: 'Support Plans',    to: '/care-plans',         icon: FileText,        roles: [] },
       { label: 'Safeguarding',     to: '/safeguarding',       icon: ShieldAlert,     roles: [] },
       { label: 'Incidents',        to: '/incidents',          icon: AlertTriangle,   roles: [] },
     ]
@@ -37,7 +37,6 @@ const navSections = [
       { label: 'Clock-In',         to: '/clockin-admin',      icon: QrCode,          roles: ['home_manager','group_admin'] },
       { label: 'Clock Analytics',  to: '/clockin-analytics',  icon: BarChart2,       roles: ['home_manager','group_admin'] },
       { label: 'Calendar',         to: '/calendar',           icon: Calendar,        roles: ['home_manager','group_admin'] },
-      { label: 'Messages',         to: '/messages',           icon: MessageSquare,   roles: [] },
       { label: 'Alerts',           to: '/alerts',             icon: Bell,            roles: [] },
       { label: 'Notifications',    to: '/notifications',      icon: Send,            roles: ['home_manager','group_admin'] },
     ]
@@ -73,21 +72,20 @@ interface SidebarProps {
 
 function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   return (
-    <div className="flex flex-col h-full" style={{ background: 'linear-gradient(160deg, #151f35 0%, #1e2d4a 40%, #27334d 100%)' }}>
+    <div className="flex flex-col h-full" style={{ background: '#000000' }}>
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
-            <img src="/logo.jpeg" alt="CompCare Hub" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
+            <img src="/logo.jpeg" alt="Comprehensive Care Service" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
             <div>
-              <h1 className="text-white font-display text-lg leading-none">CompCare Hub</h1>
-              <p className="text-slate-500 text-xs mt-0.5">Your Care Our Priority</p>
+              <h1 style={{ fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2, color: '#e8b130' }}>Comprehensive<br />Care Service</h1>
             </div>
           </div>
           <NotificationsBell />
         </div>
       </div>
 
-      <div className="mx-5 mb-4 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,150,26,0.4) 0%, rgba(212,150,26,0.1) 100%)' }} />
+      <div className="mx-5 mb-4 h-px" style={{ background: 'linear-gradient(90deg, rgba(232,177,48,0.6) 0%, rgba(232,177,48,0.15) 100%)' }} />
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-4 pb-4">
         {navSections.map(section => {

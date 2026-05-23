@@ -226,16 +226,16 @@ export function SectionHeading({ title, description }: { title: string; descript
 export function DNARBanner({ dnar, formUrl }: { dnar?: boolean; formUrl?: string }) {
   if (dnar === undefined || dnar === null) return null
   if (!dnar) return (
-    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-xl text-sm text-emerald-700 font-medium">
-      <CheckCircle className="w-4 h-4 text-emerald-500" />
-      CPR: For resuscitation
+    <div className="flex items-center gap-2.5 px-4 py-3 bg-emerald-500/10 border-2 border-emerald-500/30 rounded-xl">
+      <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+      <span className="text-emerald-800 font-black text-sm tracking-wide uppercase">CPR: For Resuscitation</span>
     </div>
   )
   return (
-    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-rose-500/10 border border-rose-500/25 rounded-xl text-sm text-rose-700 font-semibold">
-      <AlertTriangle className="w-4 h-4 text-rose-500" />
-      DNAR — Do Not Attempt Resuscitation
-      {formUrl && <a href={formUrl} target="_blank" rel="noreferrer" className="ml-auto text-xs font-medium underline opacity-70">View form</a>}
+    <div className="flex items-center gap-2.5 px-4 py-3 bg-rose-600 border-2 border-rose-700 rounded-xl">
+      <AlertTriangle className="w-5 h-5 text-white flex-shrink-0" />
+      <span className="text-white font-black text-sm tracking-wide uppercase">DNAR — Do Not Attempt Resuscitation</span>
+      {formUrl && <a href={formUrl} target="_blank" rel="noreferrer" className="ml-auto text-xs font-bold text-white/80 underline">View form</a>}
     </div>
   )
 }
