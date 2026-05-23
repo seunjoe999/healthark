@@ -126,6 +126,7 @@ router.get('/chart-report/:suId', param('suId').isUUID(), validateRequest,
 
       const records = await query(
         `SELECT mr.*,
+                LEFT(mr.scheduled_time::text, 5) as scheduled_time,
                 s.first_name || ' ' || s.last_name as given_by_name,
                 UPPER(LEFT(s.first_name,1) || LEFT(s.last_name,1)) as initials
          FROM mar_records mr
