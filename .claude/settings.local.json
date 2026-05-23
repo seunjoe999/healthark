@@ -18,7 +18,24 @@
       "Bash(npx tsc *)",
       "Bash(taskkill /F /IM node.exe)",
       "Bash(npm run *)",
-      "Bash(PGPASSWORD=HealthArk2024 /c/Program Files/PostgreSQL/18/bin/psql.exe *)"
+      "Bash(PGPASSWORD=HealthArk2024 /c/Program Files/PostgreSQL/18/bin/psql.exe *)",
+      "Bash(node -e ' *)",
+      "Read(//c/Users/Admin/**)",
+      "Bash(env)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I {} taskkill //PID {} //F)",
+      "Bash(node dist/index.js)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Admin\\\\healthark\\\\frontend\\\\src\\\\pages\" -Filter \"*.tsx\" -Recurse)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(echo \"Frontend started, PID=$!\")",
+      "PowerShell(Get-Process *)",
+      "Bash(echo \"Backend PID: $!\")",
+      "Bash(echo \"Frontend PID: $!\")",
+      "Bash(npx ts-node -e ' *)",
+      "PowerShell(cd C:\\\\Users\\\\Admin\\\\healthark\\\\backend; $env:NODE_PATH = \"C:\\\\Users\\\\Admin\\\\healthark\\\\backend\\\\node_modules\"; node ../test_insert.js 2>&1)",
+      "PowerShell(cd C:\\\\Users\\\\Admin\\\\healthark\\\\backend; $env:NODE_PATH = \"C:\\\\Users\\\\Admin\\\\healthark\\\\backend\\\\node_modules\"; node ../direct_copy.js \"postgresql://healthark_user:yplXYLHUaPksCpMi57e6PebPK0Yi6laF@dpg-d88dabjbc2fs73eqf960-a.oregon-postgres.render.com/healthark\" 2>&1 | Select-String -Pattern \"\\(✓|Total|ERR\\)\")"
     ]
   }
 }

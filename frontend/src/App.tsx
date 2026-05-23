@@ -51,6 +51,12 @@ import FamilyView from './pages/family/FamilyView'
 import NotificationsManager from './pages/notifications/NotificationsManager'
 import AdminAccounts from './pages/admin/AdminAccounts'
 import Setup from './pages/auth/Setup'
+import Maintenance from './pages/maintenance/Maintenance'
+import DBSTracker from './pages/dbs/DBSTracker'
+import Timesheets from './pages/timesheets/Timesheets'
+import BathChart from './pages/bath-chart/BathChart'
+import Outcomes from './pages/outcomes/Outcomes'
+import AuditTrail from './pages/audit-trail/AuditTrail'
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -129,6 +135,12 @@ function AppRoutes() {
       <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
       <Route path="/family/:token" element={<FamilyView />} />
       <Route path="/admin/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
+      <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
+      <Route path="/dbs" element={<ProtectedRoute><DBSTracker /></ProtectedRoute>} />
+      <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
+      <Route path="/bath-chart" element={<ProtectedRoute><BathChart /></ProtectedRoute>} />
+      <Route path="/outcomes" element={<ProtectedRoute><Outcomes /></ProtectedRoute>} />
+      <Route path="/audit-trail" element={<ProtectedRoute><AuditTrail /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

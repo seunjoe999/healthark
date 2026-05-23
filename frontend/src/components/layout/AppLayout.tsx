@@ -8,7 +8,8 @@ import {
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
   Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search, FileCheck, QrCode,
-  AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield
+  AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
+  Wrench, Droplets, Target, History, Clock, UserCheck
 } from 'lucide-react'
 
 const navSections = [
@@ -31,9 +32,12 @@ const navSections = [
     items: [
       { label: 'Tasks',            to: '/tasks',              icon: CheckSquare,     roles: [] },
       { label: 'Rota',             to: '/rota',               icon: CalendarRange,   roles: ['home_manager','group_admin','senior_carer'] },
+      { label: 'Timesheets',       to: '/timesheets',         icon: Clock,           roles: ['home_manager','group_admin','senior_carer'] },
       { label: 'Holidays',         to: '/holidays',           icon: Palmtree,        roles: ['home_manager','group_admin'] },
       { label: 'Training',         to: '/training',           icon: GraduationCap,   roles: [] },
       { label: 'Staff',            to: '/staff',              icon: UserSquare,      roles: ['home_manager','group_admin'] },
+      { label: 'DBS & Compliance', to: '/dbs',                icon: UserCheck,       roles: ['home_manager','group_admin'] },
+      { label: 'Maintenance',      to: '/maintenance',        icon: Wrench,          roles: [] },
       { label: 'Clock-In',         to: '/clockin-admin',      icon: QrCode,          roles: ['home_manager','group_admin'] },
       { label: 'Clock Analytics',  to: '/clockin-analytics',  icon: BarChart2,       roles: ['home_manager','group_admin'] },
       { label: 'Calendar',         to: '/calendar',           icon: Calendar,        roles: ['home_manager','group_admin'] },
@@ -45,11 +49,14 @@ const navSections = [
     label: 'Quality & Compliance',
     items: [
       { label: 'Compliance',       to: '/compliance',         icon: ShieldCheck,     roles: ['home_manager','group_admin','auditor'] },
+      { label: 'Bath Chart',       to: '/bath-chart',         icon: Droplets,        roles: [] },
+      { label: 'Care Outcomes',    to: '/outcomes',           icon: Target,          roles: [] },
       { label: 'Reviews',          to: '/reviews',            icon: ClipboardCheck,  roles: [] },
       { label: 'Assessments',      to: '/assessments',        icon: FileCheck,       roles: [] },
       { label: 'Quality & QA',     to: '/quality',            icon: Star,            roles: ['home_manager','group_admin'] },
       { label: 'Handover',         to: '/reports/handover',   icon: ArrowLeftRight,  roles: [] },
       { label: 'Audits',           to: '/audits',             icon: Activity,        roles: ['home_manager','group_admin','auditor'] },
+      { label: 'Audit Trail',      to: '/audit-trail',        icon: History,         roles: ['home_manager','group_admin','auditor'] },
       { label: 'Reports',          to: '/reports',            icon: BarChart3,       roles: ['home_manager','group_admin'] },
       { label: 'Policies',         to: '/policies',           icon: BookOpen,        roles: [] },
       { label: 'PPE Stock',        to: '/ppe',                icon: Package,         roles: ['home_manager','group_admin'] },

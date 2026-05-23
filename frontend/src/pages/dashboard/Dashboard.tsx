@@ -1,26 +1,27 @@
 import StaffDashboard from './StaffDashboard'
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { homesApi, suApi, staffApi } from '../../api'
+import { homesApi } from '../../api'
 import api from '../../api'
 import {
   Users, UserSquare, Bell, FileText, Clock, AlertTriangle,
   CheckCircle, Activity, ArrowRight, CalendarDays, Pill,
-  ClipboardList, TrendingUp, Shield, Search
+  ClipboardList, TrendingUp, Shield, Search, Wrench,
+  Droplets, Target, ShieldCheck, History, MessageSquare,
+  Star, ChevronRight, Stethoscope, UserCheck, Calendar
 } from 'lucide-react'
 import { Spinner, AlertSeverityBadge } from '../../components/ui'
 import { Link } from 'react-router-dom'
-import { format, isToday } from 'date-fns'
+import { format } from 'date-fns'
 
 export default function Dashboard() {
   const { user, isRole } = useAuth()
-  const isGroupAdmin = isRole('group_admin')
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData] = useState<any>(null)
   const [todayShifts, setTodayShifts] = useState<any[]>([])
   const [pendingHolidays, setPendingHolidays] = useState<any[]>([])
-  const [overdueCarePlans, setOverdueCarePlans] = useState<any[]>([])
+  const [maintenanceStats, setMaintenanceStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
@@ -39,35 +40,30 @@ export default function Dashboard() {
     Promise.all([
       homesApi.dashboard(selectedHome),
       api.get('/shifts', { params: { homeId: selectedHome, date: format(new Date(), 'yyyy-MM-dd') } }),
-      api.get('/staff-hr/leave/all', { params: { homeId: selectedHome, from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') } }),
-      api.get('/care-plans', { params: { homeId: selectedHome, overdue: true } }).catch(() => ({ data: { data: [] } })),
-    ]).then(([dashRes, shiftsRes, leavesRes, cpRes]) => {
+      api.get('/staff-hr/leave/all', { params: { homeId: selectedHome, from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') } }).catch(() => ({ data: { data: [] } })),
+      api.get('/maintenance/stats', { params: { homeId: selectedHome } }).catch(() => ({ data: { data: null } })),
+    ]).then(([dashRes, shiftsRes, leavesRes, maintRes]) => {
       setData(dashRes.data.data)
       setTodayShifts(shiftsRes.data.data || [])
       setPendingHolidays((leavesRes.data.data || []).filter((l: any) => l.status === 'pending'))
-      setOverdueCarePlans((cpRes.data.data || []).slice(0, 5))
+      setMaintenanceStats(maintRes.data.data)
     }).catch(console.error).finally(() => setLoading(false))
   }, [selectedHome])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
-  const SHIFT_COLORS: Record<string, string> = {
-    early: 'bg-blue-100 text-blue-800',
-    late: 'bg-purple-100 text-purple-800',
-    night: 'bg-slate-700 text-white',
-    regular: 'bg-emerald-100 text-emerald-800',
-    waking_night: 'bg-indigo-100 text-indigo-800',
-    sleep_in: 'bg-teal-100 text-teal-800',
-  }
+  const stats = data?.stats || {}
+  const alerts = data?.alerts || []
+  const birthdays = data?.birthdays || []
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-5 lg:p-7 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-center justify-between mb-7">
         <div>
-          <p className="text-slate-400 text-sm font-medium mb-1">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
-          <h1 className="font-display text-3xl text-slate-900">{greeting}, {user?.firstName}</h1>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
+          <h1 className="text-2xl font-bold text-white">{greeting}, <span style={{ color: '#e8b130' }}>{user?.firstName}</span></h1>
         </div>
         <div className="flex items-center gap-3">
           {homes.length > 1 && (
@@ -75,148 +71,179 @@ export default function Dashboard() {
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
-          <Link to="/search" className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors" title="Search">
-            <Search className="w-4 h-4 text-slate-600" />
+          <Link to="/search" className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
+            style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.25)' }} title="Search">
+            <Search className="w-4 h-4 text-amber-400" />
           </Link>
         </div>
       </div>
 
       {loading ? <Spinner /> : !data ? null : (
         <>
-          {/* Stats row */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <StatCard label="Service Users" value={data.stats?.suLive ?? 0} icon={<Users className="w-5 h-5" />} accent="#10b981" to="/service-users" />
-            <StatCard label="Staff active" value={data.stats?.staffActive ?? 0} icon={<UserSquare className="w-5 h-5" />} accent="#3b82f6" to="/staff" />
-            <StatCard label="Alerts" value={data.stats?.alertsUnresolved ?? 0} icon={<Bell className="w-5 h-5" />} accent={data.stats?.alertsUnresolved > 0 ? '#ef4444' : '#10b981'} to="/alerts" highlight={data.stats?.alertsUnresolved > 0} />
-            <StatCard label="Plans overdue" value={data.stats?.carePlansOverdue ?? 0} icon={<FileText className="w-5 h-5" />} accent={data.stats?.carePlansOverdue > 0 ? '#f59e0b' : '#10b981'} to="/care-plans" highlight={data.stats?.carePlansOverdue > 0} />
-            <StatCard label="On shift today" value={todayShifts.length} icon={<Clock className="w-5 h-5" />} accent="#8b5cf6" to="/rota" />
+          {/* Primary KPI Row */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+            <KPICard label="Service Users" value={stats.suLive ?? 0} icon={<Users className="w-4 h-4" />} color="#10b981" to="/service-users" sub={`${stats.suPreAdmission ?? 0} pre-admission`} />
+            <KPICard label="Staff Active" value={stats.staffActive ?? 0} icon={<UserSquare className="w-4 h-4" />} color="#3b82f6" to="/staff" sub={`${todayShifts.length} on shift today`} />
+            <KPICard label="Unread Alerts" value={stats.alertsUnresolved ?? 0} icon={<Bell className="w-4 h-4" />} color={stats.alertsUnresolved > 0 ? '#ef4444' : '#10b981'} to="/alerts" urgent={stats.alertsUnresolved > 0} />
+            <KPICard label="Support Plans Due" value={stats.carePlansOverdue ?? 0} icon={<FileText className="w-4 h-4" />} color={stats.carePlansOverdue > 0 ? '#f59e0b' : '#10b981'} to="/care-plans" urgent={stats.carePlansOverdue > 0} />
+            <KPICard label="Open Maintenance" value={maintenanceStats?.open_count ?? 0} icon={<Wrench className="w-4 h-4" />} color={maintenanceStats?.urgent_count > 0 ? '#ef4444' : '#8b5cf6'} to="/maintenance" sub={maintenanceStats?.urgent_count > 0 ? `${maintenanceStats.urgent_count} urgent` : undefined} urgent={maintenanceStats?.urgent_count > 0} />
+            <KPICard label="Messages" value={stats.unreadMessages ?? 0} icon={<MessageSquare className="w-4 h-4" />} color="#06b6d4" to="/messages" />
           </div>
 
-          {/* Pending actions banner */}
-          {(pendingHolidays.length > 0 || (data.stats?.alertsUnresolved ?? 0) > 0) && (
-            <div className="grid md:grid-cols-2 gap-4 mb-6">
+          {/* Action banners */}
+          {(pendingHolidays.length > 0 || stats.alertsUnresolved > 0 || maintenanceStats?.urgent_count > 0) && (
+            <div className="flex flex-wrap gap-3 mb-5">
               {pendingHolidays.length > 0 && (
-                <Link to="/holidays" className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl hover:bg-amber-100 transition-colors">
-                  <CalendarDays className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800">{pendingHolidays.length} holiday request{pendingHolidays.length > 1 ? 's' : ''} need approval</p>
-                    <p className="text-xs text-amber-600">Click to review and approve</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-amber-500 ml-auto" />
+                <Link to="/holidays" className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}>
+                  <CalendarDays className="w-4 h-4" />
+                  {pendingHolidays.length} holiday request{pendingHolidays.length > 1 ? 's' : ''} awaiting approval
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               )}
-              {(data.stats?.alertsUnresolved ?? 0) > 0 && (
-                <Link to="/alerts" className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl hover:bg-rose-100 transition-colors">
-                  <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-rose-800">{data.stats.alertsUnresolved} unresolved alert{data.stats.alertsUnresolved > 1 ? 's' : ''}</p>
-                    <p className="text-xs text-rose-600">Click to view and resolve</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-rose-500 ml-auto" />
+              {stats.alertsUnresolved > 0 && (
+                <Link to="/alerts" className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                  <AlertTriangle className="w-4 h-4" />
+                  {stats.alertsUnresolved} unresolved alert{stats.alertsUnresolved > 1 ? 's' : ''}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+              {maintenanceStats?.urgent_count > 0 && (
+                <Link to="/maintenance" className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                  <Wrench className="w-4 h-4" />
+                  {maintenanceStats.urgent_count} urgent maintenance issue{maintenanceStats.urgent_count > 1 ? 's' : ''}
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               )}
             </div>
           )}
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Left col — alerts + shifts */}
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid lg:grid-cols-3 gap-5">
+            {/* LEFT: Alerts + Shifts */}
+            <div className="lg:col-span-2 space-y-5">
 
-              {/* Today's shifts */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-slate-800">On shift today</h2>
-                  <Link to="/rota" className="text-xs font-semibold text-gold-600 hover:text-gold-700 flex items-center gap-1 uppercase tracking-wider">
-                    Full rota <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-                <div className="card overflow-hidden">
-                  {todayShifts.length === 0 ? (
-                    <div className="px-5 py-4 text-sm text-slate-400">No shifts scheduled today</div>
-                  ) : todayShifts.map((s: any) => (
-                    <div key={s.id} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
-                        {(s.staff_name || '?').split(' ').map((n: string) => n[0]).join('')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{s.staff_name}</p>
-                        <p className="text-xs text-slate-400">{s.start_time?.substring(0,5)}–{s.end_time?.substring(0,5)}{s.su_name ? ` · ${s.su_name}` : ''}</p>
-                      </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${SHIFT_COLORS[s.shift_type] || SHIFT_COLORS.regular}`}>
-                        {(s.shift_type || 'regular').replace('_', ' ')}
-                      </span>
+              {/* Active Alerts */}
+              <DashSection title="Active Alerts" to="/alerts" toLabel="View all">
+                {alerts.length === 0 ? (
+                  <div className="flex items-center gap-3 p-4">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(16,185,129,0.1)' }}>
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-400">All clear</p>
+                      <p className="text-xs text-slate-400">No active alerts</p>
+                    </div>
+                  </div>
+                ) : alerts.slice(0, 6).map((alert: any) => (
+                  <div key={alert.id} className="flex items-start gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'rgba(232,177,48,0.08)' }}>
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${alert.severity === 'critical' ? 'bg-rose-500' : alert.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{alert.title}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{alert.description}</p>
+                    </div>
+                    <AlertSeverityBadge severity={alert.severity} />
+                  </div>
+                ))}
+              </DashSection>
 
-              {/* Business alerts */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-slate-800">Business Alerts</h2>
-                  <Link to="/alerts" className="text-xs font-semibold text-gold-600 hover:text-gold-700 flex items-center gap-1 uppercase tracking-wider">
-                    View all <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-                <div className="card overflow-hidden">
-                  {(data.alerts || []).length === 0 ? (
-                    <div className="flex items-center gap-3 p-5 text-emerald-700">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center"><CheckCircle className="w-4 h-4 text-emerald-500" /></div>
-                      <div><p className="text-sm font-semibold">All clear</p><p className="text-xs text-slate-400">No active alerts</p></div>
+              {/* Today's Shifts */}
+              <DashSection title="On Shift Today" to="/rota" toLabel="Full rota">
+                {todayShifts.length === 0 ? (
+                  <p className="text-sm text-slate-400 px-4 py-4">No shifts scheduled today</p>
+                ) : todayShifts.slice(0, 8).map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'rgba(232,177,48,0.08)' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-slate-900 flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                      {(s.staff_name || '?').split(' ').map((n: string) => n[0]).join('')}
                     </div>
-                  ) : (data.alerts || []).slice(0, 5).map((alert: any) => (
-                    <div key={alert.id} className="flex items-start gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${alert.severity === 'critical' ? 'bg-rose-500' : alert.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{alert.title}</p>
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{alert.description}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{s.staff_name}</p>
+                      <p className="text-xs text-slate-400">{s.start_time?.substring(0, 5)} – {s.end_time?.substring(0, 5)}</p>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium capitalize text-amber-300"
+                      style={{ background: 'rgba(232,177,48,0.12)', border: '1px solid rgba(232,177,48,0.2)' }}>
+                      {(s.shift_type || 'regular').replace('_', ' ')}
+                    </span>
+                  </div>
+                ))}
+              </DashSection>
+
+              {/* Birthdays */}
+              {birthdays.length > 0 && (
+                <DashSection title="Birthdays This Week" to="" toLabel="">
+                  <div className="flex flex-wrap gap-3 p-4">
+                    {birthdays.map((b: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+                        style={{ background: 'rgba(232,177,48,0.08)', border: '1px solid rgba(232,177,48,0.2)' }}>
+                        <span>🎂</span>
+                        <span className="text-white font-medium">{b.first_name} {b.last_name}</span>
+                        <span className="text-slate-400 text-xs capitalize">{(b.type || '').replace('_', ' ')}</span>
                       </div>
-                      <AlertSeverityBadge severity={alert.severity} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                </DashSection>
+              )}
             </div>
 
-            {/* Right col */}
-            <div className="space-y-6">
+            {/* RIGHT: Quick Actions + Module shortcuts */}
+            <div className="space-y-5">
               {/* Quick actions */}
-              <div>
-                <h2 className="font-semibold text-slate-800 mb-3">Quick actions</h2>
-                <div className="space-y-2">
+              <DashSection title="Quick Actions" to="" toLabel="">
+                <div className="p-3 space-y-1">
                   {[
-                    { label: 'Add daily record', to: '/daily-records', icon: <ClipboardList className="w-4 h-4" />, color: 'text-purple-600 bg-purple-50' },
-                    { label: 'Log medication (MAR)', to: '/mar', icon: <Pill className="w-4 h-4" />, color: 'text-blue-600 bg-blue-50' },
-                    { label: 'View care plans', to: '/care-plans', icon: <FileText className="w-4 h-4" />, color: 'text-green-600 bg-green-50' },
-                    { label: 'Run AI audit', to: '/audits', icon: <Activity className="w-4 h-4" />, color: 'text-orange-600 bg-orange-50' },
-                    { label: 'Safeguarding', to: '/safeguarding', icon: <Shield className="w-4 h-4" />, color: 'text-red-600 bg-red-50' },
+                    { label: 'Add Daily Record', to: '/daily-records', icon: <ClipboardList className="w-4 h-4" />, color: '#8b5cf6' },
+                    { label: 'Log Medication (MAR)', to: '/mar', icon: <Pill className="w-4 h-4" />, color: '#3b82f6' },
+                    { label: 'Log Bath / Shower', to: '/bath-chart', icon: <Droplets className="w-4 h-4" />, color: '#06b6d4' },
+                    { label: 'Report Maintenance Issue', to: '/maintenance', icon: <Wrench className="w-4 h-4" />, color: '#f59e0b' },
+                    { label: 'View Support Plans', to: '/care-plans', icon: <FileText className="w-4 h-4" />, color: '#10b981' },
+                    { label: 'Record Incident', to: '/incidents', icon: <AlertTriangle className="w-4 h-4" />, color: '#ef4444' },
+                    { label: 'View Care Outcomes', to: '/outcomes', icon: <Target className="w-4 h-4" />, color: '#f59e0b' },
+                    { label: 'Run Audit', to: '/audits', icon: <Activity className="w-4 h-4" />, color: '#e8b130' },
                   ].map(qa => (
-                    <Link key={qa.to} to={qa.to} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-card hover:shadow-card-hover hover:border-slate-200 transition-all group">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${qa.color}`}>{qa.icon}</div>
-                      <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">{qa.label}</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 ml-auto transition-colors" />
+                    <Link key={qa.to} to={qa.to}
+                      className="flex items-center gap-3 p-2.5 rounded-xl transition-all group"
+                      style={{ background: 'transparent' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,177,48,0.06)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${qa.color}15`, color: qa.color }}>
+                        {qa.icon}
+                      </div>
+                      <span className="text-sm font-medium text-slate-300 group-hover:text-white flex-1 transition-colors">{qa.label}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
                     </Link>
                   ))}
                 </div>
-              </div>
+              </DashSection>
 
-              {/* Birthdays */}
-              <div>
-                <h2 className="font-semibold text-slate-800 mb-3">Birthdays this week</h2>
-                <div className="card overflow-hidden">
-                  {(data.birthdays || []).length === 0 ? (
-                    <p className="text-sm text-slate-400 px-5 py-4">No birthdays this week</p>
-                  ) : (data.birthdays || []).slice(0, 4).map((b: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
-                      <span className="text-lg">🎂</span>
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{b.first_name} {b.last_name}</p>
-                        <p className="text-xs text-slate-400 capitalize">{(b.type || '').replace('_', ' ')}</p>
+              {/* Module overview */}
+              <DashSection title="Module Overview" to="" toLabel="">
+                <div className="p-3 grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Compliance', to: '/compliance', icon: <ShieldCheck className="w-4 h-4" />, color: '#10b981' },
+                    { label: 'DBS', to: '/dbs', icon: <UserCheck className="w-4 h-4" />, color: '#3b82f6' },
+                    { label: 'Timesheets', to: '/timesheets', icon: <Clock className="w-4 h-4" />, color: '#8b5cf6' },
+                    { label: 'Training', to: '/training', icon: <Star className="w-4 h-4" />, color: '#f59e0b' },
+                    { label: 'Calendar', to: '/calendar', icon: <Calendar className="w-4 h-4" />, color: '#06b6d4' },
+                    { label: 'Audit Trail', to: '/audit-trail', icon: <History className="w-4 h-4" />, color: '#6b7280' },
+                  ].map(m => (
+                    <Link key={m.to} to={m.to}
+                      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-center transition-all"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(232,177,48,0.1)' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,177,48,0.3)')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(232,177,48,0.1)')}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ background: `${m.color}15`, color: m.color }}>
+                        {m.icon}
                       </div>
-                    </div>
+                      <span className="text-xs text-slate-400">{m.label}</span>
+                    </Link>
                   ))}
                 </div>
-              </div>
+              </DashSection>
             </div>
           </div>
         </>
@@ -225,17 +252,39 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ label, value, icon, accent, to, highlight }: {
-  label: string; value: number; icon: React.ReactNode; accent: string; to: string; highlight?: boolean
+function KPICard({ label, value, icon, color, to, sub, urgent }: {
+  label: string; value: number | string; icon: React.ReactNode; color: string; to: string; sub?: string; urgent?: boolean
 }) {
   return (
-    <Link to={to} className={`card p-5 group block transition-all duration-200 hover:shadow-card-hover hover:border-slate-200 cursor-pointer ${highlight ? 'ring-1 ring-rose-200' : ''}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${accent}15`, color: accent }}>{icon}</div>
-        <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+    <Link to={to} className="card p-4 block group transition-all duration-200 hover:border-amber-500/30"
+      style={urgent ? { borderColor: `${color}40` } : {}}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: `${color}15`, color }}>
+          {icon}
+        </div>
+        {urgent && <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: color }} />}
       </div>
-      <p className="text-2xl font-bold text-slate-900 font-display">{value}</p>
-      <p className="text-xs text-slate-400 font-medium mt-0.5">{label}</p>
+      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-xs text-slate-400 font-medium mt-0.5 leading-tight">{label}</p>
+      {sub && <p className="text-xs mt-1" style={{ color: `${color}` }}>{sub}</p>}
     </Link>
+  )
+}
+
+function DashSection({ title, to, toLabel, children }: { title: string; to: string; toLabel: string; children: React.ReactNode }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(232,177,48,0.1)' }}>
+        <h2 className="text-sm font-bold text-white">{title}</h2>
+        {to && toLabel && (
+          <Link to={to} className="text-xs font-semibold flex items-center gap-1 transition-colors"
+            style={{ color: '#e8b130' }}>
+            {toLabel} <ArrowRight className="w-3 h-3" />
+          </Link>
+        )}
+      </div>
+      <div>{children}</div>
+    </div>
   )
 }
