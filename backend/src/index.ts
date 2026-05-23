@@ -144,6 +144,15 @@ app.use('/api/audit-trail', auditTrailRoutes);
 app.use('/api/outcomes', outcomesRoutes);
 app.use('/api/bath-chart', bathChartRoutes);
 
+import noticeboardRoutes from './routes/noticeboard.routes';
+import observationsRoutes from './routes/observations.routes';
+import seizuresRoutes from './routes/seizures.routes';
+import bowelChartRoutes from './routes/bowelChart.routes';
+app.use('/api/noticeboard', noticeboardRoutes);
+app.use('/api/observations', observationsRoutes);
+app.use('/api/seizures', seizuresRoutes);
+app.use('/api/bowel-chart', bowelChartRoutes);
+
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
 const frontendDist = path.join(__dirname, '../../frontend/dist');
@@ -378,6 +387,88 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_bath_su ON bath_charts(su_id)`,
     `CREATE INDEX IF NOT EXISTS idx_bath_date ON bath_charts(bath_date DESC)`,
     // ── Extended service_user profile columns ─────────────────────────────────
+    // ── Noticeboard ───────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS noticeboard (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       created_by UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       title VARCHAR(255) NOT NULL,
+       body TEXT,
+       category VARCHAR(50) NOT NULL DEFAULT 'general',
+       is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+       expires_at TIMESTAMPTZ,
+       target_role VARCHAR(50),
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_noticeboard_home ON noticeboard(home_id, created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS noticeboard_reads (
+       notice_id UUID NOT NULL REFERENCES noticeboard(id) ON DELETE CASCADE,
+       staff_id  UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       read_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (notice_id, staff_id)
+     )`,
+    // ── Observations (vitals / temperature) ───────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS observations (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       obs_type VARCHAR(50) NOT NULL DEFAULT 'temperature',
+       observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       temp_celsius NUMERIC(4,1),
+       temp_method VARCHAR(50),
+       systolic INTEGER,
+       diastolic INTEGER,
+       pulse INTEGER,
+       spo2_percent INTEGER,
+       o2_litres_min NUMERIC(4,1),
+       weight_kg NUMERIC(6,2),
+       blood_glucose NUMERIC(5,2),
+       notes TEXT,
+       is_abnormal BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_obs_su ON observations(su_id, observed_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_obs_home ON observations(home_id, observed_at DESC)`,
+    // ── Seizure log ───────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS seizure_logs (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       seizure_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       seizure_type VARCHAR(100) NOT NULL DEFAULT 'unclassified',
+       duration_seconds INTEGER,
+       description TEXT,
+       recovery_time_mins INTEGER,
+       post_ictal TEXT,
+       action_taken TEXT,
+       notified_gp BOOLEAN NOT NULL DEFAULT FALSE,
+       notified_family BOOLEAN NOT NULL DEFAULT FALSE,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_seizure_su ON seizure_logs(su_id, seizure_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_seizure_home ON seizure_logs(home_id, seizure_at DESC)`,
+    // ── Bowel chart ───────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS bowel_charts (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       bristol_type INTEGER NOT NULL CHECK (bristol_type BETWEEN 1 AND 7),
+       recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       amount VARCHAR(50),
+       colour VARCHAR(50),
+       consistency VARCHAR(50),
+       blood_present BOOLEAN NOT NULL DEFAULT FALSE,
+       mucus_present BOOLEAN NOT NULL DEFAULT FALSE,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_bowel_su ON bowel_charts(su_id, recorded_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_bowel_home ON bowel_charts(home_id, recorded_at DESC)`,
     `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS phone_home VARCHAR(20)`,
     `ALTER TABLE su_contacts DROP CONSTRAINT IF EXISTS su_contacts_contact_tag_check`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gender_at_birth VARCHAR(50)`,

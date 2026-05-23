@@ -57,6 +57,10 @@ import Timesheets from './pages/timesheets/Timesheets'
 import BathChart from './pages/bath-chart/BathChart'
 import Outcomes from './pages/outcomes/Outcomes'
 import AuditTrail from './pages/audit-trail/AuditTrail'
+import Noticeboard from './pages/noticeboard/Noticeboard'
+import Observations from './pages/observations/Observations'
+import SeizureLog from './pages/seizures/SeizureLog'
+import BowelChart from './pages/bowel-chart/BowelChart'
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -141,6 +145,10 @@ function AppRoutes() {
       <Route path="/bath-chart" element={<ProtectedRoute><BathChart /></ProtectedRoute>} />
       <Route path="/outcomes" element={<ProtectedRoute><Outcomes /></ProtectedRoute>} />
       <Route path="/audit-trail" element={<ProtectedRoute><AuditTrail /></ProtectedRoute>} />
+      <Route path="/noticeboard" element={<ProtectedRoute><Noticeboard /></ProtectedRoute>} />
+      <Route path="/observations" element={<ProtectedRoute><Observations /></ProtectedRoute>} />
+      <Route path="/seizures" element={<ProtectedRoute><SeizureLog /></ProtectedRoute>} />
+      <Route path="/bowel-chart" element={<ProtectedRoute><BowelChart /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

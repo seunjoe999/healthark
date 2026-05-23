@@ -9,7 +9,7 @@ import {
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
   Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search, FileCheck, QrCode,
   AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
-  Wrench, Droplets, Target, History, Clock, UserCheck
+  Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap
 } from 'lucide-react'
 
 const navSections = [
@@ -18,6 +18,7 @@ const navSections = [
     items: [
       { label: 'Dashboard',        to: '/dashboard',          icon: LayoutDashboard, roles: [] },
       { label: 'Inbox',            to: '/messages',           icon: MessageSquare,   roles: [] },
+      { label: 'Noticeboard',      to: '/noticeboard',        icon: Newspaper,       roles: [] },
       { label: 'Service Users',    to: '/service-users',      icon: Users,           roles: [] },
       { label: 'Daily Records',    to: '/daily-records',      icon: ClipboardList,   roles: [] },
       { label: 'MAR Chart',        to: '/mar',                icon: Pill,            roles: [] },
@@ -50,6 +51,9 @@ const navSections = [
     items: [
       { label: 'Compliance',       to: '/compliance',         icon: ShieldCheck,     roles: ['home_manager','group_admin','auditor'] },
       { label: 'Bath Chart',       to: '/bath-chart',         icon: Droplets,        roles: [] },
+      { label: 'Observations',     to: '/observations',       icon: Thermometer,     roles: [] },
+      { label: 'Seizure Log',      to: '/seizures',           icon: Zap,             roles: [] },
+      { label: 'Bowel Chart',      to: '/bowel-chart',        icon: Droplets,        roles: [] },
       { label: 'Care Outcomes',    to: '/outcomes',           icon: Target,          roles: [] },
       { label: 'Reviews',          to: '/reviews',            icon: ClipboardCheck,  roles: [] },
       { label: 'Assessments',      to: '/assessments',        icon: FileCheck,       roles: [] },
