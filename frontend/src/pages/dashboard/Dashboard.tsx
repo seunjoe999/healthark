@@ -1,5 +1,5 @@
 import StaffDashboard from './StaffDashboard'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { homesApi } from '../../api'
 import api from '../../api'
@@ -18,7 +18,9 @@ export default function Dashboard() {
     reviewsDueSoon: 0,
     rotaHoursWeek: 0,
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]           = useState(true)
+  const [showBirthdays, setShowBirthdays] = useState(false)
+  const bdRef = useRef<HTMLDivElement>(null)
 
   if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
 
@@ -149,12 +151,58 @@ export default function Dashboard() {
             to="/tasks"
           />
 
-          <StatCard
-            label="Birthdays in the next 7 days"
-            value={birthdays.length}
-            color="#f87171"
-            to="/service-users"
-          />
+          {/* Birthday card — opens inline preview, not a link */}
+          <div ref={bdRef} className="relative">
+            <button
+              onClick={() => setShowBirthdays(s => !s)}
+              className="w-full flex flex-col items-center justify-center rounded-2xl p-8 text-center transition-all duration-200 min-h-[200px]"
+              style={{ background: '#111111', border: `1px solid ${showBirthdays ? '#f8717140' : 'rgba(255,255,255,0.06)'}` }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#161616'; e.currentTarget.style.borderColor = '#f8717140' }}
+              onMouseLeave={e => { if (!showBirthdays) { e.currentTarget.style.background = '#111111'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)' } }}
+            >
+              <p className="text-sm font-semibold leading-snug mb-6" style={{ color: '#f87171' }}>
+                Birthdays in the next 7 days
+              </p>
+              <span className="text-7xl font-black leading-none" style={{ color: '#f87171' }}>
+                {birthdays.length}
+              </span>
+            </button>
+
+            {/* Birthday dropdown */}
+            {showBirthdays && (
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl z-50 shadow-2xl overflow-hidden"
+                style={{ background: '#1a1a1a', border: '1px solid rgba(248,113,113,0.3)' }}>
+                <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(248,113,113,0.2)' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#f87171' }}>Upcoming Birthdays</p>
+                </div>
+                {birthdays.length === 0 ? (
+                  <p className="text-slate-400 text-sm px-4 py-4">No birthdays in the next 7 days</p>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {birthdays.map((b: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-3">
+                        <div>
+                          <p className="text-white font-semibold text-sm">{b.first_name} {b.last_name}</p>
+                          <p className="text-xs text-slate-500 capitalize mt-0.5">
+                            {(b.type || '').replace('_', ' ')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold" style={{ color: '#f87171' }}>
+                            {b.date_of_birth ? format(new Date(new Date().getFullYear() + '-' + b.date_of_birth.slice(5)), 'd MMM') : ''}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => setShowBirthdays(false)}
+                  className="w-full text-xs text-slate-500 hover:text-slate-300 py-2 transition-colors">
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
 
           <StatCard
             label="Reviews in the next 7 days"
