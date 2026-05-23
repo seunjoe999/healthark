@@ -37,7 +37,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       query(
         `SELECT cp.id, cp.plan_type, cp.custom_name, su.first_name||' '||su.last_name as su_name
          FROM care_plans cp JOIN service_users su ON su.id=cp.su_id
-         WHERE cp.home_id=$1 AND (LOWER(cp.plan_type) LIKE $2 OR LOWER(COALESCE(cp.custom_name,'')) LIKE $2
+         WHERE cp.home_id=$1 AND (LOWER(cp.plan_type::text) LIKE $2 OR LOWER(COALESCE(cp.custom_name,'')) LIKE $2
            OR LOWER(su.first_name||' '||su.last_name) LIKE $2)
          AND cp.is_active=true LIMIT 10`,
         [homeId, q]
