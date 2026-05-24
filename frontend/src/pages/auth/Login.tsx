@@ -36,7 +36,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/dashboard', { replace: true })
+      navigate('/messages', { replace: true })
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Invalid email or password')
       setLoading(false)

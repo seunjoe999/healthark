@@ -157,7 +157,7 @@ function AppRoutes() {
       <Route path="/professional-visits" element={<ProtectedRoute><ProfessionalVisits /></ProtectedRoute>} />
       <Route path="/medicine-risk" element={<ProtectedRoute><MedicineRisk /></ProtectedRoute>} />
       <Route path="/performance" element={<ProtectedRoute><PerformanceMatrix /></ProtectedRoute>} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/messages" replace />} />
     </Routes>
   )
 }
