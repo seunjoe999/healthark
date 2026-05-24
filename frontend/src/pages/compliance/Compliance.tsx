@@ -45,15 +45,15 @@ interface DashboardData {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getRAG(score: number): { label: string; colour: string; bg: string; bar: string } {
-  if (score >= 80) return { label: 'Compliant', colour: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', bar: 'bg-emerald-500' }
-  if (score >= 60) return { label: 'Needs Attention', colour: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500' }
-  return { label: 'At Risk', colour: 'text-red-700', bg: 'bg-red-50 border-red-200', bar: 'bg-red-500' }
+  if (score >= 80) return { label: 'Compliant', colour: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25', bar: 'bg-emerald-500' }
+  if (score >= 60) return { label: 'Needs Attention', colour: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/25', bar: 'bg-amber-500' }
+  return { label: 'At Risk', colour: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/25', bar: 'bg-rose-500' }
 }
 
 function getOverallColour(score: number) {
-  if (score >= 80) return 'text-emerald-600'
-  if (score >= 60) return 'text-amber-500'
-  return 'text-red-600'
+  if (score >= 80) return 'text-emerald-400'
+  if (score >= 60) return 'text-amber-400'
+  return 'text-rose-400'
 }
 
 const AREA_ICONS: Record<string, React.ElementType> = {
@@ -94,12 +94,12 @@ function AreaCard({ areaKey, data, onClick }: { areaKey: string; data: AreaData;
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl border p-5 flex flex-col gap-3 ${rag.bg} hover:shadow-md transition-all text-left w-full`}
+      className={`rounded-xl border p-5 flex flex-col gap-3 ${rag.bg} hover:brightness-110 transition-all text-left w-full`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={`w-5 h-5 ${rag.colour}`} />
-          <span className="font-semibold text-slate-800 text-sm">{data.label}</span>
+          <span className={`font-semibold text-sm ${rag.colour}`}>{data.label}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${rag.colour} ${rag.bg}`}>
@@ -114,7 +114,7 @@ function AreaCard({ areaKey, data, onClick }: { areaKey: string; data: AreaData;
         <div className="flex items-end justify-between mb-1">
           <span className={`text-3xl font-bold ${rag.colour}`}>{data.score}%</span>
         </div>
-        <div className="h-2 rounded-full bg-white/60 overflow-hidden">
+        <div className="h-2 rounded-full bg-black/20 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${rag.bar}`}
             style={{ width: `${data.score}%` }}
@@ -122,7 +122,7 @@ function AreaCard({ areaKey, data, onClick }: { areaKey: string; data: AreaData;
         </div>
       </div>
 
-      <p className="text-xs text-slate-600 leading-relaxed">{data.metric}</p>
+      <p className={`text-xs leading-relaxed opacity-80 ${rag.colour}`}>{data.metric}</p>
     </button>
   )
 }
@@ -136,12 +136,12 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
   const link = AREA_LINKS[areaKey] || '/'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className={`rounded-t-2xl p-5 border-b ${rag.bg}`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="rounded-2xl shadow-2xl w-full max-w-lg" style={{ background: '#111', border: '1px solid rgba(232,177,48,0.15)' }}>
+        <div className={`rounded-t-2xl p-5 ${rag.bg}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rag.bg} border ${rag.bg}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rag.bg}`}>
                 <Icon className={`w-5 h-5 ${rag.colour}`} />
               </div>
               <div>
@@ -149,7 +149,7 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
                 <p className={`text-sm ${rag.colour} opacity-80`}>{rag.label} · {data.score}%</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -157,16 +157,16 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
 
         <div className="p-5 space-y-4">
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Current Status</p>
-            <p className="text-sm text-slate-700">{data.metric}</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
+            <p className="text-sm text-slate-300">{data.metric}</p>
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">How to Improve</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">How to Improve</p>
             <div className="space-y-2">
               {tips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                  <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-slate-500">{i + 1}</div>
+                <div key={i} className="flex items-start gap-2 text-sm text-slate-400">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-slate-400" style={{ background: '#1a1a1a' }}>{i + 1}</div>
                   <p>{tip}</p>
                 </div>
               ))}
@@ -174,25 +174,22 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
           </div>
 
           {data.score < 80 && (
-            <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-              <p className="text-xs font-semibold text-amber-700 mb-1">Auto-fix available</p>
-              <p className="text-xs text-amber-600">Click "Auto-fix" to automatically resolve common compliance gaps in this area (marks overdue reviews as reviewed, resolves stale alerts, etc.).</p>
+            <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <p className="text-xs font-semibold text-amber-400 mb-1">Auto-fix available</p>
+              <p className="text-xs text-amber-300/70">Click "Auto-fix" to automatically resolve common compliance gaps in this area (marks overdue reviews as reviewed, resolves stale alerts, etc.).</p>
             </div>
           )}
         </div>
 
-        <div className="p-4 border-t border-slate-100 flex gap-3 justify-between">
+        <div className="p-4 flex gap-3 justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {data.score < 80 ? (
-            <button onClick={onFix}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors">
+            <button onClick={onFix} className="btn-outline text-sm font-semibold">
               <Zap className="w-4 h-4" /> Auto-fix
             </button>
           ) : <div />}
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
-              Close
-            </button>
-            <a href={link} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+            <button onClick={onClose} className="btn-ghost text-sm">Close</button>
+            <a href={link} className="btn-gold text-sm font-semibold inline-flex items-center gap-1.5 px-4 py-2">
               Go to {data.label} <ArrowRight className="w-4 h-4" />
             </a>
           </div>
@@ -261,7 +258,7 @@ export default function Compliance() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">CQC Compliance Overview</h1>
+          <h1 className="text-2xl font-bold text-white">CQC Compliance Overview</h1>
           {data && (
             <p className="text-xs text-slate-500 mt-0.5">
               Last updated: {format(new Date(data.lastUpdated), 'dd MMM yyyy, HH:mm')}
@@ -270,18 +267,14 @@ export default function Compliance() {
         </div>
         <div className="flex items-center gap-2">
           {homes.length > 1 && (
-            <select
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={selectedHome}
-              onChange={e => setSelectedHome(e.target.value)}
-            >
+            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
           <button
             onClick={() => load(selectedHome)}
             disabled={loading}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 disabled:opacity-50 transition-colors"
+            className="btn-outline text-sm"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -289,7 +282,7 @@ export default function Compliance() {
           {data && (
             <button
               onClick={() => setAiFixOpen(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
+              className="btn px-4 py-2 text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700"
             >
               <Zap className="w-4 h-4" /> AI Fix
             </button>
@@ -304,12 +297,12 @@ export default function Compliance() {
       {data && (
         <>
           {/* Overall score */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col sm:flex-row items-center gap-6">
+          <div className="card p-8 flex flex-col sm:flex-row items-center gap-6">
             <div className="flex flex-col items-center">
               <span className={`text-7xl font-extrabold leading-none ${getOverallColour(data.overallScore)}`}>
                 {data.overallScore}%
               </span>
-              <span className="text-sm text-slate-500 mt-1 font-medium">Overall compliance score</span>
+              <span className="text-sm text-slate-400 mt-1 font-medium">Overall compliance score</span>
             </div>
             <div className="flex-1 space-y-2 w-full">
               <div className="flex justify-between text-xs text-slate-500 mb-1">
@@ -317,13 +310,13 @@ export default function Compliance() {
                 <span>Needs Attention (60–80%)</span>
                 <span>Compliant (&gt;80%)</span>
               </div>
-              <div className="h-4 rounded-full bg-gradient-to-r from-red-200 via-amber-200 to-emerald-200 overflow-hidden relative">
+              <div className="h-4 rounded-full overflow-hidden relative" style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.3), rgba(245,158,11,0.3), rgba(16,185,129,0.3))' }}>
                 <div
-                  className="absolute top-0 left-0 h-full w-1 bg-slate-700 rounded-full transition-all duration-700"
+                  className="absolute top-0 left-0 h-full w-1 bg-white rounded-full transition-all duration-700"
                   style={{ left: `calc(${data.overallScore}% - 2px)` }}
                 />
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-400">
                 Average across {areaKeys.length} compliance areas.
                 {data.overallScore >= 80 && ' All key areas are performing well.'}
                 {data.overallScore >= 60 && data.overallScore < 80 && ' Some areas require attention.'}
@@ -345,16 +338,16 @@ export default function Compliance() {
           </div>
 
           {/* Last 30 days summary */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-            <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-indigo-500" />
+          <div className="card p-5">
+            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-amber-400" />
               Last 30 Days Summary
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <SummaryTile label="Incidents" value={data.areas.incidents.total} sub={`${data.areas.incidents.falls} falls, ${data.areas.incidents.medErrors} med errors`} colour="text-red-600" />
-              <SummaryTile label="PPE Checks" value={`${data.areas.ppe.compliantChecks}/${data.areas.ppe.totalChecks}`} sub="compliant checks" colour="text-indigo-600" />
-              <SummaryTile label="Open Safeguarding" value={data.areas.safeguarding.openCases} sub={`${data.areas.safeguarding.highPriority} high priority`} colour="text-amber-600" />
-              <SummaryTile label="Unresolved Alerts" value={data.areas.alerts.unresolved} sub="across all categories" colour="text-orange-600" />
+              <SummaryTile label="Incidents" value={data.areas.incidents.total} sub={`${data.areas.incidents.falls} falls, ${data.areas.incidents.medErrors} med errors`} colour="text-rose-400" />
+              <SummaryTile label="PPE Checks" value={`${data.areas.ppe.compliantChecks}/${data.areas.ppe.totalChecks}`} sub="compliant checks" colour="text-blue-400" />
+              <SummaryTile label="Open Safeguarding" value={data.areas.safeguarding.openCases} sub={`${data.areas.safeguarding.highPriority} high priority`} colour="text-amber-400" />
+              <SummaryTile label="Unresolved Alerts" value={data.areas.alerts.unresolved} sub="across all categories" colour="text-orange-400" />
             </div>
           </div>
         </>
@@ -385,10 +378,10 @@ export default function Compliance() {
 
 function SummaryTile({ label, value, sub, colour }: { label: string; value: any; sub: string; colour: string }) {
   return (
-    <div className="text-center p-3 rounded-lg bg-slate-50">
+    <div className="text-center p-3 rounded-lg" style={{ background: '#1a1a1a' }}>
       <p className={`text-2xl font-bold ${colour}`}>{value}</p>
-      <p className="text-xs font-medium text-slate-700 mt-0.5">{label}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+      <p className="text-xs font-medium text-slate-300 mt-0.5">{label}</p>
+      <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
     </div>
   )
 }

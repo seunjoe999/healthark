@@ -34,9 +34,11 @@ const SLEEP = [
 ]
 
 function moodIcon(mood: string) {
-  if (mood === 'great' || mood === 'good') return <Smile className="w-4 h-4 text-emerald-400" />
-  if (mood === 'fair') return <Meh className="w-4 h-4 text-amber-400" />
-  return <Frown className="w-4 h-4 text-rose-400" />
+  const m = (mood || '').toLowerCase()
+  if (m === 'great' || m === 'good') return <Smile className="w-4 h-4 text-emerald-400" />
+  if (m === 'fair') return <Meh className="w-4 h-4 text-amber-400" />
+  if (m === 'low' || m === 'distressed') return <Frown className="w-4 h-4 text-rose-400" />
+  return <Smile className="w-4 h-4 text-emerald-400" />
 }
 
 function moodColor(mood: string) {

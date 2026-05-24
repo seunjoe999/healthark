@@ -80,6 +80,7 @@ export default function MAR() {
   const [showPrescriptions, setShowPrescriptions] = useState(true)
   const [showDirections, setShowDirections] = useState(true)
   const [search, setSearch] = useState('')
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState(format(now, 'yyyy-MM-dd'))
   const today = format(now, 'yyyy-MM-dd')
@@ -115,6 +116,7 @@ export default function MAR() {
 
   const selectSu = (su: any) => {
     setSelectedSu(su)
+    setMobileSidebarOpen(false)
     fetchAll(su)
   }
 
@@ -138,9 +140,9 @@ export default function MAR() {
   const suInitials = su ? `${(su.first_name || su.firstName || '?')[0]}${(su.last_name || su.lastName || '?')[0]}` : '?'
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col md:flex-row h-full overflow-hidden">
       {/* ── Left sidebar ─────────────────────────────────────────────── */}
-      <div className="w-64 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
             <Pill className="w-4 h-4 text-purple-600" /> MAR Chart
@@ -178,7 +180,16 @@ export default function MAR() {
       </div>
 
       {/* ── Right panel ──────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden flex flex-col bg-slate-50">
+      <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-hidden bg-slate-50`}>
+        {/* Mobile back button */}
+        {selectedSu && (
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
+            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">
+              <ChevronLeft className="w-4 h-4" /> Back
+            </button>
+            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
+          </div>
+        )}
         {!selectedSu ? (
           <div className="flex-1 flex items-center justify-center">
             <EmptyState title="Select a resident" description="Choose a resident from the list to view their MAR chart" />

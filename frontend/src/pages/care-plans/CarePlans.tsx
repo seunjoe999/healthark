@@ -89,6 +89,7 @@ export default function CarePlans() {
   const [tab, setTab] = useState<'plans' | 'risks'>('plans')
   const [addPlanOpen, setAddPlanOpen] = useState(false)
   const [addRiskOpen, setAddRiskOpen] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
   const [search, setSearch] = useState('')
 
@@ -128,6 +129,7 @@ export default function CarePlans() {
   const selectSu = async (su: any) => {
     setSelectedSu(su)
     setSelectedPlan(null)
+    setMobileSidebarOpen(false)
     setLoading(true)
     try {
       const [planRes, riskRes] = await Promise.allSettled([
@@ -144,9 +146,9 @@ export default function CarePlans() {
   const filteredSus = sus.filter(su => getName(su).toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col md:flex-row h-full">
       {/* Left — SU selector */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900 mb-3">Support Plans & Risks</h2>
           {homes.length > 1 && (
@@ -176,7 +178,14 @@ export default function CarePlans() {
       </div>
 
       {/* Right — plans and risks */}
-      <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+      <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
+        {selectedSu && (
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
+            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">← Back</button>
+            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
+          </div>
+        )}
+        <div className="p-6 flex-1">
         {!selectedSu ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a service user" description="Choose a service user to view their support plans and risk assessments" />
@@ -322,6 +331,7 @@ export default function CarePlans() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Add support plan modal */}

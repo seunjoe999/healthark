@@ -34,6 +34,7 @@ export default function StaffModule() {
   const [staff, setStaff] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
   const [tab, setTab] = useState<StaffTab>('profile')
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
   const [loading, setLoading] = useState(true)
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
@@ -69,6 +70,7 @@ export default function StaffModule() {
   const selectStaff = async (s: any) => {
     setSelected(s)
     setTab('profile')
+    setMobileSidebarOpen(false)
     try {
       const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes] = await Promise.all([
         api.get(`/staff-hr/training/${s.id}`),
@@ -106,9 +108,9 @@ export default function StaffModule() {
   ]
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col md:flex-row h-full">
       {/* Left — staff list */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900 mb-3">Staff</h2>
           {homes.length > 1 && (
@@ -151,7 +153,14 @@ export default function StaffModule() {
       </div>
 
       {/* Right — staff detail */}
-      <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+      <div className={`${!mobileSidebarOpen || !selected ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
+        {selected && (
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
+            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">← Back</button>
+            <span className="text-white text-sm font-semibold">{getName(selected)}</span>
+          </div>
+        )}
+        <div className="p-6 flex-1">
         {!selected ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a staff member" description="Choose a staff member to view their profile and records" />
@@ -513,6 +522,7 @@ export default function StaffModule() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   )

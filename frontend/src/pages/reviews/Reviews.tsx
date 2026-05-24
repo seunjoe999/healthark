@@ -37,6 +37,7 @@ export default function Reviews() {
   const [addOpen, setAddOpen] = useState(false)
   const [previewReview, setPreviewReview] = useState<any>(null)
   const [search, setSearch] = useState('')
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -62,6 +63,7 @@ export default function Reviews() {
 
   const selectSu = async (su: any) => {
     setSelectedSu(su)
+    setMobileSidebarOpen(false)
     setLoading(true)
     try {
       const res = await api.get(`/reviews/su/${su.id}`)
@@ -74,8 +76,8 @@ export default function Reviews() {
   const filteredSus = sus.filter(su => getName(su).toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div className="flex h-full">
-      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
+    <div className="flex flex-col md:flex-row h-full">
+      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-purple-600" /> Reviews & Feedback
@@ -100,7 +102,16 @@ export default function Reviews() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+      <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
+        {selectedSu && (
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
+            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">
+              ← Back
+            </button>
+            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
+          </div>
+        )}
+        <div className="p-6 flex-1">
         {!selectedSu ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a resident" description="Choose a resident to view their reviews and feedback" />
@@ -181,6 +192,7 @@ export default function Reviews() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       <AddReviewModal open={addOpen} onClose={() => setAddOpen(false)} suId={selectedSu?.id}

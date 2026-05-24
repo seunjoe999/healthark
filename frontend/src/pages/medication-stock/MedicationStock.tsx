@@ -55,8 +55,8 @@ const emptyForm = {
 function ExpiryBadge({ date }: { date: string | null }) {
   if (!date) return null
   const d = new Date(date)
-  if (isPast(d)) return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Expired</span>
-  if (isAfter(addDays(new Date(), 14), d)) return <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Expires {format(d, 'dd MMM yy')}</span>
+  if (isPast(d)) return <span className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">Expired</span>
+  if (isAfter(addDays(new Date(), 14), d)) return <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Expires {format(d, 'dd MMM yy')}</span>
   return <span className="text-xs text-slate-500">{format(d, 'dd MMM yy')}</span>
 }
 
@@ -64,11 +64,11 @@ function ExpiryBadge({ date }: { date: string | null }) {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-5 h-5 text-slate-500" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" style={{ background: '#111111', border: '1px solid rgba(232,177,48,0.15)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid rgba(232,177,48,0.12)' }}>
+          <h2 className="font-semibold text-white">{title}</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/5"><X className="w-5 h-5 text-slate-400" /></button>
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-4">{children}</div>
       </div>
@@ -79,13 +79,14 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-slate-600">{label}</label>
+      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+const inputCls = "w-full rounded-xl px-3 py-2 text-sm focus:outline-none text-white placeholder-slate-600" +
+  " bg-[#1a1a1a] border border-amber-500/20 focus:border-amber-500/50"
 
 // ─── Add / Edit modal ─────────────────────────────────────────────────────────
 
@@ -193,8 +194,8 @@ function AddEditModal({
           <textarea className={inputCls} rows={2} value={form.notes} onChange={set('notes')} />
         </Field>
         <div className="flex justify-end gap-2 pt-2">
-          <button className="px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50" onClick={onClose}>Cancel</button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : (editItem ? 'Save changes' : 'Add medication')}</Button>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn-gold" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : (editItem ? 'Save changes' : 'Add medication')}</button>
         </div>
       </div>
     </Modal>
@@ -242,9 +243,9 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
   return (
     <Modal title={`Adjust Stock — ${item.medication_name}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="bg-slate-50 rounded-lg p-3 text-center">
+        <div className="rounded-xl p-3 text-center" style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.15)' }}>
           <p className="text-xs text-slate-500">Current quantity</p>
-          <p className="text-3xl font-bold text-slate-900">{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
+          <p className="text-3xl font-bold text-white">{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
         </div>
         <Field label="Reason">
           <select className={inputCls} value={adjustmentType} onChange={e => setAdjustmentType(e.target.value)}>
@@ -267,8 +268,8 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
           <textarea className={inputCls} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Administered to patient at 09:00..." />
         </Field>
         <div className="flex justify-end gap-2 pt-2">
-          <button className="px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50" onClick={onClose}>Cancel</button>
-          <Button onClick={handleAdjust} disabled={saving}>{saving ? 'Saving...' : 'Confirm adjustment'}</Button>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn-gold" onClick={handleAdjust} disabled={saving}>{saving ? 'Saving...' : 'Confirm adjustment'}</button>
         </div>
       </div>
     </Modal>
@@ -288,63 +289,65 @@ function StockCard({
   const isSoon = item.expiring_soon
 
   return (
-    <div className={`bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-3 relative ${isExpired ? 'border-red-200' : isLow ? 'border-amber-200' : 'border-slate-100'}`}>
+    <div className="rounded-xl p-4 flex flex-col gap-3 relative" style={{
+      background: '#111111',
+      border: `1px solid ${isExpired ? 'rgba(239,68,68,0.4)' : isLow ? 'rgba(245,158,11,0.4)' : 'rgba(232,177,48,0.15)'}`,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+    }}>
       {/* Badges row */}
       <div className="flex flex-wrap gap-1.5 min-h-[20px]">
-        {isExpired && <span className="text-xs font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-full">Expired</span>}
-        {isSoon && !isExpired && <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Expiring soon</span>}
-        {isLow && <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Low stock</span>}
+        {isExpired && <span className="badge badge-critical">Expired</span>}
+        {isSoon && !isExpired && <span className="badge badge-warning">Expiring soon</span>}
+        {isLow && <span className="badge badge-warning flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Low stock</span>}
       </div>
 
       {/* Name & details */}
       <div>
-        <p className="font-semibold text-slate-900">{item.medication_name}</p>
+        <p className="font-semibold text-white">{item.medication_name}</p>
         <p className="text-xs text-slate-500 mt-0.5">
           {[item.form, item.strength].filter(Boolean).join(' · ')}
         </p>
         {item.su_name && (
-          <p className="text-xs text-indigo-600 font-medium mt-1">{item.su_name}</p>
+          <p className="text-xs text-amber-400 font-medium mt-1">{item.su_name}</p>
         )}
       </div>
 
       {/* Quantity */}
       <div className="flex items-end justify-between">
         <div>
-          <span className={`text-2xl font-bold ${isLow ? 'text-amber-600' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)}</span>
+          <span className={`text-2xl font-bold ${isLow ? 'text-amber-400' : 'text-white'}`}>{formatQty(item.quantity_remaining)}</span>
           <span className="text-sm text-slate-500 ml-1">{item.unit}</span>
-          <p className="text-xs text-slate-400 mt-0.5">Reorder at ≤ {item.reorder_threshold}</p>
+          <p className="text-xs text-slate-500 mt-0.5">Reorder at ≤ {item.reorder_threshold}</p>
         </div>
-        {/* Quick ±  */}
-        <div className="flex gap-1">
-          <button
-            onClick={onAdjust}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 flex items-center justify-center text-slate-600 font-bold text-lg leading-none"
-            title="Adjust quantity"
-          >
-            ±
-          </button>
-        </div>
+        <button
+          onClick={onAdjust}
+          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg leading-none text-amber-400 hover:text-amber-300 transition-colors"
+          style={{ background: 'rgba(232,177,48,0.1)', border: '1px solid rgba(232,177,48,0.2)' }}
+          title="Adjust quantity"
+        >
+          ±
+        </button>
       </div>
 
       {/* Expiry */}
       <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-400">Expiry:</span>
+        <span className="text-slate-500">Expiry:</span>
         <ExpiryBadge date={item.expiry_date} />
-        {!item.expiry_date && <span className="text-slate-400">—</span>}
+        {!item.expiry_date && <span className="text-slate-500">—</span>}
       </div>
 
       {/* Menu */}
       <div className="absolute top-3 right-3">
-        <button onClick={() => setMenuOpen(o => !o)} className="p-1 rounded-lg hover:bg-slate-100">
-          <MoreVertical className="w-4 h-4 text-slate-400" />
+        <button onClick={() => setMenuOpen(o => !o)} className="p-1 rounded-lg hover:bg-white/5">
+          <MoreVertical className="w-4 h-4 text-slate-500" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 top-7 z-20 bg-white rounded-xl border border-slate-100 shadow-lg w-36 py-1">
-            <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+          <div className="absolute right-0 top-7 z-20 rounded-xl shadow-xl w-36 py-1" style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.15)' }}>
+            <button className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
               onClick={() => { setMenuOpen(false); onEdit() }}>
               <Pencil className="w-3.5 h-3.5" /> Edit
             </button>
-            <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+            <button className="w-full text-left px-4 py-2 text-sm text-rose-400 hover:bg-rose-500/10 flex items-center gap-2"
               onClick={() => { setMenuOpen(false); onDelete() }}>
               <Trash2 className="w-3.5 h-3.5" /> Delete
             </button>
@@ -417,33 +420,25 @@ export default function MedicationStock() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Pill className="w-6 h-6 text-indigo-600" />
-          <h1 className="text-2xl font-bold text-slate-900">Medication Stock</h1>
+          <Pill className="w-6 h-6 text-amber-400" />
+          <h1 className="text-2xl font-bold text-white">Medication Stock</h1>
         </div>
         <div className="flex items-center gap-2">
           {homes.length > 1 && (
-            <select
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={selectedHome}
-              onChange={e => setSelectedHome(e.target.value)}
-            >
+            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" /> Add medication
-          </Button>
+          <button className="btn-gold" onClick={() => setAddOpen(true)}>
+            <Plus className="w-4 h-4" /> Add medication
+          </button>
         </div>
       </div>
 
       {/* Filter by resident */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-slate-600 font-medium whitespace-nowrap">Filter by resident:</label>
-        <select
-          className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-xs"
-          value={filterSu}
-          onChange={e => setFilterSu(e.target.value)}
-        >
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-sm text-slate-400 font-medium whitespace-nowrap">Filter by resident:</label>
+        <select className="input w-auto text-sm max-w-xs" value={filterSu} onChange={e => setFilterSu(e.target.value)}>
           <option value="">All residents + general stock</option>
           {sus.map(su => <option key={su.id} value={su.id}>{su.first_name} {su.last_name}</option>)}
         </select>
@@ -451,11 +446,11 @@ export default function MedicationStock() {
 
       {/* Alert banner */}
       {alerts.length > 0 && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-800">Stock alerts</p>
-            <ul className="text-sm text-amber-700 mt-1 space-y-0.5 list-disc list-inside">
+            <p className="text-sm font-semibold text-amber-400">Stock alerts</p>
+            <ul className="text-sm text-amber-300/80 mt-1 space-y-0.5 list-disc list-inside">
               {alerts.filter(i => i.expired).length > 0 && (
                 <li>{alerts.filter(i => i.expired).length} medication{alerts.filter(i => i.expired).length !== 1 ? 's have' : ' has'} expired</li>
               )}
@@ -474,9 +469,9 @@ export default function MedicationStock() {
       {loading ? (
         <div className="flex justify-center py-20"><Spinner /></div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
+        <div className="text-center py-16 text-slate-500">
           <Pill className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No medication stock recorded</p>
+          <p className="font-medium text-white">No medication stock recorded</p>
           <p className="text-sm mt-1">Click "Add medication" to get started</p>
         </div>
       ) : (
