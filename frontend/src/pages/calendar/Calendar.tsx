@@ -222,7 +222,7 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
       await api.post(`/calendar/${event.id}/signoff`)
       const res = await api.get(`/calendar/${event.id}/notes`)
       setSignoffs(res.data.data.signoffs || [])
-      toast.success('Signed off ✓')
+      toast.success('Signed off')
     } catch { toast.error('Failed') }
     finally { setSigning(false) }
   }

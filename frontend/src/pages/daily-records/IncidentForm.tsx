@@ -102,7 +102,7 @@ function BodyMap({ selected, onChange }: { selected: string[]; onChange: (v: str
             <button key={z.id} type="button"
               onClick={() => toggle(z.id)}
               className={`text-left text-xs px-2 py-1.5 rounded-lg border transition-colors ${selected.includes(z.id) ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'}`}>
-              {selected.includes(z.id) ? '✓ ' : ''}{z.label}
+              {z.label}
             </button>
           ))}
         </div>

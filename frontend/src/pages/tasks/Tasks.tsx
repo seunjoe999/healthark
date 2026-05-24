@@ -142,7 +142,7 @@ export default function Tasks() {
                 <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
                   {task.due_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.due_time}</span>}
                   <span className="capitalize">{(task.category || '').replace('_', ' ')}</span>
-                  {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium">✓ {task.completed_by_name}</span>}
+                  {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium flex items-center gap-0.5"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
                 </div>
               </div>
               {isRole('home_manager', 'group_admin') && (

@@ -339,7 +339,7 @@ export default function EditServiceUser() {
             <div className="flex gap-3">
               <button type="button" onClick={() => set('dnar', false)}
                 className={clsx('flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors', form.dnar === false ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-slate-400')}>
-                ✓ Resuscitate (CPR)
+                Resuscitate (CPR)
               </button>
               <button type="button" onClick={() => set('dnar', true)}
                 className={clsx('flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors', form.dnar === true ? 'border-rose-500 bg-rose-500/10 text-rose-400' : 'border-white/10 text-slate-400')}>

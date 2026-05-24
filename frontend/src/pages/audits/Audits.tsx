@@ -9,7 +9,7 @@ import {
   ClipboardList, Shield, Pill, Users, FileText,
   Flame, Zap, Heart, Home, RefreshCw, Trash2, TrendingUp,
   Calendar, User, Award, ChevronRight, Building2,
-  ListChecks, Circle, Clock, CheckSquare
+  ListChecks, Circle, Clock, CheckSquare, Check
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -566,7 +566,7 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
                     : isPositive ? 'bg-emerald-100 text-emerald-700'
                     : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {status === 'done' ? '✓' : i + 1}
+                    {status === 'done' ? <Check className="w-3 h-3" /> : i + 1}
                   </div>
                   <p className={`text-sm font-medium flex-1 ${
                     status === 'done' ? 'text-emerald-700 line-through decoration-emerald-400'
@@ -804,7 +804,7 @@ function FixSection({ title, icon, items, color, bg, border, num, allDone }: {
         {items.map((a, i) => (
           <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl border ${allDone ? 'bg-emerald-50 border-emerald-100' : `${bg} ${border}`}`}>
             <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${allDone ? 'bg-emerald-500' : num}`}>
-              {allDone ? '✓' : i + 1}
+              {allDone ? <Check className="w-3 h-3" /> : i + 1}
             </span>
             <p className={`text-sm flex-1 leading-relaxed ${allDone ? 'text-slate-400 line-through' : color}`}>{a}</p>
           </div>

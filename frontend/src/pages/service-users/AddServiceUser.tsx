@@ -140,7 +140,7 @@ export default function AddServiceUser() {
             <div className="flex gap-3 mt-2">
               <button type="button" onClick={() => set('dnar', false)}
                 className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-colors ${form.dnar === false ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
-                ✓ Resuscitate (CPR)
+                Resuscitate (CPR)
               </button>
               <button type="button" onClick={() => set('dnar', true)}
                 className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-colors ${form.dnar === true ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>

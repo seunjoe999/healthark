@@ -9,7 +9,7 @@ import {
 import {
   ArrowLeft, Phone, Mail, MapPin, Heart, FileText, MessageSquare,
   Plus, Edit, User, AlertTriangle, Clipboard, Activity, Users,
-  Upload, Download, Trash2, Eye, File, FileImage, Lock, QrCode
+  Upload, Download, Trash2, Eye, File, FileImage, Lock, QrCode, Check
 } from 'lucide-react'
 import { format, differenceInYears } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
@@ -471,7 +471,7 @@ function ToggleDisp({ label, value, danger }: { label: string; value: boolean; d
   return (
     <div className="flex items-center gap-2.5">
       <div className={`w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 ${value ? (danger ? 'bg-rose-500' : 'bg-emerald-500') : 'bg-slate-200'}`}>
-        {value && <span className="text-white text-xs font-bold">✓</span>}
+        {value && <Check className="w-3 h-3 text-white" />}
       </div>
       <span className={`text-sm ${value && danger ? 'text-rose-700 font-semibold' : 'text-slate-700'}`}>{label}</span>
     </div>

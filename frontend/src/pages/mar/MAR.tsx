@@ -596,7 +596,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                   let subDisplay = ''
 
                   if (rec) {
-                    if (rec.given) { bg = '#d1fae5'; textColor = '#065f46'; display = rec.initials || '✓' }
+                    if (rec.given) { bg = '#d1fae5'; textColor = '#065f46'; display = rec.initials || 'OK' }
                     else if (rec.refused) { bg = '#fee2e2'; textColor = '#991b1b'; display = 'X'; subDisplay = 'R' }
                     else if (rec.omitted) { bg = '#fef9c3'; textColor = '#78350f'; display = 'O' }
                     else { bg = '#f3f4f6'; display = '—' }

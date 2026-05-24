@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
-import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
+import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
@@ -280,7 +280,7 @@ export default function DBSTracker() {
                 {preview.dbs_number && <div><p className="text-xs text-slate-500">Certificate No.</p><p className="text-white font-mono">{preview.dbs_number}</p></div>}
                 <div><p className="text-xs text-slate-500">Issue Date</p><p className="text-white">{preview.issue_date ? new Date(preview.issue_date).toLocaleDateString() : '—'}</p></div>
                 <div><p className="text-xs text-slate-500">Expiry Date</p><p className={preview.status === 'expired' ? 'text-rose-400' : preview.status === 'expiring_soon' ? 'text-amber-400' : 'text-white'}>{preview.expiry_date ? new Date(preview.expiry_date).toLocaleDateString() : 'No expiry'}</p></div>
-                {preview.update_service && <div className="col-span-2 text-emerald-400 text-sm font-medium">✓ On DBS Update Service</div>}
+                {preview.update_service && <div className="col-span-2 text-emerald-400 text-sm font-medium flex items-center gap-1"><Check className="w-3.5 h-3.5" />On DBS Update Service</div>}
                 {preview.notes && <div className="col-span-2"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-slate-300">{preview.notes}</p></div>}
               </div>
             )}

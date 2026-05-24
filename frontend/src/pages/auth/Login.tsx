@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { Eye, EyeOff, AlertCircle, ArrowRight, Shield, Activity, Users } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, ArrowRight, Shield, Activity, Users, CheckCircle } from 'lucide-react'
 import api from '../../api'
 
 type Mode = 'login' | 'register' | 'register_success'
@@ -88,7 +88,7 @@ export default function Login() {
             {mode === 'register_success' ? (
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                  <span className="text-3xl">✓</span>
+                  <CheckCircle className="w-8 h-8 text-emerald-400" />
                 </div>
                 <h2 className="text-white font-display text-2xl mb-2">Registration submitted</h2>
                 <p className="text-slate-300 text-sm mb-2">Welcome, <strong>{successData?.name}</strong></p>

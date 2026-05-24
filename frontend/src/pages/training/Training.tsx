@@ -121,7 +121,7 @@ export default function Training() {
     try {
       await api.post('/staff-hr/training-modules', { moduleId, moduleName: MODULES.find(m => m.id === moduleId)?.title })
       setCompletions(p => ({ ...p, [moduleId]: true }))
-      toast.success('Module completed! ✓')
+      toast.success('Module completed!')
       setActiveModule(null)
     } catch { toast.error('Failed to save') }
     finally { setLoading(false) }

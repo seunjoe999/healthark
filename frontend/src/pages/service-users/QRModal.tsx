@@ -152,7 +152,7 @@ export function QRModal({ open, onClose, suId, suName }: { open: boolean; onClos
                 <label className="label">Geofence radius (metres)</label>
                 <input className="input text-sm" type="number" value={radius} onChange={e => setRadius(e.target.value)} />
               </div>
-              {lat && lng && <p className="text-xs text-emerald-600 mb-3 font-medium">✓ Location found — click Save to apply</p>}
+              {lat && lng && <p className="text-xs text-emerald-600 mb-3 font-medium">Location found — click Save to apply</p>}
               <div className="flex gap-2">
                 <Button size="sm" onClick={saveLocation} icon={<MapPin className="w-3.5 h-3.5" />}>Save location</Button>
                 <Button size="sm" variant="ghost" onClick={() => setSettingLocation(false)}>Cancel</Button>

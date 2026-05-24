@@ -247,7 +247,7 @@ export default function PrintMARChart() {
                         {rec ? (
                           <>
                             <div style={{ fontWeight: 'bold', fontSize: 8 }}>
-                              {rec.given ? (rec.initials || '✓') : rec.refused ? 'X' : '—'}
+                              {rec.given ? (rec.initials || 'OK') : rec.refused ? 'X' : '—'}
                             </div>
                             {rec.given_at && (
                               <div style={{ fontSize: 7, color: '#555' }}>

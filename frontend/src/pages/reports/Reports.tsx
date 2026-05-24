@@ -263,7 +263,7 @@ function GenericTable({ data, reportType }: { data: any[]; reportType: string })
               {cols.map(c => (
                 <td key={c} className="px-4 py-3 text-slate-700 max-w-xs truncate">
                   {row[c] instanceof Date ? format(new Date(row[c]), 'd MMM yyyy') :
-                   typeof row[c] === 'boolean' ? (row[c] ? '✓' : '✗') :
+                   typeof row[c] === 'boolean' ? (row[c] ? 'Yes' : 'No') :
                    String(row[c] ?? '—').substring(0, 80)}
                 </td>
               ))}

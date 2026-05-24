@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info } from 'lucide-react'
+import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
@@ -152,7 +152,7 @@ export default function Noticeboard() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    {notice.is_read && <span className="text-xs text-emerald-400">✓ Read</span>}
+                    {notice.is_read && <span className="text-xs text-emerald-400 flex items-center gap-0.5"><Check className="w-3 h-3" />Read</span>}
                     {(canPost || notice.created_by === user?.id) && (
                       <button onClick={e => { e.stopPropagation(); handleDelete(notice.id) }}
                         className="text-slate-600 hover:text-rose-400 transition-colors p-1">

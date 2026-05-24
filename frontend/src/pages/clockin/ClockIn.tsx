@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { MapPin, CheckCircle, XCircle, AlertTriangle, Loader2, LogIn, LogOut } from 'lucide-react'
+import { MapPin, CheckCircle, XCircle, AlertTriangle, Loader2, LogIn, LogOut, Check } from 'lucide-react'
 
 type State = 'loading' | 'login_required' | 'confirming' | 'locating' | 'success' | 'error' | 'too_far'
 
@@ -183,12 +183,12 @@ export default function ClockIn() {
                 {result.distanceMetres !== null && (
                   <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                    {result.distanceMetres}m from location — within range ✓
+                    {result.distanceMetres}m from location — within range <Check className="w-3 h-3 inline text-emerald-400" />
                   </p>
                 )}
                 {result.punctuality && (
                   <p className={`text-xs font-semibold px-3 py-1 rounded-full inline-block ${result.punctuality === 'on_time' ? 'bg-emerald-500/15 text-emerald-300' : result.punctuality === 'early' ? 'bg-blue-500/15 text-blue-300' : 'bg-rose-500/15 text-rose-300'}`}>
-                    {result.punctuality === 'on_time' ? '✓ On time' : result.punctuality === 'early' ? '⏰ Early' : '⚠ Late'}
+                    {result.punctuality === 'on_time' ? 'On time' : result.punctuality === 'early' ? 'Early' : 'Late'}
                   </p>
                 )}
               </div>

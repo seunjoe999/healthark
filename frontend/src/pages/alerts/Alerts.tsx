@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { Bell, CheckCircle, AlertTriangle, Info, RefreshCw, Eye, X, Clock } from 'lucide-react'
+import { Bell, CheckCircle, AlertTriangle, Info, RefreshCw, Eye, X, Clock, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Alerts() {
@@ -119,7 +119,7 @@ export default function Alerts() {
                     <p className="text-sm text-slate-600 line-clamp-2">{alert.description}</p>
                     <p className="text-xs text-slate-400 mt-1">{format(new Date(alert.created_at), 'd MMM yyyy, HH:mm')}</p>
                     {alert.resolution_notes && (
-                      <p className="text-xs text-green-700 bg-green-50 rounded p-2 mt-2">✓ {alert.resolution_notes}</p>
+                      <p className="text-xs text-green-700 bg-green-50 rounded p-2 mt-2 flex items-center gap-1"><Check className="w-3 h-3 flex-shrink-0" />{alert.resolution_notes}</p>
                     )}
                   </div>
                 </div>

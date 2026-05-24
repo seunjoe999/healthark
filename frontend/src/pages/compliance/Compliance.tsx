@@ -7,7 +7,7 @@ import { Spinner } from '../../components/ui'
 import {
   ShieldCheck, AlertTriangle, Activity, BookOpen,
   Package, Bell, ClipboardList, RefreshCw, X, Zap,
-  CheckCircle, ArrowRight, ChevronRight, Circle, Clock, CheckSquare, TrendingUp,
+  CheckCircle, ArrowRight, ChevronRight, Circle, Clock, CheckSquare, TrendingUp, Check,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -420,7 +420,7 @@ function CFActionSection({ title, icon, items, colors, prefix, statuses, onCycle
             }`}>
               <span className={`w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold ${
                 done ? 'bg-emerald-500' : colors.num
-              }`}>{done ? '✓' : i + 1}</span>
+              }`}>{done ? <Check className="w-3 h-3" /> : i + 1}</span>
               <p className={`text-sm flex-1 leading-relaxed ${done ? 'text-slate-400 line-through' : colors.text}`}>{a}</p>
               <button onClick={() => onCycle(k)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${
