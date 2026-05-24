@@ -207,7 +207,7 @@ export default function Timesheets() {
           <Select label="Staff Member" options={staffOptions} placeholder="Select staff member..." value={genForm.staffId}
             onChange={e => setGenForm(f => ({ ...f, staffId: e.target.value }))} required />
           <div className="card p-3 text-sm text-slate-300">
-            Week: <strong className=”text-white”>{new Date(weekStart).toLocaleDateString('en-GB')} – {weekEnd.toLocaleDateString('en-GB')}</strong>
+            Week: <strong className="text-white">{new Date(weekStart).toLocaleDateString('en-GB')} – {weekEnd.toLocaleDateString('en-GB')}</strong>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={() => setShowGenerate(false)}>Cancel</Button>
@@ -223,7 +223,7 @@ export default function Timesheets() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold text-white text-lg">{showDetail.staff_name}</p>
-                <p className=”text-sm text-slate-400”>{new Date(showDetail.week_start).toLocaleDateString('en-GB')} – {new Date(showDetail.week_end).toLocaleDateString('en-GB')}</p>
+                <p className="text-sm text-slate-400">{new Date(showDetail.week_start).toLocaleDateString('en-GB')} – {new Date(showDetail.week_end).toLocaleDateString('en-GB')}</p>
               </div>
               <span className={clsx('badge', statusColor[showDetail.status] || 'badge-info')}>{showDetail.status}</span>
             </div>
@@ -238,7 +238,7 @@ export default function Timesheets() {
                 <div className="text-xs text-slate-400">Overtime</div>
               </div>
               <div className="card p-3 text-center">
-                <div className=”text-xl font-bold text-emerald-400”>{showDetail.total_pay ? `£${parseFloat(showDetail.total_pay).toFixed(2)}` : '—'}</div>
+                <div className="text-xl font-bold text-emerald-400">{showDetail.total_pay ? `£${parseFloat(showDetail.total_pay).toFixed(2)}` : '—'}</div>
                 <div className="text-xs text-slate-400">Total Pay</div>
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function Timesheets() {
                   {showDetail.entries.map((e: any) => (
                     <div key={e.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg" style={{ background: '#1a1a1a' }}>
                       <span className="text-slate-300">{new Date(e.work_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                      <span className=”text-slate-400”>{e.start_time} – {e.end_time}</span>
+                      <span className="text-slate-400">{e.start_time} – {e.end_time}</span>
                       <span className="font-bold text-white">{formatHours(e.hours_worked)}</span>
                     </div>
                   ))}
