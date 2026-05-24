@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
-import { History, Search, Filter, ChevronDown } from 'lucide-react'
+import { History, Search, Filter } from 'lucide-react'
 import { Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
@@ -23,7 +23,7 @@ export default function AuditTrail() {
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [expanded, setExpanded] = useState<string | null>(null)
+
   const [filters, setFilters] = useState({ resourceType: '', from: '', to: '', q: '' })
 
   async function load(p = 1) {
@@ -86,8 +86,7 @@ export default function AuditTrail() {
         <div className="space-y-2">
           {filtered.map(r => (
             <div key={r.id} className="card overflow-hidden">
-              <div className="flex items-center gap-4 p-3.5 cursor-pointer hover:bg-white/3 transition-colors"
-                onClick={() => setExpanded(expanded === r.id ? null : r.id)}>
+              <div className="flex items-center gap-4 p-3.5">
                 <div className="w-24 flex-shrink-0">
                   <span className={clsx('badge border text-xs capitalize px-2 py-0.5', actionColor[r.action] || actionColor.view)}>
                     {r.action}
@@ -96,35 +95,14 @@ export default function AuditTrail() {
                 <div className="flex-1 min-w-0">
                   <span className="text-white font-medium text-sm capitalize">
                     {r.resource_type.replace(/_/g, ' ')}
-                    {r.resource_label && <span className="text-slate-400"> Â· {r.resource_label}</span>}
+                    {r.resource_label && <span className="text-slate-400"> · {r.resource_label}</span>}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-slate-400 flex-shrink-0">
                   <span className="font-medium text-slate-300">{r.staff_name}</span>
                   <span>{new Date(r.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                  {(r.old_data || r.new_data) && <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform', expanded === r.id && 'rotate-180')} />}
                 </div>
               </div>
-              {expanded === r.id && (r.old_data || r.new_data) && (
-                <div className="border-t border-white/5 p-4 grid grid-cols-2 gap-4 text-xs" style={{ background: '#0a0a0a' }}>
-                  {r.old_data && (
-                    <div>
-                      <p className="font-bold text-slate-400 uppercase tracking-wider mb-2">Before</p>
-                      <pre className="text-rose-300 whitespace-pre-wrap break-all text-xs" style={{ background: '#1a0a0a', padding: '0.75rem', borderRadius: '0.5rem' }}>
-                        {JSON.stringify(r.old_data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {r.new_data && (
-                    <div>
-                      <p className="font-bold text-slate-400 uppercase tracking-wider mb-2">After</p>
-                      <pre className="text-emerald-300 whitespace-pre-wrap break-all text-xs" style={{ background: '#0a1a0a', padding: '0.75rem', borderRadius: '0.5rem' }}>
-                        {JSON.stringify(r.new_data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -134,7 +112,7 @@ export default function AuditTrail() {
         <div className="flex justify-center gap-3 mt-6">
           <button className="btn-outline px-4 py-2 text-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>â† Prev</button>
           <span className="text-slate-400 text-sm py-2">Page {page} of {Math.ceil(total / 50)}</span>
-          <button className="btn-outline px-4 py-2 text-sm" onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(total / 50)}>Next â†’</button>
+          <button className="btn-outline px-4 py-2 text-sm" onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(total / 50)}>Next â†'</button>
         </div>
       )}
     </div>
