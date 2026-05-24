@@ -143,6 +143,61 @@
   .border-slate-300 { border-color: rgba(232,177,48,0.3) !important; }
   .hover\:bg-slate-50:hover { background-color: rgba(232,177,48,0.05) !important; }
   .hover\:bg-slate-100:hover { background-color: rgba(232,177,48,0.08) !important; }
+
+  /* Light colour backgrounds → dark equivalents */
+  .bg-red-50    { background-color: rgba(239,68,68,0.08)    !important; }
+  .bg-rose-50   { background-color: rgba(244,63,94,0.08)    !important; }
+  .bg-orange-50 { background-color: rgba(249,115,22,0.08)   !important; }
+  .bg-amber-50  { background-color: rgba(245,158,11,0.08)   !important; }
+  .bg-yellow-50 { background-color: rgba(234,179,8,0.08)    !important; }
+  .bg-green-50  { background-color: rgba(34,197,94,0.08)    !important; }
+  .bg-emerald-50{ background-color: rgba(16,185,129,0.08)   !important; }
+  .bg-teal-50   { background-color: rgba(20,184,166,0.08)   !important; }
+  .bg-cyan-50   { background-color: rgba(6,182,212,0.08)    !important; }
+  .bg-blue-50   { background-color: rgba(59,130,246,0.08)   !important; }
+  .bg-indigo-50 { background-color: rgba(99,102,241,0.08)   !important; }
+  .bg-violet-50 { background-color: rgba(139,92,246,0.08)   !important; }
+  .bg-purple-50 { background-color: rgba(168,85,247,0.08)   !important; }
+  .bg-pink-50   { background-color: rgba(236,72,153,0.08)   !important; }
+  .bg-gray-50   { background-color: #0a0a0a                 !important; }
+  .bg-gray-100  { background-color: #1a1a1a                 !important; }
+  .bg-gray-200  { background-color: #222222                 !important; }
+  .bg-zinc-50   { background-color: #0a0a0a                 !important; }
+  .bg-zinc-100  { background-color: #1a1a1a                 !important; }
+  .bg-neutral-50 { background-color: #0a0a0a                !important; }
+  .bg-neutral-100 { background-color: #1a1a1a               !important; }
+
+  /* Matching text colours for light backgrounds */
+  .text-red-700    { color: #f87171 !important; }
+  .text-red-600    { color: #f87171 !important; }
+  .text-rose-700   { color: #fb7185 !important; }
+  .text-rose-600   { color: #fb7185 !important; }
+  .text-orange-700 { color: #fb923c !important; }
+  .text-orange-600 { color: #fb923c !important; }
+  .text-amber-700  { color: #fbbf24 !important; }
+  .text-amber-600  { color: #fbbf24 !important; }
+  .text-yellow-700 { color: #facc15 !important; }
+  .text-yellow-600 { color: #facc15 !important; }
+  .text-green-700  { color: #4ade80 !important; }
+  .text-green-600  { color: #4ade80 !important; }
+  .text-emerald-700{ color: #34d399 !important; }
+  .text-emerald-600{ color: #34d399 !important; }
+  .text-teal-700   { color: #2dd4bf !important; }
+  .text-teal-600   { color: #2dd4bf !important; }
+  .text-blue-700   { color: #60a5fa !important; }
+  .text-blue-600   { color: #60a5fa !important; }
+  .text-indigo-700 { color: #818cf8 !important; }
+  .text-indigo-600 { color: #818cf8 !important; }
+  .text-purple-700 { color: #c084fc !important; }
+  .text-purple-600 { color: #c084fc !important; }
+  .text-pink-700   { color: #f472b6 !important; }
+  .text-pink-600   { color: #f472b6 !important; }
+  .text-gray-900   { color: #f5f0e8 !important; }
+  .text-gray-800   { color: #ede8dc !important; }
+  .text-gray-700   { color: #d4cfc3 !important; }
+  .text-gray-600   { color: #b8b3a7 !important; }
+  .text-gray-500   { color: #8a8578 !important; }
+  .text-gray-400   { color: #6b6660 !important; }
 }
 
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
