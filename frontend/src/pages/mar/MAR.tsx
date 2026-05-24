@@ -322,9 +322,9 @@ export default function MAR() {
                   showPrescriptions={showPrescriptions}
                   showDirections={showDirections}
                   today={today}
-                  onCellClick={(med, date, records) => {
+                  onCellClick={(med, date, records, slot) => {
                     if (records.length > 0) setCellDetail({ med, date, records })
-                    else if (date <= today) setLogModal({ med, date, slot: med.time_slots?.[0] || '08:00' })
+                    else if (date <= today) setLogModal({ med, date, slot })
                   }}
                   onRefresh={() => fetchAll(selectedSu)}
                 />
@@ -428,7 +428,7 @@ export default function MAR() {
 /* ─── MAR Grid ─────────────────────────────────────────────────────────── */
 function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellClick, onRefresh }: {
   chartData: any; showPrescriptions: boolean; showDirections: boolean; today: string;
-  onCellClick: (med: any, date: string, records: any[]) => void; onRefresh: () => void
+  onCellClick: (med: any, date: string, records: any[], slot: string) => void; onRefresh: () => void
 }) {
   if (!chartData) {
     return (
@@ -594,7 +594,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                   }
 
                   return (
-                    <td key={d} onClick={() => !isFuture && onCellClick(med, d, dayRecs)}
+                    <td key={d} onClick={() => !isFuture && onCellClick(med, d, dayRecs, slot)}
                       style={{
                         border: `1px solid ${isToday ? '#fbbf24' : '#e2e8f0'}`,
                         textAlign: 'center',
@@ -714,6 +714,7 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
         notes: notes || undefined,
         reason: reason || undefined,
         scheduledTime: slot,
+        recordDate: date,
       })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }

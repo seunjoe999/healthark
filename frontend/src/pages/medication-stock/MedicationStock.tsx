@@ -30,6 +30,11 @@ interface StockItem {
   expiring_soon: boolean
 }
 
+function formatQty(v: any) {
+  const n = Number(v)
+  return Number.isInteger(n) ? String(n) : n.toFixed(2)
+}
+
 const ADJUSTMENT_TYPES = [
   { value: 'administered', label: 'Administered' },
   { value: 'received', label: 'Received (new stock)' },
@@ -239,7 +244,7 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
       <div className="space-y-4">
         <div className="bg-slate-50 rounded-lg p-3 text-center">
           <p className="text-xs text-slate-500">Current quantity</p>
-          <p className="text-3xl font-bold text-slate-900">{Number(item.quantity_remaining).toFixed(2)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
+          <p className="text-3xl font-bold text-slate-900">{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
         </div>
         <Field label="Reason">
           <select className={inputCls} value={adjustmentType} onChange={e => setAdjustmentType(e.target.value)}>
@@ -305,7 +310,7 @@ function StockCard({
       {/* Quantity */}
       <div className="flex items-end justify-between">
         <div>
-          <span className={`text-2xl font-bold ${isLow ? 'text-amber-600' : 'text-slate-900'}`}>{Number(item.quantity_remaining).toFixed(2)}</span>
+          <span className={`text-2xl font-bold ${isLow ? 'text-amber-600' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)}</span>
           <span className="text-sm text-slate-500 ml-1">{item.unit}</span>
           <p className="text-xs text-slate-400 mt-0.5">Reorder at ≤ {item.reorder_threshold}</p>
         </div>

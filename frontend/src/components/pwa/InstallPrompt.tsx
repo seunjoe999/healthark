@@ -47,8 +47,7 @@ export default function InstallPrompt() {
           <Download className="w-5 h-5 text-slate-900" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-semibold">Install CompCare Hub</p>
-          <p className="text-slate-400 text-xs mt-0.5">Add to your home screen for quick access</p>
+          <p className="text-white text-sm font-semibold">Install our app</p>
           <div className="flex gap-2 mt-3">
             <button onClick={install}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-900 transition-all"

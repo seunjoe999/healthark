@@ -279,7 +279,7 @@ export default function Quality() {
                 <p className="font-semibold text-slate-900">{previewQA.summary}</p>
               </div>
               {previewQA.detail && <div><p className="text-xs text-slate-400 mb-1">Detail</p><p className="text-sm text-slate-700">{previewQA.detail}</p></div>}
-              {previewQA.action_taken && <div><p className="text-xs text-slate-400 mb-1">Action taken</p><p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg p-3">{previewQA.action_taken}</p></div>}
+              {previewQA.action_taken && <div><p className="text-xs text-slate-400 mb-1">Action taken</p><p className="text-sm text-emerald-300 bg-emerald-500/10 rounded-lg p-3">{previewQA.action_taken}</p></div>}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {previewQA.raised_by_name && <div><p className="text-xs text-slate-400">Raised by</p><p>{previewQA.raised_by_name}</p></div>}
                 <div><p className="text-xs text-slate-400">Date</p><p>{format(new Date(previewQA.created_at), 'd MMM yyyy')}</p></div>

@@ -89,13 +89,14 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = fromToken(req, 'homeId');
-      const { suId, medicationId, given, refused, reason, notes, scheduledTime } = req.body;
+      const { suId, medicationId, given, refused, reason, notes, scheduledTime, recordDate } = req.body;
       const rows = await query(
         `INSERT INTO mar_records (su_id, home_id, medication_id, given_by, given, refused,
           refused_reason, notes, scheduled_time, record_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,CURRENT_DATE) RETURNING *`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
         [suId, homeId, medicationId, staffId, given ?? null, refused || false,
-         reason || null, notes || null, scheduledTime || null]
+         reason || null, notes || null, scheduledTime || null,
+         recordDate || new Date().toISOString().split('T')[0]]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
