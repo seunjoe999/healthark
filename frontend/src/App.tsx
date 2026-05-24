@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationsProvider } from './context/NotificationsContext'
 import AppLayout from './components/layout/AppLayout'
+import InstallPrompt from './components/pwa/InstallPrompt'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
 import ServiceUserList from './pages/service-users/ServiceUserList'
@@ -185,6 +186,7 @@ export default function App() {
           <NotificationsProvider>
             <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
             <AppRoutes />
+            <InstallPrompt />
           </NotificationsProvider>
         </AuthProvider>
       </BrowserRouter>
