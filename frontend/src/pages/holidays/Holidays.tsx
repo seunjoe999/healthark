@@ -26,6 +26,7 @@ export default function Holidays() {
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
+  const [preview, setPreview] = useState<any>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -160,7 +161,7 @@ export default function Holidays() {
                   </span>
                   <div className="space-y-0.5">
                     {dayLeaves.slice(0, 2).map((l: any) => (
-                      <div key={l.id} className={`text-xs px-1.5 py-0.5 rounded font-medium truncate ${
+                      <div key={l.id} onClick={() => setPreview(l)} className={`text-xs px-1.5 py-0.5 rounded font-medium truncate cursor-pointer hover:opacity-80 ${
                         l.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
                         l.status === 'declined' ? 'bg-rose-100 text-rose-700' :
                         'bg-amber-100 text-amber-800'
@@ -220,6 +221,40 @@ export default function Holidays() {
           ))}
         </div>
       )}
+
+      {/* Leave preview modal */}
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="Leave Details">
+        {preview && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-slate-900 text-lg">{preview.staff_name}</p>
+                <p className="text-sm text-slate-500 capitalize">{(preview.leave_type || '').replace('_', ' ')}</p>
+              </div>
+              <span className={`badge ${preview.status === 'approved' ? 'badge-success' : preview.status === 'declined' ? 'badge-critical' : 'badge-warning'}`}>{preview.status}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-xs text-slate-400">Start date</p><p className="font-medium text-slate-800">{preview.start_date ? format(parseISO(preview.start_date), 'd MMM yyyy') : '—'}</p></div>
+              <div><p className="text-xs text-slate-400">End date</p><p className="font-medium text-slate-800">{preview.end_date ? format(parseISO(preview.end_date), 'd MMM yyyy') : '—'}</p></div>
+              {preview.total_hours && <div><p className="text-xs text-slate-400">Hours</p><p className="font-medium text-slate-800">{preview.total_hours}h</p></div>}
+              {preview.approved_by_name && <div><p className="text-xs text-slate-400">Approved by</p><p className="font-medium text-slate-800">{preview.approved_by_name}</p></div>}
+            </div>
+            {preview.notes && <div><p className="text-xs text-slate-400 mb-1">Reason / notes</p><p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{preview.notes}</p></div>}
+            {preview.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+              <div className="flex gap-2 pt-2">
+                <button onClick={async () => { await approve(preview.id); setPreview(null) }}
+                  className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600">
+                  Approve
+                </button>
+                <button onClick={async () => { await decline(preview.id); setPreview(null) }}
+                  className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600">
+                  Decline
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <AddLeaveRequestModal open={addOpen} onClose={() => setAddOpen(false)}
         staffList={isRole('home_manager','group_admin','senior_carer') ? staffList : []}

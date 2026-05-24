@@ -29,6 +29,7 @@ export default function Quality() {
   const [addProfOpen, setAddProfOpen] = useState(false)
   const [addNoteOpen, setAddNoteOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [previewQA, setPreviewQA] = useState<any>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -110,7 +111,7 @@ export default function Quality() {
               ) : (
                 <div className="space-y-3">
                   {qaRecords.map((r: any) => (
-                    <div key={r.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                    <div key={r.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setPreviewQA(r)}>
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {r.record_type === 'compliment' ? <Star className="w-4 h-4 text-gold-500" /> : <AlertTriangle className="w-4 h-4 text-rose-500" />}
@@ -262,6 +263,34 @@ export default function Quality() {
 
       {selectedSu && (
         <>
+      {previewQA && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b">
+              <div className="flex items-center gap-2">
+                <span className={`badge ${previewQA.record_type === 'compliment' ? 'badge-success' : previewQA.record_type === 'complaint' ? 'badge-critical' : 'badge-info'}`}>{previewQA.record_type}</span>
+                {previewQA.su_name && <span className="text-sm text-slate-500">· {previewQA.su_name}</span>}
+              </div>
+              <button onClick={() => setPreviewQA(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><Star className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Summary</p>
+                <p className="font-semibold text-slate-900">{previewQA.summary}</p>
+              </div>
+              {previewQA.detail && <div><p className="text-xs text-slate-400 mb-1">Detail</p><p className="text-sm text-slate-700">{previewQA.detail}</p></div>}
+              {previewQA.action_taken && <div><p className="text-xs text-slate-400 mb-1">Action taken</p><p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg p-3">{previewQA.action_taken}</p></div>}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {previewQA.raised_by_name && <div><p className="text-xs text-slate-400">Raised by</p><p>{previewQA.raised_by_name}</p></div>}
+                <div><p className="text-xs text-slate-400">Date</p><p>{format(new Date(previewQA.created_at), 'd MMM yyyy')}</p></div>
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end">
+              <button onClick={() => setPreviewQA(null)} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
           <AddCapacityModal open={addCapacityOpen} onClose={() => setAddCapacityOpen(false)} suId={selectedSu.id}
             onSaved={async () => { setAddCapacityOpen(false); const res = await api.get(`/quality/capacity/${selectedSu.id}`); setCapacityRecords(res.data.data || []); toast.success('Assessment recorded') }} />
           <AddProfessionalModal open={addProfOpen} onClose={() => setAddProfOpen(false)} suId={selectedSu.id}

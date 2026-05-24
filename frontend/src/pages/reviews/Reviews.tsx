@@ -17,6 +17,15 @@ const REVIEW_TYPES = [
   { value: 'family_feedback', label: 'Family feedback' },
 ]
 
+function parseAttendees(value: any): string {
+  if (!value) return ''
+  try {
+    const arr = typeof value === 'string' ? JSON.parse(value) : value
+    if (Array.isArray(arr)) return arr.map((a: any) => a.name ? `${a.name}${a.role ? ` (${a.role})` : ''}` : String(a)).join(', ')
+  } catch {}
+  return String(value)
+}
+
 export default function Reviews() {
   const { user } = useAuth()
   const [sus, setSus] = useState<any[]>([])
@@ -125,7 +134,7 @@ export default function Reviews() {
                         <p className="text-xs text-slate-400">
                           {r.review_date ? format(new Date(r.review_date), 'd MMMM yyyy') : ''} · {r.created_by_name}
                         </p>
-                        {r.attendees && <p className="text-xs text-slate-400 mt-0.5">Attendees: {r.attendees}</p>}
+                        {r.attendees && <p className="text-xs text-slate-400 mt-0.5">Attendees: {parseAttendees(r.attendees)}</p>}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {r.next_review_date && (
@@ -229,7 +238,7 @@ function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: 
             {review.attendees && (
               <div className="flex items-center gap-2 text-slate-600">
                 <Users className="w-4 h-4 text-slate-400" />
-                <span><strong>Attendees:</strong> {review.attendees}</span>
+                <span><strong>Attendees:</strong> {parseAttendees(review.attendees)}</span>
               </div>
             )}
           </div>

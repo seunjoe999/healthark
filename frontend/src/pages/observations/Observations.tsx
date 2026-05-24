@@ -79,6 +79,7 @@ export default function Observations() {
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
+  const [preview, setPreview] = useState<any>(null)
   const [filterType, setFilterType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
 
@@ -244,7 +245,7 @@ export default function Observations() {
                   {records.map(r => {
                     const flags = abnormalBadge(r)
                     return (
-                      <div key={r.id} className={clsx('card p-4', flags.length > 0 && 'border-rose-500/30')}>
+                      <div key={r.id} className={clsx('card p-4 cursor-pointer hover:border-amber-500/30 transition-all', flags.length > 0 && 'border-rose-500/30')} onClick={() => setPreview(r)}>
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
@@ -275,6 +276,32 @@ export default function Observations() {
           )}
         </>
       )}
+
+      {/* Preview modal */}
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="Observation Detail" size="lg">
+        {preview && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-white text-lg">{preview.su_name}</p>
+                <p className="text-sm text-slate-400 capitalize">{preview.obs_type?.replace(/_/g, ' ')} · {format(new Date(preview.observed_at), 'dd MMM yyyy HH:mm')}</p>
+              </div>
+              {abnormalBadge(preview).length > 0 && (
+                <div className="flex gap-1 flex-wrap justify-end">
+                  {abnormalBadge(preview).map(f => <span key={f} className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 text-xs border border-rose-500/30">{f}</span>)}
+                </div>
+              )}
+            </div>
+            <div className="card p-4"><ObsValue obs={preview} /></div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {preview.temp_method && <div><span className="text-slate-500">Method:</span> <span className="text-white capitalize">{preview.temp_method}</span></div>}
+              {preview.o2_litres_min && <div><span className="text-slate-500">O₂ flow:</span> <span className="text-white">{preview.o2_litres_min} L/min</span></div>}
+              <div><span className="text-slate-500">Recorded by:</span> <span className="text-white">{preview.recorded_by_name}</span></div>
+            </div>
+            {preview.notes && <div><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-300">{preview.notes}</p></div>}
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Record Observation" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">

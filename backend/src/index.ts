@@ -320,7 +320,7 @@ async function ensureColumns() {
     `CREATE TABLE IF NOT EXISTS timesheet_entries (
        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
        timesheet_id UUID NOT NULL REFERENCES timesheets(id) ON DELETE CASCADE,
-       clockin_id UUID REFERENCES clock_sessions(id) ON DELETE SET NULL,
+       clockin_id UUID,
        work_date DATE NOT NULL,
        start_time TIME,
        end_time TIME,

@@ -32,6 +32,7 @@ export default function SeizureLog() {
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
   const [view, setView] = useState<'log' | 'stats'>('log')
+  const [preview, setPreview] = useState<any>(null)
 
   const [form, setForm] = useState({
     suId: '', seizureAt: new Date().toISOString().slice(0, 16),
@@ -132,7 +133,7 @@ export default function SeizureLog() {
             records.length === 0 ? <EmptyState title="No seizures recorded" description="Use 'Log Seizure' to record an episode" /> : (
               <div className="space-y-3">
                 {records.map(r => (
-                  <div key={r.id} className="card p-4 border-l-4 border-l-rose-500/50">
+                  <div key={r.id} className="card p-4 border-l-4 border-l-rose-500/50 cursor-pointer hover:border-amber-500/30 transition-all" onClick={() => setPreview(r)}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -165,6 +166,33 @@ export default function SeizureLog() {
           )}
         </>
       )}
+
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="Seizure Episode Detail" size="lg">
+        {preview && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-white text-lg">{preview.su_name}</p>
+                <p className="text-sm text-slate-400">{format(new Date(preview.seizure_at), 'dd MMM yyyy HH:mm')}</p>
+              </div>
+              <span className="badge badge-critical capitalize">{preview.seizure_type?.replace(/_/g, ' ')}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {preview.duration_seconds && <div className="card p-3 text-center"><div className="font-bold text-white">{formatDuration(preview.duration_seconds)}</div><div className="text-xs text-slate-500">Duration</div></div>}
+              {preview.recovery_time_mins && <div className="card p-3 text-center"><div className="font-bold text-white">{preview.recovery_time_mins} min</div><div className="text-xs text-slate-500">Recovery</div></div>}
+            </div>
+            {preview.description && <div><p className="text-xs text-slate-500 mb-1">Description</p><p className="text-sm text-slate-300">{preview.description}</p></div>}
+            {preview.action_taken && <div><p className="text-xs text-slate-500 mb-1">Action taken</p><p className="text-sm text-amber-300">{preview.action_taken}</p></div>}
+            {preview.post_ictal && <div><p className="text-xs text-slate-500 mb-1">Post-ictal state</p><p className="text-sm text-slate-300">{preview.post_ictal}</p></div>}
+            {preview.notes && <div><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-300">{preview.notes}</p></div>}
+            <div className="flex gap-4 text-xs">
+              {preview.notified_gp && <span className="text-blue-400 font-medium">GP notified</span>}
+              {preview.notified_family && <span className="text-purple-400 font-medium">Family notified</span>}
+            </div>
+            <p className="text-xs text-slate-600">Recorded by {preview.recorded_by_name}</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Log Seizure Episode" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">

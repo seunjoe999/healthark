@@ -48,6 +48,7 @@ export default function BowelChart() {
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
   const [view, setView] = useState<'log' | 'summary'>('summary')
+  const [preview, setPreview] = useState<any>(null)
 
   const [form, setForm] = useState({
     suId: '',
@@ -187,7 +188,7 @@ export default function BowelChart() {
                 {records.map(r => {
                   const bristolNum = parseInt(r.bristol_type)
                   return (
-                    <div key={r.id} className="card p-4">
+                    <div key={r.id} className="card p-4 cursor-pointer hover:border-amber-500/30 transition-all" onClick={() => setPreview(r)}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -219,6 +220,27 @@ export default function BowelChart() {
           )}
         </>
       )}
+
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="Bowel Chart Record">
+        {preview && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-white text-lg">{preview.su_name}</p>
+              <span className={clsx('px-2.5 py-0.5 rounded-lg text-xs font-bold border', bristolColor(parseInt(preview.bristol_type)))}>Bristol Type {preview.bristol_type}</span>
+            </div>
+            <p className="text-sm text-slate-400">{format(new Date(preview.recorded_at), 'dd MMM yyyy HH:mm')}</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {preview.amount && <div><span className="text-slate-500">Amount:</span> <span className="text-white capitalize">{preview.amount}</span></div>}
+              {preview.colour && <div><span className="text-slate-500">Colour:</span> <span className="text-white capitalize">{preview.colour.replace(/_/g, ' ')}</span></div>}
+              {preview.blood_present && <div className="col-span-2 text-rose-400 font-semibold">⚠ Blood present</div>}
+              {preview.mucus_present && <div className="col-span-2 text-amber-400 font-semibold">⚠ Mucus present</div>}
+            </div>
+            {preview.consistency && <div><p className="text-xs text-slate-500 mb-1">Consistency notes</p><p className="text-sm text-slate-300">{preview.consistency}</p></div>}
+            {preview.notes && <div><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-300">{preview.notes}</p></div>}
+            <p className="text-xs text-slate-600">Recorded by {preview.recorded_by_name}</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Record Bowel Movement" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -36,6 +36,7 @@ export default function DBSTracker() {
   const [showAdd, setShowAdd] = useState(false)
   const [staff, setStaff] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [preview, setPreview] = useState<any>(null)
 
   const [dbsForm, setDbsForm] = useState({ staffId: '', dbsNumber: '', dbsType: 'enhanced', issueDate: '', expiryDate: '', updateService: false, notes: '' })
   const [refForm, setRefForm] = useState({ staffId: '', refereeName: '', refereePosition: '', refereeCompany: '', refereeEmail: '', receivedDate: '', status: 'pending' })
@@ -194,7 +195,7 @@ export default function DBSTracker() {
           {tab === 'dbs' && (
             <div className="space-y-3">
               {dbsRecords.length === 0 ? <EmptyState title="No DBS records" description="Add DBS certificates for your staff" /> : dbsRecords.map(d => (
-                <div key={d.id} className="card p-4">
+                <div key={d.id} className="card p-4 cursor-pointer hover:border-amber-500/30 transition-all" onClick={() => setPreview({ ...d, _type: 'dbs' })}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -220,7 +221,7 @@ export default function DBSTracker() {
           {tab === 'references' && (
             <div className="space-y-3">
               {references.length === 0 ? <EmptyState title="No references" description="Add reference records for staff members" /> : references.map(r => (
-                <div key={r.id} className="card p-4">
+                <div key={r.id} className="card p-4 cursor-pointer hover:border-amber-500/30 transition-all" onClick={() => setPreview({ ...r, _type: 'ref' })}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -243,7 +244,7 @@ export default function DBSTracker() {
           {tab === 'right_to_work' && (
             <div className="space-y-3">
               {rtwDocs.length === 0 ? <EmptyState title="No RTW documents" description="Add right to work documents for staff" /> : rtwDocs.map(d => (
-                <div key={d.id} className="card p-4">
+                <div key={d.id} className="card p-4 cursor-pointer hover:border-amber-500/30 transition-all" onClick={() => setPreview({ ...d, _type: 'rtw' })}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -264,6 +265,44 @@ export default function DBSTracker() {
           )}
         </>
       )}
+
+      {/* Preview Modal */}
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="Document Details" size="lg">
+        {preview && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-white text-lg">{preview.staff_name}</p>
+              <span className={clsx('badge', statusColor[preview.status])}>{statusLabel[preview.status]}</span>
+            </div>
+            {preview._type === 'dbs' && (
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-slate-500">DBS Type</p><p className="text-white capitalize">{preview.dbs_type?.replace(/_/g, ' ')}</p></div>
+                {preview.dbs_number && <div><p className="text-xs text-slate-500">Certificate No.</p><p className="text-white font-mono">{preview.dbs_number}</p></div>}
+                <div><p className="text-xs text-slate-500">Issue Date</p><p className="text-white">{preview.issue_date ? new Date(preview.issue_date).toLocaleDateString() : '—'}</p></div>
+                <div><p className="text-xs text-slate-500">Expiry Date</p><p className={preview.status === 'expired' ? 'text-rose-400' : preview.status === 'expiring_soon' ? 'text-amber-400' : 'text-white'}>{preview.expiry_date ? new Date(preview.expiry_date).toLocaleDateString() : 'No expiry'}</p></div>
+                {preview.update_service && <div className="col-span-2 text-emerald-400 text-sm font-medium">✓ On DBS Update Service</div>}
+                {preview.notes && <div className="col-span-2"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-slate-300">{preview.notes}</p></div>}
+              </div>
+            )}
+            {preview._type === 'ref' && (
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-slate-500">Referee</p><p className="text-white">{preview.referee_name}</p></div>
+                {preview.referee_position && <div><p className="text-xs text-slate-500">Position</p><p className="text-white">{preview.referee_position}</p></div>}
+                {preview.referee_company && <div><p className="text-xs text-slate-500">Company</p><p className="text-white">{preview.referee_company}</p></div>}
+                {preview.referee_email && <div><p className="text-xs text-slate-500">Email</p><p className="text-white">{preview.referee_email}</p></div>}
+                {preview.received_date && <div><p className="text-xs text-slate-500">Received</p><p className="text-white">{new Date(preview.received_date).toLocaleDateString()}</p></div>}
+              </div>
+            )}
+            {preview._type === 'rtw' && (
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-slate-500">Document Type</p><p className="text-white">{preview.document_type}</p></div>
+                {preview.document_number && <div><p className="text-xs text-slate-500">Document No.</p><p className="text-white font-mono">{preview.document_number}</p></div>}
+                {preview.expiry_date && <div><p className="text-xs text-slate-500">Expiry</p><p className={preview.status === 'expired' ? 'text-rose-400' : 'text-white'}>{new Date(preview.expiry_date).toLocaleDateString()}</p></div>}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Add Document Modal */}
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Compliance Document" size="lg">

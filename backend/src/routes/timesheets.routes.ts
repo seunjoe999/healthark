@@ -63,15 +63,26 @@ router.post('/generate', requireRole('home_manager', 'group_admin', 'senior_care
       weekEnd.setDate(weekEnd.getDate() + 6);
       const weekEndStr = weekEnd.toISOString().split('T')[0];
 
-      // Pull clock sessions for that week
+      // Derive sessions from paired clock_in/clock_out events
       const sessions = await query(`
-        SELECT cs.*, cs.clock_in_time, cs.clock_out_time,
-               EXTRACT(EPOCH FROM (cs.clock_out_time - cs.clock_in_time)) / 3600 AS hours_worked
-        FROM clock_sessions cs
-        WHERE cs.staff_id = $1 AND cs.home_id = $2
-          AND DATE(cs.clock_in_time) BETWEEN $3 AND $4
-          AND cs.clock_out_time IS NOT NULL
-        ORDER BY cs.clock_in_time`,
+        WITH events AS (
+          SELECT *,
+            LEAD(event_time) OVER (PARTITION BY staff_id ORDER BY event_time) AS next_event_time,
+            LEAD(event_type) OVER (PARTITION BY staff_id ORDER BY event_time) AS next_event_type
+          FROM staff_clock_events
+          WHERE staff_id = $1 AND home_id = $2
+            AND DATE(event_time) BETWEEN $3 AND $4
+        )
+        SELECT
+          id,
+          event_time AS clock_in_time,
+          next_event_time AS clock_out_time,
+          EXTRACT(EPOCH FROM (next_event_time - event_time)) / 3600 AS hours_worked
+        FROM events
+        WHERE event_type = 'clock_in'
+          AND next_event_type = 'clock_out'
+          AND next_event_time IS NOT NULL
+        ORDER BY clock_in_time`,
         [staffId, homeId, weekStart, weekEndStr]
       );
 
