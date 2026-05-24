@@ -3,6 +3,7 @@ import { BarChart3, Plus, Star, CheckCircle2, XCircle } from 'lucide-react'
 import { Button, Modal, Select, Input, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
+import { homesApi } from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 
@@ -55,10 +56,12 @@ function ScoreInput({ label, field, form, setForm }: { label: string; field: str
 }
 
 export default function PerformanceMatrix() {
-  const { isRole } = useAuth()
+  const { user, isRole } = useAuth()
   const [matrix, setMatrix] = useState<any[]>([])
   const [history, setHistory] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
+  const [homes, setHomes] = useState<any[]>([])
+  const [selectedHome, setSelectedHome] = useState('')
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -66,6 +69,17 @@ export default function PerformanceMatrix() {
   const [selectedStaff, setSelectedStaff] = useState('')
 
   const canAssess = isRole('home_manager', 'group_admin')
+  const isGroupAdmin = isRole('group_admin')
+
+  useEffect(() => {
+    if (isGroupAdmin) {
+      homesApi.list().then(res => {
+        const h = res.data.data || []
+        setHomes(h)
+        if (h.length > 0) setSelectedHome(h[0].id)
+      }).catch(() => {})
+    }
+  }, [])
 
   const [form, setForm] = useState({
     staffId: '',
@@ -87,11 +101,12 @@ export default function PerformanceMatrix() {
 
   async function load() {
     setLoading(true)
+    const homeParam = selectedHome || undefined
     try {
       const [matrixRes, staffRes, historyRes] = await Promise.all([
-        api.get('/performance/matrix'),
-        api.get('/staff'),
-        api.get('/performance', { params: selectedStaff ? { staffId: selectedStaff } : {} }),
+        api.get('/performance/matrix', { params: homeParam ? { homeId: homeParam } : {} }),
+        api.get('/staff', { params: homeParam ? { homeId: homeParam } : {} }),
+        api.get('/performance', { params: { ...(homeParam ? { homeId: homeParam } : {}), ...(selectedStaff ? { staffId: selectedStaff } : {}) } }),
       ])
       setMatrix(matrixRes.data.data || [])
       setStaff(staffRes.data.data || [])
@@ -100,7 +115,7 @@ export default function PerformanceMatrix() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [selectedStaff])
+  useEffect(() => { load() }, [selectedStaff, selectedHome])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -108,6 +123,7 @@ export default function PerformanceMatrix() {
     try {
       await api.post('/performance', {
         ...form,
+        homeId: selectedHome || undefined,
         trainingCompliance: form.trainingCompliance !== '' ? Number(form.trainingCompliance) : null,
         supervisionsDue: form.supervisionsDue !== '' ? Number(form.supervisionsDue) : null,
         supervisionsDone: form.supervisionsDone !== '' ? Number(form.supervisionsDone) : null,
@@ -140,6 +156,15 @@ export default function PerformanceMatrix() {
           )}
         </div>
       </div>
+
+      {/* Home selector for group admin */}
+      {isGroupAdmin && homes.length > 1 && (
+        <div className="mb-4">
+          <select className="input w-64 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: '#1a1a1a' }}>
