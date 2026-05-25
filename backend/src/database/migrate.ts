@@ -17,6 +17,7 @@ const MIGRATION_FILES = [
   '010_add_all_missing_columns.sql',
   '011_audit_compliance_fixes.sql',
   '012_cqc_family_notifications.sql',
+  '013_rota_features.sql',
 ];
 
 function splitStatements(sql: string): string[] {

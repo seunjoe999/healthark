@@ -8,8 +8,6 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 
-function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
-
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -18,14 +16,14 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
-// GET /api/shifts?homeId=&date=&week=
+// GET /api/shifts?homeId=&weekStart=&date=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = req.query.date as string;
     const weekStart = req.query.weekStart as string;
 
-    let sql = `SELECT sh.*, 
+    let sql = `SELECT sh.*,
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
       su.first_name || ' ' || su.last_name as su_name
       FROM staff_shifts sh
@@ -58,16 +56,150 @@ router.post('/', [body('staffId').isUUID(), body('shiftDate').isDate(), body('st
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [homeId, staffId, suId || null, shiftDate, startTime, endTime, shiftType || 'regular', notes || null, createdBy]
       );
-      // Create notification for staff member
       await query(
         `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-         VALUES ($1,$2,$3,$4,'shift','/staff')`,
+         VALUES ($1,$2,$3,$4,'shift','/rota')`,
         [staffId, homeId, 'New shift assigned', `You have been assigned a shift on ${shiftDate} from ${startTime} to ${endTime}`]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
+
+// POST /api/shifts/copy-week — copy all shifts from previous week to current week
+router.post('/copy-week', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const { weekStart } = req.body;
+    if (!weekStart) return res.status(400).json({ success: false, error: 'weekStart required' } as ApiResponse);
+
+    const prevDate = new Date(weekStart);
+    prevDate.setUTCDate(prevDate.getUTCDate() - 7);
+    const prevWeek = prevDate.toISOString().split('T')[0];
+
+    const prevShifts = await query<any>(
+      `SELECT * FROM staff_shifts WHERE home_id = $1 AND shift_date >= $2 AND shift_date < $2::date + interval '7 days'`,
+      [homeId, prevWeek]
+    );
+
+    let copied = 0;
+    for (const s of prevShifts) {
+      const d = new Date(s.shift_date);
+      d.setUTCDate(d.getUTCDate() + 7);
+      try {
+        const ins = await query(
+          `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, notes)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING RETURNING id`,
+          [homeId, s.staff_id, s.su_id, d.toISOString().split('T')[0], s.start_time, s.end_time, s.shift_type, s.notes]
+        );
+        if ((ins as any[]).length > 0) copied++;
+      } catch {}
+    }
+    res.json({ success: true, data: { copied } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// GET /api/shifts/leave?homeId=&weekStart=
+router.get('/leave', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const weekStart = req.query.weekStart as string;
+    let sql = `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name
+               FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
+               WHERE sl.home_id = $1`;
+    const params: unknown[] = [homeId];
+    if (weekStart) {
+      sql += ` AND sl.leave_date >= $2 AND sl.leave_date < $2::date + interval '7 days'`;
+      params.push(weekStart);
+    }
+    sql += ' ORDER BY sl.leave_date, s.last_name';
+    const rows = await query(sql, params);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/leave
+router.post('/leave', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const createdBy = fromToken(req, 'staffId');
+    const { staffId, leaveDate, leaveType, notes } = req.body;
+    if (!staffId || !leaveDate) return res.status(400).json({ success: false, error: 'staffId and leaveDate required' } as ApiResponse);
+    const rows = await query(
+      `INSERT INTO staff_leave (home_id, staff_id, leave_date, leave_type, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (staff_id, leave_date) DO UPDATE SET leave_type=$4, notes=$5, created_by=$6
+       RETURNING *`,
+      [homeId, staffId, leaveDate, leaveType || 'annual', notes || null, createdBy]
+    );
+    res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/shifts/leave/:id
+router.delete('/leave/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await query('DELETE FROM staff_leave WHERE id = $1', [req.params.id]);
+    res.json({ success: true } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// GET /api/shifts/swaps?homeId=
+router.get('/swaps', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT ssr.*,
+              sh.shift_date, sh.start_time, sh.end_time, sh.shift_type,
+              rs.first_name || ' ' || rs.last_name as requesting_name,
+              ts.first_name || ' ' || ts.last_name as target_name
+       FROM shift_swap_requests ssr
+       JOIN staff_shifts sh ON sh.id = ssr.shift_id
+       JOIN staff rs ON rs.id = ssr.requesting_staff_id
+       LEFT JOIN staff ts ON ts.id = ssr.target_staff_id
+       WHERE ssr.home_id = $1 AND ssr.status = 'pending'
+       ORDER BY ssr.created_at DESC`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/swaps
+router.post('/swaps', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const requestingStaffId = fromToken(req, 'staffId');
+    const { shiftId, targetStaffId, notes } = req.body;
+    if (!shiftId) return res.status(400).json({ success: false, error: 'shiftId required' } as ApiResponse);
+    const rows = await query(
+      `INSERT INTO shift_swap_requests (home_id, shift_id, requesting_staff_id, target_staff_id, notes)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [homeId, shiftId, requestingStaffId, targetStaffId || null, notes || null]
+    );
+    // Notify home managers
+    const managers = await query<any>(`SELECT id FROM staff WHERE home_id=$1 AND role='home_manager' LIMIT 5`, [homeId]);
+    for (const m of managers) {
+      await query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+        [m.id, homeId, 'Shift swap requested', 'A staff member has requested a shift swap — please review on the rota.']
+      ).catch(() => {});
+    }
+    res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/shifts/swaps/:id — approve or reject
+router.put('/swaps/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { status, responseNotes } = req.body;
+    const rows = await query(
+      `UPDATE shift_swap_requests SET status=$1, response_notes=$2, updated_at=NOW() WHERE id=$3 RETURNING *`,
+      [status, responseNotes || null, req.params.id]
+    );
+    res.json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
 
 // DELETE /api/shifts/:id
 router.delete('/:id', param('id').isUUID(), validateRequest,
@@ -79,102 +211,67 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
-// POST /api/shifts/auto-schedule — fill empty shifts for a week by rotating care staff
-router.post('/auto-schedule',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { weekStart } = req.body; // 'YYYY-MM-DD' Monday
+// POST /api/shifts/auto-schedule
+router.post('/auto-schedule', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const { weekStart } = req.body;
+    if (!weekStart) return res.status(400).json({ success: false, error: 'weekStart is required' } as ApiResponse);
 
-      if (!weekStart) {
-        return res.status(400).json({ success: false, error: 'weekStart is required' } as ApiResponse);
-      }
+    const staffRows = await query<any>(
+      `SELECT id, first_name, last_name, role FROM staff
+       WHERE home_id = $1 AND status = 'active'
+       AND role IN ('care_staff', 'senior_carer')
+       ORDER BY role DESC, first_name`,
+      [homeId]
+    );
+    if (!staffRows.length) return res.status(400).json({ success: false, error: 'No active care staff found' } as ApiResponse);
 
-      // Get active care staff for this home
-      const staffRows = await query<any>(
-        `SELECT id, first_name, last_name, role FROM staff
-         WHERE home_id = $1 AND status = 'active'
-         AND role IN ('care_staff', 'senior_carer')
-         ORDER BY role DESC, first_name`,
-        [homeId]
-      );
+    const shiftTypes = ['early', 'late', 'night'];
+    const shiftTimes: Record<string, { start: string; end: string }> = {
+      early: { start: '07:00', end: '14:00' },
+      late:  { start: '14:00', end: '22:00' },
+      night: { start: '22:00', end: '07:00' },
+    };
 
-      if (!staffRows.length) {
-        return res.status(400).json({ success: false, error: 'No active care staff found' } as ApiResponse);
-      }
+    const staffDayCount: Record<string, number> = {};
+    staffRows.forEach((s: any) => { staffDayCount[s.id] = 0; });
 
-      const shiftTypes = ['early', 'late', 'night'];
-      const shiftTimes: Record<string, { start: string; end: string }> = {
-        early: { start: '07:00', end: '14:00' },
-        late:  { start: '14:00', end: '22:00' },
-        night: { start: '22:00', end: '07:00' },
-      };
+    const existingWeek = await query<any>(
+      `SELECT staff_id FROM staff_shifts WHERE home_id=$1 AND shift_date >= $2 AND shift_date < $2::date + interval '7 days'`,
+      [homeId, weekStart]
+    );
+    existingWeek.forEach((e: any) => { if (staffDayCount[e.staff_id] !== undefined) staffDayCount[e.staff_id]++; });
 
-      // Track how many days each staff member has been scheduled this week
-      const staffDayCount: Record<string, number> = {};
-      staffRows.forEach((s: any) => { staffDayCount[s.id] = 0; });
+    let created = 0;
+    const errors: string[] = [];
 
-      // Pre-load existing week shifts to initialise day counts
-      const existingWeek = await query<any>(
-        `SELECT staff_id, shift_date, shift_type FROM staff_shifts
-         WHERE home_id = $1 AND shift_date >= $2 AND shift_date < $2::date + interval '7 days'`,
-        [homeId, weekStart]
-      );
-      existingWeek.forEach((e: any) => {
-        if (staffDayCount[e.staff_id] !== undefined) staffDayCount[e.staff_id]++;
-      });
+    for (let day = 0; day < 7; day++) {
+      const date = new Date(weekStart);
+      date.setUTCDate(date.getUTCDate() + day);
+      const dateStr = date.toISOString().split('T')[0];
 
-      let created = 0;
-      const errors: string[] = [];
+      const existing = await query<any>('SELECT staff_id, shift_type FROM staff_shifts WHERE home_id=$1 AND shift_date=$2', [homeId, dateStr]);
+      const existingStaffIds = new Set(existing.map((e: any) => e.staff_id));
+      const existingTypes   = new Set(existing.map((e: any) => e.shift_type));
 
-      for (let day = 0; day < 7; day++) {
-        const date = new Date(weekStart);
-        date.setUTCDate(date.getUTCDate() + day);
-        const dateStr = date.toISOString().split('T')[0];
-
-        // What already exists for this day
-        const existing = await query<any>(
-          'SELECT staff_id, shift_type FROM staff_shifts WHERE home_id = $1 AND shift_date = $2',
-          [homeId, dateStr]
-        );
-        const existingStaffIds = new Set(existing.map((e: any) => e.staff_id));
-        const existingTypes   = new Set(existing.map((e: any) => e.shift_type));
-
-        for (const shiftType of shiftTypes) {
-          if (existingTypes.has(shiftType)) continue; // shift type already covered today
-
-          // Pick available staff: not already on this day, under 5-day limit
-          const available = staffRows.filter(
-            (s: any) => !existingStaffIds.has(s.id) && staffDayCount[s.id] < 5
+      for (const shiftType of shiftTypes) {
+        if (existingTypes.has(shiftType)) continue;
+        const available = staffRows.filter((s: any) => !existingStaffIds.has(s.id) && staffDayCount[s.id] < 5);
+        if (!available.length) continue;
+        const staff = available[day % available.length];
+        const times = shiftTimes[shiftType];
+        try {
+          const ins = await query<any>(
+            `INSERT INTO staff_shifts (home_id, staff_id, shift_date, start_time, end_time, shift_type) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING id`,
+            [homeId, staff.id, dateStr, times.start, times.end, shiftType]
           );
-          if (!available.length) continue;
-
-          // Rotate through available staff using the day index so coverage is spread
-          const staff = available[day % available.length];
-          const times = shiftTimes[shiftType];
-
-          try {
-            const inserted = await query<any>(
-              `INSERT INTO staff_shifts (home_id, staff_id, shift_date, start_time, end_time, shift_type)
-               VALUES ($1, $2, $3, $4, $5, $6)
-               ON CONFLICT DO NOTHING
-               RETURNING id`,
-              [homeId, staff.id, dateStr, times.start, times.end, shiftType]
-            );
-            if (inserted.length > 0) {
-              created++;
-              existingStaffIds.add(staff.id);
-              staffDayCount[staff.id] = (staffDayCount[staff.id] || 0) + 1;
-            }
-          } catch (e: any) {
-            errors.push(`${dateStr} ${shiftType}: ${e.message}`);
-          }
-        }
+          if (ins.length > 0) { created++; existingStaffIds.add(staff.id); staffDayCount[staff.id]++; }
+        } catch (e: any) { errors.push(`${dateStr} ${shiftType}: ${e.message}`); }
       }
-
-      res.json({ success: true, data: { created, errors } } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
+    }
+    res.json({ success: true, data: { created, errors } } as ApiResponse);
+  } catch (err) { next(err); }
+});
 
 export default router;
