@@ -168,6 +168,14 @@ router.post('/', [
              VALUES ($1,$2,$3,$4,$5,$6,$7)`,
             [dr.id, bristolType || null, frequencyToday || 0, colour || null, consistencyNotes || null, laxativeGiven || false, daysSince]
           );
+          // Mirror to bowel_charts so the Bowel Chart page shows the record
+          await client.query(
+            `INSERT INTO bowel_charts (home_id, su_id, recorded_by, bristol_type, recorded_at, colour, consistency, notes)
+             VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7)`,
+            [homeId, suId, staffId, bristolType || null, colour || null,
+             consistencyNotes ? consistencyNotes.substring(0, 100) : null,
+             laxativeGiven ? 'Laxative given' : null]
+          );
           break;
         }
         case 'behaviour': {

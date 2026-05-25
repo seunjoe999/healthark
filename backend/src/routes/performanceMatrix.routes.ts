@@ -68,7 +68,10 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
                s.role, s.job_title, s.home_id,
                pm.id AS review_id, pm.period, pm.overall_score, pm.risk_rating,
                pm.training_compliance, pm.supervision_completed,
-               pm.punctuality_score, pm.care_quality_score, pm.created_at
+               pm.punctuality_score, pm.care_quality_score, pm.created_at,
+               (SELECT COUNT(*) FROM assessments a WHERE a.subject_id = s.id AND a.category = 'staff') AS assessment_count,
+               (SELECT a2.score_pct FROM assessments a2 WHERE a2.subject_id = s.id AND a2.category = 'staff' ORDER BY a2.assessment_date DESC LIMIT 1) AS latest_assessment_score,
+               (SELECT a3.assessment_date FROM assessments a3 WHERE a3.subject_id = s.id AND a3.category = 'staff' ORDER BY a3.assessment_date DESC LIMIT 1) AS latest_assessment_date
         FROM staff s
         LEFT JOIN staff_performance pm ON pm.staff_id = s.id
         WHERE s.organisation_id = $1 AND s.is_active = TRUE
@@ -80,7 +83,10 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
                s.role, s.job_title,
                pm.id AS review_id, pm.period, pm.overall_score, pm.risk_rating,
                pm.training_compliance, pm.supervision_completed,
-               pm.punctuality_score, pm.care_quality_score, pm.created_at
+               pm.punctuality_score, pm.care_quality_score, pm.created_at,
+               (SELECT COUNT(*) FROM assessments a WHERE a.subject_id = s.id AND a.category = 'staff') AS assessment_count,
+               (SELECT a2.score_pct FROM assessments a2 WHERE a2.subject_id = s.id AND a2.category = 'staff' ORDER BY a2.assessment_date DESC LIMIT 1) AS latest_assessment_score,
+               (SELECT a3.assessment_date FROM assessments a3 WHERE a3.subject_id = s.id AND a3.category = 'staff' ORDER BY a3.assessment_date DESC LIMIT 1) AS latest_assessment_date
         FROM staff s
         LEFT JOIN staff_performance pm ON pm.staff_id = s.id AND pm.home_id = $1
         WHERE s.home_id = $1 AND s.is_active = TRUE

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { BarChart3, Plus, Star, CheckCircle2, XCircle, Zap } from 'lucide-react'
+import { BarChart3, Plus, Star, CheckCircle2, XCircle, Zap, ClipboardCheck } from 'lucide-react'
 import { Button, Modal, Select, Input, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import api from '../../api'
 import { homesApi } from '../../api'
 import clsx from 'clsx'
@@ -57,6 +58,7 @@ function ScoreInput({ label, field, form, setForm }: { label: string; field: str
 
 export default function PerformanceMatrix() {
   const { user, isRole } = useAuth()
+  const navigate = useNavigate()
   const [matrix, setMatrix] = useState<any[]>([])
   const [history, setHistory] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
@@ -166,6 +168,9 @@ export default function PerformanceMatrix() {
           <p className="text-slate-400 text-sm mt-1">Staff performance reviews and compliance tracking</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" icon={<ClipboardCheck className="w-4 h-4" />} onClick={() => navigate('/assessments')}>
+            Staff Assessments
+          </Button>
           <PrintButton />
           {canAssess && (
             <>
@@ -222,6 +227,7 @@ export default function PerformanceMatrix() {
                       <th className="text-center py-3 px-3">Supervision</th>
                       <th className="text-center py-3 px-3">Punctuality</th>
                       <th className="text-center py-3 px-3">Care Quality</th>
+                      <th className="text-center py-3 px-3">Assessments</th>
                       <th className="text-center py-3 px-3">Overall</th>
                       <th className="text-center py-3 px-3">Risk</th>
                       <th className="text-left py-3 px-3">Period</th>
@@ -250,6 +256,17 @@ export default function PerformanceMatrix() {
                         </td>
                         <td className="py-3 px-3 text-center"><Stars value={row.punctuality_score} /></td>
                         <td className="py-3 px-3 text-center"><Stars value={row.care_quality_score} /></td>
+                        <td className="py-3 px-3 text-center">
+                          <button onClick={() => navigate('/assessments')}
+                            className="flex flex-col items-center gap-0.5 hover:text-amber-400 transition-colors group mx-auto">
+                            <span className={clsx('font-bold text-sm', parseInt(row.assessment_count) > 0 ? 'text-emerald-400' : 'text-slate-600')}>
+                              {parseInt(row.assessment_count) || 0}
+                            </span>
+                            {row.latest_assessment_score != null && (
+                              <span className="text-xs text-slate-500">{parseFloat(row.latest_assessment_score).toFixed(0)}%</span>
+                            )}
+                          </button>
+                        </td>
                         <td className="py-3 px-3 text-center">
                           {row.overall_score != null ? (
                             <span className={clsx('font-bold text-base', scoreColor(parseFloat(row.overall_score)))}>
