@@ -17,12 +17,12 @@ const SHIFT_TYPES = [
 ]
 
 const SHIFT_COLORS: Record<string, string> = {
-  early: 'bg-blue-100 text-blue-800 border-blue-200',
-  late: 'bg-purple-100 text-purple-800 border-purple-200',
+  early: 'bg-blue-900/60 text-blue-200 border-blue-700',
+  late: 'bg-purple-900/60 text-purple-200 border-purple-700',
   night: 'bg-slate-700 text-white border-slate-600',
-  waking_night: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  sleep_in: 'bg-teal-100 text-teal-800 border-teal-200',
-  regular: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  waking_night: 'bg-indigo-900/60 text-indigo-200 border-indigo-700',
+  sleep_in: 'bg-teal-900/60 text-teal-200 border-teal-700',
+  regular: 'bg-emerald-900/60 text-emerald-200 border-emerald-700',
 }
 
 export default function Rota() {
@@ -126,8 +126,8 @@ export default function Rota() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-purple-600" /> Shift Rota
+          <h1 className="font-display text-2xl text-white flex items-center gap-2">
+            <Users className="w-6 h-6 text-purple-400" /> Shift Rota
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">{todayShifts.length} staff on shift today</p>
         </div>
@@ -148,14 +148,14 @@ export default function Rota() {
 
       {/* Today's staff */}
       {todayShifts.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 mb-6">
-          <h2 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gold-500" /> Working today — {format(new Date(), 'EEEE d MMMM')}
+        <div className="bg-[#1a1a2e] rounded-2xl border border-slate-700 shadow-card p-5 mb-6">
+          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-yellow-500" /> Working today — {format(new Date(), 'EEEE d MMMM')}
           </h2>
           <div className="flex flex-wrap gap-3">
             {todayShifts.map((s: any) => (
               <div key={s.id} className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium ${SHIFT_COLORS[s.shift_type] || SHIFT_COLORS.regular}`}>
-                <div className="w-7 h-7 rounded-full bg-white/50 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
                   {s.staff_photo
                     ? <img src={s.staff_photo} style={{width:'100%',height:'100%',objectFit:'cover'}} alt="" />
                     : (s.staff_name || '?').split(' ').map((n: string) => n[0]).join('')}
@@ -172,14 +172,14 @@ export default function Rota() {
 
       {/* Week navigation */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setWeekStart(d => addDays(d, -7))} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-          <ChevronLeft className="w-5 h-5 text-slate-600" />
+        <button onClick={() => setWeekStart(d => addDays(d, -7))} className="p-2 hover:bg-slate-700 rounded-xl transition-colors">
+          <ChevronLeft className="w-5 h-5 text-slate-300" />
         </button>
-        <h2 className="font-semibold text-slate-800">
+        <h2 className="font-semibold text-white">
           {format(weekStart, 'd MMM')} — {format(addDays(weekStart, 6), 'd MMM yyyy')}
         </h2>
-        <button onClick={() => setWeekStart(d => addDays(d, 7))} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-          <ChevronRight className="w-5 h-5 text-slate-600" />
+        <button onClick={() => setWeekStart(d => addDays(d, 7))} className="p-2 hover:bg-slate-700 rounded-xl transition-colors">
+          <ChevronRight className="w-5 h-5 text-slate-300" />
         </button>
       </div>
 
@@ -190,26 +190,26 @@ export default function Rota() {
             const isToday = isSameDay(day, new Date())
             const dayShifts = getDayShifts(day)
             return (
-              <div key={day.toString()} className={`bg-white rounded-2xl border min-h-[160px] overflow-hidden ${isToday ? 'border-gold-400 shadow-md' : 'border-slate-100 shadow-card'}`}>
-                <div className={`px-3 py-2 border-b ${isToday ? 'border-gold-200' : 'border-slate-50'}`}
-                  style={isToday ? { background: 'linear-gradient(135deg, rgba(232,177,48,0.15), rgba(212,150,26,0.08))' } : {}}>
-                  <p className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-gold-700' : 'text-slate-400'}`}>{format(day, 'EEE')}</p>
-                  <p className={`text-lg font-display ${isToday ? 'text-gold-800' : 'text-slate-700'}`}>{format(day, 'd')}</p>
+              <div key={day.toString()} className={`bg-[#1a1a2e] rounded-2xl border min-h-[160px] overflow-hidden ${isToday ? 'border-yellow-500 shadow-md shadow-yellow-900/30' : 'border-slate-700'}`}>
+                <div className={`px-3 py-2 border-b ${isToday ? 'border-yellow-700' : 'border-slate-700'}`}
+                  style={isToday ? { background: 'linear-gradient(135deg, rgba(232,177,48,0.20), rgba(212,150,26,0.10))' } : {}}>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-yellow-400' : 'text-slate-500'}`}>{format(day, 'EEE')}</p>
+                  <p className={`text-lg font-display ${isToday ? 'text-yellow-300' : 'text-slate-200'}`}>{format(day, 'd')}</p>
                 </div>
                 <div className="p-2 space-y-1.5">
                   {dayShifts.map((s: any) => (
                     <div key={s.id} className={`group relative px-2 py-1.5 rounded-lg border text-xs ${SHIFT_COLORS[s.shift_type] || SHIFT_COLORS.regular}`}>
                       <p className="font-semibold truncate">{s.staff_name?.split(' ')[0]}</p>
-                      <p className="opacity-70">{s.start_time?.substring(0,5)}–{s.end_time?.substring(0,5)} <span className="font-semibold">({shiftHours(s.start_time?.substring(0,5), s.end_time?.substring(0,5))}h)</span></p>
+                      <p className="opacity-80">{s.start_time?.substring(0,5)}–{s.end_time?.substring(0,5)} <span className="font-semibold">({shiftHours(s.start_time?.substring(0,5), s.end_time?.substring(0,5))}h)</span></p>
                       {s.su_name && <p className="opacity-60 truncate text-[10px]">{s.su_name}</p>}
                       {isRole('home_manager','group_admin','senior_carer') && <button onClick={() => deleteShift(s.id)}
-                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-600">
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-400">
                         <Trash2 className="w-3 h-3" />
                       </button>}
                     </div>
                   ))}
                   <button onClick={() => { setSelectedDay(day); setAddOpen(true) }}
-                    className="w-full py-1 rounded-lg text-xs text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors text-center">
+                    className="w-full py-1 rounded-lg text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors text-center">
                     + Add
                   </button>
                 </div>
@@ -221,13 +221,13 @@ export default function Rota() {
 
       {/* Weekly hours summary */}
       {Object.keys(weeklyHours).length > 0 && (
-        <div className="mt-4 bg-white rounded-2xl border border-slate-100 shadow-card p-5">
-          <h2 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-purple-600" /> Staff hours this week
+        <div className="mt-4 bg-[#1a1a2e] rounded-2xl border border-slate-700 shadow-card p-5">
+          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-purple-400" /> Staff hours this week
           </h2>
           <div className="flex flex-wrap gap-3">
             {Object.values(weeklyHours).sort((a, b) => b.hours - a.hours).map((sw: any) => (
-              <div key={sw.name} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ${sw.hours > 40 ? 'bg-red-50 border-red-200 text-red-700' : sw.hours > 35 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+              <div key={sw.name} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm ${sw.hours > 40 ? 'bg-red-900/40 border-red-700 text-red-300' : sw.hours > 35 ? 'bg-amber-900/40 border-amber-700 text-amber-300' : 'bg-emerald-900/40 border-emerald-700 text-emerald-300'}`}>
                 <span className="font-medium">{sw.name}</span>
                 <span className="font-bold">{sw.hours}h</span>
                 {sw.hours > 40 && <span className="text-xs font-semibold">⚠ Over 40h</span>}
@@ -245,12 +245,12 @@ export default function Rota() {
       {/* Auto-schedule confirmation modal */}
       <Modal open={autoOpen} onClose={() => setAutoOpen(false)} title="Auto-schedule week">
         <div className="space-y-4">
-          <p className="text-slate-600 text-sm">
+          <p className="text-slate-300 text-sm">
             This will fill empty shifts for the week of{' '}
-            <span className="font-semibold text-slate-800">{format(weekStart, 'd MMM')} – {format(addDays(weekStart, 6), 'd MMM yyyy')}</span>{' '}
+            <span className="font-semibold text-white">{format(weekStart, 'd MMM')} – {format(addDays(weekStart, 6), 'd MMM yyyy')}</span>{' '}
             by rotating available care staff across early, late and night shifts.
           </p>
-          <p className="text-slate-500 text-sm bg-slate-50 rounded-xl p-3 border border-slate-100">
+          <p className="text-slate-400 text-sm bg-slate-800 rounded-xl p-3 border border-slate-700">
             Existing shifts will not be changed. Staff will not be scheduled for more than 5 days in the week.
           </p>
           <div className="flex gap-3 justify-end pt-1">
