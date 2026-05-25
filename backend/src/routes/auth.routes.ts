@@ -25,12 +25,22 @@ router.post('/login',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, password } = req.body;
-      const rows = await query<any>(
-        `SELECT id, email, password_hash, first_name, last_name, role,
-                home_id, organisation_id, status, is_active, photo_url, feature_flags
-         FROM staff WHERE email = $1`,
-        [email]
-      );
+      let rows: any[];
+      try {
+        rows = await query<any>(
+          `SELECT id, email, password_hash, first_name, last_name, role,
+                  home_id, organisation_id, status, is_active, photo_url, feature_flags
+           FROM staff WHERE email = $1`,
+          [email]
+        );
+      } catch {
+        rows = await query<any>(
+          `SELECT id, email, password_hash, first_name, last_name, role,
+                  home_id, organisation_id, status, is_active, photo_url
+           FROM staff WHERE email = $1`,
+          [email]
+        );
+      }
       if (!rows.length) throw new AppError('Invalid email or password', 401);
       const staff = rows[0];
       if (!staff.is_active || staff.status === 'terminated')
@@ -44,12 +54,18 @@ router.post('/login',
       };
       const accessToken = signAccess(payload);
       const refreshToken = signRefresh(payload);
-      await query('UPDATE staff SET refresh_token=$1, last_login=NOW() WHERE id=$2', [refreshToken, staff.id]);
-      await query(
-        `INSERT INTO audit_log (staff_id, home_id, action, ip_address)
-         VALUES ($1,$2,'login',$3)`,
-        [staff.id, staff.home_id, req.ip]
-      );
+      // Non-critical: persist refresh token and audit log — don't fail login if these columns/tables missing
+      try {
+        await query('UPDATE staff SET refresh_token=$1, last_login=NOW() WHERE id=$2', [refreshToken, staff.id]);
+      } catch {
+        try { await query('UPDATE staff SET refresh_token=$1 WHERE id=$2', [refreshToken, staff.id]); } catch {}
+      }
+      try {
+        await query(
+          `INSERT INTO audit_log (staff_id, home_id, action, ip_address) VALUES ($1,$2,'login',$3)`,
+          [staff.id, staff.home_id, req.ip]
+        );
+      } catch {}
 
       res.json({
         success: true,

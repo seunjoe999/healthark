@@ -110,6 +110,9 @@ import reviewsRoutes from './routes/reviews.routes';
 import tasksRoutes from './routes/tasks.routes';
 import qualityRoutes from './routes/quality.routes';
 import assessmentsRoutes from './routes/assessments.routes';
+import invoicingRoutes from './routes/invoicing.routes';
+import cqcNotificationsRoutes from './routes/cqcNotifications.routes';
+import supervisionRoutes from './routes/supervision.routes';
 app.use('/api/mar', marRoutes);
 app.use('/api/clockin', clockinRoutes);
 app.use('/api/family', familyRoutes);
@@ -121,6 +124,9 @@ app.use('/api/reviews', reviewsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/quality', qualityRoutes);
 app.use('/api/assessments', assessmentsRoutes);
+app.use('/api/invoicing', invoicingRoutes);
+app.use('/api/cqc-notifications', cqcNotificationsRoutes);
+app.use('/api/supervision', supervisionRoutes);
 
 import incidentsRoutes from './routes/incidents.routes';
 import complianceRoutes from './routes/compliance.routes';
@@ -595,6 +601,23 @@ async function ensureColumns() {
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS meal_frequency VARCHAR(100)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS eat_directions TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS eat_team_preference TEXT`,
+    // ── Staff columns that login depends on ───────────────────────────────────
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS refresh_token TEXT`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS feature_flags JSONB NOT NULL DEFAULT '{}'`,
+    // ── audit_log (non-partitioned fallback) ──────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS audit_log (
+       id          BIGSERIAL PRIMARY KEY,
+       timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       staff_id    UUID,
+       home_id     UUID,
+       action      VARCHAR(100),
+       table_name  VARCHAR(100),
+       record_id   UUID,
+       ip_address  VARCHAR(45),
+       session_id  VARCHAR(100),
+       new_values  JSONB
+     )`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
