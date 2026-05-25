@@ -145,7 +145,7 @@ export default function MAR() {
       <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-            <Pill className="w-4 h-4 text-purple-600" /> MAR Chart
+            <Pill className="w-4 h-4 text-purple-600" /> Medication Administration Record
           </h2>
           {homes.length > 1 && (
             <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
@@ -192,7 +192,7 @@ export default function MAR() {
         )}
         {!selectedSu ? (
           <div className="flex-1 flex items-center justify-center">
-            <EmptyState title="Select a resident" description="Choose a resident from the list to view their MAR chart" />
+            <EmptyState title="Select a resident" description="Choose a resident from the list to view their Medication Administration Record" />
           </div>
         ) : (
           <>
@@ -779,7 +779,7 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
 
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false })
+  const [form, setForm] = useState({ medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', medicationCode: '', atcCode: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
@@ -792,8 +792,8 @@ function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; o
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add medication" size="md">
-      <form onSubmit={save} className="space-y-4">
+    <Modal open={open} onClose={onClose} title="Add medication" size="lg">
+      <form onSubmit={save} className="space-y-4 max-h-96 overflow-y-auto">
         <Input label="Medication name *" required value={form.medicationName} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Amlodipine, Paracetamol..." />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
@@ -808,18 +808,35 @@ function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; o
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
         </div>
+        <div className="border-t pt-3">
+          <p className="text-xs font-semibold text-slate-600 mb-3">Pharmacy & GP Details</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Pharmacy name" value={form.pharmacyName} onChange={e => set('pharmacyName', e.target.value)} placeholder="Pharmacy name" />
+            <Input label="Pharmacy phone" value={form.pharmacyPhone} onChange={e => set('pharmacyPhone', e.target.value)} placeholder="Phone number" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <Input label="GP name" value={form.gpName} onChange={e => set('gpName', e.target.value)} placeholder="GP name" />
+            <Input label="GP phone" value={form.gpPhone} onChange={e => set('gpPhone', e.target.value)} placeholder="Phone number" />
+          </div>
+        </div>
+        <div className="border-t pt-3">
+          <p className="text-xs font-semibold text-slate-600 mb-3">Medication Codes</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Medication code" value={form.medicationCode} onChange={e => set('medicationCode', e.target.value)} placeholder="e.g. BNF code" />
+            <Input label="ATC code" value={form.atcCode} onChange={e => set('atcCode', e.target.value)} placeholder="e.g. C09CA01" />
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <input type="checkbox" id="prn" checked={form.isPrn} onChange={e => set('isPrn', e.target.checked)} className="rounded" />
           <label htmlFor="prn" className="text-sm font-medium text-slate-700">This is a PRN (as required) medication</label>
         </div>
-        <div className="flex gap-3 justify-end pt-2">
+        <div className="flex gap-3 justify-end pt-2 border-t">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading} icon={<Pill className="w-4 h-4" />}>Add medication</Button>
         </div>
       </form>
     </Modal>
   )
-}
 
 /* ─── Print Modal ──────────────────────────────────────────────────────── */
 function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; startDate: string; endDate: string; onClose: () => void }) {
@@ -834,16 +851,16 @@ function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; st
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="Print MAR Chart" size="sm">
+    <Modal open={true} onClose={onClose} title="Print Medication Administration Record" size="sm">
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">Select date range to include in the printable MAR chart.</p>
+        <p className="text-sm text-slate-500">Select date range to include in the printable Medication Administration Record.</p>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Start date" type="date" value={sd} onChange={e => setSd(e.target.value)} />
           <Input label="End date" type="date" value={ed} onChange={e => setEd(e.target.value)} />
         </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button icon={<Printer className="w-4 h-4" />} onClick={open}>Open MAR chart</Button>
+          <Button icon={<Printer className="w-4 h-4" />} onClick={open}>Open Medication Administration Record</Button>
         </div>
       </div>
     </Modal>

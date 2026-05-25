@@ -79,6 +79,7 @@ export default function MedicineRisk() {
     administrationRoute: 'oral',
     knownAllergies: '', storageLocation: '',
     riskLevel: 'low', riskNotes: '',
+    triggers: '', protectiveFactors: '',
     reviewDate: '',
   })
 
@@ -118,7 +119,7 @@ export default function MedicineRisk() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-amber-400" /> Medicine Risk
+            <ShieldAlert className="w-6 h-6 text-amber-400" /> Medication Risk Assessment
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>
         </div>
@@ -180,15 +181,17 @@ export default function MedicineRisk() {
                   )}
                 </div>
 
-                {/* Flags row */}
+                {/* Flags row - only show applicable items */}
                 {r.id && (
                   <div className="flex flex-wrap gap-1.5">
-                    <Flag active={r.covert_meds} label="Covert" />
-                    <Flag active={r.prn_protocol} label="PRN" />
-                    <Flag active={r.crushing_required} label="Crushed" />
-                    <span className={clsx('text-xs font-medium', swallowColor(r.swallowing_risk))}>
-                      Swallow: {r.swallowing_risk || 'none'}
-                    </span>
+                    {r.covert_meds && <Flag active={true} label="Covert" />}
+                    {r.prn_protocol && <Flag active={true} label="PRN" />}
+                    {r.crushing_required && <Flag active={true} label="Crushed" />}
+                    {r.swallowing_risk && r.swallowing_risk !== 'none' && (
+                      <span className={clsx('text-xs font-medium', swallowColor(r.swallowing_risk))}>
+                        Swallow: {r.swallowing_risk}
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -236,8 +239,20 @@ export default function MedicineRisk() {
                     )}
                     {r.risk_notes && (
                       <div className="col-span-2">
-                        <p className="text-xs text-slate-500 mb-0.5">Risk notes</p>
+                        <p className="text-xs text-slate-500 mb-0.5">Risk Management Plan</p>
                         <p className="text-slate-300 text-sm">{r.risk_notes}</p>
+                      </div>
+                    )}
+                    {r.triggers && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-slate-500 mb-0.5">Triggers</p>
+                        <p className="text-slate-300 text-sm">{r.triggers}</p>
+                      </div>
+                    )}
+                    {r.protective_factors && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-slate-500 mb-0.5">Protective Factors</p>
+                        <p className="text-slate-300 text-sm">{r.protective_factors}</p>
                       </div>
                     )}
                   </div>
@@ -252,7 +267,7 @@ export default function MedicineRisk() {
         </div>
       )}
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Medicine Risk Assessment" size="lg">
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Medication Risk Assessment" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select label="Service User *" options={suOptions} placeholder="Select resident..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required />
 
@@ -303,8 +318,18 @@ export default function MedicineRisk() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Risk notes</label>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Risk Management Plan</label>
             <textarea className="input" rows={2} value={form.riskNotes} onChange={e => setForm(f => ({ ...f, riskNotes: e.target.value }))} placeholder="Any other risk factors or notes..." />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Triggers</label>
+            <textarea className="input" rows={2} value={form.triggers} onChange={e => setForm(f => ({ ...f, triggers: e.target.value }))} placeholder="What situations or factors may trigger a risk incident..." />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Protective Factors</label>
+            <textarea className="input" rows={2} value={form.protectiveFactors} onChange={e => setForm(f => ({ ...f, protectiveFactors: e.target.value }))} placeholder="What measures or approaches help mitigate the risk..." />
           </div>
 
           <div>

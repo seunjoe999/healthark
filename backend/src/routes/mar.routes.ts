@@ -39,16 +39,51 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const staffId = fromToken(req, 'staffId');
       const homeId = fromToken(req, 'homeId');
       const { suId, medicationName, dose, frequency, route, prescribedBy,
-              startDate, endDate, instructions, isPrn } = req.body;
+              startDate, endDate, instructions, isPrn, pharmacyName, pharmacyPhone,
+              gpName, gpPhone, medicationCode, atcCode } = req.body;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescribed_by, start_date, end_date, instructions, is_prn, added_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+          prescribed_by, start_date, end_date, instructions, is_prn, added_by,
+          pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
         [suId, homeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
-         instructions || null, isPrn || false, staffId]
+         instructions || null, isPrn || false, staffId,
+         pharmacyName || null, pharmacyPhone || null, gpName || null, gpPhone || null,
+         medicationCode || null, atcCode || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PATCH /api/mar/medications/:id — update medication
+router.patch('/medications/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn,
+              pharmacyName, pharmacyPhone, gpName, gpPhone, medicationCode, atcCode } = req.body;
+      const updates = [
+        { field: 'dose', val: dose },
+        { field: 'frequency', val: frequency },
+        { field: 'route', val: route },
+        { field: 'prescribed_by', val: prescribedBy },
+        { field: 'start_date', val: nd(startDate) },
+        { field: 'end_date', val: nd(endDate) },
+        { field: 'instructions', val: instructions },
+        { field: 'is_prn', val: isPrn },
+        { field: 'pharmacy_name', val: pharmacyName },
+        { field: 'pharmacy_phone', val: pharmacyPhone },
+        { field: 'gp_name', val: gpName },
+        { field: 'gp_phone', val: gpPhone },
+        { field: 'medication_code', val: medicationCode },
+        { field: 'atc_code', val: atcCode },
+      ].filter(u => u.val !== undefined);
+      if (!updates.length) { res.status(400).json({ success: false, error: 'No fields to update' }); return; }
+      const setClauses = updates.map((u, i) => `${u.field}=$${i + 1}`).join(', ');
+      const vals = updates.map(u => u.val);
+      const rows = await query(`UPDATE su_medications SET ${setClauses} WHERE id=$${vals.length + 1} RETURNING *`, [...vals, req.params.id]);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

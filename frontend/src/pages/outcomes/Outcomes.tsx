@@ -61,13 +61,15 @@ export default function Outcomes() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.suId || !form.goal) { toast.error('Service User and Goal are required'); return }
     setSubmitting(true)
     try {
       await api.post('/outcomes', form)
       setShowAdd(false)
       setForm({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
       load()
-    } catch {}
+      toast.success('Outcome saved')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save outcome') }
     setSubmitting(false)
   }
 
@@ -80,7 +82,8 @@ export default function Outcomes() {
       setShowReview(null)
       setReviews(r => { const copy = { ...r }; delete copy[showReview.id]; return copy })
       load()
-    } catch {}
+      toast.success('Review saved')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save review') }
     setSubmitting(false)
   }
 

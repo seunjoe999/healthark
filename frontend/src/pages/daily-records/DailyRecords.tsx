@@ -7,6 +7,7 @@ import { ClipboardList, Plus, Search, ChevronLeft, ChevronRight, Droplets, Edit,
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
+import SpeechInput from '../../components/SpeechInput'
 
 const RECORD_TYPES = [
   { value: 'personal_care', label: 'Personal care', icon: '🧼' },
@@ -322,7 +323,7 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
       <div className="space-y-3">
         <Select label="Drink type" value={form.fluidType || ''} onChange={e => { set('fluidType', e.target.value); const ft = FLUID_TYPES.find(f => f.label === e.target.value); if (ft) set('amountMl', ft.ml) }} options={FLUID_TYPES.map(f => ({ value: f.label, label: f.label }))} placeholder="Select drink" />
         <div><label className="label">Amount (ml)</label><input type="number" className="input" value={form.amountMl || ''} onChange={e => set('amountMl', parseInt(e.target.value))} placeholder="e.g. 200" /></div>
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+        <div><label className="label flex justify-between"><span>Notes</span><SpeechInput onTranscript={t => set('notes', (form.notes || '') + (form.notes ? ' ' : '') + t)} className="text-xs" /></label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
       </div>
     )
     case 'food_intake': return (
@@ -330,7 +331,7 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
         <Select label="Meal type" value={form.mealType || ''} onChange={e => set('mealType', e.target.value)} options={[{ value: 'breakfast', label: 'Breakfast' }, { value: 'lunch', label: 'Lunch' }, { value: 'dinner', label: 'Dinner' }, { value: 'snack', label: 'Snack' }]} placeholder="Select meal" />
         <Select label="Amount eaten" value={form.amountEaten || ''} onChange={e => set('amountEaten', e.target.value)} options={FOOD_AMOUNTS.map(a => ({ value: a, label: a }))} placeholder="How much was eaten?" />
         <div><label className="label">What was served</label><input className="input" value={form.foodDescription || ''} onChange={e => set('foodDescription', e.target.value)} placeholder="e.g. Roast chicken with vegetables..." /></div>
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+        <div><label className="label flex justify-between"><span>Notes</span><SpeechInput onTranscript={t => set('notes', (form.notes || '') + (form.notes ? ' ' : '') + t)} className="text-xs" /></label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
       </div>
     )
     case 'vitals_bp': return (

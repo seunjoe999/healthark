@@ -52,7 +52,7 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
 });
 
 router.post('/leave',
-  [body('leaveType').notEmpty(), body('startDate').isDate(), body('endDate').isDate(), body('hoursRequested').isNumeric()],
+  [body('leaveType').notEmpty(), body('startDate').isDate(), body('endDate').isDate(), body('totalHours').optional().isNumeric(), body('hoursRequested').optional().isNumeric()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

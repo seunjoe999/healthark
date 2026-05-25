@@ -8,9 +8,9 @@ import { FileText, Plus, Trash2, Search, Eye, X, Calendar, Users, ClipboardList 
 import toast from 'react-hot-toast'
 
 const REVIEW_TYPES = [
-  { value: 'care_review', label: 'Care review' },
+  { value: 'care_review', label: 'Care Review' },
   { value: 'six_week_review', label: '6-week review' },
-  { value: 'annual_review', label: 'Annual review' },
+  { value: 'monthly_review', label: 'Monthly review' },
   { value: 'hospital_review', label: 'Post-hospital review' },
   { value: 'incident_review', label: 'Post-incident review' },
   { value: 'resident_feedback', label: 'Resident feedback' },

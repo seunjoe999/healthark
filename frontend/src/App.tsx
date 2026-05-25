@@ -67,6 +67,9 @@ import ProfessionalVisits from './pages/professional-visits/ProfessionalVisits'
 import MedicineRisk from './pages/medicine-risk/MedicineRisk'
 import PerformanceMatrix from './pages/performance/PerformanceMatrix'
 import RiskManagement from './pages/risk-assessments/RiskManagement'
+import Invoicing from './pages/invoicing/Invoicing'
+import CQCNotifications from './pages/cqc-notifications/CQCNotifications'
+import SupervisionAppraisal from './pages/supervision-appraisal/SupervisionAppraisal'
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -160,6 +163,9 @@ function AppRoutes() {
       <Route path="/medicine-risk" element={<ProtectedRoute><MedicineRisk /></ProtectedRoute>} />
       <Route path="/performance" element={<ProtectedRoute><PerformanceMatrix /></ProtectedRoute>} />
       <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
+      <Route path="/invoicing" element={<ProtectedRoute><Invoicing /></ProtectedRoute>} />
+      <Route path="/cqc-notifications" element={<ProtectedRoute><CQCNotifications /></ProtectedRoute>} />
+      <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/messages" replace />} />
     </Routes>
   )

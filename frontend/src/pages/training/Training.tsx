@@ -15,7 +15,7 @@ const MODULES = [
     sections: [
       { title: 'Logging in', content: 'Go to your CompCare Hub link on your phone or computer. Enter your email and password. If you are new, use the registration code from your manager to create an account — your manager will then activate it.' },
       { title: 'The sidebar', content: 'The left sidebar is your main navigation. It is grouped into Care (residents and daily tasks), Operations (staff, tasks, messages), and Quality & Compliance (audits, reports, policies).' },
-      { title: 'Your daily workflow', content: '1. Check the Dashboard for alerts and who is working today.\n2. Go to Daily Records and select the resident you are supporting.\n3. Log all care activities throughout your shift.\n4. Check the MAR Chart to log medications.\n5. Complete any Tasks assigned to you.\n6. Check Messages for any communications from management.' },
+      { title: 'Your daily workflow', content: '1. Check the Dashboard for alerts and who is working today.\n2. Go to Daily Records and select the resident you are supporting.\n3. Log all care activities throughout your shift.\n4. Check the Medication Administration Record to log medications.\n5. Complete any Tasks assigned to you.\n6. Check Messages for any communications from management.' },
     ]
   },
   {
@@ -34,12 +34,12 @@ const MODULES = [
   },
   {
     id: 'mar',
-    title: 'MAR Chart — Medication Administration',
+    title: 'Medication Administration Record — Medication Administration',
     description: 'How to log medications as given, refused or omitted.',
     duration: '6 mins',
     icon: '💊',
     sections: [
-      { title: 'Opening the MAR chart', content: 'Click MAR Chart in the sidebar. Select the resident from the left panel. You will see their medication list.' },
+      { title: 'Opening the Medication Administration Record', content: 'Click Medication Administration Record in the sidebar. Select the resident from the left panel. You will see their medication list.' },
       { title: 'Logging medication as given', content: 'Find the medication on the list. Click the green Given button. This records that you administered the medication, with the time and your name.' },
       { title: 'Logging as refused', content: 'If the resident refuses their medication, click the grey Refused button. This is important — never skip logging a refusal.' },
       { title: 'PRN medications', content: 'PRN means "as required". These medications are only given when needed. They are marked with an amber PRN badge. Always document why you gave a PRN medication in the notes.' },

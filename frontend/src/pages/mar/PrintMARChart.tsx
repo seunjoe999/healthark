@@ -76,7 +76,7 @@ export default function PrintMARChart() {
   }, [suId, params])
 
   if (error) return <div style={{ padding: 32, color: 'red' }}>Error: {error}</div>
-  if (!data) return <div style={{ padding: 32, color: '#666' }}>Generating MAR chart…</div>
+  if (!data) return <div style={{ padding: 32, color: '#666' }}>Generating Medication Administration Record…</div>
 
   const { serviceUser: su, medications, dates, startDate, endDate } = data
   const suName = `${su.first_name || ''} ${su.last_name || ''}`.trim()
@@ -138,7 +138,7 @@ export default function PrintMARChart() {
 
       {/* ── Chart Title ─────────────────────────────────────────────── */}
       <div style={{ fontWeight: 'bold', fontSize: 12, textAlign: 'center', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
-        Medicine Administration Report (MAR Chart)
+        Medication Administration Record (MAR)
       </div>
 
       {/* ── MAR Table ───────────────────────────────────────────────── */}
