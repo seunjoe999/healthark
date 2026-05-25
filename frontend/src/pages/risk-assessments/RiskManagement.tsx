@@ -195,27 +195,30 @@ export default function RiskManagement() {
           onChange={e => setF('assessmentName', e.target.value)} disabled={isEdit} />
       </div>
       <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Description</label>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Review Frequency</label>
+        <select className="input w-full" value={form.reviewFrequency} onChange={e => setF('reviewFrequency', e.target.value)}>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="monthly">Monthly</option>
+          <option value="eight_weekly">Every 8 weeks</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">What is the risk</label>
         <textarea className="input w-full" rows={2} placeholder="Brief overview of the risk..."
           value={form.description} onChange={e => setF('description', e.target.value)} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Rating</label>
-          <select className="input w-full" value={form.riskRating} onChange={e => { setF('riskRating', e.target.value); setF('currentRiskLevel', e.target.value) }}>
-            {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-slate-600 block mb-1">Review Frequency</label>
-          <select className="input w-full" value={form.reviewFrequency} onChange={e => setF('reviewFrequency', e.target.value)}>
-            <option value="weekly">Weekly</option>
-            <option value="fortnightly">Fortnightly</option>
-            <option value="monthly">Monthly</option>
-            <option value="eight_weekly">Every 8 weeks</option>
-            <option value="yearly">Yearly</option>
-          </select>
-        </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Rating</label>
+        <select className="input w-full" value={form.riskRating} onChange={e => { setF('riskRating', e.target.value); setF('currentRiskLevel', e.target.value) }}>
+          {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Historical Context</label>
+        <textarea className="input w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
+          value={form.historicalContext} onChange={e => setF('historicalContext', e.target.value)} />
       </div>
       <div>
         <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk</label>
@@ -238,14 +241,9 @@ export default function RiskManagement() {
           value={form.protectiveFactors} onChange={e => setF('protectiveFactors', e.target.value)} />
       </div>
       <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">How to Manage It (Management Plan)</label>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Management Plan</label>
         <textarea className="input w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
           value={form.managementPlan} onChange={e => setF('managementPlan', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Historical Context</label>
-        <textarea className="input w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
-          value={form.historicalContext} onChange={e => setF('historicalContext', e.target.value)} />
       </div>
       <div className="flex gap-3 justify-end pt-2">
         <Button variant="outline" onClick={() => isEdit ? setEditItem(null) : setCreateOpen(false)}>Cancel</Button>
@@ -339,16 +337,16 @@ export default function RiskManagement() {
                 {isExpanded && (
                   <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Field label="Description" value={ra.description} />
+                      <Field label="What is the risk" value={ra.description} />
+                      <Field label="Historical Context" value={ra.historical_context} />
                       <Field label="Who is at risk" value={ra.who_is_at_risk} />
                       <Field label="What could happen" value={ra.what_could_happen} />
                       <Field label="Triggers" value={ra.triggers} />
                       <Field label="Protective Factors" value={ra.protective_factors} />
-                      <Field label="Historical Context" value={ra.historical_context} />
                     </div>
                     {ra.management_plan && (
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">How to Manage It</p>
+                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Risk Management Plan</p>
                         <p className="text-sm text-slate-700 whitespace-pre-line">{ra.management_plan}</p>
                       </div>
                     )}

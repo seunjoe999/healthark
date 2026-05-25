@@ -165,7 +165,7 @@ Incident details:
 Provide a clear, concise, professional analysis.`;
 
       const message = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5',
         max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }],
       });

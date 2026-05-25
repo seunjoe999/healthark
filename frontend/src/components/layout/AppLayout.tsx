@@ -63,7 +63,7 @@ const navSections = [
       { label: 'Care Outcomes',    to: '/outcomes',           icon: Target,          roles: [],                                              featureKey: 'outcomes' },
       { label: 'Reviews',          to: '/reviews',            icon: ClipboardCheck,  roles: [],                                              featureKey: 'reviews' },
       { label: 'Audit',            to: '/assessments',        icon: FileCheck,       roles: [],                                              featureKey: 'assessments' },
-      { label: 'Quality & QA',     to: '/quality',            icon: Star,            roles: ['home_manager','group_admin'],                   featureKey: 'quality' },
+      { label: 'Quality Assurance', to: '/quality',            icon: Star,            roles: ['home_manager','group_admin'],                   featureKey: 'quality' },
       { label: 'Handover',         to: '/reports/handover',   icon: ArrowLeftRight,  roles: [],                                              featureKey: 'handover' },
       { label: 'Audit Reports',    to: '/audits',             icon: Activity,        roles: ['home_manager','group_admin','auditor'],         featureKey: 'audits' },
       { label: 'Audit Trail',      to: '/audit-trail',        icon: History,         roles: ['home_manager','group_admin','auditor'],         featureKey: 'audit_trail' },
