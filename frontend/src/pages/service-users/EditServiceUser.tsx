@@ -58,6 +58,8 @@ function normalise(su: any) {
     email: su.email || '',
     needToKnow: su.need_to_know || su.needToKnow || '',
     myInstructions: su.my_instructions || su.myInstructions || '',
+    learningDisabilities: su.learning_disabilities || su.learningDisabilities || '',
+    keyInfo: su.key_info || su.keyInfo || '',
     heightCm: su.height_cm || su.heightCm || '',
     weightKg: su.weight_kg || su.weightKg || '',
     medicalHistory: su.medical_history || su.medicalHistory || '',
@@ -535,6 +537,16 @@ export default function EditServiceUser() {
             <label className="text-xs font-medium text-slate-400 block mb-1.5">My instructions</label>
             <textarea className="input" rows={3} value={form.myInstructions} onChange={e => set('myInstructions', e.target.value)}
               placeholder="Things I want staff to know about me and how I like to be supported..." />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-blue-400 block mb-1.5">Learning disabilities</label>
+            <textarea className="input" rows={3} value={form.learningDisabilities} onChange={e => set('learningDisabilities', e.target.value)}
+              placeholder="Note any learning disabilities, cognitive needs, or communication requirements..." />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Key information for staff</label>
+            <textarea className="input" rows={3} value={form.keyInfo} onChange={e => set('keyInfo', e.target.value)}
+              placeholder="Other important information all staff need to know about this person..." />
           </div>
         </div>
       )}

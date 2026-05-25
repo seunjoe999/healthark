@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { BarChart3, Download, Search, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { BarChart3, Search, AlertTriangle, CheckCircle, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const REPORT_TYPES = [
@@ -31,6 +31,8 @@ export default function Reports() {
   const [month, setMonth] = useState(() => new Date().toISOString().substring(0, 7))
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [suList, setSuList] = useState<any[]>([])
+  const [selectedSu, setSelectedSu] = useState('')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -40,6 +42,11 @@ export default function Reports() {
     })
   }, [user])
 
+  useEffect(() => {
+    if (!selectedHome) return
+    suApi.list(selectedHome).then(res => setSuList(res.data.data || [])).catch(() => {})
+  }, [selectedHome])
+
   const runReport = async () => {
     setLoading(true)
     setData(null)
@@ -47,6 +54,7 @@ export default function Reports() {
       const params: any = { homeId: selectedHome }
       if (reportType === 'monthly-summary') params.month = month
       else { params.from = from; params.to = to }
+      if (selectedSu) params.suId = selectedSu
       const res = await api.get(`/reports/${reportType}`, { params })
       setData(res.data.data)
     } catch (err: any) { console.error('Report error:', err?.response?.data); toast.error(err?.response?.data?.error || 'Failed to load report') }
@@ -100,6 +108,13 @@ export default function Reports() {
               </div>
             </>
           )}
+          <div>
+            <label className="label flex items-center gap-1"><User className="w-3.5 h-3.5" /> Filter by resident</label>
+            <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
+              <option value="">All residents</option>
+              {suList.map(s => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+            </select>
+          </div>
           <Button icon={<Search className="w-4 h-4" />} onClick={runReport} loading={loading}>
             Run report
           </Button>

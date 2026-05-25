@@ -198,6 +198,17 @@ export default function MAR() {
           <>
             {/* ── Control bar ────────────────────────────────────────── */}
             <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-wrap">
+              {/* Resident selector */}
+              <div className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                <select
+                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 max-w-[160px]"
+                  value={selectedSu?.id || ''}
+                  onChange={e => { const s = sus.find((x: any) => x.id === e.target.value); if (s) selectSu(s) }}>
+                  <option value="">Select resident…</option>
+                  {sus.map((s: any) => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+                </select>
+              </div>
               {/* Month navigator */}
               <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
                 <button onClick={() => shiftMonth(-1)} className="px-2 py-1.5 hover:bg-slate-100 text-slate-600 transition-colors">

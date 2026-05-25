@@ -75,6 +75,8 @@ function normalise(su: any) {
     fluidConsistency: su.fluidConsistency || su.fluid_consistency || '',
     dietInstructions: su.dietInstructions || su.diet_instructions || '',
     address1: su.address1 || '', postcode: su.postcode || '', phone: su.phone || '',
+    learningDisabilities: su.learningDisabilities || su.learning_disabilities || '',
+    keyInfo: su.keyInfo || su.key_info || '',
   }
 }
 
@@ -245,6 +247,22 @@ export default function ServiceUserProfile() {
               <Field label="Phone" value={su.phone} icon={<Phone className="w-3.5 h-3.5" />} />
               <Field label="Address" value={[su.address1, su.postcode].filter(Boolean).join(', ')} icon={<MapPin className="w-3.5 h-3.5" />} />
             </dl>
+            {(su.learningDisabilities || su.keyInfo) && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                {su.learningDisabilities && (
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Learning disabilities</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-line">{su.learningDisabilities}</p>
+                  </div>
+                )}
+                {su.keyInfo && (
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Key information for staff</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-line">{su.keyInfo}</p>
+                  </div>
+                )}
+              </div>
+            )}
             {su.postcode && (
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between">

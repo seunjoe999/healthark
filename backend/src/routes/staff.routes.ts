@@ -29,7 +29,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
                 home_id, photo_url, start_date, leave_date, is_active, last_login,
-                leave_hours_total, leave_hours_remaining
+                leave_hours_total, leave_hours_remaining, feature_flags
          FROM staff WHERE organisation_id = $1
          ${filterHomeId ? 'AND home_id = $2' : ''}
          ORDER BY last_name, first_name`,
@@ -217,6 +217,23 @@ router.put(
          targetId]
       );
 
+      if (!rows.length) throw new AppError('Staff not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/staff/:id/feature-flags — super admin sets feature access for an account
+router.put('/:id/feature-flags', requireRole('group_admin'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { featureFlags } = req.body;
+      if (!featureFlags || typeof featureFlags !== 'object') throw new AppError('featureFlags object required', 400);
+      const rows = await query(
+        `UPDATE staff SET feature_flags=$1::jsonb WHERE id=$2 RETURNING id, feature_flags`,
+        [JSON.stringify(featureFlags), req.params.id]
+      );
       if (!rows.length) throw new AppError('Staff not found', 404);
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

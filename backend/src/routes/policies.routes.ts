@@ -82,6 +82,20 @@ router.get('/:id/sign-offs', param('id').isUUID(), validateRequest,
   }
 );
 
+router.get('/:id/attachments', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT pa.*, s.first_name || ' ' || s.last_name as uploaded_by_name
+         FROM policy_attachments pa LEFT JOIN staff s ON s.id = pa.uploaded_by
+         WHERE pa.policy_id = $1 ORDER BY pa.created_at DESC`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

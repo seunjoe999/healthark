@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
-import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-react'
+import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff, Sliders } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -25,7 +25,52 @@ interface AdminUser {
   status: string
   last_login: string | null
   created_at: string
+  feature_flags?: Record<string, boolean>
 }
+
+const ALL_FEATURES = [
+  { key: 'dashboard',           label: 'Dashboard' },
+  { key: 'messages',            label: 'Inbox / Messages' },
+  { key: 'noticeboard',         label: 'Noticeboard' },
+  { key: 'service_users',       label: 'Service Users' },
+  { key: 'daily_records',       label: 'Daily Records' },
+  { key: 'diary',               label: 'Resident Diary' },
+  { key: 'professional_visits', label: 'Professional Visits' },
+  { key: 'mar',                 label: 'MAR Chart' },
+  { key: 'medication_stock',    label: 'Medication Stock' },
+  { key: 'care_plans',          label: 'Support Plans' },
+  { key: 'safeguarding',        label: 'Safeguarding' },
+  { key: 'incidents',           label: 'Incidents' },
+  { key: 'tasks',               label: 'Tasks' },
+  { key: 'rota',                label: 'Rota' },
+  { key: 'timesheets',          label: 'Timesheets' },
+  { key: 'holidays',            label: 'Holidays' },
+  { key: 'training',            label: 'Training' },
+  { key: 'staff',               label: 'Staff' },
+  { key: 'dbs',                 label: 'DBS & Compliance' },
+  { key: 'maintenance',         label: 'Maintenance' },
+  { key: 'clockin',             label: 'Clock-In' },
+  { key: 'calendar',            label: 'Calendar' },
+  { key: 'alerts',              label: 'Alerts' },
+  { key: 'compliance',          label: 'Compliance' },
+  { key: 'bath_chart',          label: 'Bath Chart' },
+  { key: 'observations',        label: 'Observations' },
+  { key: 'seizures',            label: 'Seizure Log' },
+  { key: 'bowel_chart',         label: 'Bowel Chart' },
+  { key: 'medicine_risk',       label: 'Medicine Risk' },
+  { key: 'performance',         label: 'Performance' },
+  { key: 'outcomes',            label: 'Care Outcomes' },
+  { key: 'reviews',             label: 'Reviews' },
+  { key: 'assessments',         label: 'Audit' },
+  { key: 'quality',             label: 'Quality & QA' },
+  { key: 'handover',            label: 'Handover' },
+  { key: 'audits',              label: 'Audit Reports' },
+  { key: 'audit_trail',         label: 'Audit Trail' },
+  { key: 'reports',             label: 'Reports' },
+  { key: 'policies',            label: 'Policies' },
+  { key: 'ppe',                 label: 'PPE Stock' },
+  { key: 'family_portal',       label: 'Family Portal' },
+]
 
 const ROLE_LABELS: Record<string, string> = {
   group_admin: 'Group Admin',
@@ -46,6 +91,7 @@ export default function AdminAccounts() {
   const [showPwd, setShowPwd] = useState(false)
   const [saving, setSaving] = useState(false)
   const [created, setCreated] = useState<{ email: string; temporaryPassword: string } | null>(null)
+  const [accessModal, setAccessModal] = useState<AdminUser | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -146,7 +192,13 @@ export default function AdminAccounts() {
                   Last login: {admin.last_login ? format(new Date(admin.last_login), 'd MMM yyyy HH:mm') : 'Never'}
                 </p>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                {admin.role !== 'group_admin' && (
+                  <Button size="sm" variant="outline" icon={<Sliders className="w-3.5 h-3.5" />}
+                    onClick={() => setAccessModal(admin)}>
+                    Access
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" icon={<RefreshCw className="w-3.5 h-3.5" />}
                   onClick={() => { setResetOpen(admin); setNewPassword(''); setShowPwd(false) }}>
                   Reset pwd
@@ -186,6 +238,15 @@ export default function AdminAccounts() {
         </Modal>
       )}
 
+      {/* Access levels modal */}
+      {accessModal && (
+        <AccessLevelsModal
+          admin={accessModal}
+          onClose={() => setAccessModal(null)}
+          onSaved={() => { setAccessModal(null); load() }}
+        />
+      )}
+
       {/* Reset password modal */}
       {resetOpen && (
         <Modal open={true} onClose={() => setResetOpen(null)} title={`Reset password — ${resetOpen.first_name} ${resetOpen.last_name}`}>
@@ -219,6 +280,66 @@ function CredRow({ label, value, bold }: { label: string; value: string; bold?: 
           className="text-slate-400 hover:text-slate-700"><Copy className="w-4 h-4" /></button>
       </div>
     </div>
+  )
+}
+
+function AccessLevelsModal({ admin, onClose, onSaved }: {
+  admin: AdminUser; onClose: () => void; onSaved: () => void
+}) {
+  const existing = admin.feature_flags || {}
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    for (const f of ALL_FEATURES) { init[f.key] = existing[f.key] !== false }
+    return init
+  })
+  const [saving, setSaving] = useState(false)
+
+  const toggleAll = (val: boolean) => {
+    const next: Record<string, boolean> = {}
+    for (const f of ALL_FEATURES) next[f.key] = val
+    setEnabled(next)
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const featureFlags: Record<string, boolean> = {}
+      for (const f of ALL_FEATURES) { if (!enabled[f.key]) featureFlags[f.key] = false }
+      await api.put(`/staff/${admin.id}/feature-flags`, { featureFlags })
+      toast.success('Access levels saved')
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
+    finally { setSaving(false) }
+  }
+
+  const allOn = ALL_FEATURES.every(f => enabled[f.key])
+  const allOff = ALL_FEATURES.every(f => !enabled[f.key])
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Access levels — ${admin.first_name} ${admin.last_name}`} size="md">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-500">
+          Choose which features this account can access. Unchecked items will be hidden from their navigation.
+        </p>
+        <div className="flex gap-3 text-sm">
+          <button onClick={() => toggleAll(true)} className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${allOn ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Enable all</button>
+          <button onClick={() => toggleAll(false)} className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${allOff ? 'bg-slate-700 text-white border-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Disable all</button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 max-h-96 overflow-y-auto border border-slate-100 rounded-xl p-4">
+          {ALL_FEATURES.map(f => (
+            <label key={f.key} className="flex items-center gap-2 cursor-pointer select-none group">
+              <input type="checkbox" checked={!!enabled[f.key]} onChange={e => setEnabled(prev => ({ ...prev, [f.key]: e.target.checked }))}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-400 w-4 h-4 flex-shrink-0" />
+              <span className={`text-sm transition-colors ${enabled[f.key] ? 'text-slate-800' : 'text-slate-400 line-through'}`}>{f.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button loading={saving} icon={<Sliders className="w-4 h-4" />} onClick={save}>Save access levels</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

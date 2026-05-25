@@ -2,20 +2,27 @@ import React, { useEffect, useState } from 'react'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isPast } from 'date-fns'
 import { Spinner, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Users } from 'lucide-react'
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Clock, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const EVENT_TYPES = [
+const APPOINTMENT_TYPES = [
   { value: 'appointment', label: 'Appointment' },
+  { value: 'review', label: 'Care review' },
+  { value: 'inspection', label: 'Inspection' },
+]
+
+const EVENT_TYPES = [
   { value: 'meeting', label: 'Meeting' },
   { value: 'activity', label: 'Activity' },
-  { value: 'inspection', label: 'Inspection' },
   { value: 'training', label: 'Training' },
-  { value: 'review', label: 'Care review' },
   { value: 'other', label: 'Other' },
 ]
+
+const ALL_TYPES = [...APPOINTMENT_TYPES, ...EVENT_TYPES]
+
+const APPOINTMENT_TYPE_VALUES = APPOINTMENT_TYPES.map(t => t.value)
 
 const TYPE_COLORS: Record<string, string> = {
   appointment: 'bg-blue-500',
@@ -47,6 +54,7 @@ export default function CalendarPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [sideTab, setSideTab] = useState<'upcoming' | 'done'>('upcoming')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -145,32 +153,46 @@ export default function CalendarPage() {
         {/* Side panel */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-card flex flex-col">
           <div className="px-5 py-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-900">
-              {selectedDay ? format(selectedDay, 'EEEE, d MMMM') : 'Select a day'}
+            <h3 className="font-semibold text-slate-900 mb-3">
+              {selectedDay ? format(selectedDay, 'EEEE, d MMMM') : 'All events'}
             </h3>
+            <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+              <button onClick={() => setSideTab('upcoming')} className={`flex-1 py-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${sideTab === 'upcoming' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+                <Clock className="w-3 h-3" /> Upcoming
+              </button>
+              <button onClick={() => setSideTab('done')} className={`flex-1 py-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${sideTab === 'done' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+                <CheckCircle2 className="w-3 h-3" /> Done
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {!selectedDay ? (
-              <p className="text-sm text-slate-400 text-center py-4">Click a day to see events</p>
-            ) : selectedDayEvents.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-slate-400">No events this day</p>
-                <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>
-              </div>
-            ) : selectedDayEvents.map((e: any) => (
-              <div key={e.id} className={`p-4 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${TYPE_BG[e.event_type] || TYPE_BG.other}`}
-                onClick={() => setSelectedEvent(e)}>
-                <div className="flex items-start justify-between mb-1">
-                  <p className="font-semibold text-sm">{e.title}</p>
-                  {e.event_type === 'meeting' && <FileText className="w-3.5 h-3.5 opacity-60" />}
+            {(() => {
+              const now = new Date()
+              const pool = selectedDay ? selectedDayEvents : events
+              const shown = pool.filter(e => {
+                const d = new Date(e.event_date + (e.start_time ? `T${e.start_time}` : 'T00:00:00'))
+                return sideTab === 'upcoming' ? !isPast(d) || isSameDay(d, now) : isPast(d) && !isSameDay(d, now)
+              })
+              if (shown.length === 0) return (
+                <div className="text-center py-6">
+                  <p className="text-sm text-slate-400">{sideTab === 'upcoming' ? 'No upcoming events' : 'No completed events'}</p>
+                  {sideTab === 'upcoming' && <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>}
                 </div>
-                {e.start_time && <p className="text-xs opacity-70">{e.start_time}{e.end_time ? ` — ${e.end_time}` : ''}</p>}
-                {e.description && <p className="text-xs opacity-60 mt-1 line-clamp-2">{e.description}</p>}
-                {e.event_type === 'meeting' && (
-                  <p className="text-xs font-semibold mt-2 opacity-80">📝 Click to view/add notes</p>
-                )}
-              </div>
-            ))}
+              )
+              return shown.map((e: any) => (
+                <div key={e.id} className={`p-4 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${TYPE_BG[e.event_type] || TYPE_BG.other} ${sideTab === 'done' ? 'opacity-70' : ''}`}
+                  onClick={() => setSelectedEvent(e)}>
+                  <div className="flex items-start justify-between mb-1">
+                    <p className="font-semibold text-sm">{e.title}</p>
+                    {sideTab === 'done' ? <CheckCircle2 className="w-3.5 h-3.5 opacity-60" /> : <FileText className="w-3.5 h-3.5 opacity-60" />}
+                  </div>
+                  {!selectedDay && <p className="text-xs opacity-60 mb-0.5">{format(new Date(e.event_date), 'd MMM yyyy')}</p>}
+                  {e.start_time && <p className="text-xs opacity-70">{e.start_time}{e.end_time ? ` — ${e.end_time}` : ''}</p>}
+                  {e.description && <p className="text-xs opacity-60 mt-1 line-clamp-2">{e.description}</p>}
+                  <p className="text-xs font-semibold mt-2 opacity-70 capitalize">{(e.event_type || '').replace('_', ' ')} · Click to view details</p>
+                </div>
+              ))
+            })()}
           </div>
         </div>
       </div>
@@ -189,7 +211,8 @@ export default function CalendarPage() {
 
 function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; onClose: () => void; onDeleted: () => void; onSaved: () => void }) {
   const { user } = useAuth()
-  const [notes, setNotes] = useState({ notes: '', actionPoints: '', concerns: '', attendees: '' })
+  const isAppointment = APPOINTMENT_TYPE_VALUES.includes(event.event_type)
+  const [notes, setNotes] = useState({ notes: '', actionPoints: '', concerns: '', attendees: '', outcome: '', summary: '' })
   const [signoffs, setSignoffs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -204,6 +227,8 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
         actionPoints: d.notes[0].action_points || '',
         concerns: d.notes[0].concerns || '',
         attendees: d.notes[0].attendees || '',
+        outcome: d.notes[0].outcome || '',
+        summary: d.notes[0].summary || '',
       })
       setSignoffs(d.signoffs || [])
     }).catch(() => {}).finally(() => setLoading(false))
@@ -228,7 +253,7 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
   }
 
   const alreadySigned = signoffs.some(s => s.staff_id === user?.id)
-  const typeStyle = {
+  const typeStyle: Record<string, string> = {
     appointment: 'bg-blue-50 text-blue-700', meeting: 'bg-purple-50 text-purple-700',
     activity: 'bg-green-50 text-green-700', inspection: 'bg-red-50 text-red-700',
     training: 'bg-orange-50 text-orange-700', review: 'bg-teal-50 text-teal-700',
@@ -239,7 +264,7 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
     <Modal open={true} onClose={onClose} title={event.title} size="lg">
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         {/* Event info */}
-        <div className={`flex items-center gap-3 p-3 rounded-xl ${(typeStyle as any)[event.event_type] || typeStyle.other}`}>
+        <div className={`flex items-center gap-3 p-3 rounded-xl ${typeStyle[event.event_type] || typeStyle.other}`}>
           <div>
             <p className="text-sm font-semibold capitalize">{(event.event_type || '').replace('_', ' ')}</p>
             <p className="text-xs opacity-70">{event.event_date ? format(new Date(event.event_date), 'd MMMM yyyy') : ''}{event.start_time ? ` · ${event.start_time}` : ''}{event.end_time ? `–${event.end_time}` : ''}</p>
@@ -247,15 +272,31 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
           </div>
         </div>
 
-        {/* Notes section */}
-        <SectionHeading title="Meeting notes" description="Document what was discussed, actions and concerns" />
-        {loading ? <div className="text-center py-4 text-sm text-slate-400">Loading notes...</div> : (
-          <div className="space-y-3">
-            <div><label className="label">Attendees</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
-            <div><label className="label">Meeting notes</label><textarea className="input" rows={4} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="What was discussed..." /></div>
-            <div><label className="label">Action points</label><textarea className="input" rows={3} value={notes.actionPoints} onChange={e => set('actionPoints', e.target.value)} placeholder="Actions agreed and who is responsible..." /></div>
-            <div><label className="label">Concerns raised</label><textarea className="input" rows={2} value={notes.concerns} onChange={e => set('concerns', e.target.value)} placeholder="Any concerns raised..." /></div>
-          </div>
+        {/* Appointment fields */}
+        {isAppointment ? (
+          <>
+            <SectionHeading title="Appointment details" description="Record what happened and the outcome" />
+            {loading ? <div className="text-center py-4 text-sm text-slate-400">Loading...</div> : (
+              <div className="space-y-3">
+                <div><label className="label">Attendees / who was present</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
+                <div><label className="label">Notes</label><textarea className="input" rows={3} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="What happened during this appointment..." /></div>
+                <div><label className="label">Outcome *</label><textarea className="input" rows={3} value={notes.outcome} onChange={e => set('outcome', e.target.value)} placeholder="What was the outcome? Any decisions, referrals, or follow-ups..." /></div>
+                <div><label className="label">Concerns raised</label><textarea className="input" rows={2} value={notes.concerns} onChange={e => set('concerns', e.target.value)} placeholder="Any concerns identified..." /></div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Event (meeting/activity/training/other) fields */}
+            <SectionHeading title="Event details" description="Document what took place" />
+            {loading ? <div className="text-center py-4 text-sm text-slate-400">Loading...</div> : (
+              <div className="space-y-3">
+                <div><label className="label">Attendees</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
+                <div><label className="label">Summary</label><textarea className="input" rows={4} value={notes.summary} onChange={e => set('summary', e.target.value)} placeholder="Summarise what took place..." /></div>
+                <div><label className="label">Notes</label><textarea className="input" rows={3} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." /></div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Sign-offs */}
@@ -273,17 +314,13 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
         )}
 
         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <div className="flex gap-2">
-            <Button variant="danger" size="sm" onClick={onDeleted}>Delete event</Button>
-          </div>
+          <Button variant="danger" size="sm" onClick={onDeleted}>Delete</Button>
           <div className="flex gap-2">
             {!alreadySigned && (
-              <Button variant="outline" size="sm" icon={<Check className="w-3.5 h-3.5" />} loading={signing} onClick={signOff}>
-                Sign off
-              </Button>
+              <Button variant="outline" size="sm" icon={<Check className="w-3.5 h-3.5" />} loading={signing} onClick={signOff}>Sign off</Button>
             )}
-            {alreadySigned && <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> You signed off</span>}
-            <Button loading={saving} onClick={save}>Save notes</Button>
+            {alreadySigned && <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Signed</span>}
+            <Button loading={saving} onClick={save}>Save</Button>
           </div>
         </div>
       </div>
@@ -294,6 +331,7 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
 function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
   open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; onSaved: () => void
 }) {
+  const [kind, setKind] = useState<'appointment' | 'event'>('appointment')
   const [form, setForm] = useState({
     title: '', eventType: 'appointment',
     eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
@@ -310,25 +348,40 @@ function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
     finally { setLoading(false) }
   }
 
+  const typeOptions = kind === 'appointment' ? APPOINTMENT_TYPES : EVENT_TYPES
+
   return (
-    <Modal open={open} onClose={onClose} title="Add calendar event">
-      <form onSubmit={save} className="space-y-4">
-        <Input label="Event title *" required value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. GP appointment, Fire drill, Staff meeting..." autoFocus />
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Event type" value={form.eventType} onChange={e => set('eventType', e.target.value)} options={EVENT_TYPES} />
-          <Input label="Date *" type="date" required value={form.eventDate} onChange={e => set('eventDate', e.target.value)} />
+    <Modal open={open} onClose={onClose} title="Add to calendar">
+      <div className="space-y-4">
+        {/* Kind selector */}
+        <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+          <button type="button" onClick={() => { setKind('appointment'); set('eventType', 'appointment') }}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'appointment' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}>
+            Appointment
+          </button>
+          <button type="button" onClick={() => { setKind('event'); set('eventType', 'meeting') }}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'event' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+            Event
+          </button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Start time" type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
-          <Input label="End time" type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
-        </div>
-        <Input label="Location" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Room, address, online..." />
-        <div><label className="label">Description</label><textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} /></div>
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={loading}>Add event</Button>
-        </div>
-      </form>
+        <form onSubmit={save} className="space-y-4">
+          <Input label={`${kind === 'appointment' ? 'Appointment' : 'Event'} title *`} required value={form.title} onChange={e => set('title', e.target.value)} placeholder={kind === 'appointment' ? 'e.g. GP appointment, Dental check...' : 'e.g. Fire drill, Staff meeting...'} autoFocus />
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Type" value={form.eventType} onChange={e => set('eventType', e.target.value)} options={typeOptions} />
+            <Input label="Date *" type="date" required value={form.eventDate} onChange={e => set('eventDate', e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Start time" type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
+            <Input label="End time" type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
+          </div>
+          <Input label="Location" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Room, address, online..." />
+          <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></div>
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={loading}>Add</Button>
+          </div>
+        </form>
+      </div>
     </Modal>
   )
 }

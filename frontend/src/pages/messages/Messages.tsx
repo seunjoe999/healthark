@@ -143,25 +143,34 @@ export default function Messages() {
 function ComposeModal({ open, onClose, staffList, onSaved, defaults }: {
   open: boolean; onClose: () => void; staffList: any[]; onSaved: () => void; defaults?: { recipientId: string; subject: string } | null
 }) {
-  const [form, setForm] = useState({ recipientId: '', subject: '', message: '' })
+  const [recipientIds, setRecipientIds] = useState<string[]>([])
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const [search, setSearch] = useState('')
   const options = staffList.map(s => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
+  const filtered = options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
 
   useEffect(() => {
     if (open) {
-      setForm({
-        recipientId: defaults?.recipientId || '',
-        subject: defaults?.subject || '',
-        message: '',
-      })
+      setRecipientIds(defaults?.recipientId ? [defaults.recipientId] : [])
+      setSubject(defaults?.subject || '')
+      setMessage('')
+      setSearch('')
     }
   }, [open, defaults])
 
+  const toggleRecipient = (id: string) =>
+    setRecipientIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (recipientIds.length === 0) { toast.error('Select at least one recipient'); return }
     setLoading(true)
-    try { await api.post('/messages', form); onSaved() }
+    try {
+      await Promise.all(recipientIds.map(recipientId => api.post('/messages', { recipientId, subject, message })))
+      onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to send') }
     finally { setLoading(false) }
   }
@@ -170,23 +179,31 @@ function ComposeModal({ open, onClose, staffList, onSaved, defaults }: {
     <Modal open={open} onClose={onClose} title="New message">
       <form onSubmit={save} className="space-y-4">
         <div>
-          <label className="label">To *</label>
-          <select required className="input" value={form.recipientId} onChange={e => set('recipientId', e.target.value)}>
-            <option value="">Select recipient...</option>
-            {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <label className="label">To * {recipientIds.length > 0 && <span className="text-purple-600 font-semibold">({recipientIds.length} selected)</span>}</label>
+          <input className="input mb-2 text-sm" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="border border-slate-200 rounded-xl max-h-36 overflow-y-auto">
+            {filtered.map(o => (
+              <label key={o.value} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                <input type="checkbox" className="rounded accent-purple-600" checked={recipientIds.includes(o.value)} onChange={() => toggleRecipient(o.value)} />
+                <span className="text-sm text-slate-700">{o.label}</span>
+              </label>
+            ))}
+            {filtered.length === 0 && <p className="text-xs text-slate-400 text-center py-3">No staff found</p>}
+          </div>
         </div>
         <div>
           <label className="label">Subject</label>
-          <input className="input" value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Message subject..." />
+          <input className="input" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Message subject..." />
         </div>
         <div>
           <label className="label">Message *</label>
-          <textarea required className="input" rows={5} value={form.message} onChange={e => set('message', e.target.value)} placeholder="Type your message here..." />
+          <textarea required className="input" rows={5} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message here..." />
         </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={loading} icon={<Send className="w-4 h-4" />}>Send message</Button>
+          <Button type="submit" loading={loading} icon={<Send className="w-4 h-4" />}>
+            Send{recipientIds.length > 1 ? ` to ${recipientIds.length}` : ''}
+          </Button>
         </div>
       </form>
     </Modal>

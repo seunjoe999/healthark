@@ -11,6 +11,7 @@ export interface AuthUser {
   homeId: string | null
   organisationId: string
   photoUrl: string | null
+  featureFlags: Record<string, boolean>
 }
 
 export interface Home {

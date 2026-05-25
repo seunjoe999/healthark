@@ -3,7 +3,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
-import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2, Eye, Users } from 'lucide-react'
+import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2, Eye, Users, Paperclip, Upload, FileText, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Policies() {
@@ -14,6 +14,10 @@ export default function Policies() {
   const [viewPolicy, setViewPolicy] = useState<any>(null)
   const [signOffs, setSignOffs] = useState<any[]>([])
   const [signOffsLoading, setSignOffsLoading] = useState(false)
+  const [attachments, setAttachments] = useState<any[]>([])
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   useEffect(() => { load() }, [])
 
@@ -29,12 +33,31 @@ export default function Policies() {
   const openDetail = async (p: any) => {
     setViewPolicy(p)
     setSignOffs([])
+    setAttachments([])
     setSignOffsLoading(true)
+    setAttachmentsLoading(true)
     try {
-      const res = await api.get(`/policies/${p.id}/sign-offs`)
-      setSignOffs(res.data.data || [])
-    } catch { /* sign-offs are optional */ }
-    finally { setSignOffsLoading(false) }
+      const [soRes, attRes] = await Promise.allSettled([
+        api.get(`/policies/${p.id}/sign-offs`),
+        api.get(`/policies/${p.id}/attachments`),
+      ])
+      if (soRes.status === 'fulfilled') setSignOffs(soRes.value.data.data || [])
+      if (attRes.status === 'fulfilled') setAttachments(attRes.value.data.data || [])
+    } finally { setSignOffsLoading(false); setAttachmentsLoading(false) }
+  }
+
+  const uploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !viewPolicy) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post(`/upload/policy-doc/${viewPolicy.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setAttachments(prev => [res.data.data.attachment, ...prev])
+      toast.success('File uploaded')
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = '' }
   }
 
   const deletePolicy = async (id: string) => {
@@ -162,6 +185,40 @@ export default function Policies() {
                 )}
               </div>
             )}
+
+            {/* Attachments */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Paperclip className="w-3.5 h-3.5" /> Attachments
+                </p>
+                {isRole('home_manager', 'group_admin') && (
+                  <>
+                    <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png" onChange={uploadFile} />
+                    <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                      className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                      <Upload className="w-3 h-3" /> {uploading ? 'Uploading...' : 'Upload file'}
+                    </button>
+                  </>
+                )}
+              </div>
+              {attachmentsLoading ? (
+                <p className="text-xs text-slate-400">Loading...</p>
+              ) : attachments.length === 0 ? (
+                <p className="text-xs text-slate-400">No files attached</p>
+              ) : (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {attachments.map((att: any) => (
+                    <a key={att.id} href={att.file_url} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-2 text-xs text-slate-700 hover:text-blue-600 bg-slate-50 rounded-lg px-3 py-1.5 group">
+                      <FileText className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="flex-1 truncate">{att.file_name}</span>
+                      <Download className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-2 border-t border-slate-100">
               {viewPolicy.requires_sign && !viewPolicy.signed_by_me && (

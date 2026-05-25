@@ -87,14 +87,14 @@ router.post('/:id/notes', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { notes, actionPoints, concerns, attendees } = req.body;
+      const { notes, actionPoints, concerns, attendees, outcome, summary } = req.body;
       const rows = await query(
-        `INSERT INTO meeting_notes (event_id, created_by, notes, action_points, concerns, attendees)
-         VALUES ($1,$2,$3,$4,$5,$6)
+        `INSERT INTO meeting_notes (event_id, created_by, notes, action_points, concerns, attendees, outcome, summary)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          ON CONFLICT (event_id) DO UPDATE SET
-           notes=$3, action_points=$4, concerns=$5, attendees=$6, updated_at=NOW()
+           notes=$3, action_points=$4, concerns=$5, attendees=$6, outcome=$7, summary=$8, updated_at=NOW()
          RETURNING *`,
-        [req.params.id, staffId, notes || null, actionPoints || null, concerns || null, attendees || null]
+        [req.params.id, staffId, notes || null, actionPoints || null, concerns || null, attendees || null, outcome || null, summary || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

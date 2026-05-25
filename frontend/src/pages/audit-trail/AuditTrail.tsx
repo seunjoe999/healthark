@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { History, Search, Filter, LogIn, Plus, Edit3, Trash2, CheckCircle, Eye, Shield } from 'lucide-react'
+import { History, Search, LogIn, Plus, Edit3, Trash2, CheckCircle, Eye, Shield } from 'lucide-react'
 import { Spinner, EmptyState } from '../../components/ui'
-import api from '../../api'
+import api, { suApi, staffApi } from '../../api'
+import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 
 const RESOURCE_TYPES = [
@@ -43,12 +44,21 @@ function groupByDate(records: any[]) {
 }
 
 export default function AuditTrail() {
+  const { user } = useAuth()
   const [records, setRecords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [suList, setSuList] = useState<any[]>([])
+  const [staffList, setStaffList] = useState<any[]>([])
 
-  const [filters, setFilters] = useState({ resourceType: '', from: '', to: '', q: '' })
+  const [filters, setFilters] = useState({ resourceType: '', from: '', to: '', q: '', suId: '', staffId: '' })
+
+  useEffect(() => {
+    const homeId = user?.homeId
+    if (homeId) suApi.list(homeId).then(r => setSuList(r.data.data || [])).catch(() => {})
+    staffApi.list(homeId ? { homeId } : {}).then(r => setStaffList(r.data.data || [])).catch(() => {})
+  }, [user])
 
   async function load(p = 1) {
     setLoading(true)
@@ -58,6 +68,8 @@ export default function AuditTrail() {
           page: p,
           limit: 50,
           resourceType: filters.resourceType || undefined,
+          resourceId: filters.suId || undefined,
+          staffId: filters.staffId || undefined,
           from: filters.from || undefined,
           to: filters.to || undefined,
         }
@@ -68,7 +80,8 @@ export default function AuditTrail() {
     setLoading(false)
   }
 
-  useEffect(() => { load(page) }, [page, filters.resourceType, filters.from, filters.to])
+  useEffect(() => { load(1); setPage(1) }, [filters.resourceType, filters.from, filters.to, filters.suId, filters.staffId])
+  useEffect(() => { if (page > 1) load(page) }, [page])
 
   const filtered = records.filter(r =>
     !filters.q ||
@@ -99,6 +112,14 @@ export default function AuditTrail() {
           <input className="input pl-9 text-sm" placeholder="Search staff, resource..." value={filters.q}
             onChange={e => setFilters(f => ({ ...f, q: e.target.value }))} />
         </div>
+        <select className="input w-44 text-sm" value={filters.suId} onChange={e => setFilters(f => ({ ...f, suId: e.target.value }))}>
+          <option value="">All residents</option>
+          {suList.map(s => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+        </select>
+        <select className="input w-40 text-sm" value={filters.staffId} onChange={e => setFilters(f => ({ ...f, staffId: e.target.value }))}>
+          <option value="">All staff</option>
+          {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+        </select>
         <select className="input w-40 text-sm" value={filters.resourceType} onChange={e => setFilters(f => ({ ...f, resourceType: e.target.value }))}>
           <option value="">All resources</option>
           {RESOURCE_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
