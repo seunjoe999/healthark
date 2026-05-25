@@ -128,7 +128,7 @@ router.post('/generate-monthly', validateRequest,
           [user.id, monthDate]
         );
         
-        const totalHours = hours[0]?.total_hours || 0;
+        const totalHours = parseFloat(hours[0]?.total_hours || 0);
         if (totalHours > 0) {
           const invoiceAmount = totalHours * 15; // Default £15/hour, can be customized
           const result = await dbQuery(
