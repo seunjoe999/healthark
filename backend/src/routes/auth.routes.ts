@@ -204,10 +204,18 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
     const token = req.headers.authorization?.substring(7);
     const decoded = token ? jwt.decode(token) as any : {};
     const staffId = decoded?.staffId || (req.staff as any)?.staffId;
-    const rows = await query<any>(
-      'SELECT id, email, first_name, last_name, role, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE id=$1',
-      [staffId]
-    );
+    let rows: any[];
+    try {
+      rows = await query<any>(
+        'SELECT id, email, first_name, last_name, role, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE id=$1',
+        [staffId]
+      );
+    } catch {
+      rows = await query<any>(
+        'SELECT id, email, first_name, last_name, role, home_id, organisation_id, photo_url FROM staff WHERE id=$1',
+        [staffId]
+      );
+    }
     if (!rows.length) throw new AppError('Staff not found', 404);
     const s = rows[0];
     res.json({ success: true, data: {

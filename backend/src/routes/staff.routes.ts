@@ -26,15 +26,27 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     let rows;
     if (role === 'group_admin') {
-      rows = await query(
-        `SELECT id, first_name, last_name, preferred_name, email, role, status,
-                home_id, photo_url, start_date, leave_date, is_active, last_login,
-                leave_hours_total, leave_hours_remaining, feature_flags
-         FROM staff WHERE organisation_id = $1
-         ${filterHomeId ? 'AND home_id = $2' : ''}
-         ORDER BY last_name, first_name`,
-        filterHomeId ? [organisationId, filterHomeId] : [organisationId]
-      );
+      const params = filterHomeId ? [organisationId, filterHomeId] : [organisationId];
+      const where = filterHomeId ? 'AND home_id = $2' : '';
+      try {
+        rows = await query(
+          `SELECT id, first_name, last_name, preferred_name, email, role, status,
+                  home_id, photo_url, start_date, is_active, last_login, created_at,
+                  feature_flags
+           FROM staff WHERE organisation_id = $1 ${where}
+           ORDER BY last_name, first_name`,
+          params
+        );
+      } catch {
+        // feature_flags column may not exist yet (migration pending) — fall back
+        rows = await query(
+          `SELECT id, first_name, last_name, preferred_name, email, role, status,
+                  home_id, photo_url, start_date, is_active, last_login, created_at
+           FROM staff WHERE organisation_id = $1 ${where}
+           ORDER BY last_name, first_name`,
+          params
+        );
+      }
     } else if (role === 'home_manager') {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
