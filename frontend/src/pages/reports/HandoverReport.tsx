@@ -79,9 +79,12 @@ export default function HandoverReport() {
   const [report, setReport] = useState<any>(null)
   const [notes, setNotes] = useState('')
   const [residentNotes, setResidentNotes] = useState<Record<string, string>>({})
+  const [prevResidentNotes, setPrevResidentNotes] = useState<Record<string, string>>({})
   const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
   const today = format(new Date(), 'yyyy-MM-dd')
   const notesKey = `handover_notes_${today}_${shift}`
+
+  const PREV_SHIFT: Record<string, string> = { late: 'early', night: 'late', early: 'night' }
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -102,12 +105,24 @@ export default function HandoverReport() {
 
   useEffect(() => {
     if (!selectedHome || !shift) return
+    // Load current shift notes
     api.get('/reports/handover-notes', { params: { homeId: selectedHome, shiftDate: today, shiftType: shift } })
       .then(res => {
         const map: Record<string, string> = {}
         for (const n of res.data.data || []) map[n.su_id] = n.notes || ''
         setResidentNotes(map)
       }).catch(() => {})
+    // Load previous shift notes (incoming staff can see what outgoing staff wrote)
+    const prevShift = PREV_SHIFT[shift]
+    if (prevShift) {
+      const prevDate = prevShift === 'night' ? format(new Date(new Date().getTime() - 86400000), 'yyyy-MM-dd') : today
+      api.get('/reports/handover-notes', { params: { homeId: selectedHome, shiftDate: prevDate, shiftType: prevShift } })
+        .then(res => {
+          const map: Record<string, string> = {}
+          for (const n of res.data.data || []) if (n.notes) map[n.su_id] = n.notes
+          setPrevResidentNotes(map)
+        }).catch(() => {})
+    }
   }, [selectedHome, shift])
 
   useEffect(() => {
@@ -279,11 +294,19 @@ export default function HandoverReport() {
                         <span key={i} className="text-rose-600 font-medium">⚠ {inc.notes?.substring(0, 50)}...</span>
                       ))}
                     </div>
+                    {prevResidentNotes[su.id] && (
+                      <div className="mt-2 p-2.5 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-0.5">
+                          From previous shift ({PREV_SHIFT[shift]}):
+                        </p>
+                        <p className="text-xs text-amber-900 whitespace-pre-line">{prevResidentNotes[su.id]}</p>
+                      </div>
+                    )}
                     <div className="mt-2 no-print">
                       <textarea
                         className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white"
                         rows={2}
-                        placeholder={`Handover notes for ${name} — e.g. hasn't showered today, needs follow-up with GP...`}
+                        placeholder={`Hand over to next shift — e.g. ${name} hasn't showered today, needs follow-up...`}
                         value={residentNotes[su.id] || ''}
                         onChange={e => setResidentNotes(prev => ({ ...prev, [su.id]: e.target.value }))}
                         onBlur={() => saveResidentNote(su.id, residentNotes[su.id] || '')}

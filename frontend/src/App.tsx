@@ -66,6 +66,7 @@ import ResidentDiary from './pages/diary/ResidentDiary'
 import ProfessionalVisits from './pages/professional-visits/ProfessionalVisits'
 import MedicineRisk from './pages/medicine-risk/MedicineRisk'
 import PerformanceMatrix from './pages/performance/PerformanceMatrix'
+import RiskManagement from './pages/risk-assessments/RiskManagement'
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -158,6 +159,7 @@ function AppRoutes() {
       <Route path="/professional-visits" element={<ProtectedRoute><ProfessionalVisits /></ProtectedRoute>} />
       <Route path="/medicine-risk" element={<ProtectedRoute><MedicineRisk /></ProtectedRoute>} />
       <Route path="/performance" element={<ProtectedRoute><PerformanceMatrix /></ProtectedRoute>} />
+      <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/messages" replace />} />
     </Routes>
   )

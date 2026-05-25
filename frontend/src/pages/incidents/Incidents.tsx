@@ -4,7 +4,7 @@ import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, PrintButton } from '../../components/ui'
-import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2 } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ── Severity helpers ──────────────────────────────────────────────
@@ -71,6 +71,8 @@ export default function Incidents() {
   const [incidents, setIncidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [aiAnalysis, setAiAnalysis] = useState<Record<string, string>>({})
+  const [aiLoading, setAiLoading] = useState<string | null>(null)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -113,6 +115,15 @@ export default function Incidents() {
   }, [incidents])
 
   const toggleExpand = (id: string) => setExpandedId(prev => prev === id ? null : id)
+
+  const requestAiAnalysis = async (inc: any) => {
+    setAiLoading(inc.id)
+    try {
+      const res = await api.post(`/incidents/${inc.id}/ai-analysis`)
+      setAiAnalysis(prev => ({ ...prev, [inc.id]: res.data.data.analysis }))
+    } catch { toast.error('AI analysis failed. Check API key is configured.') }
+    finally { setAiLoading(null) }
+  }
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault() }
 
@@ -317,6 +328,32 @@ export default function Incidents() {
                           <p className="text-xs text-slate-500 mt-0.5">Reason: {inc.family_not_notified_reason}</p>
                         )}
                       </div>
+                    </div>
+                    {/* AI Analysis */}
+                    <div className="pt-2 border-t border-slate-50">
+                      {!aiAnalysis[inc.id] ? (
+                        <Button size="sm" variant="outline"
+                          icon={<Sparkles className="w-3.5 h-3.5 text-purple-500" />}
+                          loading={aiLoading === inc.id}
+                          onClick={() => requestAiAnalysis(inc)}>
+                          AI Incident Analysis
+                        </Button>
+                      ) : (
+                        <div className="bg-purple-50 rounded-xl border border-purple-100 p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5" /> AI Incident Analysis
+                            </p>
+                            <button onClick={() => setAiAnalysis(p => { const n = {...p}; delete n[inc.id]; return n })}
+                              className="text-purple-400 hover:text-purple-600">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
+                            {aiAnalysis[inc.id]}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {isRole('home_manager', 'group_admin') && (
                       <div className="flex justify-end pt-2 border-t border-slate-50">

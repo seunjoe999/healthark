@@ -67,7 +67,8 @@ router.post('/',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, assessmentName, description, riskLevel, currentRiskLevel,
               whoIsAtRisk, isHistorical, whatCouldHappen, triggers,
-              protectiveFactors, managementPlan, reviewFrequency } = req.body;
+              protectiveFactors, managementPlan, reviewFrequency,
+              historicalContext, riskRating } = req.body;
 
       if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
         res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
@@ -82,13 +83,15 @@ router.post('/',
       const rows = await query(
         `INSERT INTO risk_assessments (su_id, home_id, assessment_name, description, risk_level,
           current_risk_level, who_is_at_risk, is_historical, what_could_happen, triggers,
-          protective_factors, management_plan, review_frequency, next_review_date, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+          protective_factors, management_plan, review_frequency, next_review_date, created_by,
+          historical_context, risk_rating)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
         [trimmedSuId, homeId, assessmentName, description || null, riskLevel || 'low',
          currentRiskLevel || riskLevel || 'low', whoIsAtRisk || null,
          isHistorical || false, whatCouldHappen || null, triggers || null,
          protectiveFactors || null, managementPlan || null,
-         reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId]
+         reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId,
+         historicalContext || null, riskRating || currentRiskLevel || riskLevel || 'low']
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -100,7 +103,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
     try {
       const staffId = fromToken(req, 'staffId');
       const { description, currentRiskLevel, managementPlan, updateNotes,
-              triggers, protectiveFactors, reviewFrequency } = req.body;
+              triggers, protectiveFactors, reviewFrequency,
+              historicalContext, riskRating } = req.body;
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const freq = reviewFrequency || 'monthly';
       const nextReview = new Date();
@@ -117,10 +121,13 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           last_review_date = CURRENT_DATE,
           next_review_date = $7,
           reviewed_by = $8,
-          updated_at = NOW()
+          updated_at = NOW(),
+          historical_context = COALESCE($10, historical_context),
+          risk_rating = COALESCE($11, risk_rating)
          WHERE id = $9`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
-         freq, nextReview.toISOString().split('T')[0], staffId, req.params.id]
+         freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
+         historicalContext ?? null, riskRating ?? null]
       );
 
       if (updateNotes) {

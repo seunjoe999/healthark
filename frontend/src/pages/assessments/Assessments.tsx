@@ -93,9 +93,9 @@ export default function Assessments() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <ClipboardCheck className="w-6 h-6 text-purple-600" /> Assessments
+            <ClipboardCheck className="w-6 h-6 text-purple-600" /> Audit
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">Conduct and manage care assessments</p>
+          <p className="text-slate-500 text-sm mt-0.5">Conduct and manage care audits</p>
         </div>
         <div className="flex items-center gap-2">
           <PrintButton />

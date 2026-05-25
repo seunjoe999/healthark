@@ -135,9 +135,9 @@ export default function Training() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-purple-600" /> Staff Training
+            <BookOpen className="w-6 h-6 text-purple-600" /> Hub Training
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">Learn how to use CompCare Hub</p>
+          <p className="text-slate-400 text-sm mt-0.5">Training modules and resources for CompCare Hub</p>
         </div>
         <div className="flex items-center gap-4">
           <PrintButton />

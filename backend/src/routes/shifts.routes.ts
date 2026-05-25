@@ -16,12 +16,10 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
-async function generateFromTemplate(tmpl: any, homeId: string): Promise<number> {
-  if (!tmpl.staff_id) return 0;
-  const WEEKS = 12;
+async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Promise<number> {
   const startDate = new Date(tmpl.start_date + 'T00:00:00Z');
   const endDate = new Date(startDate);
-  endDate.setUTCDate(endDate.getUTCDate() + WEEKS * 7);
+  endDate.setUTCDate(endDate.getUTCDate() + weeks * 7);
   const dowList: number[] = Array.isArray(tmpl.days_of_week) ? tmpl.days_of_week.map(Number) : [Number(tmpl.days_of_week)];
   let generated = 0;
   const cur = new Date(startDate);
@@ -30,24 +28,34 @@ async function generateFromTemplate(tmpl: any, homeId: string): Promise<number> 
     const dayMatches = tmpl.recurrence === 'daily' || dowList.includes(dow);
     if (dayMatches) {
       let ok = true;
-      if (tmpl.recurrence === 'biweekly') {
+      if (tmpl.recurrence === 'biweekly' || tmpl.recurrence === 'every_other_week') {
         const weeksSince = Math.floor((cur.getTime() - startDate.getTime()) / (7 * 86400000));
         if (weeksSince % 2 !== 0) ok = false;
       }
       if (ok) {
         const dateStr = cur.toISOString().split('T')[0];
-        const exists = await query<any>(
-          `SELECT id FROM staff_shifts WHERE staff_id=$1 AND shift_date=$2 AND start_time=$3::time LIMIT 1`,
-          [tmpl.staff_id, dateStr, tmpl.start_time]
-        );
+        let exists: any[];
+        if (tmpl.staff_id) {
+          exists = await query<any>(
+            `SELECT id FROM staff_shifts WHERE staff_id=$1 AND shift_date=$2 AND start_time=$3::time LIMIT 1`,
+            [tmpl.staff_id, dateStr, tmpl.start_time]
+          );
+        } else {
+          exists = await query<any>(
+            `SELECT id FROM staff_shifts WHERE su_id=$1 AND shift_date=$2 AND start_time=$3::time AND staff_id IS NULL LIMIT 1`,
+            [tmpl.su_id, dateStr, tmpl.start_time]
+          );
+        }
         if (!exists.length) {
           try {
             await query(
-              `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, break_minutes, template_id)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-              [homeId, tmpl.staff_id, tmpl.su_id || null, dateStr,
+              `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, break_minutes, template_id, notes_for_carers, notes_for_managers, is_standby)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+              [homeId, tmpl.staff_id || null, tmpl.su_id || null, dateStr,
                tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
-               tmpl.break_minutes || 0, tmpl.id]
+               tmpl.break_minutes || 0, tmpl.id,
+               tmpl.notes_for_carers || null, tmpl.notes_for_managers || null,
+               tmpl.is_standby || false]
             );
             generated++;
           } catch {}
@@ -70,7 +78,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
       su.first_name || ' ' || su.last_name as su_name
       FROM staff_shifts sh
-      JOIN staff s ON s.id = sh.staff_id
+      LEFT JOIN staff s ON s.id = sh.staff_id
       LEFT JOIN service_users su ON su.id = sh.su_id
       WHERE sh.home_id = $1`;
     const params: unknown[] = [homeId];
@@ -175,6 +183,11 @@ router.post('/leave', async (req: Request, res: Response, next: NextFunction) =>
        RETURNING *`,
       [homeId, staffId, leaveDate, leaveType || 'annual', notes || null, createdBy]
     );
+    // Auto-remove any shifts for this staff on this date
+    await query(
+      `DELETE FROM staff_shifts WHERE staff_id = $1 AND shift_date = $2`,
+      [staffId, leaveDate]
+    );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -262,6 +275,61 @@ router.get('/templates', async (req: Request, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 });
 
+// POST /api/shifts/service-shift — create service-user-centric recurring shift with staff allocation
+router.post('/service-shift', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const createdBy = fromToken(req, 'staffId');
+    const {
+      suId, startDate, isOngoing, endDate, recurrence, daysOfWeek,
+      startTime, endTime, shiftType, totalStaffRequired, staffIds,
+      notesForCarers, notesForManagers, isStandby, standbyWorkDetails,
+      breakMins, weeks: weeksParam,
+    } = req.body;
+
+    if (!startTime || !endTime) return res.status(400).json({ success: false, error: 'startTime and endTime required' } as any);
+
+    const WEEKS = isOngoing ? 52 : (parseInt(weeksParam) || 12);
+    const staffToCreate: (string | null)[] = staffIds && staffIds.length > 0 ? staffIds : [null];
+    const templates: any[] = [];
+    let totalGenerated = 0;
+
+    const effectiveDays = recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : (daysOfWeek || [1]);
+
+    for (const staffId of staffToCreate) {
+      const rows = await query<any>(
+        `INSERT INTO shift_templates
+          (home_id, staff_id, su_id, shift_type, start_time, end_time, break_minutes,
+           recurrence, days_of_week, start_date, staff_count, is_ongoing,
+           notes_for_carers, notes_for_managers, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+        [homeId, staffId || null, suId, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
+         recurrence || 'daily', effectiveDays,
+         startDate || new Date().toISOString().split('T')[0],
+         totalStaffRequired || 1, isOngoing || false,
+         notesForCarers || null, notesForManagers || null, createdBy]
+      );
+      const tmpl = { ...rows[0], is_standby: isStandby || false, standby_work_details: standbyWorkDetails || null };
+      templates.push(tmpl);
+      const gen = await generateFromTemplate(tmpl, homeId, WEEKS);
+      totalGenerated += gen;
+    }
+
+    if (staffIds && staffIds.length > 0) {
+      for (const staffId of staffIds) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+           VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [staffId, homeId, 'New recurring shift assigned',
+           `You have been assigned a recurring shift starting ${startDate} from ${startTime} to ${endTime}`]
+        ).catch(() => {});
+      }
+    }
+
+    res.status(201).json({ success: true, data: { templates, generated: totalGenerated } } as any);
+  } catch (err) { next(err); }
+});
+
 // POST /api/shifts/templates — create recurring schedule + generate shifts
 router.post('/templates', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -280,7 +348,7 @@ router.post('/templates', async (req: Request, res: Response, next: NextFunction
        staffCount || 1, createdBy]
     );
     const tmpl = rows[0] as any;
-    const generated = await generateFromTemplate(tmpl, homeId);
+    const generated = await generateFromTemplate(tmpl, homeId, tmpl.is_ongoing ? 52 : 12);
     res.status(201).json({ success: true, data: { template: tmpl, generated } } as ApiResponse);
   } catch (err) { next(err); }
 });
