@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { BarChart3, Plus, Star, CheckCircle2, XCircle } from 'lucide-react'
+import { BarChart3, Plus, Star, CheckCircle2, XCircle, Zap } from 'lucide-react'
 import { Button, Modal, Select, Input, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
@@ -70,6 +70,21 @@ export default function PerformanceMatrix() {
 
   const canAssess = isRole('home_manager', 'group_admin')
   const isGroupAdmin = isRole('group_admin')
+  const [autoGenerating, setAutoGenerating] = useState(false)
+
+  async function autoGenerate() {
+    if (!window.confirm('Auto-generate performance records for all staff? This will create/update records based on training, DBS, incidents and clock-in data.')) return
+    setAutoGenerating(true)
+    try {
+      const res = await api.post('/performance/auto-generate', { homeId: selectedHome || undefined })
+      const { staffProcessed, created } = res.data.data
+      load()
+      alert(`Done — processed ${staffProcessed} staff, created ${created} new records.`)
+    } catch (e: any) {
+      alert('Auto-generate failed: ' + (e?.response?.data?.error || e?.message || 'Unknown error'))
+    }
+    setAutoGenerating(false)
+  }
 
   useEffect(() => {
     if (isGroupAdmin) {
@@ -153,9 +168,14 @@ export default function PerformanceMatrix() {
         <div className="flex items-center gap-2">
           <PrintButton />
           {canAssess && (
-            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-              New Review
-            </Button>
+            <>
+              <Button variant="ghost" icon={<Zap className="w-4 h-4" />} onClick={autoGenerate} loading={autoGenerating}>
+                Auto-generate
+              </Button>
+              <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+                New Review
+              </Button>
+            </>
           )}
         </div>
       </div>

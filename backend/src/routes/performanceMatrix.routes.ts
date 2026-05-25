@@ -136,4 +136,110 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// POST /api/performance/auto-generate — auto-generate performance records from real data
+router.post('/auto-generate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const role = tok(req, 'role');
+    const orgId = tok(req, 'organisationId');
+    const homeId = (req.body.homeId as string) || tok(req, 'homeId');
+    const assessedBy = tok(req, 'staffId');
+    const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    // Get all active staff for this home
+    let staffRows: any[];
+    if (role === 'group_admin' && !homeId) {
+      staffRows = await query(
+        `SELECT id, home_id FROM staff WHERE organisation_id = $1 AND is_active = TRUE`, [orgId]
+      );
+    } else {
+      staffRows = await query(
+        `SELECT id, home_id FROM staff WHERE home_id = $1 AND is_active = TRUE`, [homeId]
+      );
+    }
+
+    const ninety_days_ago = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+    let created = 0;
+
+    for (const s of staffRows) {
+      const staffHomeId = homeId || s.home_id;
+
+      // Training compliance: count non-expired trainings
+      const trainingRows = await query<any>(
+        `SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE expiry_date IS NULL OR expiry_date > CURRENT_DATE) as valid
+         FROM staff_training WHERE staff_id = $1`, [s.id]
+      );
+      const total = parseInt(trainingRows[0]?.total || '0');
+      const valid = parseInt(trainingRows[0]?.valid || '0');
+      const trainingCompliance = total === 0 ? 50 : Math.round((valid / total) * 100);
+
+      // DBS check — is there a valid one?
+      const dbsRows = await query<any>(
+        `SELECT expiry_date FROM staff_dbs WHERE staff_id = $1 AND (expiry_date IS NULL OR expiry_date > CURRENT_DATE) LIMIT 1`,
+        [s.id]
+      );
+      const dbsValid = dbsRows.length > 0;
+
+      // Incidents in last 90 days where this staff member recorded the record
+      const incidentRows = await query<any>(
+        `SELECT COUNT(*) as cnt FROM records_incidents ri
+         JOIN daily_records dr ON dr.id = ri.daily_record_id
+         WHERE dr.staff_id = $1 AND dr.record_date >= $2`, [s.id, ninety_days_ago]
+      );
+      const incidentCount = parseInt(incidentRows[0]?.cnt || '0');
+
+      // Clock-in punctuality (last 90 days — count total vs on-time)
+      const clockRows = await query<any>(
+        `SELECT COUNT(*) as total,
+                COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM event_time) < 8 OR
+                  (EXTRACT(HOUR FROM event_time) = 8 AND EXTRACT(MINUTE FROM event_time) <= 10)) as on_time
+         FROM staff_clock_events
+         WHERE staff_id = $1 AND event_type = 'clock_in' AND event_time >= NOW() - INTERVAL '90 days'`,
+        [s.id]
+      );
+      const totalClocks = parseInt(clockRows[0]?.total || '0');
+      const onTime = parseInt(clockRows[0]?.on_time || '0');
+      const punctualityScore = totalClocks === 0 ? 80 : Math.round((onTime / totalClocks) * 100);
+
+      // Calculate overall score (weighted)
+      const dbsScore = dbsValid ? 100 : 0;
+      const incidentPenalty = Math.min(incidentCount * 5, 40);
+      const overallScore = Math.round(
+        trainingCompliance * 0.30 +
+        punctualityScore * 0.40 +
+        dbsScore * 0.30 -
+        incidentPenalty
+      );
+      const clampedScore = Math.max(0, Math.min(100, overallScore));
+      const riskRating = clampedScore >= 80 ? 'low' : clampedScore >= 60 ? 'medium' : 'high';
+
+      // Upsert: insert or update if same period exists for this staff
+      const existing = await query<any>(
+        `SELECT id FROM staff_performance WHERE staff_id = $1 AND period = $2 AND home_id = $3`,
+        [s.id, period, staffHomeId]
+      );
+      if (existing.length > 0) {
+        await query(
+          `UPDATE staff_performance SET
+             training_compliance = $1, punctuality_score = $2, incidents_reported = $3,
+             overall_score = $4, risk_rating = $5, assessed_by = $6
+           WHERE id = $7`,
+          [trainingCompliance, punctualityScore, incidentCount, clampedScore, riskRating, assessedBy, existing[0].id]
+        );
+      } else {
+        await query(
+          `INSERT INTO staff_performance
+             (home_id, staff_id, assessed_by, period, training_compliance, punctuality_score,
+              incidents_reported, overall_score, risk_rating, supervision_completed)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE)`,
+          [staffHomeId, s.id, assessedBy, period, trainingCompliance, punctualityScore,
+           incidentCount, clampedScore, riskRating]
+        );
+        created++;
+      }
+    }
+
+    res.json({ success: true, data: { staffProcessed: staffRows.length, created } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 export default router;
