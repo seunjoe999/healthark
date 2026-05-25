@@ -5,6 +5,7 @@ import { staffApi } from '../../api'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui'
+import TaskPopup from '../../components/TaskPopup'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
   ChevronRight, CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare
@@ -18,6 +19,7 @@ export default function StaffDashboard() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [myProfile, setMyProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showTaskPopup, setShowTaskPopup] = useState(true)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -91,7 +93,7 @@ export default function StaffDashboard() {
       <div className="grid grid-cols-2 gap-3 mb-5">
         {[
           { label: 'Daily records', to: '/daily-records', icon: <ClipboardList className="w-5 h-5" />, color: '#8b5cf6', desc: 'Log care activities' },
-          { label: 'MAR chart', to: '/mar', icon: <Pill className="w-5 h-5" />, color: '#3b82f6', desc: 'Log medications' },
+          { label: 'Medication Administration Record', to: '/mar', icon: <Pill className="w-5 h-5" />, color: '#3b82f6', desc: 'Log medications' },
           { label: 'Request leave', to: '/holidays', icon: <Calendar className="w-5 h-5" />, color: '#10b981', desc: `${pendingLeave.length} pending` },
           { label: 'My training', to: '/training', icon: <BookOpen className="w-5 h-5" />, color: '#f59e0b', desc: 'Complete modules' },
           { label: 'Clock in/out', to: '/staff', icon: <Clock className="w-5 h-5" />, color: '#6366f1', desc: 'View clock history' },
@@ -174,6 +176,8 @@ export default function StaffDashboard() {
         </div>
         <ChevronRight className="w-5 h-5 text-slate-300" />
       </Link>
+
+      <TaskPopup open={showTaskPopup} onClose={() => setShowTaskPopup(false)} />
     </div>
   )
 }

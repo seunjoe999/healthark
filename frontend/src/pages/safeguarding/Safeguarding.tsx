@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Plus, AlertTriangle, CheckCircle, Shield, Trash2 } from 'lucide-react'
+import { Plus, AlertTriangle, CheckCircle, Shield, Trash2, Bell } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Safeguarding() {
@@ -16,6 +16,8 @@ export default function Safeguarding() {
   const [addOpen, setAddOpen] = useState(false)
   const [selected, setSelected] = useState<any>(null)
   const [sus, setSus] = useState<any[]>([])
+  const [cqcOpen, setCqcOpen] = useState(false)
+  const [cqcConcern, setCqcConcern] = useState<any>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -114,10 +116,16 @@ export default function Safeguarding() {
                   <Field label="Outside agencies contacted" value={c.outside_agency ? `Yes — ${c.agency_details || ''}` : 'No'} />
                   <Field label="Management recommendations" value={c.management_recs} />
                   <Field label="Prevention actions" value={c.prevention_actions} />
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {!c.manager_ack && isRole('home_manager', 'group_admin') && (
                       <Button size="sm" icon={<CheckCircle className="w-4 h-4" />} onClick={() => acknowledge(c.id)}>
                         Acknowledge this concern
+                      </Button>
+                    )}
+                    {isRole('home_manager', 'group_admin') && (
+                      <Button size="sm" variant="secondary" icon={<Bell className="w-4 h-4" />}
+                        onClick={() => { setCqcConcern(c); setCqcOpen(true) }}>
+                        Notify CQC
                       </Button>
                     )}
                     {isRole('home_manager', 'group_admin') && (
@@ -140,6 +148,10 @@ export default function Safeguarding() {
           setConcerns(res.data.data || [])
           toast.success('Safeguarding concern recorded')
         }} />
+
+      <CqcNotifyModal open={cqcOpen} onClose={() => { setCqcOpen(false); setCqcConcern(null) }}
+        concern={cqcConcern} homeId={selectedHome}
+        onSaved={() => { setCqcOpen(false); setCqcConcern(null); toast.success('CQC notified — notification logged') }} />
     </div>
   )
 }
@@ -197,6 +209,59 @@ function AddConcernModal({ open, onClose, sus, homeId, onSaved }: { open: boolea
         <div className="flex gap-3 justify-end pt-2 sticky bottom-0 bg-white">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="danger" loading={loading}>Submit safeguarding concern</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function CqcNotifyModal({ open, onClose, concern, homeId, onSaved }: {
+  open: boolean; onClose: () => void; concern: any; homeId: string; onSaved: () => void
+}) {
+  const [details, setDetails] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (open && concern) {
+      setDetails(`Safeguarding concern reported for ${concern.su_name}. ${concern.overview || ''}`)
+    }
+  }, [open, concern])
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await api.post('/cqc-notifications', {
+        homeId,
+        suId: concern?.su_id || null,
+        notificationType: 'safeguarding',
+        details,
+      })
+      onSaved()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to log CQC notification')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Notify CQC">
+      <form onSubmit={save} className="space-y-4">
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          This will log a CQC safeguarding notification for this concern. You should also notify CQC directly via the CQC provider portal.
+        </div>
+        {concern && (
+          <div className="text-sm text-slate-600">
+            <span className="font-medium">Concern for:</span> {concern.su_name} · {concern.incident_date ? format(new Date(concern.incident_date), 'd MMM yyyy') : ''}
+          </div>
+        )}
+        <div>
+          <label className="label">Notification details *</label>
+          <textarea required className="input" rows={5} value={details} onChange={e => setDetails(e.target.value)}
+            placeholder="Describe what is being notified to CQC..." />
+        </div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading} icon={<Bell className="w-4 h-4" />}>Log CQC notification</Button>
         </div>
       </form>
     </Modal>

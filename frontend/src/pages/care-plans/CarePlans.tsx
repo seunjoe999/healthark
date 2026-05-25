@@ -154,6 +154,62 @@ export default function CarePlans() {
   const getName = (su: any) => `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
   const filteredSus = sus.filter(su => getName(su).toLowerCase().includes(search.toLowerCase()))
 
+  const printAll = () => {
+    if (!selectedSu) return
+    const name = getName(selectedSu)
+    const rows: string[] = []
+
+    plans.forEach(plan => {
+      const planLabel = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
+      rows.push(`
+        <div class="doc">
+          <h2>${planLabel}</h2>
+          <p class="meta">Review: ${plan.review_frequency?.replace('_', ' ') || '—'} &nbsp;|&nbsp; Next review: ${plan.next_review_date ? new Date(plan.next_review_date).toLocaleDateString('en-GB') : '—'}</p>
+          <div class="section"><strong>Aims & Outcomes</strong><p>${(plan.aims_outcomes || '—').replace(/\n/g, '<br/>')}</p></div>
+          <div class="section"><strong>Background</strong><p>${(plan.background || '—').replace(/\n/g, '<br/>')}</p></div>
+          <div class="section"><strong>Content / Instructions</strong><p>${(plan.content || '—').replace(/\n/g, '<br/>')}</p></div>
+          ${plan.attachments_notes ? `<div class="section"><strong>Notes</strong><p>${plan.attachments_notes.replace(/\n/g, '<br/>')}</p></div>` : ''}
+        </div>`)
+    })
+
+    risks.forEach(risk => {
+      rows.push(`
+        <div class="doc">
+          <h2>Risk Assessment: ${risk.assessment_name}</h2>
+          <p class="meta">Risk level: <strong>${(risk.current_risk_level || risk.risk_level || '—').toUpperCase()}</strong> &nbsp;|&nbsp; Next review: ${risk.next_review_date ? new Date(risk.next_review_date).toLocaleDateString('en-GB') : '—'}</p>
+          <div class="section"><strong>What is the risk</strong><p>${(risk.description || '—').replace(/\n/g, '<br/>')}</p></div>
+          <div class="section"><strong>Who is at risk</strong><p>${(risk.who_is_at_risk || '—').replace(/\n/g, '<br/>')}</p></div>
+          <div class="section"><strong>What could happen</strong><p>${(risk.what_could_happen || '—').replace(/\n/g, '<br/>')}</p></div>
+          ${risk.triggers ? `<div class="section"><strong>Triggers</strong><p>${risk.triggers.replace(/\n/g, '<br/>')}</p></div>` : ''}
+          ${risk.protective_factors ? `<div class="section"><strong>Protective Factors</strong><p>${risk.protective_factors.replace(/\n/g, '<br/>')}</p></div>` : ''}
+          <div class="section"><strong>Risk Management Plan</strong><p>${(risk.management_plan || '—').replace(/\n/g, '<br/>')}</p></div>
+        </div>`)
+    })
+
+    const html = `<!DOCTYPE html><html><head><title>${name} — Care Plans & Risk Assessments</title>
+      <style>
+        body { font-family: Arial, sans-serif; color: #111; padding: 20px; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .doc { border: 1px solid #ccc; border-radius: 6px; padding: 16px; margin-bottom: 24px; page-break-inside: avoid; }
+        .doc h2 { font-size: 15px; margin: 0 0 6px; }
+        .meta { font-size: 12px; color: #555; margin: 0 0 12px; }
+        .section { margin-bottom: 10px; }
+        .section strong { font-size: 11px; text-transform: uppercase; color: #666; display: block; margin-bottom: 3px; }
+        .section p { font-size: 13px; margin: 0; line-height: 1.5; }
+        @media print { body { padding: 0; } }
+      </style></head><body>
+      <div class="header">
+        <h1>${name} — Care Plans & Risk Assessments</h1>
+        <p style="font-size:12px;color:#555;">Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} &nbsp;|&nbsp; ${plans.length} support plan(s), ${risks.length} risk assessment(s)</p>
+      </div>
+      ${rows.join('')}
+    </body></html>`
+
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print() }
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-full">
       {/* Left — SU selector */}
@@ -204,7 +260,7 @@ export default function CarePlans() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-slate-900">{getName(selectedSu)}</h2>
               <div className="flex gap-2 items-center">
-                <PrintButton />
+                <Button size="sm" variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={printAll}>Print all</Button>
                 <Button size="sm" variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={() => setAddRiskOpen(true)}>Add risk</Button>
                 <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>
               </div>

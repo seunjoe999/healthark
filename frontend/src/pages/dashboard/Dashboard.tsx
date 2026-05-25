@@ -6,6 +6,7 @@ import api from '../../api'
 import { Spinner } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns'
+import TaskPopup from '../../components/TaskPopup'
 
 export default function Dashboard() {
   const { user, isRole } = useAuth()
@@ -20,6 +21,7 @@ export default function Dashboard() {
   })
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
+  const [showTaskPopup, setShowTaskPopup] = useState(true)
   const bdRef = useRef<HTMLDivElement>(null)
 
   if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
@@ -236,6 +238,8 @@ export default function Dashboard() {
 
         </div>
       )}
+
+      <TaskPopup open={showTaskPopup} onClose={() => setShowTaskPopup(false)} />
     </div>
   )
 }

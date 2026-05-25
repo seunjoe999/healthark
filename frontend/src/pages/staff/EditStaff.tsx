@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 const ROLES = [
   { value: 'care_staff', label: 'Care Staff' },
   { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'team_leader', label: 'Team Leader' },
   { value: 'home_manager', label: 'Home Manager' },
   { value: 'auditor', label: 'Auditor' },
   { value: 'group_admin', label: 'Group Admin' },

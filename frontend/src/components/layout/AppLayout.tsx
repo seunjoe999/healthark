@@ -10,7 +10,7 @@ import {
   Pill, CheckSquare, Star, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, Search, FileCheck, QrCode,
   AlertTriangle, TrendingUp, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
-  Stethoscope
+  Stethoscope, DollarSign, AlertCircle
 } from 'lucide-react'
 
 const navSections = [
@@ -24,7 +24,7 @@ const navSections = [
       { label: 'Daily Records',    to: '/daily-records',      icon: ClipboardList,   roles: [],                                              featureKey: 'daily_records' },
       { label: 'Resident Diary',   to: '/diary',              icon: BookOpen,        roles: [],                                              featureKey: 'diary' },
       { label: 'Prof. Visits',     to: '/professional-visits',icon: Stethoscope,     roles: [],                                              featureKey: 'professional_visits' },
-      { label: 'MAR Chart',        to: '/mar',                icon: Pill,            roles: [],                                              featureKey: 'mar' },
+      { label: 'Medication Administration Record',        to: '/mar',                icon: Pill,            roles: [],                                              featureKey: 'mar' },
       { label: 'Medication Stock', to: '/medication-stock',   icon: Boxes,           roles: ['home_manager','group_admin','senior_carer'],    featureKey: 'medication_stock' },
       { label: 'Support Plans',    to: '/care-plans',         icon: FileText,        roles: [],                                              featureKey: 'care_plans' },
       { label: 'Safeguarding',     to: '/safeguarding',       icon: ShieldAlert,     roles: [],                                              featureKey: 'safeguarding' },
@@ -38,8 +38,10 @@ const navSections = [
       { label: 'Rota',             to: '/rota',               icon: CalendarRange,   roles: ['home_manager','group_admin','senior_carer'],    featureKey: 'rota' },
       { label: 'Timesheets',       to: '/timesheets',         icon: Clock,           roles: ['home_manager','group_admin','senior_carer'],    featureKey: 'timesheets' },
       { label: 'Holidays',         to: '/holidays',           icon: Palmtree,        roles: ['home_manager','group_admin'],                   featureKey: 'holidays' },
+      { label: 'Invoicing',        to: '/invoicing',          icon: DollarSign,      roles: ['home_manager','group_admin'],                   featureKey: 'invoicing' },
       { label: 'Hub Training',      to: '/training',           icon: GraduationCap,   roles: [],                                              featureKey: 'training' },
       { label: 'Staff',            to: '/staff',              icon: UserSquare,      roles: ['home_manager','group_admin'],                   featureKey: 'staff' },
+      { label: 'Supervision & Appraisals', to: '/supervision-appraisal', icon: Users, roles: ['home_manager','group_admin','team_leader'], featureKey: 'supervision' },
       { label: 'DBS & Compliance', to: '/dbs',                icon: UserCheck,       roles: ['home_manager','group_admin'],                   featureKey: 'dbs' },
       { label: 'Maintenance',      to: '/maintenance',        icon: Wrench,          roles: [],                                              featureKey: 'maintenance' },
       { label: 'Clock-In',         to: '/clockin-admin',      icon: QrCode,          roles: ['home_manager','group_admin'],                   featureKey: 'clockin' },
@@ -57,14 +59,15 @@ const navSections = [
       { label: 'Observations',     to: '/observations',       icon: Thermometer,     roles: [],                                              featureKey: 'observations' },
       { label: 'Seizure Log',      to: '/seizures',           icon: Zap,             roles: [],                                              featureKey: 'seizures' },
       { label: 'Bowel Chart',      to: '/bowel-chart',        icon: Droplets,        roles: [],                                              featureKey: 'bowel_chart' },
-      { label: 'Medicine Risk',    to: '/medicine-risk',      icon: ShieldAlert,     roles: [],                                              featureKey: 'medicine_risk' },
+      { label: 'Medication Risk Assessment', to: '/medicine-risk', icon: ShieldAlert,  roles: [],                                              featureKey: 'medicine_risk' },
       { label: 'Risk Management',  to: '/risk-management',    icon: Shield,          roles: [],                                              featureKey: 'risk_management' },
       { label: 'Performance',      to: '/performance',        icon: BarChart3,       roles: ['home_manager','group_admin'],                   featureKey: 'performance' },
       { label: 'Care Outcomes',    to: '/outcomes',           icon: Target,          roles: [],                                              featureKey: 'outcomes' },
-      { label: 'Reviews',          to: '/reviews',            icon: ClipboardCheck,  roles: [],                                              featureKey: 'reviews' },
+      { label: 'Care Reviews',      to: '/reviews',            icon: ClipboardCheck,  roles: [],                                              featureKey: 'reviews' },
       { label: 'Audit',            to: '/assessments',        icon: FileCheck,       roles: [],                                              featureKey: 'assessments' },
       { label: 'Quality Assurance', to: '/quality',            icon: Star,            roles: ['home_manager','group_admin'],                   featureKey: 'quality' },
       { label: 'Handover',         to: '/reports/handover',   icon: ArrowLeftRight,  roles: [],                                              featureKey: 'handover' },
+      { label: 'CQC Alerts',       to: '/cqc-notifications',  icon: AlertCircle,     roles: ['home_manager','group_admin'],                   featureKey: 'cqc_notifications' },
       { label: 'Audit Reports',    to: '/audits',             icon: Activity,        roles: ['home_manager','group_admin','auditor'],         featureKey: 'audits' },
       { label: 'Audit Trail',      to: '/audit-trail',        icon: History,         roles: ['home_manager','group_admin','auditor'],         featureKey: 'audit_trail' },
       { label: 'Reports',          to: '/reports',            icon: BarChart3,       roles: ['home_manager','group_admin'],                   featureKey: 'reports' },

@@ -117,7 +117,7 @@ router.post(
     body('email').isEmail().normalizeEmail(),
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
-    body('role').isIn(['care_staff','senior_carer','home_manager','group_admin','auditor']),
+    body('role').isIn(['care_staff','senior_carer','team_leader','home_manager','group_admin','auditor']),
     body('password').optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage('Minimum 8 characters'),
     body('homeId').optional({ checkFalsy: true }).isUUID(),
   ],

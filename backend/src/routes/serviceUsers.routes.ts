@@ -204,10 +204,7 @@ router.post('/',
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { dnar, dnarFormUrl } = req.body;
-      if (dnar === true && !dnarFormUrl) {
-        throw new AppError('DNAR form upload is required when Do Not Resuscitate is selected', 400);
-      }
+      // dnarFormUrl is optional — removed hard block to allow saving other fields
 
       const fieldMap: Record<string, string> = {
         firstName: 'first_name', lastName: 'last_name', preferredName: 'preferred_name',

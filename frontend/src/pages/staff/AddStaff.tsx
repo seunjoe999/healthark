@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext'
 const ROLES = [
   { value: 'care_staff', label: 'Care Staff' },
   { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'team_leader', label: 'Team Leader' },
   { value: 'home_manager', label: 'Home Manager' },
   { value: 'group_admin', label: 'Group Admin (full access)' },
   { value: 'auditor', label: 'Auditor' },
