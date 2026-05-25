@@ -169,9 +169,9 @@ function CreateNotificationModal({ open, onClose, homeId, onSaved }: { open: boo
   return (
     <Modal open={open} onClose={onClose} title="Create CQC Notification" size="md">
       <form onSubmit={save} className="space-y-4">
-        <Select label="Type *" required value={form.notificationType} onChange={e => setForm(p => ({ ...p, notificationType: e.target.value }))} options={[ { value: 'safeguarding', label: 'Safeguarding Incident' }, { value: 'cqc_alert', label: 'CQC Alert' }, { value: 'serious_incident', label: 'Serious Incident' }, { value: 'complaint', label: 'Complaint' }]} />
-        <Select label="Service User (Optional)" value={form.suId} onChange={e => setForm(p => ({ ...p, suId: e.target.value }))} options={users.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` }))} placeholder="Select resident (if applicable)" />
-        <textarea label="Details" className="input" placeholder="Describe the incident or notification..." rows={4} value={form.details} onChange={e => setForm(p => ({ ...p, details: e.target.value }))} required />
+        <Select label="Type *" required value={form.notificationType} onChange={e => setForm((p: any) => ({ ...p, notificationType: e.target.value }))} options={[ { value: 'safeguarding', label: 'Safeguarding Incident' }, { value: 'cqc_alert', label: 'CQC Alert' }, { value: 'serious_incident', label: 'Serious Incident' }, { value: 'complaint', label: 'Complaint' }]} />
+        <Select label="Service User (Optional)" value={form.suId} onChange={e => setForm((p: any) => ({ ...p, suId: e.target.value }))} options={users.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` }))} placeholder="Select resident (if applicable)" />
+        <div><label className="label">Details</label><textarea className="input" placeholder="Describe the incident or notification..." rows={4} value={form.details} onChange={e => setForm((p: any) => ({ ...p, details: e.target.value }))} required /></div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Create Notification</Button>

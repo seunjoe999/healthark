@@ -220,26 +220,26 @@ function CreateRecordModal({ open, onClose, homeId, type, onSaved }: { open: boo
   return (
     <Modal open={open} onClose={onClose} title={`Create ${type === 'supervision' ? 'Supervision' : 'Appraisal'} Record`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-96 overflow-y-auto">
-        <Select label="Staff Member *" required value={form.staffId} onChange={e => setForm(p => ({ ...p, staffId: e.target.value }))} options={staffOptions} placeholder="Select staff" />
-        <Select label={type === 'supervision' ? 'Supervisor *' : 'Appraiser *'} required value={form[type === 'supervision' ? 'supervisorId' : 'appraiserId']} onChange={e => setForm(p => ({ ...p, [type === 'supervision' ? 'supervisorId' : 'appraiserId']: e.target.value }))} options={supervisorOptions} placeholder="Select supervisor/appraiser" />
-        <Input label={type === 'supervision' ? 'Supervision Date *' : 'Appraisal Date *'} type="date" required value={form[type === 'supervision' ? 'supervisionDate' : 'appraisalDate']} onChange={e => setForm(p => ({ ...p, [type === 'supervision' ? 'supervisionDate' : 'appraisalDate']: e.target.value }))} />
+        <Select label="Staff Member *" required value={form.staffId} onChange={e => setForm((p: any) => ({ ...p, staffId: e.target.value }))} options={staffOptions} placeholder="Select staff" />
+        <Select label={type === 'supervision' ? 'Supervisor *' : 'Appraiser *'} required value={form[type === 'supervision' ? 'supervisorId' : 'appraiserId']} onChange={e => setForm((p: any) => ({ ...p, [type === 'supervision' ? 'supervisorId' : 'appraiserId']: e.target.value }))} options={supervisorOptions} placeholder="Select supervisor/appraiser" />
+        <Input label={type === 'supervision' ? 'Supervision Date *' : 'Appraisal Date *'} type="date" required value={form[type === 'supervision' ? 'supervisionDate' : 'appraisalDate']} onChange={e => setForm((p: any) => ({ ...p, [type === 'supervision' ? 'supervisionDate' : 'appraisalDate']: e.target.value }))} />
         
         {type === 'supervision' ? (
           <>
-            <Select label="Type *" required value={form.supervisionType} onChange={e => setForm(p => ({ ...p, supervisionType: e.target.value }))} options={[ { value: 'routine', label: 'Routine' }, { value: 'formal', label: 'Formal' }, { value: 'informal', label: 'Informal' }]} />
-            <textarea className="input" placeholder="Summary..." rows={2} value={form.summary} onChange={e => setForm(p => ({ ...p, summary: e.target.value }))} />
-            <textarea className="input" placeholder="Strengths..." rows={2} value={form.strengths} onChange={e => setForm(p => ({ ...p, strengths: e.target.value }))} />
-            <textarea className="input" placeholder="Areas for improvement..." rows={2} value={form.areasForImprovement} onChange={e => setForm(p => ({ ...p, areasForImprovement: e.target.value }))} />
-            <textarea className="input" placeholder="Action points..." rows={2} value={form.actionPoints} onChange={e => setForm(p => ({ ...p, actionPoints: e.target.value }))} />
-            <Input label="Next supervision date" type="date" value={form.nextDate} onChange={e => setForm(p => ({ ...p, nextDate: e.target.value }))} />
+            <Select label="Type *" required value={form.supervisionType} onChange={e => setForm((p: any) => ({ ...p, supervisionType: e.target.value }))} options={[ { value: 'routine', label: 'Routine' }, { value: 'formal', label: 'Formal' }, { value: 'informal', label: 'Informal' }]} />
+            <textarea className="input" placeholder="Summary..." rows={2} value={form.summary} onChange={e => setForm((p: any) => ({ ...p, summary: e.target.value }))} />
+            <textarea className="input" placeholder="Strengths..." rows={2} value={form.strengths} onChange={e => setForm((p: any) => ({ ...p, strengths: e.target.value }))} />
+            <textarea className="input" placeholder="Areas for improvement..." rows={2} value={form.areasForImprovement} onChange={e => setForm((p: any) => ({ ...p, areasForImprovement: e.target.value }))} />
+            <textarea className="input" placeholder="Action points..." rows={2} value={form.actionPoints} onChange={e => setForm((p: any) => ({ ...p, actionPoints: e.target.value }))} />
+            <Input label="Next supervision date" type="date" value={form.nextDate} onChange={e => setForm((p: any) => ({ ...p, nextDate: e.target.value }))} />
           </>
         ) : (
           <>
-            <Select label="Rating" value={form.rating} onChange={e => setForm(p => ({ ...p, rating: e.target.value }))} options={[ { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'satisfactory', label: 'Satisfactory' }, { value: 'needs_improvement', label: 'Needs Improvement' }]} />
-            <textarea className="input" placeholder="Performance summary..." rows={2} value={form.performanceSummary} onChange={e => setForm(p => ({ ...p, performanceSummary: e.target.value }))} />
-            <textarea className="input" placeholder="Comments..." rows={2} value={form.comments} onChange={e => setForm(p => ({ ...p, comments: e.target.value }))} />
-            <textarea className="input" placeholder="Goals for next year..." rows={2} value={form.goals} onChange={e => setForm(p => ({ ...p, goals: e.target.value }))} />
-            <Input label="Next review date" type="date" value={form.nextReviewDate} onChange={e => setForm(p => ({ ...p, nextReviewDate: e.target.value }))} />
+            <Select label="Rating" value={form.rating} onChange={e => setForm((p: any) => ({ ...p, rating: e.target.value }))} options={[ { value: 'excellent', label: 'Excellent' }, { value: 'good', label: 'Good' }, { value: 'satisfactory', label: 'Satisfactory' }, { value: 'needs_improvement', label: 'Needs Improvement' }]} />
+            <textarea className="input" placeholder="Performance summary..." rows={2} value={form.performanceSummary} onChange={e => setForm((p: any) => ({ ...p, performanceSummary: e.target.value }))} />
+            <textarea className="input" placeholder="Comments..." rows={2} value={form.comments} onChange={e => setForm((p: any) => ({ ...p, comments: e.target.value }))} />
+            <textarea className="input" placeholder="Goals for next year..." rows={2} value={form.goals} onChange={e => setForm((p: any) => ({ ...p, goals: e.target.value }))} />
+            <Input label="Next review date" type="date" value={form.nextReviewDate} onChange={e => setForm((p: any) => ({ ...p, nextReviewDate: e.target.value }))} />
           </>
         )}
         

@@ -3,6 +3,7 @@ import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown } from 'lucid
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
+import toast from 'react-hot-toast'
 
 const STATUSES = [
   { value: 'ongoing', label: 'Ongoing' },
