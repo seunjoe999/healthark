@@ -21,6 +21,7 @@ function parseUser(staff: Record<string, unknown>): AuthUser {
     homeId: (staff.home_id || staff.homeId || null) as string | null,
     organisationId: (staff.organisation_id || staff.organisationId) as string,
     photoUrl: (staff.photo_url || staff.photoUrl || null) as string | null,
+    featureFlags: ((staff.feature_flags || staff.featureFlags || {}) as Record<string, boolean>),
   }
 }
 
@@ -117,6 +118,18 @@ function clearSession() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => loadSession().user)
+
+  // Refresh user profile (incl. feature_flags) from DB on every app load
+  // so feature flag changes by admins take effect without requiring re-login
+  useEffect(() => {
+    const { token } = loadSession()
+    if (!token) return
+    authApi.me().then(res => {
+      const fresh = parseUser(res.data.data as Record<string, unknown>)
+      saveSession(token, fresh)
+      setUser(fresh)
+    }).catch(() => {})
+  }, [])
 
   // Listen for 401 events dispatched by the axios interceptor
   useEffect(() => {

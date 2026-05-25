@@ -27,7 +27,7 @@ router.post('/login',
       const { email, password } = req.body;
       const rows = await query<any>(
         `SELECT id, email, password_hash, first_name, last_name, role,
-                home_id, organisation_id, status, is_active, photo_url
+                home_id, organisation_id, status, is_active, photo_url, feature_flags
          FROM staff WHERE email = $1`,
         [email]
       );
@@ -60,6 +60,7 @@ router.post('/login',
             firstName: staff.first_name, lastName: staff.last_name,
             role: staff.role, homeId: staff.home_id,
             organisationId: staff.organisation_id, photoUrl: staff.photo_url,
+            featureFlags: staff.feature_flags || {},
           },
         },
       } as ApiResponse);
@@ -204,11 +205,18 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
     const decoded = token ? jwt.decode(token) as any : {};
     const staffId = decoded?.staffId || (req.staff as any)?.staffId;
     const rows = await query<any>(
-      'SELECT id, email, first_name, last_name, role, home_id, organisation_id, photo_url FROM staff WHERE id=$1',
+      'SELECT id, email, first_name, last_name, role, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE id=$1',
       [staffId]
     );
     if (!rows.length) throw new AppError('Staff not found', 404);
-    res.json({ success: true, data: rows[0] } as ApiResponse);
+    const s = rows[0];
+    res.json({ success: true, data: {
+      id: s.id, email: s.email,
+      firstName: s.first_name, lastName: s.last_name,
+      role: s.role, homeId: s.home_id,
+      organisationId: s.organisation_id, photoUrl: s.photo_url,
+      featureFlags: s.feature_flags || {},
+    }} as ApiResponse);
   } catch (err) { next(err); }
 });
 
