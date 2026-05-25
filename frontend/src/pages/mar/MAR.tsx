@@ -837,6 +837,7 @@ function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; o
       </form>
     </Modal>
   )
+}
 
 /* ─── Print Modal ──────────────────────────────────────────────────────── */
 function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; startDate: string; endDate: string; onClose: () => void }) {
