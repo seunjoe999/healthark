@@ -618,6 +618,75 @@ async function ensureColumns() {
        session_id  VARCHAR(100),
        new_values  JSONB
      )`,
+    // ── Tables used in routes but missing from migrations ─────────────────────
+    `CREATE TABLE IF NOT EXISTS su_about_me (
+       su_id              UUID PRIMARY KEY REFERENCES service_users(id) ON DELETE CASCADE,
+       life_history       TEXT,
+       important_people   TEXT,
+       daily_routine      TEXT,
+       hobbies_interests  TEXT,
+       communication      TEXT,
+       likes_dislikes     TEXT,
+       beliefs_values     TEXT,
+       goals_wishes       TEXT,
+       support_needs      TEXT,
+       updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS sensitive_notes (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       created_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
+       note        TEXT NOT NULL,
+       category    VARCHAR(50) NOT NULL DEFAULT 'general',
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_sensitive_su ON sensitive_notes(su_id, created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS capacity_assessments (
+       id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id                 UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id               UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       assessed_by           UUID REFERENCES staff(id) ON DELETE SET NULL,
+       decision_area         TEXT NOT NULL,
+       has_capacity          BOOLEAN,
+       best_interest_decision TEXT,
+       consulted_with        TEXT,
+       outcome               TEXT,
+       review_date           DATE,
+       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_capacity_su ON capacity_assessments(su_id, created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS professional_involvement (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       role_title   VARCHAR(255) NOT NULL,
+       full_name    VARCHAR(255) NOT NULL,
+       organisation VARCHAR(255),
+       phone        VARCHAR(30),
+       email        VARCHAR(255),
+       notes        TEXT,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_professional_su ON professional_involvement(su_id)`,
+    `CREATE TABLE IF NOT EXISTS meeting_notes (
+       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       event_id      UUID NOT NULL UNIQUE REFERENCES calendar_events(id) ON DELETE CASCADE,
+       created_by    UUID REFERENCES staff(id) ON DELETE SET NULL,
+       notes         TEXT,
+       action_points TEXT,
+       concerns      TEXT,
+       attendees     TEXT,
+       outcome       TEXT,
+       summary       TEXT,
+       updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS meeting_signoffs (
+       event_id   UUID NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       signed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (event_id, staff_id)
+     )`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

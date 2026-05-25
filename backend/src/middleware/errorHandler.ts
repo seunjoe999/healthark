@@ -48,10 +48,10 @@ export function errorHandler(
     return;
   }
 
-  // Default 500
+  // Default 500 — include message in all envs so the UI can show the real error
   res.status(500).json({
     success: false,
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    error: err.message || 'Internal server error',
   } as ApiResponse);
 }
 

@@ -22,6 +22,8 @@ const MIGRATION_FILES = [
   '015_app_features.sql',
   '016_service_rota.sql',
   '017_risk_management.sql',
+  '018_mar_pharmacy_gp_codes.sql',
+  '019_invoicing_cqc_supervision.sql',
 ];
 
 function splitStatements(sql: string): string[] {
