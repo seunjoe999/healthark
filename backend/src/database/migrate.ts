@@ -18,6 +18,7 @@ const MIGRATION_FILES = [
   '011_audit_compliance_fixes.sql',
   '012_cqc_family_notifications.sql',
   '013_rota_features.sql',
+  '014_shift_templates.sql',
 ];
 
 function splitStatements(sql: string): string[] {

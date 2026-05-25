@@ -16,6 +16,49 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
+async function generateFromTemplate(tmpl: any, homeId: string): Promise<number> {
+  if (!tmpl.staff_id) return 0;
+  const WEEKS = 12;
+  const startDate = new Date(tmpl.start_date + 'T00:00:00Z');
+  const endDate = new Date(startDate);
+  endDate.setUTCDate(endDate.getUTCDate() + WEEKS * 7);
+  const dowList: number[] = Array.isArray(tmpl.days_of_week) ? tmpl.days_of_week.map(Number) : [Number(tmpl.days_of_week)];
+  let generated = 0;
+  const cur = new Date(startDate);
+  while (cur <= endDate) {
+    const dow = cur.getUTCDay();
+    const dayMatches = tmpl.recurrence === 'daily' || dowList.includes(dow);
+    if (dayMatches) {
+      let ok = true;
+      if (tmpl.recurrence === 'biweekly') {
+        const weeksSince = Math.floor((cur.getTime() - startDate.getTime()) / (7 * 86400000));
+        if (weeksSince % 2 !== 0) ok = false;
+      }
+      if (ok) {
+        const dateStr = cur.toISOString().split('T')[0];
+        const exists = await query<any>(
+          `SELECT id FROM staff_shifts WHERE staff_id=$1 AND shift_date=$2 AND start_time=$3::time LIMIT 1`,
+          [tmpl.staff_id, dateStr, tmpl.start_time]
+        );
+        if (!exists.length) {
+          try {
+            await query(
+              `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, break_minutes, template_id)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+              [homeId, tmpl.staff_id, tmpl.su_id || null, dateStr,
+               tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
+               tmpl.break_minutes || 0, tmpl.id]
+            );
+            generated++;
+          } catch {}
+        }
+      }
+    }
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return generated;
+}
+
 // GET /api/shifts?homeId=&weekStart=&date=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -198,6 +241,57 @@ router.put('/swaps/:id', async (req: Request, res: Response, next: NextFunction)
       [status, responseNotes || null, req.params.id]
     );
     res.json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// GET /api/shifts/templates?homeId=
+router.get('/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT st.*, s.first_name || ' ' || s.last_name as staff_name,
+              su.first_name || ' ' || su.last_name as su_name
+       FROM shift_templates st
+       LEFT JOIN staff s ON s.id = st.staff_id
+       LEFT JOIN service_users su ON su.id = st.su_id
+       WHERE st.home_id = $1 AND st.is_active = TRUE
+       ORDER BY st.created_at DESC`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/templates — create recurring schedule + generate shifts
+router.post('/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const createdBy = fromToken(req, 'staffId');
+    const { staffId, suId, shiftType, startTime, endTime, breakMinutes, recurrence, daysOfWeek, startDate, staffCount, label } = req.body;
+    if (!startTime || !endTime) return res.status(400).json({ success: false, error: 'startTime and endTime required' } as ApiResponse);
+
+    const rows = await query(
+      `INSERT INTO shift_templates (home_id, label, staff_id, su_id, shift_type, start_time, end_time, break_minutes, recurrence, days_of_week, start_date, staff_count, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [homeId, label || null, staffId || null, suId || null, shiftType || 'regular',
+       startTime, endTime, breakMinutes || 0, recurrence || 'weekly',
+       daysOfWeek && daysOfWeek.length ? daysOfWeek : [1],
+       startDate || new Date().toISOString().split('T')[0],
+       staffCount || 1, createdBy]
+    );
+    const tmpl = rows[0] as any;
+    const generated = await generateFromTemplate(tmpl, homeId);
+    res.status(201).json({ success: true, data: { template: tmpl, generated } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/shifts/templates/:id — remove template + future generated shifts
+router.delete('/templates/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    await query(`DELETE FROM staff_shifts WHERE template_id=$1 AND shift_date >= $2`, [req.params.id, today]);
+    await query(`UPDATE shift_templates SET is_active=FALSE WHERE id=$1`, [req.params.id]);
+    res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
 });
 
