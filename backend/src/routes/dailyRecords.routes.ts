@@ -237,18 +237,22 @@ router.post('/', [
           const { incidentType, location, incidentTime, incidentDate, description, injuries, injuryDetails,
                   injuredBodyPart, medicalNeeded, medicalAttentionRequired, medicalDetails, witnesses,
                   immediateAction, immediateActions, reportedTo, agenciesContacted, lessonsLearned,
-                  preventionMeasures, reportedToManagement, safeguardingRef } = req.body;
+                  preventionMeasures, reportedToManagement, safeguardingRef,
+                  cqcNotified, cqcNotNotifiedReason, familyNotified, familyNotNotifiedReason } = req.body;
           await client.query(
             `INSERT INTO records_incidents (daily_record_id, incident_type, location, incident_time, description,
-              injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action, reported_to, safeguarding_ref)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+              injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action, reported_to, safeguarding_ref,
+              cqc_notified, cqc_not_notified_reason, family_notified, family_not_notified_reason)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
             [dr.id, incidentType || null, location || null, incidentTime || incidentDate || new Date(),
              description || req.body.notes,
              injuries || false, (injuryDetails || '') + (injuredBodyPart ? ' - ' + injuredBodyPart : ''),
              medicalNeeded || medicalAttentionRequired || false, medicalDetails || null,
              witnesses || null, immediateAction || immediateActions || null,
              (agenciesContacted || reportedTo || '') + (lessonsLearned ? ' | Lessons: ' + lessonsLearned : '') + (preventionMeasures ? ' | Prevention: ' + preventionMeasures : '') || null,
-             safeguardingRef || null]
+             safeguardingRef || null,
+             cqcNotified || false, cqcNotNotifiedReason || null,
+             familyNotified || false, familyNotNotifiedReason || null]
           );
           break;
         }

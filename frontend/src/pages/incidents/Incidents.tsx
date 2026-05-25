@@ -297,6 +297,27 @@ export default function Incidents() {
                     {inc.description && <IncidentField label="Details of Incident" value={inc.description} />}
                     {inc.witnesses && <IncidentField label="Witnesses" value={inc.witnesses} />}
                     {inc.immediate_action && <IncidentField label="Immediate action taken" value={inc.immediate_action} />}
+                    {/* Notification section */}
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-blue-700 mb-0.5">CQC notified</p>
+                        <p className={`text-sm font-medium ${inc.cqc_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
+                          {inc.cqc_notified ? 'Yes' : 'No'}
+                        </p>
+                        {!inc.cqc_notified && inc.cqc_not_notified_reason && (
+                          <p className="text-xs text-slate-500 mt-0.5">Reason: {inc.cqc_not_notified_reason}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-blue-700 mb-0.5">Family / next of kin notified</p>
+                        <p className={`text-sm font-medium ${inc.family_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
+                          {inc.family_notified ? 'Yes' : 'No'}
+                        </p>
+                        {!inc.family_notified && inc.family_not_notified_reason && (
+                          <p className="text-xs text-slate-500 mt-0.5">Reason: {inc.family_not_notified_reason}</p>
+                        )}
+                      </div>
+                    </div>
                     {isRole('home_manager', 'group_admin') && (
                       <div className="flex justify-end pt-2 border-t border-slate-50">
                         <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}

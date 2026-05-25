@@ -78,6 +78,8 @@ export default function HandoverReport() {
   const [loading, setLoading] = useState(false)
   const [report, setReport] = useState<any>(null)
   const [notes, setNotes] = useState('')
+  const [residentNotes, setResidentNotes] = useState<Record<string, string>>({})
+  const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
   const today = format(new Date(), 'yyyy-MM-dd')
   const notesKey = `handover_notes_${today}_${shift}`
 
@@ -97,6 +99,16 @@ export default function HandoverReport() {
   useEffect(() => {
     if (sus.length > 0 && selectedHome) generate()
   }, [sus, shift])
+
+  useEffect(() => {
+    if (!selectedHome || !shift) return
+    api.get('/reports/handover-notes', { params: { homeId: selectedHome, shiftDate: today, shiftType: shift } })
+      .then(res => {
+        const map: Record<string, string> = {}
+        for (const n of res.data.data || []) map[n.su_id] = n.notes || ''
+        setResidentNotes(map)
+      }).catch(() => {})
+  }, [selectedHome, shift])
 
   useEffect(() => {
     setNotes(localStorage.getItem(notesKey) || '')
@@ -130,6 +142,16 @@ export default function HandoverReport() {
       })
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
+  }
+
+  const saveResidentNote = async (suId: string, noteText: string) => {
+    setSavingNotes(prev => ({ ...prev, [suId]: true }))
+    try {
+      await api.put(`/reports/handover-notes/${suId}`, {
+        homeId: selectedHome, shiftDate: today, shiftType: shift, notes: noteText,
+      })
+    } catch {}
+    finally { setSavingNotes(prev => ({ ...prev, [suId]: false })) }
   }
 
   const SHIFT_TIMES: Record<string, string> = {
@@ -257,6 +279,22 @@ export default function HandoverReport() {
                         <span key={i} className="text-rose-600 font-medium">⚠ {inc.notes?.substring(0, 50)}...</span>
                       ))}
                     </div>
+                    <div className="mt-2 no-print">
+                      <textarea
+                        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white"
+                        rows={2}
+                        placeholder={`Handover notes for ${name} — e.g. hasn't showered today, needs follow-up with GP...`}
+                        value={residentNotes[su.id] || ''}
+                        onChange={e => setResidentNotes(prev => ({ ...prev, [su.id]: e.target.value }))}
+                        onBlur={() => saveResidentNote(su.id, residentNotes[su.id] || '')}
+                      />
+                      {savingNotes[su.id] && <span className="text-xs text-slate-400">Saving...</span>}
+                    </div>
+                    {residentNotes[su.id] && (
+                      <div className="mt-1 print-only text-xs text-slate-700 italic border-t border-slate-200 pt-1">
+                        <strong>Handover note:</strong> {residentNotes[su.id]}
+                      </div>
+                    )}
                   </div>
                 )
               })}

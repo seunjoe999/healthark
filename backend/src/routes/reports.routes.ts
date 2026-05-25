@@ -246,4 +246,41 @@ router.get('/safeguarding', async (req: Request, res: Response, next: NextFuncti
   } catch (err) { next(err); }
 });
 
+// GET /api/reports/handover-notes?homeId=&shiftDate=&shiftType=
+router.get('/handover-notes', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const { shiftDate, shiftType } = req.query as Record<string, string>;
+    if (!shiftDate || !shiftType) { res.json({ success: true, data: [] } as ApiResponse); return; }
+    const rows = await query(
+      `SELECT hn.*, su.first_name || ' ' || su.last_name as su_name
+       FROM handover_resident_notes hn
+       JOIN service_users su ON su.id = hn.su_id
+       WHERE hn.home_id = $1 AND hn.shift_date = $2 AND hn.shift_type = $3`,
+      [homeId, shiftDate, shiftType]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/reports/handover-notes/:suId — upsert note for a specific resident
+router.put('/handover-notes/:suId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.body.homeId as string) || fromToken(req, 'homeId');
+    const staffId = fromToken(req, 'staffId');
+    const { suId } = req.params;
+    const { shiftDate, shiftType, notes } = req.body;
+    if (!shiftDate || !shiftType) { res.status(400).json({ success: false, error: 'shiftDate and shiftType required' }); return; }
+    const rows = await query(
+      `INSERT INTO handover_resident_notes (home_id, su_id, shift_date, shift_type, notes, created_by, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$6)
+       ON CONFLICT (home_id, su_id, shift_date, shift_type)
+       DO UPDATE SET notes = $5, updated_by = $6, updated_at = NOW()
+       RETURNING *`,
+      [homeId, suId, shiftDate, shiftType, notes || null, staffId]
+    );
+    res.json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 export default router;

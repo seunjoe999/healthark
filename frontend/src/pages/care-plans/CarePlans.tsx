@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading, PrintButton } from '../../components/ui'
-import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, ChevronDown, ChevronUp, Printer, Trash2 } from 'lucide-react'
+import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, ChevronDown, ChevronUp, Printer, Trash2, History } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const PLAN_TYPES = [
@@ -92,6 +92,8 @@ export default function CarePlans() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
   const [search, setSearch] = useState('')
+  const [editingRisk, setEditingRisk] = useState<any>(null)
+  const [riskDetails, setRiskDetails] = useState<Record<string, any>>({})
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -114,6 +116,13 @@ export default function CarePlans() {
       setSelectedPlan(null)
       toast.success('Support plan deleted')
     } catch { toast.error('Failed to delete') }
+  }
+
+  const loadRiskDetail = async (id: string) => {
+    try {
+      const res = await api.get(`/risk-assessments/${id}`)
+      setRiskDetails(prev => ({ ...prev, [id]: res.data.data }))
+    } catch {}
   }
 
   const deleteRisk = async (id: string) => {
@@ -281,13 +290,18 @@ export default function CarePlans() {
                 <div className="space-y-3">
                   {risks.map((risk: any) => (
                     <div key={risk.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                      <button onClick={() => setSelectedPlan(selectedPlan?.id === risk.id ? null : risk)}
+                      <button onClick={() => {
+                          const next = selectedPlan?.id === risk.id ? null : risk
+                          setSelectedPlan(next)
+                          if (next && !riskDetails[risk.id]) loadRiskDetail(risk.id)
+                        }}
                         className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-50">
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <AlertTriangle className="w-4 h-4 text-orange-600" />
                             <h3 className="font-semibold text-slate-900">{risk.assessment_name}</h3>
                             <RiskBadge level={risk.current_risk_level || risk.risk_level} />
+                            {risk.is_historical && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Historical</span>}
                           </div>
                           <ReviewStatus nextReviewDate={risk.next_review_date} />
                         </div>
@@ -305,6 +319,10 @@ export default function CarePlans() {
                               <p className="text-sm text-slate-700">{risk.who_is_at_risk || '—'}</p>
                             </div>
                             <div>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">What could happen</p>
+                              <p className="text-sm text-slate-700">{risk.what_could_happen || '—'}</p>
+                            </div>
+                            <div>
                               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Triggers</p>
                               <p className="text-sm text-slate-700">{risk.triggers || '—'}</p>
                             </div>
@@ -313,15 +331,36 @@ export default function CarePlans() {
                               <p className="text-sm text-slate-700">{risk.protective_factors || '—'}</p>
                             </div>
                             <div className="md:col-span-2">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Management plan</p>
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Risk management plan</p>
                               <p className="text-sm text-slate-700 whitespace-pre-line">{risk.management_plan || '—'}</p>
                             </div>
                           </div>
-                          {isRole('home_manager', 'group_admin') && (
-                            <div className="flex gap-2 mt-4">
-                              <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => deleteRisk(risk.id)}>Delete</Button>
+                          {/* Update history */}
+                          {riskDetails[risk.id]?.updates?.length > 0 && (
+                            <div className="mt-4 border-t border-slate-100 pt-4">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1"><History className="w-3.5 h-3.5" />Review history</p>
+                              <div className="space-y-2">
+                                {riskDetails[risk.id].updates.map((u: any) => (
+                                  <div key={u.id} className="bg-slate-50 rounded-lg p-3 text-xs">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-medium text-slate-700">{u.updated_by_name}</span>
+                                      <div className="flex items-center gap-2">
+                                        {u.new_risk_level && <RiskBadge level={u.new_risk_level} />}
+                                        <span className="text-slate-400">{format(new Date(u.created_at), 'd MMM yyyy')}</span>
+                                      </div>
+                                    </div>
+                                    {u.update_notes && <p className="text-slate-600">{u.update_notes}</p>}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
+                          <div className="flex gap-2 mt-4">
+                            <Button size="sm" variant="secondary" icon={<Edit className="w-3.5 h-3.5" />} onClick={() => setEditingRisk(risk)}>Review & update</Button>
+                            {isRole('home_manager', 'group_admin') && (
+                              <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => deleteRisk(risk.id)}>Delete</Button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -356,6 +395,19 @@ export default function CarePlans() {
           }
           toast.success('Risk assessment created')
         }} />
+
+      {/* Edit risk modal */}
+      {editingRisk && (
+        <UpdateRiskModal risk={editingRisk} onClose={() => setEditingRisk(null)}
+          onSaved={async () => {
+            setEditingRisk(null)
+            if (selectedSu) {
+              const res = await api.get('/risk-assessments', { params: { suId: selectedSu.id } })
+              setRisks(res.data.data || [])
+            }
+            setRiskDetails({})
+          }} />
+      )}
     </div>
   )
 }
@@ -467,6 +519,51 @@ function AddRiskModal({ open, onClose, suId, onSaved }: { open: boolean; onClose
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Create assessment</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function UpdateRiskModal({ risk, onClose, onSaved }: { risk: any; onClose: () => void; onSaved: () => void }) {
+  const RISK_LEVELS = [{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }]
+  const [form, setForm] = useState({
+    description: risk.description || '',
+    currentRiskLevel: risk.current_risk_level || risk.risk_level || 'low',
+    managementPlan: risk.management_plan || '',
+    triggers: risk.triggers || '',
+    protectiveFactors: risk.protective_factors || '',
+    reviewFrequency: risk.review_frequency || 'monthly',
+    updateNotes: '',
+  })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await api.put(`/risk-assessments/${risk.id}`, form)
+      toast.success('Risk assessment updated')
+      onSaved()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Review: ${risk.assessment_name}`} size="lg">
+      <form onSubmit={save} className="space-y-4">
+        <Select label="Current risk level" value={form.currentRiskLevel} onChange={e => set('currentRiskLevel', e.target.value)} options={RISK_LEVELS} />
+        <div><label className="label">Description</label><textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} /></div>
+        <div><label className="label">Triggers</label><textarea className="input" rows={2} value={form.triggers} onChange={e => set('triggers', e.target.value)} /></div>
+        <div><label className="label">Protective factors</label><textarea className="input" rows={2} value={form.protectiveFactors} onChange={e => set('protectiveFactors', e.target.value)} /></div>
+        <div><label className="label">Risk management plan *</label><textarea required className="input" rows={3} value={form.managementPlan} onChange={e => set('managementPlan', e.target.value)} /></div>
+        <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
+        <div><label className="label">Review notes (what was changed and why)</label><textarea className="input" rows={3} value={form.updateNotes} onChange={e => set('updateNotes', e.target.value)} placeholder="Summarise what was reviewed and any changes made..." /></div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading}>Save review</Button>
         </div>
       </form>
     </Modal>

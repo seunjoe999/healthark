@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react'
-import { Droplets, Plus, Calendar, Users } from 'lucide-react'
+﻿﻿import React, { useState, useEffect } from 'react'
+import { Droplets, Plus, Calendar, Users, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
@@ -171,9 +171,9 @@ export default function BathChart() {
                           </div>
                           <p className="font-semibold text-white">{r.su_name}</p>
                           <div className="flex gap-3 mt-1 text-xs text-slate-400">
-                            {r.hair_washed && <span className="text-emerald-400">âœ“ Hair washed</span>}
-                            {r.nails_cut && <span className="text-emerald-400">âœ“ Nails cut</span>}
-                            {r.shaved && <span className="text-emerald-400">âœ“ Shaved</span>}
+                            {r.hair_washed && <span className="text-emerald-400 flex items-center gap-0.5"><Check className="w-3 h-3" />Hair washed</span>}
+                            {r.nails_cut && <span className="text-emerald-400 flex items-center gap-0.5"><Check className="w-3 h-3" />Nails cut</span>}
+                            {r.shaved && <span className="text-emerald-400 flex items-center gap-0.5"><Check className="w-3 h-3" />Shaved</span>}
                           </div>
                           {r.skin_condition && <p className="text-xs text-amber-400 mt-1">Skin: {r.skin_condition}</p>}
                           {r.notes && <p className="text-xs text-slate-400 mt-1">{r.notes}</p>}

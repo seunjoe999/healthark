@@ -39,6 +39,10 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
     preventionMeasures: '',
     reportedToManagement: false,
     managementNotes: '',
+    cqcNotified: false,
+    cqcNotNotifiedReason: '',
+    familyNotified: false,
+    familyNotNotifiedReason: '',
   })
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -70,6 +74,10 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
         preventionMeasures: form.preventionMeasures,
         reportedToManagement: form.reportedToManagement,
         managementNotes: form.managementNotes,
+        cqcNotified: form.cqcNotified,
+        cqcNotNotifiedReason: form.cqcNotNotifiedReason,
+        familyNotified: form.familyNotified,
+        familyNotNotifiedReason: form.familyNotNotifiedReason,
       })
       toast.success('Incident recorded')
       onSaved()
@@ -163,6 +171,32 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
           <Input label="Management notes" value={form.managementNotes}
             onChange={e => set('managementNotes', e.target.value)}
             placeholder="Management recommendations..." />
+        )}
+      </div>
+
+      <div className="space-y-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+        <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Notification of Incident</p>
+        <Toggle label="CQC notified" checked={form.cqcNotified}
+          onChange={v => set('cqcNotified', v)}
+          description="Was the Care Quality Commission notified of this incident?" />
+        {!form.cqcNotified && (
+          <div>
+            <label className="label">Reason CQC was not notified</label>
+            <textarea className="input" rows={2} value={form.cqcNotNotifiedReason}
+              onChange={e => set('cqcNotNotifiedReason', e.target.value)}
+              placeholder="State why CQC notification was not required or not made..." />
+          </div>
+        )}
+        <Toggle label="Family / next of kin notified" checked={form.familyNotified}
+          onChange={v => set('familyNotified', v)}
+          description="Was the service user's family or next of kin informed?" />
+        {!form.familyNotified && (
+          <div>
+            <label className="label">Reason family was not notified</label>
+            <textarea className="input" rows={2} value={form.familyNotNotifiedReason}
+              onChange={e => set('familyNotNotifiedReason', e.target.value)}
+              placeholder="State why family notification was not made..." />
+          </div>
         )}
       </div>
 

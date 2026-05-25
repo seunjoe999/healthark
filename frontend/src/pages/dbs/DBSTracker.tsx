@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react'
+﻿﻿import React, { useState, useEffect } from 'react'
 import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
@@ -182,7 +182,7 @@ export default function DBSTracker() {
                         <div className="text-slate-500">References</div>
                       </div>
                       <div className="text-center">
-                        <div className={clsx('font-semibold', s.rtw_docs > 0 ? 'text-emerald-400' : 'text-rose-400')}>{s.rtw_docs > 0 ? 'âœ“' : 'âœ—'}</div>
+                        <div className={clsx('font-semibold', s.rtw_docs > 0 ? 'text-emerald-400' : 'text-rose-400')}>{s.rtw_docs > 0 ? <Check className="w-4 h-4 mx-auto" /> : '—'}</div>
                         <div className="text-slate-500">RTW</div>
                       </div>
                     </div>
@@ -206,11 +206,11 @@ export default function DBSTracker() {
                       {d.dbs_number && <p className="text-xs text-slate-400">DBS No: {d.dbs_number}</p>}
                     </div>
                     <div className="text-right text-xs text-slate-400">
-                      <div>Issued: {d.issue_date ? new Date(d.issue_date).toLocaleDateString() : 'â€”'}</div>
-                      {d.expiry_date && <div className={clsx('mt-1', d.status === 'expired' ? 'text-rose-400' : d.status === 'expiring_soon' ? 'text-amber-400' : '')}>
+                      <div>Issued: {d.issue_date ? new Date(d.issue_date).toLocaleDateString() : '—'}</div>
+                      {d.expiry_date && <div className={clsx('mt-1', d.status === 'expired' ? 'text-rose-400' : d.status === 'expiring_soon' ? 'text-amber-400' : '—')}>
                         Expires: {new Date(d.expiry_date).toLocaleDateString()}
                       </div>}
-                      {d.update_service && <div className="text-emerald-400 mt-1">Update Service âœ“</div>}
+                      {d.update_service && <div className="text-emerald-400 mt-1 flex items-center gap-1 justify-end"><Check className="w-3 h-3" />Update Service</div>}
                     </div>
                   </div>
                 </div>
@@ -229,7 +229,7 @@ export default function DBSTracker() {
                         <span className="text-xs text-slate-400 capitalize">{r.reference_type}</span>
                       </div>
                       <p className="font-semibold text-white">{r.staff_name}</p>
-                      <p className="text-sm text-slate-300">{r.referee_name}{r.referee_company ? ` Â· ${r.referee_company}` : ''}</p>
+                      <p className="text-sm text-slate-300">{r.referee_name}{r.referee_company ? ` Â· ${r.referee_company}` : '—'}</p>
                     </div>
                     <div className="text-right text-xs text-slate-400">
                       {r.received_date && <div>Received: {new Date(r.received_date).toLocaleDateString()}</div>}
@@ -251,10 +251,10 @@ export default function DBSTracker() {
                         <span className={clsx('badge', statusColor[d.status])}>{statusLabel[d.status]}</span>
                       </div>
                       <p className="font-semibold text-white">{d.staff_name}</p>
-                      <p className="text-sm text-slate-300">{d.document_type}{d.document_number ? ` Â· ${d.document_number}` : ''}</p>
+                      <p className="text-sm text-slate-300">{d.document_type}{d.document_number ? ` Â· ${d.document_number}` : '—'}</p>
                     </div>
                     <div className="text-right text-xs text-slate-400">
-                      {d.expiry_date && <div className={clsx(d.status === 'expired' ? 'text-rose-400' : '')}>
+                      {d.expiry_date && <div className={clsx(d.status === 'expired' ? 'text-rose-400' : '—')}>
                         Expires: {new Date(d.expiry_date).toLocaleDateString()}
                       </div>}
                     </div>

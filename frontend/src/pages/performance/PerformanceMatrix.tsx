@@ -115,7 +115,10 @@ export default function PerformanceMatrix() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [selectedStaff, selectedHome])
+  useEffect(() => {
+    if (isGroupAdmin && !selectedHome) return
+    load()
+  }, [selectedStaff, selectedHome])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
