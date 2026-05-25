@@ -1,11 +1,23 @@
-import React, { useEffect, useState } from 'react'
-import { homesApi, suApi, dailyRecordsApi } from '../../api'
+import React, { useEffect, useMemo, useState } from 'react'
+import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Select } from '../../components/ui'
-import { FileText, Printer, X } from 'lucide-react'
+import { FileText, Printer, Save, Check } from 'lucide-react'
 import SignaturePad from '../../components/SignaturePad'
+
+const SHIFT_TIMES: Record<string, string> = {
+  early: '07:00 – 14:00',
+  late: '14:00 – 22:00',
+  night: '22:00 – 07:00',
+}
+
+const SHIFT_LABELS: Record<string, string> = {
+  early: 'Early',
+  late: 'Late',
+  night: 'Night',
+}
 
 function SignOffSection({ homeId, shiftDate, shiftType }: { homeId: string; shiftDate: string; shiftType: string }) {
   const { user } = useAuth()
@@ -35,7 +47,7 @@ function SignOffSection({ homeId, shiftDate, shiftType }: { homeId: string; shif
   }
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border-2 border-slate-200 p-5 no-print">
       <h3 className="font-bold text-slate-800 mb-4">Handover Sign-off</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -69,22 +81,75 @@ function SignOffSection({ homeId, shiftDate, shiftType }: { homeId: string; shif
   )
 }
 
+interface PreviousNote {
+  id: string
+  su_id: string
+  su_name: string
+  staff_name: string | null
+  shift_date: string
+  shift_type: string
+  notes: string
+  updated_at: string
+}
+
+interface PreviousGroup {
+  key: string
+  date: string
+  shiftType: string
+  shiftLabel: string
+  shiftTime: string
+  staffName: string
+  updatedAt: string
+  entries: PreviousNote[]
+}
+
+function groupPrevious(notes: PreviousNote[]): PreviousGroup[] {
+  const groups: Record<string, PreviousGroup> = {}
+  for (const n of notes) {
+    const key = `${n.shift_date}|${n.shift_type}|${n.staff_name || 'Staff'}`
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        date: n.shift_date,
+        shiftType: n.shift_type,
+        shiftLabel: SHIFT_LABELS[n.shift_type] || n.shift_type,
+        shiftTime: SHIFT_TIMES[n.shift_type] || '',
+        staffName: n.staff_name || 'Staff',
+        updatedAt: n.updated_at,
+        entries: [],
+      }
+    }
+    groups[key].entries.push(n)
+    if (new Date(n.updated_at) > new Date(groups[key].updatedAt)) {
+      groups[key].updatedAt = n.updated_at
+    }
+  }
+  return Object.values(groups).sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1
+    const order = { night: 0, late: 1, early: 2 } as Record<string, number>
+    return (order[a.shiftType] ?? 9) - (order[b.shiftType] ?? 9)
+  })
+}
+
+function shiftHeaderTime(shift: string): string {
+  if (shift === 'early') return '08:00'
+  if (shift === 'late') return '14:00'
+  if (shift === 'night') return '20:00'
+  return ''
+}
+
 export default function HandoverReport() {
   const { user } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
   const [sus, setSus] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [shift, setShift] = useState<'early' | 'late' | 'night'>('early')
-  const [loading, setLoading] = useState(false)
-  const [report, setReport] = useState<any>(null)
-  const [notes, setNotes] = useState('')
   const [residentNotes, setResidentNotes] = useState<Record<string, string>>({})
-  const [prevResidentNotes, setPrevResidentNotes] = useState<Record<string, string>>({})
-  const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [savedAt, setSavedAt] = useState<Record<string, number>>({})
+  const [previous, setPrevious] = useState<PreviousNote[]>([])
+  const [loadingPrev, setLoadingPrev] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
-  const notesKey = `handover_notes_${today}_${shift}`
-
-  const PREV_SHIFT: Record<string, string> = { late: 'early', night: 'late', early: 'night' }
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -100,247 +165,182 @@ export default function HandoverReport() {
   }, [selectedHome])
 
   useEffect(() => {
-    if (sus.length > 0 && selectedHome) generate()
-  }, [sus, shift])
-
-  useEffect(() => {
     if (!selectedHome || !shift) return
-    // Load current shift notes
     api.get('/reports/handover-notes', { params: { homeId: selectedHome, shiftDate: today, shiftType: shift } })
       .then(res => {
         const map: Record<string, string> = {}
         for (const n of res.data.data || []) map[n.su_id] = n.notes || ''
         setResidentNotes(map)
       }).catch(() => {})
-    // Load previous shift notes (incoming staff can see what outgoing staff wrote)
-    const prevShift = PREV_SHIFT[shift]
-    if (prevShift) {
-      const prevDate = prevShift === 'night' ? format(new Date(new Date().getTime() - 86400000), 'yyyy-MM-dd') : today
-      api.get('/reports/handover-notes', { params: { homeId: selectedHome, shiftDate: prevDate, shiftType: prevShift } })
-        .then(res => {
-          const map: Record<string, string> = {}
-          for (const n of res.data.data || []) if (n.notes) map[n.su_id] = n.notes
-          setPrevResidentNotes(map)
-        }).catch(() => {})
-    }
-  }, [selectedHome, shift])
+  }, [selectedHome, shift, today])
 
   useEffect(() => {
-    setNotes(localStorage.getItem(notesKey) || '')
-  }, [notesKey])
+    if (!selectedHome) return
+    setLoadingPrev(true)
+    api.get('/reports/handover-notes/recent', { params: { homeId: selectedHome, days: 7 } })
+      .then(res => setPrevious(res.data.data || []))
+      .catch(() => setPrevious([]))
+      .finally(() => setLoadingPrev(false))
+  }, [selectedHome])
 
-  const generate = async () => {
-    setLoading(true)
-    try {
-      const [alertsRes, tasksRes] = await Promise.all([
-        api.get('/alerts', { params: { homeId: selectedHome, resolved: false } }),
-        api.get('/tasks', { params: { homeId: selectedHome, date: today } }),
-      ])
+  const homeName = useMemo(() => {
+    const h = homes.find(x => x.id === selectedHome)
+    return h?.name ? `${h.name}'s` : 'Service'
+  }, [homes, selectedHome])
 
-      // Fetch records per resident
-      const recordsBySu: Record<string, any[]> = {}
-      for (const su of sus) {
-        try {
-          const res = await api.get('/daily-records', { params: { suId: su.id, date: today } })
-          recordsBySu[su.id] = res.data.data || []
-        } catch { recordsBySu[su.id] = [] }
-      }
+  const previousGroups = useMemo(() => groupPrevious(previous), [previous])
 
-      setReport({
-        date: today,
-        shift,
-        alerts: alertsRes.data.data || [],
-        tasks: tasksRes.data.data || [],
-        recordsBySu,
-        sus,
-        generatedAt: new Date().toISOString(),
-      })
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
-  }
-
-  const saveResidentNote = async (suId: string, noteText: string) => {
-    setSavingNotes(prev => ({ ...prev, [suId]: true }))
+  const saveResidentNote = async (suId: string) => {
+    setSavingId(suId)
     try {
       await api.put(`/reports/handover-notes/${suId}`, {
-        homeId: selectedHome, shiftDate: today, shiftType: shift, notes: noteText,
+        homeId: selectedHome,
+        shiftDate: today,
+        shiftType: shift,
+        notes: residentNotes[suId] || '',
       })
+      setSavedAt(prev => ({ ...prev, [suId]: Date.now() }))
+      // Refresh previous handovers
+      api.get('/reports/handover-notes/recent', { params: { homeId: selectedHome, days: 7 } })
+        .then(res => setPrevious(res.data.data || []))
+        .catch(() => {})
     } catch {}
-    finally { setSavingNotes(prev => ({ ...prev, [suId]: false })) }
-  }
-
-  const SHIFT_TIMES: Record<string, string> = {
-    early: '07:00 – 14:00',
-    late: '14:00 – 22:00',
-    night: '22:00 – 07:00',
+    finally { setSavingId(null) }
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-purple-600" /> Handover Report
-          </h1>
-          <p className="text-slate-400 text-sm mt-0.5">End of shift summary for {format(new Date(), 'EEEE d MMMM yyyy')}</p>
-        </div>
+    <div className="p-6 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-6 no-print">
+        <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
+          <FileText className="w-6 h-6 text-purple-600" /> Handover Report
+        </h1>
+        <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE d MMMM yyyy')}</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 mb-6">
+      {/* Controls */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 mb-6 no-print">
         <div className="flex flex-wrap gap-4 items-end">
           {homes.length > 1 && (
             <Select label="Care home" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}
               options={homes.map(h => ({ value: h.id, label: h.name }))} />
           )}
           <Select label="Shift" value={shift} onChange={e => setShift(e.target.value as any)}
-            options={[{ value: 'early', label: 'Early (07:00–14:00)' }, { value: 'late', label: 'Late (14:00–22:00)' }, { value: 'night', label: 'Night (22:00–07:00)' }]} />
-          <Button icon={<FileText className="w-4 h-4" />} loading={loading} onClick={generate}>Generate handover</Button>
-          {report && <Button variant="outline" icon={<Printer className="w-4 h-4" />} onClick={() => window.print()}>Print</Button>}
-          {report && (
-            <Button variant="outline" icon={<X className="w-4 h-4" />} onClick={() => {
-              setReport(null)
-              setNotes('')
-              localStorage.removeItem(notesKey)
-            }}>Clear</Button>
-          )}
+            options={[
+              { value: 'early', label: 'Early (07:00–14:00)' },
+              { value: 'late', label: 'Late (14:00–22:00)' },
+              { value: 'night', label: 'Night (22:00–07:00)' },
+            ]} />
+          <Button variant="outline" icon={<Printer className="w-4 h-4" />} onClick={() => window.print()}>
+            Print
+          </Button>
         </div>
       </div>
 
-      {loading ? <Spinner /> : !report ? null : (
-        <div id="handover-print" className="space-y-5">
-          {/* Header */}
-          <div className="bg-slate-900 text-white rounded-2xl p-6">
-            <h2 className="font-display text-2xl mb-1">Shift Handover Report</h2>
-            <p className="text-slate-300">{format(new Date(report.date), 'd MMMM yyyy')} · {report.shift.charAt(0).toUpperCase() + report.shift.slice(1)} shift · {SHIFT_TIMES[report.shift]}</p>
-            <p className="text-slate-400 text-sm mt-1">Generated {format(new Date(report.generatedAt), 'HH:mm')} by {user?.firstName} {user?.lastName}</p>
+      {/* PDF-style document */}
+      <div id="handover-print" className="bg-white rounded-2xl border border-slate-200 shadow-card p-8 mb-6">
+        {/* Document Header */}
+        <div className="mb-6 pb-4 border-b-2 border-slate-200">
+          <h2 className="font-bold text-2xl text-slate-900">{homeName} Handover</h2>
+          <p className="text-lg font-semibold text-slate-700 mt-1">{shiftHeaderTime(shift)}</p>
+        </div>
+
+        {/* Current Shift Entry */}
+        <div className="mb-8 no-print">
+          <div className="mb-4">
+            <h3 className="font-bold text-lg text-slate-800">Current Shift Report</h3>
+            <p className="text-sm text-slate-500">
+              {format(new Date(), 'd MMMM yyyy')} · {SHIFT_LABELS[shift]} shift · {SHIFT_TIMES[shift]} · Staff: {user?.firstName} {user?.lastName}
+            </p>
           </div>
 
-          {/* Active alerts */}
-          {report.alerts.length > 0 && (
-            <div className="bg-white rounded-2xl border-2 border-rose-200 shadow-card p-5">
-              <h3 className="font-bold text-rose-800 mb-3 flex items-center gap-2">
-                ⚠️ Active Alerts ({report.alerts.length})
-              </h3>
-              <div className="space-y-2">
-                {report.alerts.map((a: any) => (
-                  <div key={a.id} className="flex items-start gap-3 p-3 bg-rose-50 rounded-xl">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${a.severity === 'critical' ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">{a.title}</p>
-                      <p className="text-xs text-slate-500">{a.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tasks summary */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
-            <h3 className="font-bold text-slate-800 mb-3">Tasks ({report.tasks.length})</h3>
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              <div className="text-center p-3 bg-slate-50 rounded-xl">
-                <p className="text-xl font-bold text-slate-900">{report.tasks.length}</p>
-                <p className="text-xs text-slate-400">Total</p>
-              </div>
-              <div className="text-center p-3 bg-emerald-50 rounded-xl">
-                <p className="text-xl font-bold text-emerald-700">{report.tasks.filter((t: any) => t.status === 'completed').length}</p>
-                <p className="text-xs text-slate-400">Completed</p>
-              </div>
-              <div className="text-center p-3 bg-amber-50 rounded-xl">
-                <p className="text-xl font-bold text-amber-700">{report.tasks.filter((t: any) => t.status === 'pending').length}</p>
-                <p className="text-xs text-slate-400">Pending</p>
-              </div>
-            </div>
-            {report.tasks.filter((t: any) => t.status === 'pending').length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Outstanding tasks to hand over:</p>
-                {report.tasks.filter((t: any) => t.status === 'pending').map((t: any) => (
-                  <div key={t.id} className="flex items-center gap-2 py-1.5 border-b border-slate-50 last:border-0">
-                    <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                    <p className="text-sm text-slate-700">{t.title}</p>
-                    {t.su_name && <span className="text-xs text-slate-400 ml-auto">{t.su_name}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Per resident summary */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
-            <h3 className="font-bold text-slate-800 mb-4">Resident Summary</h3>
-            <div className="space-y-4">
-              {report.sus.map((su: any) => {
+          {sus.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">No residents to write a handover for.</p>
+          ) : (
+            <div className="space-y-5">
+              {sus.map((su) => {
                 const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
-                const records = report.recordsBySu[su.id] || []
-                const fluidRecords = records.filter((r: any) => r.record_type === 'fluid_intake')
-                const totalFluid = fluidRecords.reduce((sum: number, r: any) => sum + (r.amount_ml || 0), 0)
-                const incidents = records.filter((r: any) => r.record_type === 'incident')
-                const hasRecords = records.length > 0
-
+                const value = residentNotes[su.id] || ''
+                const recentlySaved = savedAt[su.id] && Date.now() - savedAt[su.id] < 3000
                 return (
-                  <div key={su.id} className={`p-4 rounded-xl border ${incidents.length > 0 ? 'border-rose-200 bg-rose-50' : hasRecords ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-semibold text-slate-900">{name}</p>
-                      <div className="flex gap-2">
-                        {incidents.length > 0 && <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">⚠ {incidents.length} incident{incidents.length > 1 ? 's' : ''}</span>}
-                        {!hasRecords && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">No records today</span>}
+                  <div key={su.id} className="border border-slate-200 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-slate-900">{name}</h4>
+                      <div className="flex items-center gap-2">
+                        {recentlySaved && (
+                          <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Saved
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          icon={<Save className="w-3.5 h-3.5" />}
+                          loading={savingId === su.id}
+                          onClick={() => saveResidentNote(su.id)}
+                        >
+                          Save
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-4 text-xs text-slate-500 flex-wrap">
-                      <span>📋 {records.length} records</span>
-                      {totalFluid > 0 && <span className={`font-medium ${totalFluid < (su.min_fluid_ml || 1500) ? 'text-amber-600' : 'text-emerald-600'}`}>💧 {totalFluid}ml fluid</span>}
-                      {incidents.length > 0 && incidents.map((inc: any, i: number) => (
-                        <span key={i} className="text-rose-600 font-medium">⚠ {inc.notes?.substring(0, 50)}...</span>
-                      ))}
-                    </div>
-                    {prevResidentNotes[su.id] && (
-                      <div className="mt-2 p-2.5 bg-amber-50 rounded-lg border border-amber-200">
-                        <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-0.5">
-                          From previous shift ({PREV_SHIFT[shift]}):
-                        </p>
-                        <p className="text-xs text-amber-900 whitespace-pre-line">{prevResidentNotes[su.id]}</p>
-                      </div>
-                    )}
-                    <div className="mt-2 no-print">
-                      <textarea
-                        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white"
-                        rows={2}
-                        placeholder={`Hand over to next shift — e.g. ${name} hasn't showered today, needs follow-up...`}
-                        value={residentNotes[su.id] || ''}
-                        onChange={e => setResidentNotes(prev => ({ ...prev, [su.id]: e.target.value }))}
-                        onBlur={() => saveResidentNote(su.id, residentNotes[su.id] || '')}
-                      />
-                      {savingNotes[su.id] && <span className="text-xs text-slate-400">Saving...</span>}
-                    </div>
-                    {residentNotes[su.id] && (
-                      <div className="mt-1 print-only text-xs text-slate-700 italic border-t border-slate-200 pt-1">
-                        <strong>Handover note:</strong> {residentNotes[su.id]}
-                      </div>
-                    )}
+                    <textarea
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white font-mono"
+                      rows={14}
+                      placeholder={`Write the full shift report for ${name}.\n\nSuggested sections:\n- Summary of Shift Activities\n- Current Physical and Mental Presentation\n- Personal Care\n- Any Incidents, Concerns, or Changes in Condition\n- Nutrition and Hydration Intake, Including Refusals\n- Medication Adherence and Any Issues\n- Level of Support Required\n- Risks, Triggers, or Safety Concerns\n- Engagement in Activities and Routines\n- Contact with Family, GP, or Other Professionals\n- Tasks or Actions To Be Completed By Next Shift\n- Medication Count`}
+                      value={value}
+                      onChange={e => setResidentNotes(prev => ({ ...prev, [su.id]: e.target.value }))}
+                      onBlur={() => { if (value.trim()) saveResidentNote(su.id) }}
+                    />
                   </div>
                 )
               })}
             </div>
-          </div>
-
-          {/* Handover notes */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 no-print">
-            <h3 className="font-bold text-slate-800 mb-3">Handover Notes</h3>
-            <textarea
-              className="input w-full"
-              rows={5}
-              placeholder="Write handover notes for the incoming shift — key events, concerns, actions needed..."
-              value={notes}
-              onChange={e => { setNotes(e.target.value); localStorage.setItem(notesKey, e.target.value) }}
-            />
-          </div>
-
-          {/* Digital Sign-off */}
-          <SignOffSection homeId={selectedHome} shiftDate={today} shiftType={shift} />
+          )}
         </div>
-      )}
-      <style>{`@media print { .no-print { display: none } @page { margin: 1.5cm } }`}</style>
+
+        {/* Previous Handovers — PDF style */}
+        <div className="mt-8">
+          <h3 className="font-bold text-lg text-slate-800 mb-4">Previous Handovers (Last 7 days)</h3>
+          {loadingPrev ? (
+            <Spinner />
+          ) : previousGroups.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">No previous handovers in the last 7 days.</p>
+          ) : (
+            <div className="space-y-6">
+              {previousGroups.map(g => (
+                <div key={g.key} className="border-t border-slate-200 pt-4">
+                  <p className="font-bold text-slate-900 text-sm mb-3">
+                    {format(new Date(g.date), 'd MMMM yyyy')} {shiftHeaderTime(g.shiftType) && `${shiftHeaderTime(g.shiftType)}`} - {g.staffName}
+                  </p>
+                  <div className="space-y-4">
+                    {g.entries.map(entry => (
+                      <div key={entry.id}>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          {entry.su_name}
+                        </p>
+                        <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                          {entry.notes}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Digital Sign-off */}
+      <SignOffSection homeId={selectedHome} shiftDate={today} shiftType={shift} />
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          #handover-print { box-shadow: none; border: none; padding: 0; }
+          @page { margin: 1.5cm; }
+        }
+      `}</style>
     </div>
   )
 }

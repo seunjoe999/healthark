@@ -263,6 +263,31 @@ router.get('/handover-notes', async (req: Request, res: Response, next: NextFunc
   } catch (err) { next(err); }
 });
 
+// GET /api/reports/handover-notes/recent?homeId=&days=7
+// Returns all handover notes from the last N days, grouped by date+shift+staff
+router.get('/handover-notes/recent', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const days = Math.min(parseInt(req.query.days as string) || 7, 30);
+    const rows = await query(
+      `SELECT hn.id, hn.su_id, hn.shift_date, hn.shift_type, hn.notes, hn.updated_at, hn.updated_by,
+              su.first_name || ' ' || su.last_name as su_name,
+              s.first_name || ' ' || s.last_name as staff_name
+       FROM handover_resident_notes hn
+       JOIN service_users su ON su.id = hn.su_id
+       LEFT JOIN staff s ON s.id = hn.updated_by
+       WHERE hn.home_id = $1
+         AND hn.shift_date >= (CURRENT_DATE - INTERVAL '1 day' * $2)
+         AND COALESCE(NULLIF(TRIM(hn.notes), ''), NULL) IS NOT NULL
+       ORDER BY hn.shift_date DESC,
+                CASE hn.shift_type WHEN 'night' THEN 1 WHEN 'late' THEN 2 WHEN 'early' THEN 3 ELSE 4 END,
+                hn.updated_at DESC`,
+      [homeId, days]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // PUT /api/reports/handover-notes/:suId — upsert note for a specific resident
 router.put('/handover-notes/:suId', async (req: Request, res: Response, next: NextFunction) => {
   try {
