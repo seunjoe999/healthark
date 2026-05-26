@@ -6,6 +6,15 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import {
+  sendEmail,
+  interviewInviteEmail,
+  applicationReceivedEmail,
+  referenceRequestEmail,
+  offerLetterEmail,
+  rejectionEmail,
+  customEmail,
+} from '../services/email.service';
 
 const router = Router();
 router.use(authenticate);
@@ -80,6 +89,90 @@ router.delete('/:id', param('id').isUUID(), validateRequest, async (req: Request
     await query('DELETE FROM recruitment_candidates WHERE id=$1', [req.params.id]);
     res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
+});
+
+// POST /api/recruitment/:id/email  — send email to candidate
+// body: { type: 'interview_invite'|'application_received'|'reference_request'|'offer_letter'|'rejection'|'custom', ...templateData }
+router.post('/:id/email', param('id').isUUID(), body('type').notEmpty(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query<any>('SELECT * FROM recruitment_candidates WHERE id=$1', [req.params.id]);
+      if (!rows.length) throw new AppError('Candidate not found', 404);
+      const c = rows[0];
+
+      const toEmail: string = req.body.toEmail || c.email;
+      if (!toEmail) throw new AppError('No email address for this candidate', 400);
+
+      const { type, subject: customSubject, message } = req.body;
+      const contactName = req.body.contactName || 'Recruitment Team';
+      const contactEmail = req.body.contactEmail || (process.env.SMTP_USER || '');
+
+      let html = '';
+      let subject = '';
+
+      switch (type) {
+        case 'interview_invite':
+          subject = customSubject || `Interview Invitation — ${c.position}`;
+          html = interviewInviteEmail(c, {
+            date: req.body.interviewDate || 'TBC',
+            time: req.body.interviewTime || 'TBC',
+            location: req.body.location || 'Our care home',
+            contactName, contactEmail,
+          });
+          break;
+        case 'application_received':
+          subject = customSubject || `Application Received — ${c.position}`;
+          html = applicationReceivedEmail(c);
+          break;
+        case 'reference_request':
+          subject = customSubject || `Reference Request for ${c.first_name} ${c.last_name}`;
+          html = referenceRequestEmail(c, { name: req.body.refereeName || 'Sir/Madam' });
+          // Send to referee email if provided
+          if (req.body.refereeEmail) {
+            const result = await sendEmail({ to: req.body.refereeEmail, subject, html, replyTo: contactEmail });
+            if (!result.ok) throw new AppError(result.error || 'Failed to send email', 500);
+            res.json({ success: true, message: `Reference request sent to ${req.body.refereeEmail}` } as ApiResponse);
+            return;
+          }
+          break;
+        case 'offer_letter':
+          subject = customSubject || `Job Offer — ${c.position}`;
+          html = offerLetterEmail(c, {
+            startDate: req.body.startDate || '',
+            salary: req.body.salary || '',
+            contactName, contactEmail,
+          });
+          break;
+        case 'rejection':
+          subject = customSubject || `Your Application — ${c.position}`;
+          html = rejectionEmail(c);
+          break;
+        case 'custom':
+          subject = customSubject || 'Message from CompCare Hub';
+          html = customEmail(c, message ? `<p>${String(message).replace(/\n/g, '<br/>')}</p>` : '');
+          break;
+        default:
+          throw new AppError('Unknown email type', 400);
+      }
+
+      const result = await sendEmail({ to: toEmail, subject, html, replyTo: contactEmail });
+      if (!result.ok) throw new AppError(result.error || 'Failed to send email', 500);
+
+      // Log the email in candidate notes
+      await query(
+        `UPDATE recruitment_candidates SET notes = CONCAT(COALESCE(notes,''), $1), updated_at = NOW() WHERE id = $2`,
+        [`\n[${new Date().toLocaleDateString('en-GB')}] Email sent: ${type.replace(/_/g,' ')} to ${toEmail}`, req.params.id]
+      );
+
+      res.json({ success: true, message: `Email sent to ${toEmail}` } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/recruitment/email-configured — check if email is set up
+router.get('/email-configured', async (_req: Request, res: Response) => {
+  const configured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+  res.json({ success: true, data: { configured, smtpUser: process.env.SMTP_USER || null } } as ApiResponse);
 });
 
 export default router;

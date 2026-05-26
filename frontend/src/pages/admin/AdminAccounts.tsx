@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
-import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp, Mail, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 
@@ -25,6 +25,7 @@ function RecruitmentSection({ homes }: { homes: any[] }) {
   const [selectedHome, setSelectedHome] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<any>(null)
+  const [emailTarget, setEmailTarget] = useState<any>(null)
   const [expanded, setExpanded] = useState(true)
 
   useEffect(() => {
@@ -123,6 +124,11 @@ function RecruitmentSection({ homes }: { homes: any[] }) {
                         className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 focus:outline-none focus:border-blue-400">
                         {RECRUIT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                       </select>
+                      {c.email && (
+                        <button onClick={() => setEmailTarget(c)} title="Send email" className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-50">
+                          <Mail className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button onClick={() => { setEditing(c); setAddOpen(true) }} className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-50">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -156,7 +162,122 @@ function RecruitmentSection({ homes }: { homes: any[] }) {
       <RecruitModal open={addOpen} onClose={() => { setAddOpen(false); setEditing(null) }} homeId={selectedHome}
         editing={editing}
         onSaved={() => { setAddOpen(false); setEditing(null); reload(); toast.success(editing ? 'Updated' : 'Candidate added') }} />
+      <EmailModal candidate={emailTarget} onClose={() => setEmailTarget(null)} />
     </div>
+  )
+}
+
+const EMAIL_TYPES = [
+  { value: 'application_received', label: 'Application Received', desc: 'Acknowledge that you received their application' },
+  { value: 'interview_invite', label: 'Interview Invitation', desc: 'Invite them for an interview with date/time/location' },
+  { value: 'offer_letter', label: 'Job Offer', desc: 'Send a formal offer letter' },
+  { value: 'rejection', label: 'Rejection', desc: 'Let them know they were unsuccessful' },
+  { value: 'reference_request', label: 'Reference Request', desc: 'Email a referee on their behalf' },
+  { value: 'custom', label: 'Custom Message', desc: 'Write your own message' },
+]
+
+function EmailModal({ candidate, onClose }: { candidate: any; onClose: () => void }) {
+  const [type, setType] = useState('application_received')
+  const [sending, setSending] = useState(false)
+  const [form, setForm] = useState({
+    toEmail: '', interviewDate: '', interviewTime: '', location: '',
+    startDate: '', salary: '', refereeName: '', refereeEmail: '',
+    contactName: '', contactEmail: '', subject: '', message: '',
+  })
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (candidate) {
+      setType('application_received')
+      setForm(p => ({ ...p, toEmail: candidate.email || '' }))
+    }
+  }, [candidate])
+
+  const send = async () => {
+    if (!form.toEmail && type !== 'reference_request') { toast.error('Email address required'); return }
+    setSending(true)
+    try {
+      const payload: any = { type, ...form }
+      const res = await api.post(`/recruitment/${candidate.id}/email`, payload)
+      if (res.data.success) { toast.success(res.data.message || 'Email sent'); onClose() }
+      else toast.error(res.data.error || 'Failed to send')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to send email')
+    } finally { setSending(false) }
+  }
+
+  if (!candidate) return null
+
+  return (
+    <Modal open={!!candidate} onClose={onClose} title={`Email ${candidate.first_name} ${candidate.last_name}`}>
+      <div className="space-y-4">
+        <div className="p-3 bg-blue-50 rounded-xl text-sm text-blue-700 flex items-center gap-2">
+          <Mail className="w-4 h-4 flex-shrink-0" />
+          <span>Emails are sent from your configured SMTP account. Make sure SMTP is set up in environment variables.</span>
+        </div>
+
+        <div>
+          <label className="label">Email type</label>
+          <div className="grid grid-cols-1 gap-2">
+            {EMAIL_TYPES.map(t => (
+              <button key={t.value} onClick={() => setType(t.value)}
+                className={`text-left px-3 py-2.5 rounded-xl border transition-colors ${type === t.value ? 'border-purple-400 bg-purple-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                <p className={`font-medium text-sm ${type === t.value ? 'text-purple-700' : 'text-slate-800'}`}>{t.label}</p>
+                <p className="text-xs text-slate-500">{t.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {type !== 'reference_request' && (
+          <Input label="Send to (email)" type="email" value={form.toEmail} onChange={e => set('toEmail', e.target.value)} />
+        )}
+
+        {type === 'interview_invite' && <>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Interview date" type="date" value={form.interviewDate} onChange={e => set('interviewDate', e.target.value)} />
+            <Input label="Interview time" placeholder="e.g. 10:00 AM" value={form.interviewTime} onChange={e => set('interviewTime', e.target.value)} />
+          </div>
+          <Input label="Location / address" value={form.location} onChange={e => set('location', e.target.value)} placeholder="123 Care Home Road, London" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Your name" value={form.contactName} onChange={e => set('contactName', e.target.value)} />
+            <Input label="Your email" type="email" value={form.contactEmail} onChange={e => set('contactEmail', e.target.value)} />
+          </div>
+        </>}
+
+        {type === 'offer_letter' && <>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+            <Input label="Salary (optional)" placeholder="e.g. £24,000 p/a" value={form.salary} onChange={e => set('salary', e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Your name" value={form.contactName} onChange={e => set('contactName', e.target.value)} />
+            <Input label="Your email" type="email" value={form.contactEmail} onChange={e => set('contactEmail', e.target.value)} />
+          </div>
+        </>}
+
+        {type === 'reference_request' && <>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Referee name" value={form.refereeName} onChange={e => set('refereeName', e.target.value)} placeholder="Mr John Smith" />
+            <Input label="Referee email *" type="email" value={form.refereeEmail} onChange={e => set('refereeEmail', e.target.value)} />
+          </div>
+        </>}
+
+        {type === 'custom' && <>
+          <Input label="Subject" value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Message from our recruitment team" />
+          <div>
+            <label className="label">Message</label>
+            <textarea className="input" rows={5} value={form.message} onChange={e => set('message', e.target.value)}
+              placeholder="Type your message here..." />
+          </div>
+        </>}
+
+        <div className="flex gap-3 justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button icon={<Send className="w-4 h-4" />} loading={sending} onClick={send}>Send Email</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
