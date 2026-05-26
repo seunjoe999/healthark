@@ -148,9 +148,9 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
 }
 
 function RecordSummary({ records }: { records: any[] }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   if (records.length === 0) return (
-    <p className="text-xs text-slate-600 italic mt-2">No records logged today</p>
+    <p className="text-xs text-slate-600 italic mt-1">No records logged today for this resident</p>
   )
   const byType: Record<string, any[]> = {}
   for (const r of records) {
@@ -161,23 +161,23 @@ function RecordSummary({ records }: { records: any[] }) {
   return (
     <div className="mt-2">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors">
+        className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors mb-2">
         {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        {open ? 'Hide' : 'Show'} today's records ({records.length})
+        {open ? 'Hide' : 'Show'} today's observations ({records.length} records)
       </button>
       {open && (
-        <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-white/10">
+        <div className="space-y-2 pl-2 border-l-2 border-amber-400/20">
           {Object.entries(byType).map(([type, recs]) => (
-            <div key={type}>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{RECORD_TYPE_LABELS[type] || type}</p>
+            <div key={type} className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <p className="text-[10px] font-bold text-amber-400/70 uppercase tracking-wider mb-1">{RECORD_TYPE_LABELS[type] || type} ({recs.length})</p>
               {recs.map((r, i) => {
                 const note = r.notes || r.description || r.content || ''
                 const time = r.created_at ? format(new Date(r.created_at), 'HH:mm') : ''
                 return (
-                  <p key={i} className="text-xs text-slate-300 leading-snug">
-                    {time && <span className="text-slate-500 mr-1">{time}</span>}
-                    {note || JSON.stringify(r.data || '').replace(/[{}"]/g, '').slice(0, 80)}
-                    <span className="text-slate-600 ml-1">— {r.staff_name}</span>
+                  <p key={i} className="text-xs text-slate-300 leading-snug mb-0.5">
+                    {time && <span className="text-slate-500 mr-1.5 font-mono">{time}</span>}
+                    <span>{note || JSON.stringify(r.data || '').replace(/[{}"]/g, '').slice(0, 100)}</span>
+                    {r.staff_name && <span className="text-slate-600 ml-1">— {r.staff_name}</span>}
                   </p>
                 )
               })}
@@ -346,7 +346,7 @@ export default function HandoverReport() {
                       className="flex-1 text-sm rounded-xl px-3 py-2.5 resize-y focus:outline-none font-mono leading-relaxed"
                       style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: '#f0ece0', minHeight: '160px' }}
                       rows={10}
-                      placeholder={`Shift report for ${name}:\n\n• Summary of activities\n• Physical & mental presentation\n• Personal care\n• Incidents or concerns\n• Nutrition & hydration\n• Medication adherence\n• Support level required\n• Risks & safety concerns\n• Family / professional contacts\n• Actions for next shift\n• Medication count`}
+                      placeholder={`Observations for ${name}:\n\n• General presentation & mood today\n• Physical condition & any concerns\n• Personal care provided\n• Food & fluid intake\n• Medication given / refused\n• Behaviour & communication observed\n• Activities & social engagement\n• Any incidents, accidents or falls\n• Visitors / family contacts\n• Outstanding tasks for next shift\n• Medication count at handover`}
                       value={value}
                       onChange={e => setResidentNotes(prev => ({ ...prev, [su.id]: e.target.value }))}
                       onBlur={() => { if (value.trim()) saveResidentNote(su.id) }}

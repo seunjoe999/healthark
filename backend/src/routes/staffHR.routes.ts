@@ -59,11 +59,29 @@ router.post('/leave',
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { leaveType, startDate, endDate, hoursRequested, totalHours, reason, notes, status } = req.body;
+      const targetStaffId = req.body.staffId || staffId;
       const rows = await query(
         `INSERT INTO staff_leave (staff_id, home_id, leave_type, start_date, end_date, hours_requested, reason)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [req.body.staffId || staffId, homeId, leaveType, nd(startDate), nd(endDate), hoursRequested || totalHours || null, reason || notes || null]
+        [targetStaffId, homeId, leaveType, nd(startDate), nd(endDate), hoursRequested || totalHours || null, reason || notes || null]
       );
+      // Notify all home managers and group admins
+      try {
+        const submitterRows = await query<any>(`SELECT first_name || ' ' || last_name as full_name FROM staff WHERE id=$1`, [targetStaffId]);
+        const submitterName = submitterRows[0]?.full_name || 'A staff member';
+        const managerRows = await query<any>(
+          `SELECT id FROM staff WHERE home_id=$1 AND role IN ('home_manager','group_admin') AND is_active=true`,
+          [homeId]
+        );
+        for (const m of managerRows) {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+             VALUES ($1,$2,$3,$4,'info','/holidays')`,
+            [m.id, homeId, `Leave request from ${submitterName}`,
+             `${leaveType?.replace(/_/g,' ')} leave request for ${nd(startDate) || 'date not set'}${nd(endDate) && nd(endDate) !== nd(startDate) ? ' – ' + nd(endDate) : ''}`]
+          );
+        }
+      } catch {}
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -268,7 +286,7 @@ router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
       const leave = rows[0];
       await query('UPDATE staff_leave SET status=$1 WHERE id=$2', ['declined', req.params.id]);
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-        VALUES ($1,$2,'Leave request declined','Your leave request has been declined. Please speak to your manager.','warning','/staff')`,
+        VALUES ($1,$2,'Leave request declined','Your leave request has been declined. Please speak to your manager.','warning','/holidays')`,
         [leave.staff_id, leave.home_id]);
       res.json({ success: true, message: 'Leave declined' } as ApiResponse);
     } catch (err) { next(err); }

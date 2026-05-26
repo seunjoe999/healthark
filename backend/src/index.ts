@@ -617,6 +617,30 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
+    // Add new audit types to enum
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='staff_all' AND enumtypid='audit_type'::regtype) THEN ALTER TYPE audit_type ADD VALUE 'staff_all'; END IF; END $$`,
+    // Notifications table
+    `CREATE TABLE IF NOT EXISTS notifications (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       recipient_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id      UUID REFERENCES homes(id) ON DELETE CASCADE,
+       title        VARCHAR(255) NOT NULL,
+       body         TEXT,
+       type         VARCHAR(20) NOT NULL DEFAULT 'info',
+       link         VARCHAR(500),
+       is_read      BOOLEAN NOT NULL DEFAULT FALSE,
+       read_at      TIMESTAMPTZ,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_notif_recipient ON notifications(recipient_id, created_at DESC)`,
+    // Ensure staff_messages columns allow null home_id (some inserts don't have homeId)
+    `ALTER TABLE staff_messages ALTER COLUMN home_id DROP NOT NULL`,
+    // Ensure staff_messages has a message/body alias column
+    `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS message TEXT`,
+    // Fix audit_reports attachments (was mistakenly added as 'audits')
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
+    // Fix performance overall_score precision (NUMERIC(4,2) overflows for 100)
+    `ALTER TABLE staff_performance ALTER COLUMN overall_score TYPE NUMERIC(5,2)`,
     // Fix: update existing staff whose total is still at old default 224 → 210
     `UPDATE staff SET leave_hours_total = 210, leave_hours_remaining = 210 WHERE leave_hours_total = 224 AND leave_hours_remaining = 224`,
     // Care plan reads tracking
