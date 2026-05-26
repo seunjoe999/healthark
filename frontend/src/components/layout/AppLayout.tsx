@@ -48,7 +48,7 @@ const navSections = [
     label: 'Staff Records',
     items: [
       { label: 'Staff Profile',           to: '/staff',                 icon: UserSquare,    roles: ['home_manager','group_admin'],                featureKey: 'staff' },
-      { label: 'Staff Assessment',        to: '/assessments',          icon: FileCheck,     roles: ['home_manager','group_admin','team_leader'],  featureKey: 'staff_assessment' },
+      { label: 'Staff Assessment',        to: '/assessments?tab=staff', icon: FileCheck,     roles: ['home_manager','group_admin','team_leader'],  featureKey: 'staff_assessment' },
       { label: 'Supervision & Appraisal', to: '/supervision-appraisal', icon: Users,         roles: ['home_manager','group_admin','team_leader'],  featureKey: 'supervision' },
       { label: 'DBS Compliance',          to: '/dbs',                   icon: UserCheck,     roles: ['home_manager','group_admin'],                featureKey: 'dbs' },
       { label: 'Clock In',                to: '/clockin-admin',         icon: QrCode,        roles: ['home_manager','group_admin'],                featureKey: 'clockin' },

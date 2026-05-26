@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { assessmentsApi, homesApi, suApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
@@ -26,7 +26,9 @@ function RiskBadge({ level }: { level: string }) {
 export default function Assessments() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'service_user' | 'staff'>('service_user')
+  const [searchParams] = useSearchParams()
+  const staffOnly = searchParams.get('tab') === 'staff'
+  const [tab, setTab] = useState<'service_user' | 'staff'>(staffOnly ? 'staff' : 'service_user')
   const [templates, setTemplates] = useState<any[]>([])
   const [assessments, setAssessments] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
@@ -93,9 +95,9 @@ export default function Assessments() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <ClipboardCheck className="w-6 h-6 text-purple-600" /> Audit
+            <ClipboardCheck className="w-6 h-6 text-purple-600" /> {staffOnly ? 'Staff Assessment' : 'Audit'}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">Conduct and manage care audits</p>
+          <p className="text-slate-500 text-sm mt-0.5">{staffOnly ? 'Conduct and manage staff assessments' : 'Conduct and manage care audits'}</p>
         </div>
         <div className="flex items-center gap-2">
           <PrintButton />
@@ -107,15 +109,17 @@ export default function Assessments() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
-        {(['service_user', 'staff'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
-            {t === 'service_user' ? 'Resident Assessments' : 'Staff Assessments'}
-          </button>
-        ))}
-      </div>
+      {/* Tabs — hidden when staffOnly mode (from Staff Assessment nav) */}
+      {!staffOnly && (
+        <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
+          {(['service_user', 'staff'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
+              {t === 'service_user' ? 'Resident Assessments' : 'Staff Assessments'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Template grid */}
       <div className="mb-8">

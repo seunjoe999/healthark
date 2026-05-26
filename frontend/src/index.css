@@ -24,6 +24,18 @@
 
   input, select, textarea, button { font-family: inherit; }
 
+  /* Force dark background on all native selects not using .input class */
+  select:not(.input) {
+    background: #1a1a1a;
+    color: #f5f0e8;
+    border: 1px solid rgba(232,177,48,0.25);
+    border-radius: 8px;
+  }
+  select:not(.input) option {
+    background: #1a1a1a;
+    color: #f5f0e8;
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #111; }

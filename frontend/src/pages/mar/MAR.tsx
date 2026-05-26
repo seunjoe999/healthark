@@ -571,15 +571,27 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
         </tbody>
       </table>
 
-      {/* Legend — RoundSys style */}
-      <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span className="font-bold text-slate-700">Key:</span>
-        <span><span className="font-semibold">P</span> = PRN (as required)</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-emerald-100 border border-emerald-300 rounded text-center text-emerald-700 font-bold leading-5" style={{fontSize:8}}>JC</span> = Administered (initials)</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-red-100 border border-red-300 rounded text-center text-red-700 font-bold leading-5" style={{fontSize:9}}>X</span> = Refused</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-yellow-100 border border-yellow-300 rounded text-center text-yellow-700 font-bold leading-5" style={{fontSize:9}}>O</span> = Omitted</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-amber-50 border border-amber-300 rounded leading-5" /> = Today</span>
-        <span className="text-slate-400 italic">Click any past cell to log or view administration</span>
+      {/* Legend */}
+      <div className="px-4 py-2.5 bg-slate-100 border-t-2 border-slate-300 text-xs text-slate-700" style={{ fontFamily: 'monospace' }}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-bold text-slate-900 mr-1">Key:</span>
+          <span><span className="font-bold text-amber-700 bg-yellow-100 px-1 rounded">PRN</span> = As Required</span>
+          <span className="text-slate-400">|</span>
+          <span><span className="font-bold text-emerald-700 bg-emerald-100 px-1 rounded">JC</span> = Staff Initials (Administered)</span>
+          <span className="text-slate-400">|</span>
+          <span><span className="font-bold text-red-700 bg-red-100 px-1 rounded">X</span> = Refused</span>
+          <span className="text-slate-400">|</span>
+          <span><span className="font-bold text-yellow-700 bg-yellow-100 px-1 rounded">O</span> = Omitted / Missed</span>
+          <span className="text-slate-400">|</span>
+          <span><span className="font-bold text-slate-500 bg-slate-200 px-1 rounded">—</span> = Not Recorded</span>
+          <span className="text-slate-400">|</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-4 h-4 border-2 border-amber-400 bg-amber-50 rounded" style={{fontSize:7}} /> = Today</span>
+          <span className="text-slate-400">|</span>
+          <span className="text-slate-500 italic">Click any past cell to log or view record</span>
+        </div>
+        <div className="mt-1 text-slate-500">
+          A = Administered &nbsp;|&nbsp; P = PRN &nbsp;|&nbsp; R = Refused &nbsp;|&nbsp; O = Omitted &nbsp;|&nbsp; M = Missed / Not Given &nbsp;|&nbsp; DN = Do Not Give &nbsp;|&nbsp; H = Held &nbsp;|&nbsp; Initials = Staff who administered
+        </div>
       </div>
     </div>
   )

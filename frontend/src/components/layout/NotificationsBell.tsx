@@ -53,7 +53,8 @@ export default function NotificationsBell() {
     try { await api.put(`/notifications/${id}/read`) } catch {}
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
     setUnread(prev => Math.max(0, prev - 1))
-    if (link) { setOpen(false); navigate(link) }
+    setOpen(false)
+    navigate(link || '/messages')
   }
 
   const markAllRead = async () => {

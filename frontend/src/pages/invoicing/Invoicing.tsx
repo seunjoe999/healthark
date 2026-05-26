@@ -122,11 +122,11 @@ export default function Invoicing() {
                   <div className="flex items-center gap-8">
                     <div className="text-right">
                       <p className="text-sm text-slate-500">Hours</p>
-                      <p className="font-semibold text-slate-800">{inv.commissioned_hours?.toFixed(1) || '—'}</p>
+                      <p className="font-semibold text-slate-800">{inv.commissioned_hours ? parseFloat(String(inv.commissioned_hours)).toFixed(1) : '—'}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-slate-500">Amount</p>
-                      <p className="font-bold text-slate-800">£{(inv.invoice_amount || 0).toFixed(2)}</p>
+                      <p className="font-bold text-slate-800">£{parseFloat(String(inv.invoice_amount || 0)).toFixed(2)}</p>
                     </div>
                     <select className="text-xs px-2 py-1 border border-slate-200 rounded cursor-pointer" onChange={e => { e.stopPropagation(); handleStatusChange(inv.id, e.target.value); }} value={inv.status}>
                       <option value="pending">Pending</option>
@@ -247,11 +247,11 @@ function InvoiceDetailModal({ invoice, onClose, onStatusChange }: { invoice: Inv
           </div>
           <div>
             <p className="text-xs text-slate-500 font-semibold">Hours</p>
-            <p className="font-semibold text-slate-800">{invoice.commissioned_hours?.toFixed(1) || '—'}</p>
+            <p className="font-semibold text-slate-800">{invoice.commissioned_hours ? parseFloat(String(invoice.commissioned_hours)).toFixed(1) : '—'}</p>
           </div>
           <div>
             <p className="text-xs text-slate-500 font-semibold">Amount</p>
-            <p className="font-bold text-2xl text-slate-800">£{(invoice.invoice_amount || 0).toFixed(2)}</p>
+            <p className="font-bold text-2xl text-slate-800">£{parseFloat(String(invoice.invoice_amount || 0)).toFixed(2)}</p>
           </div>
         </div>
         {invoice.notes && (

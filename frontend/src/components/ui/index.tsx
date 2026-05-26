@@ -1,6 +1,7 @@
 import React, { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { Loader2, AlertTriangle, CheckCircle, Info, X, ChevronDown } from 'lucide-react'
 import clsx from 'clsx'
+import SpeechButtonComponent from './SpeechButton'
 
 // ── Button ────────────────────────────────────────────────────────
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -76,11 +77,27 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string; error?: string
 }
 
-export function Textarea({ label, error, className, ...props }: TextareaProps) {
+export function Textarea({ label, error, className, onChange, value, ...props }: TextareaProps) {
   return (
     <div className="w-full">
       {label && <label className="label">{label}</label>}
-      <textarea className={clsx('input resize-none', error && 'border-rose-400', className)} rows={3} {...props} />
+      <div className="flex gap-2 items-start">
+        <textarea
+          className={clsx('input resize-none flex-1', error && 'border-rose-400', className)}
+          rows={3}
+          value={value}
+          onChange={onChange}
+          {...props}
+        />
+        <SpeechButtonComponent
+          onTranscript={text => {
+            if (onChange) {
+              const ev = { target: { value: (value ? `${value} ` : '') + text } } as React.ChangeEvent<HTMLTextAreaElement>
+              onChange(ev)
+            }
+          }}
+        />
+      </div>
       {error && <p className="mt-1.5 text-xs text-rose-500 font-medium">{error}</p>}
     </div>
   )
@@ -198,10 +215,11 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-        <div className={clsx('relative bg-white rounded-2xl shadow-modal w-full animate-slide-up', sizes[size])}>
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+        <div className={clsx('relative rounded-2xl shadow-modal w-full animate-slide-up', sizes[size])}
+          style={{ background: '#111', border: '1px solid rgba(232,177,48,0.2)' }}>
+          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <h2 className="text-base font-semibold text-white">{title}</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
