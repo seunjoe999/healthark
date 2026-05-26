@@ -4,7 +4,7 @@ import { homesApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
-import { CalendarDays, Plus, Check, X, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { CalendarDays, Plus, Check, X, ChevronLeft, ChevronRight, Clock, ListFilter } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [
@@ -19,13 +19,15 @@ const LEAVE_TYPES = [
 export default function Holidays() {
   const { user, isRole } = useAuth()
   const [leaves, setLeaves] = useState<any[]>([])
+  const [allLeaves, setAllLeaves] = useState<any[]>([])
   const [staffList, setStaffList] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [loadingAll, setLoadingAll] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [view, setView] = useState<'calendar' | 'list'>('calendar')
+  const [view, setView] = useState<'calendar' | 'list' | 'requests'>('calendar')
   const [preview, setPreview] = useState<any>(null)
 
   useEffect(() => {
@@ -40,12 +42,12 @@ export default function Holidays() {
     if (!selectedHome) return
     staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || []))
     load()
+    loadAllRequests()
   }, [selectedHome, currentMonth])
 
   const load = async () => {
     setLoading(true)
     try {
-      // For non-managers, only show own leave
       const staffId = !isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined
       const res = await api.get('/staff-hr/leave/all', {
         params: {
@@ -60,10 +62,23 @@ export default function Holidays() {
     finally { setLoading(false) }
   }
 
+  const loadAllRequests = async () => {
+    if (!selectedHome) return
+    setLoadingAll(true)
+    try {
+      const staffId = !isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined
+      const res = await api.get('/staff-hr/leave/all', {
+        params: { homeId: selectedHome, ...(staffId ? { staffId } : {}), orderBy: 'applied' }
+      })
+      setAllLeaves(res.data.data || [])
+    } catch (e) { console.error(e) }
+    finally { setLoadingAll(false) }
+  }
+
   const approve = async (id: string) => {
     try {
       await api.put(`/staff-hr/leave/${id}/approve`)
-      await load()
+      await Promise.all([load(), loadAllRequests()])
       toast.success('Leave approved')
     } catch { toast.error('Failed') }
   }
@@ -71,7 +86,7 @@ export default function Holidays() {
   const decline = async (id: string) => {
     try {
       await api.put(`/staff-hr/leave/${id}/decline`)
-      await load()
+      await Promise.all([load(), loadAllRequests()])
       toast.success('Leave declined')
     } catch { toast.error('Failed') }
   }
@@ -87,16 +102,19 @@ export default function Holidays() {
 
   const pending = leaves.filter(l => l.status === 'pending')
   const approved = leaves.filter(l => l.status === 'approved')
+  const allPending = allLeaves.filter(l => l.status === 'pending')
+  const allApproved = allLeaves.filter(l => l.status === 'approved')
+  const allDeclined = allLeaves.filter(l => l.status === 'declined')
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
-            <CalendarDays className="w-6 h-6 text-purple-600" /> Holiday Management
+            <CalendarDays className="w-6 h-6 text-purple-600" /> Leave & Holidays
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
-            {pending.length} pending · {approved.length} approved this month
+            {allPending.length} pending · {allApproved.length} approved · {allDeclined.length} declined
           </p>
         </div>
         <div className="flex gap-3">
@@ -104,23 +122,94 @@ export default function Holidays() {
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
             <button onClick={() => setView('calendar')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Calendar</button>
             <button onClick={() => setView('list')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>List</button>
+            <button onClick={() => setView('requests')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors relative ${view === 'requests' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>
+              Requests
+              {allPending.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">{allPending.length > 9 ? '9+' : allPending.length}</span>}
+            </button>
           </div>
           <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Request leave</Button>
         </div>
       </div>
 
       {/* Pending approvals banner */}
-      {pending.length > 0 && isRole('home_manager', 'group_admin') && (
+      {allPending.length > 0 && isRole('home_manager', 'group_admin') && view !== 'requests' && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-amber-600" />
-            <p className="text-sm font-semibold text-amber-800">{pending.length} leave request{pending.length > 1 ? 's' : ''} awaiting approval</p>
+            <p className="text-sm font-semibold text-amber-800">{allPending.length} leave request{allPending.length > 1 ? 's' : ''} awaiting approval</p>
           </div>
-          <button onClick={() => setView('list')} className="text-xs text-amber-700 font-bold hover:underline">Review →</button>
+          <button onClick={() => setView('requests')} className="text-xs text-amber-700 font-bold hover:underline">Review →</button>
         </div>
       )}
 
-      {loading ? <Spinner /> : view === 'calendar' ? (
+      {view === 'requests' ? (
+        loadingAll ? <Spinner /> : (
+          <div className="space-y-6">
+            {[
+              { status: 'pending', label: 'Pending', items: allPending, accent: 'border-amber-400', badge: 'badge-warning', headerBg: 'bg-amber-50', headerText: 'text-amber-800' },
+              { status: 'approved', label: 'Approved', items: allApproved, accent: 'border-emerald-400', badge: 'badge-success', headerBg: 'bg-emerald-50', headerText: 'text-emerald-800' },
+              { status: 'declined', label: 'Declined', items: allDeclined, accent: 'border-rose-400', badge: 'badge-critical', headerBg: 'bg-rose-50', headerText: 'text-rose-800' },
+            ].map(({ status, label, items, accent, badge, headerBg, headerText }) => (
+              <div key={status}>
+                <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mb-3 ${headerBg}`}>
+                  <span className={`text-sm font-bold ${headerText}`}>{label}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${headerBg} ${headerText} border ${status === 'pending' ? 'border-amber-300' : status === 'approved' ? 'border-emerald-300' : 'border-rose-300'}`}>{items.length}</span>
+                  {status === 'pending' && <span className="text-xs text-slate-400 ml-auto">sorted by application date ↑</span>}
+                </div>
+                {items.length === 0 ? (
+                  <p className="text-sm text-slate-400 italic px-4">No {label.toLowerCase()} requests</p>
+                ) : (
+                  <div className="space-y-2">
+                    {items.map((l: any, idx: number) => (
+                      <div key={l.id} className={`bg-white rounded-2xl border-l-4 ${accent} shadow-sm p-4 flex items-start justify-between gap-4`}
+                        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <div className="flex-shrink-0 flex flex-col items-center pt-0.5 w-8">
+                            <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                          </div>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                            status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                            status === 'declined' ? 'bg-rose-100 text-rose-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {(l.staff_name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-900">{l.staff_name}</p>
+                            <p className="text-sm text-slate-500 capitalize mt-0.5">
+                              {(l.leave_type || '').replace(/_/g, ' ')} · {l.start_date ? format(parseISO(l.start_date), 'd MMM') : ''} – {l.end_date ? format(parseISO(l.end_date), 'd MMM yyyy') : ''}
+                              {l.hours_requested ? ` · ${l.hours_requested}h` : ''}
+                            </p>
+                            {l.reason && <p className="text-xs text-slate-400 italic mt-1 truncate">{l.reason}</p>}
+                            <p className="text-xs text-slate-300 mt-1">Applied {l.created_at ? format(parseISO(l.created_at), 'd MMM yyyy, HH:mm') : '—'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {l.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                            <>
+                              <button onClick={() => approve(l.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                                <Check className="w-3.5 h-3.5" /> Approve
+                              </button>
+                              <button onClick={() => decline(l.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                                <X className="w-3.5 h-3.5" /> Decline
+                              </button>
+                            </>
+                          )}
+                          {l.status !== 'pending' && (
+                            <span className={`badge ${badge}`}>{status}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      ) : loading ? <Spinner /> : view === 'calendar' ? (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
           {/* Month nav */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">

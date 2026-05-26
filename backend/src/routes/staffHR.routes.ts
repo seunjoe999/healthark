@@ -206,14 +206,15 @@ router.get('/leave/all', async (req: Request, res: Response, next: NextFunction)
     const token = req.headers.authorization?.substring(7);
     const decoded = token ? jwt.decode(token) as any : {};
     const homeId = (req.query.homeId as string) || decoded?.homeId || '';
-    const { from, to } = req.query as Record<string, string>;
+    const { from, to, staffId, orderBy } = req.query as Record<string, string>;
     let sql = `SELECT lr.*, s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role
                FROM staff_leave lr JOIN staff s ON s.id = lr.staff_id
                WHERE s.home_id = $1`;
     const params: unknown[] = [homeId];
+    if (staffId) { sql += ` AND lr.staff_id = $${params.length+1}`; params.push(staffId); }
     if (from) { sql += ` AND lr.end_date >= $${params.length+1}`; params.push(from); }
     if (to)   { sql += ` AND lr.start_date <= $${params.length+1}`; params.push(to); }
-    sql += ' ORDER BY lr.start_date DESC';
+    sql += orderBy === 'applied' ? ' ORDER BY lr.created_at ASC' : ' ORDER BY lr.start_date DESC';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
