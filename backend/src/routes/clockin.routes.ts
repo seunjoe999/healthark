@@ -415,6 +415,44 @@ router.put('/home-location/:homeId', authenticate, param('homeId').isUUID(),
   }
 );
 
+// ── Resident apartment clock-in management ─────────────────────────
+
+// GET /api/clockin/residents/:homeId — list all live service users with QR and location data
+router.get('/residents/:homeId', authenticate, param('homeId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const base = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const rows = await query<any>(
+        `SELECT id, first_name, last_name, room_number, qr_token, latitude, longitude, geofence_radius
+         FROM service_users WHERE home_id = $1 AND status = 'live' ORDER BY room_number NULLS LAST, first_name`,
+        [req.params.homeId]
+      );
+      const residents = rows.map((su: any) => ({
+        ...su,
+        qrUrl: `${base}/clockin/${su.qr_token}`,
+        hasLocation: !!(su.latitude && su.longitude),
+      }));
+      res.json({ success: true, data: residents } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/clockin/resident-location/:suId — set lat/lng geofence for a resident apartment
+router.put('/resident-location/:suId', authenticate, param('suId').isUUID(),
+  [body('latitude').isFloat({ min: -90, max: 90 }), body('longitude').isFloat({ min: -180, max: 180 })],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { latitude, longitude, geofenceRadius } = req.body;
+      await query(
+        'UPDATE service_users SET latitude=$1, longitude=$2, geofence_radius=$3 WHERE id=$4',
+        [latitude, longitude, parseInt(geofenceRadius) || 200, req.params.suId]
+      );
+      res.json({ success: true, data: { latitude, longitude } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // ── Legacy per-SU routes (kept for backward compatibility) ─────────
 
 router.get('/qr/:token', param('token').isUUID(), validateRequest,

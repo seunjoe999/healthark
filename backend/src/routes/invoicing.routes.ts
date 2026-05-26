@@ -54,14 +54,17 @@ router.get('/:id', param('id').isUUID(), validateRequest,
 router.post('/', [
   body('homeId').isUUID(),
   body('suId').isUUID(),
-  body('monthDate').isISO8601(),
+  body('monthDate').notEmpty(),
   body('commissionedHours').optional().isNumeric(),
   body('invoiceAmount').isNumeric(),
 ], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { homeId, suId, monthDate, commissionedHours, hourlyRate, invoiceAmount, notes } = req.body;
+      const { homeId, suId, commissionedHours, hourlyRate, invoiceAmount, notes } = req.body;
+      // <input type="month"> sends YYYY-MM; PostgreSQL DATE needs YYYY-MM-DD
+      const rawDate = req.body.monthDate as string;
+      const monthDate = /^\d{4}-\d{2}$/.test(rawDate) ? `${rawDate}-01` : rawDate;
       const rows = await dbQuery(
         `INSERT INTO invoices (home_id, su_id, month_date, commissioned_hours, hourly_rate, invoice_amount, notes, created_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,

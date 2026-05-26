@@ -188,17 +188,17 @@ export default function MAR() {
         {/* Show toggles */}
         <div className="flex items-center gap-1.5">
           <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Show Prescriptions</label>
-          <select className="border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none"
-            value={showPrescriptions ? 'Yes' : 'No'} onChange={e => setShowPrescriptions(e.target.value === 'Yes')}>
-            <option>Yes</option><option>No</option>
-          </select>
+          <button type="button" onClick={() => setShowPrescriptions(!showPrescriptions)}
+            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${showPrescriptions ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+            {showPrescriptions ? 'Yes' : 'No'}
+          </button>
         </div>
         <div className="flex items-center gap-1.5">
           <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Show Directions</label>
-          <select className="border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none"
-            value={showDirections ? 'Yes' : 'No'} onChange={e => setShowDirections(e.target.value === 'Yes')}>
-            <option>Yes</option><option>No</option>
-          </select>
+          <button type="button" onClick={() => setShowDirections(!showDirections)}
+            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${showDirections ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+            {showDirections ? 'Yes' : 'No'}
+          </button>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
