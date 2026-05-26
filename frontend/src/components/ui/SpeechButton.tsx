@@ -21,21 +21,28 @@ export default function SpeechButton({ onTranscript, className = '' }: SpeechBut
   const start = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) return
-    const rec = new SR()
-    rec.continuous = true
-    rec.interimResults = false
-    rec.lang = 'en-GB'
-    rec.onresult = (e: any) => {
-      const text = Array.from(e.results as any[])
-        .map((r: any) => r[0].transcript)
-        .join(' ')
-      onTranscript(text)
-    }
-    rec.onend = () => setListening(false)
-    rec.onerror = () => setListening(false)
-    rec.start()
-    recRef.current = rec
-    setListening(true)
+    try {
+      const rec = new SR()
+      rec.continuous = true
+      rec.interimResults = false
+      rec.lang = 'en-GB'
+      rec.maxAlternatives = 1
+      rec.onstart = () => setListening(true)
+      rec.onresult = (e: any) => {
+        let text = ''
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) text += e.results[i][0].transcript + ' '
+        }
+        if (text.trim()) onTranscript(text.trim())
+      }
+      rec.onend = () => setListening(false)
+      rec.onerror = (e: any) => {
+        setListening(false)
+        if (e.error === 'not-allowed') alert('Microphone access denied. Please allow microphone in your browser settings.')
+      }
+      rec.start()
+      recRef.current = rec
+    } catch { setListening(false) }
   }, [onTranscript])
 
   const stop = useCallback(() => {

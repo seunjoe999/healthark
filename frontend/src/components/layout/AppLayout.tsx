@@ -81,7 +81,7 @@ const navSections = [
       { label: 'Tasks',                to: '/tasks',             icon: CheckSquare,   roles: [],                                           featureKey: 'tasks' },
       { label: 'Rota',                 to: '/rota',              icon: CalendarRange, roles: ['home_manager','group_admin','senior_carer'], featureKey: 'rota' },
       { label: 'Timesheets',           to: '/timesheets',        icon: Clock,         roles: ['home_manager','group_admin','senior_carer'], featureKey: 'timesheets' },
-      { label: 'Holidays',             to: '/holidays',          icon: Palmtree,      roles: ['home_manager','group_admin'],                featureKey: 'holidays' },
+      { label: 'Leave & Holidays',      to: '/holidays',          icon: Palmtree,      roles: [],                                           featureKey: 'holidays' },
       { label: 'Invoicing',            to: '/invoicing',         icon: DollarSign,    roles: ['home_manager','group_admin'],                featureKey: 'invoicing' },
       { label: 'Maintenance',          to: '/maintenance',       icon: Wrench,        roles: [],                                           featureKey: 'maintenance' },
       { label: 'Clock In Analytics',   to: '/clockin-analytics', icon: BarChart2,     roles: ['home_manager','group_admin'],                featureKey: 'clockin_analytics' },

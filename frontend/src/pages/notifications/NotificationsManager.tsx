@@ -190,20 +190,20 @@ export default function NotificationsManager() {
         </div>
 
         {/* Recent notifications */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-6">
+        <div className="rounded-2xl border border-white/10 p-6" style={{ background: '#111' }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-              <Bell className="w-4 h-4 text-purple-600" /> Recent Notifications
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-400" /> Recent Notifications
             </h2>
-            <button onClick={markAllRead} className="text-xs text-purple-600 font-semibold flex items-center gap-1 hover:text-purple-800 transition-colors">
+            <button onClick={markAllRead} className="text-xs text-amber-400 font-semibold flex items-center gap-1 hover:text-amber-300 transition-colors">
               <CheckCheck className="w-3.5 h-3.5" /> Mark all read
             </button>
           </div>
 
           {loading ? <Spinner /> : sent.length === 0 ? (
-            <div className="text-center py-10 text-slate-400">
-              <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No notifications yet</p>
+            <div className="text-center py-10">
+              <Bell className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+              <p className="text-sm text-slate-500">No notifications yet</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[500px] overflow-y-auto">
@@ -211,16 +211,17 @@ export default function NotificationsManager() {
                 const t = TYPE_OPTIONS.find(x => x.value === n.type) || TYPE_OPTIONS[0]
                 const Icon = t.icon
                 return (
-                  <div key={n.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${n.is_read ? 'border-slate-100 bg-slate-50/50' : `${t.bg}`}`}>
+                  <div key={n.id} className="flex items-start gap-3 p-3 rounded-xl transition-colors"
+                    style={{ background: n.is_read ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${t.color}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${n.is_read ? 'text-slate-500' : 'text-slate-900'}`}>{n.title}</p>
-                      {n.body && <p className="text-xs text-slate-400 mt-0.5 truncate">{n.body}</p>}
-                      <p className="text-xs text-slate-400 mt-1">{format(new Date(n.created_at), 'd MMM, HH:mm')}</p>
+                      <p className={`text-sm font-semibold ${n.is_read ? 'text-slate-400' : 'text-white'}`}>{n.title}</p>
+                      {n.body && <p className="text-xs text-slate-500 mt-0.5 truncate">{n.body}</p>}
+                      <p className="text-xs text-slate-600 mt-1">{format(new Date(n.created_at), 'd MMM, HH:mm')}</p>
                     </div>
-                    {!n.is_read && <div className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 mt-1.5" />}
+                    {!n.is_read && <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0 mt-1.5" />}
                     {isRole('home_manager', 'group_admin') && (
-                      <button onClick={() => deleteNotif(n.id)} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
+                      <button onClick={() => deleteNotif(n.id)} className="p-1 rounded-lg text-slate-600 hover:text-rose-400 transition-colors flex-shrink-0">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
