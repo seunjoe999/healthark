@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Plus, AlertTriangle, Check, X, Trash2 } from 'lucide-react'
+import { Plus, AlertTriangle, Check, X, Trash2, Paperclip, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface CQCNotification {
@@ -15,6 +15,7 @@ interface CQCNotification {
   status: 'pending' | 'resolved'
   notified_by_name?: string
   notification_date: string
+  attachment_url?: string
 }
 
 export default function CQCNotifications() {
@@ -136,15 +137,29 @@ export default function CQCNotifications() {
 }
 
 function CreateNotificationModal({ open, onClose, homeId, onSaved }: { open: boolean; onClose: () => void; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ suId: '', notificationType: 'safeguarding', details: '' })
+  const [form, setForm] = useState({ suId: '', notificationType: 'safeguarding', details: '', attachmentUrl: '' })
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [users, setUsers] = useState<any[]>([])
+  const fileRef = React.useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
       api.get(`/service-users?homeId=${homeId}&status=live`).then(res => setUsers(res.data.data || []))
     }
   }, [open, homeId])
+
+  const uploadFile = async (file: File) => {
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setForm((p: any) => ({ ...p, attachmentUrl: res.data.data.fileUrl }))
+      toast.success('File attached')
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false) }
+  }
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,7 +171,7 @@ function CreateNotificationModal({ open, onClose, homeId, onSaved }: { open: boo
     try {
       await api.post('/cqc-notifications', { homeId, ...form })
       toast.success('Notification created')
-      setForm({ suId: '', notificationType: 'safeguarding', details: '' })
+      setForm({ suId: '', notificationType: 'safeguarding', details: '', attachmentUrl: '' })
       onSaved()
       onClose()
     } catch (err: any) {
@@ -171,7 +186,18 @@ function CreateNotificationModal({ open, onClose, homeId, onSaved }: { open: boo
       <form onSubmit={save} className="space-y-4">
         <Select label="Type *" required value={form.notificationType} onChange={e => setForm((p: any) => ({ ...p, notificationType: e.target.value }))} options={[ { value: 'safeguarding', label: 'Safeguarding Incident' }, { value: 'cqc_alert', label: 'CQC Alert' }, { value: 'serious_incident', label: 'Serious Incident' }, { value: 'complaint', label: 'Complaint' }]} />
         <Select label="Service User (Optional)" value={form.suId} onChange={e => setForm((p: any) => ({ ...p, suId: e.target.value }))} options={users.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name}` }))} placeholder="Select resident (if applicable)" />
-        <div><label className="label">Details</label><textarea className="input" placeholder="Describe the incident or notification..." rows={4} value={form.details} onChange={e => setForm((p: any) => ({ ...p, details: e.target.value }))} required /></div>
+        <div><label className="label">Details *</label><textarea className="input" placeholder="Describe the incident or notification..." rows={4} value={form.details} onChange={e => setForm((p: any) => ({ ...p, details: e.target.value }))} required /></div>
+        <div>
+          <label className="label">Attachment (optional)</label>
+          <div className="flex items-center gap-2">
+            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0])} />
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium border border-slate-200 transition-colors">
+              <Paperclip className="w-4 h-4" /> {uploading ? 'Uploading...' : 'Attach file'}
+            </button>
+            {form.attachmentUrl && <span className="text-xs text-green-600 flex items-center gap-1"><Check className="w-3 h-3" /> File attached</span>}
+          </div>
+        </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Create Notification</Button>
@@ -203,6 +229,12 @@ function NotificationDetailModal({ notification, onClose, onResolve }: { notific
           {notification.notified_by_name && <span>By: {notification.notified_by_name}</span>}
           <span>Date: {new Date(notification.notification_date).toLocaleDateString()}</span>
         </div>
+        {notification.attachment_url && (
+          <a href={notification.attachment_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
+            <Paperclip className="w-4 h-4" /> View attachment <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
         {notification.status === 'pending' && (
           <div className="flex gap-3 pt-2">
             <button onClick={onResolve} className="flex-1 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded font-medium text-sm transition-colors">Mark Resolved</button>

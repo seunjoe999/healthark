@@ -271,3 +271,6 @@ export function PrintButton({ label = 'Print' }: { label?: string }) {
     </button>
   )
 }
+
+export { default as SpeechButton } from './SpeechButton'
+export { SpeechTextarea } from './SpeechButton'

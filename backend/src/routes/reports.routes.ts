@@ -308,4 +308,35 @@ router.put('/handover-notes/:suId', async (req: Request, res: Response, next: Ne
   } catch (err) { next(err); }
 });
 
+// GET /api/reports/monthly-reviews-history — history of all care reviews grouped by month
+router.get('/monthly-reviews-history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT cr.*,
+              su.first_name || ' ' || su.last_name AS su_name,
+              s.first_name || ' ' || s.last_name AS reviewed_by_name,
+              TO_CHAR(DATE_TRUNC('month', cr.review_date), 'Mon YYYY') AS review_month,
+              DATE_TRUNC('month', cr.review_date) AS month_start
+       FROM care_reviews cr
+       JOIN service_users su ON su.id = cr.su_id
+       LEFT JOIN staff s ON s.id = cr.reviewed_by
+       WHERE su.home_id = $1
+       ORDER BY cr.review_date DESC`,
+      [homeId]
+    );
+    // Group by month
+    const byMonth: Record<string, any> = {};
+    for (const r of rows as any[]) {
+      const key = r.review_month;
+      if (!byMonth[key]) byMonth[key] = { month: key, monthStart: r.month_start, reviews: [] };
+      byMonth[key].reviews.push(r);
+    }
+    const months = Object.values(byMonth).sort((a: any, b: any) =>
+      new Date(b.monthStart).getTime() - new Date(a.monthStart).getTime()
+    );
+    res.json({ success: true, data: { months, total: (rows as any[]).length } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 export default router;

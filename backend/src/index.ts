@@ -128,10 +128,12 @@ app.use('/api/invoicing', invoicingRoutes);
 app.use('/api/cqc-notifications', cqcNotificationsRoutes);
 app.use('/api/supervision', supervisionRoutes);
 
+import physicalHealthPlanRoutes from './routes/physicalHealthPlan.routes';
 import incidentsRoutes from './routes/incidents.routes';
 import complianceRoutes from './routes/compliance.routes';
 import medicationStockRoutes from './routes/medicationStock.routes';
 import signaturesRoutes from './routes/signatures.routes';
+app.use('/api/physical-health-plans', physicalHealthPlanRoutes);
 app.use('/api/incidents', incidentsRoutes);
 app.use('/api/compliance', complianceRoutes);
 app.use('/api/medication-stock', medicationStockRoutes);
@@ -687,6 +689,98 @@ async function ensureColumns() {
        signed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
        PRIMARY KEY (event_id, staff_id)
      )`,
+    // ── Invoicing, CQC notifications, Supervision, Appraisals ─────────────────
+    `CREATE TABLE IF NOT EXISTS invoices (
+       id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id           UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id             UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       month_date        DATE NOT NULL,
+       commissioned_hours DECIMAL(10,2),
+       hourly_rate       DECIMAL(10,2),
+       invoice_amount    DECIMAL(12,2),
+       status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+       notes             TEXT,
+       created_by        UUID REFERENCES staff(id),
+       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       UNIQUE(home_id, su_id, month_date)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_invoices_home_su ON invoices(home_id, su_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status)`,
+    `CREATE TABLE IF NOT EXISTS cqc_notifications (
+       id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id           UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id             UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       notification_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       notification_type VARCHAR(50),
+       details           TEXT,
+       notified_by       UUID REFERENCES staff(id),
+       attachment_url    TEXT,
+       status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_cqc_home ON cqc_notifications(home_id, notification_date DESC)`,
+    `CREATE TABLE IF NOT EXISTS supervisions (
+       id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id               UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id              UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       supervisor_id         UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       supervision_date      DATE NOT NULL,
+       supervision_type      VARCHAR(50),
+       summary               TEXT,
+       strengths             TEXT,
+       areas_for_improvement TEXT,
+       action_points         TEXT,
+       next_date             DATE,
+       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_supervisions_staff ON supervisions(staff_id, supervision_date DESC)`,
+    `CREATE TABLE IF NOT EXISTS appraisals (
+       id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id            UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id           UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       appraiser_id       UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       appraisal_date     DATE NOT NULL,
+       rating             VARCHAR(20),
+       performance_summary TEXT,
+       comments           TEXT,
+       goals              TEXT,
+       next_review_date   DATE,
+       created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_appraisals_staff ON appraisals(staff_id, appraisal_date DESC)`,
+    // ── Physical health support plans ─────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS physical_health_plans (
+       id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id          UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id            UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       created_by       UUID REFERENCES staff(id) ON DELETE SET NULL,
+       reviewed_by      UUID REFERENCES staff(id) ON DELETE SET NULL,
+       height_cm        NUMERIC(5,1),
+       weight_kg        NUMERIC(6,2),
+       bmi              NUMERIC(5,2),
+       blood_pressure   VARCHAR(20),
+       pulse            INTEGER,
+       temperature_c    NUMERIC(4,1),
+       oxygen_sat       INTEGER,
+       conditions       TEXT,
+       allergies        TEXT,
+       current_meds     TEXT,
+       gp_name          VARCHAR(255),
+       gp_phone         VARCHAR(30),
+       hospital_number  VARCHAR(100),
+       nhs_number       VARCHAR(20),
+       last_gp_review   DATE,
+       next_review_date DATE,
+       notes            TEXT,
+       review_date      DATE,
+       created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_php_su   ON physical_health_plans(su_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_php_home ON physical_health_plans(home_id)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

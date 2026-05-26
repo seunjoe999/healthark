@@ -108,4 +108,16 @@ router.post('/policy-doc/:policyId', param('policyId').isUUID(), validateRequest
   }
 );
 
+// POST /api/upload/document — generic document upload, returns fileUrl
+router.post('/document',
+  docUpload.single('file'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) throw new AppError('No file uploaded', 400);
+      const fileUrl = `/uploads/docs/${req.file.filename}`;
+      res.json({ success: true, data: { fileUrl, fileName: req.file.originalname } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

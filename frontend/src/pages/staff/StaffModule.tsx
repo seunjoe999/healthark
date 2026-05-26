@@ -104,7 +104,7 @@ export default function StaffModule() {
     { key: 'clock', label: 'Clock history' },
     { key: 'documents', label: 'Documents' },
     { key: 'cautions', label: 'Cautions' },
-    { key: 'supervisions', label: 'Supervisions' },
+    { key: 'supervisions', label: 'Supervision & Appraisal' },
   ]
 
   return (
@@ -458,34 +458,47 @@ export default function StaffModule() {
             {tab === 'supervisions' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-slate-800">Supervisions & Reviews ({supervisions.length})</h3>
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>
+                  <h3 className="font-semibold text-slate-800">Supervision &amp; Appraisal ({supervisions.length})</h3>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSupervisionOpen(true)}>Add record</Button>
                 </div>
                 {supervisions.length === 0 ? (
-                  <EmptyState title="No supervisions recorded" description="Document supervision sessions and performance reviews"
-                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSupervisionOpen(true)}>Add supervision</Button>} />
+                  <EmptyState title="No supervision or appraisal records" description="Document supervision sessions and annual appraisals"
+                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSupervisionOpen(true)}>Add record</Button>} />
                 ) : (
-                  <div className="space-y-3">
-                    {supervisions.map((s: any) => (
-                      <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
-                        <div className="flex items-start justify-between mb-2">
-                          <span className="badge badge-info capitalize">{(s.supervision_type || '').replace('_', ' ')}</span>
-                          <p className="text-xs text-slate-400">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''}</p>
+                  <>
+                    {['appraisal', 'supervision', 'one_to_one', 'return_to_work', 'probation_review'].map(type => {
+                      const items = supervisions.filter((s: any) => s.supervision_type === type)
+                      if (!items.length) return null
+                      const label = type === 'appraisal' ? 'Appraisals' : type === 'supervision' ? 'Supervisions' : type.replace(/_/g, ' ')
+                      return (
+                        <div key={type} className="mb-5">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 capitalize">{label}</h4>
+                          <div className="space-y-3">
+                            {items.map((s: any) => (
+                              <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                                <div className="flex items-start justify-between mb-2">
+                                  <span className="badge badge-info capitalize">{(s.supervision_type || '').replace(/_/g, ' ')}</span>
+                                  <p className="text-xs text-slate-400">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''}</p>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                  {s.summary && <p className="text-slate-700">{s.summary}</p>}
+                                  {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
+                                  {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
+                                  {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
+                                  {s.staff_comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff comments</p><p className="text-slate-700 mt-0.5 italic">"{s.staff_comments}"</p></div>}
+                                  {s.next_supervision_date && <p className="text-xs text-slate-400">Next: {format(new Date(s.next_supervision_date), 'd MMM yyyy')}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="space-y-2 text-sm">
-                          {s.summary && <p className="text-slate-700">{s.summary}</p>}
-                          {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
-                          {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
-                          {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
-                          {s.staff_comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff comments</p><p className="text-slate-700 mt-0.5 italic">"{s.staff_comments}"</p></div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      )
+                    })}
+                  </>
                 )}
                 {addSupervisionOpen && selected && (
                   <AddSupervisionModalInline staffId={selected.id} onClose={() => setAddSupervisionOpen(false)}
-                    onSaved={async () => { setAddSupervisionOpen(false); const res = await api.get(`/reviews/supervisions/${selected.id}`); setSupervisions(res.data.data || []); toast.success('Supervision recorded') }} />
+                    onSaved={async () => { setAddSupervisionOpen(false); const res = await api.get(`/reviews/supervisions/${selected.id}`); setSupervisions(res.data.data || []); toast.success('Recorded') }} />
                 )}
               </div>
             )}
@@ -663,7 +676,6 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
         </div>
         <Input label="Total hours" type="number" step="0.5" value={form.totalHours} onChange={e => set('totalHours', e.target.value)} hint="e.g. 7.5 for one day" />
         <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)} options={STATUSES} />
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Save leave record</Button>

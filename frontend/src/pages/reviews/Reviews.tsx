@@ -294,7 +294,7 @@ function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: 
 }
 
 function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ reviewType: 'care_review', reviewDate: new Date().toISOString().split('T')[0], summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', nextReviewDate: '', attendees: '' })
+  const [form, setForm] = useState({ reviewType: 'monthly_review', reviewDate: new Date().toISOString().split('T')[0], summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', nextReviewDate: '', attendees: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 

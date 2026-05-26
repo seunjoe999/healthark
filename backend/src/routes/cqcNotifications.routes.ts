@@ -65,11 +65,11 @@ router.post('/', [
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { homeId, suId, notificationType, details } = req.body;
+      const { homeId, suId, notificationType, details, attachmentUrl } = req.body;
       const rows = await query(
-        `INSERT INTO cqc_notifications (home_id, su_id, notification_type, details, notified_by, status)
-         VALUES ($1, $2, $3, $4, $5, 'pending') RETURNING *`,
-        [homeId, suId || null, notificationType, details, staffId]
+        `INSERT INTO cqc_notifications (home_id, su_id, notification_type, details, notified_by, attachment_url, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *`,
+        [homeId, suId || null, notificationType, details, staffId, attachmentUrl || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -80,11 +80,12 @@ router.post('/', [
 router.patch('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { status, details } = req.body;
+      const { status, details, attachmentUrl } = req.body;
       const updates: string[] = [];
       const vals: any[] = [];
       if (status !== undefined) { updates.push(`status=$${updates.length + 1}`); vals.push(status); }
       if (details !== undefined) { updates.push(`details=$${updates.length + 1}`); vals.push(details); }
+      if (attachmentUrl !== undefined) { updates.push(`attachment_url=$${updates.length + 1}`); vals.push(attachmentUrl); }
       
       if (!updates.length) { 
         return res.status(400).json({ success: false, error: 'No fields to update' }); 

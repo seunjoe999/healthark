@@ -27,6 +27,7 @@ const navSections = [
       { label: 'Medication Administration Record',        to: '/mar',                icon: Pill,            roles: [],                                              featureKey: 'mar' },
       { label: 'Medication Stock', to: '/medication-stock',   icon: Boxes,           roles: ['home_manager','group_admin','senior_carer'],    featureKey: 'medication_stock' },
       { label: 'Support Plans',    to: '/care-plans',         icon: FileText,        roles: [],                                              featureKey: 'care_plans' },
+      { label: 'Physical Health',  to: '/physical-health-plan', icon: Activity,      roles: [],                                              featureKey: 'physical_health' },
       { label: 'Safeguarding',     to: '/safeguarding',       icon: ShieldAlert,     roles: [],                                              featureKey: 'safeguarding' },
       { label: 'Incidents',        to: '/incidents',          icon: AlertTriangle,   roles: [],                                              featureKey: 'incidents' },
     ]
@@ -41,6 +42,7 @@ const navSections = [
       { label: 'Invoicing',        to: '/invoicing',          icon: DollarSign,      roles: ['home_manager','group_admin'],                   featureKey: 'invoicing' },
       { label: 'Hub Training',      to: '/training',           icon: GraduationCap,   roles: [],                                              featureKey: 'training' },
       { label: 'Staff',            to: '/staff',              icon: UserSquare,      roles: ['home_manager','group_admin'],                   featureKey: 'staff' },
+      { label: 'Leave Management', to: '/leave-management',   icon: Palmtree,        roles: ['home_manager','group_admin'],                   featureKey: 'leave_management' },
       { label: 'Supervision & Appraisals', to: '/supervision-appraisal', icon: Users, roles: ['home_manager','group_admin','team_leader'], featureKey: 'supervision' },
       { label: 'DBS & Compliance', to: '/dbs',                icon: UserCheck,       roles: ['home_manager','group_admin'],                   featureKey: 'dbs' },
       { label: 'Maintenance',      to: '/maintenance',        icon: Wrench,          roles: [],                                              featureKey: 'maintenance' },

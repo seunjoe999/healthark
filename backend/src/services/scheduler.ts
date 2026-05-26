@@ -80,6 +80,37 @@ async function generateDailyTasks() {
   } catch (err) { logger.error('Daily task generation failed:', err); }
 }
 
+// Roll over uncompleted daily tasks from yesterday to today
+async function rolloverPendingTasks() {
+  try {
+    const { query } = await import('../config/database');
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    // Find uncompleted tasks from yesterday that have a template (i.e., recurring)
+    const pending = await query<any>(
+      `SELECT t.* FROM tasks t
+       WHERE t.task_date = $1 AND t.status = 'pending'
+       AND EXISTS (SELECT 1 FROM task_templates tt WHERE tt.home_id = t.home_id AND tt.title = t.title)`,
+      [yesterday]
+    );
+    for (const t of pending) {
+      const exists = await query(
+        'SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3',
+        [t.home_id, today, t.title]
+      );
+      if (exists.length === 0) {
+        await query(
+          `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')`,
+          [t.home_id, t.su_id, t.title, t.category, t.description, today,
+           t.due_time, t.priority, t.assigned_role]
+        );
+      }
+    }
+    logger.info('Rollover: carried forward pending tasks');
+  } catch (err) { logger.error('Task rollover failed:', err); }
+}
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
@@ -111,6 +142,13 @@ export function startScheduler(): void {
   cron.schedule('0 6 1 * *', async () => {
     logger.info('Scheduler: generating monthly reports');
     // AI monthly report generation - wired in Phase 5
+  });
+
+  // Every morning at 6am: generate daily tasks + rollover uncompleted ones
+  cron.schedule('0 6 * * *', async () => {
+    logger.info('Scheduler: generating daily tasks');
+    await generateDailyTasks();
+    await rolloverPendingTasks();
   });
 
   logger.info('Scheduler started — all jobs registered');

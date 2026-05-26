@@ -21,7 +21,10 @@ export default function Dashboard() {
   })
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
-  const [showTaskPopup, setShowTaskPopup] = useState(true)
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const [showTaskPopup, setShowTaskPopup] = useState(() => {
+    return localStorage.getItem('taskPopupDismissed') !== today
+  })
   const bdRef = useRef<HTMLDivElement>(null)
 
   if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
@@ -239,7 +242,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      <TaskPopup open={showTaskPopup} onClose={() => setShowTaskPopup(false)} />
+      <TaskPopup open={showTaskPopup} onClose={() => {
+        localStorage.setItem('taskPopupDismissed', today)
+        setShowTaskPopup(false)
+      }} />
     </div>
   )
 }

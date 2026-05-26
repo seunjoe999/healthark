@@ -280,8 +280,7 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
               <div className="space-y-3">
                 <div><label className="label">Attendees / who was present</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
                 <div><label className="label">Notes</label><textarea className="input" rows={3} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="What happened during this appointment..." /></div>
-                <div><label className="label">Outcome *</label><textarea className="input" rows={3} value={notes.outcome} onChange={e => set('outcome', e.target.value)} placeholder="What was the outcome? Any decisions, referrals, or follow-ups..." /></div>
-                <div><label className="label">Concerns raised</label><textarea className="input" rows={2} value={notes.concerns} onChange={e => set('concerns', e.target.value)} placeholder="Any concerns identified..." /></div>
+                <div><label className="label">Action Points</label><textarea className="input" rows={2} value={notes.actionPoints} onChange={e => set('actionPoints', e.target.value)} placeholder="Any actions or follow-ups required..." /></div>
               </div>
             )}
           </>

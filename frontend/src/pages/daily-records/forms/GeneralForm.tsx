@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
 import { Button, Select, Input } from '../../../components/ui'
+import { SpeechTextarea } from '../../../components/ui/SpeechButton'
 
 const ENGAGEMENT = [{ value: 'good', label: 'Good' }, { value: 'limited', label: 'Limited' }, { value: 'refused', label: 'Refused' }, { value: 'other', label: 'Other' }]
 const VISIT_TYPES = [{ value: 'social', label: 'Social visit' }, { value: 'family', label: 'Family visit' }, { value: 'community', label: 'Community access' }]
@@ -68,10 +69,10 @@ export default function GeneralForm({ type, suId, onSaved }: { type: string; suI
       </>)}
 
       {type === 'general_support' && (
-        <div><label className="label">Describe the support provided *</label><textarea required className="input" rows={4} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="What support did you give and how did the resident respond..." /></div>
+        <SpeechTextarea label="Describe the support provided" required rows={4} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="What support did you give and how did the resident respond..." />
       )}
 
-      <div><label className="label">Additional notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+      <SpeechTextarea label="Additional notes" rows={2} value={form.notes || ''} onChange={v => set('notes', v)} />
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>
   )

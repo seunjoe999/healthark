@@ -286,7 +286,6 @@ export default function MedicineRisk() {
             {[
               { key: 'selfMedicate',    label: 'Can self-medicate' },
               { key: 'covertMeds',      label: 'Covert medication in use' },
-              { key: 'prnProtocol',     label: 'PRN protocol in place' },
               { key: 'crushingRequired',label: 'Crushing required' },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer p-3 rounded-lg" style={{ background: '#1a1a1a' }}>
@@ -300,12 +299,6 @@ export default function MedicineRisk() {
             <div>
               <label className="text-xs font-medium text-slate-400 block mb-1.5">Covert medication notes (MCA authorisation)</label>
               <textarea className="input" rows={2} value={form.covertNotes} onChange={e => setForm(f => ({ ...f, covertNotes: e.target.value }))} placeholder="Detail the MCA decision and authorisation..." />
-            </div>
-          )}
-          {form.prnProtocol && (
-            <div>
-              <label className="text-xs font-medium text-slate-400 block mb-1.5">PRN protocol details</label>
-              <textarea className="input" rows={2} value={form.prnNotes} onChange={e => setForm(f => ({ ...f, prnNotes: e.target.value }))} placeholder="When to administer, dosage, triggers..." />
             </div>
           )}
 
