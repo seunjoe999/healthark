@@ -76,6 +76,49 @@ import Complaints from './pages/complaints/Complaints'
 import SocialActivities from './pages/social-activities/SocialActivities'
 
 
+const IDLE_WARN_MS = 25 * 60 * 1000   // warn after 25 min
+const IDLE_OUT_MS  = 30 * 60 * 1000   // logout after 30 min
+const EVENTS = ['mousemove','mousedown','keydown','scroll','touchstart','click'] as const
+
+function InactivityWatcher() {
+  const { user, logout } = useAuth()
+  const [showWarn, setShowWarn] = React.useState(false)
+  const warnRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const outRef  = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const reset = React.useCallback(() => {
+    if (!user) return
+    setShowWarn(false)
+    if (warnRef.current) clearTimeout(warnRef.current)
+    if (outRef.current)  clearTimeout(outRef.current)
+    warnRef.current = setTimeout(() => setShowWarn(true), IDLE_WARN_MS)
+    outRef.current  = setTimeout(() => { logout(); window.location.href = '/login' }, IDLE_OUT_MS)
+  }, [user, logout])
+
+  React.useEffect(() => {
+    if (!user) { if (warnRef.current) clearTimeout(warnRef.current); if (outRef.current) clearTimeout(outRef.current); return }
+    reset()
+    EVENTS.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    return () => { EVENTS.forEach(e => window.removeEventListener(e, reset)); if (warnRef.current) clearTimeout(warnRef.current); if (outRef.current) clearTimeout(outRef.current) }
+  }, [user, reset])
+
+  if (!showWarn) return null
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+        </div>
+        <h2 className="text-lg font-semibold text-slate-800 mb-2">Session about to expire</h2>
+        <p className="text-slate-500 text-sm mb-6">You've been inactive for 25 minutes. You'll be logged out in 5 minutes unless you continue.</p>
+        <button onClick={reset} className="w-full py-2.5 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors">
+          Stay logged in
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
@@ -201,6 +244,7 @@ export default function App() {
         <AuthProvider>
           <NotificationsProvider>
             <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
+            <InactivityWatcher />
             <AppRoutes />
             <InstallPrompt />
           </NotificationsProvider>
