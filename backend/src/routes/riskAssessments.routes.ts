@@ -68,7 +68,9 @@ router.post('/',
       const { suId, assessmentName, description, riskLevel, currentRiskLevel,
               whoIsAtRisk, isHistorical, whatCouldHappen, triggers,
               protectiveFactors, managementPlan, reviewFrequency,
-              historicalContext, riskRating } = req.body;
+              historicalContext, riskRating,
+              riskBeforeIntervention, riskScore, riskRatingOption,
+              evaluationOfRisk, riskAcceptable, riskAfterControls } = req.body;
 
       if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
         res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
@@ -84,14 +86,18 @@ router.post('/',
         `INSERT INTO risk_assessments (su_id, home_id, assessment_name, description, risk_level,
           current_risk_level, who_is_at_risk, is_historical, what_could_happen, triggers,
           protective_factors, management_plan, review_frequency, next_review_date, created_by,
-          historical_context, risk_rating)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+          historical_context, risk_rating,
+          risk_before_intervention, risk_score, risk_rating_option,
+          evaluation_of_risk, risk_acceptable, risk_after_controls)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
         [trimmedSuId, homeId, assessmentName, description || null, riskLevel || 'low',
          currentRiskLevel || riskLevel || 'low', whoIsAtRisk || null,
          isHistorical || false, whatCouldHappen || null, triggers || null,
          protectiveFactors || null, managementPlan || null,
          reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId,
-         historicalContext || null, riskRating || currentRiskLevel || riskLevel || 'low']
+         historicalContext || null, riskRating || currentRiskLevel || riskLevel || 'low',
+         riskBeforeIntervention || null, riskScore ?? null, riskRatingOption || null,
+         evaluationOfRisk || null, riskAcceptable || null, riskAfterControls || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -104,7 +110,9 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       const staffId = fromToken(req, 'staffId');
       const { description, currentRiskLevel, managementPlan, updateNotes,
               triggers, protectiveFactors, reviewFrequency,
-              historicalContext, riskRating } = req.body;
+              historicalContext, riskRating,
+              riskBeforeIntervention, riskScore, riskRatingOption,
+              evaluationOfRisk, riskAcceptable, riskAfterControls } = req.body;
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const freq = reviewFrequency || 'monthly';
       const nextReview = new Date();
@@ -112,22 +120,30 @@ router.put('/:id', param('id').isUUID(), validateRequest,
 
       await query(
         `UPDATE risk_assessments SET
-          description = COALESCE($1, description),
-          current_risk_level = COALESCE($2, current_risk_level),
-          management_plan = COALESCE($3, management_plan),
-          triggers = COALESCE($4, triggers),
-          protective_factors = COALESCE($5, protective_factors),
-          review_frequency = $6,
-          last_review_date = CURRENT_DATE,
-          next_review_date = $7,
-          reviewed_by = $8,
-          updated_at = NOW(),
-          historical_context = COALESCE($10, historical_context),
-          risk_rating = COALESCE($11, risk_rating)
+          description                = COALESCE($1,  description),
+          current_risk_level         = COALESCE($2,  current_risk_level),
+          management_plan            = COALESCE($3,  management_plan),
+          triggers                   = COALESCE($4,  triggers),
+          protective_factors         = COALESCE($5,  protective_factors),
+          review_frequency           = $6,
+          last_review_date           = CURRENT_DATE,
+          next_review_date           = $7,
+          reviewed_by                = $8,
+          updated_at                 = NOW(),
+          historical_context         = COALESCE($10, historical_context),
+          risk_rating                = COALESCE($11, risk_rating),
+          risk_before_intervention   = COALESCE($12, risk_before_intervention),
+          risk_score                 = COALESCE($13, risk_score),
+          risk_rating_option         = COALESCE($14, risk_rating_option),
+          evaluation_of_risk         = COALESCE($15, evaluation_of_risk),
+          risk_acceptable            = COALESCE($16, risk_acceptable),
+          risk_after_controls        = COALESCE($17, risk_after_controls)
          WHERE id = $9`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
-         historicalContext ?? null, riskRating ?? null]
+         historicalContext ?? null, riskRating ?? null,
+         riskBeforeIntervention ?? null, riskScore ?? null, riskRatingOption ?? null,
+         evaluationOfRisk ?? null, riskAcceptable ?? null, riskAfterControls ?? null]
       );
 
       if (updateNotes) {

@@ -82,7 +82,10 @@ router.post('/',
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, planType, customName, aimsOutcomes, whatICanDo, howToSupport,
-              reviewFrequency } = req.body;
+              reviewFrequency,
+              medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
+              dateMedicationReview, regularMedications, prnMedications, otcMedications,
+              prnProtocol, prnList, indicationForUse } = req.body;
 
       if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
         res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
@@ -105,11 +108,18 @@ router.post('/',
 
       const rows = await query(
         `INSERT INTO care_plans (su_id, home_id, plan_type, custom_name, aims_outcomes,
-          what_i_can_do, how_to_support, review_frequency, last_review_date, next_review_date, created_by, is_active)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true) RETURNING *`,
+          what_i_can_do, how_to_support, review_frequency, last_review_date, next_review_date, created_by, is_active,
+          medication_support_level, manages_own_meds, level_of_support, support_types,
+          date_medication_review, regular_medications, prn_medications, otc_medications,
+          prn_protocol, prn_list, indication_for_use)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
         [trimmedSuId, homeId, planType, customName || null, aimsOutcomes || null,
          whatICanDo || null, howToSupport || null,
-         reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId]
+         reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId,
+         medicationSupportLevel || null, managesOwnMeds ?? false, levelOfSupport || null,
+         supportTypes || null, nd(dateMedicationReview),
+         regularMedications || null, prnMedications || null, otcMedications || null,
+         prnProtocol || null, prnList || null, indicationForUse || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err: any) { console.error('Care plan CREATE error:', err?.message, err?.detail); next(err); }
@@ -122,7 +132,10 @@ router.put('/:id', param('id').isUUID(), validateRequest,
     try {
       const staffId = fromToken(req, 'staffId');
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
-              reviewFrequency, updateNotes } = req.body;
+              reviewFrequency, updateNotes,
+              medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
+              dateMedicationReview, regularMedications, prnMedications, otcMedications,
+              prnProtocol, prnList, indicationForUse } = req.body;
 
       // Calculate next review
       const freqDays: Record<string, number> = {
@@ -135,18 +148,33 @@ router.put('/:id', param('id').isUUID(), validateRequest,
 
       const rows = await query(
         `UPDATE care_plans SET
-          aims_outcomes = COALESCE($1, aims_outcomes),
-          what_i_can_do = COALESCE($2, what_i_can_do),
-          how_to_support = COALESCE($3, how_to_support),
-          outcome_achieved = COALESCE($4, outcome_achieved),
-          review_frequency = $5,
-          last_review_date = CURRENT_DATE,
-          next_review_date = $6,
-          reviewed_by = $7,
-          updated_at = NOW()
+          aims_outcomes            = COALESCE($1, aims_outcomes),
+          what_i_can_do            = COALESCE($2, what_i_can_do),
+          how_to_support           = COALESCE($3, how_to_support),
+          outcome_achieved         = COALESCE($4, outcome_achieved),
+          review_frequency         = $5,
+          last_review_date         = CURRENT_DATE,
+          next_review_date         = $6,
+          reviewed_by              = $7,
+          updated_at               = NOW(),
+          medication_support_level = COALESCE($9,  medication_support_level),
+          manages_own_meds         = COALESCE($10, manages_own_meds),
+          level_of_support         = COALESCE($11, level_of_support),
+          support_types            = COALESCE($12, support_types),
+          date_medication_review   = COALESCE($13, date_medication_review),
+          regular_medications      = COALESCE($14, regular_medications),
+          prn_medications          = COALESCE($15, prn_medications),
+          otc_medications          = COALESCE($16, otc_medications),
+          prn_protocol             = COALESCE($17, prn_protocol),
+          prn_list                 = COALESCE($18, prn_list),
+          indication_for_use       = COALESCE($19, indication_for_use)
          WHERE id = $8 RETURNING *`,
         [aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved || null,
-         freq, nextReview.toISOString().split('T')[0], staffId, req.params.id]
+         freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
+         medicationSupportLevel ?? null, managesOwnMeds ?? null, levelOfSupport ?? null,
+         supportTypes ?? null, nd(dateMedicationReview),
+         regularMedications ?? null, prnMedications ?? null, otcMedications ?? null,
+         prnProtocol ?? null, prnList ?? null, indicationForUse ?? null]
       );
       if (!rows.length) throw new AppError('Care plan not found', 404);
 

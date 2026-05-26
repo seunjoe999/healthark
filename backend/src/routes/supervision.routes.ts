@@ -60,11 +60,27 @@ router.post('/', [
 ], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { homeId, staffId, supervisorId, supervisionDate, supervisionType, summary, strengths, areasForImprovement, actionPoints, nextDate } = req.body;
+      const {
+        homeId, staffId, supervisorId, supervisionDate, supervisionType,
+        summary, strengths, areasForImprovement, actionPoints, nextDate,
+        reviewFrequency, supervisorNameText, timeOfMeeting, location,
+        previousActionsCompleted, hadAbsences, workloadScale, pdpCompleted,
+        burnoutTotal, actionsEscalated, nextSupervisionTime, conductedBy, metadata
+      } = req.body;
       const rows = await query(
-        `INSERT INTO supervisions (home_id, staff_id, supervisor_id, supervision_date, supervision_type, summary, strengths, areas_for_improvement, action_points, next_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-        [homeId, staffId, supervisorId, supervisionDate, supervisionType, summary || null, strengths || null, areasForImprovement || null, actionPoints || null, nextDate || null]
+        `INSERT INTO supervisions (home_id, staff_id, supervisor_id, supervision_date, supervision_type,
+          summary, strengths, areas_for_improvement, action_points, next_date,
+          review_frequency, supervisor_name_text, time_of_meeting, location,
+          previous_actions_completed, had_absences, workload_scale, pdp_completed,
+          burnout_total, actions_escalated, next_supervision_time, conducted_by, metadata)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+        [homeId, staffId, supervisorId, supervisionDate, supervisionType,
+         summary || null, strengths || null, areasForImprovement || null, actionPoints || null, nextDate || null,
+         reviewFrequency || null, supervisorNameText || null, timeOfMeeting || null, location || null,
+         previousActionsCompleted || null, hadAbsences || null,
+         workloadScale ?? null, pdpCompleted || null,
+         burnoutTotal ?? null, actionsEscalated || null, nextSupervisionTime || null,
+         conductedBy || null, metadata ? JSON.stringify(metadata) : '{}']
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

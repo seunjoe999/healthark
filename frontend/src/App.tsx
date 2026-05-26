@@ -72,6 +72,7 @@ import CQCNotifications from './pages/cqc-notifications/CQCNotifications'
 import SupervisionAppraisal from './pages/supervision-appraisal/SupervisionAppraisal'
 import LeaveManagement from './pages/staff/LeaveManagement'
 import PhysicalHealthPlan from './pages/service-users/PhysicalHealthPlan'
+import Complaints from './pages/complaints/Complaints'
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -170,6 +171,7 @@ function AppRoutes() {
       <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
       <Route path="/leave-management" element={<ProtectedRoute><LeaveManagement /></ProtectedRoute>} />
       <Route path="/physical-health-plan" element={<ProtectedRoute><PhysicalHealthPlan /></ProtectedRoute>} />
+      <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/messages" replace />} />
     </Routes>
   )

@@ -37,21 +37,45 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/quality — create QA record (complaint, compliment, feedback)
-router.post('/', [body('recordType').notEmpty(), body('summary').notEmpty()], validateRequest,
+// POST /api/quality — create complaint/compliment record
+router.post('/', [body('recordType').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { recordType, suId, relatedStaffId, summary, detail, actionTaken } = req.body;
+      const { recordType, suId, relatedStaffId, summary, detail, actionTaken,
+              fromType, fromName, lessonsLearnt, updatesText, status, entryDate } = req.body;
       const rows = await query(
         `INSERT INTO quality_records (home_id, su_id, related_staff_id, created_by, record_type,
-          summary, detail, action_taken)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+          summary, detail, action_taken, from_type, from_name, lessons_learnt, updates_text,
+          status, entry_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
         [homeId, suId || null, relatedStaffId || null, staffId, recordType,
-         summary, detail || null, actionTaken || null]
+         summary || null, detail || null, actionTaken || null,
+         fromType || null, fromName || null, lessonsLearnt || null, updatesText || null,
+         status || 'open', nd(entryDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PATCH /api/quality/:id — update a quality record
+router.patch('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { actionTaken, lessonsLearnt, updatesText, status, weDidNotes } = req.body;
+      const rows = await query(
+        `UPDATE quality_records SET
+          action_taken   = COALESCE($1, action_taken),
+          lessons_learnt = COALESCE($2, lessons_learnt),
+          updates_text   = COALESCE($3, updates_text),
+          status         = COALESCE($4, status)
+         WHERE id = $5 RETURNING *`,
+        [actionTaken ?? null, lessonsLearnt ?? null, updatesText ?? null, status ?? null, req.params.id]
+      );
+      if (!rows.length) { res.status(404).json({ success: false, error: 'Not found' }); return; }
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

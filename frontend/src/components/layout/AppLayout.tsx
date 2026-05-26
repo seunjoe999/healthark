@@ -10,7 +10,7 @@ import {
   Pill, CheckSquare, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
-  Stethoscope, DollarSign, AlertCircle
+  Stethoscope, DollarSign, AlertCircle, ThumbsUp
 } from 'lucide-react'
 
 const navSections = [
@@ -66,12 +66,13 @@ const navSections = [
   {
     label: 'Quality Assurance',
     items: [
-      { label: 'Compliance',    to: '/compliance',        icon: ShieldCheck, roles: ['home_manager','group_admin','auditor'], featureKey: 'compliance' },
-      { label: 'Audit',         to: '/assessments',       icon: FileCheck,   roles: [],                                      featureKey: 'assessments' },
-      { label: 'Audit Reports', to: '/audits',            icon: Activity,    roles: ['home_manager','group_admin','auditor'], featureKey: 'audits' },
-      { label: 'Audit Trail',   to: '/audit-trail',       icon: History,     roles: ['home_manager','group_admin','auditor'], featureKey: 'audit_trail' },
-      { label: 'Reports',       to: '/reports',           icon: BarChart2,   roles: ['home_manager','group_admin'],           featureKey: 'reports' },
-      { label: 'CQC Alerts',    to: '/cqc-notifications', icon: AlertCircle, roles: ['home_manager','group_admin'],           featureKey: 'cqc_notifications' },
+      { label: 'Compliance',              to: '/compliance',        icon: ShieldCheck, roles: ['home_manager','group_admin','auditor'], featureKey: 'compliance' },
+      { label: 'Complaints & Compliments', to: '/complaints',       icon: ThumbsUp,    roles: ['home_manager','group_admin','team_leader'], featureKey: 'complaints' },
+      { label: 'Audit',                   to: '/assessments',       icon: FileCheck,   roles: [],                                      featureKey: 'assessments' },
+      { label: 'Audit Reports',           to: '/audits',            icon: Activity,    roles: ['home_manager','group_admin','auditor'], featureKey: 'audits' },
+      { label: 'Audit Trail',             to: '/audit-trail',       icon: History,     roles: ['home_manager','group_admin','auditor'], featureKey: 'audit_trail' },
+      { label: 'Reports',                 to: '/reports',           icon: BarChart2,   roles: ['home_manager','group_admin'],           featureKey: 'reports' },
+      { label: 'CQC Alerts',             to: '/cqc-notifications', icon: AlertCircle, roles: ['home_manager','group_admin'],           featureKey: 'cqc_notifications' },
     ]
   },
   {

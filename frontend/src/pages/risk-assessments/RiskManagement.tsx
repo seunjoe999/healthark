@@ -33,10 +33,20 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
+const RISK_SCORE_OPTIONS = [
+  { value: '20-25', label: '20–25 = Unacceptable / Very likely (Additional measures must be introduced to reduce risk to a more acceptable level)' },
+  { value: '10-16', label: '10–16 = Substantial / Likely (Additional controls must be introduced in the short term)' },
+  { value: '6-9',   label: '6–9 = Moderate / Fairly likely (If reasonably practicable, aim to reduce risk within 2 months)' },
+  { value: '3-5',   label: '3–5 = Tolerable / Unlikely (If simple action can reduce the risk further at little or no cost then do so)' },
+  { value: '1-2',   label: '1–2 = Trivial / Very Unlikely (No significant risk, no action to be taken)' },
+]
+
 const BLANK_FORM = {
   assessmentName: '', description: '', riskRating: 'medium', currentRiskLevel: 'medium',
   whoIsAtRisk: '', whatCouldHappen: '', triggers: '', protectiveFactors: '',
   managementPlan: '', historicalContext: '', reviewFrequency: 'monthly',
+  riskBeforeIntervention: '', riskScore: '', riskRatingOption: '',
+  evaluationOfRisk: '', riskAcceptable: '', riskAfterControls: '',
 }
 
 export default function RiskManagement() {
@@ -109,6 +119,12 @@ export default function RiskManagement() {
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
         managementPlan: form.managementPlan, historicalContext: form.historicalContext,
         reviewFrequency: form.reviewFrequency,
+        riskBeforeIntervention: form.riskBeforeIntervention,
+        riskScore: form.riskScore ? parseInt(form.riskScore) : undefined,
+        riskRatingOption: form.riskRatingOption,
+        evaluationOfRisk: form.evaluationOfRisk,
+        riskAcceptable: form.riskAcceptable,
+        riskAfterControls: form.riskAfterControls,
       })
       toast.success('Risk management plan created')
       setCreateOpen(false)
@@ -127,6 +143,12 @@ export default function RiskManagement() {
         riskRating: form.riskRating, managementPlan: form.managementPlan,
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
         historicalContext: form.historicalContext, reviewFrequency: form.reviewFrequency,
+        riskBeforeIntervention: form.riskBeforeIntervention,
+        riskScore: form.riskScore ? parseInt(form.riskScore) : undefined,
+        riskRatingOption: form.riskRatingOption,
+        evaluationOfRisk: form.evaluationOfRisk,
+        riskAcceptable: form.riskAcceptable,
+        riskAfterControls: form.riskAfterControls,
       })
       toast.success('Risk management plan updated')
       setEditItem(null)
@@ -165,6 +187,12 @@ export default function RiskManagement() {
       historicalContext: ra.historical_context || '',
       reviewFrequency: ra.review_frequency || 'monthly',
       suId: ra.su_id || '',
+      riskBeforeIntervention: ra.risk_before_intervention || '',
+      riskScore: ra.risk_score != null ? String(ra.risk_score) : '',
+      riskRatingOption: ra.risk_rating_option || '',
+      evaluationOfRisk: ra.evaluation_of_risk || '',
+      riskAcceptable: ra.risk_acceptable || '',
+      riskAfterControls: ra.risk_after_controls || '',
     })
     setEditItem(ra)
   }
@@ -245,6 +273,50 @@ export default function RiskManagement() {
         <textarea className="input w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
           value={form.managementPlan} onChange={e => setF('managementPlan', e.target.value)} />
       </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk before intervention?</label>
+        <textarea className="input w-full" rows={2} placeholder="Describe the risk before any intervention..."
+          value={form.riskBeforeIntervention} onChange={e => setF('riskBeforeIntervention', e.target.value)} />
+      </div>
+
+      <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Risk Rating</p>
+        {RISK_SCORE_OPTIONS.map(opt => (
+          <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="riskRatingOption" value={opt.value}
+              checked={form.riskRatingOption === opt.value}
+              onChange={() => setF('riskRatingOption', opt.value)}
+              className="mt-0.5 flex-shrink-0" />
+            <span className="text-xs text-slate-700 leading-relaxed">{opt.label}</span>
+          </label>
+        ))}
+      </div>
+
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Total Risk Score</label>
+        <input type="number" className="input w-full" placeholder="Enter numeric score..."
+          value={form.riskScore} onChange={e => setF('riskScore', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Evaluation of risk?</label>
+        <textarea className="input w-full" rows={2} placeholder="Your evaluation of the overall risk..."
+          value={form.evaluationOfRisk} onChange={e => setF('evaluationOfRisk', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Is the level of risk identified acceptable?</label>
+        <select className="input w-full" value={form.riskAcceptable} onChange={e => setF('riskAcceptable', e.target.value)}>
+          <option value="">Select...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+          <option value="with_controls">Yes with controls in place</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk occurring following control measures</label>
+        <textarea className="input w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
+          value={form.riskAfterControls} onChange={e => setF('riskAfterControls', e.target.value)} />
+      </div>
+
       <div className="flex gap-3 justify-end pt-2">
         <Button variant="outline" onClick={() => isEdit ? setEditItem(null) : setCreateOpen(false)}>Cancel</Button>
         <Button loading={saving} onClick={onSave} icon={<Check className="w-4 h-4" />}>
@@ -339,6 +411,7 @@ export default function RiskManagement() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="What is the risk" value={ra.description} />
                       <Field label="Historical Context" value={ra.historical_context} />
+                      <Field label="Risk before intervention" value={ra.risk_before_intervention} />
                       <Field label="Who is at risk" value={ra.who_is_at_risk} />
                       <Field label="What could happen" value={ra.what_could_happen} />
                       <Field label="Triggers" value={ra.triggers} />
@@ -348,6 +421,20 @@ export default function RiskManagement() {
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                         <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Risk Management Plan</p>
                         <p className="text-sm text-slate-700 whitespace-pre-line">{ra.management_plan}</p>
+                      </div>
+                    )}
+                    {(ra.risk_rating_option || ra.risk_score != null) && (
+                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Risk Rating</p>
+                        {ra.risk_rating_option && <p className="text-sm text-slate-700 mb-1">{RISK_SCORE_OPTIONS.find(o => o.value === ra.risk_rating_option)?.label || ra.risk_rating_option}</p>}
+                        {ra.risk_score != null && <p className="text-sm font-bold text-slate-800">Total Risk Score: {ra.risk_score}</p>}
+                      </div>
+                    )}
+                    {(ra.evaluation_of_risk || ra.risk_acceptable || ra.risk_after_controls) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Evaluation of risk" value={ra.evaluation_of_risk} />
+                        <Field label="Risk acceptable?" value={ra.risk_acceptable} />
+                        <Field label="Risk after controls" value={ra.risk_after_controls} />
                       </div>
                     )}
 
