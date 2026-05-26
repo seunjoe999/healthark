@@ -387,4 +387,35 @@ Return JSON only (no markdown):
   }
 );
 
+// POST /api/audits/:id/attachments — add attachment URL
+router.post('/:id/attachments', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { url, name, mimeType } = req.body;
+      if (!url) throw new AppError('url required', 400);
+      const rows = await query<any>('SELECT attachments FROM audit_reports WHERE id=$1', [req.params.id]);
+      if (!rows.length) throw new AppError('Audit not found', 404);
+      const existing: any[] = rows[0].attachments || [];
+      const updated = [...existing, { url, name: name || url.split('/').pop(), mimeType: mimeType || 'application/octet-stream', addedAt: new Date().toISOString() }];
+      await query('UPDATE audit_reports SET attachments=$1 WHERE id=$2', [JSON.stringify(updated), req.params.id]);
+      res.json({ success: true, data: updated } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/audits/:id/attachments — remove attachment by URL
+router.delete('/:id/attachments', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { url } = req.body;
+      const rows = await query<any>('SELECT attachments FROM audit_reports WHERE id=$1', [req.params.id]);
+      if (!rows.length) throw new AppError('Audit not found', 404);
+      const existing: any[] = rows[0].attachments || [];
+      const updated = existing.filter((a: any) => a.url !== url);
+      await query('UPDATE audit_reports SET attachments=$1 WHERE id=$2', [JSON.stringify(updated), req.params.id]);
+      res.json({ success: true, data: updated } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

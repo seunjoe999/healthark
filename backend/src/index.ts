@@ -160,6 +160,8 @@ import diaryRoutes from './routes/diary.routes';
 import professionalVisitsRoutes from './routes/professionalVisits.routes';
 import medicineRiskRoutes from './routes/medicineRisk.routes';
 import performanceMatrixRoutes from './routes/performanceMatrix.routes';
+import socialActivitiesRoutes from './routes/socialActivities.routes';
+import recruitmentRoutes from './routes/recruitment.routes';
 app.use('/api/noticeboard', noticeboardRoutes);
 app.use('/api/observations', observationsRoutes);
 app.use('/api/seizures', seizuresRoutes);
@@ -168,6 +170,8 @@ app.use('/api/diary', diaryRoutes);
 app.use('/api/professional-visits', professionalVisitsRoutes);
 app.use('/api/medicine-risk', medicineRiskRoutes);
 app.use('/api/performance', performanceMatrixRoutes);
+app.use('/api/social-activities', socialActivitiesRoutes);
+app.use('/api/recruitment', recruitmentRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
@@ -610,9 +614,57 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS refresh_token TEXT`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS feature_flags JSONB NOT NULL DEFAULT '{}'`,
-    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 224`,
-    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 224`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
+    // Fix: update existing staff whose total is still at old default 224 → 210
+    `UPDATE staff SET leave_hours_total = 210, leave_hours_remaining = 210 WHERE leave_hours_total = 224 AND leave_hours_remaining = 224`,
+    // Care plan reads tracking
+    `CREATE TABLE IF NOT EXISTS care_plan_reads (
+       id         BIGSERIAL PRIMARY KEY,
+       plan_id    UUID NOT NULL REFERENCES care_plans(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       read_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_cpr_plan ON care_plan_reads(plan_id, read_at DESC)`,
+    // Social activities
+    `CREATE TABLE IF NOT EXISTS social_activities (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id     UUID REFERENCES staff(id) ON DELETE SET NULL,
+       title        VARCHAR(255) NOT NULL,
+       activity_date DATE NOT NULL,
+       duration_mins INTEGER,
+       location     VARCHAR(255),
+       participants VARCHAR(255),
+       enjoyed      VARCHAR(20),
+       notes        TEXT,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_sa_su ON social_activities(su_id, activity_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_sa_home ON social_activities(home_id, activity_date DESC)`,
+    // Recruitment candidates
+    `CREATE TABLE IF NOT EXISTS recruitment_candidates (
+       id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id        UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       first_name     VARCHAR(100) NOT NULL,
+       last_name      VARCHAR(100) NOT NULL,
+       email          VARCHAR(255),
+       phone          VARCHAR(30),
+       position       VARCHAR(255) NOT NULL,
+       applied_date   DATE NOT NULL DEFAULT CURRENT_DATE,
+       status         VARCHAR(30) NOT NULL DEFAULT 'applied',
+       interview_date DATE,
+       notes          TEXT,
+       dbs_check      VARCHAR(20),
+       reference_check VARCHAR(20),
+       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_recruit_home ON recruitment_candidates(home_id, applied_date DESC)`,
+    // Audit attachments column
+    `ALTER TABLE audits ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
     // ── audit_log (non-partitioned fallback) ──────────────────────────────────
     `CREATE TABLE IF NOT EXISTS audit_log (
        id          BIGSERIAL PRIMARY KEY,

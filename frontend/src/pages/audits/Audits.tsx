@@ -9,7 +9,7 @@ import {
   ClipboardList, Shield, Pill, Users, FileText,
   Flame, Zap, Heart, Home, RefreshCw, Trash2, TrendingUp,
   Calendar, User, Award, ChevronRight, Building2,
-  ListChecks, Circle, Clock, CheckSquare, Check
+  ListChecks, Circle, Clock, CheckSquare, Check, Paperclip, Upload, X, Download
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -580,6 +580,9 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
         </div>
       )}
 
+      {/* Attachments */}
+      {!isGenerating && <AuditAttachments auditId={audit.id} initialAttachments={audit.attachments || []} />}
+
       {/* Footer */}
       {audit.status === 'completed' && (
         <div className="bg-slate-800 rounded-2xl p-5 mb-4 flex items-center justify-between">
@@ -596,6 +599,80 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
               <p className="text-slate-400 text-xs">{rating?.label}</p>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AuditAttachments({ auditId, initialAttachments }: { auditId: string; initialAttachments: string[] }) {
+  const [attachments, setAttachments] = useState<string[]>(initialAttachments)
+  const [uploading, setUploading] = useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const fileUrl: string = res.data.data.fileUrl
+      await api.post(`/audits/${auditId}/attachments`, { fileUrl, fileName: res.data.data.fileName })
+      setAttachments(prev => [...prev, fileUrl])
+      toast.success('Attachment uploaded')
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false); if (inputRef.current) inputRef.current.value = '' }
+  }
+
+  const remove = async (fileUrl: string) => {
+    if (!window.confirm('Remove this attachment?')) return
+    try {
+      await api.delete(`/audits/${auditId}/attachments`, { data: { fileUrl } })
+      setAttachments(prev => prev.filter(a => a !== fileUrl))
+      toast.success('Removed')
+    } catch { toast.error('Failed to remove') }
+  }
+
+  const fileName = (url: string) => decodeURIComponent(url.split('/').pop() || url)
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-5 overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+        <div className="flex items-center gap-2.5">
+          <Paperclip className="w-4 h-4 text-slate-500" />
+          <h2 className="font-semibold text-slate-800 text-sm uppercase tracking-wide">Attachments</h2>
+          {attachments.length > 0 && <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">{attachments.length}</span>}
+        </div>
+        <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : 'text-slate-600 bg-slate-100 hover:bg-slate-200'}`}>
+          <Upload className="w-3.5 h-3.5" />
+          {uploading ? 'Uploading…' : 'Upload file'}
+          <input ref={inputRef} type="file" className="hidden" onChange={upload} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
+        </label>
+      </div>
+      {attachments.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-6">No attachments yet. Upload supporting documents or images.</p>
+      ) : (
+        <div className="p-4 space-y-2">
+          {attachments.map((url, i) => {
+            const name = fileName(url)
+            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+            return (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <span className="flex-1 text-sm text-slate-700 truncate">{name}</span>
+                <a href={url} target="_blank" rel="noreferrer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 transition-colors" title="Open">
+                  <Download className="w-3.5 h-3.5" />
+                </a>
+                <button onClick={() => remove(url)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 transition-colors" title="Remove">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

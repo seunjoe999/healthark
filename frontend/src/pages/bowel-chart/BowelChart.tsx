@@ -13,6 +13,7 @@ const BRISTOL_TYPES = [
   { value: '5', label: 'Type 5 – Soft blobs with clear edges (lacking fibre)' },
   { value: '6', label: 'Type 6 – Mushy, fluffy pieces (mild diarrhoea)' },
   { value: '7', label: 'Type 7 – Watery, no solid pieces (severe diarrhoea)' },
+  { value: '8', label: 'Type 8 – No bowel opened' },
 ]
 
 const AMOUNTS = [
@@ -33,6 +34,7 @@ const COLOURS = [
 ]
 
 function bristolColor(type: number) {
+  if (type === 8) return 'text-slate-400 bg-slate-500/10 border-slate-500/30'
   if (type <= 2) return 'text-amber-400 bg-amber-500/10 border-amber-500/30'
   if (type <= 4) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
   if (type === 5) return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'

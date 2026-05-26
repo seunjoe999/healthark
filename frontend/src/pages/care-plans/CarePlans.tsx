@@ -95,6 +95,18 @@ export default function CarePlans() {
   const [search, setSearch] = useState('')
   const [editingRisk, setEditingRisk] = useState<any>(null)
   const [riskDetails, setRiskDetails] = useState<Record<string, any>>({})
+  const [planReads, setPlanReads] = useState<Record<string, any[]>>({})
+
+  const openPlan = async (plan: any) => {
+    const next = selectedPlan?.id === plan.id ? null : plan
+    setSelectedPlan(next)
+    if (next && !planReads[plan.id]) {
+      api.post(`/care-plans/${plan.id}/read`).catch(() => {})
+      api.get(`/care-plans/${plan.id}/reads`).then(r => {
+        setPlanReads(prev => ({ ...prev, [plan.id]: r.data.data || [] }))
+      }).catch(() => {})
+    }
+  }
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -285,7 +297,7 @@ export default function CarePlans() {
                 <div className="space-y-3">
                   {plans.map((plan: any) => (
                     <div key={plan.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                      <button onClick={() => setSelectedPlan(selectedPlan?.id === plan.id ? null : plan)}
+                      <button onClick={() => openPlan(plan)}
                         className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-50">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
@@ -306,6 +318,14 @@ export default function CarePlans() {
                       </button>
                       {selectedPlan?.id === plan.id && (
                         <div className="px-5 pb-5 border-t border-slate-50">
+                          {planReads[plan.id]?.length > 0 && (
+                            <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
+                              <History className="w-3 h-3" />
+                              Last read by <span className="font-medium text-slate-600">{planReads[plan.id][0].staff_name}</span>
+                              {' '}at {format(new Date(planReads[plan.id][0].read_at), 'd MMM yyyy, HH:mm')}
+                              {' '}· {planReads[plan.id].length} read{planReads[plan.id].length > 1 ? 's' : ''} total
+                            </p>
+                          )}
                           {plan.plan_type === 'medication_support' ? (
                             <div className="mt-4 space-y-4">
                               {plan.medication_support_level && <div><p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Medication Support Level</p><p className="text-sm text-slate-700">{plan.medication_support_level}</p></div>}

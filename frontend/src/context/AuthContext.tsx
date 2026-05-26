@@ -138,6 +138,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('ha:unauthorized', handle)
   }, [])
 
+  // Inactivity timeout — log out after 30 minutes of no interaction
+  useEffect(() => {
+    if (!user) return
+    const TIMEOUT_MS = 30 * 60 * 1000
+    let timer: ReturnType<typeof setTimeout>
+    const reset = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => { clearSession(); setUser(null) }, TIMEOUT_MS)
+    }
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll']
+    events.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    reset()
+    return () => {
+      clearTimeout(timer)
+      events.forEach(e => window.removeEventListener(e, reset))
+    }
+  }, [!!user])
+
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password)
     const { accessToken, staff } = res.data.data

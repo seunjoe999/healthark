@@ -191,6 +191,38 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// POST /api/care-plans/:id/read — track that a staff member read this plan
+router.post('/:id/read', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      if (!staffId) { res.json({ success: true }); return; }
+      await query(
+        `INSERT INTO care_plan_reads (plan_id, staff_id) VALUES ($1, $2)`,
+        [req.params.id, staffId]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/care-plans/:id/reads — recent reads for a plan
+router.get('/:id/reads', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT cpr.read_at, s.first_name || ' ' || s.last_name as staff_name
+         FROM care_plan_reads cpr
+         JOIN staff s ON s.id = cpr.staff_id
+         WHERE cpr.plan_id = $1
+         ORDER BY cpr.read_at DESC LIMIT 20`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // DELETE /api/care-plans/:id (soft delete)
 router.delete('/:id', requireRole('home_manager', 'group_admin'),
   param('id').isUUID(), validateRequest,

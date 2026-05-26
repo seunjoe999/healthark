@@ -3,9 +3,257 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
-import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff, Sliders } from 'lucide-react'
+import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
+
+const RECRUIT_STATUSES = [
+  { value: 'applied', label: 'Applied', color: 'bg-blue-100 text-blue-700' },
+  { value: 'shortlisted', label: 'Shortlisted', color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'interview_scheduled', label: 'Interview Scheduled', color: 'bg-amber-100 text-amber-700' },
+  { value: 'interviewed', label: 'Interviewed', color: 'bg-purple-100 text-purple-700' },
+  { value: 'offer_made', label: 'Offer Made', color: 'bg-emerald-100 text-emerald-700' },
+  { value: 'hired', label: 'Hired', color: 'bg-green-100 text-green-700' },
+  { value: 'rejected', label: 'Rejected', color: 'bg-rose-100 text-rose-700' },
+  { value: 'withdrawn', label: 'Withdrawn', color: 'bg-slate-100 text-slate-600' },
+]
+
+function RecruitmentSection({ homes }: { homes: any[] }) {
+  const { user } = useAuth()
+  const [candidates, setCandidates] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedHome, setSelectedHome] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
+  const [editing, setEditing] = useState<any>(null)
+  const [expanded, setExpanded] = useState(true)
+
+  useEffect(() => {
+    setSelectedHome(user?.homeId || homes[0]?.id || '')
+  }, [homes, user])
+
+  useEffect(() => {
+    if (!selectedHome) return
+    setLoading(true)
+    api.get('/recruitment', { params: { homeId: selectedHome } })
+      .then(res => setCandidates(res.data.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [selectedHome])
+
+  const reload = () => {
+    if (!selectedHome) return
+    api.get('/recruitment', { params: { homeId: selectedHome } })
+      .then(res => setCandidates(res.data.data || []))
+      .catch(() => {})
+  }
+
+  const deleteCand = async (id: string) => {
+    if (!window.confirm('Remove this candidate?')) return
+    try {
+      await api.delete(`/recruitment/${id}`)
+      setCandidates(prev => prev.filter(c => c.id !== id))
+      toast.success('Removed')
+    } catch { toast.error('Failed') }
+  }
+
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await api.put(`/recruitment/${id}`, { ...candidates.find(c => c.id === id), status })
+      setCandidates(prev => prev.map(c => c.id === id ? { ...c, status } : c))
+    } catch { toast.error('Failed') }
+  }
+
+  const active = candidates.filter(c => !['hired', 'rejected', 'withdrawn'].includes(c.status))
+  const archived = candidates.filter(c => ['hired', 'rejected', 'withdrawn'].includes(c.status))
+
+  return (
+    <div className="mb-8 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between px-5 py-4 bg-slate-50 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <Briefcase className="w-5 h-5 text-blue-600" />
+          <div>
+            <h2 className="font-bold text-slate-900">Recruitment Pipeline</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{active.length} active · {archived.length} archived</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {homes.length > 1 && (
+            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+          <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => { setEditing(null); setAddOpen(true) }}>Add candidate</Button>
+          <button onClick={() => setExpanded(e => !e)} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-400">
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-6 text-center text-sm text-slate-400">Loading...</div>
+          ) : candidates.length === 0 ? (
+            <div className="p-8 text-center">
+              <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">No candidates yet — add your first applicant above</p>
+            </div>
+          ) : (
+            <>
+              {active.map((c: any) => {
+                const statusInfo = RECRUIT_STATUSES.find(s => s.value === c.status) || RECRUIT_STATUSES[0]
+                return (
+                  <div key={c.id} className="flex items-start gap-4 px-5 py-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-slate-900">{c.first_name} {c.last_name}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusInfo.color}`}>{statusInfo.label}</span>
+                        {c.dbs_check && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">DBS: {c.dbs_check}</span>}
+                      </div>
+                      <p className="text-sm text-slate-500 mt-0.5">
+                        {c.position}
+                        {c.applied_date && ` · Applied ${format(parseISO(c.applied_date), 'd MMM yyyy')}`}
+                        {c.interview_date && ` · Interview ${format(parseISO(c.interview_date), 'd MMM yyyy')}`}
+                      </p>
+                      {c.email && <p className="text-xs text-slate-400">{c.email}{c.phone ? ` · ${c.phone}` : ''}</p>}
+                      {c.notes && <p className="text-xs text-slate-400 italic mt-0.5 truncate">{c.notes}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <select value={c.status} onChange={e => updateStatus(c.id, e.target.value)}
+                        className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 focus:outline-none focus:border-blue-400">
+                        {RECRUIT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
+                      <button onClick={() => { setEditing(c); setAddOpen(true) }} className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-50">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => deleteCand(c.id)} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-50">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              {archived.length > 0 && (
+                <div className="px-5 py-3 bg-slate-50">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Archived</p>
+                  {archived.map((c: any) => {
+                    const statusInfo = RECRUIT_STATUSES.find(s => s.value === c.status) || RECRUIT_STATUSES[0]
+                    return (
+                      <div key={c.id} className="flex items-center gap-3 py-1.5">
+                        <p className="text-sm text-slate-500 flex-1">{c.first_name} {c.last_name} — {c.position}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusInfo.color}`}>{statusInfo.label}</span>
+                        <button onClick={() => deleteCand(c.id)} className="p-1 text-slate-300 hover:text-rose-400 transition-colors"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <RecruitModal open={addOpen} onClose={() => { setAddOpen(false); setEditing(null) }} homeId={selectedHome}
+        editing={editing}
+        onSaved={() => { setAddOpen(false); setEditing(null); reload(); toast.success(editing ? 'Updated' : 'Candidate added') }} />
+    </div>
+  )
+}
+
+function RecruitModal({ open, onClose, homeId, editing, onSaved }: {
+  open: boolean; onClose: () => void; homeId: string; editing: any; onSaved: () => void
+}) {
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', position: '', appliedDate: format(new Date(), 'yyyy-MM-dd'), status: 'applied', interviewDate: '', notes: '', dbsCheck: '', referenceCheck: '' })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (open) {
+      if (editing) {
+        setForm({
+          firstName: editing.first_name || '',
+          lastName: editing.last_name || '',
+          email: editing.email || '',
+          phone: editing.phone || '',
+          position: editing.position || '',
+          appliedDate: editing.applied_date || format(new Date(), 'yyyy-MM-dd'),
+          status: editing.status || 'applied',
+          interviewDate: editing.interview_date || '',
+          notes: editing.notes || '',
+          dbsCheck: editing.dbs_check || '',
+          referenceCheck: editing.reference_check || '',
+        })
+      } else {
+        setForm({ firstName: '', lastName: '', email: '', phone: '', position: '', appliedDate: format(new Date(), 'yyyy-MM-dd'), status: 'applied', interviewDate: '', notes: '', dbsCheck: '', referenceCheck: '' })
+      }
+    }
+  }, [open, editing])
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      if (editing) {
+        await api.put(`/recruitment/${editing.id}`, { ...form, homeId })
+      } else {
+        await api.post('/recruitment', { ...form, homeId })
+      }
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={editing ? 'Edit candidate' : 'Add candidate'}>
+      <form onSubmit={save} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="First name *" required value={form.firstName} onChange={e => set('firstName', e.target.value)} />
+          <Input label="Last name *" required value={form.lastName} onChange={e => set('lastName', e.target.value)} />
+        </div>
+        <Input label="Position applied for *" required value={form.position} onChange={e => set('position', e.target.value)} placeholder="e.g. Care Staff, Senior Carer" />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+          <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Applied date" type="date" value={form.appliedDate} onChange={e => set('appliedDate', e.target.value)} />
+          <Input label="Interview date" type="date" value={form.interviewDate} onChange={e => set('interviewDate', e.target.value)} />
+        </div>
+        <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)}
+          options={RECRUIT_STATUSES.map(s => ({ value: s.value, label: s.label }))} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">DBS Check</label>
+            <select className="input" value={form.dbsCheck} onChange={e => set('dbsCheck', e.target.value)}>
+              <option value="">Not checked</option>
+              <option value="pending">Pending</option>
+              <option value="clear">Clear</option>
+              <option value="disclosed">Disclosed</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">References</label>
+            <select className="input" value={form.referenceCheck} onChange={e => set('referenceCheck', e.target.value)}>
+              <option value="">Not requested</option>
+              <option value="requested">Requested</option>
+              <option value="received">Received</option>
+              <option value="satisfactory">Satisfactory</option>
+              <option value="unsatisfactory">Unsatisfactory</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="label">Notes</label>
+          <textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Interview notes, observations..." />
+        </div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading}>{editing ? 'Save changes' : 'Add candidate'}</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
 
 const ALL_ROLES = [
   { value: 'group_admin', label: 'Group Admin — full access to all homes' },
@@ -150,6 +398,8 @@ export default function AdminAccounts() {
 
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+      <RecruitmentSection homes={homes} />
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">

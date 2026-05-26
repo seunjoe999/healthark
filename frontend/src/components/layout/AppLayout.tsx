@@ -10,7 +10,7 @@ import {
   Pill, CheckSquare, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
-  Stethoscope, DollarSign, AlertCircle, ThumbsUp
+  Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music
 } from 'lucide-react'
 
 const navSections = [
@@ -34,6 +34,7 @@ const navSections = [
       { label: 'Care Outcomes',                    to: '/outcomes',            icon: Target,        roles: [],                                           featureKey: 'outcomes' },
       { label: 'Care Reviews',                     to: '/reviews',             icon: ClipboardCheck,roles: [],                                           featureKey: 'reviews' },
       { label: 'Service User Diary',               to: '/diary',               icon: BookOpen,      roles: [],                                           featureKey: 'diary' },
+      { label: 'Social Activities',                to: '/social-activities',   icon: Music,         roles: [],                                           featureKey: 'social_activities' },
       { label: 'Bath Records',                     to: '/bath-chart',          icon: Droplets,      roles: [],                                           featureKey: 'bath_chart' },
       { label: 'Bowel Chart',                      to: '/bowel-chart',         icon: Droplets,      roles: [],                                           featureKey: 'bowel_chart' },
       { label: 'Observations',                     to: '/observations',        icon: Thermometer,   roles: [],                                           featureKey: 'observations' },

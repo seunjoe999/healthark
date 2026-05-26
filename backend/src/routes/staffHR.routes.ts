@@ -227,20 +227,32 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
       const token = req.headers.authorization?.substring(7);
       const decoded = token ? jwt.decode(token) as any : {};
       const managerId = decoded?.staffId;
-      // Get leave record
       const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
       if (!rows.length) throw new AppError('Leave not found', 404);
       const leave = rows[0];
       await query('UPDATE staff_leave SET status=$1, approved_by=$2, approved_at=NOW() WHERE id=$3',
         ['approved', managerId, req.params.id]);
-      // Deduct hours from staff annual leave
-      if (leave.hours_requested) {
-        await query('UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) - $1, 0) WHERE id = $2',
-          [leave.hours_requested, leave.staff_id]);
+      // Calculate hours if not explicitly stored — count weekdays × 7.5h
+      let hoursToDeduct = parseFloat(String(leave.hours_requested || 0));
+      if (!hoursToDeduct && leave.start_date && leave.end_date) {
+        const start = new Date(leave.start_date);
+        const end = new Date(leave.end_date);
+        let weekdays = 0;
+        for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dow = d.getDay();
+          if (dow !== 0 && dow !== 6) weekdays++;
+        }
+        hoursToDeduct = weekdays * 7.5;
       }
-      // Send notification to staff
+      if (hoursToDeduct > 0) {
+        await query(
+          'UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) - $1, 0) WHERE id = $2',
+          [hoursToDeduct, leave.staff_id]
+        );
+        await query('UPDATE staff_leave SET hours_requested=$1 WHERE id=$2', [hoursToDeduct, req.params.id]);
+      }
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-        VALUES ($1,$2,'Leave request approved','Your leave request has been approved.','success','/staff')`,
+        VALUES ($1,$2,'Leave request approved','Your leave request has been approved.','success','/holidays')`,
         [leave.staff_id, leave.home_id]);
       res.json({ success: true, message: 'Leave approved' } as ApiResponse);
     } catch (err) { next(err); }
