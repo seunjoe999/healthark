@@ -26,14 +26,16 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     let rows;
     if (type === 'sent') {
       rows = await query(
-        `SELECT m.*, COALESCE(m.message, m.body) as message, s.first_name || ' ' || s.last_name as recipient_name
+        `SELECT m.id, m.sender_id, m.recipient_id, m.home_id, m.subject, m.message, m.is_read, m.read_at, m.created_at,
+                s.first_name || ' ' || s.last_name as recipient_name
          FROM staff_messages m LEFT JOIN staff s ON s.id = m.recipient_id
          WHERE m.sender_id = $1 ORDER BY m.created_at DESC LIMIT 100`,
         [staffId]
       );
     } else {
       rows = await query(
-        `SELECT m.*, COALESCE(m.message, m.body) as message, s.first_name || ' ' || s.last_name as sender_name
+        `SELECT m.id, m.sender_id, m.recipient_id, m.home_id, m.subject, m.message, m.is_read, m.read_at, m.created_at,
+                s.first_name || ' ' || s.last_name as sender_name
          FROM staff_messages m LEFT JOIN staff s ON s.id = m.sender_id
          WHERE m.recipient_id = $1 ORDER BY m.created_at DESC LIMIT 100`,
         [staffId]
@@ -50,8 +52,8 @@ router.post('/', [body('recipientId').isUUID(), body('message').notEmpty()], val
       const homeId = fromToken(req, 'homeId');
       const { recipientId, subject, message } = req.body;
       const rows = await query(
-        `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message)
-         VALUES ($1,$2,$3,$4,$5,$5) RETURNING *, $5 as message`,
+        `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, message)
+         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
         [staffId, recipientId, homeId || null, subject || null, message]
       );
       // Also send in-app notification to recipient

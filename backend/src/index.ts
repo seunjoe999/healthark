@@ -635,8 +635,10 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_notif_recipient ON notifications(recipient_id, created_at DESC)`,
     // Ensure staff_messages columns allow null home_id (some inserts don't have homeId)
     `ALTER TABLE staff_messages ALTER COLUMN home_id DROP NOT NULL`,
-    // Ensure staff_messages has a message/body alias column
+    // Ensure staff_messages has a message column (Render DB may have body instead)
     `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS message TEXT`,
+    // Copy body -> message for existing rows that only have body
+    `UPDATE staff_messages SET message = body WHERE message IS NULL AND body IS NOT NULL`,
     // Fix audit_reports attachments (was mistakenly added as 'audits')
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
     // Fix performance overall_score precision (NUMERIC(4,2) overflows for 100)
