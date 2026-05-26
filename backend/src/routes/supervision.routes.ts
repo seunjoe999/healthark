@@ -165,7 +165,7 @@ router.patch('/appraisal/:id', param('id').isUUID(), validateRequest,
       if (performanceSummary !== undefined) { updates.push(`performance_summary=$${updates.length + 1}`); vals.push(performanceSummary); }
       if (comments !== undefined) { updates.push(`comments=$${updates.length + 1}`); vals.push(comments); }
       if (goals !== undefined) { updates.push(`goals=$${updates.length + 1}`); vals.push(goals); }
-      if (nextReviewDate !== undefined) { updates.push(`next_review_date=$${updates.length + 1}`); vals.push(nextReviewDate); }
+      if (nextReviewDate !== undefined) { updates.push(`next_review_date=$${updates.length + 1}`); vals.push(nextReviewDate || null); }
       if (!updates.length) { return res.status(400).json({ success: false, error: 'No fields to update' }); }
       vals.push(req.params.id);
       const rows = await query(`UPDATE appraisals SET ${updates.join(', ')}, updated_at=NOW() WHERE id=$${vals.length} RETURNING *`, vals);

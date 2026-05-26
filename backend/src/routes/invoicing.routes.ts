@@ -23,7 +23,7 @@ router.get('/', validateRequest,
     try {
       const homeId = req.query.homeId as string;
       const status = (req.query.status as string) || 'all';
-      const whereClause = status === 'all' ? 'WHERE home_id = $1' : 'WHERE home_id = $1 AND status = $2';
+      const whereClause = status === 'all' ? 'WHERE i.home_id = $1' : 'WHERE i.home_id = $1 AND i.status = $2';
       const params = status === 'all' ? [homeId] : [homeId, status];
       const rows = await dbQuery(
         `SELECT i.*, su.first_name, su.last_name, su.id as su_id FROM invoices i

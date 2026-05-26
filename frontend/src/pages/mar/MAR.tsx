@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, startOfWeek, startOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Pill, Plus, Check, X, Search, Package, Printer, Calendar, ChevronLeft, ChevronRight, AlertTriangle, User } from 'lucide-react'
+import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQ_TIMES: Record<string, string[]> = {
@@ -75,12 +75,10 @@ export default function MAR() {
   const [addMedOpen, setAddMedOpen] = useState(false)
   const [stockModalMed, setStockModalMed] = useState<any>(null)
   const [printModal, setPrintModal] = useState(false)
-  const [cellDetail, setCellDetail] = useState<any>(null)   // { med, date, records }
-  const [logModal, setLogModal] = useState<any>(null)       // { med, date, slot }
+  const [cellDetail, setCellDetail] = useState<any>(null)
+  const [logModal, setLogModal] = useState<any>(null)
   const [showPrescriptions, setShowPrescriptions] = useState(true)
   const [showDirections, setShowDirections] = useState(true)
-  const [search, setSearch] = useState('')
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState(format(now, 'yyyy-MM-dd'))
   const today = format(now, 'yyyy-MM-dd')
@@ -116,7 +114,6 @@ export default function MAR() {
 
   const selectSu = (su: any) => {
     setSelectedSu(su)
-    setMobileSidebarOpen(false)
     fetchAll(su)
   }
 
@@ -134,279 +131,209 @@ export default function MAR() {
     setEndDate(newEnd > today ? today : newEnd)
   }
 
-  const filteredSus = sus.filter(su => getName(su).toLowerCase().includes(search.toLowerCase()))
-
   const su = chartData?.serviceUser || selectedSu
   const suInitials = su ? `${(su.first_name || su.firstName || '?')[0]}${(su.last_name || su.lastName || '?')[0]}` : '?'
 
   return (
-    <div className="flex flex-col md:flex-row h-full overflow-hidden">
-      {/* ── Left sidebar ─────────────────────────────────────────────── */}
-      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
-        <div className="p-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-            <Pill className="w-4 h-4 text-purple-600" /> Medication Administration Record
-          </h2>
-          {homes.length > 1 && (
-            <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-          )}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <input className="input pl-8 text-sm" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {filteredSus.map(s => {
-            const name = getName(s)
-            const isSel = selectedSu?.id === s.id
-            return (
-              <button key={s.id} onClick={() => selectSu(s)}
-                className={`w-full text-left px-3 py-2.5 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSel ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSel ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                    {name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${isSel ? 'text-purple-900' : 'text-slate-800'}`}>{name}</p>
-                    {isSel && medications.length > 0 && <p className="text-xs text-slate-400">{medications.length} medications</p>}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden bg-white">
 
-      {/* ── Right panel ──────────────────────────────────────────────── */}
-      <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-hidden bg-slate-50`}>
-        {/* Mobile back button */}
-        {selectedSu && (
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
-            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">
-              <ChevronLeft className="w-4 h-4" /> Back
+      {/* ── Top control bar (RoundSys-style) ─────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+        {/* Title */}
+        <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
+          <Pill className="w-4 h-4 text-purple-600" /> MAR
+        </span>
+
+        {homes.length > 1 && (
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+            value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelectedSu(null); setChartData(null) }}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+
+        {/* Service user dropdown */}
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Service User</label>
+          <select
+            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-[180px]"
+            value={selectedSu?.id || ''}
+            onChange={e => {
+              if (!e.target.value) { setSelectedSu(null); setChartData(null); return }
+              const s = sus.find((x: any) => x.id === e.target.value)
+              if (s) selectSu(s)
+            }}>
+            <option value="">— Select resident —</option>
+            {sus.map((s: any) => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+          </select>
+        </div>
+
+        {/* Date range */}
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Date</label>
+          <div className="flex items-center gap-1 border border-slate-300 rounded overflow-hidden">
+            <button onClick={() => shiftMonth(-1)} className="px-1.5 py-1 hover:bg-slate-100 text-slate-600 transition-colors">
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+              className="border-0 px-1.5 py-1 text-sm text-slate-700 focus:outline-none w-32" />
+            <span className="text-slate-400 text-xs px-0.5">–</span>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+              className="border-0 px-1.5 py-1 text-sm text-slate-700 focus:outline-none w-32" />
+            <button onClick={() => shiftMonth(1)} className="px-1.5 py-1 hover:bg-slate-100 text-slate-600 transition-colors">
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-        )}
-        {!selectedSu ? (
-          <div className="flex-1 flex items-center justify-center">
-            <EmptyState title="Select a resident" description="Choose a resident from the list to view their Medication Administration Record" />
-          </div>
-        ) : (
-          <>
-            {/* ── Control bar ────────────────────────────────────────── */}
-            <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-wrap">
-              {/* Resident selector */}
-              <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
-                <select
-                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 max-w-[160px]"
-                  value={selectedSu?.id || ''}
-                  onChange={e => { const s = sus.find((x: any) => x.id === e.target.value); if (s) selectSu(s) }}>
-                  <option value="">Select resident…</option>
-                  {sus.map((s: any) => <option key={s.id} value={s.id}>{getName(s)}</option>)}
-                </select>
-              </div>
-              {/* Month navigator */}
-              <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
-                <button onClick={() => shiftMonth(-1)} className="px-2 py-1.5 hover:bg-slate-100 text-slate-600 transition-colors">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-2 py-1.5 text-sm font-semibold text-slate-700 min-w-[110px] text-center">
-                  {format(parseISO(startDate), 'MMMM yyyy')}
-                </span>
-                <button onClick={() => shiftMonth(1)} className="px-2 py-1.5 hover:bg-slate-100 text-slate-600 transition-colors">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+        </div>
 
-              {/* Custom date range */}
-              <div className="flex items-center gap-1.5 text-sm">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                  className="border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                <span className="text-slate-400">–</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                  className="border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-              </div>
+        {/* Show toggles */}
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Show Prescriptions</label>
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none"
+            value={showPrescriptions ? 'Yes' : 'No'} onChange={e => setShowPrescriptions(e.target.value === 'Yes')}>
+            <option>Yes</option><option>No</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Show Directions</label>
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none"
+            value={showDirections ? 'Yes' : 'No'} onChange={e => setShowDirections(e.target.value === 'Yes')}>
+            <option>Yes</option><option>No</option>
+          </select>
+        </div>
 
-              {/* Toggles */}
-              <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-slate-600">
-                <input type="checkbox" checked={showPrescriptions} onChange={e => setShowPrescriptions(e.target.checked)}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-400" />
-                Show Prescriptions
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-slate-600">
-                <input type="checkbox" checked={showDirections} onChange={e => setShowDirections(e.target.checked)}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-400" />
-                Show Directions
-              </label>
-
-              <div className="ml-auto flex items-center gap-2">
-                <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => setPrintModal(true)}>Print</Button>
-                <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>
-              </div>
-            </div>
-
-            {/* ── Resident profile bar ───────────────────────────────── */}
-            <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-start gap-4">
-              {/* Avatar / photo */}
-              <div className="flex-shrink-0">
-                {su?.photo_url ? (
-                  <img src={su.photo_url} alt={getName(su)} className="w-14 h-14 rounded-full object-cover border-2 border-slate-200" />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-lg font-bold border-2 border-purple-200">
-                    {suInitials}
-                  </div>
-                )}
-              </div>
-
-              {/* Info columns */}
-              <div className="flex-1 grid grid-cols-3 gap-4 text-xs">
-                {/* Resident details */}
-                <div>
-                  <p className="font-bold text-slate-800 text-sm mb-0.5">{getName(su)}</p>
-                  {su?.date_of_birth && <p className="text-slate-500">DOB: {format(parseISO(su.date_of_birth), 'd MMM yyyy')}</p>}
-                  {(su?.food_allergies || su?.allergies) && (
-                    <p className="text-slate-600 mt-1">
-                      <span className="font-semibold">Allergies/Notes:</span>{' '}
-                      {[su.food_allergies, su.allergies].filter(Boolean).join(', ')}
-                    </p>
-                  )}
-                  {su?.med_allergies && (
-                    <p className="text-slate-600">
-                      <span className="font-semibold">Medicine Allergies:</span> {su.med_allergies}
-                    </p>
-                  )}
-                  {su?.special_diet && (
-                    <p className="text-slate-600">
-                      <span className="font-semibold">Main Diet:</span> {su.special_diet}
-                    </p>
-                  )}
-                  {su?.fluid_consistency && (
-                    <p className="text-slate-600">
-                      <span className="font-semibold">Fluid:</span> {su.fluid_consistency}
-                    </p>
-                  )}
-                </div>
-
-                {/* Provider */}
-                <div>
-                  {su?.home_name && (
-                    <p className="font-semibold text-slate-700">{su.home_name}</p>
-                  )}
-                  {su?.home_address && <p className="text-slate-500">{su.home_address}</p>}
-                  {su?.home_postcode && <p className="text-slate-500">{su.home_postcode}</p>}
-                  {su?.home_phone && <p className="text-slate-500">{su.home_phone}</p>}
-                </div>
-
-                {/* Medical notes */}
-                <div>
-                  {su?.nhs_number && <p className="text-slate-600"><span className="font-semibold">NHS No:</span> {su.nhs_number}</p>}
-                  {su?.dnar && <p className="text-rose-600 font-semibold">DNAR in place</p>}
-                  {su?.nil_by_mouth && <p className="text-rose-600 font-semibold">NIL BY MOUTH</p>}
-                  {su?.medical_history && <p className="text-slate-500 line-clamp-2 mt-1">{su.medical_history}</p>}
-                </div>
-              </div>
-
-              {/* Start date */}
-              {su?.admission_date && (
-                <div className="flex-shrink-0 text-right text-xs text-slate-400">
-                  <p className="font-semibold">Start Date</p>
-                  <p>{format(parseISO(su.admission_date), 'd MMM yyyy')}</p>
-                </div>
-              )}
-            </div>
-
-            {/* ── Tabs ───────────────────────────────────────────────── */}
-            <div className="bg-white border-b border-slate-200 px-4 flex gap-0">
-              {[
-                { key: 'mar', label: 'Medicine Administration Report' },
-                { key: 'medications', label: 'Medications' },
-                { key: 'stock', label: 'Stock Count' },
-              ].map(t => (
-                <button key={t.key} onClick={() => setTab(t.key as any)}
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* ── Content ────────────────────────────────────────────── */}
-            <div className="flex-1 overflow-auto">
-              {loading ? (
-                <div className="flex items-center justify-center h-48"><Spinner /></div>
-              ) : tab === 'mar' ? (
-                <MARGrid
-                  chartData={chartData}
-                  showPrescriptions={showPrescriptions}
-                  showDirections={showDirections}
-                  today={today}
-                  onCellClick={(med, date, records, slot) => {
-                    if (records.length > 0) setCellDetail({ med, date, records })
-                    else if (date <= today) setLogModal({ med, date, slot })
-                  }}
-                  onRefresh={() => fetchAll(selectedSu)}
-                />
-              ) : tab === 'medications' ? (
-                <div className="p-4 space-y-3">
-                  {medications.length === 0 ? (
-                    <EmptyState title="No medications" description="Add medications for this resident"
-                      action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>} />
-                  ) : medications.map((med: any) => (
-                    <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-start justify-between shadow-sm">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Pill className="w-4 h-4 text-purple-500" />
-                          <h3 className="font-semibold text-slate-900">{med.medication_name}</h3>
-                          {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
-                        </div>
-                        <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
-                        {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Prescribed by: {med.prescribed_by}</p>}
-                        {med.start_date && <p className="text-xs text-slate-400">Started: {format(new Date(med.start_date), 'd MMM yyyy')}</p>}
-                        {med.instructions && <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mt-1">{med.instructions}</p>}
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={async () => {
-                        if (!confirm('Discontinue this medication?')) return
-                        await api.delete(`/mar/medications/${med.id}`)
-                        const res = await api.get(`/mar/medications/${selectedSu.id}`)
-                        setMedications(res.data.data || [])
-                        toast.success('Medication discontinued')
-                      }}>Discontinue</Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 space-y-3">
-                  <p className="text-sm text-slate-500">Record medication stock counts for audit purposes.</p>
-                  {medications.map((med: any) => {
-                    const stock = stockData.find((s: any) => s.medication_id === med.id)
-                    return (
-                      <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between shadow-sm">
-                        <div>
-                          <p className="font-semibold text-slate-900">{med.medication_name}</p>
-                          <p className="text-sm text-slate-500">{med.dose}</p>
-                          {stock && <p className="text-xs text-slate-400 mt-1">Last count: {stock.current_count} · {stock.last_counted_at ? format(new Date(stock.last_counted_at), 'd MMM, HH:mm') : 'Never'}</p>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {stock && <span className="text-2xl font-bold text-slate-800">{stock.current_count}</span>}
-                          <Button size="sm" variant="outline" icon={<Package className="w-3.5 h-3.5" />}
-                            onClick={() => setStockModalMed({ ...med, currentStock: stock?.current_count || 0 })}>
-                            Update count
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {medications.length === 0 && <EmptyState title="No medications" description="Add medications to track stock counts" />}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => setPrintModal(true)}>Print</Button>
+          {selectedSu && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>}
+        </div>
       </div>
+
+      {/* ── Main content ──────────────────────────────────────────────── */}
+      {!selectedSu ? (
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState title="Select a resident" description="Use the Service User dropdown above to load their Medication Administration Record" />
+        </div>
+      ) : (
+        <div className="flex flex-col flex-1 overflow-hidden">
+
+          {/* ── Resident profile strip ───────────────────────────────── */}
+          <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-start gap-4">
+            <div className="flex-shrink-0">
+              {su?.photo_url ? (
+                <img src={su.photo_url} alt={getName(su)} className="w-12 h-12 rounded-full object-cover border-2 border-slate-200" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-base font-bold border-2 border-purple-200">
+                  {suInitials}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 grid grid-cols-3 gap-4 text-xs">
+              <div>
+                <p className="font-bold text-slate-800 text-sm mb-0.5">{getName(su)}</p>
+                {su?.date_of_birth && <p className="text-slate-500">DOB: {format(parseISO(su.date_of_birth), 'd MMM yyyy')}</p>}
+                {(su?.food_allergies || su?.allergies) && <p className="text-slate-600 mt-0.5"><span className="font-semibold">Allergies/Notes:</span> {[su.food_allergies, su.allergies].filter(Boolean).join(', ')}</p>}
+                {su?.med_allergies && <p className="text-slate-600"><span className="font-semibold">Medicine Allergies:</span> {su.med_allergies}</p>}
+                {su?.special_diet && <p className="text-slate-600"><span className="font-semibold">Main Diet:</span> {su.special_diet}</p>}
+              </div>
+              <div className="text-center">
+                {su?.home_name && <p className="font-semibold text-slate-700">{su.home_name}</p>}
+                {su?.home_address && <p className="text-slate-500">{su.home_address}</p>}
+                {su?.home_postcode && <p className="text-slate-500">{su.home_postcode}</p>}
+              </div>
+              <div className="text-right">
+                {su?.nhs_number && <p className="text-slate-600"><span className="font-semibold">NHS No:</span> {su.nhs_number}</p>}
+                {su?.dnar && <p className="text-rose-600 font-semibold text-xs">DNAR in place</p>}
+                {su?.nil_by_mouth && <p className="text-rose-600 font-semibold text-xs">NIL BY MOUTH</p>}
+                {su?.admission_date && <p className="text-slate-400 text-xs mt-0.5">Admitted: {format(parseISO(su.admission_date), 'd MMM yyyy')}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Tabs ───────────────────────────────────────────────── */}
+          <div className="bg-white border-b border-slate-200 px-4 flex gap-0">
+            {[
+              { key: 'mar', label: 'Medicine Administration Report' },
+              { key: 'medications', label: 'Medications' },
+              { key: 'stock', label: 'Stock Count' },
+            ].map(t => (
+              <button key={t.key} onClick={() => setTab(t.key as any)}
+                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Content ────────────────────────────────────────────── */}
+          <div className="flex-1 overflow-auto">
+            {loading ? (
+              <div className="flex items-center justify-center h-48"><Spinner /></div>
+            ) : tab === 'mar' ? (
+              <MARGrid
+                chartData={chartData}
+                showPrescriptions={showPrescriptions}
+                showDirections={showDirections}
+                today={today}
+                onCellClick={(med, date, records, slot) => {
+                  if (records.length > 0) setCellDetail({ med, date, records })
+                  else if (date <= today) setLogModal({ med, date, slot })
+                }}
+                onRefresh={() => fetchAll(selectedSu)}
+              />
+            ) : tab === 'medications' ? (
+              <div className="p-4 space-y-3">
+                {medications.length === 0 ? (
+                  <EmptyState title="No medications" description="Add medications for this resident"
+                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>} />
+                ) : medications.map((med: any) => (
+                  <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-start justify-between shadow-sm">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Pill className="w-4 h-4 text-purple-500" />
+                        <h3 className="font-semibold text-slate-900">{med.medication_name}</h3>
+                        {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
+                      </div>
+                      <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
+                      {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Prescribed by: {med.prescribed_by}</p>}
+                      {med.start_date && <p className="text-xs text-slate-400">Started: {format(new Date(med.start_date), 'd MMM yyyy')}</p>}
+                      {med.instructions && <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mt-1">{med.instructions}</p>}
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      if (!confirm('Discontinue this medication?')) return
+                      await api.delete(`/mar/medications/${med.id}`)
+                      const res = await api.get(`/mar/medications/${selectedSu.id}`)
+                      setMedications(res.data.data || [])
+                      toast.success('Medication discontinued')
+                    }}>Discontinue</Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 space-y-3">
+                <p className="text-sm text-slate-500">Record medication stock counts for audit purposes.</p>
+                {medications.map((med: any) => {
+                  const stock = stockData.find((s: any) => s.medication_id === med.id)
+                  return (
+                    <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between shadow-sm">
+                      <div>
+                        <p className="font-semibold text-slate-900">{med.medication_name}</p>
+                        <p className="text-sm text-slate-500">{med.dose}</p>
+                        {stock && <p className="text-xs text-slate-400 mt-1">Last count: {stock.current_count} · {stock.last_counted_at ? format(new Date(stock.last_counted_at), 'd MMM, HH:mm') : 'Never'}</p>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {stock && <span className="text-2xl font-bold text-slate-800">{stock.current_count}</span>}
+                        <Button size="sm" variant="outline" icon={<Package className="w-3.5 h-3.5" />}
+                          onClick={() => setStockModalMed({ ...med, currentStock: stock?.current_count || 0 })}>
+                          Update count
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {medications.length === 0 && <EmptyState title="No medications" description="Add medications to track stock counts" />}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Modals ─────────────────────────────────────────────────── */}
       <AddMedicationModal open={addMedOpen} onClose={() => setAddMedOpen(false)} suId={selectedSu?.id}
@@ -644,14 +571,15 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
         </tbody>
       </table>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-2 bg-white border-t border-slate-200 text-xs text-slate-500 flex-wrap">
-        <span className="font-semibold text-slate-700">Key:</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-4 h-4 bg-emerald-100 border border-emerald-300 rounded text-center text-emerald-700 font-bold leading-4" style={{fontSize:8}}>JC</span> = Given (initials)</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-4 h-4 bg-red-100 border border-red-300 rounded text-center text-red-700 font-bold leading-4" style={{fontSize:8}}>X</span> = Refused</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-4 h-4 bg-yellow-100 border border-yellow-300 rounded text-center text-yellow-700 font-bold leading-4" style={{fontSize:8}}>O</span> = Omitted</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-4 h-4 bg-amber-50 border border-amber-300 rounded leading-4" style={{fontSize:8}} /> = Today</span>
-        <span className="text-slate-400">Click any cell to view details or log medication</span>
+      {/* Legend — RoundSys style */}
+      <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="font-bold text-slate-700">Key:</span>
+        <span><span className="font-semibold">P</span> = PRN (as required)</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-emerald-100 border border-emerald-300 rounded text-center text-emerald-700 font-bold leading-5" style={{fontSize:8}}>JC</span> = Administered (initials)</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-red-100 border border-red-300 rounded text-center text-red-700 font-bold leading-5" style={{fontSize:9}}>X</span> = Refused</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-yellow-100 border border-yellow-300 rounded text-center text-yellow-700 font-bold leading-5" style={{fontSize:9}}>O</span> = Omitted</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-5 h-5 bg-amber-50 border border-amber-300 rounded leading-5" /> = Today</span>
+        <span className="text-slate-400 italic">Click any past cell to log or view administration</span>
       </div>
     </div>
   )

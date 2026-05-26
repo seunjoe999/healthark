@@ -68,11 +68,11 @@ export default function GeneralForm({ type, suId, onSaved }: { type: string; suI
         <div><label className="label">Outstanding actions</label><textarea className="input" rows={2} value={form.outstandingActions || ''} onChange={e => set('outstandingActions', e.target.value)} placeholder="Tasks not yet completed..." /></div>
       </>)}
 
-      {type === 'general_support' && (
-        <SpeechTextarea label="Describe the support provided" required rows={4} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="What support did you give and how did the resident respond..." />
+      {type === 'general_support' ? (
+        <SpeechTextarea label="Describe the support provided *" required rows={4} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="What support did you give and how did the resident respond..." />
+      ) : (
+        <SpeechTextarea label="Notes" rows={3} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="Any additional notes..." />
       )}
-
-      <SpeechTextarea label="Additional notes" rows={2} value={form.notes || ''} onChange={v => set('notes', v)} />
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>
   )

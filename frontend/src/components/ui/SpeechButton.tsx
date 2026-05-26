@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react'
-import { Mic, MicOff, Square } from 'lucide-react'
+import { Mic, Square } from 'lucide-react'
 
 interface SpeechButtonProps {
   onTranscript: (text: string) => void
@@ -15,7 +15,7 @@ declare global {
 
 export default function SpeechButton({ onTranscript, className = '' }: SpeechButtonProps) {
   const [listening, setListening] = useState(false)
-  const [supported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
+  const supported = !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   const recRef = useRef<any>(null)
 
   const start = useCallback(() => {
@@ -43,16 +43,27 @@ export default function SpeechButton({ onTranscript, className = '' }: SpeechBut
     setListening(false)
   }, [])
 
-  if (!supported) return null
+  if (!supported) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Speech-to-text not supported in this browser (use Chrome or Edge)"
+        className={`flex-shrink-0 p-2 rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed ${className}`}
+      >
+        <Mic className="w-4 h-4" />
+      </button>
+    )
+  }
 
   return (
     <button
       type="button"
       onClick={listening ? stop : start}
-      title={listening ? 'Stop recording' : 'Start speech-to-text'}
+      title={listening ? 'Stop recording' : 'Click to dictate'}
       className={`flex-shrink-0 p-2 rounded-lg transition-all ${listening
-        ? 'bg-red-500 text-white animate-pulse'
-        : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+        ? 'bg-red-500 text-white animate-pulse shadow-md'
+        : 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm'
       } ${className}`}
     >
       {listening ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
