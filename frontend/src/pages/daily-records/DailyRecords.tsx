@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, subDays, parseISO } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Select, Input, PrintButton } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
 import { ClipboardList, Plus, Search, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
@@ -252,7 +252,7 @@ export default function DailyRecords() {
 
       {/* Add record modal */}
       {addOpen && selectedSu && (
-        <AddRecordModal suId={selectedSu.id} onClose={() => setAddOpen(false)}
+        <AddRecordModal suId={selectedSu.id} homeId={selectedHome} onClose={() => setAddOpen(false)}
           onSaved={async () => { setAddOpen(false); await loadRecords(selectedSu.id, viewDate); toast.success('Record saved') }} />
       )}
 
@@ -277,7 +277,7 @@ function RecordSummary({ record: r }: { record: any }) {
   return <p className="text-sm text-slate-700">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p>
 }
 
-function AddRecordModal({ suId, onClose, onSaved }: { suId: string; onClose: () => void; onSaved: () => void }) {
+function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; homeId: string; onClose: () => void; onSaved: () => void }) {
   const [type, setType] = useState('personal_care')
   const [form, setForm] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(false)
@@ -286,7 +286,7 @@ function AddRecordModal({ suId, onClose, onSaved }: { suId: string; onClose: () 
   const save = async () => {
     setLoading(true)
     try {
-      await dailyRecordsApi.create({ suId, recordType: type, ...form })
+      await dailyRecordsApi.create({ suId, homeId, recordType: type, ...form })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
     finally { setLoading(false) }
@@ -342,14 +342,14 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
           <div><label className="label">Pulse (bpm)</label><input type="number" className="input" value={form.pulse || ''} onChange={e => set('pulse', parseInt(e.target.value))} placeholder="72" /></div>
         </div>
         {form.systolic > 180 || form.diastolic > 110 ? <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">⚠ Reading outside safe range</div> : null}
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
       </div>
     )
     case 'vitals_temp': return (
       <div className="space-y-3">
         <div><label className="label">Temperature (°C)</label><input type="number" step="0.1" className="input" value={form.tempCelsius || ''} onChange={e => set('tempCelsius', parseFloat(e.target.value))} placeholder="36.5" /></div>
         {form.tempCelsius && (form.tempCelsius < 35 || form.tempCelsius > 37.5) ? <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">⚠ Temperature outside normal range (35–37.5°C)</div> : null}
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
       </div>
     )
     case 'vitals_oxygen': return (
@@ -357,18 +357,18 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
         <div><label className="label">SpO2 (%)</label><input type="number" className="input" value={form.spo2Percent || ''} onChange={e => set('spo2Percent', parseInt(e.target.value))} placeholder="98" /></div>
         {form.spo2Percent && form.spo2Percent < 94 ? <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">⚠ SpO2 below 94%</div> : null}
         <div className="flex items-center gap-2"><input type="checkbox" id="o2" checked={form.supplementalO2 || false} onChange={e => set('supplementalO2', e.target.checked)} /><label htmlFor="o2" className="text-sm text-slate-700">On supplemental oxygen</label></div>
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
       </div>
     )
     case 'bowel_movement': return (
       <div className="space-y-3">
         <Select label="Bristol stool type" value={form.bristolType || ''} onChange={e => set('bristolType', parseInt(e.target.value))}
           options={[1,2,3,4,5,6,7].map(n => ({ value: String(n), label: `Type ${n} — ${['Separate hard lumps','Lumpy sausage','Cracked sausage','Smooth sausage','Soft blobs','Fluffy mushy','Watery'][n-1]}` }))} placeholder="Select type" />
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
+        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
       </div>
     )
     default: return (
-      <div><label className="label">Notes / description</label><textarea required className="input" rows={4} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Describe what happened, what was observed..." /></div>
+      <Textarea label="Notes / description" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={4} placeholder="Describe what happened, what was observed..." />
     )
   }
 }
@@ -473,7 +473,7 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
             options={[1,2,3,4,5,6,7].map(n=>({value:String(n),label:`Type ${n}`}))} placeholder="Select type" />
         )}
 
-        <div><label className="label">Notes</label><textarea className="input" rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Add or update notes..." /></div>
+        <Textarea label="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="Add or update notes..." />
 
         <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>

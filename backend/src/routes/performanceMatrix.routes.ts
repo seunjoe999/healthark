@@ -204,14 +204,16 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
       );
       const totalClocks = parseInt(clockRows[0]?.total || '0');
       const onTime = parseInt(clockRows[0]?.on_time || '0');
-      const punctualityScore = totalClocks === 0 ? 80 : Math.round((onTime / totalClocks) * 100);
+      const punctualityPct = totalClocks === 0 ? 80 : Math.round((onTime / totalClocks) * 100);
+      // Map 0-100 percentage to 1-5 rating scale for DB check constraint
+      const punctualityScore = Math.min(5, Math.max(1, Math.round(punctualityPct / 20)));
 
-      // Calculate overall score (weighted)
+      // Calculate overall score (weighted, 0-100)
       const dbsScore = dbsValid ? 100 : 0;
       const incidentPenalty = Math.min(incidentCount * 5, 40);
       const overallScore = Math.round(
         trainingCompliance * 0.30 +
-        punctualityScore * 0.40 +
+        punctualityPct * 0.40 +
         dbsScore * 0.30 -
         incidentPenalty
       );

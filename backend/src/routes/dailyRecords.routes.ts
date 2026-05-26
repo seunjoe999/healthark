@@ -56,7 +56,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
 // POST /api/daily-records — create parent record + child detail
 router.post('/', [
-  body('suId').isUUID(),
+  body('suId').notEmpty(),
   body('recordType').notEmpty(),
 ], validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -64,8 +64,21 @@ router.post('/', [
     const homeId = req.body.homeId || getHomeId(req);
     const { suId, recordType, shift, notes } = req.body;
 
+    if (!staffId) throw new AppError('Could not identify staff from token', 401);
+    if (!homeId) throw new AppError('homeId required', 400);
+
+    // Normalise frontend type names to backend switch cases
+    const typeAliases: Record<string, string> = {
+      fluid_intake: 'food_drink',
+      food_intake: 'food_drink',
+      bowel_movement: 'bowel',
+      social_visit: 'visit',
+      family_visit: 'visit',
+    };
+    const normalizedType = typeAliases[recordType] || recordType;
+
     const result = await transaction(async (client) => {
-      // Create parent record
+      // Create parent record (keep original type string for display)
       const drRows = await client.query(
         `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, shift, notes)
          VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
@@ -74,7 +87,7 @@ router.post('/', [
       const dr = drRows.rows[0];
 
       // Create child record based on type
-      switch (recordType) {
+      switch (normalizedType) {
         case 'food_drink': {
           const { entryType, mealType, description, amountEaten, volumeMl, assisted, refused } = req.body;
           await client.query(

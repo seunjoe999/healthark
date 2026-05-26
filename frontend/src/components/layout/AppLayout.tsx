@@ -68,7 +68,7 @@ const navSections = [
     items: [
       { label: 'Compliance',              to: '/compliance',        icon: ShieldCheck, roles: ['home_manager','group_admin','auditor'], featureKey: 'compliance' },
       { label: 'Complaints & Compliments', to: '/complaints',       icon: ThumbsUp,    roles: ['home_manager','group_admin','team_leader'], featureKey: 'complaints' },
-      { label: 'Audit',                   to: '/assessments',       icon: FileCheck,   roles: [],                                      featureKey: 'assessments' },
+      { label: 'Audit',                   to: '/assessments?tab=resident', icon: FileCheck,   roles: [],                                      featureKey: 'assessments' },
       { label: 'Audit Reports',           to: '/audits',            icon: Activity,    roles: ['home_manager','group_admin','auditor'], featureKey: 'audits' },
       { label: 'Audit Trail',             to: '/audit-trail',       icon: History,     roles: ['home_manager','group_admin','auditor'], featureKey: 'audit_trail' },
       { label: 'Reports',                 to: '/reports',           icon: BarChart2,   roles: ['home_manager','group_admin'],           featureKey: 'reports' },

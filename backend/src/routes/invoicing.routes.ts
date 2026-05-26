@@ -52,8 +52,8 @@ router.get('/:id', param('id').isUUID(), validateRequest,
 
 // POST /api/invoicing — create invoice
 router.post('/', [
-  body('homeId').isUUID(),
-  body('suId').isUUID(),
+  body('homeId').notEmpty(),
+  body('suId').notEmpty(),
   body('monthDate').notEmpty(),
   body('commissionedHours').optional().isNumeric(),
   body('invoiceAmount').isNumeric(),

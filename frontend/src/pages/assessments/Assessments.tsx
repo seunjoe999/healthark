@@ -28,6 +28,7 @@ export default function Assessments() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const staffOnly = searchParams.get('tab') === 'staff'
+  const residentOnly = searchParams.get('tab') === 'resident'
   const [tab, setTab] = useState<'service_user' | 'staff'>(staffOnly ? 'staff' : 'service_user')
   const [templates, setTemplates] = useState<any[]>([])
   const [assessments, setAssessments] = useState<any[]>([])
@@ -95,9 +96,9 @@ export default function Assessments() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <ClipboardCheck className="w-6 h-6 text-purple-600" /> {staffOnly ? 'Staff Assessment' : 'Audit'}
+            <ClipboardCheck className="w-6 h-6 text-purple-600" /> {staffOnly ? 'Staff Assessment' : residentOnly ? 'Audit' : 'Audit'}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">{staffOnly ? 'Conduct and manage staff assessments' : 'Conduct and manage care audits'}</p>
+          <p className="text-slate-500 text-sm mt-0.5">{staffOnly ? 'Conduct and manage staff assessments' : 'Conduct and manage resident care audits'}</p>
         </div>
         <div className="flex items-center gap-2">
           <PrintButton />
@@ -109,8 +110,8 @@ export default function Assessments() {
         </div>
       </div>
 
-      {/* Tabs — hidden when staffOnly mode (from Staff Assessment nav) */}
-      {!staffOnly && (
+      {/* Tabs — hidden when staffOnly or residentOnly mode */}
+      {!staffOnly && !residentOnly && (
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
           {(['service_user', 'staff'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
