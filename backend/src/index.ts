@@ -689,8 +689,28 @@ async function ensureColumns() {
        updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_recruit_home ON recruitment_candidates(home_id, applied_date DESC)`,
-    // Audit attachments column
-    `ALTER TABLE audits ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
+    // Handover resident notes
+    `CREATE TABLE IF NOT EXISTS handover_resident_notes (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       shift_date  DATE NOT NULL,
+       shift_type  VARCHAR(20) NOT NULL,
+       notes       TEXT,
+       created_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
+       updated_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       UNIQUE (home_id, su_id, shift_date, shift_type)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_hn_home_date ON handover_resident_notes(home_id, shift_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_hn_su ON handover_resident_notes(su_id)`,
+    // Leave hours: ensure remaining is set for staff where it is NULL
+    `UPDATE staff SET leave_hours_remaining = leave_hours_total WHERE leave_hours_remaining IS NULL`,
+    // Leave hours: fix staff still on old 224 default
+    `UPDATE staff SET leave_hours_total = 210, leave_hours_remaining = 210 WHERE leave_hours_total = 224`,
+    // Audit attachments column (using correct table name audit_reports)
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
     // ── audit_log (non-partitioned fallback) ──────────────────────────────────
     `CREATE TABLE IF NOT EXISTS audit_log (
        id          BIGSERIAL PRIMARY KEY,

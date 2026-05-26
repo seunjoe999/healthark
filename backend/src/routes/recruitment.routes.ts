@@ -51,9 +51,23 @@ router.put('/:id', param('id').isUUID(), validateRequest, async (req: Request, r
   try {
     const { firstName, lastName, email, phone, position, appliedDate, status, interviewDate, notes, dbsCheck, referenceCheck } = req.body;
     const rows = await query(
-      `UPDATE recruitment_candidates SET first_name=$1, last_name=$2, email=$3, phone=$4, position=$5, applied_date=$6, status=$7, interview_date=$8, notes=$9, dbs_check=$10, reference_check=$11, updated_at=NOW()
+      `UPDATE recruitment_candidates SET
+         first_name     = COALESCE($1, first_name),
+         last_name      = COALESCE($2, last_name),
+         email          = COALESCE($3, email),
+         phone          = COALESCE($4, phone),
+         position       = COALESCE($5, position),
+         applied_date   = COALESCE($6, applied_date),
+         status         = COALESCE($7, status),
+         interview_date = COALESCE($8, interview_date),
+         notes          = COALESCE($9, notes),
+         dbs_check      = COALESCE($10, dbs_check),
+         reference_check= COALESCE($11, reference_check),
+         updated_at     = NOW()
        WHERE id=$12 RETURNING *`,
-      [firstName, lastName, email || null, phone || null, position, appliedDate || null, status, interviewDate || null, notes || null, dbsCheck || null, referenceCheck || null, req.params.id]
+      [firstName || null, lastName || null, email || null, phone || null, position || null,
+       appliedDate || null, status || null, interviewDate || null, notes || null,
+       dbsCheck || null, referenceCheck || null, req.params.id]
     );
     if (!rows.length) throw new AppError('Not found', 404);
     res.json({ success: true, data: rows[0] } as ApiResponse);
