@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Select } from '../../components/ui'
-import { FileText, Printer, Save, Check, Mic } from 'lucide-react'
+import { FileText, Printer, Save, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import SignaturePad from '../../components/SignaturePad'
 import SpeechInput from '../../components/SpeechInput'
 
@@ -139,6 +139,56 @@ function shiftHeaderTime(shift: string): string {
   return ''
 }
 
+const RECORD_TYPE_LABELS: Record<string, string> = {
+  food_drink: 'Food & Drink', fluid_intake: 'Fluids', food_intake: 'Food',
+  personal_care: 'Personal Care', bowel: 'Bowel', bath: 'Bath/Shower',
+  medication: 'Medication', sleep: 'Sleep', activity: 'Activity',
+  observation: 'Observation', incident: 'Incident', visit: 'Visit',
+  mood: 'Mood', communication: 'Communication', health: 'Health', other: 'Other',
+}
+
+function RecordSummary({ records }: { records: any[] }) {
+  const [open, setOpen] = useState(false)
+  if (records.length === 0) return (
+    <p className="text-xs text-slate-600 italic mt-2">No records logged today</p>
+  )
+  const byType: Record<string, any[]> = {}
+  for (const r of records) {
+    const t = r.record_type || 'other'
+    if (!byType[t]) byType[t] = []
+    byType[t].push(r)
+  }
+  return (
+    <div className="mt-2">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors">
+        {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        {open ? 'Hide' : 'Show'} today's records ({records.length})
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-white/10">
+          {Object.entries(byType).map(([type, recs]) => (
+            <div key={type}>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{RECORD_TYPE_LABELS[type] || type}</p>
+              {recs.map((r, i) => {
+                const note = r.notes || r.description || r.content || ''
+                const time = r.created_at ? format(new Date(r.created_at), 'HH:mm') : ''
+                return (
+                  <p key={i} className="text-xs text-slate-300 leading-snug">
+                    {time && <span className="text-slate-500 mr-1">{time}</span>}
+                    {note || JSON.stringify(r.data || '').replace(/[{}"]/g, '').slice(0, 80)}
+                    <span className="text-slate-600 ml-1">— {r.staff_name}</span>
+                  </p>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function HandoverReport() {
   const { user } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
@@ -150,6 +200,7 @@ export default function HandoverReport() {
   const [savedAt, setSavedAt] = useState<Record<string, number>>({})
   const [previous, setPrevious] = useState<PreviousNote[]>([])
   const [loadingPrev, setLoadingPrev] = useState(false)
+  const [todayRecords, setTodayRecords] = useState<any[]>([])
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -183,6 +234,13 @@ export default function HandoverReport() {
       .catch(() => setPrevious([]))
       .finally(() => setLoadingPrev(false))
   }, [selectedHome])
+
+  useEffect(() => {
+    if (!selectedHome) return
+    api.get('/daily-records', { params: { homeId: selectedHome, date: today } })
+      .then(res => setTodayRecords(res.data.data || []))
+      .catch(() => setTodayRecords([]))
+  }, [selectedHome, today])
 
   const homeName = useMemo(() => {
     const h = homes.find(x => x.id === selectedHome)
@@ -262,6 +320,7 @@ export default function HandoverReport() {
               const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
               const value = residentNotes[su.id] || ''
               const recentlySaved = savedAt[su.id] && Date.now() - savedAt[su.id] < 3000
+              const suRecords = todayRecords.filter(r => r.su_id === su.id)
               return (
                 <div key={su.id} className="rounded-xl p-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center justify-between mb-3">
@@ -281,7 +340,8 @@ export default function HandoverReport() {
                       </button>
                     </div>
                   </div>
-                  <div className="flex gap-2 items-start">
+                  <RecordSummary records={suRecords} />
+                  <div className="flex gap-2 items-start mt-3">
                     <textarea
                       className="flex-1 text-sm rounded-xl px-3 py-2.5 resize-y focus:outline-none font-mono leading-relaxed"
                       style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: '#f0ece0', minHeight: '160px' }}

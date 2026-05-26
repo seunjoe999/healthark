@@ -30,21 +30,23 @@ function getHomeId(req: Request): string {
   return req.staff?.homeId || '';
 }
 
-// GET /api/daily-records?suId=xxx&date=2026-05-10
+// GET /api/daily-records?suId=xxx&date=2026-05-10  OR  ?homeId=xxx&date=2026-05-10 (multi-resident, for handover)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { suId, date, recordType } = req.query as Record<string, string>;
-    if (!suId) throw new AppError('suId required', 400);
+    const { suId, homeId, date, recordType } = req.query as Record<string, string>;
+    if (!suId && !homeId) throw new AppError('suId or homeId required', 400);
 
-    let sql = `SELECT dr.*, 
+    let sql = `SELECT dr.*,
                       s.first_name || ' ' || s.last_name as staff_name,
                       s.photo_url as staff_photo
                FROM daily_records dr
                JOIN staff s ON s.id = dr.staff_id
-               WHERE dr.su_id = $1`;
-    const params: unknown[] = [suId];
-    let idx = 2;
+               WHERE 1=1`;
+    const params: unknown[] = [];
+    let idx = 1;
 
+    if (suId) { sql += ` AND dr.su_id = $${idx++}`; params.push(suId); }
+    if (homeId) { sql += ` AND dr.home_id = $${idx++}`; params.push(homeId); }
     if (date) { sql += ` AND dr.record_date = $${idx++}`; params.push(date); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
     sql += ' ORDER BY dr.record_date DESC, dr.id DESC';
