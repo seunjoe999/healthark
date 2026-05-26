@@ -694,8 +694,8 @@ function CellDetailModal({ data, onClose }: { data: any; onClose: () => void }) 
             <div className="space-y-1">
               {records.map((r: any, i: number) => (
                 <div key={i} className="text-xs text-slate-600 flex gap-2">
-                  <span className={`px-1.5 py-0.5 rounded font-bold ${r.given ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                    {r.given ? 'Given' : 'Refused'}
+                  <span className={`px-1.5 py-0.5 rounded font-bold ${r.given ? 'bg-emerald-100 text-emerald-700' : r.refused ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
+                    {r.mar_code || (r.given ? 'G' : r.refused ? 'R' : 'O')}
                   </span>
                   <span>{r.given_by_name || '—'}</span>
                   {r.scheduled_time && <span>{r.scheduled_time}</span>}
@@ -714,22 +714,44 @@ function CellDetailModal({ data, onClose }: { data: any; onClose: () => void }) 
 }
 
 /* ─── Log MAR Modal ────────────────────────────────────────────────────── */
+const MAR_CODE_OPTIONS = [
+  { code: 'G',  label: 'Given',          desc: 'Administered',          color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.4)',  given: true,  refused: false },
+  { code: 'SM', label: 'Assisted',       desc: 'Prompted/assisted',     color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.4)',   given: true,  refused: false },
+  { code: 'S',  label: 'Self-med',       desc: 'Self-medicated',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.4)',  given: true,  refused: false },
+  { code: 'R',  label: 'Refused',        desc: 'Resident refused',      color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.4)',   given: false, refused: true  },
+  { code: 'MR', label: 'Med refused',    desc: 'Medicine refused',      color: '#f97316', bg: 'rgba(249,115,22,0.12)',  border: 'rgba(249,115,22,0.4)',  given: false, refused: true  },
+  { code: 'A',  label: 'Attempted',      desc: 'Attempt made',          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.4)',  given: false, refused: false },
+  { code: 'D',  label: 'Early',          desc: 'Dosed early',           color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.4)',  given: false, refused: false },
+  { code: 'L',  label: 'Late',           desc: 'Administered late',     color: '#6366f1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.4)',  given: false, refused: false },
+  { code: 'N',  label: 'Not available',  desc: 'Stock not available',   color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.4)', given: false, refused: false },
+  { code: 'O',  label: 'Omitted',        desc: 'Omitted/missed',        color: '#fb923c', bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.4)',  given: false, refused: false },
+  { code: 'NT', label: 'Not taken',      desc: 'Resident did not take', color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',   border: 'rgba(244,63,94,0.4)',  given: false, refused: false },
+  { code: 'NR', label: 'Not required',   desc: 'Not required today',    color: '#64748b', bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.4)', given: false, refused: false },
+  { code: 'F',  label: 'Fasted',         desc: 'Fasted/withheld',       color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.4)', given: false, refused: false },
+  { code: 'H',  label: 'On hold',        desc: 'Medication on hold',    color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)',  border: 'rgba(14,165,233,0.4)',  given: false, refused: false },
+  { code: 'DC', label: 'Discontinued',   desc: 'Discontinued',          color: '#78716c', bg: 'rgba(120,113,108,0.12)', border: 'rgba(120,113,108,0.4)', given: false, refused: false },
+  { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
+]
+
 function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
   med: any; date: string; slot: string; suId: string; onClose: () => void; onSaved: () => void
 }) {
-  const [given, setGiven] = useState<boolean | null>(null)
+  const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
+
   const save = async () => {
-    if (given === null) { toast.error('Select Given or Refused'); return }
+    if (!selectedCode) { toast.error('Select an outcome'); return }
     setLoading(true)
     try {
       await api.post('/mar/records', {
         suId, medicationId: med.id,
-        given: given ? true : null,
-        refused: !given,
+        given: selected?.given ?? false,
+        refused: selected?.refused ?? false,
+        marCode: selectedCode,
         notes: notes || undefined,
         reason: reason || undefined,
         scheduledTime: slot,
@@ -741,33 +763,50 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="sm">
+    <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="md">
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">
+        <p className="text-xs text-slate-400">
           {format(parseISO(date), 'EEEE, d MMMM yyyy')} · {slot}
         </p>
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => setGiven(true)}
-            className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${given === true ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-300'}`}>
-            <Check className={`w-6 h-6 ${given === true ? 'text-emerald-600' : 'text-slate-400'}`} />
-            <span className={`font-semibold text-sm ${given === true ? 'text-emerald-700' : 'text-slate-600'}`}>Given</span>
-          </button>
-          <button onClick={() => setGiven(false)}
-            className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${given === false ? 'border-red-500 bg-red-50' : 'border-slate-200 hover:border-red-300'}`}>
-            <X className={`w-6 h-6 ${given === false ? 'text-red-600' : 'text-slate-400'}`} />
-            <span className={`font-semibold text-sm ${given === false ? 'text-red-700' : 'text-slate-600'}`}>Refused</span>
-          </button>
-        </div>
-        {given === false && (
-          <Input label="Reason for refusal" value={reason} onChange={e => setReason(e.target.value)} placeholder="Resident refused, nausea, etc." />
-        )}
+
         <div>
-          <label className="label">Notes (optional)</label>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select outcome</p>
+          <div className="grid grid-cols-4 gap-2">
+            {MAR_CODE_OPTIONS.map(opt => {
+              const isSelected = selectedCode === opt.code
+              return (
+                <button key={opt.code} onClick={() => setSelectedCode(opt.code)}
+                  className="flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all text-center"
+                  style={{
+                    background: isSelected ? opt.bg : 'rgba(255,255,255,0.04)',
+                    border: `2px solid ${isSelected ? opt.border : 'rgba(255,255,255,0.08)'}`,
+                    color: isSelected ? opt.color : '#94a3b8',
+                  }}>
+                  <span className="text-base font-black leading-none" style={{ color: isSelected ? opt.color : '#64748b' }}>{opt.code}</span>
+                  <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
+                </button>
+              )
+            })}
+          </div>
+          {selected && (
+            <p className="mt-2 text-xs text-center" style={{ color: selected.color }}>
+              {selected.desc}
+            </p>
+          )}
+        </div>
+
+        {(selected?.refused || selectedCode === 'A' || selectedCode === 'F' || selectedCode === 'H' || selectedCode === 'O' || selectedCode === 'E') && (
+          <Input label="Reason / notes" value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason..." />
+        )}
+
+        <div>
+          <label className="label">Additional notes (optional)</label>
           <textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." />
         </div>
-        <div className="flex gap-3 justify-end">
+
+        <div className="flex gap-3 justify-end pt-1">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button loading={loading} onClick={save}>Save record</Button>
+          <Button loading={loading} onClick={save} disabled={!selectedCode}>Save record</Button>
         </div>
       </div>
     </Modal>
