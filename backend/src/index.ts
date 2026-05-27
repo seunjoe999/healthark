@@ -643,6 +643,8 @@ async function ensureColumns() {
     `ALTER TABLE staff_messages ALTER COLUMN message DROP NOT NULL`,
     // Fix recruitment_candidates missing pipeline_stage
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS pipeline_stage VARCHAR(100) DEFAULT 'applied'`,
+    // Allow auto-generated performance records to have no assessor
+    `ALTER TABLE staff_performance ALTER COLUMN assessed_by DROP NOT NULL`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS training_done BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS dbs_cleared BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS references_done BOOLEAN NOT NULL DEFAULT FALSE`,
@@ -980,3 +982,4 @@ bootstrap().catch((err) => { logger.error('Bootstrap failed', { err }); process.
 
 export default app;
 
+// Trigger deploy
