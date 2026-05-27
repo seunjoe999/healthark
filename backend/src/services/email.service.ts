@@ -13,14 +13,11 @@ function createTransport() {
   }
 
   return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false },
-    // Force IPv4 lookup because Render's free tier sometimes fails resolving IPv6 for smtp.gmail.com
-    family: 4
-  } as any);
+    host: process.env.SMTP_HOST || 'smtp.resend.com',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
+    auth: { user, pass }
+  });
 }
 
 export interface SendEmailOptions {
