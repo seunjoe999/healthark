@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, isSameDay, eachDayOfInterval } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { Calendar, Check, X, AlertTriangle, Clock, User } from 'lucide-react'
+import { Calendar, Check, X, AlertTriangle, Clock, User, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -53,7 +53,7 @@ export default function LeaveManagement() {
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [loading, setLoading] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('pending')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('all')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -127,15 +127,24 @@ export default function LeaveManagement() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex gap-2">
-        {(['all', 'pending', 'approved', 'declined'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 text-sm rounded-full font-medium transition-colors flex items-center gap-1.5 ${filter === f ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${filter === f ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>{counts[f]}</span>
-          </button>
-        ))}
+      {/* Filter dropdown */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-3">
+        <label className="text-sm text-slate-600 font-medium">Filter by status:</label>
+        <div className="relative">
+          <select
+            className="input text-sm pr-10 appearance-none cursor-pointer bg-white"
+            value={filter}
+            onChange={e => setFilter(e.target.value as 'all' | 'pending' | 'approved' | 'declined')}
+            style={{ minWidth: '180px' }}
+          >
+            <option value="all">All ({counts.all})</option>
+            <option value="pending">Pending ({counts.pending})</option>
+            <option value="approved">Approved ({counts.approved})</option>
+            <option value="declined">Declined ({counts.declined})</option>
+          </select>
+          <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        </div>
+        <span className="text-xs text-slate-400 ml-2">{filtered.length} request{filtered.length !== 1 ? 's' : ''} shown</span>
       </div>
 
       <div className="flex-1 overflow-auto p-6">

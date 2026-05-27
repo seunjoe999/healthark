@@ -74,6 +74,7 @@ import LeaveManagement from './pages/staff/LeaveManagement'
 import PhysicalHealthPlan from './pages/service-users/PhysicalHealthPlan'
 import Complaints from './pages/complaints/Complaints'
 import SocialActivities from './pages/social-activities/SocialActivities'
+import Recruitment from './pages/recruitment/Recruitment'
 
 
 const IDLE_WARN_MS = 25 * 60 * 1000   // warn after 25 min
@@ -217,6 +218,7 @@ function AppRoutes() {
       <Route path="/physical-health-plan" element={<ProtectedRoute><PhysicalHealthPlan /></ProtectedRoute>} />
       <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
       <Route path="/social-activities" element={<ProtectedRoute><SocialActivities /></ProtectedRoute>} />
+      <Route path="/recruitment" element={<ProtectedRoute><Recruitment /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/messages" replace />} />
     </Routes>
   )

@@ -78,6 +78,24 @@ router.post('/',
         [homeId, alertType, severity, title, description,
          suId || null, alertStaffId || null, recordId || null, recordType || null]
       );
+
+      // Send notification to all home managers and group admins
+      try {
+        const managerRows = await query<any>(
+          `SELECT id FROM staff WHERE home_id=$1 AND role IN ('home_manager','group_admin') AND is_active=true`,
+          [homeId]
+        );
+        for (const m of managerRows) {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+             VALUES ($1,$2,$3,$4,$5,'/alerts')`,
+            [m.id, homeId, `Alert: ${title}`, description, severity === 'critical' ? 'error' : severity === 'warning' ? 'warning' : 'info']
+          );
+        }
+      } catch (notifErr: any) {
+        console.error('Failed to send alert notifications:', notifErr?.message || notifErr);
+      }
+
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

@@ -1,0 +1,5 @@
+const { Pool } = require('./backend/node_modules/pg')
+const p = new Pool({ host:'localhost', port:5432, database:'healthark', user:'postgres', password:'adeniji1234' })
+p.query("SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name='staff_messages' ORDER BY ordinal_position")
+  .then(r => { r.rows.forEach(c => console.log(c.column_name, c.data_type, c.is_nullable)); p.end() })
+  .catch(e => { console.error(e.message); p.end() })

@@ -58,14 +58,22 @@ router.post('/', [body('recipientId').isUUID(), body('message').notEmpty()], val
       );
       // Also send in-app notification to recipient
       try {
+        // Get sender name from staff table
+        const senderRows = await query(
+          `SELECT first_name || ' ' || last_name as full_name FROM staff WHERE id = $1`,
+          [staffId]
+        );
+        const senderName = (senderRows[0] as any)?.full_name || 'a colleague';
         await query(
           `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
            VALUES ($1,$2,$3,$4,'info','/messages')`,
           [recipientId, homeId || null,
-           `New message from ${(rows[0] as any).sender_name || 'a colleague'}`,
+           `New message from ${senderName}`,
            (message as string).substring(0, 120)]
         );
-      } catch {}
+      } catch (notifErr: any) {
+        console.error('Failed to create message notification:', notifErr?.message || notifErr);
+      }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

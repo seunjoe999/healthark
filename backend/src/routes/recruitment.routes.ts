@@ -45,11 +45,11 @@ router.post('/', [
 ], validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
-    const { firstName, lastName, email, phone, position, appliedDate, status, interviewDate, notes, dbsCheck, referenceCheck } = req.body;
+    const { firstName, lastName, email, phone, position, appliedDate, status, pipelineStage, interviewDate, notes, dbsCheck, referenceCheck, trainingDone, dbsCleared, referencesDone, fullyCompliant, readyToStart, startDate } = req.body;
     const rows = await query(
-      `INSERT INTO recruitment_candidates (home_id, first_name, last_name, email, phone, position, applied_date, status, interview_date, notes, dbs_check, reference_check)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [homeId, firstName, lastName, email || null, phone || null, position, appliedDate || null, status || 'applied', interviewDate || null, notes || null, dbsCheck || null, referenceCheck || null]
+      `INSERT INTO recruitment_candidates (home_id, first_name, last_name, email, phone, position, applied_date, status, pipeline_stage, interview_date, notes, dbs_check, reference_check, training_done, dbs_cleared, references_done, fully_compliant, ready_to_start, start_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
+      [homeId, firstName, lastName, email || null, phone || null, position, appliedDate || null, status || 'applied', pipelineStage || status || 'applied', interviewDate || null, notes || null, dbsCheck || null, referenceCheck || null, trainingDone || false, dbsCleared || false, referencesDone || false, fullyCompliant || false, readyToStart || false, startDate || null]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
@@ -58,25 +58,39 @@ router.post('/', [
 // PUT /api/recruitment/:id
 router.put('/:id', param('id').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { firstName, lastName, email, phone, position, appliedDate, status, interviewDate, notes, dbsCheck, referenceCheck } = req.body;
+    const { firstName, lastName, email, phone, position, appliedDate, status, pipelineStage, interviewDate, notes, dbsCheck, referenceCheck, trainingDone, dbsCleared, referencesDone, fullyCompliant, readyToStart, startDate } = req.body;
     const rows = await query(
       `UPDATE recruitment_candidates SET
-         first_name     = COALESCE($1, first_name),
-         last_name      = COALESCE($2, last_name),
-         email          = COALESCE($3, email),
-         phone          = COALESCE($4, phone),
-         position       = COALESCE($5, position),
-         applied_date   = COALESCE($6, applied_date),
-         status         = COALESCE($7, status),
-         interview_date = COALESCE($8, interview_date),
-         notes          = COALESCE($9, notes),
-         dbs_check      = COALESCE($10, dbs_check),
-         reference_check= COALESCE($11, reference_check),
-         updated_at     = NOW()
-       WHERE id=$12 RETURNING *`,
+         first_name      = COALESCE($1, first_name),
+         last_name       = COALESCE($2, last_name),
+         email           = COALESCE($3, email),
+         phone           = COALESCE($4, phone),
+         position        = COALESCE($5, position),
+         applied_date    = COALESCE($6, applied_date),
+         status          = COALESCE($7, status),
+         pipeline_stage  = COALESCE($8, pipeline_stage),
+         interview_date  = COALESCE($9, interview_date),
+         notes           = COALESCE($10, notes),
+         dbs_check       = COALESCE($11, dbs_check),
+         reference_check = COALESCE($12, reference_check),
+         training_done   = COALESCE($13, training_done),
+         dbs_cleared     = COALESCE($14, dbs_cleared),
+         references_done = COALESCE($15, references_done),
+         fully_compliant = COALESCE($16, fully_compliant),
+         ready_to_start  = COALESCE($17, ready_to_start),
+         start_date      = COALESCE($18, start_date),
+         updated_at      = NOW()
+       WHERE id=$19 RETURNING *`,
       [firstName || null, lastName || null, email || null, phone || null, position || null,
-       appliedDate || null, status || null, interviewDate || null, notes || null,
-       dbsCheck || null, referenceCheck || null, req.params.id]
+       appliedDate || null, status || null, pipelineStage || null, interviewDate || null, notes || null,
+       dbsCheck || null, referenceCheck || null,
+       trainingDone !== undefined ? trainingDone : null,
+       dbsCleared !== undefined ? dbsCleared : null,
+       referencesDone !== undefined ? referencesDone : null,
+       fullyCompliant !== undefined ? fullyCompliant : null,
+       readyToStart !== undefined ? readyToStart : null,
+       startDate || null,
+       req.params.id]
     );
     if (!rows.length) throw new AppError('Not found', 404);
     res.json({ success: true, data: rows[0] } as ApiResponse);
