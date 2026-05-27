@@ -66,6 +66,7 @@ export default function Recruitment() {
   const [editCandidate, setEditCandidate] = useState<Candidate | null>(null)
   const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null)
   const [emailOpen, setEmailOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [emailCandidate, setEmailCandidate] = useState<Candidate | null>(null)
   const [emailConfigured, setEmailConfigured] = useState(false)
 
@@ -152,6 +153,7 @@ export default function Recruitment() {
                 {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
             )}
+            <Button variant="secondary" size="sm" icon={<Mail className="w-4 h-4" />} onClick={() => setHistoryOpen(true)}>Email History</Button>
             <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />} onClick={load}>Refresh</Button>
             <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditCandidate(null); setAddOpen(true) }}>
               Add Candidate
@@ -245,6 +247,14 @@ export default function Recruitment() {
           onUpdateCompliance={updateCompliance}
           onMoveStage={(stage) => moveStage(detailCandidate, stage)}
           onEdit={() => { setDetailCandidate(null); setEditCandidate(detailCandidate); setAddOpen(true) }}
+        />
+      )}
+
+      {/* Global Email History Modal */}
+      {historyOpen && (
+        <GlobalHistoryModal 
+          candidates={candidates} 
+          onClose={() => setHistoryOpen(false)} 
         />
       )}
 
@@ -730,6 +740,62 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
           <Button type="submit" loading={sending} icon={<Send className="w-4 h-4" />}>Send Email</Button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+
+/* ─── Global Email History Modal ─── */
+function GlobalHistoryModal({ candidates, onClose }: { candidates: Candidate[]; onClose: () => void }) {
+  // Extract all email logs from all candidates
+  const allLogs = candidates.flatMap(c => {
+    if (!c.notes) return [];
+    return c.notes.split('\n')
+      .filter(l => l.includes('Email sent:'))
+      .map(log => {
+        const match = log.match(/\[(.*?)\] Email sent: (.*?) to (.*)/);
+        if (match) {
+          return {
+            candidateName: `${c.first_name} ${c.last_name}`,
+            date: match[1],
+            type: match[2],
+            email: match[3],
+            position: c.position
+          };
+        }
+        return null;
+      }).filter(Boolean);
+  }).reverse(); // Reverse so newest are generally at top (assuming notes appended)
+
+  return (
+    <Modal open={true} onClose={onClose} title="Global Email History">
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        {allLogs.length === 0 ? (
+          <div className="text-center py-8">
+            <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500">No emails have been sent yet.</p>
+          </div>
+        ) : (
+          allLogs.map((log: any, i) => (
+            <div key={i} className="flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                <Send className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold text-slate-800 truncate">{log.candidateName}</h4>
+                <p className="text-xs text-slate-500 capitalize mt-0.5">{log.type} • {log.position}</p>
+                <p className="text-xs text-slate-400 mt-1 truncate">To: {log.email}</p>
+              </div>
+              <div className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md whitespace-nowrap">
+                {log.date}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="mt-6 flex justify-end">
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
     </Modal>
   )
 }
