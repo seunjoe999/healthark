@@ -19,8 +19,8 @@ function createTransport() {
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
     // Force IPv4 lookup because Render's free tier sometimes fails resolving IPv6 for smtp.gmail.com
-    family: 4 
-  });
+    family: 4
+  } as any);
 }
 
 export interface SendEmailOptions {
