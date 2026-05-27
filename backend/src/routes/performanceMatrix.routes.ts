@@ -34,7 +34,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                     a.first_name || ' ' || a.last_name AS assessed_by_name
              FROM staff_performance pm
              JOIN staff s ON s.id = pm.staff_id AND s.organisation_id = $1
-             JOIN staff a ON a.id = pm.assessed_by`;
+             LEFT JOIN staff a ON a.id = pm.assessed_by`;
       params.push(orgId);
       if (filterStaff) { sql += ` WHERE pm.staff_id = $2`; params.push(filterStaff); }
     } else {
@@ -42,7 +42,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                     a.first_name || ' ' || a.last_name AS assessed_by_name
              FROM staff_performance pm
              JOIN staff s ON s.id = pm.staff_id
-             JOIN staff a ON a.id = pm.assessed_by
+             LEFT JOIN staff a ON a.id = pm.assessed_by
              WHERE pm.home_id = $1`;
       params.push(homeId);
       if (filterStaff) { sql += ` AND pm.staff_id = $2`; params.push(filterStaff); }
@@ -119,7 +119,7 @@ router.post('/', [
           documentation_score, teamwork_score, overall_score, risk_rating,
           strengths, areas_improvement, action_plan, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
-      [homeId, staffId, assessedBy || null, period,
+      [homeId, staffId, assessedBy, period,
        trainingCompliance ?? null, supervisionCompleted ?? false,
        supervisionsDue ?? null, supervisionsDone ?? null,
        incidentsReported ?? 0,
@@ -149,7 +149,8 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
     const orgId = tok(req, 'organisationId');
     const homeId = (req.body.homeId as string) || tok(req, 'homeId');
     const assessedBy = tok(req, 'staffId');
-    const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+    // Use an exact timestamp for the period so every generation creates a BRAND NEW distinct record
+    const period = 'Auto-' + new Date().getTime().toString();
 
     // Get all active staff for this home
     let staffRows: any[];
@@ -236,6 +237,7 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
            WHERE id = $7`,
           [trainingCompliance, punctualityScore, incidentCount, clampedScore, riskRating, assessedBy || null, existing[0].id]
         );
+        created++; // Count updates as created so UI reflects it did work
       } else {
         await query(
           `INSERT INTO staff_performance
