@@ -13,9 +13,9 @@ function createTransport() {
   }
 
   return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
+    host: 'smtp.gmail.com', // Override the env to definitely hit gmail
+    port: 465,              // Force port 465 for secure TLS (avoids STARTTLS timeout issues)
+    secure: true,           // Enforce SSL/TLS
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
     // Force IPv4 lookup because Render's free tier sometimes fails resolving IPv6 for smtp.gmail.com
