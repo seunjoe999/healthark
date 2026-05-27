@@ -281,7 +281,7 @@ function CandidateCard({ candidate, onEdit, onDelete, onView, onEmail, onMoveSta
             <button onClick={onView} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="View details">
               <UserCheck className="w-4 h-4" />
             </button>
-            {emailConfigured && candidate.email && (
+            {candidate.email && (
               <button onClick={onEmail} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600" title="Send email">
                 <Mail className="w-4 h-4" />
               </button>
