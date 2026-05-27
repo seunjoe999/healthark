@@ -70,7 +70,7 @@ export default function MedicineRisk() {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const [form, setForm] = useState({
-    suId: '',
+    id: '', suId: '',
     selfMedicate: false, selfMedicateNotes: '',
     swallowingRisk: 'none', swallowingNotes: '',
     covertMeds: false, covertNotes: '',
@@ -125,7 +125,22 @@ export default function MedicineRisk() {
         </div>
         <div className="flex items-center gap-2">
           <PrintButton />
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => {
+                setForm({
+                  id: '', suId: '',
+                  selfMedicate: false, selfMedicateNotes: '',
+                  swallowingRisk: 'none', swallowingNotes: '',
+                  covertMeds: false, covertNotes: '',
+                  prnProtocol: false, prnNotes: '',
+                  crushingRequired: false, crushingNotes: '',
+                  administrationRoute: 'oral',
+                  knownAllergies: '', storageLocation: '',
+                  riskLevel: 'low', riskNotes: '',
+                  triggers: '', protectiveFactors: '',
+                  reviewDate: '',
+                });
+                setShowAdd(true);
+              }}>
             New Assessment
           </Button>
         </div>
@@ -205,6 +220,7 @@ export default function MedicineRisk() {
 
                 {/* Expand toggle */}
                 {r.id && (
+                  <div className="flex gap-4">
                   <button
                     onClick={() => setExpanded(isExpanded ? null : r.su_id)}
                     className="flex items-center gap-1 text-xs text-slate-500 hover:text-amber-400 transition-colors self-start"
@@ -212,6 +228,30 @@ export default function MedicineRisk() {
                     {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     {isExpanded ? 'Less detail' : 'More detail'}
                   </button>
+                  {isExpanded && r.id && (
+                    <button 
+                      onClick={() => {
+                        setForm({
+                          id: r.id, suId: r.su_id,
+                          selfMedicate: r.self_medicate || false, selfMedicateNotes: r.self_medicate_notes || '',
+                          swallowingRisk: r.swallowing_risk || 'none', swallowingNotes: r.swallowing_notes || '',
+                          covertMeds: r.covert_meds || false, covertNotes: r.covert_notes || '',
+                          prnProtocol: r.prn_protocol || false, prnNotes: r.prn_notes || '',
+                          crushingRequired: r.crushing_required || false, crushingNotes: r.crushing_notes || '',
+                          administrationRoute: r.administration_route || 'oral',
+                          knownAllergies: r.known_allergies || '', storageLocation: r.storage_location || '',
+                          riskLevel: r.risk_level || 'low', riskNotes: r.risk_notes || '',
+                          triggers: '', protectiveFactors: '',
+                          reviewDate: r.review_date ? r.review_date.substring(0, 10) : '',
+                        });
+                        setShowAdd(true);
+                      }}
+                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-400 transition-colors self-start ml-4"
+                    >
+                      Edit Assessment
+                    </button>
+                  )}
+                  </div>
                 )}
 
                 {/* Expanded detail */}
