@@ -26,7 +26,7 @@ const navSections = [
     label: 'Service User',
     items: [
       { label: 'Support Plans',                   to: '/care-plans',          icon: FileText,      roles: [],                                           featureKey: 'care_plans' },
-      { label: 'Medication Risk Assessment',       to: '/medicine-risk',       icon: ShieldAlert,   roles: [],                                           featureKey: 'medicine_risk' },
+      { label: 'Medical Risk Assessment',       to: '/medicine-risk',       icon: ShieldAlert,   roles: [],                                           featureKey: 'medicine_risk' },
       { label: 'Other Risk Assessment',            to: '/risk-management',     icon: Shield,        roles: [],                                           featureKey: 'risk_management' },
       { label: 'Medication Administration Record', to: '/mar',                 icon: Pill,          roles: [],                                           featureKey: 'mar' },
       { label: 'Medication Stock',                 to: '/medication-stock',    icon: Boxes,         roles: ['home_manager','group_admin','senior_carer'], featureKey: 'medication_stock' },
@@ -49,7 +49,7 @@ const navSections = [
     label: 'Staff Records',
     items: [
       { label: 'Staff Profile',           to: '/staff',                 icon: UserSquare,    roles: ['home_manager','group_admin'],                featureKey: 'staff' },
-      { label: 'Staff Assessment',        to: '/assessments?tab=staff', icon: FileCheck,     roles: ['home_manager','group_admin','team_leader'],  featureKey: 'staff_assessment' },
+      { label: 'Assessment',        to: '/assessments?tab=staff', icon: FileCheck,     roles: ['home_manager','group_admin','team_leader'],  featureKey: 'staff_assessment' },
       { label: 'Supervision & Appraisal', to: '/supervision-appraisal', icon: Users,         roles: ['home_manager','group_admin','team_leader'],  featureKey: 'supervision' },
       { label: 'DBS Compliance',          to: '/dbs',                   icon: UserCheck,     roles: ['home_manager','group_admin'],                featureKey: 'dbs' },
       { label: 'Clock In',                to: '/clockin-admin',         icon: QrCode,        roles: ['home_manager','group_admin'],                featureKey: 'clockin' },
