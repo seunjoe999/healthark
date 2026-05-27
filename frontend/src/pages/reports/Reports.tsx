@@ -26,7 +26,8 @@ export default function Reports() {
   const { user } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
-  const [reportType, setReportType] = useState('daily-records')
+  const [searchParams] = window.location.search ? [new URLSearchParams(window.location.search)] : [new URLSearchParams()];
+  const [reportType, setReportType] = useState(searchParams.get('type') || 'daily-records')
   const [from, setFrom] = useState(() => new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0])
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0])
   const [month, setMonth] = useState(() => new Date().toISOString().substring(0, 7))
