@@ -31,11 +31,39 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; messageId?: string; error?: string }> {
-  const transport = createTransport();
-  if (!transport) return { ok: false, error: 'Email not configured — set SMTP_USER and SMTP_PASS' };
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || '';
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'onboarding@resend.dev';
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@compcarehub.com';
+  if (!pass) return { ok: false, error: 'Email not configured' };
+
   try {
+    // IF USING RESEND: Use their HTTP REST API to bypass Render's strict SMTP Port blocking
+    if (pass.startsWith('re_')) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pass}`
+        },
+        body: JSON.stringify({
+          from: from,
+          to: opts.to,
+          subject: opts.subject,
+          html: opts.html,
+          reply_to: opts.replyTo
+        })
+      });
+      const data = await res.json() as any;
+      if (!res.ok) throw new Error(data.message || 'Resend API Error');
+      
+      logger.info(`Email sent via Resend API to ${opts.to} — id: ${data.id}`);
+      return { ok: true, messageId: data.id };
+    }
+
+    // FALLBACK: Standard SMTP
+    const transport = createTransport();
+    if (!transport) return { ok: false, error: 'Email not configured — set SMTP_USER and SMTP_PASS' };
+
     const info = await transport.sendMail({ from: `CompCare Hub <${from}>`, to: opts.to, subject: opts.subject, html: opts.html, replyTo: opts.replyTo });
     logger.info(`Email sent to ${opts.to} — messageId: ${info.messageId}`);
     return { ok: true, messageId: info.messageId };
