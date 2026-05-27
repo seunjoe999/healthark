@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     buildCommand: npm run build
-    startCommand: cd backend && node dist/database/migrate.js; node dist/index.js
+    startCommand: cd backend && node dist/index.js
     envVars:
       - key: NODE_ENV
         value: production
