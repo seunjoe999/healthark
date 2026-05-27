@@ -26,7 +26,23 @@ export default function Messages() {
   const [view, setView] = useState<'inbox' | 'sent' | 'alerts'>('inbox')
   const [replyDefaults, setReplyDefaults] = useState<{ recipientId: string; subject: string } | null>(null)
 
-  useEffect(() => { load() }, [view])
+  useEffect(() => {
+    load()
+    const interval = setInterval(() => backgroundLoad(), 10000) // update every 10s quietly
+    return () => clearInterval(interval)
+  }, [view])
+
+  const backgroundLoad = async () => {
+    try {
+      if (view === 'alerts') {
+        const notifRes = await api.get('/notifications')
+        setAlerts(notifRes.data.data || [])
+      } else {
+        const msgRes = await api.get(`/messages?type=${view}`)
+        setMessages(msgRes.data.data || [])
+      }
+    } catch (e) {}
+  }
 
   const load = async () => {
     setLoading(true)
