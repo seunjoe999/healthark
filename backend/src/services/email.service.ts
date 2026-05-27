@@ -18,6 +18,8 @@ function createTransport() {
     secure: port === 465,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
+    // Force IPv4 lookup because Render's free tier sometimes fails resolving IPv6 for smtp.gmail.com
+    family: 4 
   });
 }
 
