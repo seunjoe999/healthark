@@ -114,6 +114,7 @@ Then verify your `.env` file in the backend folder has the matching credentials.
 
 ---
 
+
 ### Technology Stack
 - **Frontend:** React + TypeScript + Tailwind CSS (Vite)
 - **Backend:** Node.js + Express + TypeScript
