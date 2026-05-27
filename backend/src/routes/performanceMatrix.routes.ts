@@ -33,7 +33,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       sql = `SELECT pm.*, s.first_name || ' ' || s.last_name AS staff_name, s.role AS staff_role,
                     a.first_name || ' ' || a.last_name AS assessed_by_name
              FROM staff_performance pm
-             JOIN staff s ON s.id = pm.staff_id AND s.organisation_id = $1
+             LEFT JOIN staff s ON s.id = pm.staff_id AND s.organisation_id = $1
              LEFT JOIN staff a ON a.id = pm.assessed_by`;
       params.push(orgId);
       if (filterStaff) { sql += ` WHERE pm.staff_id = $2`; params.push(filterStaff); }
@@ -41,7 +41,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       sql = `SELECT pm.*, s.first_name || ' ' || s.last_name AS staff_name, s.role AS staff_role,
                     a.first_name || ' ' || a.last_name AS assessed_by_name
              FROM staff_performance pm
-             JOIN staff s ON s.id = pm.staff_id
+             LEFT JOIN staff s ON s.id = pm.staff_id
              LEFT JOIN staff a ON a.id = pm.assessed_by
              WHERE pm.home_id = $1`;
       params.push(homeId);
