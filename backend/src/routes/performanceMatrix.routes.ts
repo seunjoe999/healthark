@@ -119,7 +119,7 @@ router.post('/', [
           documentation_score, teamwork_score, overall_score, risk_rating,
           strengths, areas_improvement, action_plan, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
-      [homeId, staffId, assessedBy, period,
+      [homeId, staffId, assessedBy || null, period,
        trainingCompliance ?? null, supervisionCompleted ?? false,
        supervisionsDue ?? null, supervisionsDone ?? null,
        incidentsReported ?? 0,
@@ -221,8 +221,11 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
       const riskRating = clampedScore >= 80 ? 'low' : clampedScore >= 60 ? 'medium' : 'high';
 
       // Upsert: insert or update if same period exists for this staff
+      // Fallback staffHomeId if missing
+      const fallbackHomeId = staffHomeId || '00000000-0000-0000-0000-000000000000'; // Or handle better, but avoid null constraint violation
+
       const existing = await query<any>(
-        `SELECT id FROM staff_performance WHERE staff_id = $1 AND period = $2 AND home_id = $3`,
+        `SELECT id FROM staff_performance WHERE staff_id = $1 AND period = $2 AND (home_id = $3 OR home_id IS NULL)`,
         [s.id, period, staffHomeId]
       );
       if (existing.length > 0) {
@@ -231,7 +234,7 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
              training_compliance = $1, punctuality_score = $2, incidents_reported = $3,
              overall_score = $4, risk_rating = $5, assessed_by = $6
            WHERE id = $7`,
-          [trainingCompliance, punctualityScore, incidentCount, clampedScore, riskRating, assessedBy, existing[0].id]
+          [trainingCompliance, punctualityScore, incidentCount, clampedScore, riskRating, assessedBy || null, existing[0].id]
         );
       } else {
         await query(
@@ -239,7 +242,7 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
              (home_id, staff_id, assessed_by, period, training_compliance, punctuality_score,
               incidents_reported, overall_score, risk_rating, supervision_completed)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE)`,
-          [staffHomeId, s.id, assessedBy, period, trainingCompliance, punctualityScore,
+          [staffHomeId, s.id, assessedBy || null, period, trainingCompliance, punctualityScore,
            incidentCount, clampedScore, riskRating]
         );
         created++;
