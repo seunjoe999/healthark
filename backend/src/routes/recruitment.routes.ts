@@ -174,7 +174,7 @@ router.post('/:id/email', param('id').isUUID(), body('type').notEmpty(), validat
 
       // Log the email in candidate notes
       await query(
-        `UPDATE recruitment_candidates SET notes = CONCAT(COALESCE(notes,''), $1), updated_at = NOW() WHERE id = $2`,
+        `UPDATE recruitment_candidates SET notes = CONCAT(COALESCE(notes,''), $1::text), updated_at = NOW() WHERE id = $2`,
         [`\n[${new Date().toLocaleDateString('en-GB')}] Email sent: ${type.replace(/_/g,' ')} to ${toEmail}`, req.params.id]
       );
 
