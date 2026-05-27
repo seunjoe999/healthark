@@ -557,13 +557,51 @@ function DetailModal({ candidate, onClose, onUpdateCompliance, onMoveStage, onEd
             </div>
           )}
 
-          {/* Notes */}
-          {candidate.notes && (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-              <p className="text-sm text-slate-700 whitespace-pre-line bg-slate-50 rounded-lg p-3">{candidate.notes}</p>
-            </div>
-          )}
+          {/* Email History & Notes Parser */}
+          {(() => {
+            const allNotes = candidate.notes || '';
+            const lines = allNotes.split('\n');
+            const generalNotes = lines.filter(l => !l.includes('Email sent:')).join('\n').trim();
+            const emailLogs = lines.filter(l => l.includes('Email sent:'));
+
+            return (
+              <div className="space-y-6">
+                {emailLogs.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> Email History</p>
+                    <div className="space-y-2">
+                      {emailLogs.map((log, i) => {
+                        // Extract [Date] and the rest
+                        const match = log.match(/\[(.*?)\] Email sent: (.*?) to (.*)/);
+                        if (match) {
+                          return (
+                            <div key={i} className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <Send className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-800 capitalize">{match[2]}</p>
+                                <p className="text-xs text-slate-500 truncate">Sent to: {match[3]}</p>
+                              </div>
+                              <div className="text-xs font-medium text-slate-400">{match[1]}</div>
+                            </div>
+                          );
+                        }
+                        return <p key={i} className="text-sm text-slate-700">{log}</p>;
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {generalNotes && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-line bg-slate-50 rounded-lg p-3">{generalNotes}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Move to Stage */}
           <div>
@@ -614,7 +652,7 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!emailConfigured) { toast.error('Email is not configured. Set SMTP_USER and SMTP_PASS in your backend .env file.'); return }
+    // if (!emailConfigured) { toast.error('Email is not configured. Set SMTP_USER and SMTP_PASS in your backend .env file.'); return }
     if (!candidate.email) { toast.error('Candidate has no email address'); return }
     setSending(true)
     try {
@@ -638,18 +676,7 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
     }
   }
 
-  if (!emailConfigured) {
-    return (
-      <Modal open={true} onClose={onClose} title="Send Email">
-        <div className="text-center py-6">
-          <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-600 font-medium mb-1">Email not configured</p>
-          <p className="text-sm text-slate-500 mb-4">Set SMTP_USER and SMTP_PASS environment variables to enable email sending.</p>
-          <Button variant="secondary" onClick={onClose}>Close</Button>
-        </div>
-      </Modal>
-    )
-  }
+
 
   return (
     <Modal open={true} onClose={onClose} title={`Email ${candidate.first_name} ${candidate.last_name}`}>
