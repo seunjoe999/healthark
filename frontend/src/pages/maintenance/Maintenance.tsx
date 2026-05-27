@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Wrench, Plus, AlertTriangle, CheckCircle, Clock, Filter, Search } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
-import api from '../../api'
+import api, { homesApi } from '../../api'
 import clsx from 'clsx'
 
 const CATEGORIES = [
@@ -48,7 +48,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Maintenance() {
-  const { isRole } = useAuth()
+  const { isRole, user } = useAuth()
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -58,18 +58,33 @@ export default function Maintenance() {
   const [showNew, setShowNew] = useState(false)
   const [showDetail, setShowDetail] = useState<any>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [homes, setHomes] = useState<any[]>([])
+  const [selectedHome, setSelectedHome] = useState('')
 
   const [form, setForm] = useState({ title: '', description: '', category: 'other', priority: 'medium', location: '' })
   const [updateForm, setUpdateForm] = useState({ status: '', resolutionNotes: '' })
 
   const canManage = isRole('home_manager', 'group_admin', 'senior_carer')
 
+  useEffect(() => {
+    if (isRole('group_admin')) {
+      homesApi.list().then(res => {
+        const h = res.data.data || []
+        setHomes(h)
+        if (h.length > 0 && !selectedHome) setSelectedHome(h[0].id)
+      }).catch(() => {})
+    }
+  }, [user, isRole])
+
   async function load() {
     setLoading(true)
     try {
+      const params: any = { status: filterStatus || undefined, priority: filterPriority || undefined }
+      if (isRole('group_admin') && selectedHome) params.homeId = selectedHome
+
       const [dataRes, statsRes] = await Promise.all([
-        api.get('/maintenance', { params: { status: filterStatus || undefined, priority: filterPriority || undefined } }),
-        api.get('/maintenance/stats'),
+        api.get('/maintenance', { params }),
+        api.get('/maintenance/stats', { params: isRole('group_admin') && selectedHome ? { homeId: selectedHome } : {} }),
       ])
       setItems(dataRes.data.data)
       setStats(statsRes.data.data)
@@ -77,13 +92,13 @@ export default function Maintenance() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [filterStatus, filterPriority])
+  useEffect(() => { load() }, [filterStatus, filterPriority, selectedHome])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/maintenance', form)
+      await api.post('/maintenance', { ...form, homeId: isRole('group_admin') ? selectedHome : undefined })
       setShowNew(false)
       setForm({ title: '', description: '', category: 'other', priority: 'medium', location: '' })
       load()
