@@ -45,7 +45,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', [body('recipientId').isUUID(), body('message').notEmpty()], validateRequest,
+router.post('/', [body('recipientId').notEmpty(), body('message').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
