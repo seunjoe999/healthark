@@ -81,6 +81,7 @@ export default function PerformanceMatrix() {
       const res = await api.post('/performance/auto-generate', { homeId: selectedHome || undefined })
       const { staffProcessed, created } = res.data.data
       load()
+      setView('history') // Instantly switch to the History tab so the user sees the new records!
       alert(`Done — processed ${staffProcessed} staff, created ${created} new records.`)
     } catch (e: any) {
       alert('Auto-generate failed: ' + (e?.response?.data?.error || e?.message || 'Unknown error'))
