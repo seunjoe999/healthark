@@ -97,5 +97,4 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
-
 export default router;
