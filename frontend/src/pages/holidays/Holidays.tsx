@@ -48,11 +48,10 @@ export default function Holidays() {
   const load = async () => {
     setLoading(true)
     try {
-      const staffId = !isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined
+      // Intentionally load everyone's leave so regular staff can see who requested leave when booking
       const res = await api.get('/staff-hr/leave/all', {
         params: {
           homeId: selectedHome,
-          ...(staffId ? { staffId } : {}),
           from: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
           to: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
         }
