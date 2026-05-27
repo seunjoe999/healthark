@@ -73,6 +73,7 @@ const navSections = [
       { label: 'Audit Reports',           to: '/audits',            icon: Activity,    roles: ['home_manager','group_admin','auditor'], featureKey: 'audits' },
       { label: 'Audit Trail',             to: '/audit-trail',       icon: History,     roles: ['home_manager','group_admin','auditor'], featureKey: 'audit_trail' },
       { label: 'Reports',                 to: '/reports',           icon: BarChart2,   roles: ['home_manager','group_admin'],           featureKey: 'reports' },
+      { label: 'Monthly Report',          to: '/reports?type=monthly-summary', icon: FileText, roles: ['home_manager','group_admin'] },
       { label: 'CQC Alerts',             to: '/cqc-notifications', icon: AlertCircle, roles: ['home_manager','group_admin'],           featureKey: 'cqc_notifications' },
     ]
   },
