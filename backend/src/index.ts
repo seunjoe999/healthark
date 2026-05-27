@@ -1,708 +1,982 @@
-import React, { useEffect, useState } from 'react'
-import { homesApi } from '../../api'
-import api from '../../api'
-import { useAuth } from '../../context/AuthContext'
-import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
-import { UserCheck, Plus, Trash2, Edit, Mail, ChevronDown, Check, X, Search, Filter, Send, RefreshCw } from 'lucide-react'
-import toast from 'react-hot-toast'
+import 'dotenv/config';
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import compression from 'compression';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { errorHandler, notFound } from './middleware/errorHandler';
+import { logger } from './config/logger';
+import { pool } from './config/database';
+import { startScheduler } from './services/scheduler';
 
-const PIPELINE_STAGES = [
-  { key: 'applied', label: 'Applied', color: 'bg-slate-100 border-slate-300 text-slate-700' },
-  { key: 'screening', label: 'Screening', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { key: 'interview', label: 'Interview', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-  { key: 'interviewed', label: 'Interviewed', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-  { key: 'reference_check', label: 'Reference Check', color: 'bg-amber-50 border-amber-200 text-amber-700' },
-  { key: 'dbs_check', label: 'DBS Check', color: 'bg-orange-50 border-orange-200 text-orange-700' },
-  { key: 'training', label: 'Training', color: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
-  { key: 'offer_sent', label: 'Offer Sent', color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-  { key: 'hired', label: 'Hired', color: 'bg-green-50 border-green-200 text-green-700' },
-  { key: 'rejected', label: 'Rejected', color: 'bg-red-50 border-red-200 text-red-700' },
-]
+// Routes
+import authRoutes from './routes/auth.routes';
+import homesRoutes from './routes/homes.routes';
+import staffRoutes from './routes/staff.routes';
+import alertsRoutes from './routes/alerts.routes';
+import serviceUserRoutes from './routes/serviceUsers.routes';
+import dailyRecordRoutes from './routes/dailyRecords.routes';
+import carePlanRoutes from './routes/carePlans.routes';
+import riskAssessmentRoutes from './routes/riskAssessments.routes';
+import safeguardingRoutes from './routes/safeguarding.routes';
+import staffHRRoutes from './routes/staffHR.routes';
+import aiAuditRoutes from './routes/aiAudit.routes';
+import reportsRoutes from './routes/reports.routes';
+import policiesRoutes from './routes/policies.routes';
+import ppeRoutes from './routes/ppe.routes';
+import documentsRoutes from './routes/documents.routes';
+import messagesRoutes from './routes/messages.routes';
+import calendarRoutes from './routes/calendar.routes';
 
-const STATUS_OPTIONS = [
-  { value: 'applied', label: 'Applied' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'hired', label: 'Hired' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'on_hold', label: 'On Hold' },
-]
+const app = express();
+const PORT = parseInt(process.env.PORT || '3001');
 
-const getStageLabel = (key: string) => PIPELINE_STAGES.find(s => s.key === key)?.label || key
-const getStageColor = (key: string) => PIPELINE_STAGES.find(s => s.key === key)?.color || PIPELINE_STAGES[0].color
+// â”€â”€ Security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
+}));
 
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  position: string
-  applied_date: string
-  status: string
-  pipeline_stage: string
-  interview_date: string
-  notes: string
-  dbs_check: string
-  reference_check: string
-  training_done: boolean
-  dbs_cleared: boolean
-  references_done: boolean
-  fully_compliant: boolean
-  ready_to_start: boolean
-  start_date: string
-  created_at: string
+// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+  ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
+  ...(process.env.RENDER_EXTERNAL_HOSTNAME ? [`https://${process.env.RENDER_EXTERNAL_HOSTNAME}`] : []),
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+}));
+
+// â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/api', rateLimit({ windowMs: 900000, max: 500, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 10, standardHeaders: true, legacyHeaders: false }));
+
+// â”€â”€ General middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(morgan('dev', { stream: { write: (msg) => logger.info(msg.trim()) } }));
+
+// â”€â”€ Static files (uploaded documents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.get('/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected' });
+  }
+});
+
+// â”€â”€ ALL API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/api/auth', authRoutes);
+app.use('/api/homes', homesRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/service-users', serviceUserRoutes);
+app.use('/api/daily-records', dailyRecordRoutes);
+app.use('/api/care-plans', carePlanRoutes);
+app.use('/api/risk-assessments', riskAssessmentRoutes);
+app.use('/api/safeguarding', safeguardingRoutes);
+app.use('/api/staff-hr', staffHRRoutes);
+app.use('/api/audits', aiAuditRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/policies', policiesRoutes);
+app.use('/api/ppe', ppeRoutes);
+app.use('/api/documents', documentsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/calendar', calendarRoutes);
+
+import marRoutes from './routes/mar.routes';
+import clockinRoutes from './routes/clockin.routes';
+import familyRoutes from './routes/family.routes';
+import shiftsRoutes from './routes/shifts.routes';
+import searchRoutes from './routes/search.routes';
+import notificationsRoutes from './routes/notifications.routes';
+import uploadRoutes from './routes/upload.routes';
+import reviewsRoutes from './routes/reviews.routes';
+import tasksRoutes from './routes/tasks.routes';
+import qualityRoutes from './routes/quality.routes';
+import assessmentsRoutes from './routes/assessments.routes';
+import invoicingRoutes from './routes/invoicing.routes';
+import cqcNotificationsRoutes from './routes/cqcNotifications.routes';
+import supervisionRoutes from './routes/supervision.routes';
+app.use('/api/mar', marRoutes);
+app.use('/api/clockin', clockinRoutes);
+app.use('/api/family', familyRoutes);
+app.use('/api/shifts', shiftsRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/reviews', reviewsRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/quality', qualityRoutes);
+app.use('/api/assessments', assessmentsRoutes);
+app.use('/api/invoicing', invoicingRoutes);
+app.use('/api/cqc-notifications', cqcNotificationsRoutes);
+app.use('/api/supervision', supervisionRoutes);
+
+import physicalHealthPlanRoutes from './routes/physicalHealthPlan.routes';
+import incidentsRoutes from './routes/incidents.routes';
+import complianceRoutes from './routes/compliance.routes';
+import medicationStockRoutes from './routes/medicationStock.routes';
+import signaturesRoutes from './routes/signatures.routes';
+app.use('/api/physical-health-plans', physicalHealthPlanRoutes);
+app.use('/api/incidents', incidentsRoutes);
+app.use('/api/compliance', complianceRoutes);
+app.use('/api/medication-stock', medicationStockRoutes);
+app.use('/api/signatures', signaturesRoutes);
+
+import maintenanceRoutes from './routes/maintenance.routes';
+import dbsRoutes from './routes/dbs.routes';
+import timesheetsRoutes from './routes/timesheets.routes';
+import auditTrailRoutes from './routes/auditTrail.routes';
+import outcomesRoutes from './routes/outcomes.routes';
+import bathChartRoutes from './routes/bathChart.routes';
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/dbs', dbsRoutes);
+app.use('/api/timesheets', timesheetsRoutes);
+app.use('/api/audit-trail', auditTrailRoutes);
+app.use('/api/outcomes', outcomesRoutes);
+app.use('/api/bath-chart', bathChartRoutes);
+
+import noticeboardRoutes from './routes/noticeboard.routes';
+import observationsRoutes from './routes/observations.routes';
+import seizuresRoutes from './routes/seizures.routes';
+import bowelChartRoutes from './routes/bowelChart.routes';
+import diaryRoutes from './routes/diary.routes';
+import professionalVisitsRoutes from './routes/professionalVisits.routes';
+import medicineRiskRoutes from './routes/medicineRisk.routes';
+import performanceMatrixRoutes from './routes/performanceMatrix.routes';
+import socialActivitiesRoutes from './routes/socialActivities.routes';
+import recruitmentRoutes from './routes/recruitment.routes';
+app.use('/api/noticeboard', noticeboardRoutes);
+app.use('/api/observations', observationsRoutes);
+app.use('/api/seizures', seizuresRoutes);
+app.use('/api/bowel-chart', bowelChartRoutes);
+app.use('/api/diary', diaryRoutes);
+app.use('/api/professional-visits', professionalVisitsRoutes);
+app.use('/api/medicine-risk', medicineRiskRoutes);
+app.use('/api/performance', performanceMatrixRoutes);
+app.use('/api/social-activities', socialActivitiesRoutes);
+app.use('/api/recruitment', recruitmentRoutes);
+
+// ── Serve React frontend ──────────────────────────────────────────────────
+import fs from 'fs';
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  logger.info(`Serving frontend from: ${frontendDist}`);
+  app.use(express.static(frontendDist));
+  app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  logger.warn(`Frontend dist not found at: ${frontendDist}`);
 }
 
-export default function Recruitment() {
-  const { user } = useAuth()
-  const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [homes, setHomes] = useState<any[]>([])
-  const [selectedHome, setSelectedHome] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [stageFilter, setStageFilter] = useState('all')
-  const [addOpen, setAddOpen] = useState(false)
-  const [editCandidate, setEditCandidate] = useState<Candidate | null>(null)
-  const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null)
-  const [emailOpen, setEmailOpen] = useState(false)
-  const [emailCandidate, setEmailCandidate] = useState<Candidate | null>(null)
-  const [emailConfigured, setEmailConfigured] = useState(false)
+// ── Error handling ────────────────────────────────────────────────────────
+app.use(notFound);
+app.use(errorHandler);
 
-  useEffect(() => {
-    homesApi.list().then(res => {
-      const h = res.data.data || []
-      setHomes(h)
-      setSelectedHome(user?.homeId || h[0]?.id || '')
-    })
-  }, [user])
+// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function ensureColumns() {
+  const stmts = [
+    // ── New tables ─────────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS staff_training (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       course_name VARCHAR(255) NOT NULL,
+       expiry_date DATE,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_st_staff  ON staff_training(staff_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_st_expiry ON staff_training(expiry_date)`,
+    `CREATE TABLE IF NOT EXISTS mar_records (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id       UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       record_date DATE NOT NULL DEFAULT CURRENT_DATE,
+       given       BOOLEAN NOT NULL DEFAULT FALSE,
+       refused     BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_home ON mar_records(home_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_su   ON mar_records(su_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_date ON mar_records(record_date)`,
+    `CREATE TABLE IF NOT EXISTS safeguarding_concerns (
+       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id       UUID NOT NULL REFERENCES homes(id),
+       su_id         UUID NOT NULL REFERENCES service_users(id),
+       overview      TEXT,
+       incident_date DATE NOT NULL,
+       manager_ack   BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_safe_home ON safeguarding_concerns(home_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_safe_su   ON safeguarding_concerns(su_id)`,
+    // ── New columns ────────────────────────────────────────────────────────────
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed    BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed_at TIMESTAMPTZ`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS last_review_date DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS next_review_date DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS is_active        BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS reviewed_by      UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE daily_records ADD COLUMN IF NOT EXISTS amount_ml     INTEGER`,
+    `ALTER TABLE business_alerts ADD COLUMN IF NOT EXISTS data        JSONB`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS min_fluid_ml  INTEGER NOT NULL DEFAULT 1500`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS total_checks  INTEGER`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checks_passed INTEGER`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checks_failed INTEGER`,
+    `ALTER TABLE safeguarding_concerns ADD COLUMN IF NOT EXISTS manager_ack BOOLEAN NOT NULL DEFAULT FALSE`,
+    // ── New feature tables (migration 003) ────────────────────────────────────
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'maintenance_priority') THEN CREATE TYPE maintenance_priority AS ENUM ('low','medium','high','urgent'); END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'maintenance_status') THEN CREATE TYPE maintenance_status AS ENUM ('open','in_progress','resolved','closed'); END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'maintenance_category') THEN CREATE TYPE maintenance_category AS ENUM ('electrical','plumbing','heating','equipment','decoration','security','garden','cleaning','furniture','it','other'); END IF; END $$`,
+    `CREATE TABLE IF NOT EXISTS maintenance_logs (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       title VARCHAR(255) NOT NULL,
+       description TEXT,
+       category maintenance_category NOT NULL DEFAULT 'other',
+       priority maintenance_priority NOT NULL DEFAULT 'medium',
+       status maintenance_status NOT NULL DEFAULT 'open',
+       location VARCHAR(255),
+       reported_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       assigned_to UUID REFERENCES staff(id) ON DELETE SET NULL,
+       resolved_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       resolved_at TIMESTAMPTZ,
+       resolution_notes TEXT,
+       photo_url VARCHAR(500),
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_maintenance_home ON maintenance_logs(home_id)`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'dbs_type') THEN CREATE TYPE dbs_type AS ENUM ('basic','standard','enhanced','enhanced_barred'); END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'doc_status') THEN CREATE TYPE doc_status AS ENUM ('valid','expiring_soon','expired','pending'); END IF; END $$`,
+    `CREATE TABLE IF NOT EXISTS staff_dbs (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       dbs_number VARCHAR(50),
+       dbs_type dbs_type NOT NULL DEFAULT 'enhanced',
+       issue_date DATE NOT NULL,
+       expiry_date DATE,
+       update_service BOOLEAN NOT NULL DEFAULT FALSE,
+       status doc_status NOT NULL DEFAULT 'valid',
+       notes TEXT,
+       document_url VARCHAR(500),
+       created_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS staff_references (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       referee_name VARCHAR(255) NOT NULL,
+       referee_position VARCHAR(255),
+       referee_company VARCHAR(255),
+       referee_email VARCHAR(255),
+       referee_phone VARCHAR(20),
+       reference_type VARCHAR(50) DEFAULT 'professional',
+       received_date DATE,
+       status doc_status NOT NULL DEFAULT 'pending',
+       notes TEXT,
+       document_url VARCHAR(500),
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS staff_right_to_work (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       document_type VARCHAR(100) NOT NULL,
+       document_number VARCHAR(100),
+       expiry_date DATE,
+       status doc_status NOT NULL DEFAULT 'valid',
+       document_url VARCHAR(500),
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS timesheets (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       week_start DATE NOT NULL,
+       week_end DATE NOT NULL,
+       total_hours DECIMAL(6,2) NOT NULL DEFAULT 0,
+       regular_hours DECIMAL(6,2) NOT NULL DEFAULT 0,
+       overtime_hours DECIMAL(6,2) NOT NULL DEFAULT 0,
+       hourly_rate DECIMAL(8,2),
+       total_pay DECIMAL(10,2),
+       approved_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       approved_at TIMESTAMPTZ,
+       status VARCHAR(50) NOT NULL DEFAULT 'pending',
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       UNIQUE(staff_id, week_start)
+     )`,
+    `CREATE TABLE IF NOT EXISTS timesheet_entries (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       timesheet_id UUID NOT NULL REFERENCES timesheets(id) ON DELETE CASCADE,
+       clockin_id UUID,
+       work_date DATE NOT NULL,
+       start_time TIME,
+       end_time TIME,
+       break_minutes INTEGER DEFAULT 0,
+       hours_worked DECIMAL(5,2) NOT NULL DEFAULT 0,
+       shift_type VARCHAR(50),
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS audit_trail (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID REFERENCES homes(id) ON DELETE SET NULL,
+       staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
+       staff_name VARCHAR(255),
+       action VARCHAR(100) NOT NULL,
+       resource_type VARCHAR(100) NOT NULL,
+       resource_id UUID,
+       resource_label VARCHAR(255),
+       old_data JSONB,
+       new_data JSONB,
+       ip_address VARCHAR(45),
+       user_agent TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_audit_home ON audit_trail(home_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_trail(created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS care_outcomes (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       care_plan_id UUID REFERENCES care_plans(id) ON DELETE SET NULL,
+       goal TEXT NOT NULL,
+       description TEXT,
+       target_date DATE,
+       review_date DATE,
+       status outcome_status NOT NULL DEFAULT 'ongoing',
+       progress_notes TEXT,
+       achieved_date DATE,
+       created_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       updated_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS outcome_reviews (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       outcome_id UUID NOT NULL REFERENCES care_outcomes(id) ON DELETE CASCADE,
+       reviewed_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       status outcome_status NOT NULL,
+       notes TEXT NOT NULL,
+       review_date DATE NOT NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bath_type') THEN CREATE TYPE bath_type AS ENUM ('bath','shower','bed_bath','strip_wash','hair_wash','foot_soak'); END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bath_assistance') THEN CREATE TYPE bath_assistance AS ENUM ('independent','prompting','minimal','moderate','full'); END IF; END $$`,
+    `CREATE TABLE IF NOT EXISTS bath_charts (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       bath_date DATE NOT NULL,
+       bath_time TIME,
+       bath_type bath_type NOT NULL DEFAULT 'shower',
+       assistance_level bath_assistance NOT NULL DEFAULT 'moderate',
+       hair_washed BOOLEAN NOT NULL DEFAULT FALSE,
+       nails_cut BOOLEAN NOT NULL DEFAULT FALSE,
+       shaved BOOLEAN NOT NULL DEFAULT FALSE,
+       skin_condition VARCHAR(255),
+       notes TEXT,
+       given_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       witnessed_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_bath_su ON bath_charts(su_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_bath_date ON bath_charts(bath_date DESC)`,
+    // ── Extended service_user profile columns ─────────────────────────────────
+    // ── Noticeboard ───────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS noticeboard (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       created_by UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       title VARCHAR(255) NOT NULL,
+       body TEXT,
+       category VARCHAR(50) NOT NULL DEFAULT 'general',
+       is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+       expires_at TIMESTAMPTZ,
+       target_role VARCHAR(50),
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_noticeboard_home ON noticeboard(home_id, created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS noticeboard_reads (
+       notice_id UUID NOT NULL REFERENCES noticeboard(id) ON DELETE CASCADE,
+       staff_id  UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       read_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (notice_id, staff_id)
+     )`,
+    // ── Observations (vitals / temperature) ───────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS observations (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       obs_type VARCHAR(50) NOT NULL DEFAULT 'temperature',
+       observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       temp_celsius NUMERIC(4,1),
+       temp_method VARCHAR(50),
+       systolic INTEGER,
+       diastolic INTEGER,
+       pulse INTEGER,
+       spo2_percent INTEGER,
+       o2_litres_min NUMERIC(4,1),
+       weight_kg NUMERIC(6,2),
+       blood_glucose NUMERIC(5,2),
+       notes TEXT,
+       is_abnormal BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_obs_su ON observations(su_id, observed_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_obs_home ON observations(home_id, observed_at DESC)`,
+    // ── Seizure log ───────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS seizure_logs (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       seizure_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       seizure_type VARCHAR(100) NOT NULL DEFAULT 'unclassified',
+       duration_seconds INTEGER,
+       description TEXT,
+       recovery_time_mins INTEGER,
+       post_ictal TEXT,
+       action_taken TEXT,
+       notified_gp BOOLEAN NOT NULL DEFAULT FALSE,
+       notified_family BOOLEAN NOT NULL DEFAULT FALSE,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_seizure_su ON seizure_logs(su_id, seizure_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_seizure_home ON seizure_logs(home_id, seizure_at DESC)`,
+    // ── Bowel chart ───────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS bowel_charts (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       bristol_type INTEGER NOT NULL CHECK (bristol_type BETWEEN 1 AND 7),
+       recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       amount VARCHAR(50),
+       colour VARCHAR(50),
+       consistency VARCHAR(50),
+       blood_present BOOLEAN NOT NULL DEFAULT FALSE,
+       mucus_present BOOLEAN NOT NULL DEFAULT FALSE,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_bowel_su ON bowel_charts(su_id, recorded_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_bowel_home ON bowel_charts(home_id, recorded_at DESC)`,
+    // ── Resident Diary ────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS resident_diary (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       diary_date DATE NOT NULL DEFAULT CURRENT_DATE,
+       mood VARCHAR(50),
+       mood_notes TEXT,
+       activities TEXT,
+       food_appetite VARCHAR(50),
+       fluid_intake VARCHAR(50),
+       sleep_quality VARCHAR(50),
+       personal_care_done BOOLEAN NOT NULL DEFAULT FALSE,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_diary_su   ON resident_diary(su_id, diary_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_diary_home ON resident_diary(home_id, diary_date DESC)`,
+    // ── Professional Visits ───────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS professional_visits (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       visit_date DATE NOT NULL,
+       professional_type VARCHAR(100) NOT NULL,
+       professional_name VARCHAR(200),
+       organisation VARCHAR(200),
+       reason TEXT,
+       outcome TEXT,
+       instructions_left TEXT,
+       follow_up_date DATE,
+       follow_up_notes TEXT,
+       follow_up_done BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_pv_su   ON professional_visits(su_id, visit_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_pv_home ON professional_visits(home_id, visit_date DESC)`,
+    // ── Medicine Risk Assessments ─────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS medicine_risk_assessments (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       assessed_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       self_medicate BOOLEAN NOT NULL DEFAULT FALSE,
+       self_medicate_notes TEXT,
+       swallowing_risk VARCHAR(50) NOT NULL DEFAULT 'none',
+       swallowing_notes TEXT,
+       covert_meds BOOLEAN NOT NULL DEFAULT FALSE,
+       covert_notes TEXT,
+       prn_protocol BOOLEAN NOT NULL DEFAULT FALSE,
+       prn_notes TEXT,
+       crushing_required BOOLEAN NOT NULL DEFAULT FALSE,
+       crushing_notes TEXT,
+       administration_route VARCHAR(100) NOT NULL DEFAULT 'oral',
+       known_allergies TEXT,
+       storage_location VARCHAR(200),
+       risk_level VARCHAR(50) NOT NULL DEFAULT 'low',
+       risk_notes TEXT,
+       review_date DATE,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mr_su   ON medicine_risk_assessments(su_id, assessed_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_mr_home ON medicine_risk_assessments(home_id, assessed_at DESC)`,
+    // ── Staff Performance Matrix ───────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS staff_performance (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       assessed_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
+       period VARCHAR(50) NOT NULL,
+       training_compliance INTEGER,
+       supervision_completed BOOLEAN NOT NULL DEFAULT FALSE,
+       supervisions_due INTEGER,
+       supervisions_done INTEGER,
+       incidents_reported INTEGER NOT NULL DEFAULT 0,
+       punctuality_score INTEGER CHECK (punctuality_score BETWEEN 1 AND 5),
+       attitude_score INTEGER CHECK (attitude_score BETWEEN 1 AND 5),
+       care_quality_score INTEGER CHECK (care_quality_score BETWEEN 1 AND 5),
+       documentation_score INTEGER CHECK (documentation_score BETWEEN 1 AND 5),
+       teamwork_score INTEGER CHECK (teamwork_score BETWEEN 1 AND 5),
+       overall_score NUMERIC(4,2),
+       risk_rating VARCHAR(50) NOT NULL DEFAULT 'low',
+       strengths TEXT,
+       areas_improvement TEXT,
+       action_plan TEXT,
+       notes TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_perf_staff ON staff_performance(staff_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_perf_home  ON staff_performance(home_id, created_at DESC)`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS phone_home VARCHAR(20)`,
+    `ALTER TABLE su_contacts DROP CONSTRAINT IF EXISTS su_contacts_contact_tag_check`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gender_at_birth VARCHAR(50)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS sexuality VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS care_plan_live_date DATE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS room_number VARCHAR(20)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS geofence_radius INTEGER NOT NULL DEFAULT 200`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS team_involvement TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS mca_capacity VARCHAR(50)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dols_active BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dols_start_date DATE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dols_end_date DATE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dols_notes TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS cqc_informed BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS banding VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS person_id VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS funeral_director VARCHAR(255)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_frequency VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_preferred_time VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_team_support TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_type_pref VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_directions TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_preferred_products TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS meal_frequency VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS eat_directions TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS eat_team_preference TEXT`,
+    // ── Staff columns that login depends on ───────────────────────────────────
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS refresh_token TEXT`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS feature_flags JSONB NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
+    // Add new audit types to enum
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='staff_all' AND enumtypid='audit_type'::regtype) THEN ALTER TYPE audit_type ADD VALUE 'staff_all'; END IF; END $$`,
+    // Notifications table
+    `CREATE TABLE IF NOT EXISTS notifications (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       recipient_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id      UUID REFERENCES homes(id) ON DELETE CASCADE,
+       title        VARCHAR(255) NOT NULL,
+       body         TEXT,
+       type         VARCHAR(20) NOT NULL DEFAULT 'info',
+       link         VARCHAR(500),
+       is_read      BOOLEAN NOT NULL DEFAULT FALSE,
+       read_at      TIMESTAMPTZ,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_notif_recipient ON notifications(recipient_id, created_at DESC)`,
+    // Ensure staff_messages columns allow null home_id (some inserts don't have homeId)
+    `ALTER TABLE staff_messages ALTER COLUMN home_id DROP NOT NULL`,
+    // Ensure staff_messages has a message column (Render DB may have body instead)
+    // Ensure staff_messages has a message column (Render DB may have body instead)
+    `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS message TEXT`,
+    `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS body TEXT`,
+    `ALTER TABLE staff_messages ALTER COLUMN body DROP NOT NULL`,
+    `ALTER TABLE staff_messages ALTER COLUMN message DROP NOT NULL`,
+    // Fix recruitment_candidates missing pipeline_stage
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS pipeline_stage VARCHAR(100) DEFAULT 'applied'`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS training_done BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS dbs_cleared BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS references_done BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS fully_compliant BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS ready_to_start BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS start_date DATE`,
+    // Copy body -> message for existing rows that only have body
+    `UPDATE staff_messages SET message = body WHERE message IS NULL AND body IS NOT NULL`,
+    // Fix audit_reports attachments (was mistakenly added as 'audits')
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
+    // Fix performance overall_score precision (NUMERIC(4,2) overflows for 100)
+    `ALTER TABLE staff_performance ALTER COLUMN overall_score TYPE NUMERIC(5,2)`,
+    // Fix: update existing staff whose total is still at old default 224 → 210
+    `UPDATE staff SET leave_hours_total = 210, leave_hours_remaining = 210 WHERE leave_hours_total = 224 AND leave_hours_remaining = 224`,
+    // Care plan reads tracking
+    `CREATE TABLE IF NOT EXISTS care_plan_reads (
+       id         BIGSERIAL PRIMARY KEY,
+       plan_id    UUID NOT NULL REFERENCES care_plans(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       read_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_cpr_plan ON care_plan_reads(plan_id, read_at DESC)`,
+    // Social activities
+    `CREATE TABLE IF NOT EXISTS social_activities (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id     UUID REFERENCES staff(id) ON DELETE SET NULL,
+       title        VARCHAR(255) NOT NULL,
+       activity_date DATE NOT NULL,
+       duration_mins INTEGER,
+       location     VARCHAR(255),
+       participants VARCHAR(255),
+       enjoyed      VARCHAR(20),
+       notes        TEXT,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_sa_su ON social_activities(su_id, activity_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_sa_home ON social_activities(home_id, activity_date DESC)`,
+    // Recruitment candidates
+    `CREATE TABLE IF NOT EXISTS recruitment_candidates (
+       id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id         UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       first_name      VARCHAR(100) NOT NULL,
+       last_name       VARCHAR(100) NOT NULL,
+       email           VARCHAR(255),
+       phone           VARCHAR(30),
+       position        VARCHAR(255) NOT NULL,
+       applied_date    DATE NOT NULL DEFAULT CURRENT_DATE,
+       status          VARCHAR(30) NOT NULL DEFAULT 'applied',
+       pipeline_stage  VARCHAR(30) NOT NULL DEFAULT 'applied',
+       interview_date  DATE,
+       notes           TEXT,
+       dbs_check       VARCHAR(20),
+       reference_check VARCHAR(20),
+       training_done   BOOLEAN NOT NULL DEFAULT FALSE,
+       dbs_cleared     BOOLEAN NOT NULL DEFAULT FALSE,
+       references_done BOOLEAN NOT NULL DEFAULT FALSE,
+       fully_compliant BOOLEAN NOT NULL DEFAULT FALSE,
+       ready_to_start  BOOLEAN NOT NULL DEFAULT FALSE,
+       start_date      DATE,
+       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_recruit_home ON recruitment_candidates(home_id, applied_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_recruit_pipeline ON recruitment_candidates(home_id, pipeline_stage)`,
+    // Handover resident notes
+    `CREATE TABLE IF NOT EXISTS handover_resident_notes (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       shift_date  DATE NOT NULL,
+       shift_type  VARCHAR(20) NOT NULL,
+       notes       TEXT,
+       created_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
+       updated_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       UNIQUE (home_id, su_id, shift_date, shift_type)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_hn_home_date ON handover_resident_notes(home_id, shift_date DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_hn_su ON handover_resident_notes(su_id)`,
+    // Leave hours: ensure remaining is set for staff where it is NULL
+    `UPDATE staff SET leave_hours_remaining = leave_hours_total WHERE leave_hours_remaining IS NULL`,
+    // Leave hours: fix staff still on old 224 default
+    `UPDATE staff SET leave_hours_total = 210, leave_hours_remaining = 210 WHERE leave_hours_total = 224`,
+    // Audit attachments column (using correct table name audit_reports)
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'`,
+    // ── audit_log (non-partitioned fallback) ──────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS audit_log (
+       id          BIGSERIAL PRIMARY KEY,
+       timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       staff_id    UUID,
+       home_id     UUID,
+       action      VARCHAR(100),
+       table_name  VARCHAR(100),
+       record_id   UUID,
+       ip_address  VARCHAR(45),
+       session_id  VARCHAR(100),
+       new_values  JSONB
+     )`,
+    // ── Tables used in routes but missing from migrations ─────────────────────
+    `CREATE TABLE IF NOT EXISTS su_about_me (
+       su_id              UUID PRIMARY KEY REFERENCES service_users(id) ON DELETE CASCADE,
+       life_history       TEXT,
+       important_people   TEXT,
+       daily_routine      TEXT,
+       hobbies_interests  TEXT,
+       communication      TEXT,
+       likes_dislikes     TEXT,
+       beliefs_values     TEXT,
+       goals_wishes       TEXT,
+       support_needs      TEXT,
+       updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS sensitive_notes (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       created_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
+       note        TEXT NOT NULL,
+       category    VARCHAR(50) NOT NULL DEFAULT 'general',
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_sensitive_su ON sensitive_notes(su_id, created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS capacity_assessments (
+       id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id                 UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id               UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       assessed_by           UUID REFERENCES staff(id) ON DELETE SET NULL,
+       decision_area         TEXT NOT NULL,
+       has_capacity          BOOLEAN,
+       best_interest_decision TEXT,
+       consulted_with        TEXT,
+       outcome               TEXT,
+       review_date           DATE,
+       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_capacity_su ON capacity_assessments(su_id, created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS professional_involvement (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       role_title   VARCHAR(255) NOT NULL,
+       full_name    VARCHAR(255) NOT NULL,
+       organisation VARCHAR(255),
+       phone        VARCHAR(30),
+       email        VARCHAR(255),
+       notes        TEXT,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_professional_su ON professional_involvement(su_id)`,
+    `CREATE TABLE IF NOT EXISTS meeting_notes (
+       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       event_id      UUID NOT NULL UNIQUE REFERENCES calendar_events(id) ON DELETE CASCADE,
+       created_by    UUID REFERENCES staff(id) ON DELETE SET NULL,
+       notes         TEXT,
+       action_points TEXT,
+       concerns      TEXT,
+       attendees     TEXT,
+       outcome       TEXT,
+       summary       TEXT,
+       updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE TABLE IF NOT EXISTS meeting_signoffs (
+       event_id   UUID NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       signed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (event_id, staff_id)
+     )`,
+    // ── Invoicing, CQC notifications, Supervision, Appraisals ─────────────────
+    `CREATE TABLE IF NOT EXISTS invoices (
+       id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id           UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id             UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       month_date        DATE NOT NULL,
+       commissioned_hours DECIMAL(10,2),
+       hourly_rate       DECIMAL(10,2),
+       invoice_amount    DECIMAL(12,2),
+       status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+       notes             TEXT,
+       created_by        UUID REFERENCES staff(id),
+       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       UNIQUE(home_id, su_id, month_date)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_invoices_home_su ON invoices(home_id, su_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status)`,
+    `CREATE TABLE IF NOT EXISTS cqc_notifications (
+       id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id           UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id             UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       notification_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       notification_type VARCHAR(50),
+       details           TEXT,
+       notified_by       UUID REFERENCES staff(id),
+       attachment_url    TEXT,
+       status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_cqc_home ON cqc_notifications(home_id, notification_date DESC)`,
+    `CREATE TABLE IF NOT EXISTS supervisions (
+       id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id               UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id              UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       supervisor_id         UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       supervision_date      DATE NOT NULL,
+       supervision_type      VARCHAR(50),
+       summary               TEXT,
+       strengths             TEXT,
+       areas_for_improvement TEXT,
+       action_points         TEXT,
+       next_date             DATE,
+       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_supervisions_staff ON supervisions(staff_id, supervision_date DESC)`,
+    `CREATE TABLE IF NOT EXISTS appraisals (
+       id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id            UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id           UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       appraiser_id       UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       appraisal_date     DATE NOT NULL,
+       rating             VARCHAR(20),
+       performance_summary TEXT,
+       comments           TEXT,
+       goals              TEXT,
+       next_review_date   DATE,
+       created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_appraisals_staff ON appraisals(staff_id, appraisal_date DESC)`,
+    // ── Physical health support plans ─────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS physical_health_plans (
+       id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id          UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id            UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       created_by       UUID REFERENCES staff(id) ON DELETE SET NULL,
+       reviewed_by      UUID REFERENCES staff(id) ON DELETE SET NULL,
+       height_cm        NUMERIC(5,1),
+       weight_kg        NUMERIC(6,2),
+       bmi              NUMERIC(5,2),
+       blood_pressure   VARCHAR(20),
+       pulse            INTEGER,
+       temperature_c    NUMERIC(4,1),
+       oxygen_sat       INTEGER,
+       conditions       TEXT,
+       allergies        TEXT,
+       current_meds     TEXT,
+       gp_name          VARCHAR(255),
+       gp_phone         VARCHAR(30),
+       hospital_number  VARCHAR(100),
+       nhs_number       VARCHAR(20),
+       last_gp_review   DATE,
+       next_review_date DATE,
+       notes            TEXT,
+       review_date      DATE,
+       created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_php_su   ON physical_health_plans(su_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_php_home ON physical_health_plans(home_id)`,
+    // ── quality_records — complaints/compliments extra fields ─────────────────
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS from_type     VARCHAR(50)`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS from_name     VARCHAR(255)`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS lessons_learnt TEXT`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS updates_text   TEXT`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS status         VARCHAR(20) NOT NULL DEFAULT 'open'`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS entry_date     DATE`,
+    // ── risk_assessments — extra risk scoring fields ───────────────────────────
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_before_intervention TEXT`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_score               INTEGER`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_rating_option        VARCHAR(50)`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS evaluation_of_risk        TEXT`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_acceptable           VARCHAR(50)`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_after_controls       TEXT`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS historical_context        TEXT`,
+    // ── supervisions — extra supervision/burnout fields ───────────────────────
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS review_frequency             VARCHAR(50)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS supervisor_name_text         VARCHAR(255)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS time_of_meeting              VARCHAR(10)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS location                     VARCHAR(50)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS previous_actions_completed   VARCHAR(20)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS had_absences                 VARCHAR(20)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS workload_scale               INTEGER`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS pdp_completed                VARCHAR(20)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS burnout_total                INTEGER`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS actions_escalated            VARCHAR(20)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS next_supervision_time        VARCHAR(10)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS conducted_by                 VARCHAR(255)`,
+    `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS metadata                     JSONB NOT NULL DEFAULT '{}'`,
+    // ── care_plans — medication support plan fields ───────────────────────────
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS medication_support_level VARCHAR(255)`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS manages_own_meds         BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS level_of_support         TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS support_types            TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS date_medication_review   DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS regular_medications      TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS prn_medications          TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS otc_medications          TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS prn_protocol             TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS prn_list                 TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS indication_for_use       TEXT`,
+  ];
+  for (const sql of stmts) {
+    await pool.query(sql).catch((err: any) => {
+      logger.warn(`ensureSchema skipped: ${err?.message?.split('\n')[0]}`);
+    });
+  }
+  logger.info('Schema verified');
+}
 
-  useEffect(() => { if (selectedHome) load() }, [selectedHome])
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const [candRes, configRes] = await Promise.all([
-        api.get('/recruitment', { params: { homeId: selectedHome } }),
-        api.get('/recruitment/email-configured').catch(() => ({ data: { data: { configured: false } } })),
-      ])
-      setCandidates(candRes.data.data || [])
-      setEmailConfigured(configRes.data.data?.configured || false)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to load candidates')
-    } finally {
-      setLoading(false)
-    }
+async function bootstrap() {
+  try {
+    await pool.query('SELECT 1');
+    logger.info('Database connected successfully');
+  } catch (err) {
+    logger.error('Database connection failed', { err });
+    process.exit(1);
   }
 
-  const deleteCandidate = async (id: string) => {
-    if (!window.confirm('Delete this candidate?')) return
-    try {
-      await api.delete(`/recruitment/${id}`)
-      setCandidates(prev => prev.filter(c => c.id !== id))
-      toast.success('Candidate deleted')
-    } catch { toast.error('Failed to delete') }
-  }
+  await ensureColumns();
 
-  const moveStage = async (candidate: Candidate, newStage: string) => {
-    try {
-      const res = await api.put(`/recruitment/${candidate.id}`, { pipelineStage: newStage })
-      setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, ...res.data.data } : c))
-      toast.success(`Moved to ${getStageLabel(newStage)}`)
-    } catch { toast.error('Failed to move candidate') }
-  }
+  app.listen(PORT, () => {
+    logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  });
 
-  const updateCompliance = async (id: string, field: string, value: boolean) => {
-    try {
-      const res = await api.put(`/recruitment/${id}`, { [field]: value })
-      setCandidates(prev => prev.map(c => c.id === id ? { ...c, ...res.data.data } : c))
-      if (detailCandidate?.id === id) {
-        setDetailCandidate({ ...detailCandidate, ...res.data.data })
-      }
-      toast.success('Updated')
-    } catch { toast.error('Failed to update') }
-  }
-
-  const filtered = candidates.filter(c => {
-    const matchesSearch = `${c.first_name} ${c.last_name} ${c.email} ${c.position}`.toLowerCase().includes(search.toLowerCase())
-    const matchesStage = stageFilter === 'all' || c.pipeline_stage === stageFilter
-    return matchesSearch && matchesStage
-  })
-
-  const counts = PIPELINE_STAGES.reduce((acc, stage) => {
-    acc[stage.key] = candidates.filter(c => c.pipeline_stage === stage.key).length
-    return acc
-  }, {} as Record<string, number>)
-
-  return (
-    <div className="flex flex-col h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <UserCheck className="w-6 h-6 text-purple-600" />
-              Recruitment Pipeline
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">{candidates.length} candidate{candidates.length !== 1 ? 's' : ''} total</p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {homes.length > 1 && (
-              <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-                {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </select>
-            )}
-            <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />} onClick={load}>Refresh</Button>
-            <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditCandidate(null); setAddOpen(true) }}>
-              Add Candidate
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Pipeline summary */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3">
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setStageFilter('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${stageFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-            All ({candidates.length})
-          </button>
-          {PIPELINE_STAGES.map(stage => (
-            <button
-              key={stage.key}
-              onClick={() => setStageFilter(stage.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${stageFilter === stage.key ? stage.color.replace('bg-', 'ring-2 ring-offset-1 ring-') : stage.color} ${stageFilter === stage.key ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}>
-              {stage.label} ({counts[stage.key] || 0})
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 items-center">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            className="input pl-9 text-sm w-full"
-            placeholder="Search candidates..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <select className="input text-sm w-auto" value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
-            <option value="all">All Stages</option>
-            {PIPELINE_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Candidates list */}
-      <div className="flex-1 overflow-auto p-6">
-        {loading ? (
-          <div className="flex items-center justify-center h-64"><Spinner /></div>
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title={search || stageFilter !== 'all' ? 'No matching candidates' : 'No candidates yet'}
-            description={search || stageFilter !== 'all' ? 'Try adjusting your filters' : 'Add your first candidate to start tracking'}
-          />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map(candidate => (
-              <CandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                onEdit={() => { setEditCandidate(candidate); setAddOpen(true) }}
-                onDelete={() => deleteCandidate(candidate.id)}
-                onView={() => setDetailCandidate(candidate)}
-                onEmail={() => { setEmailCandidate(candidate); setEmailOpen(true) }}
-                onMoveStage={(stage) => moveStage(candidate, stage)}
-                emailConfigured={emailConfigured}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      {addOpen && (
-        <CandidateModal
-          open={addOpen}
-          onClose={() => { setAddOpen(false); setEditCandidate(null) }}
-          candidate={editCandidate}
-          homeId={selectedHome}
-          onSaved={() => { setAddOpen(false); setEditCandidate(null); load(); }}
-        />
-      )}
-
-      {/* Detail Modal */}
-      {detailCandidate && (
-        <DetailModal
-          candidate={detailCandidate}
-          onClose={() => setDetailCandidate(null)}
-          onUpdateCompliance={updateCompliance}
-          onMoveStage={(stage) => moveStage(detailCandidate, stage)}
-          onEdit={() => { setDetailCandidate(null); setEditCandidate(detailCandidate); setAddOpen(true) }}
-        />
-      )}
-
-      {/* Email Modal */}
-      {emailOpen && emailCandidate && (
-        <EmailModal
-          candidate={emailCandidate}
-          onClose={() => { setEmailOpen(false); setEmailCandidate(null) }}
-          emailConfigured={emailConfigured}
-        />
-      )}
-    </div>
-  )
+  if (process.env.NODE_ENV !== 'test') startScheduler();
 }
 
-/* ─── Candidate Card ─── */
-function CandidateCard({ candidate, onEdit, onDelete, onView, onEmail, onMoveStage, emailConfigured }: {
-  candidate: Candidate; onEdit: () => void; onDelete: () => void; onView: () => void;
-  onEmail: () => void; onMoveStage: (stage: string) => void; emailConfigured: boolean
-}) {
-  const [showStageMenu, setShowStageMenu] = useState(false)
-  const stageLabel = getStageLabel(candidate.pipeline_stage)
-  const stageColor = getStageColor(candidate.pipeline_stage)
+process.on('SIGTERM', async () => { await pool.end(); process.exit(0); });
+process.on('unhandledRejection', (reason) => logger.error('Unhandled rejection', { reason }));
 
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-slate-800 truncate">{candidate.first_name} {candidate.last_name}</h3>
-            <p className="text-sm text-slate-500 truncate">{candidate.position}</p>
-          </div>
-          <div className="flex gap-1 ml-2">
-            <button onClick={onView} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="View details">
-              <UserCheck className="w-4 h-4" />
-            </button>
-            {candidate.email && (
-              <button onClick={onEmail} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600" title="Send email">
-                <Mail className="w-4 h-4" />
-              </button>
-            )}
-            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Edit">
-              <Edit className="w-4 h-4" />
-            </button>
-            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600" title="Delete">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+bootstrap().catch((err) => { logger.error('Bootstrap failed', { err }); process.exit(1); });
 
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${stageColor}`}>{stageLabel}</span>
-          {candidate.fully_compliant && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 font-medium flex items-center gap-1">
-              <Check className="w-3 h-3" /> Fully Compliant
-            </span>
-          )}
-          {candidate.ready_to_start && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium flex items-center gap-1">
-              <Check className="w-3 h-3" /> Ready to Start
-            </span>
-          )}
-        </div>
+export default app;
 
-        {candidate.email && <p className="text-xs text-slate-500 mb-1">{candidate.email}</p>}
-        {candidate.phone && <p className="text-xs text-slate-500 mb-1">{candidate.phone}</p>}
-        {candidate.applied_date && (
-          <p className="text-xs text-slate-400">Applied: {format(new Date(candidate.applied_date), 'd MMM yyyy')}</p>
-        )}
-
-        {/* Compliance mini indicators */}
-        <div className="flex gap-2 mt-3">
-          <ComplianceDot label="Training" done={candidate.training_done} />
-          <ComplianceDot label="DBS" done={candidate.dbs_cleared} />
-          <ComplianceDot label="References" done={candidate.references_done} />
-        </div>
-
-        {/* Quick stage move */}
-        <div className="relative mt-3">
-          <button
-            onClick={() => setShowStageMenu(v => !v)}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-purple-600 font-medium px-2 py-1 rounded-lg hover:bg-purple-50 transition-colors w-full justify-between">
-            Move stage <ChevronDown className="w-3 h-3" />
-          </button>
-          {showStageMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowStageMenu(false)} />
-              <div className="absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-20 py-1 max-h-48 overflow-y-auto">
-                {PIPELINE_STAGES.filter(s => s.key !== candidate.pipeline_stage).map(stage => (
-                  <button
-                    key={stage.key}
-                    onClick={() => { onMoveStage(stage.key); setShowStageMenu(false) }}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 transition-colors">
-                    {stage.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ComplianceDot({ label, done }: { label: string; done: boolean }) {
-  return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${done ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
-      {done ? <Check className="w-2.5 h-2.5 inline mr-0.5" /> : <X className="w-2.5 h-2.5 inline mr-0.5" />}
-      {label}
-    </span>
-  )
-}
-
-/* ─── Candidate Add/Edit Modal ─── */
-function CandidateModal({ open, onClose, candidate, homeId, onSaved }: {
-  open: boolean; onClose: () => void; candidate: Candidate | null; homeId: string; onSaved: () => void
-}) {
-  const [firstName, setFirstName] = useState(candidate?.first_name || '')
-  const [lastName, setLastName] = useState(candidate?.last_name || '')
-  const [email, setEmail] = useState(candidate?.email || '')
-  const [phone, setPhone] = useState(candidate?.phone || '')
-  const [position, setPosition] = useState(candidate?.position || '')
-  const [appliedDate, setAppliedDate] = useState(candidate?.applied_date ? format(new Date(candidate.applied_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'))
-  const [pipelineStage, setPipelineStage] = useState(candidate?.pipeline_stage || 'applied')
-  const [interviewDate, setInterviewDate] = useState(candidate?.interview_date ? format(new Date(candidate.interview_date), 'yyyy-MM-dd') : '')
-  const [notes, setNotes] = useState(candidate?.notes || '')
-  const [saving, setSaving] = useState(false)
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!firstName.trim() || !lastName.trim() || !position.trim()) { toast.error('First name, last name and position are required'); return }
-    setSaving(true)
-    try {
-      const data = { firstName, lastName, email, phone, position, appliedDate, pipelineStage, interviewDate, notes, homeId }
-      if (candidate) {
-        await api.put(`/recruitment/${candidate.id}`, data)
-        toast.success('Candidate updated')
-      } else {
-        await api.post('/recruitment', data)
-        toast.success('Candidate added')
-      }
-      onSaved()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to save')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title={candidate ? 'Edit Candidate' : 'Add Candidate'}>
-      <form onSubmit={save} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">First Name *</label>
-            <input className="input" value={firstName} onChange={e => setFirstName(e.target.value)} required />
-          </div>
-          <div>
-            <label className="label">Last Name *</label>
-            <input className="input" value={lastName} onChange={e => setLastName(e.target.value)} required />
-          </div>
-        </div>
-        <div>
-          <label className="label">Position *</label>
-          <input className="input" value={position} onChange={e => setPosition(e.target.value)} placeholder="e.g. Senior Carer" required />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Email</label>
-            <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Phone</label>
-            <input className="input" value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Applied Date</label>
-            <input className="input" type="date" value={appliedDate} onChange={e => setAppliedDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Interview Date</label>
-            <input className="input" type="date" value={interviewDate} onChange={e => setInterviewDate(e.target.value)} />
-          </div>
-        </div>
-        <div>
-          <label className="label">Pipeline Stage</label>
-          <select className="input" value={pipelineStage} onChange={e => setPipelineStage(e.target.value)}>
-            {PIPELINE_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="label">Notes</label>
-          <textarea className="input" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any notes about this candidate..." />
-        </div>
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={saving} icon={<Check className="w-4 h-4" />}>
-            {candidate ? 'Update' : 'Add'} Candidate
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-/* ─── Detail Modal with Compliance Tracking ─── */
-function DetailModal({ candidate, onClose, onUpdateCompliance, onMoveStage, onEdit }: {
-  candidate: Candidate; onClose: () => void;
-  onUpdateCompliance: (id: string, field: string, value: boolean) => void;
-  onMoveStage: (stage: string) => void; onEdit: () => void
-}) {
-  const stageLabel = getStageLabel(candidate.pipeline_stage)
-  const stageColor = getStageColor(candidate.pipeline_stage)
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">{candidate.first_name} {candidate.last_name}</h2>
-            <p className="text-sm text-slate-500">{candidate.position}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-xs px-2 py-1 rounded-full border font-medium ${stageColor}`}>{stageLabel}</span>
-            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Contact Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Email</p>
-              <p className="text-sm text-slate-700">{candidate.email || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Phone</p>
-              <p className="text-sm text-slate-700">{candidate.phone || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Applied</p>
-              <p className="text-sm text-slate-700">{candidate.applied_date ? format(new Date(candidate.applied_date), 'd MMM yyyy') : '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Interview Date</p>
-              <p className="text-sm text-slate-700">{candidate.interview_date ? format(new Date(candidate.interview_date), 'd MMM yyyy') : '—'}</p>
-            </div>
-          </div>
-
-          {/* Compliance Tracking */}
-          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-            <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-              <Check className="w-4 h-4 text-green-600" />
-              Compliance Checklist
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <ComplianceToggle
-                label="Training Completed"
-                done={candidate.training_done}
-                onChange={(v) => onUpdateCompliance(candidate.id, 'trainingDone', v)}
-              />
-              <ComplianceToggle
-                label="DBS Cleared"
-                done={candidate.dbs_cleared}
-                onChange={(v) => onUpdateCompliance(candidate.id, 'dbsCleared', v)}
-              />
-              <ComplianceToggle
-                label="References Checked"
-                done={candidate.references_done}
-                onChange={(v) => onUpdateCompliance(candidate.id, 'referencesDone', v)}
-              />
-              <ComplianceToggle
-                label="Fully Compliant"
-                done={candidate.fully_compliant}
-                onChange={(v) => onUpdateCompliance(candidate.id, 'fullyCompliant', v)}
-              />
-              <ComplianceToggle
-                label="Ready to Start"
-                done={candidate.ready_to_start}
-                onChange={(v) => onUpdateCompliance(candidate.id, 'readyToStart', v)}
-              />
-              {candidate.start_date && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600">Start Date: {format(new Date(candidate.start_date), 'd MMM yyyy')}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* DBS & Reference Details */}
-          {(candidate.dbs_check || candidate.reference_check) && (
-            <div className="grid grid-cols-2 gap-4">
-              {candidate.dbs_check && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">DBS Check Details</p>
-                  <p className="text-sm text-slate-700">{candidate.dbs_check}</p>
-                </div>
-              )}
-              {candidate.reference_check && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Reference Check Details</p>
-                  <p className="text-sm text-slate-700">{candidate.reference_check}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Notes */}
-          {candidate.notes && (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-              <p className="text-sm text-slate-700 whitespace-pre-line bg-slate-50 rounded-lg p-3">{candidate.notes}</p>
-            </div>
-          )}
-
-          {/* Move to Stage */}
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Move to Stage</p>
-            <div className="flex flex-wrap gap-2">
-              {PIPELINE_STAGES.filter(s => s.key !== candidate.pipeline_stage).map(stage => (
-                <button
-                  key={stage.key}
-                  onClick={() => onMoveStage(stage.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors hover:opacity-80 ${stage.color}`}>
-                  {stage.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-slate-200 flex gap-3 justify-end">
-          <Button variant="secondary" onClick={onClose}>Close</Button>
-          <Button onClick={onEdit} icon={<Edit className="w-4 h-4" />}>Edit</Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ComplianceToggle({ label, done, onChange }: { label: string; done: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="flex items-center gap-3 cursor-pointer group">
-      <div className={`relative w-10 h-5 rounded-full transition-colors ${done ? 'bg-green-500' : 'bg-slate-300'}`}>
-        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${done ? 'left-5' : 'left-0.5'}`} />
-      </div>
-      <input type="checkbox" className="sr-only" checked={done} onChange={e => onChange(e.target.checked)} />
-      <span className={`text-sm font-medium ${done ? 'text-green-700' : 'text-slate-600'} group-hover:text-slate-800`}>{label}</span>
-    </label>
-  )
-}
-
-/* ─── Email Modal ─── */
-function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candidate; onClose: () => void; emailConfigured: boolean }) {
-  const [emailType, setEmailType] = useState('interview_invite')
-  const [subject, setSubject] = useState('')
-  const [message, setMessage] = useState('')
-  const [interviewDate, setInterviewDate] = useState('')
-  const [interviewTime, setInterviewTime] = useState('')
-  const [location, setLocation] = useState('')
-  const [sending, setSending] = useState(false)
-
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!emailConfigured) { toast.error('Email is not configured. Set SMTP_USER and SMTP_PASS in your backend .env file.'); return }
-    if (!candidate.email) { toast.error('Candidate has no email address'); return }
-    setSending(true)
-    try {
-      const payload: any = { type: emailType, subject: subject || undefined }
-      if (emailType === 'interview_invite') {
-        payload.interviewDate = interviewDate || 'TBC'
-        payload.interviewTime = interviewTime || 'TBC'
-        payload.location = location || 'Our care home'
-      } else if (emailType === 'custom') {
-        payload.message = message
-      } else if (emailType === 'reference_request') {
-        payload.refereeName = 'Sir/Madam'
-      }
-      await api.post(`/recruitment/${candidate.id}/email`, payload)
-      toast.success('Email sent successfully')
-      onClose()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to send email')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  if (!emailConfigured) {
-    return (
-      <Modal open={true} onClose={onClose} title="Send Email">
-        <div className="text-center py-6">
-          <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-600 font-medium mb-1">Email not configured</p>
-          <p className="text-sm text-slate-500 mb-4">Set SMTP_USER and SMTP_PASS environment variables to enable email sending.</p>
-          <Button variant="secondary" onClick={onClose}>Close</Button>
-        </div>
-      </Modal>
-    )
-  }
-
-  return (
-    <Modal open={true} onClose={onClose} title={`Email ${candidate.first_name} ${candidate.last_name}`}>
-      <form onSubmit={send} className="space-y-4">
-        <div>
-          <label className="label">To</label>
-          <input className="input bg-slate-50" value={candidate.email || ''} disabled />
-        </div>
-        <div>
-          <label className="label">Email Type</label>
-          <select className="input" value={emailType} onChange={e => setEmailType(e.target.value)}>
-            <option value="interview_invite">Interview Invitation</option>
-            <option value="application_received">Application Received</option>
-            <option value="reference_request">Reference Request</option>
-            <option value="offer_letter">Offer Letter</option>
-            <option value="rejection">Rejection</option>
-            <option value="custom">Custom Message</option>
-          </select>
-        </div>
-
-        {emailType === 'interview_invite' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Interview Date</label>
-                <input className="input" type="date" value={interviewDate} onChange={e => setInterviewDate(e.target.value)} />
-              </div>
-              <div>
-                <label className="label">Interview Time</label>
-                <input className="input" type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <label className="label">Location</label>
-              <input className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Our care home" />
-            </div>
-          </div>
-        )}
-
-        {emailType === 'custom' && (
-          <div>
-            <label className="label">Custom Subject</label>
-            <input className="input mb-2" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject..." />
-            <label className="label">Message</label>
-            <textarea className="input" rows={4} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message..." required />
-          </div>
-        )}
-
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={sending} icon={<Send className="w-4 h-4" />}>Send Email</Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
