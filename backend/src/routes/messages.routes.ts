@@ -66,10 +66,10 @@ router.post('/', [body('recipientId').notEmpty(), body('message').notEmpty()], v
         const senderName = (senderRows[0] as any)?.full_name || 'a colleague';
         await query(
           `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-           VALUES ($1,$2,$3,$4,'info','/messages')`,
+           VALUES ($1,$2,$3,$4,'info',$5)`,
           [recipientId, homeId || null,
            `New message from ${senderName}`,
-           (message as string).substring(0, 120)]
+           (message as string).substring(0, 120), `/messages?id=${(rows[0] as any)?.id}`]
         );
       } catch (notifErr: any) {
         console.error('Failed to create message notification:', notifErr?.message || notifErr);
@@ -97,4 +97,5 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
+
 export default router;
