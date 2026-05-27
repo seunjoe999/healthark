@@ -50,7 +50,8 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; 
           to: opts.to,
           subject: opts.subject,
           html: opts.html,
-          reply_to: opts.replyTo
+          // Only send reply_to if it exists and looks like a valid email string
+          ...(opts.replyTo && opts.replyTo.includes('@') ? { reply_to: opts.replyTo } : {})
         })
       });
       const data = await res.json() as any;
