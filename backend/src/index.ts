@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -636,7 +636,13 @@ async function ensureColumns() {
     // Ensure staff_messages columns allow null home_id (some inserts don't have homeId)
     `ALTER TABLE staff_messages ALTER COLUMN home_id DROP NOT NULL`,
     // Ensure staff_messages has a message column (Render DB may have body instead)
+    // Ensure staff_messages has a message column (Render DB may have body instead)
     `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS message TEXT`,
+    `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS body TEXT`,
+    `ALTER TABLE staff_messages ALTER COLUMN body DROP NOT NULL`,
+    `ALTER TABLE staff_messages ALTER COLUMN message DROP NOT NULL`,
+    // Fix recruitment_candidates missing pipeline_stage
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS pipeline_stage VARCHAR(100) DEFAULT 'applied'`,
     // Copy body -> message for existing rows that only have body
     `UPDATE staff_messages SET message = body WHERE message IS NULL AND body IS NOT NULL`,
     // Fix audit_reports attachments (was mistakenly added as 'audits')
