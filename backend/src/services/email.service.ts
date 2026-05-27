@@ -14,9 +14,12 @@ function createTransport() {
 
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.resend.com',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: true,
-    auth: { user, pass }
+    port: parseInt(process.env.SMTP_PORT || '587'), // Switch back to 587
+    secure: false, // 587 uses STARTTLS, so secure must be false
+    requireTLS: true,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+    family: 4 // Force IPv4 to avoid IPv6 unreachable errors
   });
 }
 
