@@ -34,7 +34,195 @@ import publicRoutes from './routes/public.routes';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
 
- mar_records(home_id)`,
+// â”€â”€ Security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
+}));
+
+// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+  ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
+  ...(process.env.RENDER_EXTERNAL_HOSTNAME ? [`https://${process.env.RENDER_EXTERNAL_HOSTNAME}`] : []),
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+}));
+
+// â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/api', rateLimit({ windowMs: 900000, max: 500, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 10, standardHeaders: true, legacyHeaders: false }));
+
+// â”€â”€ General middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(morgan('dev', { stream: { write: (msg) => logger.info(msg.trim()) } }));
+
+// â”€â”€ Static files (uploaded documents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.get('/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected' });
+  }
+});
+
+// â”€â”€ ALL API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/api/auth', authRoutes);
+app.use('/api/homes', homesRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/service-users', serviceUserRoutes);
+app.use('/api/daily-records', dailyRecordRoutes);
+app.use('/api/care-plans', carePlanRoutes);
+app.use('/api/risk-assessments', riskAssessmentRoutes);
+app.use('/api/safeguarding', safeguardingRoutes);
+app.use('/api/staff-hr', staffHRRoutes);
+app.use('/api/audits', aiAuditRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/policies', policiesRoutes);
+app.use('/api/ppe', ppeRoutes);
+app.use('/api/documents', documentsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/public', publicRoutes);
+
+import marRoutes from './routes/mar.routes';
+import clockinRoutes from './routes/clockin.routes';
+import familyRoutes from './routes/family.routes';
+import shiftsRoutes from './routes/shifts.routes';
+import searchRoutes from './routes/search.routes';
+import notificationsRoutes from './routes/notifications.routes';
+import uploadRoutes from './routes/upload.routes';
+import reviewsRoutes from './routes/reviews.routes';
+import tasksRoutes from './routes/tasks.routes';
+import qualityRoutes from './routes/quality.routes';
+import assessmentsRoutes from './routes/assessments.routes';
+import invoicingRoutes from './routes/invoicing.routes';
+import cqcNotificationsRoutes from './routes/cqcNotifications.routes';
+import supervisionRoutes from './routes/supervision.routes';
+app.use('/api/mar', marRoutes);
+app.use('/api/clockin', clockinRoutes);
+app.use('/api/family', familyRoutes);
+app.use('/api/shifts', shiftsRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/reviews', reviewsRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/quality', qualityRoutes);
+app.use('/api/assessments', assessmentsRoutes);
+app.use('/api/invoicing', invoicingRoutes);
+app.use('/api/cqc-notifications', cqcNotificationsRoutes);
+app.use('/api/supervision', supervisionRoutes);
+
+import physicalHealthPlanRoutes from './routes/physicalHealthPlan.routes';
+import incidentsRoutes from './routes/incidents.routes';
+import complianceRoutes from './routes/compliance.routes';
+import medicationStockRoutes from './routes/medicationStock.routes';
+import signaturesRoutes from './routes/signatures.routes';
+app.use('/api/physical-health-plans', physicalHealthPlanRoutes);
+app.use('/api/incidents', incidentsRoutes);
+app.use('/api/compliance', complianceRoutes);
+app.use('/api/medication-stock', medicationStockRoutes);
+app.use('/api/signatures', signaturesRoutes);
+
+import maintenanceRoutes from './routes/maintenance.routes';
+import dbsRoutes from './routes/dbs.routes';
+import timesheetsRoutes from './routes/timesheets.routes';
+import auditTrailRoutes from './routes/auditTrail.routes';
+import outcomesRoutes from './routes/outcomes.routes';
+import bathChartRoutes from './routes/bathChart.routes';
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/dbs', dbsRoutes);
+app.use('/api/timesheets', timesheetsRoutes);
+app.use('/api/audit-trail', auditTrailRoutes);
+app.use('/api/outcomes', outcomesRoutes);
+app.use('/api/bath-chart', bathChartRoutes);
+
+import noticeboardRoutes from './routes/noticeboard.routes';
+import observationsRoutes from './routes/observations.routes';
+import seizuresRoutes from './routes/seizures.routes';
+import bowelChartRoutes from './routes/bowelChart.routes';
+import diaryRoutes from './routes/diary.routes';
+import professionalVisitsRoutes from './routes/professionalVisits.routes';
+import medicineRiskRoutes from './routes/medicineRisk.routes';
+import performanceMatrixRoutes from './routes/performanceMatrix.routes';
+import socialActivitiesRoutes from './routes/socialActivities.routes';
+import recruitmentRoutes from './routes/recruitment.routes';
+app.use('/api/noticeboard', noticeboardRoutes);
+app.use('/api/observations', observationsRoutes);
+app.use('/api/seizures', seizuresRoutes);
+app.use('/api/bowel-chart', bowelChartRoutes);
+app.use('/api/diary', diaryRoutes);
+app.use('/api/professional-visits', professionalVisitsRoutes);
+app.use('/api/medicine-risk', medicineRiskRoutes);
+app.use('/api/performance', performanceMatrixRoutes);
+app.use('/api/social-activities', socialActivitiesRoutes);
+app.use('/api/recruitment', recruitmentRoutes);
+
+// ── Serve React frontend ──────────────────────────────────────────────────
+import fs from 'fs';
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  logger.info(`Serving frontend from: ${frontendDist}`);
+  // Explicitly serve assets folder with correct MIME types
+  app.use('/assets', express.static(path.join(frontendDist, 'assets'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+      if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+    }
+  }));
+  app.use(express.static(frontendDist));
+  app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  logger.warn(`Frontend dist not found at: ${frontendDist}`);
+}
+
+// ── Error handling ────────────────────────────────────────────────────────
+app.use(notFound);
+app.use(errorHandler);
+
+// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function ensureColumns() {
+  const stmts = [
+    // ── New tables ─────────────────────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS staff_training (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       course_name VARCHAR(255) NOT NULL,
+       expiry_date DATE,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_st_staff  ON staff_training(staff_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_st_expiry ON staff_training(expiry_date)`,
+    `CREATE TABLE IF NOT EXISTS mar_records (
+       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id       UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       record_date DATE NOT NULL DEFAULT CURRENT_DATE,
+       given       BOOLEAN NOT NULL DEFAULT FALSE,
+       refused     BOOLEAN NOT NULL DEFAULT FALSE,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mar_home ON mar_records(home_id)`,
     `CREATE INDEX IF NOT EXISTS idx_mar_su   ON mar_records(su_id)`,
     `CREATE INDEX IF NOT EXISTS idx_mar_date ON mar_records(record_date)`,
     `CREATE TABLE IF NOT EXISTS safeguarding_concerns (
