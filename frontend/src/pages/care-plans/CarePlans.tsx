@@ -652,9 +652,9 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: { open: boolean;
 
 function EditPlanModal({ plan, suId, onSaved }: { plan: any; suId: string; onSaved: () => void }) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ aimsOutcomes: plan.aims_outcomes || '', whatICanDo: plan.what_i_can_do || '', howToSupport: plan.how_to_support || '', outcomeAchieved: plan.outcome_achieved || '', reviewFrequency: plan.review_frequency || 'monthly', updateNotes: '' })
+  const [form, setForm] = useState({ aimsOutcomes: plan.aims_outcomes || '', whatICanDo: plan.what_i_can_do || '', howToSupport: plan.how_to_support || '', outcomeAchieved: plan.outcome_achieved || '', reviewFrequency: plan.review_frequency || 'monthly', updateNotes: '', suSignOff: plan.su_sign_off || false, staffSignOff: plan.staff_sign_off || false })
   const [loading, setLoading] = useState(false)
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -675,6 +675,21 @@ function EditPlanModal({ plan, suId, onSaved }: { plan: any; suId: string; onSav
           <Select label="Outcome achieved" value={form.outcomeAchieved} onChange={e => set('outcomeAchieved', e.target.value)} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
           <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
           <div><label className="label">Update notes (what changed and why)</label><textarea className="input" rows={3} value={form.updateNotes} onChange={e => set('updateNotes', e.target.value)} placeholder="Document what was reviewed and any changes made..." /></div>
+          
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-4">
+            <h4 className="font-semibold text-slate-800 text-sm mb-3">Sign Off</h4>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={form.suSignOff} onChange={e => set('suSignOff', e.target.checked)} className="w-4 h-4 rounded text-purple-600 focus:ring-purple-600 border-slate-300" />
+                <span className="text-sm font-medium text-slate-700">Signed off by Service User / Family</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={form.staffSignOff} onChange={e => set('staffSignOff', e.target.checked)} className="w-4 h-4 rounded text-purple-600 focus:ring-purple-600 border-slate-300" />
+                <span className="text-sm font-medium text-slate-700">Signed off by Staff Member</span>
+              </label>
+            </div>
+          </div>
+
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" loading={loading}>Save review</Button>
