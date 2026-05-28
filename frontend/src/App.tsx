@@ -66,15 +66,13 @@ import HandoverReport from './pages/reports/HandoverReport'
 import Training from './pages/training/Training'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-  if (loading) return null
+  const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
   return <AppLayout>{children}</AppLayout>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-  if (loading) return null
+  const { user } = useAuth()
   if (user) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
