@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
@@ -231,8 +231,25 @@ export default function Outcomes() {
             <div className="p-3 rounded-xl text-sm text-slate-300" style={{ background: '#1a1a1a' }}>
               <strong className="text-white">{showReview.goal}</strong>
             </div>
-            <Select label="Current Status" options={STATUSES} value={reviewForm.status}
-              onChange={e => setReviewForm(f => ({ ...f, status: e.target.value }))} />
+                        <div>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Outcome Status</label>
+              <div className="flex flex-col gap-2">
+                {['Achieved', 'Partially Achieved', 'Not Achieved'].map(statusOption => {
+                  const val = statusOption === 'Achieved' ? 'yes' : statusOption === 'Partially Achieved' ? 'partially' : 'no';
+                  const active = reviewForm.status === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setReviewForm(f => ({ ...f, status: val }))}
+                      className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${active ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
+                    >
+                      {statusOption}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <Input label="Review Date" type="date" value={reviewForm.reviewDate} required
               onChange={e => setReviewForm(f => ({ ...f, reviewDate: e.target.value }))} />
             <Textarea label="Review Notes" value={reviewForm.notes} required
