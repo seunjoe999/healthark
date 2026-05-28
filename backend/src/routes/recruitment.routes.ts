@@ -143,7 +143,10 @@ router.post('/:id/email', param('id').isUUID(), body('type').notEmpty(), validat
           html = referenceRequestEmail(c, { name: req.body.refereeName || 'Sir/Madam' });
           // Send to referee email if provided
           if (req.body.refereeEmail) {
-            const result = await sendEmail({ to: req.body.refereeEmail, subject, html, replyTo: contactEmail, bcc: contactEmail });
+            
+            // BCC the designated admin email (or fall back to the sender)
+            const adminBcc = process.env.ADMIN_BCC_EMAIL || process.env.SMTP_USER || contactEmail;
+            const result = await sendEmail({ to: req.body.refereeEmail, subject, html, replyTo: contactEmail, bcc: adminBcc });
             if (!result.ok) throw new AppError(result.error || 'Failed to send email', 500);
             res.json({ success: true, message: `Reference request sent to ${req.body.refereeEmail}` } as ApiResponse);
             return;
@@ -169,7 +172,10 @@ router.post('/:id/email', param('id').isUUID(), body('type').notEmpty(), validat
           throw new AppError('Unknown email type', 400);
       }
 
-      const result = await sendEmail({ to: toEmail, subject, html, replyTo: contactEmail, bcc: contactEmail });
+      
+      // BCC the designated admin email (or fall back to the sender)
+      const adminBcc = process.env.ADMIN_BCC_EMAIL || process.env.SMTP_USER || contactEmail;
+      const result = await sendEmail({ to: toEmail, subject, html, replyTo: contactEmail, bcc: adminBcc });
       if (!result.ok) throw new AppError(result.error || 'Failed to send email', 500);
 
       // Log the email in candidate notes
