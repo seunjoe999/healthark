@@ -187,6 +187,10 @@ if (fs.existsSync(frontendDist)) {
       if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
     }
   }));
+  app.use('/logo.jpeg', express.static(path.join(frontendDist, 'logo.jpeg')));
+  app.use('/pwa-192.png', express.static(path.join(frontendDist, 'pwa-192.png')));
+  app.use('/pwa-512.png', express.static(path.join(frontendDist, 'pwa-512.png')));
+  app.use('/manifest.json', express.static(path.join(frontendDist, 'manifest.json')));
   app.use(express.static(frontendDist));
   app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
