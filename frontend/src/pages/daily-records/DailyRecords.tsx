@@ -367,6 +367,23 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
         <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
       </div>
     )
+    case 'incident': return (
+      <div className="space-y-3">
+        <Select label="Incident Type" value={form.incidentType || ''} onChange={e => set('incidentType', e.target.value)}
+          options={['fall','medication_error','aggressive_behaviour','self_harm','missing_person','property_damage','injury','near_miss','other'].map(v => ({ value: v, label: v.replace(/_/g, ' ') }))} placeholder="Select incident type" />
+        <Input label="Location" value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Where did it happen?" />
+        <Textarea label="Description of incident" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={3} placeholder="Exactly what happened..." required />
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.injuries || false} onChange={e => set('injuries', e.target.checked)} /> Injuries sustained?</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.medicalNeeded || false} onChange={e => set('medicalNeeded', e.target.checked)} /> Medical attention required?</label>
+        </div>
+        {(form.injuries || form.medicalNeeded) && (
+          <Textarea label="Injury / Medical Details" value={form.injuryDetails || ''} onChange={e => set('injuryDetails', e.target.value)} rows={2} placeholder="Details of injuries or medical help given..." />
+        )}
+        <Input label="Witnesses" value={form.witnesses || ''} onChange={e => set('witnesses', e.target.value)} placeholder="Names of any witnesses" />
+        <Textarea label="Immediate Action Taken" value={form.immediateAction || ''} onChange={e => set('immediateAction', e.target.value)} rows={2} placeholder="What did you do immediately after?" required />
+      </div>
+    )
     default: return (
       <Textarea label="Notes / description" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={4} placeholder="Describe what happened, what was observed..." />
     )
