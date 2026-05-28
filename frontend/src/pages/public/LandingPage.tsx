@@ -28,10 +28,11 @@ export default function LandingPage() {
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold text-xl">
-              CH
+            <img src="/logo.jpeg" alt="Comprehensive Care Logo" className="w-12 h-12 rounded-xl object-contain shadow-sm border border-slate-100" style={{ background: 'white', padding: '2px' }} />
+            <div>
+              <span className="block text-xl font-bold text-slate-900 tracking-tight leading-none">Comprehensive Care</span>
+              <span className="block text-xs font-semibold text-purple-600 tracking-wider mt-0.5">YOUR CARE OUR PRIORITY</span>
             </div>
-            <span className="text-xl font-bold text-slate-900 tracking-tight">CompCare Hub</span>
           </div>
           <div className="flex gap-4">
             <a href="#careers" className="text-sm font-semibold text-slate-600 hover:text-purple-600 px-4 py-2 transition-colors">Careers</a>
@@ -45,24 +46,45 @@ export default function LandingPage() {
       {/* Hero Section */}
       <header className="pt-24 pb-20 px-6 text-center max-w-4xl mx-auto">
         <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 leading-tight mb-6 tracking-tight">
-          Compassionate Care, <br/>
+          Comprehensive Care, <br/>
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">Empowered by Technology.</span>
         </h1>
-        <p className="text-xl text-slate-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-          Comprehensive Care Hub is dedicated to providing outstanding residential care. We blend human empathy with modern management tools to deliver the highest standard of living for our service users.
+        <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+          We are dedicated to providing outstanding residential care across the UK. By blending human empathy with modern management tools, we deliver the highest standard of living for our service users.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <a href="#careers" className="bg-purple-600 text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-purple-700 hover:shadow-xl hover:-translate-y-0.5 transition-all text-lg">
-            Join Our Care Team
+          <a href="#careers" className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold px-8 py-4 rounded-2xl shadow-xl hover:shadow-purple-500/20 hover:-translate-y-0.5 transition-all text-lg">
+            Apply to Join Our Team
           </a>
-          <a href="#about" className="bg-white text-slate-700 font-semibold border border-slate-200 px-8 py-4 rounded-full shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all text-lg">
+          <a href="#about" className="bg-white text-slate-700 font-bold border-2 border-slate-200 px-8 py-4 rounded-2xl hover:bg-slate-50 hover:border-purple-300 hover:text-purple-700 transition-all text-lg">
             Learn More
           </a>
         </div>
       </header>
 
+      {/* Beautiful Graphic Section */}
+      <section className="max-w-6xl mx-auto px-6 pb-24">
+        <div className="rounded-3xl bg-slate-900 overflow-hidden shadow-2xl border border-slate-800 relative">
+          <div className="absolute inset-0 bg-gradient-to-tr from-purple-900/40 to-transparent" />
+          <div className="relative z-10 grid md:grid-cols-2 items-center">
+            <div className="p-12 lg:p-16">
+              <h2 className="text-3xl font-bold text-white mb-6">Excellence in Care,<br/>Powered by Innovation</h2>
+              <ul className="space-y-4 text-slate-300 text-lg">
+                <li className="flex items-center gap-3"><div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">✓</div> 24/7 Professional Support</li>
+                <li className="flex items-center gap-3"><div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">✓</div> Tailored Care Plans</li>
+                <li className="flex items-center gap-3"><div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">✓</div> Family Integration Portal</li>
+                <li className="flex items-center gap-3"><div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">✓</div> Rigorous CQC Compliance</li>
+              </ul>
+            </div>
+            <div className="hidden md:flex justify-end p-8 lg:p-16">
+              <img src="/logo.jpeg" alt="Logo" className="w-64 h-64 object-contain rounded-3xl shadow-2xl border-4 border-white/10" style={{ background: 'white' }} />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* About Section */}
-      <section id="about" className="py-20 bg-white border-y border-slate-200">
+      <section id="about" className="py-24 bg-white border-y border-slate-200">
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-12 text-center">
           <div>
             <div className="w-16 h-16 mx-auto bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6">❤️</div>
