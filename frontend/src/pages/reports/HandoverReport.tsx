@@ -201,6 +201,7 @@ export default function HandoverReport() {
   const [previous, setPrevious] = useState<PreviousNote[]>([])
   const [loadingPrev, setLoadingPrev] = useState(false)
   const [todayRecords, setTodayRecords] = useState<any[]>([])
+  const [filterSuId, setFilterSuId] = useState<string>('')
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -398,7 +399,7 @@ export default function HandoverReport() {
       <div id="handover-print" className="hidden print:block bg-white p-8">
         <h2 className="font-bold text-2xl text-slate-900 mb-1">{homeName} Handover</h2>
         <p className="text-slate-600 mb-6">{format(new Date(), 'd MMMM yyyy')} · {SHIFT_LABELS[shift]} shift · {SHIFT_TIMES[shift]} · {user?.firstName} {user?.lastName}</p>
-        {sus.map(su => {
+        {(filterSuId ? sus.filter(s => s.id === filterSuId) : sus).map(su => {
           const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
           return (
             <div key={su.id} className="mb-8 border-b border-slate-200 pb-6">
