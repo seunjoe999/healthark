@@ -600,6 +600,8 @@ async function ensureColumns() {
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS cqc_informed BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS banding VARCHAR(100)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS person_id VARCHAR(100)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_name VARCHAR(255)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS pharmacy_name VARCHAR(255)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS funeral_director VARCHAR(255)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_frequency VARCHAR(100)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_preferred_time VARCHAR(100)`,
