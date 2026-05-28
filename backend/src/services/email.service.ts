@@ -28,6 +28,7 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   replyTo?: string;
+  bcc?: string;
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; messageId?: string; error?: string }> {
@@ -51,7 +52,8 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; 
           subject: opts.subject,
           html: opts.html,
           // Only send reply_to if it exists and looks like a valid email string
-          ...(opts.replyTo && opts.replyTo.includes('@') ? { reply_to: opts.replyTo } : {})
+          ...(opts.replyTo && opts.replyTo.includes('@') ? { reply_to: opts.replyTo } : {}),
+          ...(opts.bcc ? { bcc: opts.bcc } : {})
         })
       });
       const data = await res.json() as any;
@@ -65,7 +67,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; 
     const transport = createTransport();
     if (!transport) return { ok: false, error: 'Email not configured — set SMTP_USER and SMTP_PASS' };
 
-    const info = await transport.sendMail({ from: `CompCare Hub <${from}>`, to: opts.to, subject: opts.subject, html: opts.html, replyTo: opts.replyTo });
+    const info = await transport.sendMail({ from: `CompCare Hub <${from}>`, to: opts.to, subject: opts.subject, html: opts.html, replyTo: opts.replyTo, bcc: opts.bcc });
     logger.info(`Email sent to ${opts.to} — messageId: ${info.messageId}`);
     return { ok: true, messageId: info.messageId };
   } catch (err: any) {
