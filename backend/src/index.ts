@@ -29,6 +29,7 @@ import ppeRoutes from './routes/ppe.routes';
 import documentsRoutes from './routes/documents.routes';
 import messagesRoutes from './routes/messages.routes';
 import calendarRoutes from './routes/calendar.routes';
+import publicRoutes from './routes/public.routes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
@@ -98,6 +99,7 @@ app.use('/api/ppe', ppeRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/public', publicRoutes);
 
 import marRoutes from './routes/mar.routes';
 import clockinRoutes from './routes/clockin.routes';
