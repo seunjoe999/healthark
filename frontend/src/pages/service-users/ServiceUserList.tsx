@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { suApi, homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { differenceInYears } from 'date-fns'
@@ -16,6 +16,7 @@ const STATUS_OPTS = [
 ]
 
 export default function ServiceUserList() {
+  const navigate = useNavigate()
   const { user, isRole } = useAuth()
   const [sus, setSus] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
