@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationsProvider } from './context/NotificationsContext'
 import AppLayout from './components/layout/AppLayout'
 import InstallPrompt from './components/pwa/InstallPrompt'
+import LandingPage from './pages/public/LandingPage'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
 import ServiceUserList from './pages/service-users/ServiceUserList'
@@ -149,7 +150,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/setup" element={<Setup />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/" element={<Navigate to="/messages" replace />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/clockin/home/:token" element={<ClockIn />} />
       <Route path="/clockin/:token" element={<ClockIn />} />
       <Route path="/clockin-admin" element={<ProtectedRoute><ClockInAdmin /></ProtectedRoute>} />
