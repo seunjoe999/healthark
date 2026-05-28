@@ -181,7 +181,9 @@ const frontendDist = path.join(__dirname, '../../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   logger.info(`Serving frontend from: ${frontendDist}`);
   // Explicitly serve assets folder with correct MIME types
+  // VERY STRICT STATIC SERVING TO PREVENT REACT WILDCARD FROM SWALLOWING JS/CSS
   app.use('/assets', express.static(path.join(frontendDist, 'assets'), {
+    maxAge: '1y',
     setHeaders: (res, path) => {
       if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
       if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
@@ -192,7 +194,7 @@ if (fs.existsSync(frontendDist)) {
   app.use('/pwa-512.png', express.static(path.join(frontendDist, 'pwa-512.png')));
   app.use('/manifest.json', express.static(path.join(frontendDist, 'manifest.json')));
   app.use(express.static(frontendDist));
-  app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
+  app.get(/^(?!\/api|\/uploads|\/assets).*/, (_req, res) => {
     res.setHeader('Surrogate-Control', 'no-store');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
