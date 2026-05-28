@@ -43,6 +43,8 @@ function normalise(su: any) {
     niNumber: su.ni_number || su.niNumber || '',
     banding: su.banding || '',
     personId: su.person_id || '',
+    gpName: su.gp_name || '',
+    pharmacyName: su.pharmacy_name || '',
     dnar: su.dnar ?? null,
     dnarFormUrl: su.dnar_form_url || su.dnarFormUrl || '',
     admissionDate: su.admission_date?.split?.('T')[0] || su.admissionDate || '',
