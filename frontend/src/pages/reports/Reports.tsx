@@ -35,6 +35,7 @@ export default function Reports() {
   const [loading, setLoading] = useState(false)
   const [suList, setSuList] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState('')
+  const [dailyRecordType, setDailyRecordType] = useState('')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -57,6 +58,7 @@ export default function Reports() {
       if (reportType === 'monthly-summary') params.month = month
       else { params.from = from; params.to = to }
       if (selectedSu) params.suId = selectedSu
+      if (reportType === 'daily-records' && dailyRecordType) params.recordType = dailyRecordType
       const res = await api.get(`/reports/${reportType}`, { params })
       setData(res.data.data)
     } catch (err: any) { console.error('Report error:', err?.response?.data); toast.error(err?.response?.data?.error || 'Failed to load report') }
