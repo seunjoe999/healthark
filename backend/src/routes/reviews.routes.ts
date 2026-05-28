@@ -40,7 +40,7 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
       const staffId = fromToken(req, 'staffId');
       let homeId = fromToken(req, 'homeId');
       const { suId, reviewType, reviewDate, summary, residentFeedback, familyFeedback,
-              outcomes, nextReviewDate, attendees } = req.body;
+              outcomes, nextReviewDate, attendees, monthlyProgress } = req.body;
       // Fall back to the SU's home_id if the token doesn't have one (e.g. group_admin)
       if (!homeId) {
         const suRows = await query<any>('SELECT home_id FROM service_users WHERE id=$1', [suId]);
@@ -48,11 +48,11 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
       }
       const rows = await query(
         `INSERT INTO su_reviews (su_id, home_id, created_by, review_type, review_date, summary,
-          resident_feedback, family_feedback, outcomes, next_review_date, attendees)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+          resident_feedback, family_feedback, outcomes, next_review_date, attendees, monthly_progress)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
         [suId, homeId, staffId, reviewType || 'care_review', reviewDate, summary,
          residentFeedback || null, familyFeedback || null, outcomes || null,
-         nd(nextReviewDate), attendees || null]
+         nd(nextReviewDate), attendees || null, monthlyProgress || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
