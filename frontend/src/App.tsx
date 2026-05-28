@@ -31,7 +31,7 @@ import FamilyPortal from './pages/family/FamilyPortal'
 import Rota from './pages/rota/Rota'
 import SearchResults from './pages/search/Search'
 import Messages from './pages/messages/Messages'
-import DocumentLibrary from './pages/documents/Documents'
+
 import Reviews from './pages/reviews/Reviews'
 import Invoicing from './pages/invoicing/Invoicing'
 import QualityAssurance from './pages/quality/Quality'
@@ -104,7 +104,7 @@ function AppRoutes() {
       <Route path="/rota" element={<ProtectedRoute><Rota /></ProtectedRoute>} />
       <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute><DocumentLibrary /></ProtectedRoute>} />
+      
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
       <Route path="/invoicing" element={<ProtectedRoute><Invoicing /></ProtectedRoute>} />
       <Route path="/complaints" element={<ProtectedRoute><QualityAssurance /></ProtectedRoute>} />
