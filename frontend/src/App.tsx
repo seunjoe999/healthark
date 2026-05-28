@@ -1,258 +1,223 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import { NotificationsProvider } from './context/NotificationsContext'
-import AppLayout from './components/layout/AppLayout'
-import InstallPrompt from './components/pwa/InstallPrompt'
-import LandingPage from './pages/public/LandingPage'
-import Login from './pages/auth/Login'
-import Dashboard from './pages/dashboard/Dashboard'
-import ServiceUserList from './pages/service-users/ServiceUserList'
-import ServiceUserProfile from './pages/service-users/ServiceUserProfile'
-import AddServiceUser from './pages/service-users/AddServiceUser'
-import EditServiceUser from './pages/service-users/EditServiceUser'
-import DailyRecords from './pages/daily-records/DailyRecords'
-import CarePlans from './pages/care-plans/CarePlans'
-import Safeguarding from './pages/safeguarding/Safeguarding'
-import StaffModule from './pages/staff/StaffModule'
-import AddStaff from './pages/staff/AddStaff'
-import EditStaff from './pages/staff/EditStaff'
-import Audits from './pages/audits/Audits'
-import Reports from './pages/reports/Reports'
-import Alerts from './pages/alerts/Alerts'
-import Policies from './pages/policies/Policies'
-import PPE from './pages/ppe/PPE'
-import Messages from './pages/messages/Messages'
-import CalendarPage from './pages/calendar/Calendar'
-import MAR from './pages/mar/MAR'
-import Tasks from './pages/tasks/Tasks'
-import Quality from './pages/quality/Quality'
-import Rota from './pages/rota/Rota'
-import PrintQR from './pages/clockin/PrintQR'
-import Holidays from './pages/holidays/Holidays'
-import Training from './pages/training/Training'
-import PrintCarePlan from './pages/care-plans/PrintCarePlan'
-import PrintMARChart from './pages/mar/PrintMARChart'
-import HandoverReport from './pages/reports/HandoverReport'
-import GlobalSearch from './pages/search/Search'
-import AboutMe from './pages/service-users/AboutMe'
-import Reviews from './pages/reviews/Reviews'
-import ClockIn from './pages/clockin/ClockIn'
-import ClockInAdmin from './pages/clockin/ClockInAdmin'
-import Settings from './pages/settings/Settings'
-import Assessments from './pages/assessments/Assessments'
-import AssessmentForm from './pages/assessments/AssessmentForm'
-import AssessmentView from './pages/assessments/AssessmentView'
-import Incidents from './pages/incidents/Incidents'
-import ClockInAnalytics from './pages/clockin/ClockInAnalytics'
-import Compliance from './pages/compliance/Compliance'
-import MedicationStock from './pages/medication-stock/MedicationStock'
-import FamilyPortal from './pages/family/FamilyPortal'
-import FamilyView from './pages/family/FamilyView'
-import NotificationsManager from './pages/notifications/NotificationsManager'
-import AdminAccounts from './pages/admin/AdminAccounts'
-import Setup from './pages/auth/Setup'
-import Maintenance from './pages/maintenance/Maintenance'
-import DBSTracker from './pages/dbs/DBSTracker'
-import Timesheets from './pages/timesheets/Timesheets'
-import BathChart from './pages/bath-chart/BathChart'
-import Outcomes from './pages/outcomes/Outcomes'
-import AuditTrail from './pages/audit-trail/AuditTrail'
-import Noticeboard from './pages/noticeboard/Noticeboard'
-import Observations from './pages/observations/Observations'
-import SeizureLog from './pages/seizures/SeizureLog'
-import BowelChart from './pages/bowel-chart/BowelChart'
-import ResidentDiary from './pages/diary/ResidentDiary'
-import ProfessionalVisits from './pages/professional-visits/ProfessionalVisits'
-import MedicineRisk from './pages/medicine-risk/MedicineRisk'
-import PerformanceMatrix from './pages/performance/PerformanceMatrix'
-import RiskManagement from './pages/risk-assessments/RiskManagement'
-import Invoicing from './pages/invoicing/Invoicing'
-import CQCNotifications from './pages/cqc-notifications/CQCNotifications'
-import SupervisionAppraisal from './pages/supervision-appraisal/SupervisionAppraisal'
-import LeaveManagement from './pages/staff/LeaveManagement'
-import PhysicalHealthPlan from './pages/service-users/PhysicalHealthPlan'
-import Complaints from './pages/complaints/Complaints'
-import SocialActivities from './pages/social-activities/SocialActivities'
-import Recruitment from './pages/recruitment/Recruitment'
+import React, { useState, ReactNode } from 'react'
+import NotificationsBell from './NotificationsBell'
+import { NavLink, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import clsx from 'clsx'
+import {
+  LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
+  ShieldAlert, Bell, Settings, LogOut, Menu, X,
+  Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
+  Pill, CheckSquare, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
+  AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
+  Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
+  Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music
+, FileSignature
+} from 'lucide-react'
 
+const navSections = [
+  {
+    label: '',
+    items: [
+      { label: 'Dashboard',   to: '/dashboard',   icon: LayoutDashboard, roles: [], featureKey: 'dashboard' },
+      { label: 'Inbox',       to: '/messages',    icon: MessageSquare,   roles: [], featureKey: 'messages' },
+      { label: 'Noticeboard', to: '/noticeboard', icon: Newspaper,       roles: [], featureKey: 'noticeboard' },
+    ]
+  },
+  {
+    label: 'Service User',
+    items: [
+      { label: 'Support Plans',                   to: '/care-plans',          icon: FileText,      roles: [],                                           featureKey: 'care_plans' },
+      { label: 'Medication Risk Assessment',       to: '/medicine-risk',       icon: ShieldAlert,   roles: [],                                           featureKey: 'medicine_risk' },
+      { label: 'Other Risk Assessment',            to: '/risk-management',     icon: Shield,        roles: [],                                           featureKey: 'risk_management' },
+      { label: 'Medication Administration Record', to: '/mar',                 icon: Pill,          roles: [],                                           featureKey: 'mar' },
+      { label: 'Medication Stock',                 to: '/medication-stock',    icon: Boxes,         roles: ['home_manager','group_admin','senior_carer'], featureKey: 'medication_stock' },
+      { label: 'Daily Records',                    to: '/daily-records',       icon: ClipboardList, roles: [],                                           featureKey: 'daily_records' },
+      { label: 'Service User Outcome Reports',                    to: '/outcomes',            icon: Target,        roles: [],                                           featureKey: 'outcomes' },
+      { label: 'Care Reviews',                     to: '/reviews',             icon: ClipboardCheck,roles: [],                                           featureKey: 'reviews' },
+      { label: 'Service User Diary',               to: '/diary',               icon: BookOpen,      roles: [],                                           featureKey: 'diary' },
+      { label: 'Social Activities',                to: '/social-activities',   icon: Music,         roles: [],                                           featureKey: 'social_activities' },
+      { label: 'Bath Records',                     to: '/bath-chart',          icon: Droplets,      roles: [],                                           featureKey: 'bath_chart' },
+      { label: 'Bowel Chart',                      to: '/bowel-chart',         icon: Droplets,      roles: [],                                           featureKey: 'bowel_chart' },
+      { label: 'Observations',                     to: '/observations',        icon: Thermometer,   roles: [],                                           featureKey: 'observations' },
+      { label: 'Professional Visits',              to: '/professional-visits', icon: Stethoscope,   roles: [],                                           featureKey: 'professional_visits' },
+      { label: 'Calendar',                         to: '/calendar',            icon: Calendar,      roles: ['home_manager','group_admin'],                featureKey: 'calendar' },
+      { label: 'Safeguarding',                     to: '/safeguarding',        icon: ShieldCheck,   roles: [],                                           featureKey: 'safeguarding' },
+      { label: 'Incidents',                        to: '/incidents',           icon: AlertTriangle, roles: [],                                           featureKey: 'incidents' },
+      { label: 'Handover',                to: '/reports/handover',      icon: ArrowLeftRight,roles: [],                                           featureKey: 'handover' },
+      { label: 'Consents & Signatures',          to: '/consents',            icon: FileSignature, roles: [],                                           featureKey: 'consents' },
+    ]
+  },
+  {
+    label: 'Staff Records',
+    items: [
+      { label: 'Staff Profile',           to: '/staff',                 icon: UserSquare,    roles: ['home_manager','group_admin'],                featureKey: 'staff' },
+      { label: 'Assessment',        to: '/assessments?tab=staff', icon: FileCheck,     roles: ['home_manager','group_admin','team_leader'],  featureKey: 'staff_assessment' },
+      { label: 'DBS Compliance',          to: '/dbs',                   icon: UserCheck,     roles: ['home_manager','group_admin'],                featureKey: 'dbs' },
+      { label: 'Clock In',                to: '/clockin-admin',         icon: QrCode,        roles: ['home_manager','group_admin'],                featureKey: 'clockin' },
+      { label: 'Staff Performance',       to: '/performance',           icon: BarChart3,     roles: ['home_manager','group_admin'],                featureKey: 'performance' },
+      { label: 'Comp Care Hub Training',  to: '/training',              icon: GraduationCap, roles: [],                                           featureKey: 'training' },
+    ]
+  },
+  {
+    label: 'Family Portal',
+    items: [
+      { label: 'Family Portal', to: '/family-portal', icon: Users2, roles: ['home_manager','group_admin'], featureKey: 'family_portal' },
+    ]
+  },
+  {
+    label: 'Quality Assurance',
+    items: [
+      { label: 'Compliance',              to: '/compliance',        icon: ShieldCheck, roles: ['home_manager','group_admin','auditor'], featureKey: 'compliance' },
+      { label: 'Complaints & Compliments', to: '/complaints',       icon: ThumbsUp,    roles: ['home_manager','group_admin','team_leader'], featureKey: 'complaints' },
+      { label: 'Audit',                   to: '/assessments?tab=resident', icon: FileCheck,   roles: [],                                      featureKey: 'assessments' },
+      { label: 'Audit Reports',           to: '/audits',            icon: Activity,    roles: ['home_manager','group_admin','auditor'], featureKey: 'audits' },
+      { label: 'Audit Trail',             to: '/audit-trail',       icon: History,     roles: ['home_manager','group_admin','auditor'], featureKey: 'audit_trail' },
+      { label: 'Reports',                 to: '/reports',           icon: BarChart2,   roles: ['home_manager','group_admin'],           featureKey: 'reports' },
+      { label: 'CQC Alerts',             to: '/cqc-notifications', icon: AlertCircle, roles: ['home_manager','group_admin'],           featureKey: 'cqc_notifications' },
+    ]
+  },
+  {
+    label: 'Operations',
+    items: [
+      { label: 'Tasks',                to: '/tasks',             icon: CheckSquare,   roles: [],                                           featureKey: 'tasks' },
+      { label: 'Rota',                 to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
+      { label: 'Timesheets',           to: '/timesheets',        icon: Clock,         roles: ['home_manager','group_admin','senior_carer'], featureKey: 'timesheets' },
+      { label: 'Leave & Holidays',      to: '/holidays',          icon: Palmtree,      roles: [],                                           featureKey: 'holidays' },
+      { label: 'Invoicing',            to: '/invoicing',         icon: DollarSign,    roles: ['home_manager','group_admin'],                featureKey: 'invoicing' },
+      { label: 'Recruitment',          to: '/recruitment',       icon: UserCheck,     roles: ['home_manager','group_admin'],                featureKey: 'recruitment' },
+      { label: 'Maintenance',          to: '/maintenance',       icon: Wrench,        roles: [],                                           featureKey: 'maintenance' },
+      { label: 'Clock In Analytics',   to: '/clockin-analytics', icon: BarChart2,     roles: ['home_manager','group_admin'],                featureKey: 'clockin_analytics' },
+      { label: 'Alerts',               to: '/alerts',            icon: Bell,          roles: [],                                           featureKey: 'alerts' },
+      { label: 'Notifications',        to: '/notifications',     icon: Send,          roles: ['home_manager','group_admin'],                featureKey: 'notifications' },
+      { label: 'Policies',             to: '/policies',          icon: BookOpen,      roles: [],                                           featureKey: 'policies' },
+      { label: 'PPE Stock',            to: '/ppe',               icon: Package,       roles: ['home_manager','group_admin'],                featureKey: 'ppe' },
+      { label: 'Settings',             to: '/settings',          icon: Settings,      roles: ['group_admin'], featureKey: 'settings' },
+    ]
+  },
+  {
+    label: '',
+    items: [
+      { label: 'Admin Accounts', to: '/admin/accounts', icon: Shield, roles: ['group_admin'], featureKey: 'admin' },
+    ]
+  }
+]
 
-const IDLE_WARN_MS = 25 * 60 * 1000   // warn after 25 min
-const IDLE_OUT_MS  = 30 * 60 * 1000   // logout after 30 min
-const EVENTS = ['mousemove','mousedown','keydown','scroll','touchstart','click'] as const
+// Flat list of all nav items used for mobile header title lookup
+const allNavItems = navSections.flatMap(s => s.items) as any[]
 
-function InactivityWatcher() {
-  const { user, logout } = useAuth()
-  const [showWarn, setShowWarn] = React.useState(false)
-  const warnRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const outRef  = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+interface SidebarProps {
+  user: { id?: string; firstName?: string; lastName?: string; role?: string; featureFlags?: Record<string, boolean> } | null
+  logout: () => void
+  isRole: (...roles: string[]) => boolean
+  onNavClick: () => void
+}
 
-  const reset = React.useCallback(() => {
-    if (!user) return
-    setShowWarn(false)
-    if (warnRef.current) clearTimeout(warnRef.current)
-    if (outRef.current)  clearTimeout(outRef.current)
-    warnRef.current = setTimeout(() => setShowWarn(true), IDLE_WARN_MS)
-    outRef.current  = setTimeout(() => { logout(); window.location.href = '/login' }, IDLE_OUT_MS)
-  }, [user, logout])
-
-  React.useEffect(() => {
-    if (!user) { if (warnRef.current) clearTimeout(warnRef.current); if (outRef.current) clearTimeout(outRef.current); return }
-    reset()
-    EVENTS.forEach(e => window.addEventListener(e, reset, { passive: true }))
-    return () => { EVENTS.forEach(e => window.removeEventListener(e, reset)); if (warnRef.current) clearTimeout(warnRef.current); if (outRef.current) clearTimeout(outRef.current) }
-  }, [user, reset])
-
-  if (!showWarn) return null
+function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
-        <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-          <svg className="w-7 h-7 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+    <div className="flex flex-col h-full" style={{ background: '#000000' }}>
+      <div className="px-5 pt-6 pb-4">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-3">
+            <img src="/logo.jpeg" alt="Comprehensive Care Service" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
+            <div>
+              <h1 style={{ fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2, color: '#e8b130' }}>Comprehensive<br />Care Service</h1>
+            </div>
+          </div>
+          <NotificationsBell />
         </div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-2">Session about to expire</h2>
-        <p className="text-slate-500 text-sm mb-6">You've been inactive for 25 minutes. You'll be logged out in 5 minutes unless you continue.</p>
-        <button onClick={reset} className="w-full py-2.5 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors">
-          Stay logged in
+      </div>
+
+      <div className="mx-5 mb-4 h-px" style={{ background: 'linear-gradient(90deg, rgba(232,177,48,0.6) 0%, rgba(232,177,48,0.15) 100%)' }} />
+
+      <nav className="flex-1 overflow-y-auto px-3 space-y-4 pb-4">
+        {navSections.map((section, si) => {
+          const visible = section.items.filter(item => {
+            if (item.roles.length > 0 && !item.roles.some(r => isRole(r))) return false
+            if ((item as any).featureKey && !isRole('group_admin') && user?.featureFlags?.[(item as any).featureKey] === false) return false
+            return true
+          })
+          if (!visible.length) return null
+          return (
+            <div key={si}>
+              {section.label && <p className="px-3 mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-600">{section.label}</p>}
+              <div className="space-y-0.5">
+                {visible.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <NavLink key={item.to} to={item.to} onClick={onNavClick}
+                      className={({ isActive }) => clsx(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group',
+                        isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      )}
+                      style={({ isActive }) => isActive ? { background: 'linear-gradient(135deg, rgba(212,150,26,0.2) 0%, rgba(212,150,26,0.08) 100%)', border: '1px solid rgba(212,150,26,0.25)' } : {}}>
+                      {({ isActive }) => (
+                        <>
+                          <Icon className={clsx('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-gold-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                          <span className="flex-1 text-sm">{item.label}</span>
+                          {isActive && <ChevronRight className="w-3.5 h-3.5 text-gold-400/60" />}
+                        </>
+                      )}
+                    </NavLink>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </nav>
+
+      <div className="border-t border-white/8 p-4">
+        <NavLink to={user?.id ? `/staff/${user.id}/edit` : '#'}
+          className="flex items-center gap-3 mb-3 px-1 py-1.5 rounded-xl hover:bg-white/8 transition-all duration-150 group cursor-pointer">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+            {user?.firstName?.[0]}{user?.lastName?.[0]}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-medium truncate leading-tight">{user?.firstName} {user?.lastName}</p>
+            <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5 group-hover:text-slate-400">{user?.role?.replace(/_/g, ' ')} · <span className="text-gold-400/70 group-hover:text-gold-400">edit profile</span></p>
+          </div>
+        </NavLink>
+        <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/8 rounded-xl text-sm transition-all duration-150 font-medium">
+          <LogOut className="w-4 h-4" /> Sign out
         </button>
       </div>
     </div>
   )
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
-  return <AppLayout>{children}</AppLayout>
-}
+export default function AppLayout({ children }: { children: ReactNode }) {
+  const { user, logout, isRole } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  if (user) return <Navigate to="/dashboard" replace />
-  return <>{children}</>
-}
+  const pageTitle = allNavItems.find(item => location.pathname.startsWith(item.to) && item.to !== '/dashboard')?.label
+    ?? (location.pathname === '/dashboard' ? 'Dashboard' : 'CompCare Hub')
 
-function ComingSoon({ title }: { title: string }) {
+  const sidebarProps: SidebarProps = { user, logout, isRole, onNavClick: () => setMobileOpen(false) }
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-12 text-center">
-        <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4"><span className="text-3xl">🔨</span></div>
-        <h2 className="font-display text-xl text-slate-900 mb-2">{title}</h2>
-        <p className="text-slate-400 text-sm">Coming soon</p>
+    <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
+      <aside className="no-print hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
+        <Sidebar {...sidebarProps} />
+      </aside>
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="relative w-64 flex flex-col z-10 shadow-2xl">
+            <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
+            <Sidebar {...sidebarProps} />
+          </div>
+        </div>
+      )}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="no-print lg:hidden px-4 py-3 flex items-center gap-3" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)' }}>
+          <button onClick={() => setMobileOpen(true)} style={{ color: '#e8b130' }} className="p-1"><Menu className="w-5 h-5" /></button>
+          <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
+          <span className="text-base flex-1 truncate font-bold" style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}>{pageTitle}</span>
+          <NotificationsBell />
+        </header>
+        <main className="flex-1 overflow-y-auto" style={{ background: '#0a0a0a' }}>{children}</main>
       </div>
     </div>
-  )
-}
-
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/setup" element={<Setup />} />
-      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/clockin/home/:token" element={<ClockIn />} />
-      <Route path="/clockin/:token" element={<ClockIn />} />
-      <Route path="/clockin-admin" element={<ProtectedRoute><ClockInAdmin /></ProtectedRoute>} />
-      <Route path="/clockin/:token/print" element={<PrintQR />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/service-users" element={<ProtectedRoute><ServiceUserList /></ProtectedRoute>} />
-      <Route path="/service-users/new" element={<ProtectedRoute><AddServiceUser /></ProtectedRoute>} />
-      <Route path="/service-users/:id/edit" element={<ProtectedRoute><EditServiceUser /></ProtectedRoute>} />
-      <Route path="/service-users/:id" element={<ProtectedRoute><ServiceUserProfile /></ProtectedRoute>} />
-      <Route path="/daily-records" element={<ProtectedRoute><DailyRecords /></ProtectedRoute>} />
-      <Route path="/care-plans" element={<ProtectedRoute><CarePlans /></ProtectedRoute>} />
-      <Route path="/safeguarding" element={<ProtectedRoute><Safeguarding /></ProtectedRoute>} />
-      <Route path="/staff" element={<ProtectedRoute><StaffModule /></ProtectedRoute>} />
-      <Route path="/staff/new" element={<ProtectedRoute><AddStaff /></ProtectedRoute>} />
-      <Route path="/staff/:id/edit" element={<ProtectedRoute><EditStaff /></ProtectedRoute>} />
-      <Route path="/mar" element={<ProtectedRoute><MAR /></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-      <Route path="/quality" element={<ProtectedRoute><Quality /></ProtectedRoute>} />
-      <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-      <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-      <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
-      <Route path="/ppe" element={<ProtectedRoute><PPE /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-      <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-      <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
-      <Route path="/rota" element={<ProtectedRoute><Rota /></ProtectedRoute>} />
-      <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
-      <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
-      <Route path="/care-plans/:id/print" element={<PrintCarePlan />} />
-      <Route path="/mar/:suId/print" element={<PrintMARChart />} />
-      <Route path="/search" element={<ProtectedRoute><GlobalSearch /></ProtectedRoute>} />
-      <Route path="/service-users/:id/about-me" element={<ProtectedRoute><AboutMe /></ProtectedRoute>} />
-      <Route path="/reports/handover" element={<ProtectedRoute><HandoverReport /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />
-      <Route path="/assessments/new" element={<ProtectedRoute><AssessmentForm /></ProtectedRoute>} />
-      <Route path="/assessments/:id" element={<ProtectedRoute><AssessmentView /></ProtectedRoute>} />
-      <Route path="/incidents" element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
-      <Route path="/clockin-analytics" element={<ProtectedRoute><ClockInAnalytics /></ProtectedRoute>} />
-      <Route path="/compliance" element={<ProtectedRoute><Compliance /></ProtectedRoute>} />
-      <Route path="/medication-stock" element={<ProtectedRoute><MedicationStock /></ProtectedRoute>} />
-      <Route path="/family-portal" element={<ProtectedRoute><FamilyPortal /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
-      <Route path="/family/:token" element={<FamilyView />} />
-      <Route path="/admin/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
-      <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
-      <Route path="/dbs" element={<ProtectedRoute><DBSTracker /></ProtectedRoute>} />
-      <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
-      <Route path="/bath-chart" element={<ProtectedRoute><BathChart /></ProtectedRoute>} />
-      <Route path="/outcomes" element={<ProtectedRoute><Outcomes /></ProtectedRoute>} />
-      <Route path="/audit-trail" element={<ProtectedRoute><AuditTrail /></ProtectedRoute>} />
-      <Route path="/noticeboard" element={<ProtectedRoute><Noticeboard /></ProtectedRoute>} />
-      <Route path="/observations" element={<ProtectedRoute><Observations /></ProtectedRoute>} />
-      <Route path="/seizures" element={<ProtectedRoute><SeizureLog /></ProtectedRoute>} />
-      <Route path="/bowel-chart" element={<ProtectedRoute><BowelChart /></ProtectedRoute>} />
-      <Route path="/diary" element={<ProtectedRoute><ResidentDiary /></ProtectedRoute>} />
-      <Route path="/professional-visits" element={<ProtectedRoute><ProfessionalVisits /></ProtectedRoute>} />
-      <Route path="/medicine-risk" element={<ProtectedRoute><MedicineRisk /></ProtectedRoute>} />
-      <Route path="/performance" element={<ProtectedRoute><PerformanceMatrix /></ProtectedRoute>} />
-      <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
-      <Route path="/invoicing" element={<ProtectedRoute><Invoicing /></ProtectedRoute>} />
-      <Route path="/cqc-notifications" element={<ProtectedRoute><CQCNotifications /></ProtectedRoute>} />
-      <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
-      <Route path="/leave-management" element={<ProtectedRoute><LeaveManagement /></ProtectedRoute>} />
-      <Route path="/physical-health-plan" element={<ProtectedRoute><PhysicalHealthPlan /></ProtectedRoute>} />
-      <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
-      <Route path="/social-activities" element={<ProtectedRoute><SocialActivities /></ProtectedRoute>} />
-      <Route path="/recruitment" element={<ProtectedRoute><Recruitment /></ProtectedRoute>} />
-      <Route path="*" element={<Navigate to="/messages" replace />} />
-    </Routes>
-  )
-}
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string | null }> {
-  state = { error: null }
-  static getDerivedStateFromError(e: Error) { return { error: e.message } }
-  render() {
-    if (this.state.error) return (
-      <div style={{ padding: 40, fontFamily: 'monospace', background: '#0d1526', color: '#fff', minHeight: '100vh' }}>
-        <h2 style={{ color: '#e8b130' }}>App Error</h2>
-        <pre style={{ color: '#f87171', whiteSpace: 'pre-wrap' }}>{this.state.error}</pre>
-        <button onClick={() => window.location.reload()} style={{ marginTop: 20, padding: '8px 16px', background: '#e8b130', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Reload</button>
-      </div>
-    )
-    return this.props.children
-  }
-}
-
-export default function App() {
-  return (
-    <ErrorBoundary>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <NotificationsProvider>
-            <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
-            <InactivityWatcher />
-            <AppRoutes />
-            <InstallPrompt />
-          </NotificationsProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
   )
 }
