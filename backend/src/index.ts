@@ -184,9 +184,9 @@ if (fs.existsSync(frontendDist)) {
   // VERY STRICT STATIC SERVING TO PREVENT REACT WILDCARD FROM SWALLOWING JS/CSS
   app.use('/assets', express.static(path.join(frontendDist, 'assets'), {
     maxAge: '1y',
-    setHeaders: (res, path) => {
-      if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-      if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+    setHeaders: (res, p) => {
+      if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+      else if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
     }
   }));
   app.use('/logo.jpeg', express.static(path.join(frontendDist, 'logo.jpeg')));
