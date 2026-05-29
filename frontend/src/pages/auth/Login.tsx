@@ -217,8 +217,8 @@ export default function Login() {
           <p className="text-slate-400 mb-10">The complete care home management platform for UK care providers</p>
           <div className="space-y-3">
             {[
-              { icon: <Activity className="w-4 h-4" />, label: 'AI-powered audit engine' },
               { icon: <Users className="w-4 h-4" />, label: 'Full resident & staff management' },
+              { icon: <Activity className="w-4 h-4" />, label: 'Rota, MAR & daily records' },
               { icon: <Shield className="w-4 h-4" />, label: 'CQC compliance ready' },
             ].map(item => (
               <div key={item.label} className="flex items-center gap-3 px-5 py-3 rounded-xl text-left"
