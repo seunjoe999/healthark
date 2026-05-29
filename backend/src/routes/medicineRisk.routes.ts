@@ -35,15 +35,14 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/medicine-risk/latest — latest assessment per service user
+// GET /api/medicine-risk/latest — latest full assessment per service user
 router.get('/latest', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = tok(req, 'homeId');
     const rows = await query(`
       SELECT DISTINCT ON (su.id)
              su.id AS su_id, su.first_name || ' ' || su.last_name AS su_name, su.room_number,
-             mr.id, mr.risk_level, mr.swallowing_risk, mr.covert_meds, mr.prn_protocol,
-             mr.self_medicate, mr.review_date, mr.assessed_at
+             mr.*
       FROM service_users su
       LEFT JOIN medicine_risk_assessments mr ON mr.su_id = su.id AND mr.home_id = $1
       WHERE su.home_id = $1 AND su.status = 'live'
@@ -62,7 +61,7 @@ router.post('/', [body('suId').isUUID()], validateRequest,
         suId, selfMedicate, selfMedicateNotes, swallowingRisk, swallowingNotes,
         covertMeds, covertNotes, prnProtocol, prnNotes, crushingRequired, crushingNotes,
         administrationRoute, knownAllergies, storageLocation,
-        riskLevel, riskNotes, reviewDate,
+        riskLevel, riskNotes, reviewDate, triggers, protectiveFactors, attachmentNotes,
       } = req.body;
       const rows = await query(
         `INSERT INTO medicine_risk_assessments
@@ -70,8 +69,8 @@ router.post('/', [body('suId').isUUID()], validateRequest,
             swallowing_risk, swallowing_notes, covert_meds, covert_notes,
             prn_protocol, prn_notes, crushing_required, crushing_notes,
             administration_route, known_allergies, storage_location,
-            risk_level, risk_notes, review_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
+            risk_level, risk_notes, review_date, triggers, protective_factors, attachment_notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
         [homeId, suId, staffId,
          selfMedicate ?? false, selfMedicateNotes || null,
          swallowingRisk || 'none', swallowingNotes || null,
@@ -80,7 +79,8 @@ router.post('/', [body('suId').isUUID()], validateRequest,
          crushingRequired ?? false, crushingNotes || null,
          administrationRoute || 'oral', knownAllergies || null,
          storageLocation || null, riskLevel || 'low',
-         riskNotes || null, reviewDate || null]
+         riskNotes || null, reviewDate || null,
+         triggers || null, protectiveFactors || null, attachmentNotes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

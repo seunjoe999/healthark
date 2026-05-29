@@ -82,7 +82,7 @@ router.post('/',
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, planType, customName, aimsOutcomes, whatICanDo, howToSupport,
-              reviewFrequency,
+              reviewFrequency, attachmentsNotes,
               medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
               dateMedicationReview, regularMedications, prnMedications, otcMedications,
               prnProtocol, prnList, indicationForUse } = req.body;
@@ -111,15 +111,16 @@ router.post('/',
           what_i_can_do, how_to_support, review_frequency, last_review_date, next_review_date, created_by, is_active,
           medication_support_level, manages_own_meds, level_of_support, support_types,
           date_medication_review, regular_medications, prn_medications, otc_medications,
-          prn_protocol, prn_list, indication_for_use)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
+          prn_protocol, prn_list, indication_for_use, attachments_notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
         [trimmedSuId, homeId, planType, customName || null, aimsOutcomes || null,
          whatICanDo || null, howToSupport || null,
          reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId,
          medicationSupportLevel || null, managesOwnMeds ?? false, levelOfSupport || null,
          supportTypes || null, nd(dateMedicationReview),
          regularMedications || null, prnMedications || null, otcMedications || null,
-         prnProtocol || null, prnList || null, indicationForUse || null]
+         prnProtocol || null, prnList || null, indicationForUse || null,
+         attachmentsNotes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err: any) { console.error('Care plan CREATE error:', err?.message, err?.detail); next(err); }
@@ -132,7 +133,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
     try {
       const staffId = fromToken(req, 'staffId');
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
-              reviewFrequency, updateNotes,
+              reviewFrequency, updateNotes, attachmentsNotes, suSignOff, staffSignOff,
               medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
               dateMedicationReview, regularMedications, prnMedications, otcMedications,
               prnProtocol, prnList, indicationForUse } = req.body;
@@ -167,14 +168,18 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           otc_medications          = COALESCE($16, otc_medications),
           prn_protocol             = COALESCE($17, prn_protocol),
           prn_list                 = COALESCE($18, prn_list),
-          indication_for_use       = COALESCE($19, indication_for_use)
+          indication_for_use       = COALESCE($19, indication_for_use),
+          attachments_notes        = COALESCE($20, attachments_notes),
+          su_sign_off              = COALESCE($21, su_sign_off),
+          staff_sign_off           = COALESCE($22, staff_sign_off)
          WHERE id = $8 RETURNING *`,
         [aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved || null,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
          medicationSupportLevel ?? null, managesOwnMeds ?? null, levelOfSupport ?? null,
          supportTypes ?? null, nd(dateMedicationReview),
          regularMedications ?? null, prnMedications ?? null, otcMedications ?? null,
-         prnProtocol ?? null, prnList ?? null, indicationForUse ?? null]
+         prnProtocol ?? null, prnList ?? null, indicationForUse ?? null,
+         attachmentsNotes ?? null, suSignOff ?? null, staffSignOff ?? null]
       );
       if (!rows.length) throw new AppError('Care plan not found', 404);
 

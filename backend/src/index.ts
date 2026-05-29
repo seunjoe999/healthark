@@ -1007,6 +1007,10 @@ async function ensureColumns() {
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS prn_protocol             TEXT`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS prn_list                 TEXT`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS indication_for_use       TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS attachments_notes        TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS triggers           TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS protective_factors TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS attachment_notes   TEXT`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
