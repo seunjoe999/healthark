@@ -9,8 +9,8 @@
 node_modules/
 jspm_packages/
 
-# Build output
-dist/
+# Build output — backend dist is rebuilt by Render, frontend dist is committed
+backend/dist/
 build/
 *.js.map
 *.d.ts.map

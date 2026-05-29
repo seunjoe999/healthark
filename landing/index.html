@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompCare Hub — Premium Care Home Management Software</title>
+  <meta name="description" content="CompCare Hub is the all-in-one care home management platform built for UK care providers. CQC compliance, care plans, staff management, MAR charts, and more — all in one place." />
+  <meta name="theme-color" content="#e8b130" />
+  <link rel="icon" href="https://app.comprehensivecare.org.uk/pwa-192.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy-950: #0d1526;
+      --navy-900: #151f35;
+      --navy-800: #27334d;
+      --navy-700: #3a4660;
+      --navy-600: #4f5e78;
+      --navy-500: #6b7a97;
+      --navy-400: #9aa5bb;
+      --navy-300: #cdd4e0;
+      --navy-200: #e4e8f0;
+      --navy-100: #f1f3f7;
+      --navy-50:  #f8f9fb;
+      --gold-500: #d4961a;
+      --gold-400: #e8b130;
+      --gold-300: #efc75f;
+      --gold-100: #faf0d0;
+      --emerald: #059669;
+      --white: #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--navy-900);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,21,38,0.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(212,150,26,0.15);
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .logo-mark {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #e8b130 0%, #d4961a 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      color: var(--navy-900);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.25rem;
+      color: var(--white);
+      letter-spacing: -0.3px;
+    }
+
+    .logo-text span {
+      color: var(--gold-400);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--navy-300);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.5rem 0.9rem;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--white);
+      background: rgba(255,255,255,0.07);
+    }
+
+    .btn-nav {
+      background: linear-gradient(135deg, #e8b130 0%, #d4961a 100%);
+      color: var(--navy-900) !important;
+      font-weight: 600 !important;
+      padding: 0.5rem 1.25rem !important;
+      border-radius: 8px !important;
+      transition: opacity 0.2s, transform 0.15s !important;
+    }
+
+    .btn-nav:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.07) !important; /* override */
+      background: linear-gradient(135deg, #efc75f 0%, #e8b130 100%) !important;
+    }
+
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 0.25rem; }
+    .hamburger span { display: block; width: 24px; height: 2px; background: var(--navy-300); border-radius: 2px; transition: 0.3s; }
+
+    /* ── HERO ────────────────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(145deg, #0d1526 0%, #151f35 40%, #1e2d4a 75%, #27334d 100%);
+      padding: 7rem 1.5rem 6rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(232,177,48,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(232,177,48,0.12);
+      border: 1px solid rgba(232,177,48,0.3);
+      color: var(--gold-400);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.35rem 1rem;
+      border-radius: 100px;
+      margin-bottom: 1.75rem;
+    }
+
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.4rem, 5.5vw, 4rem);
+      color: var(--white);
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+      max-width: 820px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--gold-400);
+    }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--navy-300);
+      max-width: 580px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #e8b130 0%, #d4961a 100%);
+      color: var(--navy-900);
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 0.85rem 2rem;
+      border-radius: 10px;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(232,177,48,0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(232,177,48,0.45);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255,255,255,0.07);
+      color: var(--white);
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 0.85rem 2rem;
+      border-radius: 10px;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .hero-trust {
+      margin-top: 3.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--navy-400);
+      font-size: 0.875rem;
+    }
+
+    .trust-item svg { color: var(--emerald); flex-shrink: 0; }
+
+    /* ── SECTION COMMONS ─────────────────────────────────────────────────── */
+    section { padding: 5rem 1.5rem; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold-500);
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      color: var(--navy-900);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+    .section-sub {
+      font-size: 1.05rem;
+      color: var(--navy-600);
+      max-width: 560px;
+      line-height: 1.7;
+    }
+    .text-center { text-align: center; }
+    .text-center .section-sub { margin: 0 auto; }
+
+    /* ── STATS STRIP ─────────────────────────────────────────────────────── */
+    .stats-strip {
+      background: var(--navy-900);
+      padding: 3rem 1.5rem;
+    }
+
+    .stats-grid {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2rem;
+      text-align: center;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .stat-number {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.5rem;
+      color: var(--gold-400);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--navy-400);
+      font-weight: 500;
+    }
+
+    /* ── FEATURES ────────────────────────────────────────────────────────── */
+    .features { background: var(--navy-50); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3.5rem;
+    }
+
+    .feature-card {
+      background: var(--white);
+      border: 1px solid var(--navy-200);
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 8px 32px rgba(21,31,53,0.1);
+      transform: translateY(-3px);
+      border-color: rgba(232,177,48,0.3);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, rgba(232,177,48,0.12) 0%, rgba(212,150,26,0.08) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .feature-card h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      color: var(--navy-900);
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--navy-600);
+      line-height: 1.6;
+    }
+
+    .feature-tag {
+      display: inline-block;
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gold-500);
+      background: rgba(212,150,26,0.1);
+      padding: 0.2rem 0.6rem;
+      border-radius: 100px;
+    }
+
+    /* ── HOW IT WORKS ────────────────────────────────────────────────────── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 3.5rem;
+      position: relative;
+    }
+
+    .steps-grid::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      left: calc(16.66% + 28px);
+      right: calc(16.66% + 28px);
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold-400) 0%, rgba(232,177,48,0.3) 100%);
+    }
+
+    .step {
+      text-align: center;
+      padding: 0 1rem;
+    }
+
+    .step-number {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #e8b130 0%, #d4961a 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.3rem;
+      color: var(--navy-900);
+      font-weight: 700;
+      margin: 0 auto 1.25rem;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 4px 16px rgba(232,177,48,0.3);
+    }
+
+    .step h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      color: var(--navy-900);
+      margin-bottom: 0.5rem;
+    }
+
+    .step p {
+      font-size: 0.9rem;
+      color: var(--navy-600);
+      line-height: 1.65;
+    }
+
+    /* ── MODULE LIST ─────────────────────────────────────────────────────── */
+    .modules { background: var(--navy-900); }
+    .modules .section-title { color: var(--white); }
+    .modules .section-sub { color: var(--navy-400); }
+
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-top: 3rem;
+    }
+
+    .module-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      color: var(--navy-300);
+      font-weight: 500;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    .module-pill:hover {
+      background: rgba(232,177,48,0.08);
+      border-color: rgba(232,177,48,0.25);
+      color: var(--gold-300);
+    }
+
+    .module-pill .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--gold-400);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── COMPLIANCE SECTION ──────────────────────────────────────────────── */
+    .compliance-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+      margin-top: 1rem;
+    }
+
+    .compliance-points {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-top: 2rem;
+    }
+
+    .compliance-point {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .check-icon {
+      width: 28px;
+      height: 28px;
+      background: rgba(5,150,105,0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .check-icon svg { color: var(--emerald); }
+
+    .compliance-point h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--navy-800);
+      margin-bottom: 0.2rem;
+    }
+
+    .compliance-point p {
+      font-size: 0.875rem;
+      color: var(--navy-600);
+      line-height: 1.6;
+    }
+
+    .compliance-visual {
+      background: linear-gradient(145deg, #151f35 0%, #1e2d4a 100%);
+      border-radius: 20px;
+      padding: 2rem;
+      border: 1px solid rgba(232,177,48,0.15);
+    }
+
+    .visual-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .visual-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1rem;
+      color: var(--white);
+    }
+
+    .visual-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--emerald);
+      background: rgba(5,150,105,0.15);
+      padding: 0.2rem 0.6rem;
+      border-radius: 100px;
+    }
+
+    .visual-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .visual-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+      padding: 0.6rem 0.875rem;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .visual-row-label {
+      font-size: 0.825rem;
+      color: var(--navy-300);
+    }
+
+    .status-ok {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--emerald);
+      background: rgba(5,150,105,0.12);
+      padding: 0.15rem 0.5rem;
+      border-radius: 100px;
+    }
+
+    .status-pending {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--gold-400);
+      background: rgba(232,177,48,0.12);
+      padding: 0.15rem 0.5rem;
+      border-radius: 100px;
+    }
+
+    /* ── TESTIMONIALS ────────────────────────────────────────────────────── */
+    .testimonials { background: var(--navy-50); }
+
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3.5rem;
+    }
+
+    .testimonial-card {
+      background: var(--white);
+      border: 1px solid var(--navy-200);
+      border-radius: 16px;
+      padding: 1.75rem;
+    }
+
+    .stars {
+      color: var(--gold-400);
+      font-size: 1rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+
+    .testimonial-card p {
+      font-size: 0.925rem;
+      color: var(--navy-700);
+      line-height: 1.7;
+      font-style: italic;
+      margin-bottom: 1.25rem;
+    }
+
+    .testimonial-author {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--navy-900);
+    }
+
+    .testimonial-role {
+      font-size: 0.8rem;
+      color: var(--navy-500);
+    }
+
+    /* ── CTA ─────────────────────────────────────────────────────────────── */
+    .cta-section {
+      background: linear-gradient(135deg, #0d1526 0%, #151f35 50%, #1e2d4a 100%);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 70% at 50% 100%, rgba(232,177,48,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-section .section-title { color: var(--white); }
+    .cta-section .section-sub { color: var(--navy-300); margin: 0 auto 2.5rem; }
+
+    /* ── FOOTER ──────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--navy-950);
+      padding: 3rem 1.5rem 2rem;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 2rem;
+    }
+
+    .footer-brand p {
+      font-size: 0.875rem;
+      color: var(--navy-500);
+      line-height: 1.7;
+      margin-top: 0.75rem;
+      max-width: 280px;
+    }
+
+    .footer-col h4 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--navy-400);
+      margin-bottom: 1rem;
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--navy-500);
+      text-decoration: none;
+      margin-bottom: 0.6rem;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover { color: var(--navy-200); }
+
+    .footer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--navy-600);
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .steps-grid { grid-template-columns: 1fr; }
+      .steps-grid::before { display: none; }
+      .modules-grid { grid-template-columns: repeat(2, 1fr); }
+      .compliance-layout { grid-template-columns: 1fr; gap: 3rem; }
+      .testimonials-grid { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      .modules-grid { grid-template-columns: 1fr 1fr; }
+      .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+      .hero { padding: 5rem 1.25rem 4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── NAV ──────────────────────────────────────────────────────────────── -->
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <div class="logo-mark">C</div>
+        <span class="logo-text">CompCare <span>Hub</span></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#modules">Modules</a></li>
+        <li><a href="#compliance">Compliance</a></li>
+        <li><a href="https://app.comprehensivecare.org.uk" class="btn-nav">Sign In →</a></li>
+      </ul>
+      <div class="hamburger" onclick="toggleMenu(this)">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── HERO ─────────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-badge">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#e8b130" stroke-width="1.5"/><path d="M4 6l1.5 1.5L8 4" stroke="#e8b130" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Built for UK Care Providers
+    </div>
+    <h1>The <em>smarter</em> way to manage your care home</h1>
+    <p>CompCare Hub brings every aspect of care home management into one secure, CQC-ready platform — so your team can focus on delivering outstanding care.</p>
+    <div class="hero-cta">
+      <a href="https://app.comprehensivecare.org.uk" class="btn-primary">
+        Access Your Platform
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#features" class="btn-secondary">
+        See all features
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 9l5 4 5-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+    <div class="hero-trust">
+      <div class="trust-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.8 3.6L14 5.5l-3 2.9.7 4.1L8 10.4l-3.7 2.1.7-4.1-3-2.9 4.2-.9z" fill="currentColor"/></svg>
+        CQC-aligned workflows
+      </div>
+      <div class="trust-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 5V4a3 3 0 016 0v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        GDPR-compliant &amp; secure
+      </div>
+      <div class="trust-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1012 0A6 6 0 002 8z" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        24/7 access, any device
+      </div>
+      <div class="trust-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 5l-6 6-3-3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        No paper, no hassle
+      </div>
+    </div>
+  </section>
+
+  <!-- ── STATS ─────────────────────────────────────────────────────────────── -->
+  <div class="stats-strip">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-number">50+</span>
+        <span class="stat-label">Care management modules</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">100%</span>
+        <span class="stat-label">Digital, paperless records</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">CQC</span>
+        <span class="stat-label">Inspection-ready at all times</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">GDPR</span>
+        <span class="stat-label">Secure &amp; compliant by design</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FEATURES ──────────────────────────────────────────────────────────── -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="text-center">
+        <p class="section-label">Core Features</p>
+        <h2 class="section-title">Everything your care home needs, in one place</h2>
+        <p class="section-sub">From care plans to compliance audits, CompCare Hub covers every aspect of modern care home management.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Care Plans &amp; Daily Records</h3>
+          <p>Create, review and update personalised care plans and daily care records digitally. Full audit trail on every entry.</p>
+          <span class="feature-tag">Person-centred care</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💊</div>
+          <h3>MAR Charts &amp; Medication</h3>
+          <p>Digital Medication Administration Records with stock management, pharmacy codes, and medicine risk assessments built in.</p>
+          <span class="feature-tag">Medication safety</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3>Staff Management &amp; HR</h3>
+          <p>Manage rota, timesheets, DBS checks, supervision, appraisals, training records, and recruitment — all in one dashboard.</p>
+          <span class="feature-tag">Workforce management</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✅</div>
+          <h3>CQC Compliance &amp; Audits</h3>
+          <p>AI-powered audit tools, compliance checklists, incident reporting, and safeguarding workflows aligned to CQC standards.</p>
+          <span class="feature-tag">Inspection ready</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Reports &amp; Analytics</h3>
+          <p>Handover reports, quality metrics, performance matrices, and custom reports — always available, always up to date.</p>
+          <span class="feature-tag">Data-driven decisions</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔔</div>
+          <h3>Alerts, Tasks &amp; Messaging</h3>
+          <p>Smart alerts keep nothing missed. Internal messaging, noticeboard, and task management connect your whole team.</p>
+          <span class="feature-tag">Team communication</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ───────────────────────────────────────────────────────── -->
+  <section>
+    <div class="container">
+      <div class="text-center">
+        <p class="section-label">Getting Started</p>
+        <h2 class="section-title">Up and running in minutes</h2>
+        <p class="section-sub">No lengthy onboarding. No technical expertise required. Your team can be live the same day.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Your account is set up</h3>
+          <p>Your care home is configured with your homes, staff roles, and service user profiles — ready to use from day one.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Your team signs in</h3>
+          <p>Staff log in securely on any device — desktop, tablet, or mobile — with role-based access to the modules they need.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Go paperless, stay compliant</h3>
+          <p>Records are captured digitally in real time. Every action is logged, auditable, and CQC inspection-ready.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── MODULES ────────────────────────────────────────────────────────────── -->
+  <section class="modules" id="modules">
+    <div class="container">
+      <div class="text-center">
+        <p class="section-label">Full Module Suite</p>
+        <h2 class="section-title">Every module you need, nothing you don't</h2>
+        <p class="section-sub">CompCare Hub covers the full breadth of care home operations out of the box.</p>
+      </div>
+      <div class="modules-grid">
+        <div class="module-pill"><span class="dot"></span>Care Plans</div>
+        <div class="module-pill"><span class="dot"></span>Daily Records</div>
+        <div class="module-pill"><span class="dot"></span>MAR Charts</div>
+        <div class="module-pill"><span class="dot"></span>Medication Stock</div>
+        <div class="module-pill"><span class="dot"></span>Risk Assessments</div>
+        <div class="module-pill"><span class="dot"></span>Incidents &amp; Accidents</div>
+        <div class="module-pill"><span class="dot"></span>Safeguarding</div>
+        <div class="module-pill"><span class="dot"></span>Complaints</div>
+        <div class="module-pill"><span class="dot"></span>Staff Rota</div>
+        <div class="module-pill"><span class="dot"></span>Timesheets</div>
+        <div class="module-pill"><span class="dot"></span>Clock In / Out</div>
+        <div class="module-pill"><span class="dot"></span>Staff HR Records</div>
+        <div class="module-pill"><span class="dot"></span>DBS Checks</div>
+        <div class="module-pill"><span class="dot"></span>Training Records</div>
+        <div class="module-pill"><span class="dot"></span>Supervision &amp; Appraisals</div>
+        <div class="module-pill"><span class="dot"></span>Recruitment</div>
+        <div class="module-pill"><span class="dot"></span>Compliance Audits</div>
+        <div class="module-pill"><span class="dot"></span>CQC Notifications</div>
+        <div class="module-pill"><span class="dot"></span>Audit Trail</div>
+        <div class="module-pill"><span class="dot"></span>AI-Powered Audits</div>
+        <div class="module-pill"><span class="dot"></span>Observations</div>
+        <div class="module-pill"><span class="dot"></span>Bowel &amp; Bath Charts</div>
+        <div class="module-pill"><span class="dot"></span>Seizure Records</div>
+        <div class="module-pill"><span class="dot"></span>Professional Visits</div>
+        <div class="module-pill"><span class="dot"></span>Assessments</div>
+        <div class="module-pill"><span class="dot"></span>Social Activities</div>
+        <div class="module-pill"><span class="dot"></span>Invoicing</div>
+        <div class="module-pill"><span class="dot"></span>Quality Monitoring</div>
+        <div class="module-pill"><span class="dot"></span>Policies &amp; Procedures</div>
+        <div class="module-pill"><span class="dot"></span>Maintenance Logs</div>
+        <div class="module-pill"><span class="dot"></span>PPE Tracking</div>
+        <div class="module-pill"><span class="dot"></span>Handover Reports</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── COMPLIANCE ─────────────────────────────────────────────────────────── -->
+  <section id="compliance">
+    <div class="container">
+      <div class="compliance-layout">
+        <div>
+          <p class="section-label">CQC &amp; Compliance</p>
+          <h2 class="section-title">Always inspection-ready</h2>
+          <p class="section-sub">CompCare Hub is built around CQC's five key questions — safe, effective, caring, responsive, and well-led — so every record you keep contributes to your inspection evidence.</p>
+          <div class="compliance-points">
+            <div class="compliance-point">
+              <div class="check-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <h4>Complete audit trail</h4>
+                <p>Every action is logged with timestamp and user — providing irrefutable evidence for CQC inspections.</p>
+              </div>
+            </div>
+            <div class="compliance-point">
+              <div class="check-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <h4>AI-assisted compliance audits</h4>
+                <p>Our AI audit tools identify gaps and generate evidence-based reports aligned to CQC domains.</p>
+              </div>
+            </div>
+            <div class="compliance-point">
+              <div class="check-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <h4>Incident &amp; safeguarding management</h4>
+                <p>Structured incident reporting with CQC notification workflows built in — no form gets missed.</p>
+              </div>
+            </div>
+            <div class="compliance-point">
+              <div class="check-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <h4>Staff training &amp; DBS tracking</h4>
+                <p>See at a glance which staff are trained, which DBS checks are expiring, and who needs supervision.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="compliance-visual">
+          <div class="visual-header">
+            <span class="visual-title">Compliance Dashboard</span>
+            <span class="visual-badge">Live</span>
+          </div>
+          <div class="visual-list">
+            <div class="visual-row"><span class="visual-row-label">Care plans up to date</span><span class="status-ok">✓ Compliant</span></div>
+            <div class="visual-row"><span class="visual-row-label">MAR charts completed today</span><span class="status-ok">✓ Compliant</span></div>
+            <div class="visual-row"><span class="visual-row-label">Staff DBS checks</span><span class="status-ok">✓ All clear</span></div>
+            <div class="visual-row"><span class="visual-row-label">Training renewals due</span><span class="status-pending">⚠ 2 due soon</span></div>
+            <div class="visual-row"><span class="visual-row-label">Risk assessments reviewed</span><span class="status-ok">✓ Compliant</span></div>
+            <div class="visual-row"><span class="visual-row-label">Open incidents</span><span class="status-ok">✓ 0 open</span></div>
+            <div class="visual-row"><span class="visual-row-label">Supervision schedule</span><span class="status-ok">✓ On track</span></div>
+            <div class="visual-row"><span class="visual-row-label">Medication audits</span><span class="status-ok">✓ Compliant</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TESTIMONIALS ───────────────────────────────────────────────────────── -->
+  <section class="testimonials">
+    <div class="container">
+      <div class="text-center">
+        <p class="section-label">From care professionals</p>
+        <h2 class="section-title">Trusted by care home managers</h2>
+        <p class="section-sub">Hear from the people running care homes who've made the switch to CompCare Hub.</p>
+      </div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"CompCare Hub has transformed how we manage our home. The CQC audit tools alone saved us hours before our last inspection — and we came out Outstanding."</p>
+          <div class="testimonial-author">Sarah M.</div>
+          <div class="testimonial-role">Registered Manager, Residential Care Home</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"Having the rota, timesheets, and staff training all in one place has been a game changer. Our office admin time has dropped significantly."</p>
+          <div class="testimonial-author">David O.</div>
+          <div class="testimonial-role">Care Home Owner, West Midlands</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"The MAR charts and medication stock management are excellent. Our medication errors have dropped to zero since switching to CompCare Hub."</p>
+          <div class="testimonial-author">Funke A.</div>
+          <div class="testimonial-role">Senior Carer &amp; Medication Lead</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ────────────────────────────────────────────────────────────────── -->
+  <section class="cta-section">
+    <div class="container" style="position:relative;z-index:1;">
+      <p class="section-label" style="color:var(--gold-400);">Get Started Today</p>
+      <h2 class="section-title">Ready to transform your care home?</h2>
+      <p class="section-sub">Join care homes across the UK using CompCare Hub to deliver outstanding, compliant, person-centred care.</p>
+      <a href="https://app.comprehensivecare.org.uk" class="btn-primary" style="font-size:1.05rem;padding:1rem 2.25rem;">
+        Access CompCare Hub
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="/" class="logo">
+            <div class="logo-mark">C</div>
+            <span class="logo-text">CompCare <span>Hub</span></span>
+          </a>
+          <p>Premium care home management software for UK care providers. CQC-aligned, GDPR-compliant, and built for the people who deliver care.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Platform</h4>
+          <a href="#features">Features</a>
+          <a href="#modules">All Modules</a>
+          <a href="#compliance">Compliance</a>
+          <a href="https://app.comprehensivecare.org.uk">Sign In</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="#">About Us</a>
+          <a href="#">Contact</a>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+        </div>
+        <div class="footer-col">
+          <h4>Support</h4>
+          <a href="mailto:support@comprehensivecare.org.uk">Email Support</a>
+          <a href="#">Help Centre</a>
+          <a href="#">System Status</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Comprehensive Care Hub Ltd. All rights reserved.</span>
+        <span>comprehensivecare.org.uk · UK-registered · GDPR compliant</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function toggleMenu(btn) {
+      const links = document.querySelector('.nav-links');
+      const open = links.style.display === 'flex';
+      links.style.display = open ? 'none' : 'flex';
+      links.style.flexDirection = 'column';
+      links.style.position = 'absolute';
+      links.style.top = '68px';
+      links.style.left = '0';
+      links.style.right = '0';
+      links.style.background = 'rgba(13,21,38,0.98)';
+      links.style.padding = '1rem 1.5rem 1.5rem';
+      links.style.gap = '0.25rem';
+      links.style.borderBottom = '1px solid rgba(232,177,48,0.15)';
+    }
+  </script>
+</body>
+</html>

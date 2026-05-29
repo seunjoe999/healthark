@@ -49,6 +49,8 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://app.comprehensivecare.org.uk',
+  'https://comprehensivecare.org.uk',
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
   ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
   ...(process.env.RENDER_EXTERNAL_HOSTNAME ? [`https://${process.env.RENDER_EXTERNAL_HOSTNAME}`] : []),
@@ -674,6 +676,22 @@ async function ensureColumns() {
        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_notif_recipient ON notifications(recipient_id, created_at DESC)`,
+    // Staff messages (internal messaging between staff)
+    `CREATE TABLE IF NOT EXISTS staff_messages (
+       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       sender_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       recipient_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       home_id      UUID REFERENCES homes(id) ON DELETE CASCADE,
+       subject      VARCHAR(255),
+       body         TEXT,
+       message      TEXT,
+       is_read      BOOLEAN NOT NULL DEFAULT FALSE,
+       read_at      TIMESTAMPTZ,
+       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_messages_recipient ON staff_messages(recipient_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_messages_sender    ON staff_messages(sender_id,    created_at DESC)`,
     // Ensure staff_messages columns allow null home_id (some inserts don't have homeId)
     `ALTER TABLE staff_messages ALTER COLUMN home_id DROP NOT NULL`,
     // Ensure staff_messages has a message column (Render DB may have body instead)

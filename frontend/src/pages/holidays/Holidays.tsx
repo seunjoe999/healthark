@@ -29,6 +29,7 @@ export default function Holidays() {
   const [addOpen, setAddOpen] = useState(false)
   const [view, setView] = useState<'calendar' | 'list' | 'requests'>('calendar')
   const [preview, setPreview] = useState<any>(null)
+  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('all')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -143,69 +144,83 @@ export default function Holidays() {
 
       {view === 'requests' ? (
         loadingAll ? <Spinner /> : (
-          <div className="space-y-6">
-            {[
-              { status: 'pending', label: 'Pending', items: allPending, accent: 'border-amber-400', badge: 'badge-warning', headerBg: 'bg-amber-50', headerText: 'text-amber-800' },
-              { status: 'approved', label: 'Approved', items: allApproved, accent: 'border-emerald-400', badge: 'badge-success', headerBg: 'bg-emerald-50', headerText: 'text-emerald-800' },
-              { status: 'declined', label: 'Declined', items: allDeclined, accent: 'border-rose-400', badge: 'badge-critical', headerBg: 'bg-rose-50', headerText: 'text-rose-800' },
-            ].map(({ status, label, items, accent, badge, headerBg, headerText }) => (
-              <div key={status}>
-                <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mb-3 ${headerBg}`}>
-                  <span className={`text-sm font-bold ${headerText}`}>{label}</span>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${headerBg} ${headerText} border ${status === 'pending' ? 'border-amber-300' : status === 'approved' ? 'border-emerald-300' : 'border-rose-300'}`}>{items.length}</span>
-                  {status === 'pending' && <span className="text-xs text-slate-400 ml-auto">sorted by application date ↑</span>}
-                </div>
-                {items.length === 0 ? (
-                  <p className="text-sm text-slate-400 italic px-4">No {label.toLowerCase()} requests</p>
-                ) : (
-                  <div className="space-y-2">
-                    {items.map((l: any, idx: number) => (
-                      <div key={l.id} className={`bg-white rounded-2xl border-l-4 ${accent} shadow-sm p-4 flex items-start justify-between gap-4`}
-                        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <div className="flex items-start gap-4 flex-1 min-w-0">
-                          <div className="flex-shrink-0 flex flex-col items-center pt-0.5 w-8">
-                            <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                          </div>
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                            status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                            status === 'declined' ? 'bg-rose-100 text-rose-700' :
-                            'bg-amber-100 text-amber-700'
-                          }`}>
-                            {(l.staff_name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-900">{l.staff_name}</p>
-                            <p className="text-sm text-slate-500 capitalize mt-0.5">
-                              {(l.leave_type || '').replace(/_/g, ' ')} · {l.start_date ? format(parseISO(l.start_date), 'd MMM') : ''} – {l.end_date ? format(parseISO(l.end_date), 'd MMM yyyy') : ''}
-                              {l.hours_requested ? ` · ${l.hours_requested}h` : ''}
-                            </p>
-                            {l.reason && <p className="text-xs text-slate-400 italic mt-1 truncate">{l.reason}</p>}
-                            <p className="text-xs text-slate-300 mt-1">Applied {l.created_at ? format(parseISO(l.created_at), 'd MMM yyyy, HH:mm') : '—'}</p>
-                          </div>
+          <div className="space-y-4">
+            {/* Status dropdown filter */}
+            <div className="flex items-center gap-3">
+              <select
+                className="input w-auto text-sm"
+                value={requestStatusFilter}
+                onChange={e => setRequestStatusFilter(e.target.value as any)}>
+                <option value="all">All requests ({allLeaves.length})</option>
+                <option value="pending">Pending ({allPending.length})</option>
+                <option value="approved">Approved ({allApproved.length})</option>
+                <option value="declined">Declined ({allDeclined.length})</option>
+              </select>
+            </div>
+            {(() => {
+              const sections = [
+                { status: 'pending', label: 'Pending', items: allPending, accent: 'border-amber-400', badge: 'badge-warning' },
+                { status: 'approved', label: 'Approved', items: allApproved, accent: 'border-emerald-400', badge: 'badge-success' },
+                { status: 'declined', label: 'Declined', items: allDeclined, accent: 'border-rose-400', badge: 'badge-critical' },
+              ].filter(s => requestStatusFilter === 'all' || s.status === requestStatusFilter)
+
+              if (sections.every(s => s.items.length === 0)) {
+                return <p className="text-sm text-slate-400 italic px-4">No leave requests found</p>
+              }
+
+              return sections.map(({ status, label, items, accent, badge }) => items.length === 0 ? null : (
+                <div key={status} className="space-y-2">
+                  {requestStatusFilter === 'all' && (
+                    <p className={`text-xs font-bold uppercase tracking-wider px-1 ${status === 'pending' ? 'text-amber-600' : status === 'approved' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {label} — {items.length}
+                    </p>
+                  )}
+                  {items.map((l: any, idx: number) => (
+                    <div key={l.id} className={`bg-white rounded-2xl border-l-4 ${accent} shadow-sm p-4 flex items-start justify-between gap-4`}
+                      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                      <div className="flex items-start gap-4 flex-1 min-w-0">
+                        <div className="flex-shrink-0 flex flex-col items-center pt-0.5 w-8">
+                          <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {l.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
-                            <>
-                              <button onClick={() => approve(l.id)}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
-                                <Check className="w-3.5 h-3.5" /> Approve
-                              </button>
-                              <button onClick={() => decline(l.id)}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
-                                <X className="w-3.5 h-3.5" /> Decline
-                              </button>
-                            </>
-                          )}
-                          {l.status !== 'pending' && (
-                            <span className={`badge ${badge}`}>{status}</span>
-                          )}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                          status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                          status === 'declined' ? 'bg-rose-100 text-rose-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {(l.staff_name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-900">{l.staff_name}</p>
+                          <p className="text-sm text-slate-500 capitalize mt-0.5">
+                            {(l.leave_type || '').replace(/_/g, ' ')} · {l.start_date ? format(parseISO(l.start_date), 'd MMM') : ''} – {l.end_date ? format(parseISO(l.end_date), 'd MMM yyyy') : ''}
+                            {l.hours_requested ? ` · ${l.hours_requested}h` : ''}
+                          </p>
+                          {l.reason && <p className="text-xs text-slate-400 italic mt-1 truncate">{l.reason}</p>}
+                          <p className="text-xs text-slate-300 mt-1">Applied {l.created_at ? format(parseISO(l.created_at), 'd MMM yyyy, HH:mm') : '—'}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {l.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                          <>
+                            <button onClick={() => approve(l.id)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                              <Check className="w-3.5 h-3.5" /> Approve
+                            </button>
+                            <button onClick={() => decline(l.id)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                              <X className="w-3.5 h-3.5" /> Decline
+                            </button>
+                          </>
+                        )}
+                        {l.status !== 'pending' && (
+                          <span className={`badge ${badge}`}>{status}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))
+            })()}
           </div>
         )
       ) : loading ? <Spinner /> : view === 'calendar' ? (
