@@ -4,7 +4,7 @@ import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, PrintButton } from '../../components/ui'
-import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History } from 'lucide-react'
+import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const RISK_LEVELS = [
@@ -70,6 +70,50 @@ export default function RiskManagement() {
 
   const [updateNotes, setUpdateNotes] = useState('')
   const [updateRiskLevel, setUpdateRiskLevel] = useState('medium')
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+
+  const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
+
+  const printAssessment = (ra: any) => {
+    const rl = RISK_LEVELS.find(r => r.value === (ra.risk_rating || ra.current_risk_level))
+    const html = `<!DOCTYPE html><html><head><title>${ra.assessment_name} — Risk Assessment</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:780px;margin:0 auto}
+        h1{font-size:1.3rem;margin-bottom:4px}
+        .meta{font-size:.8rem;color:#555;margin-bottom:20px}
+        .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-left:10px}
+        .badge-low{background:#dcfce7;color:#166534}
+        .badge-medium{background:#fef9c3;color:#854d0e}
+        .badge-high{background:#ffedd5;color:#9a3412}
+        .badge-critical{background:#fee2e2;color:#991b1b}
+        section{margin-bottom:18px}
+        section h3{font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px}
+        section p{font-size:.9rem;line-height:1.6;margin:0}
+        .mgmt{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:18px}
+        .mgmt h3{color:#1d4ed8}
+        @media print{body{padding:0}}
+      </style></head><body>
+      <h1>${ra.assessment_name}
+        <span class="badge badge-${ra.risk_rating || ra.current_risk_level}">${rl?.label || ra.risk_rating || 'Unknown'} Risk</span>
+      </h1>
+      <p class="meta">Resident: <strong>${ra.su_name || '—'}</strong> &nbsp;|&nbsp; Next review: <strong>${ra.next_review_date ? new Date(ra.next_review_date).toLocaleDateString('en-GB') : '—'}</strong> &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
+      ${ra.description ? `<section><h3>What is the risk</h3><p>${ra.description.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.historical_context ? `<section><h3>Historical context</h3><p>${ra.historical_context.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.risk_before_intervention ? `<section><h3>Risk before intervention</h3><p>${ra.risk_before_intervention.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.who_is_at_risk ? `<section><h3>Who is at risk</h3><p>${ra.who_is_at_risk}</p></section>` : ''}
+      ${ra.what_could_happen ? `<section><h3>What could happen</h3><p>${ra.what_could_happen.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.triggers ? `<section><h3>Triggers</h3><p>${ra.triggers.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.protective_factors ? `<section><h3>Protective factors</h3><p>${ra.protective_factors.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.management_plan ? `<div class="mgmt"><h3>Risk management plan</h3><p>${ra.management_plan.replace(/\n/g,'<br/>')}</p></div>` : ''}
+      ${ra.risk_rating_option ? `<section><h3>Risk rating</h3><p>${RISK_SCORE_OPTIONS.find(o=>o.value===ra.risk_rating_option)?.label||ra.risk_rating_option}</p></section>` : ''}
+      ${ra.risk_score != null ? `<section><h3>Total risk score</h3><p><strong>${ra.risk_score}</strong></p></section>` : ''}
+      ${ra.evaluation_of_risk ? `<section><h3>Evaluation of risk</h3><p>${ra.evaluation_of_risk}</p></section>` : ''}
+      ${ra.risk_acceptable ? `<section><h3>Risk acceptable</h3><p>${ra.risk_acceptable}</p></section>` : ''}
+      ${ra.risk_after_controls ? `<section><h3>Risk after controls</h3><p>${ra.risk_after_controls}</p></section>` : ''}
+    </body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print() }
+  }
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -408,6 +452,21 @@ export default function RiskManagement() {
 
                 {isExpanded && (
                   <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-4">
+                    {/* Read & Print bar */}
+                    <div className="flex items-center gap-2 pb-3 border-b border-slate-50">
+                      <button
+                        onClick={() => { markRead(ra.id); toast.success('Marked as read') }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${readIds.has(ra.id) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'}`}>
+                        <BookOpen className="w-3.5 h-3.5" />
+                        {readIds.has(ra.id) ? '✓ Read' : 'Mark as read'}
+                      </button>
+                      <button
+                        onClick={() => printAssessment(ra)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
+                        <Printer className="w-3.5 h-3.5" />
+                        Print assessment
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="What is the risk" value={ra.description} />
                       <Field label="Historical Context" value={ra.historical_context} />

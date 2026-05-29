@@ -26,6 +26,7 @@ const navSections = [
   {
     label: 'Service User',
     items: [
+      { label: 'Residents',                        to: '/service-users',       icon: Users,         roles: [],                                           featureKey: 'service_users' },
       { label: 'Support Plans',                   to: '/care-plans',          icon: FileText,      roles: [],                                           featureKey: 'care_plans' },
       { label: 'Medication Risk Assessment',       to: '/medicine-risk',       icon: ShieldAlert,   roles: [],                                           featureKey: 'medicine_risk' },
       { label: 'Other Risk Assessment',            to: '/risk-management',     icon: Shield,        roles: [],                                           featureKey: 'risk_management' },
