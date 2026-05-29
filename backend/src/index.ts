@@ -1011,6 +1011,24 @@ async function ensureColumns() {
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS triggers           TEXT`,
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS protective_factors TEXT`,
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS attachment_notes   TEXT`,
+    // ── care_plans — sign-off and consent fields ──────────────────────────────
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS su_signed_by    TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS su_signed_date  DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS staff_signed_by TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS staff_signed_date DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS consent_notes   TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS consent_given   BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS consent_date    DATE`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS custom_name     VARCHAR(255)`,
+    // ── risk_assessments — sign-off fields ───────────────────────────────────
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS signed_off      BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS signed_off_by   TEXT`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS signed_off_date DATE`,
+    // ── service_users — GP and pharmacy contact ───────────────────────────────
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_phone        VARCHAR(30)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_address       TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS pharmacy_phone   VARCHAR(30)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS pharmacy_address  TEXT`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

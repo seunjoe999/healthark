@@ -134,6 +134,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       const staffId = fromToken(req, 'staffId');
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
               reviewFrequency, updateNotes, attachmentsNotes, suSignOff, staffSignOff,
+              suSignedBy, suSignedDate, staffSignedBy, staffSignedDate,
+              consentNotes, consentGiven, consentDate,
               medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
               dateMedicationReview, regularMedications, prnMedications, otcMedications,
               prnProtocol, prnList, indicationForUse } = req.body;
@@ -171,7 +173,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           indication_for_use       = COALESCE($19, indication_for_use),
           attachments_notes        = COALESCE($20, attachments_notes),
           su_sign_off              = COALESCE($21, su_sign_off),
-          staff_sign_off           = COALESCE($22, staff_sign_off)
+          staff_sign_off           = COALESCE($22, staff_sign_off),
+          su_signed_by             = COALESCE($23, su_signed_by),
+          su_signed_date           = COALESCE($24, su_signed_date),
+          staff_signed_by          = COALESCE($25, staff_signed_by),
+          staff_signed_date        = COALESCE($26, staff_signed_date),
+          consent_notes            = COALESCE($27, consent_notes),
+          consent_given            = COALESCE($28, consent_given),
+          consent_date             = COALESCE($29, consent_date)
          WHERE id = $8 RETURNING *`,
         [aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved || null,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
@@ -179,7 +188,9 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          supportTypes ?? null, nd(dateMedicationReview),
          regularMedications ?? null, prnMedications ?? null, otcMedications ?? null,
          prnProtocol ?? null, prnList ?? null, indicationForUse ?? null,
-         attachmentsNotes ?? null, suSignOff ?? null, staffSignOff ?? null]
+         attachmentsNotes ?? null, suSignOff ?? null, staffSignOff ?? null,
+         suSignedBy ?? null, nd(suSignedDate), staffSignedBy ?? null, nd(staffSignedDate),
+         consentNotes ?? null, consentGiven ?? null, nd(consentDate)]
       );
       if (!rows.length) throw new AppError('Care plan not found', 404);
 
@@ -227,6 +238,29 @@ router.get('/:id/reads', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
+
+// GET /api/care-plans/reads-summary?homeId=xxx  — admin: who read which plan
+router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT cp.id as plan_id, cp.plan_type, cp.custom_name,
+              su.first_name || ' ' || su.last_name as su_name,
+              COUNT(cpr.id) as total_reads,
+              MAX(cpr.read_at) as last_read_at,
+              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
+       FROM care_plans cp
+       JOIN service_users su ON su.id = cp.su_id
+       LEFT JOIN care_plan_reads cpr ON cpr.plan_id = cp.id
+       LEFT JOIN staff s ON s.id = cpr.staff_id
+       WHERE cp.home_id = $1 AND cp.is_active IS NOT FALSE
+       GROUP BY cp.id, su.first_name, su.last_name
+       ORDER BY su.last_name, cp.plan_type`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
 
 // DELETE /api/care-plans/:id (soft delete)
 router.delete('/:id', requireRole('home_manager', 'group_admin'),

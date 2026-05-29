@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, startOfWeek, startOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2 } from 'lucide-react'
+import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQ_TIMES: Record<string, string[]> = {
@@ -71,7 +71,7 @@ export default function MAR() {
   const [stockData, setStockData] = useState<any[]>([])
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<'mar' | 'medications' | 'stock'>('mar')
+  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy'>('mar')
   const [addMedOpen, setAddMedOpen] = useState(false)
   const [stockModalMed, setStockModalMed] = useState<any>(null)
   const [printModal, setPrintModal] = useState(false)
@@ -266,6 +266,7 @@ export default function MAR() {
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
               { key: 'stock', label: 'Stock Count' },
+              { key: 'gp_pharmacy', label: 'GP & Pharmacy' },
             ].map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
                 className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
@@ -318,6 +319,8 @@ export default function MAR() {
                   </div>
                 ))}
               </div>
+            ) : tab === 'gp_pharmacy' ? (
+              <GPPharmacyTab su={su} medications={medications} />
             ) : (
               <div className="p-4 space-y-3">
                 <p className="text-sm text-slate-500">Record medication stock counts for audit purposes.</p>
@@ -901,6 +904,110 @@ function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; st
         </div>
       </div>
     </Modal>
+  )
+}
+
+/* ─── GP & Pharmacy Tab ────────────────────────────────────────────────── */
+function GPPharmacyTab({ su, medications }: { su: any; medications: any[] }) {
+  const infoRow = (label: string, value: string | undefined) =>
+    value ? (
+      <tr key={label} className="border-b border-slate-100">
+        <td className="py-2 pr-4 text-xs font-semibold text-slate-500 whitespace-nowrap w-36">{label}</td>
+        <td className="py-2 text-sm text-slate-800">{value}</td>
+      </tr>
+    ) : null
+
+  const medsWithGpOrPharm = medications.filter((m: any) => m.gp_name || m.pharmacy_name || m.gp_phone || m.pharmacy_phone)
+
+  return (
+    <div className="p-5 space-y-6 max-w-3xl">
+      {/* GP Details */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100">
+          <Stethoscope className="w-4 h-4 text-blue-600" />
+          <span className="font-semibold text-blue-800 text-sm">GP Details</span>
+        </div>
+        <div className="px-4 py-3">
+          {su?.gp_name || su?.gp_phone || su?.gp_address ? (
+            <table className="w-full">
+              <tbody>
+                {infoRow('GP Name', su.gp_name)}
+                {infoRow('Phone', su.gp_phone)}
+                {infoRow('Address', su.gp_address)}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-slate-400 italic py-2">No GP details recorded. Update via the resident's profile.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Pharmacy Details */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border-b border-emerald-100">
+          <Pill className="w-4 h-4 text-emerald-600" />
+          <span className="font-semibold text-emerald-800 text-sm">Pharmacy Details</span>
+        </div>
+        <div className="px-4 py-3">
+          {su?.pharmacy_name || su?.pharmacy_phone || su?.pharmacy_address ? (
+            <table className="w-full">
+              <tbody>
+                {infoRow('Pharmacy Name', su.pharmacy_name)}
+                {infoRow('Phone', su.pharmacy_phone)}
+                {infoRow('Address', su.pharmacy_address)}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-slate-400 italic py-2">No pharmacy details recorded. Update via the resident's profile.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Per-medication GP/Pharmacy */}
+      {medsWithGpOrPharm.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
+            <MapPin className="w-4 h-4 text-slate-500" />
+            <span className="font-semibold text-slate-700 text-sm">Medication-Specific GP / Pharmacy</span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {medsWithGpOrPharm.map((med: any) => (
+              <div key={med.id} className="px-4 py-3">
+                <p className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
+                  <Pill className="w-3.5 h-3.5 text-purple-500" />
+                  {med.medication_name}
+                  {med.dose && <span className="text-xs font-normal text-slate-400">· {med.dose}</span>}
+                </p>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  {(med.gp_name || med.gp_phone) && (
+                    <div>
+                      <p className="font-semibold text-slate-500 mb-1">GP</p>
+                      {med.gp_name && <p className="text-slate-700">{med.gp_name}</p>}
+                      {med.gp_phone && (
+                        <p className="flex items-center gap-1 text-slate-600 mt-0.5">
+                          <Phone className="w-3 h-3" /> {med.gp_phone}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {(med.pharmacy_name || med.pharmacy_phone) && (
+                    <div>
+                      <p className="font-semibold text-slate-500 mb-1">Pharmacy</p>
+                      {med.pharmacy_name && <p className="text-slate-700">{med.pharmacy_name}</p>}
+                      {med.pharmacy_phone && (
+                        <p className="flex items-center gap-1 text-slate-600 mt-0.5">
+                          <Phone className="w-3 h-3" /> {med.pharmacy_phone}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

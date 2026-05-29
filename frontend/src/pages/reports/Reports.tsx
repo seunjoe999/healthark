@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { BarChart3, Search, AlertTriangle, CheckCircle, User } from 'lucide-react'
+import { BarChart3, Search, AlertTriangle, CheckCircle, User, Brain, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const REPORT_TYPES = [
@@ -20,6 +20,7 @@ const REPORT_TYPES = [
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
   { value: 'monthly-reviews-history', label: 'Monthly Reviews History', description: 'History of every care review by month' },
+  { value: 'incident-analysis', label: 'AI Incident Analysis', description: 'AI-powered analysis of incident patterns' },
 ]
 
 export default function Reports() {
@@ -60,7 +61,7 @@ export default function Reports() {
       if (selectedSu) params.suId = selectedSu
       if (reportType === 'daily-records' && dailyRecordType) params.recordType = dailyRecordType
       const res = await api.get(`/reports/${reportType}`, { params })
-      setData(res.data.data)
+      setData(reportType === 'incident-analysis' ? res.data : res.data.data)
     } catch (err: any) { console.error('Report error:', err?.response?.data); toast.error(err?.response?.data?.error || 'Failed to load report') }
     finally { setLoading(false) }
   }
@@ -138,6 +139,8 @@ export default function Reports() {
         <TrainingCompliance data={data} />
       ) : reportType === 'monthly-reviews-history' ? (
         <MonthlyReviewsHistory data={data} />
+      ) : reportType === 'incident-analysis' ? (
+        <IncidentAnalysis data={data} />
       ) : (
         <GenericTable data={Array.isArray(data) ? data : []} reportType={reportType} />
       )}
@@ -306,6 +309,95 @@ function MonthlyReviewsHistory({ data }: { data: any }) {
           </table>
         </div>
       ))}
+    </div>
+  )
+}
+
+function IncidentAnalysis({ data }: { data: any }) {
+  if (!data) return <EmptyState title="No analysis available" description="Run the report to generate an AI analysis of incidents" />
+
+  const { analysis, incidents, count, period } = data
+
+  const formatAnalysis = (text: string) => {
+    if (!text) return []
+    return text.split(/\n\n+/).filter(Boolean)
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl p-4">
+        <Brain className="w-5 h-5 text-purple-600 flex-shrink-0" />
+        <div>
+          <p className="font-semibold text-purple-900 text-sm">AI-Powered Incident Analysis</p>
+          <p className="text-xs text-purple-600 mt-0.5">{count} incident{count !== 1 ? 's' : ''} analysed · Period: {period}</p>
+        </div>
+      </div>
+
+      {/* AI Analysis text */}
+      {analysis ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 bg-slate-50 border-b border-slate-200">
+            <TrendingUp className="w-4 h-4 text-slate-600" />
+            <span className="font-semibold text-slate-700 text-sm">Analysis</span>
+          </div>
+          <div className="px-5 py-4 space-y-4">
+            {formatAnalysis(analysis).map((para: string, i: number) => {
+              const isHeader = para.startsWith('**') || para.startsWith('#')
+              if (isHeader) {
+                const clean = para.replace(/^#+\s*/, '').replace(/\*\*/g, '')
+                return <h3 key={i} className="font-semibold text-slate-800 text-sm mt-2">{clean}</h3>
+              }
+              return (
+                <p key={i} className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                  {para.replace(/\*\*(.*?)\*\*/g, '$1')}
+                </p>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm text-amber-800">AI analysis not available — {count} incidents found in this period.</p>
+        </div>
+      )}
+
+      {/* Incident table */}
+      {incidents && incidents.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
+            <p className="font-semibold text-slate-700 text-sm">Incidents in period ({incidents.length})</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  {['Date', 'Resident', 'Type', 'Description', 'Outcome'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left font-medium text-slate-500 text-xs">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {incidents.map((inc: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">
+                      {inc.record_date ? format(new Date(inc.record_date), 'd MMM yyyy') : '—'}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{inc.su_name || '—'}</td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium capitalize">
+                        {(inc.incident_type || 'incident').replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 max-w-xs truncate text-xs">{inc.description || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600 text-xs">{inc.outcome || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

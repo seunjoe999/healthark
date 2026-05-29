@@ -4,7 +4,7 @@ import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, PrintButton } from '../../components/ui'
-import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen } from 'lucide-react'
+import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const RISK_LEVELS = [
@@ -71,6 +71,8 @@ export default function RiskManagement() {
   const [updateNotes, setUpdateNotes] = useState('')
   const [updateRiskLevel, setUpdateRiskLevel] = useState('medium')
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [signOffItem, setSignOffItem] = useState<any>(null)
+  const [signOffForm, setSignOffForm] = useState({ signedOffBy: '', signedOffDate: '' })
 
   const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
 
@@ -214,6 +216,24 @@ export default function RiskManagement() {
       setUpdateNotes('')
       load()
     } catch { toast.error('Failed to save update') }
+    finally { setSaving(false) }
+  }
+
+  const handleSignOff = async () => {
+    if (!signOffItem) return
+    if (!signOffForm.signedOffBy.trim()) { toast.error('Enter the name of the person signing off'); return }
+    setSaving(true)
+    try {
+      await api.put(`/risk-assessments/${signOffItem.id}`, {
+        signedOff: true,
+        signedOffBy: signOffForm.signedOffBy,
+        signedOffDate: signOffForm.signedOffDate || new Date().toISOString().split('T')[0],
+      })
+      toast.success('Assessment signed off')
+      setSignOffItem(null)
+      setSignOffForm({ signedOffBy: '', signedOffDate: '' })
+      load()
+    } catch { toast.error('Failed to save sign-off') }
     finally { setSaving(false) }
   }
 
@@ -497,6 +517,29 @@ export default function RiskManagement() {
                       </div>
                     )}
 
+                    {/* Sign-off status */}
+                    {ra.signed_off ? (
+                      <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <div className="text-xs text-emerald-800">
+                          <span className="font-semibold">Signed off</span>
+                          {ra.signed_off_by && <span> by {ra.signed_off_by}</span>}
+                          {ra.signed_off_date && <span> on {format(new Date(ra.signed_off_date), 'd MMM yyyy')}</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      canManage && (
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center justify-between">
+                          <span>This assessment has not been signed off yet.</span>
+                          <button
+                            onClick={() => { setSignOffItem(ra); setSignOffForm({ signedOffBy: '', signedOffDate: new Date().toISOString().split('T')[0] }) }}
+                            className="ml-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-xs">
+                            <ShieldCheck className="w-3.5 h-3.5" /> Sign Off
+                          </button>
+                        </div>
+                      )
+                    )}
+
                     {/* Update history */}
                     <UpdateHistory raId={ra.id} />
 
@@ -532,6 +575,27 @@ export default function RiskManagement() {
       {/* Edit modal */}
       <Modal open={!!editItem} onClose={() => setEditItem(null)} title={`Edit: ${editItem?.assessment_name}`}>
         <PlanForm onSave={handleEdit} isEdit />
+      </Modal>
+
+      {/* Sign-off modal */}
+      <Modal open={!!signOffItem} onClose={() => setSignOffItem(null)} title={`Sign Off: ${signOffItem?.assessment_name}`} size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Confirm that this risk assessment has been reviewed and approved.</p>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Signed off by *</label>
+            <input className="input w-full" placeholder="Full name of approver"
+              value={signOffForm.signedOffBy} onChange={e => setSignOffForm(p => ({ ...p, signedOffBy: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Date</label>
+            <input type="date" className="input w-full"
+              value={signOffForm.signedOffDate} onChange={e => setSignOffForm(p => ({ ...p, signedOffDate: e.target.value }))} />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setSignOffItem(null)}>Cancel</Button>
+            <Button loading={saving} onClick={handleSignOff} icon={<ShieldCheck className="w-4 h-4" />}>Confirm Sign Off</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Record update modal */}

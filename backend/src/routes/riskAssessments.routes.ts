@@ -112,7 +112,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
               triggers, protectiveFactors, reviewFrequency,
               historicalContext, riskRating,
               riskBeforeIntervention, riskScore, riskRatingOption,
-              evaluationOfRisk, riskAcceptable, riskAfterControls } = req.body;
+              evaluationOfRisk, riskAcceptable, riskAfterControls,
+              signedOff, signedOffBy, signedOffDate } = req.body;
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const freq = reviewFrequency || 'monthly';
       const nextReview = new Date();
@@ -137,13 +138,17 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           risk_rating_option         = COALESCE($14, risk_rating_option),
           evaluation_of_risk         = COALESCE($15, evaluation_of_risk),
           risk_acceptable            = COALESCE($16, risk_acceptable),
-          risk_after_controls        = COALESCE($17, risk_after_controls)
+          risk_after_controls        = COALESCE($17, risk_after_controls),
+          signed_off                 = COALESCE($18, signed_off),
+          signed_off_by              = COALESCE($19, signed_off_by),
+          signed_off_date            = COALESCE($20, signed_off_date)
          WHERE id = $9`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
          historicalContext ?? null, riskRating ?? null,
          riskBeforeIntervention ?? null, riskScore ?? null, riskRatingOption ?? null,
-         evaluationOfRisk ?? null, riskAcceptable ?? null, riskAfterControls ?? null]
+         evaluationOfRisk ?? null, riskAcceptable ?? null, riskAfterControls ?? null,
+         signedOff ?? null, signedOffBy ?? null, nd(signedOffDate)]
       );
 
       if (updateNotes) {

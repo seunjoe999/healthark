@@ -339,4 +339,60 @@ router.get('/monthly-reviews-history', async (req: Request, res: Response, next:
   } catch (err) { next(err); }
 });
 
+// GET /api/reports/incident-analysis — AI-powered incident analysis using GROQ
+router.get('/incident-analysis', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const { from, to } = req.query as Record<string, string>;
+    const fromDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = to || new Date().toISOString().split('T')[0];
+
+    const rows = await query(
+      `SELECT ri.incident_type, ri.description, ri.body_part, ri.witness_name,
+              ri.action_taken, ri.manager_reviewed, dr.record_date,
+              su.first_name || ' ' || su.last_name as su_name
+       FROM records_incidents ri
+       JOIN daily_records dr ON dr.id = ri.daily_record_id
+       JOIN service_users su ON su.id = dr.su_id
+       WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3
+       ORDER BY dr.record_date DESC LIMIT 100`,
+      [homeId, fromDate, toDate]
+    );
+
+    if (rows.length === 0) {
+      res.json({ success: true, data: { analysis: 'No incidents found in this date range.', incidents: [] } });
+      return;
+    }
+
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      res.json({ success: true, data: { analysis: 'AI analysis unavailable (API key not configured). Found ' + rows.length + ' incident(s) in this period.', incidents: rows } });
+      return;
+    }
+
+    const summary = rows.map((r: any, i: number) =>
+      `${i + 1}. ${r.record_date} — ${r.su_name}: ${r.incident_type || 'Incident'} — ${r.description || 'No description'}`
+    ).join('\n');
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        messages: [
+          { role: 'system', content: 'You are a care home quality assurance manager. Analyse incident reports and provide actionable insights. Be concise, professional, and focus on patterns, risk factors, and recommendations. Format your response with clear sections: Summary, Key Patterns, Risk Factors, and Recommendations.' },
+          { role: 'user', content: `Analyse these ${rows.length} incidents from ${fromDate} to ${toDate}:\n\n${summary}\n\nProvide a professional analysis with actionable recommendations for care quality improvement.` }
+        ],
+        max_tokens: 1000,
+        temperature: 0.3
+      })
+    });
+
+    const groqData = await groqRes.json() as any;
+    const analysis = groqData?.choices?.[0]?.message?.content || 'Analysis could not be generated.';
+
+    res.json({ success: true, data: { analysis, incidents: rows, count: rows.length, period: { from: fromDate, to: toDate } } });
+  } catch (err) { next(err); }
+});
+
 export default router;
