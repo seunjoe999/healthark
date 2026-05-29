@@ -36,6 +36,13 @@ services:
     staticPublishPath: ./landing
     buildCommand: ""
     pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-store, no-cache, must-revalidate
+      - path: /*
+        name: Pragma
+        value: no-cache
     routes:
       - type: rewrite
         source: /*
