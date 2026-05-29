@@ -717,6 +717,8 @@ async function ensureColumns() {
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS interview_date TIMESTAMP`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS interview_notes TEXT`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS rejection_reason TEXT`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS cv_url TEXT`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS certificates_urls JSONB DEFAULT '[]'`,
     // Copy body -> message for existing rows that only have body
     `UPDATE staff_messages SET message = body WHERE message IS NULL AND body IS NOT NULL`,
     // Fix audit_reports attachments (was mistakenly added as 'audits')

@@ -259,6 +259,9 @@
     .next-step strong{display:block;font-size:.88rem;color:var(--white);margin-bottom:.1rem}
     .next-step span{font-size:.82rem;color:var(--grey)}
     .job-card{cursor:pointer}
+    .file-drop{border:2px dashed var(--border);border-radius:12px;padding:1.5rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;display:flex;flex-direction:column;align-items:center}
+    .file-drop:hover{border-color:var(--gold-border);background:var(--gold-pale)}
+    .file-drop.has-file{border-color:var(--gold);background:rgba(212,160,23,.06)}
 
     /* ── SCROLL REVEAL ── */
     .reveal{opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
@@ -802,6 +805,22 @@
           <label>Tell us about yourself *</label>
           <textarea id="f_experience" rows="4" placeholder="Briefly describe your care experience, qualifications (e.g. NVQ, RGN), and why you'd like to join Comprehensive Care…" required></textarea>
         </div>
+        <div class="form-group">
+          <label>Upload your CV *</label>
+          <div class="file-drop" id="cvDrop" onclick="document.getElementById('f_cv').click()">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gold);margin-bottom:.5rem"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            <div id="cvLabel" style="font-size:.88rem;color:var(--grey)">Click to upload CV (PDF, Word — max 10MB)</div>
+          </div>
+          <input type="file" id="f_cv" accept=".pdf,.doc,.docx" style="display:none" onchange="onFileSelect('cv',this)"/>
+        </div>
+        <div class="form-group">
+          <label>Upload certificates / qualifications <span style="color:var(--grey2);font-weight:400">(optional, up to 5 files)</span></label>
+          <div class="file-drop" id="certDrop" onclick="document.getElementById('f_certs').click()">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gold);margin-bottom:.5rem"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+            <div id="certLabel" style="font-size:.88rem;color:var(--grey)">Click to upload NVQ, certificates, references (PDF, images)</div>
+          </div>
+          <input type="file" id="f_certs" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple style="display:none" onchange="onFileSelect('cert',this)"/>
+        </div>
         <div style="display:flex;justify-content:space-between;margin-top:1.5rem;gap:1rem">
           <button class="btn-submit" style="width:auto;padding:.75rem 2rem;background:var(--black4);color:var(--grey)" onclick="goStep(1)">← Back</button>
           <button class="btn-submit" style="width:auto;padding:.75rem 2rem" onclick="goStep(3)">Next: Review →</button>
@@ -941,6 +960,25 @@
     setTimeout(() => document.getElementById('f_firstName').focus(), 600)
   }
 
+  // File select feedback
+  function onFileSelect(type, input) {
+    if (type === 'cv') {
+      const drop = document.getElementById('cvDrop')
+      const lbl = document.getElementById('cvLabel')
+      if (input.files[0]) {
+        drop.classList.add('has-file')
+        lbl.innerHTML = `<strong style="color:var(--gold)">✓ ${input.files[0].name}</strong><br><span style="font-size:.75rem">${(input.files[0].size/1024/1024).toFixed(2)} MB</span>`
+      }
+    } else {
+      const drop = document.getElementById('certDrop')
+      const lbl = document.getElementById('certLabel')
+      if (input.files.length) {
+        drop.classList.add('has-file')
+        lbl.innerHTML = `<strong style="color:var(--gold)">✓ ${input.files.length} file(s) selected</strong><br><span style="font-size:.75rem">${Array.from(input.files).map(f=>f.name).join(', ')}</span>`
+      }
+    }
+  }
+
   // Multi-step form
   let currentStep = 1
   function goStep(n) {
@@ -955,8 +993,10 @@
     if (n === 3) {
       const pos = document.getElementById('f_position').value
       const exp = document.getElementById('f_experience').value.trim()
+      const cv = document.getElementById('f_cv').files[0]
       if (!pos) { alert('Please select the position you are applying for.'); return }
       if (!exp) { alert('Please tell us about yourself.'); return }
+      if (!cv) { alert('Please upload your CV before continuing.'); return }
       buildReview()
     }
     currentStep = n
@@ -975,6 +1015,8 @@
   }
 
   function buildReview() {
+    const cvFile = document.getElementById('f_cv').files[0]
+    const certFiles = document.getElementById('f_certs').files
     const fields = [
       ['Full name', document.getElementById('f_firstName').value + ' ' + document.getElementById('f_lastName').value],
       ['Email', document.getElementById('f_email').value],
@@ -982,6 +1024,8 @@
       ['Right to work', document.getElementById('f_rtw').value === 'yes' ? 'Yes' : 'No — needs sponsorship'],
       ['Position', document.getElementById('f_position').value],
       ['Experience', document.getElementById('f_years').value || 'Not specified'],
+      ['CV', cvFile ? cvFile.name : '—'],
+      ['Certificates', certFiles.length ? `${certFiles.length} file(s)` : 'None'],
     ]
     document.getElementById('reviewGrid').innerHTML = fields.map(([k, v]) =>
       `<div class="review-item"><label>${k}</label><span>${v}</span></div>`
@@ -995,20 +1039,27 @@
     const btn = document.getElementById('applyBtn')
     const msg = document.getElementById('applyMsg')
     btn.disabled = true
-    btn.textContent = 'Submitting…'
-    const payload = {
-      firstName: document.getElementById('f_firstName').value.trim(),
-      lastName: document.getElementById('f_lastName').value.trim(),
-      email: document.getElementById('f_email').value.trim(),
-      phone: document.getElementById('f_phone').value.trim(),
-      position: document.getElementById('f_position').value,
-      yearsExperience: document.getElementById('f_years').value,
-      experienceSummary: document.getElementById('f_experience').value.trim(),
-      rightToWork: document.getElementById('f_rtw').value === 'yes',
-    }
+    btn.textContent = 'Uploading & submitting…'
+
+    const fd = new FormData()
+    fd.append('firstName', document.getElementById('f_firstName').value.trim())
+    fd.append('lastName', document.getElementById('f_lastName').value.trim())
+    fd.append('email', document.getElementById('f_email').value.trim())
+    fd.append('phone', document.getElementById('f_phone').value.trim())
+    fd.append('position', document.getElementById('f_position').value)
+    fd.append('yearsExperience', document.getElementById('f_years').value)
+    fd.append('experienceSummary', document.getElementById('f_experience').value.trim())
+    fd.append('rightToWork', document.getElementById('f_rtw').value === 'yes' ? 'true' : 'false')
+
+    const cvFile = document.getElementById('f_cv').files[0]
+    if (cvFile) fd.append('cv', cvFile)
+
+    const certFiles = document.getElementById('f_certs').files
+    for (const f of certFiles) fd.append('certificates', f)
+
     try {
       const res = await fetch('https://app.comprehensivecare.org.uk/api/public/apply', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        method: 'POST', body: fd  // no Content-Type — browser sets multipart boundary
       })
       const json = await res.json()
       if (res.ok && json.success) {
