@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -104,30 +104,40 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
     ? `<img src="${su.photo_url}" style="width:90px;height:110px;object-fit:cover;border:1px solid #ccc;display:block;" />`
     : `<div style="width:90px;height:110px;background:#e5e7eb;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#6b7280;">${(name[0]||'?').toUpperCase()}</div>`
 
+  const goldSection = (label: string, value: string) =>
+    value && value !== '—'
+      ? `<div class="section"><strong style="color:#b45309">${label}</strong><p>${value.replace(/\n/g, '<br/>')}</p></div>`
+      : ''
+
   const section = (label: string, value: string) =>
     value && value !== '—' ? `<div class="section"><strong>${label}</strong><p>${value.replace(/\n/g, '<br/>')}</p></div>` : ''
+
+  const sigImg = (dataUrl: string | null | undefined) =>
+    dataUrl ? `<img src="${dataUrl}" style="height:48px;max-width:200px;display:block;margin-bottom:2px;" />` : ''
 
   const signOffHtml = `
     <div style="border:1px solid #ccc;border-radius:4px;padding:14px;margin-top:20px;page-break-inside:avoid">
       <h3 style="font-size:11px;text-transform:uppercase;color:#555;margin:0 0 12px;letter-spacing:.06em">Sign Off</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <div>
-          <p style="font-size:10px;color:#888;margin:0 0 4px">Service User / Family Representative</p>
-          <div style="border-bottom:1px solid #999;height:28px;margin-bottom:4px">${plan.su_signed_by || ''}</div>
-          <div style="display:flex;gap:20px;font-size:10px;color:#888">
-            <span>Name: ${plan.su_signed_by || '________________________'}</span>
-            <span>Date: ${plan.su_signed_date ? new Date(plan.su_signed_date).toLocaleDateString('en-GB') : '________________________'}</span>
+          <p style="font-size:10px;color:#888;margin:0 0 6px;font-weight:600">Service User / Family Representative</p>
+          ${sigImg(plan.su_signature_dataurl)}
+          <div style="border-bottom:1px solid #333;min-height:32px;margin-bottom:6px;font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;padding-bottom:2px">${plan.su_signed_by || ''}</div>
+          <div style="display:flex;gap:16px;font-size:10px;color:#666;margin-top:4px">
+            <span>Name: <strong>${plan.su_signed_by || '________________________'}</strong></span>
+            <span>Date: <strong>${plan.su_signed_date ? new Date(plan.su_signed_date).toLocaleDateString('en-GB') : '________________________'}</strong></span>
           </div>
-          <p style="font-size:9px;color:#aaa;margin-top:4px">${plan.su_sign_off ? '✓ Signed off' : 'Signature required'}</p>
+          <p style="font-size:9px;color:${plan.su_sign_off ? '#065f46' : '#aaa'};margin-top:4px">${plan.su_sign_off ? '✓ Signed off' : 'Signature required'}</p>
         </div>
         <div>
-          <p style="font-size:10px;color:#888;margin:0 0 4px">Staff Member</p>
-          <div style="border-bottom:1px solid #999;height:28px;margin-bottom:4px">${plan.staff_signed_by || ''}</div>
-          <div style="display:flex;gap:20px;font-size:10px;color:#888">
-            <span>Name: ${plan.staff_signed_by || '________________________'}</span>
-            <span>Date: ${plan.staff_signed_date ? new Date(plan.staff_signed_date).toLocaleDateString('en-GB') : '________________________'}</span>
+          <p style="font-size:10px;color:#888;margin:0 0 6px;font-weight:600">Staff Member</p>
+          ${sigImg(plan.staff_signature_dataurl)}
+          <div style="border-bottom:1px solid #333;min-height:32px;margin-bottom:6px;font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;padding-bottom:2px">${plan.staff_signed_by || ''}</div>
+          <div style="display:flex;gap:16px;font-size:10px;color:#666;margin-top:4px">
+            <span>Name: <strong>${plan.staff_signed_by || '________________________'}</strong></span>
+            <span>Date: <strong>${plan.staff_signed_date ? new Date(plan.staff_signed_date).toLocaleDateString('en-GB') : '________________________'}</strong></span>
           </div>
-          <p style="font-size:9px;color:#aaa;margin-top:4px">${plan.staff_sign_off ? '✓ Signed off' : 'Signature required'}</p>
+          <p style="font-size:9px;color:${plan.staff_sign_off ? '#065f46' : '#aaa'};margin-top:4px">${plan.staff_sign_off ? '✓ Signed off' : 'Signature required'}</p>
         </div>
       </div>
     </div>`
@@ -171,10 +181,17 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
         <p>M35 9BG</p>
       </div>
       <div class="header-right">
-        <div class="meta-row"><span class="label">Author:</span><span class="value">${plan.created_by_name || '—'}</span></div>
+        <div class="meta-row"><span class="label">Author:</span><span class="value">${plan.created_by_name || plan.staff_signed_by || '—'}</span></div>
+        <div class="meta-row" style="align-items:flex-start">
+          <span class="label">Signature:</span>
+          <span class="value" style="text-align:right">
+            ${plan.staff_signature_dataurl
+              ? `<img src="${plan.staff_signature_dataurl}" style="height:36px;max-width:130px;" />`
+              : `<span style="font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b">${plan.staff_signed_by || plan.created_by_name || ''}</span>`}
+          </span>
+        </div>
         <div class="meta-row"><span class="label">Latest Review Date:</span><span class="value">${reviewDate}</span></div>
         <div class="meta-row"><span class="label">Next Review Date:</span><span class="value">${nextReview}</span></div>
-        <div class="meta-row"><span class="label">Printed:</span><span class="value">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
       </div>
     </div>
 
@@ -198,9 +215,9 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
 
     <div class="plan-title">${planLabel}</div>
 
-    ${section('My Aims & Outcomes', plan.aims_outcomes || '')}
-    ${section('What I Can Do', plan.what_i_can_do || '')}
-    ${section('How to Support Me', plan.how_to_support || '')}
+    ${goldSection('My Aims & Objectives', plan.aims_outcomes || '')}
+    ${goldSection('What I Can Do', plan.what_i_can_do || '')}
+    ${goldSection('How To Support Me', plan.how_to_support || '')}
     ${plan.attachments_notes ? section('Attachments / Notes', plan.attachments_notes) : ''}
     ${consentHtml}
     ${signOffHtml}
@@ -499,10 +516,10 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
             {plan.medication_support_level && <Field label="Medication Support Level" value={plan.medication_support_level} />}
             {plan.level_of_support && <Field label="Level of Support" value={plan.level_of_support} />}
             {plan.support_types && <Field label="Type of Support" value={plan.support_types} />}
-            <div className="grid md:grid-cols-3 gap-4">
-              {plan.aims_outcomes && <Field label="My Aims / Outcomes" value={plan.aims_outcomes} />}
-              {plan.what_i_can_do && <Field label="What I Can Do" value={plan.what_i_can_do} />}
-              {plan.how_to_support && <Field label="What You Can Do" value={plan.how_to_support} />}
+            <div className="space-y-4">
+              {plan.aims_outcomes && <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />}
+              {plan.what_i_can_do && <GoldSection label="What I Can Do" value={plan.what_i_can_do} />}
+              {plan.how_to_support && <GoldSection label="How To Support Me" value={plan.how_to_support} />}
             </div>
             {plan.regular_medications && <Field label="Regular Medications" value={plan.regular_medications} />}
             {plan.prn_medications && <Field label="PRN Medications" value={plan.prn_medications} />}
@@ -515,10 +532,10 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
             )}
           </>
         ) : (
-          <div className="grid md:grid-cols-3 gap-4">
-            <Field label="My aims & outcomes" value={plan.aims_outcomes || '—'} />
-            <Field label="What I can do" value={plan.what_i_can_do || '—'} />
-            <Field label="How to support me" value={plan.how_to_support || '—'} />
+          <div className="space-y-4">
+            <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
+            <GoldSection label="What I Can Do" value={plan.what_i_can_do} />
+            <GoldSection label="How To Support Me" value={plan.how_to_support} />
           </div>
         )}
 
@@ -551,23 +568,33 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
           <h4 className="font-semibold text-slate-800 text-sm mb-3 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-slate-500" /> Sign Off
           </h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs text-slate-500 mb-1 font-medium">Service User / Family</p>
-              <div className={`flex items-center gap-2 text-sm ${plan.su_sign_off ? 'text-green-700' : 'text-slate-400'}`}>
-                {plan.su_sign_off ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+              <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">Service User / Family</p>
+              {plan.su_signature_dataurl
+                ? <img src={plan.su_signature_dataurl} alt="SU signature" className="h-12 mb-1 border-b border-slate-300" />
+                : plan.su_signed_by
+                  ? <p className="font-['Brush_Script_MT',cursive] italic text-xl text-slate-800 border-b border-slate-300 pb-1 mb-1" style={{ fontFamily: 'cursive' }}>{plan.su_signed_by}</p>
+                  : <div className="h-10 border-b border-slate-300 mb-1" />}
+              <div className={`flex items-center gap-1.5 text-xs mt-1 ${plan.su_sign_off ? 'text-green-700' : 'text-slate-400'}`}>
+                {plan.su_sign_off ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                 {plan.su_sign_off ? 'Signed off' : 'Not signed off'}
               </div>
-              {plan.su_signed_by && <p className="text-xs text-slate-500 mt-1">By: {plan.su_signed_by}</p>}
+              {plan.su_signed_by && <p className="text-xs text-slate-500 mt-0.5">Name: {plan.su_signed_by}</p>}
               {plan.su_signed_date && <p className="text-xs text-slate-400">Date: {format(new Date(plan.su_signed_date), 'd MMM yyyy')}</p>}
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1 font-medium">Staff Member</p>
-              <div className={`flex items-center gap-2 text-sm ${plan.staff_sign_off ? 'text-green-700' : 'text-slate-400'}`}>
-                {plan.staff_sign_off ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+              <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">Staff Member</p>
+              {plan.staff_signature_dataurl
+                ? <img src={plan.staff_signature_dataurl} alt="Staff signature" className="h-12 mb-1 border-b border-slate-300" />
+                : plan.staff_signed_by
+                  ? <p className="italic text-xl text-slate-800 border-b border-slate-300 pb-1 mb-1" style={{ fontFamily: 'cursive' }}>{plan.staff_signed_by}</p>
+                  : <div className="h-10 border-b border-slate-300 mb-1" />}
+              <div className={`flex items-center gap-1.5 text-xs mt-1 ${plan.staff_sign_off ? 'text-green-700' : 'text-slate-400'}`}>
+                {plan.staff_sign_off ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                 {plan.staff_sign_off ? 'Signed off' : 'Not signed off'}
               </div>
-              {plan.staff_signed_by && <p className="text-xs text-slate-500 mt-1">By: {plan.staff_signed_by}</p>}
+              {plan.staff_signed_by && <p className="text-xs text-slate-500 mt-0.5">Name: {plan.staff_signed_by}</p>}
               {plan.staff_signed_date && <p className="text-xs text-slate-400">Date: {format(new Date(plan.staff_signed_date), 'd MMM yyyy')}</p>}
             </div>
           </div>
@@ -590,6 +617,82 @@ function Field({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-sm text-slate-700 whitespace-pre-line">{value}</p>
+    </div>
+  )
+}
+
+function GoldSection({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null
+  return (
+    <div className="border border-amber-100 rounded-xl p-4 bg-amber-50/30">
+      <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
+    </div>
+  )
+}
+
+function SignaturePad({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawing = useRef(false)
+  const lastPos = useRef<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !value) return
+    if (value.startsWith('data:')) {
+      const img = new Image()
+      img.onload = () => { canvas.getContext('2d')?.drawImage(img, 0, 0) }
+      img.src = value
+    }
+  }, [])
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current!
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    if ('touches' in e) {
+      return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY }
+    }
+    return { x: ((e as React.MouseEvent).clientX - rect.left) * scaleX, y: ((e as React.MouseEvent).clientY - rect.top) * scaleY }
+  }
+
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault(); drawing.current = true; lastPos.current = getPos(e)
+  }
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    if (!drawing.current) return
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext('2d')!
+    const pos = getPos(e)
+    ctx.beginPath(); ctx.moveTo(lastPos.current!.x, lastPos.current!.y)
+    ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke()
+    lastPos.current = pos
+    onChange(canvas.toDataURL())
+  }
+  const stopDraw = () => { drawing.current = false; lastPos.current = null }
+  const clear = useCallback(() => {
+    const canvas = canvasRef.current!
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    onChange('')
+  }, [onChange])
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-500 mb-1.5">{label}</p>
+      <div className="border border-slate-300 rounded-lg overflow-hidden bg-white" style={{ touchAction: 'none' }}>
+        <canvas ref={canvasRef} width={560} height={100}
+          className="block w-full cursor-crosshair"
+          style={{ height: 80 }}
+          onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+          onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
+        />
+      </div>
+      <button type="button" onClick={clear} className="text-xs text-slate-400 hover:text-red-500 mt-1 transition-colors">
+        Clear signature
+      </button>
     </div>
   )
 }
@@ -806,6 +909,8 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
     suSignedDate: plan.su_signed_date ? plan.su_signed_date.split('T')[0] : '',
     staffSignedBy: plan.staff_signed_by || '',
     staffSignedDate: plan.staff_signed_date ? plan.staff_signed_date.split('T')[0] : '',
+    suSignatureDataurl: plan.su_signature_dataurl || '',
+    staffSignatureDataurl: plan.staff_signature_dataurl || '',
     attachmentsNotes: plan.attachments_notes || '',
     consentNotes: plan.consent_notes || '',
     consentGiven: plan.consent_given || false,
@@ -871,8 +976,9 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
               </label>
               {form.suSignOff && (
                 <>
-                  <input className="input w-full text-sm" placeholder="Name of service user / representative" value={form.suSignedBy} onChange={e => set('suSignedBy', e.target.value)} />
+                  <input className="input w-full text-sm" placeholder="Full name of service user / representative" value={form.suSignedBy} onChange={e => set('suSignedBy', e.target.value)} />
                   <input type="date" className="input w-full text-sm" value={form.suSignedDate} onChange={e => set('suSignedDate', e.target.value)} />
+                  <SignaturePad label="Draw signature below" value={form.suSignatureDataurl} onChange={v => set('suSignatureDataurl', v)} />
                 </>
               )}
             </div>
@@ -884,8 +990,9 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
               </label>
               {form.staffSignOff && (
                 <>
-                  <input className="input w-full text-sm" placeholder="Staff member name" value={form.staffSignedBy} onChange={e => set('staffSignedBy', e.target.value)} />
+                  <input className="input w-full text-sm" placeholder="Staff member full name" value={form.staffSignedBy} onChange={e => set('staffSignedBy', e.target.value)} />
                   <input type="date" className="input w-full text-sm" value={form.staffSignedDate} onChange={e => set('staffSignedDate', e.target.value)} />
+                  <SignaturePad label="Draw signature below" value={form.staffSignatureDataurl} onChange={v => set('staffSignatureDataurl', v)} />
                 </>
               )}
             </div>

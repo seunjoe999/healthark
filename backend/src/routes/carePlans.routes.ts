@@ -136,6 +136,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
               reviewFrequency, updateNotes, attachmentsNotes, suSignOff, staffSignOff,
               suSignedBy, suSignedDate, staffSignedBy, staffSignedDate,
               consentNotes, consentGiven, consentDate,
+              suSignatureDataurl, staffSignatureDataurl,
               medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
               dateMedicationReview, regularMedications, prnMedications, otcMedications,
               prnProtocol, prnList, indicationForUse } = req.body;
@@ -180,7 +181,9 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           staff_signed_date        = COALESCE($26, staff_signed_date),
           consent_notes            = COALESCE($27, consent_notes),
           consent_given            = COALESCE($28, consent_given),
-          consent_date             = COALESCE($29, consent_date)
+          consent_date             = COALESCE($29, consent_date),
+          su_signature_dataurl     = COALESCE($30, su_signature_dataurl),
+          staff_signature_dataurl  = COALESCE($31, staff_signature_dataurl)
          WHERE id = $8 RETURNING *`,
         [aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved || null,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
@@ -190,7 +193,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          prnProtocol ?? null, prnList ?? null, indicationForUse ?? null,
          attachmentsNotes ?? null, suSignOff ?? null, staffSignOff ?? null,
          suSignedBy ?? null, nd(suSignedDate), staffSignedBy ?? null, nd(staffSignedDate),
-         consentNotes ?? null, consentGiven ?? null, nd(consentDate)]
+         consentNotes ?? null, consentGiven ?? null, nd(consentDate),
+         suSignatureDataurl ?? null, staffSignatureDataurl ?? null]
       );
       if (!rows.length) throw new AppError('Care plan not found', 404);
 
