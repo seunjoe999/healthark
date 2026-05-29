@@ -36,9 +36,9 @@ export default function LandingPage() {
           </div>
           <div className="flex gap-4">
             <a href="#careers" className="text-sm font-semibold text-slate-600 hover:text-purple-600 px-4 py-2 transition-colors">Careers</a>
-            <Link to="/login" className="text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 px-5 py-2 rounded-full transition-colors shadow-sm">
+            <a href="https://app.comprehensivecare.org.uk/login" className="text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 px-5 py-2 rounded-full transition-colors shadow-sm">
               Staff Login
-            </Link>
+            </a>
           </div>
         </div>
       </nav>
