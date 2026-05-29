@@ -710,6 +710,13 @@ async function ensureColumns() {
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS fully_compliant BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS ready_to_start BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS start_date DATE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS reference_number VARCHAR(20) UNIQUE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS experience_summary TEXT`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS years_experience VARCHAR(20)`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS right_to_work BOOLEAN DEFAULT TRUE`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS interview_date TIMESTAMP`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS interview_notes TEXT`,
+    `ALTER TABLE recruitment_candidates ADD COLUMN IF NOT EXISTS rejection_reason TEXT`,
     // Copy body -> message for existing rows that only have body
     `UPDATE staff_messages SET message = body WHERE message IS NULL AND body IS NOT NULL`,
     // Fix audit_reports attachments (was mistakenly added as 'audits')

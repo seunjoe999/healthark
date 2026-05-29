@@ -1,4 +1,4 @@
-<!-- v2 2026-05-29 -->
+<!-- v3 black-gold 2026-05-29 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,244 +16,249 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --emerald:#059669;--emerald2:#047857;--emerald-light:#d1fae5;--emerald-pale:#ecfdf5;
-      --amber:#f59e0b;--amber2:#d97706;
-      --slate:#1e293b;--slate2:#334155;--slate3:#475569;--muted:#94a3b8;
-      --white:#fff;--off-white:#f8fafc;--border:#e2e8f0;
+      --gold:#d4a017;--gold-light:#f0c840;--gold-dark:#a07a10;
+      --gold-pale:rgba(212,160,23,.08);--gold-border:rgba(212,160,23,.25);
+      --black:#080808;--black2:#111111;--black3:#181818;--black4:#222222;
+      --white:#ffffff;--off-white:#f5f5f5;
+      --grey:#a0a0a0;--grey2:#6a6a6a;--border:rgba(255,255,255,.08);
       --radius:16px;--radius-sm:10px;
     }
     html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
-    body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--slate);background:var(--white);overflow-x:hidden;line-height:1.65}
-    img{display:block;max-width:100%}
+    body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--white);background:var(--black);overflow-x:hidden;line-height:1.65}
+    img{display:block;max-width:100%;object-fit:cover}
     a{text-decoration:none;color:inherit}
-
-    /* ── RESET ── */
     button{cursor:pointer;border:none;font-family:inherit}
+    h1,h2,h3,h4{font-family:'Fraunces',Georgia,serif;line-height:1.15}
 
     /* ── NAV ── */
     nav{position:fixed;inset:0 0 auto;z-index:300;height:70px;display:flex;align-items:center;padding:0 5%;
-        background:rgba(255,255,255,.92);backdrop-filter:blur(20px);
+        background:rgba(8,8,8,.92);backdrop-filter:blur(20px);
         border-bottom:1px solid var(--border);transition:box-shadow .3s}
-    nav.scrolled{box-shadow:0 4px 20px rgba(0,0,0,.08)}
+    nav.scrolled{box-shadow:0 4px 20px rgba(0,0,0,.4);border-bottom-color:var(--gold-border)}
     .nav-inner{max-width:1200px;width:100%;margin:0 auto;display:flex;align-items:center;gap:2rem}
-    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.1rem;color:var(--slate)}
-    .nav-logo span{color:var(--emerald)}
-    .logo-pill{background:var(--emerald);color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1rem}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.1rem;color:var(--white)}
+    .logo-img{width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0}
     .nav-links{display:flex;align-items:center;gap:1.75rem;margin-left:auto}
-    .nav-links a{font-size:.9rem;font-weight:500;color:var(--slate3);transition:color .2s}
-    .nav-links a:hover{color:var(--emerald)}
-    .nav-cta{background:var(--emerald);color:#fff;padding:.55rem 1.25rem;border-radius:50px;font-weight:600;font-size:.9rem;transition:background .2s,transform .15s}
-    .nav-cta:hover{background:var(--emerald2);transform:translateY(-1px)}
+    .nav-links a{font-size:.92rem;font-weight:600;color:#e0e0e0;transition:color .2s}
+    .nav-links a:hover{color:var(--gold)}
+    .nav-cta{background:var(--gold);color:#000;padding:.55rem 1.4rem;border-radius:50px;font-weight:800;font-size:.92rem;transition:background .2s,transform .15s;letter-spacing:.01em}
+    .nav-cta:hover{background:var(--gold-light);transform:translateY(-1px)}
     .nav-toggle{display:none;flex-direction:column;gap:5px;background:none;padding:4px}
-    .nav-toggle span{display:block;width:24px;height:2px;background:var(--slate);border-radius:2px;transition:.3s}
-    .mobile-nav{display:none;position:fixed;inset:70px 0 0;background:#fff;z-index:200;padding:2rem;flex-direction:column;gap:1.25rem;border-top:1px solid var(--border)}
+    .nav-toggle span{display:block;width:24px;height:2px;background:var(--white);border-radius:2px;transition:.3s}
+    .mobile-nav{display:none;position:fixed;inset:70px 0 0;background:var(--black2);z-index:200;padding:2rem;flex-direction:column;gap:1.25rem;border-top:1px solid var(--border)}
     .mobile-nav.open{display:flex}
-    .mobile-nav a{font-size:1.05rem;font-weight:600;color:var(--slate);padding:.5rem 0;border-bottom:1px solid var(--border)}
+    .mobile-nav a{font-size:1.05rem;font-weight:600;color:var(--white);padding:.5rem 0;border-bottom:1px solid var(--border)}
 
     /* ── HELPERS ── */
     .container{max-width:1200px;margin:0 auto;padding:0 5%}
     .section{padding:100px 0}
     .section-sm{padding:72px 0}
-    .badge{display:inline-flex;align-items:center;gap:.4rem;background:var(--emerald-pale);color:var(--emerald2);font-size:.78rem;font-weight:700;padding:.35rem .85rem;border-radius:50px;letter-spacing:.03em;text-transform:uppercase;border:1px solid #a7f3d0}
-    .badge.amber{background:#fffbeb;color:#92400e;border-color:#fde68a}
-    .tag{display:inline-block;background:var(--emerald-pale);color:var(--emerald2);font-size:.75rem;font-weight:600;padding:.25rem .6rem;border-radius:6px}
-    h1,h2,h3,h4{font-family:'Fraunces',Georgia,serif;line-height:1.15}
+    .badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(212,160,23,.12);color:var(--gold);font-size:.78rem;font-weight:700;padding:.35rem .85rem;border-radius:50px;letter-spacing:.03em;text-transform:uppercase;border:1px solid var(--gold-border)}
 
     /* ── HERO ── */
-    .hero{padding:140px 0 80px;background:linear-gradient(180deg,#f0fdf4 0%,#fff 100%);position:relative;overflow:hidden}
-    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 60% 20%,rgba(5,150,105,.07) 0%,transparent 70%)}
+    .hero{padding:130px 0 80px;background:var(--black);position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 70% 30%,rgba(212,160,23,.06) 0%,transparent 70%)}
     .hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;position:relative;z-index:1}
     .hero-eyebrow{margin-bottom:1.5rem}
-    .hero h1{font-size:clamp(2.6rem,5vw,3.8rem);color:var(--slate);margin-bottom:1.25rem;font-weight:900}
-    .hero h1 em{font-style:italic;color:var(--emerald)}
-    .hero p.lead{font-size:1.15rem;color:var(--slate3);margin-bottom:2rem;max-width:480px;line-height:1.7}
+    .hero h1{font-size:clamp(2.6rem,5vw,3.8rem);color:var(--white);margin-bottom:1.25rem;font-weight:900}
+    .hero h1 em{font-style:italic;color:var(--gold)}
+    .hero p.lead{font-size:1.15rem;color:var(--grey);margin-bottom:2rem;max-width:480px;line-height:1.7}
     .hero-actions{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
     .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.75rem;border-radius:50px;font-weight:700;font-size:.95rem;transition:all .2s;cursor:pointer}
-    .btn-primary{background:var(--emerald);color:#fff;box-shadow:0 4px 15px rgba(5,150,105,.3)}
-    .btn-primary:hover{background:var(--emerald2);transform:translateY(-2px);box-shadow:0 8px 25px rgba(5,150,105,.35)}
-    .btn-outline{background:transparent;color:var(--slate);border:2px solid var(--border)}
-    .btn-outline:hover{border-color:var(--emerald);color:var(--emerald);background:var(--emerald-pale)}
+    .btn-primary{background:var(--gold);color:#000;box-shadow:0 4px 20px rgba(212,160,23,.35)}
+    .btn-primary:hover{background:var(--gold-light);transform:translateY(-2px);box-shadow:0 8px 30px rgba(212,160,23,.45)}
+    .btn-outline{background:transparent;color:var(--white);border:2px solid var(--border)}
+    .btn-outline:hover{border-color:var(--gold);color:var(--gold)}
     .hero-trust{margin-top:2.5rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
-    .hero-trust span{font-size:.82rem;color:var(--muted)}
-    .trust-pill{display:flex;align-items:center;gap:.35rem;background:#fff;border:1px solid var(--border);padding:.35rem .75rem;border-radius:50px;font-size:.8rem;font-weight:600;color:var(--slate2)}
-    .trust-pill svg{width:14px;height:14px;color:var(--emerald)}
+    .hero-trust span{font-size:.82rem;color:var(--grey2)}
+    .trust-pill{display:flex;align-items:center;gap:.35rem;background:var(--black3);border:1px solid var(--border);padding:.35rem .75rem;border-radius:50px;font-size:.8rem;font-weight:600;color:var(--grey)}
+    .trust-pill svg{width:14px;height:14px;color:var(--gold)}
 
-    /* Hero dashboard mockup */
-    .hero-visual{position:relative}
-    .dashboard-mock{background:#fff;border-radius:20px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.12),0 0 0 1px rgba(0,0,0,.04);overflow:hidden}
-    .mock-header{background:var(--slate);padding:.75rem 1.25rem;display:flex;align-items:center;gap:.5rem}
-    .mock-dot{width:10px;height:10px;border-radius:50%}
-    .mock-titlebar{flex:1;background:rgba(255,255,255,.1);border-radius:4px;height:20px;margin:0 .5rem}
-    .mock-body{padding:1.25rem;display:flex;flex-direction:column;gap:.75rem}
-    .mock-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
-    .mock-card{background:var(--off-white);border-radius:10px;padding:.75rem;border:1px solid var(--border)}
-    .mock-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-    .mock-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
-    .mock-icon svg{width:14px;height:14px}
-    .mock-num{font-size:1.3rem;font-weight:800;color:var(--slate);font-family:'Fraunces',serif}
-    .mock-label{font-size:.65rem;color:var(--muted);font-weight:500}
-    .mock-bar-wrap{background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden;margin-top:.5rem}
-    .mock-bar{height:100%;border-radius:4px}
-    .mock-list{background:var(--off-white);border-radius:10px;padding:.75rem;border:1px solid var(--border);display:flex;flex-direction:column;gap:.5rem}
-    .mock-list-item{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;background:#fff;border-radius:7px}
-    .mock-avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#059669,#34d399);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.6rem;font-weight:700;flex-shrink:0}
-    .mock-item-text{flex:1}
-    .mock-item-name{font-size:.65rem;font-weight:600;color:var(--slate)}
-    .mock-item-sub{font-size:.58rem;color:var(--muted)}
-    .mock-status{font-size:.55rem;padding:.15rem .4rem;border-radius:4px;font-weight:700}
-    .status-live{background:#d1fae5;color:#065f46}
-    .status-hosp{background:#fee2e2;color:#991b1b}
-    .floating-pill{position:absolute;background:#fff;border-radius:50px;padding:.55rem 1rem;box-shadow:0 8px 30px rgba(0,0,0,.12);display:flex;align-items:center;gap:.5rem;font-size:.78rem;font-weight:700;border:1px solid var(--border);white-space:nowrap}
-    .fp1{top:-20px;right:-10px;color:var(--emerald)}
-    .fp2{bottom:40px;left:-20px;color:#7c3aed}
-    .fp3{bottom:-15px;right:20px;color:var(--amber2)}
-    .dot-em{width:8px;height:8px;border-radius:50%}
-    .dot-green{background:var(--emerald)}
-    .dot-purple{background:#7c3aed}
-    .dot-amber{background:var(--amber)}
+    /* ── HERO PHOTO COLLAGE ── */
+    .hero-photos{position:relative;height:520px}
+    .hero-photo-main{position:absolute;right:0;top:0;width:72%;height:420px;border-radius:20px;overflow:hidden;border:2px solid var(--gold-border)}
+    .hero-photo-main img{width:100%;height:100%;object-fit:cover}
+    .hero-photo-secondary{position:absolute;left:0;bottom:0;width:54%;height:280px;border-radius:16px;overflow:hidden;border:2px solid var(--gold-border);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+    .hero-photo-secondary img{width:100%;height:100%;object-fit:cover}
+    .hero-metric{position:absolute;background:rgba(8,8,8,.92);border:1px solid var(--gold-border);backdrop-filter:blur(12px);border-radius:14px;padding:.85rem 1.2rem;display:flex;align-items:center;gap:.75rem;white-space:nowrap}
+    .hm1{top:20px;left:10px}
+    .hm2{bottom:90px;right:-10px}
+    .hm-icon{width:36px;height:36px;border-radius:10px;background:rgba(212,160,23,.15);display:flex;align-items:center;justify-content:center}
+    .hm-icon svg{width:18px;height:18px;color:var(--gold)}
+    .hm-val{font-size:1.1rem;font-weight:800;color:var(--white);font-family:'Fraunces',serif}
+    .hm-label{font-size:.72rem;color:var(--grey);margin-top:1px}
 
     /* ── STATS BAND ── */
-    .stats-band{background:var(--slate);padding:56px 0}
+    .stats-band{background:var(--black2);padding:56px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
     .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;text-align:center}
-    .stat-item{}
-    .stat-num{font-family:'Fraunces',serif;font-size:2.8rem;font-weight:900;color:#fff;line-height:1}
-    .stat-num span{color:var(--emerald)}
-    .stat-label{color:var(--muted);font-size:.88rem;margin-top:.4rem}
+    .stat-num{font-family:'Fraunces',serif;font-size:2.8rem;font-weight:900;color:var(--gold);line-height:1}
+    .stat-num span{color:var(--white)}
+    .stat-label{color:var(--grey);font-size:.88rem;margin-top:.4rem}
 
-    /* ── FEATURES HIGHLIGHT ── */
+    /* ── CARE PHOTOS SECTION ── */
+    .care-photos-section{padding:90px 0;background:var(--black)}
+    .care-photos-intro{text-align:center;max-width:600px;margin:0 auto 3.5rem}
+    .care-photos-intro h2{font-size:clamp(1.8rem,3.5vw,2.6rem);color:var(--white);margin-bottom:1rem}
+    .care-photos-intro p{color:var(--grey)}
+    .care-photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+    .care-photo-card{border-radius:20px;overflow:hidden;position:relative;height:320px;border:1px solid var(--border)}
+    .care-photo-card img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+    .care-photo-card:hover img{transform:scale(1.04)}
+    .care-photo-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,8,8,.85) 0%,transparent 60%);display:flex;align-items:flex-end;padding:1.5rem}
+    .care-photo-label{font-size:.9rem;font-weight:700;color:var(--white)}
+    .care-photo-sub{font-size:.78rem;color:var(--gold);margin-top:2px}
+
+    /* ── FEATURES ── */
     .features-intro{text-align:center;max-width:640px;margin:0 auto 4rem}
-    .features-intro h2{font-size:clamp(2rem,4vw,2.8rem);color:var(--slate);margin-bottom:1rem}
-    .features-intro p{font-size:1.05rem;color:var(--slate3)}
+    .features-intro h2{font-size:clamp(2rem,4vw,2.8rem);color:var(--white);margin-bottom:1rem}
+    .features-intro p{font-size:1.05rem;color:var(--grey)}
     .features-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
-    .feature-big{background:var(--off-white);border:1px solid var(--border);border-radius:24px;padding:2.5rem;position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
-    .feature-big:hover{box-shadow:0 20px 50px rgba(0,0,0,.08);transform:translateY(-4px)}
-    .feature-big.accent{background:linear-gradient(135deg,var(--slate) 0%,#1e293b 100%);border-color:transparent;color:#fff}
-    .feature-big.accent .feat-icon-wrap{background:rgba(255,255,255,.1)}
-    .feature-big.accent h3{color:#fff}
-    .feature-big.accent p{color:#94a3b8}
-    .feature-big.accent .feat-tag{background:rgba(5,150,105,.3);color:#6ee7b7}
-    .feature-big.green-accent{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-color:#bbf7d0}
-    .feature-big.green-accent .feat-icon-wrap{background:var(--emerald);color:#fff}
-    .feat-icon-wrap{width:52px;height:52px;border-radius:14px;background:var(--emerald-pale);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;color:var(--emerald)}
+    .feature-big{background:var(--black3);border:1px solid var(--border);border-radius:24px;padding:2.5rem;position:relative;overflow:hidden;transition:box-shadow .2s,border-color .2s,transform .2s}
+    .feature-big:hover{box-shadow:0 20px 50px rgba(0,0,0,.4);transform:translateY(-4px);border-color:var(--gold-border)}
+    .feature-big.gold-accent{background:linear-gradient(135deg,rgba(212,160,23,.12) 0%,rgba(212,160,23,.04) 100%);border-color:var(--gold-border)}
+    .feature-big.dark-accent{background:var(--black4);border-color:rgba(212,160,23,.15)}
+    .feat-icon-wrap{width:52px;height:52px;border-radius:14px;background:rgba(212,160,23,.12);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;color:var(--gold)}
     .feat-icon-wrap svg{width:24px;height:24px}
-    .feature-big h3{font-size:1.4rem;color:var(--slate);margin-bottom:.75rem;font-weight:800}
-    .feature-big p{font-size:.95rem;color:var(--slate3);line-height:1.7}
-    .feat-tag{display:inline-block;margin-top:1rem;background:var(--emerald-pale);color:var(--emerald2);font-size:.75rem;font-weight:700;padding:.3rem .75rem;border-radius:50px}
+    .feature-big h3{font-size:1.4rem;color:var(--white);margin-bottom:.75rem;font-weight:800}
+    .feature-big p{font-size:.95rem;color:var(--grey);line-height:1.7}
+    .feat-tag{display:inline-block;margin-top:1rem;background:rgba(212,160,23,.12);color:var(--gold);font-size:.75rem;font-weight:700;padding:.3rem .75rem;border-radius:50px;border:1px solid var(--gold-border)}
     .feature-small-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:2rem}
-    .feature-small{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem;transition:box-shadow .2s,transform .2s}
-    .feature-small:hover{box-shadow:0 12px 35px rgba(0,0,0,.07);transform:translateY(-3px)}
-    .fs-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+    .feature-small{background:var(--black3);border:1px solid var(--border);border-radius:16px;padding:1.5rem;transition:box-shadow .2s,border-color .2s,transform .2s}
+    .feature-small:hover{box-shadow:0 12px 35px rgba(0,0,0,.3);transform:translateY(-3px);border-color:var(--gold-border)}
+    .fs-icon{width:40px;height:40px;border-radius:10px;background:rgba(212,160,23,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
     .fs-icon svg{width:20px;height:20px}
-    .bg-emerald-soft{background:var(--emerald-pale);color:var(--emerald)}
-    .bg-purple-soft{background:#f3e8ff;color:#7c3aed}
-    .bg-blue-soft{background:#eff6ff;color:#2563eb}
-    .bg-orange-soft{background:#fff7ed;color:#c2410c}
-    .bg-rose-soft{background:#fff1f2;color:#be123c}
-    .bg-amber-soft{background:#fffbeb;color:#b45309}
-    .feature-small h4{font-size:1rem;font-weight:800;color:var(--slate);margin-bottom:.4rem}
-    .feature-small p{font-size:.85rem;color:var(--slate3);line-height:1.6}
+    .feature-small h4{font-size:1rem;font-weight:800;color:var(--white);margin-bottom:.4rem}
+    .feature-small p{font-size:.85rem;color:var(--grey);line-height:1.6}
 
     /* ── HOW IT WORKS ── */
-    .how-section{background:var(--slate);padding:100px 0;overflow:hidden;position:relative}
-    .how-section::before{content:'';position:absolute;top:-100px;right:-100px;width:500px;height:500px;border-radius:50%;background:rgba(5,150,105,.07)}
+    .how-section{background:var(--black2);padding:100px 0;overflow:hidden;position:relative}
+    .how-section::before{content:'';position:absolute;top:-100px;right:-100px;width:500px;height:500px;border-radius:50%;background:rgba(212,160,23,.04)}
     .how-intro{text-align:center;max-width:600px;margin:0 auto 4rem}
-    .how-intro h2{font-size:clamp(2rem,4vw,2.7rem);color:#fff;margin-bottom:1rem}
-    .how-intro p{color:#94a3b8;font-size:1.05rem}
+    .how-intro h2{font-size:clamp(2rem,4vw,2.7rem);color:var(--white);margin-bottom:1rem}
+    .how-intro p{color:var(--grey);font-size:1.05rem}
     .steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;position:relative;z-index:1}
     .step{text-align:center;padding:1.5rem 1rem}
-    .step-num{width:56px;height:56px;border-radius:50%;background:rgba(5,150,105,.15);border:2px solid rgba(5,150,105,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-family:'Fraunces',serif;font-size:1.5rem;font-weight:900;color:var(--emerald)}
-    .step h3{font-size:1.1rem;color:#fff;margin-bottom:.6rem;font-weight:700}
-    .step p{font-size:.88rem;color:#94a3b8;line-height:1.6}
+    .step-num{width:56px;height:56px;border-radius:50%;background:rgba(212,160,23,.12);border:2px solid var(--gold-border);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-family:'Fraunces',serif;font-size:1.5rem;font-weight:900;color:var(--gold)}
+    .step h3{font-size:1.1rem;color:var(--white);margin-bottom:.6rem;font-weight:700}
+    .step p{font-size:.88rem;color:var(--grey);line-height:1.6}
 
     /* ── TESTIMONIALS ── */
-    .testi-section{background:var(--off-white);padding:100px 0}
+    .testi-section{background:var(--black);padding:100px 0}
     .testi-intro{text-align:center;max-width:600px;margin:0 auto 4rem}
-    .testi-intro h2{font-size:clamp(1.8rem,3.5vw,2.6rem);color:var(--slate);margin-bottom:.75rem}
-    .testi-intro p{color:var(--slate3)}
+    .testi-intro h2{font-size:clamp(1.8rem,3.5vw,2.6rem);color:var(--white);margin-bottom:.75rem}
+    .testi-intro p{color:var(--grey)}
     .testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.75rem}
-    .testi-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:2rem;position:relative}
-    .testi-card::before{content:'"';position:absolute;top:1rem;right:1.5rem;font-size:4rem;line-height:1;color:var(--border);font-family:'Fraunces',serif}
+    .testi-card{background:var(--black3);border:1px solid var(--border);border-radius:20px;padding:2rem;position:relative;transition:border-color .2s}
+    .testi-card:hover{border-color:var(--gold-border)}
+    .testi-card::before{content:'"';position:absolute;top:1rem;right:1.5rem;font-size:4rem;line-height:1;color:rgba(212,160,23,.15);font-family:'Fraunces',serif}
     .stars{display:flex;gap:3px;margin-bottom:1rem}
-    .star{color:#f59e0b;font-size:1rem}
-    .testi-text{font-size:.95rem;color:var(--slate2);line-height:1.75;margin-bottom:1.5rem;font-style:italic}
+    .star{color:var(--gold);font-size:1rem}
+    .testi-text{font-size:.95rem;color:var(--grey);line-height:1.75;margin-bottom:1.5rem;font-style:italic}
     .testi-author{display:flex;align-items:center;gap:.75rem}
-    .testi-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:.85rem;flex-shrink:0}
-    .testi-name{font-weight:700;font-size:.88rem;color:var(--slate)}
-    .testi-role{font-size:.78rem;color:var(--muted)}
+    .testi-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#000;font-size:.85rem;flex-shrink:0;background:var(--gold)}
+    .testi-name{font-weight:700;font-size:.88rem;color:var(--white)}
+    .testi-role{font-size:.78rem;color:var(--grey2)}
 
     /* ── COMPLIANCE BAND ── */
-    .compliance-band{padding:80px 0;background:#fff;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+    .compliance-band{padding:80px 0;background:var(--black2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
     .compliance-inner{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
-    .compliance-text h2{font-size:clamp(1.8rem,3.5vw,2.5rem);color:var(--slate);margin-bottom:1rem}
-    .compliance-text p{font-size:1rem;color:var(--slate3);margin-bottom:1.75rem;line-height:1.7}
+    .compliance-text h2{font-size:clamp(1.8rem,3.5vw,2.5rem);color:var(--white);margin-bottom:1rem}
+    .compliance-text p{font-size:1rem;color:var(--grey);margin-bottom:1.75rem;line-height:1.7}
     .compliance-list{display:flex;flex-direction:column;gap:.85rem}
     .comp-item{display:flex;align-items:flex-start;gap:.75rem}
-    .comp-check{width:22px;height:22px;border-radius:50%;background:var(--emerald);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-    .comp-check svg{width:12px;height:12px;color:#fff}
-    .comp-item-text strong{font-size:.92rem;color:var(--slate);display:block}
-    .comp-item-text span{font-size:.82rem;color:var(--muted)}
+    .comp-check{width:22px;height:22px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .comp-check svg{width:12px;height:12px;color:#000}
+    .comp-item-text strong{font-size:.92rem;color:var(--white);display:block}
+    .comp-item-text span{font-size:.82rem;color:var(--grey)}
     .compliance-badges{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem}
-    .comp-badge{background:var(--off-white);border:1px solid var(--border);border-radius:16px;padding:1.5rem;text-align:center}
+    .comp-badge{background:var(--black3);border:1px solid var(--border);border-radius:16px;padding:1.5rem;text-align:center;transition:border-color .2s}
+    .comp-badge:hover{border-color:var(--gold-border)}
     .comp-badge-icon{font-size:2rem;margin-bottom:.5rem}
-    .comp-badge-title{font-size:.88rem;font-weight:700;color:var(--slate);margin-bottom:.25rem}
-    .comp-badge-desc{font-size:.78rem;color:var(--muted)}
+    .comp-badge-title{font-size:.88rem;font-weight:700;color:var(--white);margin-bottom:.25rem}
+    .comp-badge-desc{font-size:.78rem;color:var(--grey)}
 
     /* ── MODULES ── */
-    .modules-section{padding:100px 0;background:var(--off-white)}
+    .modules-section{padding:100px 0;background:var(--black)}
     .modules-intro{text-align:center;max-width:580px;margin:0 auto 3.5rem}
-    .modules-intro h2{font-size:clamp(1.8rem,3.5vw,2.5rem);color:var(--slate);margin-bottom:.75rem}
+    .modules-intro h2{font-size:clamp(1.8rem,3.5vw,2.5rem);color:var(--white);margin-bottom:.75rem}
+    .modules-intro p{color:var(--grey)}
     .modules-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
-    .module-chip{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;display:flex;align-items:center;gap:.7rem;transition:all .2s}
-    .module-chip:hover{border-color:var(--emerald);background:var(--emerald-pale);transform:translateY(-2px);box-shadow:0 8px 20px rgba(5,150,105,.1)}
-    .module-chip svg{width:18px;height:18px;color:var(--emerald);flex-shrink:0}
-    .module-chip span{font-size:.85rem;font-weight:600;color:var(--slate2)}
+    .module-chip{background:var(--black3);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;display:flex;align-items:center;gap:.7rem;transition:all .2s}
+    .module-chip:hover{border-color:var(--gold-border);background:rgba(212,160,23,.06);transform:translateY(-2px)}
+    .module-chip svg{width:18px;height:18px;color:var(--gold);flex-shrink:0}
+    .module-chip span{font-size:.85rem;font-weight:600;color:var(--grey)}
 
     /* ── CTA ── */
-    .cta-section{background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:100px 0;position:relative;overflow:hidden;text-align:center}
-    .cta-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(255,255,255,.08) 0%,transparent 70%)}
-    .cta-section h2{font-size:clamp(2rem,4vw,3rem);color:#fff;margin-bottom:1rem;position:relative;z-index:1}
-    .cta-section p{font-size:1.1rem;color:rgba(255,255,255,.8);max-width:520px;margin:0 auto 2.5rem;line-height:1.7;position:relative;z-index:1}
+    .cta-section{background:linear-gradient(135deg,#1a1200 0%,#0d0900 100%);padding:100px 0;position:relative;overflow:hidden;text-align:center;border-top:1px solid var(--gold-border);border-bottom:1px solid var(--gold-border)}
+    .cta-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(212,160,23,.08) 0%,transparent 70%)}
+    .cta-section h2{font-size:clamp(2rem,4vw,3rem);color:var(--white);margin-bottom:1rem;position:relative;z-index:1}
+    .cta-section h2 span{color:var(--gold)}
+    .cta-section p{font-size:1.1rem;color:var(--grey);max-width:520px;margin:0 auto 2.5rem;line-height:1.7;position:relative;z-index:1}
     .cta-actions{display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;position:relative;z-index:1}
-    .btn-white{background:#fff;color:var(--emerald);box-shadow:0 4px 20px rgba(0,0,0,.15)}
-    .btn-white:hover{background:#f0fdf4;transform:translateY(-2px)}
-    .btn-ghost{background:rgba(255,255,255,.15);color:#fff;border:2px solid rgba(255,255,255,.35)}
-    .btn-ghost:hover{background:rgba(255,255,255,.25)}
+    .btn-gold{background:var(--gold);color:#000;box-shadow:0 4px 25px rgba(212,160,23,.4);font-weight:800}
+    .btn-gold:hover{background:var(--gold-light);transform:translateY(-2px)}
+    .btn-ghost{background:rgba(212,160,23,.1);color:var(--white);border:2px solid var(--gold-border)}
+    .btn-ghost:hover{background:rgba(212,160,23,.2);border-color:var(--gold)}
 
     /* ── CAREERS ── */
-    .careers-section{padding:100px 0;background:#fff}
+    .careers-section{padding:100px 0;background:var(--black2)}
     .careers-intro{text-align:center;max-width:580px;margin:0 auto 3.5rem}
-    .careers-intro h2{font-size:clamp(1.8rem,3.5vw,2.5rem);color:var(--slate);margin-bottom:.75rem}
-    .careers-intro p{color:var(--slate3)}
+    .careers-intro h2{font-size:clamp(1.8rem,3.5vw,2.5rem);color:var(--white);margin-bottom:.75rem}
+    .careers-intro p{color:var(--grey)}
     .careers-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:3rem}
-    .job-card{background:var(--off-white);border:1px solid var(--border);border-radius:16px;padding:1.5rem;display:flex;align-items:start;gap:1rem;transition:box-shadow .2s,border-color .2s}
-    .job-card:hover{box-shadow:0 8px 25px rgba(0,0,0,.06);border-color:var(--emerald)}
-    .job-icon{width:44px;height:44px;border-radius:12px;background:var(--emerald-pale);color:var(--emerald);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .job-card{background:var(--black3);border:1px solid var(--border);border-radius:16px;padding:1.5rem;display:flex;align-items:start;gap:1rem;transition:border-color .2s,box-shadow .2s}
+    .job-card:hover{border-color:var(--gold-border);box-shadow:0 8px 25px rgba(0,0,0,.3)}
+    .job-icon{width:44px;height:44px;border-radius:12px;background:rgba(212,160,23,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .job-icon svg{width:20px;height:20px}
-    .job-title{font-size:.95rem;font-weight:700;color:var(--slate);margin-bottom:.25rem}
-    .job-meta{font-size:.8rem;color:var(--muted)}
-    .job-meta strong{color:var(--emerald)}
-    .apply-box{background:var(--off-white);border:1px solid var(--border);border-radius:24px;padding:2.5rem;max-width:640px;margin:0 auto}
-    .apply-box h3{font-size:1.4rem;color:var(--slate);margin-bottom.5rem;font-weight:800}
-    .apply-box p{color:var(--slate3);font-size:.9rem;margin-bottom:1.5rem}
+    .job-title{font-size:.95rem;font-weight:700;color:var(--white);margin-bottom:.25rem}
+    .job-meta{font-size:.8rem;color:var(--grey2)}
+    .job-meta strong{color:var(--gold)}
+    .apply-box{background:var(--black3);border:1px solid var(--border);border-radius:24px;padding:2.5rem;max-width:640px;margin:0 auto}
+    .apply-box h3{font-size:1.4rem;color:var(--white);margin-bottom:.5rem;font-weight:800}
+    .apply-box p{color:var(--grey);font-size:.9rem;margin-bottom:1.5rem}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
     .form-group{margin-bottom:1rem}
-    .form-group label{display:block;font-size:.82rem;font-weight:600;color:var(--slate2);margin-bottom:.35rem}
-    .form-group input,.form-group select,.form-group textarea{width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;color:var(--slate);background:#fff;outline:none;transition:border-color .2s}
-    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--emerald)}
+    .form-group label{display:block;font-size:.82rem;font-weight:600;color:var(--grey);margin-bottom:.35rem}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;color:var(--white);background:var(--black2);outline:none;transition:border-color .2s}
+    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold)}
+    .form-group select option{background:var(--black2)}
     .form-group textarea{resize:vertical;min-height:90px}
-    .btn-submit{width:100%;padding:.85rem;border-radius:10px;background:var(--emerald);color:#fff;font-weight:700;font-size:1rem;transition:background .2s,transform .15s}
-    .btn-submit:hover{background:var(--emerald2);transform:translateY(-1px)}
+    .btn-submit{width:100%;padding:.85rem;border-radius:10px;background:var(--gold);color:#000;font-weight:800;font-size:1rem;transition:background .2s,transform .15s}
+    .btn-submit:hover{background:var(--gold-light);transform:translateY(-1px)}
 
     /* ── FOOTER ── */
-    footer{background:var(--slate);padding:64px 0 32px}
+    footer{background:var(--black2);padding:64px 0 32px;border-top:1px solid var(--border)}
     .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem}
-    .footer-brand p{font-size:.88rem;color:#64748b;margin-top:.75rem;line-height:1.65;max-width:280px}
-    .footer-col h5{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:1rem}
-    .footer-col a{display:block;font-size:.88rem;color:#94a3b8;margin-bottom:.5rem;transition:color .2s}
-    .footer-col a:hover{color:#fff}
-    .footer-bottom{border-top:1px solid rgba(255,255,255,.06);padding-top:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
-    .footer-bottom p{font-size:.8rem;color:#475569}
-    .cqc-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(5,150,105,.15);border:1px solid rgba(5,150,105,.3);padding:.3rem .8rem;border-radius:50px;font-size:.75rem;font-weight:600;color:var(--emerald)}
+    .footer-brand p{font-size:.88rem;color:var(--grey2);margin-top:.75rem;line-height:1.65;max-width:280px}
+    .footer-col h5{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--grey2);margin-bottom:1rem}
+    .footer-col a{display:block;font-size:.88rem;color:var(--grey);margin-bottom:.5rem;transition:color .2s}
+    .footer-col a:hover{color:var(--gold)}
+    .footer-bottom{border-top:1px solid var(--border);padding-top:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+    .footer-bottom p{font-size:.8rem;color:var(--grey2)}
+    .gold-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(212,160,23,.1);border:1px solid var(--gold-border);padding:.3rem .8rem;border-radius:50px;font-size:.75rem;font-weight:600;color:var(--gold)}
+
+    /* ── DIVIDER LINE ── */
+    .gold-line{width:60px;height:3px;background:var(--gold);border-radius:2px;margin:0 auto 1.5rem}
+
+    /* ── MULTI-STEP FORM ── */
+    .apply-progress{display:flex;align-items:center;margin-bottom:2rem}
+    .progress-step{display:flex;flex-direction:column;align-items:center;gap:.4rem;flex-shrink:0}
+    .progress-dot{width:36px;height:36px;border-radius:50%;background:var(--black4);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.88rem;color:var(--grey);transition:all .3s}
+    .progress-step.active .progress-dot{background:var(--gold);border-color:var(--gold);color:#000}
+    .progress-step.done .progress-dot{background:rgba(212,160,23,.2);border-color:var(--gold);color:var(--gold)}
+    .progress-label{font-size:.72rem;color:var(--grey2);font-weight:600}
+    .progress-step.active .progress-label{color:var(--gold)}
+    .progress-line{flex:1;height:2px;background:var(--border);margin:0 .5rem;margin-bottom:1.4rem;transition:background .3s}
+    .progress-line.done{background:var(--gold-border)}
+    .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    .review-item{background:var(--black2);border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem}
+    .review-item label{display:block;font-size:.72rem;color:var(--grey2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem}
+    .review-item span{font-size:.9rem;color:var(--white);font-weight:600}
+    .next-step{display:flex;align-items:flex-start;gap:.85rem;margin-bottom:.85rem}
+    .ns-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:4px}
+    .next-step strong{display:block;font-size:.88rem;color:var(--white);margin-bottom:.1rem}
+    .next-step span{font-size:.82rem;color:var(--grey)}
+    .job-card{cursor:pointer}
 
     /* ── SCROLL REVEAL ── */
     .reveal{opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
@@ -261,24 +266,25 @@
 
     /* ── RESPONSIVE ── */
     @media(max-width:1024px){
-      .hero-grid,.features-main-grid{grid-template-columns:1fr}
-      .hero-visual{display:none}
-      .features-main-grid .feature-big{min-height:auto}
+      .hero-grid,.features-main-grid,.compliance-inner{grid-template-columns:1fr}
+      .hero-photos{height:380px;margin-top:2rem}
       .steps-grid{grid-template-columns:repeat(2,1fr)}
       .footer-grid{grid-template-columns:1fr 1fr}
+      .care-photos-grid{grid-template-columns:1fr 1fr}
     }
     @media(max-width:768px){
       .nav-links{display:none}
       .nav-toggle{display:flex}
       .stats-grid{grid-template-columns:repeat(2,1fr)}
-      .testi-grid,.feature-small-grid{grid-template-columns:1fr}
-      .compliance-inner{grid-template-columns:1fr}
+      .testi-grid,.feature-small-grid,.care-photos-grid{grid-template-columns:1fr}
       .modules-grid{grid-template-columns:repeat(2,1fr)}
       .careers-grid{grid-template-columns:1fr}
       .form-row{grid-template-columns:1fr}
       .footer-grid{grid-template-columns:1fr}
       .steps-grid{grid-template-columns:1fr}
       .section,.section-sm{padding:64px 0}
+      .hero-photos{height:300px}
+      .hero-photo-secondary{display:none}
     }
   </style>
 </head>
@@ -288,8 +294,8 @@
 <nav id="nav">
   <div class="nav-inner">
     <a href="/" class="nav-logo">
-      <div class="logo-pill">C</div>
-      <span>CompCare <span>Hub</span></span>
+      <img src="https://app.comprehensivecare.org.uk/pwa-192.png" alt="CompCare Hub logo" class="logo-img"/>
+      <span>CompCare Hub</span>
     </a>
     <div class="nav-links">
       <a href="#features">Features</a>
@@ -309,7 +315,7 @@
   <a href="#compliance" onclick="closeMobile()">Compliance</a>
   <a href="#testimonials" onclick="closeMobile()">Reviews</a>
   <a href="#careers" onclick="closeMobile()">Careers</a>
-  <a href="https://app.comprehensivecare.org.uk" style="color:var(--emerald);font-weight:800">Login to App →</a>
+  <a href="https://app.comprehensivecare.org.uk" style="color:var(--gold);font-weight:800">Login to App →</a>
 </div>
 
 <!-- HERO -->
@@ -324,13 +330,13 @@
         <p class="lead">Everything your care home needs — residents, staff, MAR, rota, CQC compliance, and more — in one beautifully simple platform.</p>
         <div class="hero-actions">
           <a href="https://app.comprehensivecare.org.uk" class="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 12 12 5 19 12"/><polyline points="12 5 12 19"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
             Go to App
           </a>
           <a href="#features" class="btn btn-outline">See features</a>
         </div>
         <div class="hero-trust">
-          <span>Trusted by</span>
+          <span>Trusted by care professionals</span>
           <div class="trust-pill">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             CQC Aligned
@@ -346,95 +352,30 @@
         </div>
       </div>
 
-      <!-- Dashboard Mockup -->
-      <div class="hero-visual">
-        <div style="position:relative;padding:20px 30px 30px 10px">
-          <div class="dashboard-mock">
-            <div class="mock-header">
-              <div class="mock-dot" style="background:#ef4444"></div>
-              <div class="mock-dot" style="background:#f59e0b;margin-left:5px"></div>
-              <div class="mock-dot" style="background:#10b981;margin-left:5px"></div>
-              <div class="mock-titlebar"></div>
-              <span style="font-size:.65rem;color:rgba(255,255,255,.4)">CompCare Hub</span>
-            </div>
-            <div class="mock-body">
-              <div class="mock-row">
-                <div class="mock-card">
-                  <div class="mock-card-top">
-                    <div class="mock-icon" style="background:#d1fae5">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
-                    </div>
-                    <span style="font-size:.58rem;color:#10b981;font-weight:700">▲ 2</span>
-                  </div>
-                  <div class="mock-num">24</div>
-                  <div class="mock-label">Residents</div>
-                  <div class="mock-bar-wrap"><div class="mock-bar" style="width:80%;background:#059669"></div></div>
-                </div>
-                <div class="mock-card">
-                  <div class="mock-card-top">
-                    <div class="mock-icon" style="background:#ede9fe">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                    </div>
-                    <span style="font-size:.58rem;color:#10b981;font-weight:700">✓</span>
-                  </div>
-                  <div class="mock-num">8</div>
-                  <div class="mock-label">Tasks Due</div>
-                  <div class="mock-bar-wrap"><div class="mock-bar" style="width:55%;background:#7c3aed"></div></div>
-                </div>
-                <div class="mock-card">
-                  <div class="mock-card-top">
-                    <div class="mock-icon" style="background:#fef3c7">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                    </div>
-                    <span style="font-size:.58rem;color:#f59e0b;font-weight:700">12</span>
-                  </div>
-                  <div class="mock-num">6</div>
-                  <div class="mock-label">On Shift</div>
-                  <div class="mock-bar-wrap"><div class="mock-bar" style="width:60%;background:#f59e0b"></div></div>
-                </div>
-              </div>
-              <div class="mock-list">
-                <div style="font-size:.65rem;font-weight:700;color:#475569;margin-bottom:.25rem">Recent residents</div>
-                <div class="mock-list-item">
-                  <div class="mock-avatar">EW</div>
-                  <div class="mock-item-text">
-                    <div class="mock-item-name">Eleanor Wilson</div>
-                    <div class="mock-item-sub">Room 4 · Age 82</div>
-                  </div>
-                  <div class="mock-status status-live">Live</div>
-                </div>
-                <div class="mock-list-item">
-                  <div class="mock-avatar" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">RB</div>
-                  <div class="mock-item-text">
-                    <div class="mock-item-name">Robert Barnes</div>
-                    <div class="mock-item-sub">Room 7 · Age 75</div>
-                  </div>
-                  <div class="mock-status status-hosp">Hospital</div>
-                </div>
-                <div class="mock-list-item">
-                  <div class="mock-avatar" style="background:linear-gradient(135deg,#d97706,#fbbf24)">MH</div>
-                  <div class="mock-item-text">
-                    <div class="mock-item-name">Mary Hughes</div>
-                    <div class="mock-item-sub">Room 12 · Age 88</div>
-                  </div>
-                  <div class="mock-status status-live">Live</div>
-                </div>
-              </div>
-            </div>
+      <!-- Photo Collage -->
+      <div class="hero-photos">
+        <div class="hero-photo-main">
+          <img src="https://images.unsplash.com/photo-1576765608866-5b51046452be?w=700&h=500&auto=format&fit=crop" alt="Caregiver supporting resident" loading="eager"/>
+        </div>
+        <div class="hero-photo-secondary">
+          <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=500&h=350&auto=format&fit=crop" alt="Care professional" loading="eager"/>
+        </div>
+        <div class="hero-metric hm1">
+          <div class="hm-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
           </div>
-
-          <!-- Floating pills -->
-          <div class="floating-pill fp1">
-            <div class="dot-em dot-green"></div>
-            MAR completed ✓
+          <div>
+            <div class="hm-val">24 Residents</div>
+            <div class="hm-label">All care plans up to date</div>
           </div>
-          <div class="floating-pill fp2">
-            <div class="dot-em dot-purple"></div>
-            Rota published
+        </div>
+        <div class="hero-metric hm2">
+          <div class="hm-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <div class="floating-pill fp3">
-            <div class="dot-em dot-amber"></div>
-            CQC ready
+          <div>
+            <div class="hm-val">MAR Completed ✓</div>
+            <div class="hm-label">Morning round done</div>
           </div>
         </div>
       </div>
@@ -446,37 +387,79 @@
 <section class="stats-band">
   <div class="container">
     <div class="stats-grid">
-      <div class="stat-item">
-        <div class="stat-num"><span class="counter" data-target="500">0</span><span>+</span></div>
+      <div>
+        <div class="stat-num"><span class="counter" data-target="500">0</span><span style="color:var(--gold)">+</span></div>
         <div class="stat-label">Care staff supported</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num"><span class="counter" data-target="30">0</span><span>+</span></div>
+      <div>
+        <div class="stat-num"><span class="counter" data-target="30">0</span><span style="color:var(--gold)">+</span></div>
         <div class="stat-label">Modules included</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num"><span class="counter" data-target="99">0</span><span>%</span></div>
+      <div>
+        <div class="stat-num"><span class="counter" data-target="99">0</span><span style="color:var(--gold)">%</span></div>
         <div class="stat-label">Uptime guaranteed</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num"><span class="counter" data-target="24">0</span><span>/7</span></div>
+      <div>
+        <div class="stat-num"><span class="counter" data-target="24">0</span><span style="color:var(--gold)">/7</span></div>
         <div class="stat-label">System availability</div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- CARE IN ACTION PHOTOS -->
+<section class="care-photos-section">
+  <div class="container">
+    <div class="care-photos-intro reveal">
+      <div class="gold-line"></div>
+      <h2>Real care. Real people.</h2>
+      <p>CompCare Hub supports the dedicated professionals who deliver outstanding care every single day.</p>
+    </div>
+    <div class="care-photos-grid reveal">
+      <div class="care-photo-card">
+        <img src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=500&h=400&auto=format&fit=crop" alt="Care team"/>
+        <div class="care-photo-overlay">
+          <div>
+            <div class="care-photo-label">Dedicated Care Teams</div>
+            <div class="care-photo-sub">Supporting residents every day</div>
+          </div>
+        </div>
+      </div>
+      <div class="care-photo-card">
+        <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=500&h=400&auto=format&fit=crop" alt="Caregiver with resident"/>
+        <div class="care-photo-overlay">
+          <div>
+            <div class="care-photo-label">Person-Centred Care</div>
+            <div class="care-photo-sub">Every resident, every need</div>
+          </div>
+        </div>
+      </div>
+      <div class="care-photo-card" style="background:linear-gradient(135deg,#1a1200 0%,#0d0d0d 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d4a017" stroke-width="1.5" opacity=".7"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        <div style="text-align:center;padding:0 2rem">
+          <div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:.4rem">Professional Excellence</div>
+          <div style="font-size:.85rem;color:#d4a017">CQC-ready standards every shift</div>
+        </div>
+        <div class="care-photo-overlay" style="background:linear-gradient(to top,rgba(8,8,8,.6) 0%,transparent 60%)">
+          <div><div class="care-photo-label">Professional Excellence</div><div class="care-photo-sub">CQC-ready standards</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- FEATURES -->
-<section class="section" id="features">
+<section class="section" id="features" style="background:var(--black2)">
   <div class="container">
     <div class="features-intro reveal">
+      <div class="gold-line"></div>
       <span class="badge" style="margin-bottom:1rem">Everything included</span>
       <h2>All your care tools in one place</h2>
       <p>No more juggling paper forms, spreadsheets, and separate systems. CompCare Hub brings everything together so your team can focus on what matters — outstanding care.</p>
     </div>
 
     <div class="features-main-grid reveal">
-      <div class="feature-big green-accent">
+      <div class="feature-big gold-accent">
         <div class="feat-icon-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
         </div>
@@ -484,56 +467,44 @@
         <p>Built-in audit trails, risk assessments, safeguarding records, and inspection-ready reporting. Stay ahead of CQC inspections with real-time compliance dashboards.</p>
         <span class="feat-tag">Audit Trail · Safeguarding · Incidents</span>
       </div>
-      <div class="feature-big accent">
+      <div class="feature-big dark-accent">
         <div class="feat-icon-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
         </div>
         <h3>Complete Medication Management</h3>
         <p>Digital MAR charts, medication risk assessments, stock tracking, PRN protocols, and covert medication authorisation — all with full audit trails.</p>
-        <span class="feat-tag" style="background:rgba(5,150,105,.3);color:#6ee7b7">MAR · Stock · Risk Assessment</span>
+        <span class="feat-tag">MAR · Stock · Risk Assessment</span>
       </div>
     </div>
 
     <div class="feature-small-grid reveal">
       <div class="feature-small">
-        <div class="fs-icon bg-purple-soft">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        </div>
+        <div class="fs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
         <h4>Staff Management</h4>
         <p>Profiles, DBS compliance, assessments, performance tracking, and clock-in with QR codes.</p>
       </div>
       <div class="feature-small">
-        <div class="fs-icon bg-blue-soft">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        </div>
+        <div class="fs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
         <h4>Rota & Timesheets</h4>
         <p>Visual rota builder, leave management, timesheets, and staffing analytics all synced together.</p>
       </div>
       <div class="feature-small">
-        <div class="fs-icon bg-orange-soft">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        </div>
+        <div class="fs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
         <h4>Support Plans</h4>
         <p>Person-centred support plans with review history, sign-off tracking, and attachment storage.</p>
       </div>
       <div class="feature-small">
-        <div class="fs-icon bg-rose-soft">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-        </div>
+        <div class="fs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>
         <h4>Daily Care Records</h4>
         <p>Daily notes, observations, bath charts, bowel charts, and professional visit logs in one timeline.</p>
       </div>
       <div class="feature-small">
-        <div class="fs-icon bg-emerald-soft">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        </div>
+        <div class="fs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
         <h4>Family Portal</h4>
         <p>Families stay connected with updates, activity photos, and communication through a secure portal.</p>
       </div>
       <div class="feature-small">
-        <div class="fs-icon bg-amber-soft">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-        </div>
+        <div class="fs-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
         <h4>Reports & Analytics</h4>
         <p>Handover reports, audit reports, clock-in analytics, and custom dashboards at a glance.</p>
       </div>
@@ -545,7 +516,8 @@
 <section class="how-section">
   <div class="container">
     <div class="how-intro reveal">
-      <span class="badge" style="background:rgba(5,150,105,.15);border-color:rgba(5,150,105,.3);color:#6ee7b7;margin-bottom:1rem">Simple setup</span>
+      <div class="gold-line"></div>
+      <span class="badge" style="margin-bottom:1rem">Simple setup</span>
       <h2>Up and running in hours</h2>
       <p>No IT department needed. CompCare Hub is designed for care professionals, not tech teams.</p>
     </div>
@@ -578,6 +550,7 @@
 <section class="testi-section" id="testimonials">
   <div class="container">
     <div class="testi-intro reveal">
+      <div class="gold-line"></div>
       <span class="badge" style="margin-bottom:1rem">Care professionals trust us</span>
       <h2>Loved by care teams across the UK</h2>
       <p>From care assistants to home managers — CompCare Hub works for everyone.</p>
@@ -587,7 +560,7 @@
         <div class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
         <p class="testi-text">We went from paper MAR charts to fully digital in a week. The medication module alone has saved us hours every day and our CQC inspector was impressed with the audit trail.</p>
         <div class="testi-author">
-          <div class="testi-avatar" style="background:linear-gradient(135deg,#059669,#34d399)">SP</div>
+          <div class="testi-avatar">SP</div>
           <div>
             <div class="testi-name">Sarah P.</div>
             <div class="testi-role">Registered Home Manager</div>
@@ -598,7 +571,7 @@
         <div class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
         <p class="testi-text">The rota and timesheets feature has transformed how we manage staffing. We used to spend hours on spreadsheets — now it's done in minutes and the team can see their shifts instantly.</p>
         <div class="testi-author">
-          <div class="testi-avatar" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">DT</div>
+          <div class="testi-avatar">DT</div>
           <div>
             <div class="testi-name">David T.</div>
             <div class="testi-role">Operations Manager</div>
@@ -609,7 +582,7 @@
         <div class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
         <p class="testi-text">As a senior carer, I love how easy it is to log daily records and observations. The app is fast, simple, and I can do everything from my phone during the shift.</p>
         <div class="testi-author">
-          <div class="testi-avatar" style="background:linear-gradient(135deg,#d97706,#fbbf24)">AK</div>
+          <div class="testi-avatar">AK</div>
           <div>
             <div class="testi-name">Amara K.</div>
             <div class="testi-role">Senior Care Assistant</div>
@@ -625,41 +598,34 @@
   <div class="container">
     <div class="compliance-inner">
       <div class="compliance-text reveal">
+        <div class="gold-line" style="margin:0 0 1.5rem"></div>
         <span class="badge" style="margin-bottom:1rem">Built for regulation</span>
         <h2>CQC compliance built in from day one</h2>
         <p>CompCare Hub is designed specifically for UK care regulations. Every feature is built with CQC's Key Lines of Enquiry in mind — Safe, Effective, Caring, Responsive, and Well-Led.</p>
         <div class="compliance-list">
           <div class="comp-item">
-            <div class="comp-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
+            <div class="comp-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="comp-item-text">
               <strong>Automatic audit trails</strong>
               <span>Every action logged with timestamp, user, and device — tamper-proof.</span>
             </div>
           </div>
           <div class="comp-item">
-            <div class="comp-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
+            <div class="comp-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="comp-item-text">
               <strong>Risk assessment frameworks</strong>
               <span>Medication, falls, pressure, safeguarding, and custom risk assessments.</span>
             </div>
           </div>
           <div class="comp-item">
-            <div class="comp-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
+            <div class="comp-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="comp-item-text">
               <strong>GDPR-compliant data handling</strong>
               <span>UK-based data storage, role-based access, and secure encryption.</span>
             </div>
           </div>
           <div class="comp-item">
-            <div class="comp-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
+            <div class="comp-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="comp-item-text">
               <strong>Incident & safeguarding reporting</strong>
               <span>Structured incident logs with follow-up tracking and statutory reporting.</span>
@@ -668,26 +634,10 @@
         </div>
       </div>
       <div class="compliance-badges reveal">
-        <div class="comp-badge">
-          <div class="comp-badge-icon">🏛️</div>
-          <div class="comp-badge-title">CQC Aligned</div>
-          <div class="comp-badge-desc">Built around the 5 key lines of enquiry</div>
-        </div>
-        <div class="comp-badge">
-          <div class="comp-badge-icon">🔒</div>
-          <div class="comp-badge-title">UK GDPR</div>
-          <div class="comp-badge-desc">ICO-compliant data handling</div>
-        </div>
-        <div class="comp-badge">
-          <div class="comp-badge-icon">📋</div>
-          <div class="comp-badge-title">MCA Ready</div>
-          <div class="comp-badge-desc">Mental Capacity Act documentation</div>
-        </div>
-        <div class="comp-badge">
-          <div class="comp-badge-icon">🏥</div>
-          <div class="comp-badge-title">NHS Compatible</div>
-          <div class="comp-badge-desc">Designed for NHS care pathways</div>
-        </div>
+        <div class="comp-badge"><div class="comp-badge-icon">🏛️</div><div class="comp-badge-title">CQC Aligned</div><div class="comp-badge-desc">Built around the 5 key lines of enquiry</div></div>
+        <div class="comp-badge"><div class="comp-badge-icon">🔒</div><div class="comp-badge-title">UK GDPR</div><div class="comp-badge-desc">ICO-compliant data handling</div></div>
+        <div class="comp-badge"><div class="comp-badge-icon">📋</div><div class="comp-badge-title">MCA Ready</div><div class="comp-badge-desc">Mental Capacity Act documentation</div></div>
+        <div class="comp-badge"><div class="comp-badge-icon">🏥</div><div class="comp-badge-title">NHS Compatible</div><div class="comp-badge-desc">Designed for NHS care pathways</div></div>
       </div>
     </div>
   </div>
@@ -697,75 +647,28 @@
 <section class="modules-section">
   <div class="container">
     <div class="modules-intro reveal">
+      <div class="gold-line"></div>
       <span class="badge" style="margin-bottom:1rem">30+ modules</span>
       <h2>Everything your home needs</h2>
-      <p style="color:var(--slate3)">One subscription. Every feature. No hidden extras.</p>
+      <p>One subscription. Every feature. No hidden extras.</p>
     </div>
     <div class="modules-grid reveal">
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
-        <span>Residents</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-        <span>MAR Charts</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span>Support Plans</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        <span>Risk Assessments</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <span>Rota & Shifts</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-        <span>Timesheets</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-        <span>Reports</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-        <span>Compliance</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-        <span>Incidents</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-        <span>Safeguarding</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <span>Staff Profiles</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-        <span>Alerts & Notifications</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        <span>Leave & Holidays</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-        <span>Invoicing</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        <span>Recruitment</span>
-      </div>
-      <div class="module-chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        <span>Family Portal</span>
-      </div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg><span>Residents</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><span>MAR Charts</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>Support Plans</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><span>Risk Assessments</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Rota & Shifts</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg><span>Timesheets</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Reports</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><span>Compliance</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span>Incidents</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg><span>Safeguarding</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Staff Profiles</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>Alerts</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><span>Leave & Holidays</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Invoicing</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg><span>Recruitment</span></div>
+      <div class="module-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg><span>Family Portal</span></div>
     </div>
   </div>
 </section>
@@ -773,10 +676,10 @@
 <!-- CTA -->
 <section class="cta-section">
   <div class="container">
-    <h2>Ready to transform your care home?</h2>
+    <h2>Ready to transform your <span>care home?</span></h2>
     <p>Join care homes across the UK already using CompCare Hub to deliver outstanding care and stay ahead of compliance.</p>
     <div class="cta-actions">
-      <a href="https://app.comprehensivecare.org.uk" class="btn btn-white">
+      <a href="https://app.comprehensivecare.org.uk" class="btn btn-gold">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
         Log in to your account
       </a>
@@ -789,96 +692,91 @@
 <section class="careers-section" id="careers">
   <div class="container">
     <div class="careers-intro reveal">
+      <div class="gold-line"></div>
       <span class="badge" style="margin-bottom:1rem">Join our team</span>
       <h2>Careers at Comprehensive Care</h2>
       <p>We're looking for passionate care professionals to join our team. Help us deliver outstanding care to our residents.</p>
     </div>
 
     <div class="careers-grid reveal">
-      <div class="job-card">
-        <div class="job-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-        </div>
-        <div>
-          <div class="job-title">Registered Nurse (RN)</div>
-          <div class="job-meta">Full-time · <strong>Competitive salary</strong> · Immediate start</div>
-        </div>
+      <div class="job-card" onclick="selectRole('Registered Nurse (RN)')">
+        <div class="job-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div>
+        <div><div class="job-title">Registered Nurse (RN)</div><div class="job-meta">Full-time · <strong>Competitive salary</strong> · Immediate start</div></div>
       </div>
-      <div class="job-card">
-        <div class="job-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
-        </div>
-        <div>
-          <div class="job-title">Senior Care Assistant</div>
-          <div class="job-meta">Full-time / Part-time · <strong>£12.50–£14/hr</strong></div>
-        </div>
+      <div class="job-card" onclick="selectRole('Senior Care Assistant')">
+        <div class="job-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg></div>
+        <div><div class="job-title">Senior Care Assistant</div><div class="job-meta">Full-time / Part-time · <strong>£12.50–£14/hr</strong></div></div>
       </div>
-      <div class="job-card">
-        <div class="job-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
-        </div>
-        <div>
-          <div class="job-title">Care Assistant</div>
-          <div class="job-meta">Full-time · <strong>£11.44–£12.50/hr</strong> · All shifts</div>
-        </div>
+      <div class="job-card" onclick="selectRole('Care Assistant')">
+        <div class="job-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg></div>
+        <div><div class="job-title">Care Assistant</div><div class="job-meta">Full-time · <strong>£11.44–£12.50/hr</strong> · All shifts</div></div>
       </div>
-      <div class="job-card">
-        <div class="job-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-        </div>
-        <div>
-          <div class="job-title">Home Manager</div>
-          <div class="job-meta">Full-time · <strong>Negotiable</strong> · Registered managers welcome</div>
-        </div>
+      <div class="job-card" onclick="selectRole('Home Manager')">
+        <div class="job-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+        <div><div class="job-title">Home Manager</div><div class="job-meta">Full-time · <strong>Negotiable</strong> · Registered managers welcome</div></div>
       </div>
-      <div class="job-card">
-        <div class="job-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-        </div>
-        <div>
-          <div class="job-title">Activities Coordinator</div>
-          <div class="job-meta">Part-time · <strong>£11.44/hr</strong> · Passion for person-centred care</div>
-        </div>
+      <div class="job-card" onclick="selectRole('Activities Coordinator')">
+        <div class="job-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
+        <div><div class="job-title">Activities Coordinator</div><div class="job-meta">Part-time · <strong>£11.44/hr</strong> · Passion for person-centred care</div></div>
       </div>
-      <div class="job-card">
-        <div class="job-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-        </div>
-        <div>
-          <div class="job-title">Medication Technician</div>
-          <div class="job-meta">Full-time · <strong>£12/hr</strong> · NVQ Level 2/3 required</div>
-        </div>
+      <div class="job-card" onclick="selectRole('Medication Technician')">
+        <div class="job-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+        <div><div class="job-title">Medication Technician</div><div class="job-meta">Full-time · <strong>£12/hr</strong> · NVQ Level 2/3 required</div></div>
       </div>
     </div>
 
-    <!-- Apply Form -->
-    <div class="apply-box reveal">
-      <h3 style="margin-bottom:.5rem">Apply now</h3>
-      <p>Fill in the form below and we'll be in touch within 48 hours.</p>
-      <form id="applyForm" onsubmit="submitApplication(event)">
+    <!-- Multi-step Application Form -->
+    <div class="apply-box reveal" id="applyBox">
+
+      <!-- Progress bar -->
+      <div class="apply-progress" id="applyProgress">
+        <div class="progress-step active" id="pStep1">
+          <div class="progress-dot">1</div>
+          <div class="progress-label">Personal</div>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" id="pStep2">
+          <div class="progress-dot">2</div>
+          <div class="progress-label">Experience</div>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" id="pStep3">
+          <div class="progress-dot">3</div>
+          <div class="progress-label">Review</div>
+        </div>
+      </div>
+
+      <!-- STEP 1: Personal details -->
+      <div id="step1">
+        <h3>Step 1 — Personal Details</h3>
+        <p>Tell us a bit about yourself to get started.</p>
         <div class="form-row">
-          <div class="form-group">
-            <label>First name *</label>
-            <input type="text" name="firstName" placeholder="Jane" required/>
-          </div>
-          <div class="form-group">
-            <label>Last name *</label>
-            <input type="text" name="lastName" placeholder="Smith" required/>
-          </div>
+          <div class="form-group"><label>First name *</label><input type="text" id="f_firstName" placeholder="Jane" required/></div>
+          <div class="form-group"><label>Last name *</label><input type="text" id="f_lastName" placeholder="Smith" required/></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>Email address *</label>
-            <input type="email" name="email" placeholder="jane@example.com" required/>
-          </div>
-          <div class="form-group">
-            <label>Phone number</label>
-            <input type="tel" name="phone" placeholder="07700 000000"/>
-          </div>
+          <div class="form-group"><label>Email address *</label><input type="email" id="f_email" placeholder="jane@example.com" required/></div>
+          <div class="form-group"><label>Phone number *</label><input type="tel" id="f_phone" placeholder="07700 000000" required/></div>
         </div>
         <div class="form-group">
+          <label>Do you have the right to work in the UK? *</label>
+          <select id="f_rtw" required>
+            <option value="yes">Yes — I am eligible to work in the UK</option>
+            <option value="no">No — I will need sponsorship</option>
+          </select>
+        </div>
+        <div style="text-align:right;margin-top:1.5rem">
+          <button class="btn-submit" style="width:auto;padding:.75rem 2rem" onclick="goStep(2)">Next: Experience →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Role & experience -->
+      <div id="step2" style="display:none">
+        <h3>Step 2 — Role & Experience</h3>
+        <p>Help us understand your background and the role you're applying for.</p>
+        <div class="form-group">
           <label>Position applying for *</label>
-          <select name="position" required>
+          <select id="f_position" required>
             <option value="">Select a role…</option>
             <option>Registered Nurse (RN)</option>
             <option>Senior Care Assistant</option>
@@ -890,12 +788,79 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Tell us about yourself</label>
-          <textarea name="message" placeholder="Brief summary of your experience and why you'd like to join us…"></textarea>
+          <label>Years of care experience</label>
+          <select id="f_years">
+            <option value="">Select…</option>
+            <option>Less than 1 year</option>
+            <option>1–2 years</option>
+            <option>3–5 years</option>
+            <option>5–10 years</option>
+            <option>10+ years</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tell us about yourself *</label>
+          <textarea id="f_experience" rows="4" placeholder="Briefly describe your care experience, qualifications (e.g. NVQ, RGN), and why you'd like to join Comprehensive Care…" required></textarea>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:1.5rem;gap:1rem">
+          <button class="btn-submit" style="width:auto;padding:.75rem 2rem;background:var(--black4);color:var(--grey)" onclick="goStep(1)">← Back</button>
+          <button class="btn-submit" style="width:auto;padding:.75rem 2rem" onclick="goStep(3)">Next: Review →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Review & submit -->
+      <div id="step3" style="display:none">
+        <h3>Step 3 — Review & Submit</h3>
+        <p>Please check your details before submitting.</p>
+        <div class="review-grid" id="reviewGrid"></div>
+        <div class="form-group" style="margin-top:1.25rem">
+          <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;font-size:.9rem;color:var(--grey)">
+            <input type="checkbox" id="f_consent" style="width:auto;margin-top:3px"/>
+            I consent to Comprehensive Care storing and processing my personal data for recruitment purposes.
+          </label>
         </div>
         <div id="applyMsg" style="display:none;padding:.75rem;border-radius:10px;font-size:.88rem;margin-bottom:1rem"></div>
-        <button type="submit" class="btn-submit" id="applyBtn">Submit Application</button>
-      </form>
+        <div style="display:flex;justify-content:space-between;margin-top:1.5rem;gap:1rem">
+          <button class="btn-submit" style="width:auto;padding:.75rem 2rem;background:var(--black4);color:var(--grey)" onclick="goStep(2)">← Back</button>
+          <button class="btn-submit" style="width:auto;padding:.75rem 2.5rem" id="applyBtn" onclick="submitApplication()">Submit Application</button>
+        </div>
+      </div>
+
+      <!-- CONFIRMATION -->
+      <div id="stepDone" style="display:none;text-align:center;padding:1rem 0">
+        <div style="width:72px;height:72px;border-radius:50%;background:rgba(212,160,23,.15);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4a017" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3 style="color:var(--white);margin-bottom:.5rem">Application Received!</h3>
+        <p style="color:var(--grey);margin-bottom:1.5rem">Your reference number is:</p>
+        <div id="refNumber" style="font-family:'Fraunces',serif;font-size:2rem;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:2rem"></div>
+
+        <div style="background:var(--black2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;text-align:left;margin-bottom:1.5rem">
+          <p style="font-weight:700;color:var(--white);margin-bottom:1rem">What happens next:</p>
+          <div class="next-step"><div class="ns-dot"></div><div><strong>1–3 working days</strong><span>CV & application review</span></div></div>
+          <div class="next-step"><div class="ns-dot"></div><div><strong>3–5 working days</strong><span>Phone screening call</span></div></div>
+          <div class="next-step"><div class="ns-dot"></div><div><strong>5–10 working days</strong><span>Interview invite (if shortlisted)</span></div></div>
+          <div class="next-step"><div class="ns-dot"></div><div><strong>Decision communicated</strong><span>Offer or feedback provided</span></div></div>
+        </div>
+
+        <div style="background:rgba(212,160,23,.08);border:1px solid var(--gold-border);border-radius:12px;padding:1rem;margin-bottom:1.5rem">
+          <p style="font-size:.85rem;color:var(--grey)">Check your application status anytime using your reference number at:</p>
+          <p style="font-size:.82rem;color:var(--gold);margin-top:.25rem;font-weight:600">comprehensivecare.org.uk/apply-status</p>
+        </div>
+
+        <p style="font-size:.85rem;color:var(--grey2)">Save your reference number — you'll need it to track your application.</p>
+      </div>
+    </div>
+
+    <!-- Status checker -->
+    <div class="apply-box reveal" style="margin-top:1.5rem;max-width:640px">
+      <h3 style="font-size:1.1rem;margin-bottom:.35rem">Track your application</h3>
+      <p style="margin-bottom:1rem">Already applied? Enter your reference number to check your status.</p>
+      <div style="display:flex;gap:.75rem">
+        <input type="text" id="statusRef" placeholder="CCH-2026-1234" style="flex:1;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.9rem;color:var(--white);background:var(--black2);outline:none"/>
+        <button onclick="checkStatus()" style="padding:.7rem 1.5rem;border-radius:10px;background:var(--gold);color:#000;font-weight:700;font-size:.9rem;border:none;cursor:pointer">Check</button>
+      </div>
+      <div id="statusResult" style="margin-top:1rem;display:none"></div>
     </div>
   </div>
 </section>
@@ -906,11 +871,11 @@
     <div class="footer-grid">
       <div class="footer-brand">
         <div class="nav-logo" style="margin-bottom:.75rem">
-          <div class="logo-pill">C</div>
-          <span style="color:#fff;font-size:1.05rem">CompCare <span style="color:var(--emerald)">Hub</span></span>
+          <img src="https://app.comprehensivecare.org.uk/pwa-192.png" alt="CompCare Hub logo" class="logo-img"/>
+          <span style="color:var(--white);font-size:1.05rem">CompCare Hub</span>
         </div>
         <p>The all-in-one digital care management platform for UK care homes. CQC aligned, GDPR compliant, and built for care professionals.</p>
-        <div class="cqc-badge" style="margin-top:1.25rem">✓ CQC Aligned Platform</div>
+        <div class="gold-badge" style="margin-top:1.25rem">✓ CQC Aligned Platform</div>
       </div>
       <div class="footer-col">
         <h5>Platform</h5>
@@ -934,83 +899,161 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <p>© 2025 Comprehensive Care Service Ltd. All rights reserved.</p>
-      <p>Built with ❤️ for UK care homes</p>
+      <p>© 2026 Comprehensive Care Service Ltd. All rights reserved.</p>
+      <p style="color:var(--grey2)">Built with ❤️ for UK care homes</p>
     </div>
   </div>
 </footer>
 
 <script>
-  // Mobile nav
+  // Nav
   const menuBtn = document.getElementById('menuBtn')
   const mobileNav = document.getElementById('mobileNav')
   menuBtn.addEventListener('click', () => mobileNav.classList.toggle('open'))
   function closeMobile() { mobileNav.classList.remove('open') }
-
-  // Sticky nav shadow
   window.addEventListener('scroll', () => {
     document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20)
   })
 
-  // Counter animation
+  // Counters
   function animateCounters() {
     document.querySelectorAll('.counter').forEach(el => {
-      const target = +el.dataset.target
-      const dur = 1800
-      const step = target / (dur / 16)
+      const target = +el.dataset.target, dur = 1800, step = target / (dur / 16)
       let current = 0
-      const tick = () => {
-        current = Math.min(current + step, target)
-        el.textContent = Math.round(current)
-        if (current < target) requestAnimationFrame(tick)
-      }
+      const tick = () => { current = Math.min(current + step, target); el.textContent = Math.round(current); if (current < target) requestAnimationFrame(tick) }
       tick()
     })
   }
-
-  // Scroll reveal
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') })
   }, { threshold: 0.12 })
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
-
-  // Trigger counter when stats band visible
   const statsObserver = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) { animateCounters(); statsObserver.disconnect() } })
   }, { threshold: 0.3 })
   const statsBand = document.querySelector('.stats-band')
   if (statsBand) statsObserver.observe(statsBand)
 
-  // Application form
-  async function submitApplication(e) {
-    e.preventDefault()
+  // Click job card → pre-fill role
+  function selectRole(role) {
+    document.getElementById('f_position').value = role
+    document.getElementById('careers').scrollIntoView({ behavior: 'smooth' })
+    setTimeout(() => document.getElementById('f_firstName').focus(), 600)
+  }
+
+  // Multi-step form
+  let currentStep = 1
+  function goStep(n) {
+    if (n === 2) {
+      const fn = document.getElementById('f_firstName').value.trim()
+      const ln = document.getElementById('f_lastName').value.trim()
+      const em = document.getElementById('f_email').value.trim()
+      const ph = document.getElementById('f_phone').value.trim()
+      if (!fn || !ln || !em || !ph) { alert('Please fill in all required fields.'); return }
+      if (!/\S+@\S+\.\S+/.test(em)) { alert('Please enter a valid email address.'); return }
+    }
+    if (n === 3) {
+      const pos = document.getElementById('f_position').value
+      const exp = document.getElementById('f_experience').value.trim()
+      if (!pos) { alert('Please select the position you are applying for.'); return }
+      if (!exp) { alert('Please tell us about yourself.'); return }
+      buildReview()
+    }
+    currentStep = n
+    document.getElementById('step1').style.display = n === 1 ? 'block' : 'none'
+    document.getElementById('step2').style.display = n === 2 ? 'block' : 'none'
+    document.getElementById('step3').style.display = n === 3 ? 'block' : 'none'
+    ;['pStep1','pStep2','pStep3'].forEach((id, i) => {
+      const el = document.getElementById(id)
+      el.classList.remove('active','done')
+      if (i + 1 === n) el.classList.add('active')
+      else if (i + 1 < n) el.classList.add('done')
+    })
+    document.querySelectorAll('.progress-line').forEach((el, i) => {
+      el.classList.toggle('done', i + 1 < n)
+    })
+  }
+
+  function buildReview() {
+    const fields = [
+      ['Full name', document.getElementById('f_firstName').value + ' ' + document.getElementById('f_lastName').value],
+      ['Email', document.getElementById('f_email').value],
+      ['Phone', document.getElementById('f_phone').value],
+      ['Right to work', document.getElementById('f_rtw').value === 'yes' ? 'Yes' : 'No — needs sponsorship'],
+      ['Position', document.getElementById('f_position').value],
+      ['Experience', document.getElementById('f_years').value || 'Not specified'],
+    ]
+    document.getElementById('reviewGrid').innerHTML = fields.map(([k, v]) =>
+      `<div class="review-item"><label>${k}</label><span>${v}</span></div>`
+    ).join('')
+  }
+
+  async function submitApplication() {
+    if (!document.getElementById('f_consent').checked) {
+      alert('Please tick the consent checkbox to proceed.'); return
+    }
     const btn = document.getElementById('applyBtn')
     const msg = document.getElementById('applyMsg')
-    const form = document.getElementById('applyForm')
     btn.disabled = true
-    btn.textContent = 'Sending…'
-    const data = Object.fromEntries(new FormData(form).entries())
+    btn.textContent = 'Submitting…'
+    const payload = {
+      firstName: document.getElementById('f_firstName').value.trim(),
+      lastName: document.getElementById('f_lastName').value.trim(),
+      email: document.getElementById('f_email').value.trim(),
+      phone: document.getElementById('f_phone').value.trim(),
+      position: document.getElementById('f_position').value,
+      yearsExperience: document.getElementById('f_years').value,
+      experienceSummary: document.getElementById('f_experience').value.trim(),
+      rightToWork: document.getElementById('f_rtw').value === 'yes',
+    }
     try {
       const res = await fetch('https://app.comprehensivecare.org.uk/api/public/apply', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
       })
-      if (res.ok) {
-        msg.style.display = 'block'
-        msg.style.background = '#d1fae5'
-        msg.style.color = '#065f46'
-        msg.textContent = '✓ Application sent! We\'ll be in touch within 48 hours.'
-        form.reset()
+      const json = await res.json()
+      if (res.ok && json.success) {
+        document.getElementById('step3').style.display = 'none'
+        document.getElementById('applyProgress').style.display = 'none'
+        document.getElementById('stepDone').style.display = 'block'
+        document.getElementById('refNumber').textContent = json.data.referenceNumber
+      } else { throw new Error(json.error || 'Failed') }
+    } catch (err) {
+      msg.style.cssText = 'display:block;padding:.75rem;border-radius:10px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);font-size:.88rem;margin-bottom:1rem'
+      msg.textContent = 'Something went wrong. Please email info@comprehensivecare.org.uk'
+      btn.disabled = false
+      btn.textContent = 'Submit Application'
+    }
+  }
+
+  // Status checker
+  async function checkStatus() {
+    const ref = document.getElementById('statusRef').value.trim().toUpperCase()
+    const result = document.getElementById('statusResult')
+    if (!ref) return
+    result.style.display = 'block'
+    result.innerHTML = '<p style="color:var(--grey)">Checking…</p>'
+    try {
+      const res = await fetch(`https://app.comprehensivecare.org.uk/api/public/apply/${encodeURIComponent(ref)}`)
+      const json = await res.json()
+      if (res.ok && json.success) {
+        const d = json.data
+        const stageColors = { applied:'#d4a017', screening:'#3b82f6', interview:'#8b5cf6', offer:'#10b981', hired:'#059669', rejected:'#ef4444' }
+        const color = stageColors[d.stage] || '#d4a017'
+        result.innerHTML = `
+          <div style="background:var(--black2);border:1px solid var(--border);border-radius:12px;padding:1.25rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+              <div style="font-weight:700;color:var(--white)">${d.firstName} — ${d.position}</div>
+              <div style="background:${color}22;color:${color};border:1px solid ${color}44;padding:.25rem .75rem;border-radius:50px;font-size:.78rem;font-weight:700">${d.stageLabel}</div>
+            </div>
+            <div style="font-size:.82rem;color:var(--grey)">Applied: ${new Date(d.appliedDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+            ${d.interviewDate ? `<div style="font-size:.82rem;color:#8b5cf6;margin-top:.25rem">Interview: ${new Date(d.interviewDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>` : ''}
+          </div>`
       } else {
-        throw new Error()
+        result.innerHTML = '<p style="color:#f87171;font-size:.88rem">Reference not found. Please check and try again.</p>'
       }
     } catch {
-      msg.style.display = 'block'
-      msg.style.background = '#fee2e2'
-      msg.style.color = '#991b1b'
-      msg.textContent = 'Something went wrong. Please email us at info@comprehensivecare.org.uk'
+      result.innerHTML = '<p style="color:#f87171;font-size:.88rem">Could not connect. Please try again later.</p>'
     }
-    btn.disabled = false
-    btn.textContent = 'Submit Application'
   }
 </script>
 </body>
