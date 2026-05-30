@@ -291,6 +291,17 @@ export default function HandoverReport() {
               { value: 'late', label: 'Late (14:00–22:00)' },
               { value: 'night', label: 'Night (22:00–07:00)' },
             ]} />
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Filter by resident</label>
+            <select className="rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none"
+              style={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)', color: '#e0d8c8', minWidth: '160px' }}
+              value={filterSuId} onChange={e => setFilterSuId(e.target.value)}>
+              <option value="">All residents</option>
+              {sus.map(s => (
+                <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>
+              ))}
+            </select>
+          </div>
           <button onClick={() => window.print()}
             className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.3)', color: '#e8b130' }}>
@@ -317,7 +328,7 @@ export default function HandoverReport() {
           <p className="text-sm text-slate-500 italic">No residents to write a handover for.</p>
         ) : (
           <div className="space-y-4">
-            {sus.map((su) => {
+            {(filterSuId ? sus.filter(s => s.id === filterSuId) : sus).map((su) => {
               const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
               const value = residentNotes[su.id] || ''
               const recentlySaved = savedAt[su.id] && Date.now() - savedAt[su.id] < 3000

@@ -21,7 +21,7 @@ function fromToken(req: Request, field: string): string {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const { start_date, end_date, incident_type, search } = req.query;
+    const { start_date, end_date, incident_type, search, suId } = req.query;
 
     let sql = `
       SELECT
@@ -42,6 +42,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     `;
     const params: any[] = [homeId];
 
+    if (suId) {
+      params.push(suId);
+      sql += ` AND dr.su_id = $${params.length}`;
+    }
     if (start_date) {
       params.push(start_date);
       sql += ` AND dr.record_date >= $${params.length}`;

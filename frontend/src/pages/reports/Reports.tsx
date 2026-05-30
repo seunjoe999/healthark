@@ -14,13 +14,32 @@ const REPORT_TYPES = [
   { value: 'care-plan-compliance', label: 'Care Plan Compliance', description: 'Review status and overdue plans' },
   { value: 'staff-attendance', label: 'Staff Attendance', description: 'Clock in/out history' },
   { value: 'training-compliance', label: 'Training Compliance', description: 'Expiring and expired certificates' },
-  { value: 'monthly-summary', label: 'Monthly Summary', description: 'High-level month overview' },
   { value: 'mar-report', label: 'MAR Report', description: 'Medication administration records' },
   { value: 'medication-report', label: 'Medication Report', description: 'All medications by resident' },
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
   { value: 'monthly-reviews-history', label: 'Monthly Reviews History', description: 'History of every care review by month' },
   { value: 'incident-analysis', label: 'AI Incident Analysis', description: 'AI-powered analysis of incident patterns' },
+]
+
+const DAILY_RECORD_TYPES = [
+  { value: '', label: 'All types' },
+  { value: 'personal_care', label: 'Personal Care' },
+  { value: 'oral_care', label: 'Oral Care' },
+  { value: 'food_intake', label: 'Food Intake' },
+  { value: 'fluid_intake', label: 'Fluid Intake' },
+  { value: 'medication', label: 'Medication' },
+  { value: 'prn_medication', label: 'PRN Medication' },
+  { value: 'incident', label: 'Incident' },
+  { value: 'behaviour', label: 'Behaviour' },
+  { value: 'observation', label: 'Observation' },
+  { value: 'bowel', label: 'Bowel' },
+  { value: 'bath', label: 'Bath/Shower' },
+  { value: 'sleep', label: 'Sleep' },
+  { value: 'activity', label: 'Activity' },
+  { value: 'mood', label: 'Mood' },
+  { value: 'visit', label: 'Visit' },
+  { value: 'other', label: 'Other' },
 ]
 
 export default function Reports() {
@@ -31,7 +50,6 @@ export default function Reports() {
   const [reportType, setReportType] = useState(searchParams.get('type') || 'daily-records')
   const [from, setFrom] = useState(() => new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0])
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0])
-  const [month, setMonth] = useState(() => new Date().toISOString().substring(0, 7))
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [suList, setSuList] = useState<any[]>([])
@@ -55,9 +73,7 @@ export default function Reports() {
     setLoading(true)
     setData(null)
     try {
-      const params: any = { homeId: selectedHome }
-      if (reportType === 'monthly-summary') params.month = month
-      else { params.from = from; params.to = to }
+      const params: any = { homeId: selectedHome, from, to }
       if (selectedSu) params.suId = selectedSu
       if (reportType === 'daily-records' && dailyRecordType) params.recordType = dailyRecordType
       const res = await api.get(`/reports/${reportType}`, { params })
@@ -96,22 +112,21 @@ export default function Reports() {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-6">
         <div className="flex flex-wrap items-end gap-4">
-          {reportType === 'monthly-summary' ? (
+          <div>
+            <label className="label">From date</label>
+            <input type="date" className="input w-auto" value={from} onChange={e => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">To date</label>
+            <input type="date" className="input w-auto" value={to} onChange={e => setTo(e.target.value)} />
+          </div>
+          {reportType === 'daily-records' && (
             <div>
-              <label className="label">Month</label>
-              <input type="month" className="input w-auto" value={month} onChange={e => setMonth(e.target.value)} />
+              <label className="label">Record type</label>
+              <select className="input w-auto" value={dailyRecordType} onChange={e => setDailyRecordType(e.target.value)}>
+                {DAILY_RECORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
             </div>
-          ) : (
-            <>
-              <div>
-                <label className="label">From date</label>
-                <input type="date" className="input w-auto" value={from} onChange={e => setFrom(e.target.value)} />
-              </div>
-              <div>
-                <label className="label">To date</label>
-                <input type="date" className="input w-auto" value={to} onChange={e => setTo(e.target.value)} />
-              </div>
-            </>
           )}
           <div>
             <label className="label flex items-center gap-1"><User className="w-3.5 h-3.5" /> Filter by resident</label>
@@ -129,8 +144,6 @@ export default function Reports() {
       {/* Results */}
       {loading ? <Spinner /> : !data ? (
         <EmptyState title="Select a report type and click Run" description="Reports will appear here" />
-      ) : reportType === 'monthly-summary' ? (
-        <MonthlySummary data={data} />
       ) : reportType === 'care-plan-compliance' ? (
         <CarePlanCompliance data={data} />
       ) : reportType === 'fluid' ? (
@@ -144,26 +157,6 @@ export default function Reports() {
       ) : (
         <GenericTable data={Array.isArray(data) ? data : []} reportType={reportType} />
       )}
-    </div>
-  )
-}
-
-function MonthlySummary({ data }: { data: any }) {
-  return (
-    <div className="grid md:grid-cols-3 gap-4">
-      {[
-        { label: 'Total records logged', value: data.totalRecords, color: 'text-purple-700', bg: 'bg-purple-50' },
-        { label: 'Incidents', value: data.incidents, color: 'text-red-700', bg: 'bg-red-50' },
-        { label: 'Fluid below threshold', value: data.fluidBelowThreshold, color: 'text-orange-700', bg: 'bg-orange-50' },
-        { label: 'Active care plans', value: data.carePlansTotal, color: 'text-blue-700', bg: 'bg-blue-50' },
-        { label: 'Overdue care plans', value: data.carePlansOverdue, color: 'text-red-700', bg: 'bg-red-50' },
-        { label: 'Staff active in period', value: data.staffActive, color: 'text-green-700', bg: 'bg-green-50' },
-      ].map(stat => (
-        <div key={stat.label} className={`${stat.bg} rounded-xl p-5 border border-slate-100`}>
-          <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-          <p className="text-sm text-slate-600 mt-1">{stat.label}</p>
-        </div>
-      ))}
     </div>
   )
 }

@@ -64,6 +64,7 @@ import MedicationStock from './pages/medication-stock/MedicationStock'
 import Recruitment from './pages/recruitment/Recruitment'
 import HandoverReport from './pages/reports/HandoverReport'
 import Training from './pages/training/Training'
+import RiskManagement from './pages/risk-assessments/RiskManagement'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -144,6 +145,7 @@ function AppRoutes() {
       <Route path="/recruitment" element={<ProtectedRoute><Recruitment /></ProtectedRoute>} />
       <Route path="/reports/handover" element={<ProtectedRoute><HandoverReport /></ProtectedRoute>} />
       <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
+      <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
