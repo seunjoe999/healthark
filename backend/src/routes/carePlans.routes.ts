@@ -82,7 +82,7 @@ router.post('/',
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, planType, customName, aimsOutcomes, whatICanDo, howToSupport,
-              reviewFrequency, attachmentsNotes,
+              reviewFrequency, attachmentsNotes, templateData,
               medicationSupportLevel, managesOwnMeds, levelOfSupport, supportTypes,
               dateMedicationReview, regularMedications, prnMedications, otcMedications,
               prnProtocol, prnList, indicationForUse } = req.body;
@@ -111,8 +111,8 @@ router.post('/',
           what_i_can_do, how_to_support, review_frequency, last_review_date, next_review_date, created_by, is_active,
           medication_support_level, manages_own_meds, level_of_support, support_types,
           date_medication_review, regular_medications, prn_medications, otc_medications,
-          prn_protocol, prn_list, indication_for_use, attachments_notes)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
+          prn_protocol, prn_list, indication_for_use, attachments_notes, template_data)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,CURRENT_DATE,$9,$10,true,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
         [trimmedSuId, homeId, planType, customName || null, aimsOutcomes || null,
          whatICanDo || null, howToSupport || null,
          reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId,
@@ -120,7 +120,8 @@ router.post('/',
          supportTypes || null, nd(dateMedicationReview),
          regularMedications || null, prnMedications || null, otcMedications || null,
          prnProtocol || null, prnList || null, indicationForUse || null,
-         attachmentsNotes || null]
+         attachmentsNotes || null,
+         templateData ? JSON.stringify(templateData) : '{}']
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err: any) { console.error('Care plan CREATE error:', err?.message, err?.detail); next(err); }
@@ -133,7 +134,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
     try {
       const staffId = fromToken(req, 'staffId');
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
-              reviewFrequency, updateNotes, attachmentsNotes, suSignOff, staffSignOff,
+              reviewFrequency, updateNotes, attachmentsNotes, templateData, suSignOff, staffSignOff,
               suSignedBy, suSignedDate, staffSignedBy, staffSignedDate,
               consentNotes, consentGiven, consentDate,
               suSignatureDataurl, staffSignatureDataurl,
@@ -183,7 +184,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           consent_given            = COALESCE($28, consent_given),
           consent_date             = COALESCE($29, consent_date),
           su_signature_dataurl     = COALESCE($30, su_signature_dataurl),
-          staff_signature_dataurl  = COALESCE($31, staff_signature_dataurl)
+          staff_signature_dataurl  = COALESCE($31, staff_signature_dataurl),
+          template_data            = COALESCE($32::jsonb, template_data)
          WHERE id = $8 RETURNING *`,
         [aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved || null,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
@@ -194,7 +196,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          attachmentsNotes ?? null, suSignOff ?? null, staffSignOff ?? null,
          suSignedBy ?? null, nd(suSignedDate), staffSignedBy ?? null, nd(staffSignedDate),
          consentNotes ?? null, consentGiven ?? null, nd(consentDate),
-         suSignatureDataurl ?? null, staffSignatureDataurl ?? null]
+         suSignatureDataurl ?? null, staffSignatureDataurl ?? null,
+         templateData ? JSON.stringify(templateData) : null]
       );
       if (!rows.length) throw new AppError('Care plan not found', 404);
 

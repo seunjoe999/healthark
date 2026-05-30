@@ -43,6 +43,7 @@ const PLAN_TYPES = [
   { value: 'dementia', label: 'Dementia Support Plan' },
   { value: 'mental_health', label: 'Mental Health Support Plan' },
   { value: 'medication_support', label: 'Medication Support Plan' },
+  { value: 'monthly_progress', label: 'Monthly Progress Report' },
   { value: 'custom', label: 'Custom / Other' },
 ]
 
@@ -77,6 +78,256 @@ function deleteTemplate(idx: number) {
   localStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates))
 }
 
+// ── TEMPLATE INFRASTRUCTURE ──────────────────────────────────────────────────
+
+const AUTISM_SECTIONS = [
+  { key: 'background', label: 'Background' },
+  { key: 'autismProfile', label: 'My Autism and PDA Profile' },
+  { key: 'distressBehaviours', label: 'My Behaviour When I\'m Distressed' },
+  { key: 'behaviourTriggers', label: 'What These Behaviours Are Usually Linked To' },
+  { key: 'whatHelpsDistress', label: 'What Helps Me in These Moments' },
+  { key: 'howICommunicate', label: 'How I Communicate' },
+  { key: 'communicationNeeds', label: 'How I Need People to Communicate With Me' },
+  { key: 'setupApproach', label: 'The SETUP Communication Approach' },
+  { key: 'dailyRoutines', label: 'My Daily Activities and Routines' },
+  { key: 'changeExperience', label: 'My Experience of Change' },
+  { key: 'changeSupport', label: 'How Staff Should Support Me During Change' },
+  { key: 'changeHarderFactors', label: 'What Makes Change Harder for Me' },
+  { key: 'cognitiveNeeds', label: 'My Cognition / Thinking Style' },
+  { key: 'mentalHealth', label: 'My Mental Health & Emotional Wellbeing' },
+  { key: 'whatHelpsRegulation', label: 'What Helps Me Stay Regulated' },
+  { key: 'whatMakesHarder', label: 'What Makes Things Harder for Me' },
+]
+
+const ADHD_SECTIONS = [
+  { key: 'background', label: 'Background – How My ADHD Affects Me' },
+  { key: 'attentionFocus', label: 'Attention & Focus' },
+  { key: 'organisationPlanning', label: 'Organisation & Planning' },
+  { key: 'emotionalRegulation', label: 'Emotional Regulation' },
+  { key: 'impulsivity', label: 'Impulsivity' },
+  { key: 'hyperactivity', label: 'Hyperactivity (Internal or External)' },
+  { key: 'whatHelpsAdhd', label: 'What Helps Me With My ADHD' },
+  { key: 'adhdTriggers', label: 'My ADHD Triggers' },
+  { key: 'earlyWarningSigns', label: 'Early Warning Signs I\'m Struggling' },
+  { key: 'whatHelpsRegulate', label: 'What Helps Me Regulate My ADHD' },
+  { key: 'whatMakesWorse', label: 'What Makes My ADHD Worse' },
+  { key: 'communicationSupport', label: 'Communication Support – How to Help Me' },
+  { key: 'aboutMe', label: 'About Me' },
+  { key: 'strengths', label: 'My Strengths' },
+  { key: 'crisisSupport', label: 'Crisis-Level Support' },
+  { key: 'dailyActivities', label: 'Daily Activities & Routine Support' },
+  { key: 'socialRelationships', label: 'Social & Relationship Support' },
+  { key: 'changeExperience', label: 'My Experience of Change' },
+  { key: 'cognitionThinking', label: 'My Cognition / Thinking Style' },
+  { key: 'emotionalSupport', label: 'Emotional Regulation Support' },
+]
+
+const MONTHLY_HEADER_SECTIONS = [
+  { key: 'month', label: 'Month', isText: true },
+  { key: 'completedBy', label: 'Completed by (Name & Role)', isText: true },
+  { key: 'dateCompleted', label: 'Date Completed', isText: true },
+]
+const MONTHLY_BODY_SECTIONS = [
+  { key: 'personalOralCare', label: 'Personal & Oral Care' },
+  { key: 'sleep', label: 'Sleep' },
+  { key: 'householdTasks', label: 'Household Tasks' },
+  { key: 'nutritionHydration', label: 'Nutrition and Hydration' },
+  { key: 'communityEngagement', label: 'Community Engagement' },
+  { key: 'behaviouralConcerns', label: 'Behavioural Concerns' },
+  { key: 'medicationCompliance', label: 'Medication Compliance' },
+  { key: 'communityAccessSafeguarding', label: 'Community Access and Safeguarding' },
+  { key: 'mentalHealthEmotionalWellbeing', label: 'Mental Health & Emotional Wellbeing' },
+  { key: 'financialManagement', label: 'Financial Management' },
+  { key: 'familySocialContact', label: 'Family and Social Contact' },
+  { key: 'selfHarm', label: 'Self-Harm' },
+  { key: 'behaviourTowardsStaff', label: 'Behaviour Towards Staff' },
+  { key: 'summaryNotes', label: 'Summary / Additional Notes' },
+]
+
+function YesNoRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      <div className="flex gap-4">
+        {['Yes', 'No'].map(opt => (
+          <label key={opt} className="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" checked={value === opt} onChange={() => onChange(opt)} className="w-3.5 h-3.5" />
+            <span className="text-sm text-slate-600">{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TemplateFields({ planType, data, onChange }: { planType: string; data: any; onChange: (d: any) => void }) {
+  const set = (key: string, val: string) => onChange({ ...data, [key]: val })
+  const tv = (key: string) => data?.[key] || ''
+
+  if (planType === 'oral_care') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
+          <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-1">About My Teeth</p>
+          <p className="text-xs text-slate-500 italic mb-2">Good oral hygiene helps reduce the risk of systemic illnesses such as heart disease, diabetes-related complications, and respiratory infections. Staff must consistently provide high-quality oral care, supporting people with brushing, flossing, denture cleaning, and arranging regular dental checkups.</p>
+          <YesNoRow label="I have all my own teeth" value={tv('hasOwnTeeth')} onChange={v => set('hasOwnTeeth', v)} />
+          <YesNoRow label="I have dentures" value={tv('hasDentures')} onChange={v => set('hasDentures', v)} />
+        </div>
+        <div className="bg-amber-50 rounded-xl border border-amber-100 p-4">
+          <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">My Preference</p>
+          <YesNoRow label="I use mouth wash" value={tv('usesMouthwash')} onChange={v => set('usesMouthwash', v)} />
+          <YesNoRow label="I use prescribed mouth wash" value={tv('usesPrescribedMouthwash')} onChange={v => set('usesPrescribedMouthwash', v)} />
+          <div className="mt-3"><label className="label">My mouthwash preference</label><input className="input w-full text-sm" value={tv('mouthwashPreference')} onChange={e => set('mouthwashPreference', e.target.value)} /></div>
+          <YesNoRow label="I use floss" value={tv('usesFloss')} onChange={v => set('usesFloss', v)} />
+          <div className="mt-3"><label className="label">My floss preference</label><input className="input w-full text-sm" value={tv('flossPreference')} onChange={e => set('flossPreference', e.target.value)} /></div>
+          <YesNoRow label="I use denture tablets" value={tv('usesDentureTablets')} onChange={v => set('usesDentureTablets', v)} />
+          <div className="mt-3"><label className="label">My denture tablet preference</label><input className="input w-full text-sm" value={tv('dentureTabletPreference')} onChange={e => set('dentureTabletPreference', e.target.value)} /></div>
+          <div className="mt-3"><label className="label">My toothbrush preference</label><input className="input w-full text-sm" value={tv('toothbrushPreference')} onChange={e => set('toothbrushPreference', e.target.value)} /></div>
+          <div className="mt-3"><label className="label">My toothpaste preference</label><input className="input w-full text-sm" value={tv('toothpastePreference')} onChange={e => set('toothpastePreference', e.target.value)} /></div>
+        </div>
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Support</p>
+          <YesNoRow label="I require support with my oral hygiene" value={tv('requiresSupport')} onChange={v => set('requiresSupport', v)} />
+          <div className="mt-3"><label className="label">Details</label><textarea className="input w-full" rows={3} value={tv('supportDetails')} onChange={e => set('supportDetails', e.target.value)} /></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (planType === 'autism') {
+    return (
+      <div className="space-y-3">
+        {AUTISM_SECTIONS.map(s => (
+          <div key={s.key}>
+            <label className="label font-semibold">{s.label}</label>
+            <textarea className="input w-full text-sm" rows={4} value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'adhd') {
+    return (
+      <div className="space-y-3">
+        {ADHD_SECTIONS.map(s => (
+          <div key={s.key}>
+            <label className="label font-semibold">{s.label}</label>
+            <textarea className="input w-full text-sm" rows={3} value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'monthly_progress') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Monthly Progress Report</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {MONTHLY_HEADER_SECTIONS.map(s => (
+              <div key={s.key}>
+                <label className="label">{s.label}</label>
+                <input className="input w-full text-sm" value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
+              </div>
+            ))}
+          </div>
+        </div>
+        {MONTHLY_BODY_SECTIONS.map(s => (
+          <div key={s.key}>
+            <label className="label font-semibold">{s.label}</label>
+            <textarea className="input w-full text-sm" rows={3} value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return null
+}
+
+function TemplateDetail({ plan }: { plan: any }) {
+  const td = plan.template_data || {}
+  const tv = (key: string) => td[key] || ''
+  const pt = plan.plan_type
+
+  const row = (label: string, value: string) => value ? (
+    <div className="flex justify-between py-1.5 border-b border-slate-100 last:border-0">
+      <span className="text-sm font-semibold text-slate-600">{label}</span>
+      <span className="text-sm text-slate-800">{value}</span>
+    </div>
+  ) : null
+
+  const sec = (label: string, value: string) => value ? (
+    <div className="border border-amber-100 rounded-xl p-4 bg-amber-50/30">
+      <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
+    </div>
+  ) : null
+
+  if (pt === 'oral_care') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
+          <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">About My Teeth</p>
+          {row('I have all my own teeth', tv('hasOwnTeeth'))}
+          {row('I have dentures', tv('hasDentures'))}
+        </div>
+        <div className="bg-amber-50 rounded-xl border border-amber-100 p-4">
+          <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">My Preference</p>
+          {row('I use mouth wash', tv('usesMouthwash'))}
+          {row('I use prescribed mouth wash', tv('usesPrescribedMouthwash'))}
+          {row('My mouthwash preference', tv('mouthwashPreference'))}
+          {row('I use floss', tv('usesFloss'))}
+          {row('My floss preference', tv('flossPreference'))}
+          {row('I use denture tablets', tv('usesDentureTablets'))}
+          {row('My denture tablet preference', tv('dentureTabletPreference'))}
+          {row('My toothbrush preference', tv('toothbrushPreference'))}
+          {row('My toothpaste preference', tv('toothpastePreference'))}
+        </div>
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Support</p>
+          {row('I require support with my oral hygiene', tv('requiresSupport'))}
+          {tv('supportDetails') && <p className="text-sm text-slate-700 mt-2 whitespace-pre-line">{tv('supportDetails')}</p>}
+        </div>
+      </div>
+    )
+  }
+
+  if (pt === 'autism') {
+    return (
+      <div className="space-y-3">
+        {AUTISM_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'adhd') {
+    return (
+      <div className="space-y-3">
+        {ADHD_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'monthly_progress') {
+    return (
+      <div className="space-y-3">
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Report Details</p>
+          {row('Month', tv('month'))}
+          {row('Completed by', tv('completedBy'))}
+          {row('Date Completed', tv('dateCompleted'))}
+        </div>
+        {MONTHLY_BODY_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  return null
+}
+
 function ReviewStatus({ nextReviewDate }: { nextReviewDate: string }) {
   if (!nextReviewDate) return null
   const days = differenceInDays(new Date(nextReviewDate), new Date())
@@ -101,6 +352,79 @@ function doPrint(html: string) {
     iframe.contentWindow?.print()
     setTimeout(() => { try { document.body.removeChild(iframe) } catch {} }, 3000)
   }, 700)
+}
+
+function buildTemplatePrintHtml(plan: any): string {
+  const td = plan.template_data || {}
+  const tv = (key: string) => (td[key] || '').toString().trim()
+  const p = plan.plan_type
+
+  const goldSec = (label: string, value: string) =>
+    value ? `<div class="cs"><div class="cs-hd gold">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>` : ''
+
+  const plainSec = (label: string, value: string) =>
+    value ? `<div class="cs"><div class="cs-hd">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>` : ''
+
+  const yesNoRow = (label: string, key: string) => tv(key)
+    ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px;width:60%">${label}</td><td style="font-size:10px;font-weight:700;color:${tv(key)==='Yes'?'#065f46':'#991b1b'}">${tv(key)}</td></tr>`
+    : ''
+
+  if (p === 'oral_care') {
+    const aboutTeeth = [yesNoRow('I have all my own teeth', 'hasOwnTeeth'), yesNoRow('I have dentures', 'hasDentures')].filter(Boolean).join('')
+    const prefRows = [
+      yesNoRow('I use mouth wash', 'usesMouthwash'),
+      yesNoRow('I use prescribed mouth wash', 'usesPrescribedMouthwash'),
+      tv('mouthwashPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My mouthwash preference</td><td style="font-size:10px">${tv('mouthwashPreference')}</td></tr>` : '',
+      yesNoRow('I use floss', 'usesFloss'),
+      tv('flossPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My floss preference</td><td style="font-size:10px">${tv('flossPreference')}</td></tr>` : '',
+      yesNoRow('I use denture tablets', 'usesDentureTablets'),
+      tv('dentureTabletPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My denture tablet preference</td><td style="font-size:10px">${tv('dentureTabletPreference')}</td></tr>` : '',
+      tv('toothbrushPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My toothbrush preference</td><td style="font-size:10px">${tv('toothbrushPreference')}</td></tr>` : '',
+      tv('toothpastePreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My toothpaste preference</td><td style="font-size:10px">${tv('toothpastePreference')}</td></tr>` : '',
+    ].filter(Boolean).join('')
+    return `
+      <div class="cs"><div class="cs-hd gold">About My Teeth</div>
+        <div class="cs-bd" style="font-size:10px;color:#78350f;margin-bottom:8px;font-style:italic">Good oral hygiene helps reduce the risk of systemic illnesses such as heart disease, diabetes-related complications, and respiratory infections.</div>
+        <div class="cs-bd"><table style="width:100%;border-collapse:collapse">${aboutTeeth}</table></div>
+      </div>
+      <div class="cs"><div class="cs-hd gold">My Preference</div>
+        <div class="cs-bd"><table style="width:100%;border-collapse:collapse">${prefRows}</table></div>
+      </div>
+      <div class="cs"><div class="cs-hd">Support</div>
+        <div class="cs-bd"><table style="width:100%;border-collapse:collapse">${yesNoRow('I require support with my oral hygiene', 'requiresSupport')}</table>
+        ${tv('supportDetails') ? `<p style="margin-top:6px;font-size:11px;color:#334155">${tv('supportDetails').replace(/\n/g,'<br/>')}</p>` : ''}
+        </div>
+      </div>`
+  }
+
+  if (p === 'autism') {
+    const aims = plan.aims_outcomes ? goldSec('My Aims & Objectives', plan.aims_outcomes) : ''
+    return aims + AUTISM_SECTIONS.map(s => goldSec(s.label, tv(s.key))).join('')
+  }
+
+  if (p === 'adhd') {
+    const aims = plan.aims_outcomes ? goldSec('My Aims & Objectives', plan.aims_outcomes) : ''
+    return aims + ADHD_SECTIONS.map(s => goldSec(s.label, tv(s.key))).join('')
+  }
+
+  if (p === 'monthly_progress') {
+    const header = `
+      <div class="cs"><div class="cs-hd">Report Details</div>
+        <div class="cs-bd"><table style="width:100%;border-collapse:collapse;font-size:11px">
+          ${tv('month') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;width:40%">Month</td><td>${tv('month')}</td></tr>` : ''}
+          ${tv('completedBy') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0">Completed by</td><td>${tv('completedBy')}</td></tr>` : ''}
+          ${tv('dateCompleted') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0">Date Completed</td><td>${tv('dateCompleted')}</td></tr>` : ''}
+        </table></div>
+      </div>`
+    return header + MONTHLY_BODY_SECTIONS.map(s => plainSec(s.label, tv(s.key))).join('')
+  }
+
+  // Default — standard 3 fields
+  return [
+    goldSec('My Aims & Objectives', plan.aims_outcomes || ''),
+    goldSec('What I Can Do', plan.what_i_can_do || ''),
+    goldSec('How To Support Me', plan.how_to_support || ''),
+  ].join('')
 }
 
 function buildPrintHtml(plan: any, su: any, reads: any[]): string {
@@ -208,9 +532,7 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
 
     <div class="plan-banner">${planLabel}</div>
 
-    ${goldSec('My Aims & Objectives', plan.aims_outcomes)}
-    ${goldSec('What I Can Do', plan.what_i_can_do)}
-    ${goldSec('How To Support Me', plan.how_to_support)}
+    ${buildTemplatePrintHtml(plan)}
     ${plainSec('Attachments / Notes', plan.attachments_notes)}
     ${consentHtml}
 
@@ -493,6 +815,7 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
 }) {
   const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const isMed = plan.plan_type === 'medication_support'
+  const isTemplatedPlan = TEMPLATED_TYPES.has(plan.plan_type)
 
   return (
     <Modal open={true} onClose={onClose} title={label} size="lg">
@@ -532,6 +855,13 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
               </div>
             )}
           </>
+        ) : isTemplatedPlan ? (
+          <div className="space-y-4">
+            {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && plan.aims_outcomes && (
+              <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
+            )}
+            <TemplateDetail plan={plan} />
+          </div>
         ) : (
           <div className="space-y-4">
             <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
@@ -708,12 +1038,14 @@ const SUPPORT_TYPE_OPTIONS = [
 
 const EMPTY_ADD_FORM = {
   planType: '', customName: '', aimsOutcomes: '', whatICanDo: '', howToSupport: '',
-  reviewFrequency: 'monthly', attachmentsNotes: '',
+  reviewFrequency: 'monthly', attachmentsNotes: '', templateData: {} as Record<string, any>,
   medicationSupportLevel: '', managesOwnMeds: false, levelOfSupport: '',
   supportTypes: [] as string[], dateMedicationReview: '',
   regularMedications: '', prnMedications: '', otcMedications: '',
   prnProtocol: '', prnList: '', indicationForUse: '',
 }
+
+const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress'])
 
 function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
   open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void
@@ -755,6 +1087,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
         aimsOutcomes: form.aimsOutcomes, whatICanDo: form.whatICanDo,
         howToSupport: form.howToSupport, reviewFrequency: form.reviewFrequency,
         attachmentsNotes: form.attachmentsNotes,
+        templateData: Object.keys(form.templateData || {}).length ? form.templateData : undefined,
         medicationSupportLevel: form.medicationSupportLevel,
         managesOwnMeds: form.managesOwnMeds,
         levelOfSupport: form.levelOfSupport,
@@ -775,6 +1108,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
   }
 
   const isMedPlan = form.planType === 'medication_support'
+  const isTemplated = TEMPLATED_TYPES.has(form.planType)
 
   return (
     <Modal open={open} onClose={onClose} title="Add support plan" size="lg">
@@ -872,6 +1206,13 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
               </div>
             </div>
           </>
+        ) : isTemplated ? (
+          <>
+            {(form.planType === 'autism' || form.planType === 'adhd') && (
+              <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} placeholder="List the aims and outcomes for this person..." /></div>
+            )}
+            <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} />
+          </>
         ) : (
           <>
             <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} placeholder="What are we working towards for this person..." /></div>
@@ -916,9 +1257,11 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
     consentNotes: plan.consent_notes || '',
     consentGiven: plan.consent_given || false,
     consentDate: plan.consent_date ? plan.consent_date.split('T')[0] : '',
+    templateData: (plan.template_data || {}) as Record<string, any>,
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  const isTemplated = TEMPLATED_TYPES.has(plan.plan_type)
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -933,9 +1276,20 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
   return (
     <Modal open={true} onClose={onClose} title={`Edit: ${label}`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-        <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
-        <div><label className="label">What I can do</label><textarea className="input" rows={3} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
-        <div><label className="label">How to support me</label><textarea className="input" rows={3} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} /></div>
+        {isTemplated ? (
+          <>
+            {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && (
+              <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
+            )}
+            <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} />
+          </>
+        ) : (
+          <>
+            <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
+            <div><label className="label">What I can do</label><textarea className="input" rows={3} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
+            <div><label className="label">How to support me</label><textarea className="input" rows={3} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} /></div>
+          </>
+        )}
         <Select label="Outcome achieved" value={form.outcomeAchieved} onChange={e => set('outcomeAchieved', e.target.value)} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
         <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
         <div><label className="label">Review notes (what changed and why)</label><textarea className="input" rows={3} value={form.updateNotes} onChange={e => set('updateNotes', e.target.value)} /></div>

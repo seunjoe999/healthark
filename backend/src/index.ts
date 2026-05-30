@@ -1041,6 +1041,7 @@ async function ensureColumns() {
     // ── care_plans — signature data ───────────────────────────────────────────
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS su_signature_dataurl    TEXT`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS staff_signature_dataurl TEXT`,
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS template_data           JSONB DEFAULT '{}'::jsonb`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
@@ -1058,6 +1059,16 @@ async function bootstrap() {
     logger.error('Database connection failed', { err });
     process.exit(1);
   }
+
+  // Add monthly_progress to care_plan_type enum if it doesn't exist yet
+  await pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'monthly_progress'
+        AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'care_plan_type')) THEN
+        ALTER TYPE care_plan_type ADD VALUE 'monthly_progress';
+      END IF;
+    END $$
+  `).catch((err: any) => logger.warn('Enum update skipped: ' + err?.message));
 
   await ensureColumns();
 
