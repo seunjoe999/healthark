@@ -89,140 +89,146 @@ async function fetchSuFull(suId: string): Promise<any> {
   try { const r = await suApi.get(suId); return r.data.data } catch { return null }
 }
 
+function doPrint(html: string) {
+  const iframe = document.createElement('iframe')
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;visibility:hidden'
+  document.body.appendChild(iframe)
+  const doc = iframe.contentDocument || iframe.contentWindow?.document
+  if (!doc) { document.body.removeChild(iframe); return }
+  doc.open(); doc.write(html); doc.close()
+  iframe.contentWindow?.focus()
+  setTimeout(() => {
+    iframe.contentWindow?.print()
+    setTimeout(() => { try { document.body.removeChild(iframe) } catch {} }, 3000)
+  }, 700)
+}
+
 function buildPrintHtml(plan: any, su: any, reads: any[]): string {
   const planLabel = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const name = su ? `${su.first_name || ''} ${su.last_name || ''}`.trim() : plan.su_name || ''
   const dob = su?.date_of_birth ? new Date(su.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
   const age = su?.date_of_birth ? Math.floor((Date.now() - new Date(su.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
-  const phone = su?.phone || '—'
   const address = [su?.address1, su?.address2, su?.address3, su?.postcode].filter(Boolean).join(', ') || '—'
-  const lastRead = reads.length > 0 ? `${reads[0].staff_name} on ${new Date(reads[0].read_at).toLocaleDateString('en-GB')}` : 'Not yet read'
   const reviewDate = plan.last_review_date ? new Date(plan.last_review_date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')
   const nextReview = plan.next_review_date ? new Date(plan.next_review_date).toLocaleDateString('en-GB') : '—'
+  const lastRead = reads.length > 0 ? `Last read by ${reads[0].staff_name} on ${new Date(reads[0].read_at).toLocaleDateString('en-GB')}` : ''
 
   const photoHtml = su?.photo_url
-    ? `<img src="${su.photo_url}" style="width:90px;height:110px;object-fit:cover;border:1px solid #ccc;display:block;" />`
-    : `<div style="width:90px;height:110px;background:#e5e7eb;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#6b7280;">${(name[0]||'?').toUpperCase()}</div>`
+    ? `<img src="${su.photo_url.startsWith('http') ? su.photo_url : `https://app.comprehensivecare.org.uk${su.photo_url}`}" style="width:80px;height:100px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;display:block;flex-shrink:0" />`
+    : `<div style="width:80px;height:100px;border-radius:6px;background:#e2e8f0;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#64748b;flex-shrink:0">${(name[0]||'?').toUpperCase()}</div>`
 
-  const goldSection = (label: string, value: string) =>
-    value && value !== '—'
-      ? `<div class="section"><strong style="color:#b45309">${label}</strong><p>${value.replace(/\n/g, '<br/>')}</p></div>`
+  const goldSec = (label: string, value?: string | null) =>
+    value?.trim()
+      ? `<div class="cs"><div class="cs-hd gold">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>`
       : ''
 
-  const section = (label: string, value: string) =>
-    value && value !== '—' ? `<div class="section"><strong>${label}</strong><p>${value.replace(/\n/g, '<br/>')}</p></div>` : ''
+  const plainSec = (label: string, value?: string | null) =>
+    value?.trim()
+      ? `<div class="cs"><div class="cs-hd">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>`
+      : ''
 
-  const sigImg = (dataUrl: string | null | undefined) =>
-    dataUrl ? `<img src="${dataUrl}" style="height:48px;max-width:200px;display:block;margin-bottom:2px;" />` : ''
-
-  const signOffHtml = `
-    <div style="border:1px solid #ccc;border-radius:4px;padding:14px;margin-top:20px;page-break-inside:avoid">
-      <h3 style="font-size:11px;text-transform:uppercase;color:#555;margin:0 0 12px;letter-spacing:.06em">Sign Off</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div>
-          <p style="font-size:10px;color:#888;margin:0 0 6px;font-weight:600">Service User / Family Representative</p>
-          ${sigImg(plan.su_signature_dataurl)}
-          <div style="border-bottom:1px solid #333;min-height:32px;margin-bottom:6px;font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;padding-bottom:2px">${plan.su_signed_by || ''}</div>
-          <div style="display:flex;gap:16px;font-size:10px;color:#666;margin-top:4px">
-            <span>Name: <strong>${plan.su_signed_by || '________________________'}</strong></span>
-            <span>Date: <strong>${plan.su_signed_date ? new Date(plan.su_signed_date).toLocaleDateString('en-GB') : '________________________'}</strong></span>
-          </div>
-          <p style="font-size:9px;color:${plan.su_sign_off ? '#065f46' : '#aaa'};margin-top:4px">${plan.su_sign_off ? '✓ Signed off' : 'Signature required'}</p>
-        </div>
-        <div>
-          <p style="font-size:10px;color:#888;margin:0 0 6px;font-weight:600">Staff Member</p>
-          ${sigImg(plan.staff_signature_dataurl)}
-          <div style="border-bottom:1px solid #333;min-height:32px;margin-bottom:6px;font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;padding-bottom:2px">${plan.staff_signed_by || ''}</div>
-          <div style="display:flex;gap:16px;font-size:10px;color:#666;margin-top:4px">
-            <span>Name: <strong>${plan.staff_signed_by || '________________________'}</strong></span>
-            <span>Date: <strong>${plan.staff_signed_date ? new Date(plan.staff_signed_date).toLocaleDateString('en-GB') : '________________________'}</strong></span>
-          </div>
-          <p style="font-size:9px;color:${plan.staff_sign_off ? '#065f46' : '#aaa'};margin-top:4px">${plan.staff_sign_off ? '✓ Signed off' : 'Signature required'}</p>
-        </div>
+  const sigBlock = (role: string, name: string | null, dataUrl: string | null, date: string | null, done: boolean) => `
+    <div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px">${role}</div>
+      ${dataUrl ? `<img src="${dataUrl}" style="height:44px;max-width:180px;display:block;margin-bottom:4px"/>` : ''}
+      <div style="border-bottom:1.5px solid #334155;min-height:30px;font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;padding-bottom:2px;margin-bottom:6px">${name || ''}</div>
+      <div style="display:flex;gap:16px;font-size:9px;color:#64748b">
+        <span>Name: <strong style="color:#1e293b">${name || '________________________________'}</strong></span>
+        <span>Date: <strong style="color:#1e293b">${date ? new Date(date).toLocaleDateString('en-GB') : '________________________________'}</strong></span>
       </div>
+      <div style="margin-top:5px;font-size:9px;color:${done ? '#065f46' : '#94a3b8'};font-weight:600">${done ? '✓ Signed off' : 'Awaiting signature'}</div>
     </div>`
 
   const consentHtml = plan.consent_notes ? `
-    <div style="border:1px solid #d97706;background:#fffbeb;border-radius:4px;padding:12px;margin-top:14px">
-      <h3 style="font-size:11px;text-transform:uppercase;color:#92400e;margin:0 0 6px">Consent</h3>
-      <p style="font-size:11px;margin:0;color:#78350f">${plan.consent_notes.replace(/\n/g, '<br/>')}</p>
-      ${plan.consent_given ? `<p style="font-size:10px;color:#065f46;margin:6px 0 0"><strong>✓ Consent given</strong>${plan.consent_date ? ' on ' + new Date(plan.consent_date).toLocaleDateString('en-GB') : ''}</p>` : ''}
+    <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:6px;padding:12px;margin-top:12px;page-break-inside:avoid">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#92400e;margin-bottom:6px">Consent</div>
+      <div style="font-size:11px;color:#78350f;line-height:1.6">${plan.consent_notes.replace(/\n/g,'<br/>')}</div>
+      ${plan.consent_given ? `<div style="font-size:10px;color:#065f46;margin-top:6px;font-weight:600">✓ Consent given${plan.consent_date ? ' on ' + new Date(plan.consent_date).toLocaleDateString('en-GB') : ''}</div>` : ''}
     </div>` : ''
 
-  return `<!DOCTYPE html><html><head><title>${name} — ${planLabel}</title>
-    <style>
-      *{box-sizing:border-box}
-      body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:800px;margin:0 auto;font-size:12px}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e293b;padding-bottom:14px;margin-bottom:20px}
-      .header-left h1{font-size:16px;font-weight:700;margin:0 0 3px;color:#1e293b}
-      .header-left p{margin:1px 0;font-size:11px;color:#555}
-      .header-right{text-align:right;font-size:11px}
-      .header-right .meta-row{display:flex;justify-content:flex-end;gap:12px;margin-bottom:3px}
-      .header-right .label{color:#888;min-width:120px;text-align:right}
-      .header-right .value{font-weight:600;color:#1e293b}
-      .su-section{display:flex;gap:20px;margin-bottom:20px;border-bottom:1px solid #e5e7eb;padding-bottom:16px}
-      .su-title{font-size:15px;font-weight:700;color:#1e293b;margin:0 0 10px}
-      .su-table{font-size:11px;border-collapse:collapse;flex:1}
-      .su-table td{padding:3px 8px 3px 0;vertical-align:top}
-      .su-table td:first-child{font-weight:600;color:#555;white-space:nowrap;min-width:120px}
-      .plan-title{font-size:14px;font-weight:700;color:#1e293b;background:#f1f5f9;padding:10px 14px;border-radius:4px;margin-bottom:14px;border-left:4px solid #059669}
-      .section{margin-bottom:14px;border:1px solid #e5e7eb;border-radius:4px;padding:10px 12px;page-break-inside:avoid}
-      .section strong{font-size:10px;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;display:block;margin-bottom:5px}
-      .section p{font-size:12px;line-height:1.6;margin:0;color:#1e293b}
-      .reads{font-size:10px;color:#888;text-align:right;margin-top:6px}
-      @media print{body{padding:0}@page{margin:15mm}}
-    </style></head><body>
-    <div class="header">
-      <div class="header-left">
-        <h1>Comprehensive Care Ltd</h1>
-        <p>Ivy Business Centre</p>
-        <p>Office 3-13 Crown Street</p>
-        <p>Failsworth, Manchester</p>
-        <p>M35 9BG</p>
-      </div>
-      <div class="header-right">
-        <div class="meta-row"><span class="label">Author:</span><span class="value">${plan.created_by_name || plan.staff_signed_by || '—'}</span></div>
-        <div class="meta-row" style="align-items:flex-start">
-          <span class="label">Signature:</span>
-          <span class="value" style="text-align:right">
-            ${plan.staff_signature_dataurl
-              ? `<img src="${plan.staff_signature_dataurl}" style="height:36px;max-width:130px;" />`
-              : `<span style="font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b">${plan.staff_signed_by || plan.created_by_name || ''}</span>`}
-          </span>
-        </div>
-        <div class="meta-row"><span class="label">Latest Review Date:</span><span class="value">${reviewDate}</span></div>
-        <div class="meta-row"><span class="label">Next Review Date:</span><span class="value">${nextReview}</span></div>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${name} — ${planLabel}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;background:#fff}
+    .hdr{background:#1e293b;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:flex-start}
+    .hdr-company{font-size:15px;font-weight:700;letter-spacing:.02em;margin-bottom:3px}
+    .hdr-addr{font-size:9px;color:rgba(255,255,255,.6);line-height:1.7}
+    .hdr-badge{background:rgba(212,160,23,.25);color:#fbbf24;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:4px;margin-bottom:8px;display:inline-block}
+    .hdr-meta{font-size:9px;color:rgba(255,255,255,.6);line-height:1.8;text-align:right}
+    .hdr-meta strong{color:#fff}
+    .body{padding:18px 20px}
+    .resident{display:flex;gap:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:14px}
+    .res-name{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px}
+    .res-tbl{border-collapse:collapse;font-size:10px;width:100%}
+    .res-tbl td{padding:2px 10px 2px 0;vertical-align:top}
+    .res-tbl td:first-child{font-weight:600;color:#64748b;min-width:110px;white-space:nowrap}
+    .plan-banner{background:#b45309;color:#fff;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.02em;margin-bottom:14px}
+    .cs{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:10px;overflow:hidden;page-break-inside:avoid}
+    .cs-hd{padding:6px 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:#f1f5f9;color:#64748b;border-left:4px solid #94a3b8}
+    .cs-hd.gold{color:#b45309;border-left-color:#b45309;background:#fffbeb}
+    .cs-bd{padding:10px 12px;font-size:11px;line-height:1.7;color:#334155}
+    .signoff{border:1px solid #e2e8f0;border-radius:6px;padding:14px;margin-top:12px;page-break-inside:avoid}
+    .signoff-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
+    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+    .footer{margin-top:16px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#94a3b8}
+    .confid{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:2px 8px;border-radius:4px;font-weight:700;font-size:8px;letter-spacing:.05em}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:10mm;size:A4}}
+  </style></head><body>
+  <div class="hdr">
+    <div>
+      <div class="hdr-company">Comprehensive Care Ltd</div>
+      <div class="hdr-addr">Ivy Business Centre, Office 3-13 Crown Street<br/>Failsworth, Manchester, M35 9BG</div>
+    </div>
+    <div style="text-align:right">
+      <div class="hdr-badge">Support Plan</div>
+      <div class="hdr-meta">
+        Author: <strong>${plan.created_by_name || '—'}</strong><br/>
+        ${plan.staff_signature_dataurl
+          ? `<img src="${plan.staff_signature_dataurl}" style="height:30px;max-width:120px;display:inline-block;vertical-align:middle;margin:2px 0"/><br/>`
+          : (plan.staff_signed_by ? `<span style="font-family:'Brush Script MT',cursive;font-size:16px;color:#fff">${plan.staff_signed_by}</span><br/>` : '')}
+        Review Date: <strong>${reviewDate}</strong><br/>
+        Next Review: <strong>${nextReview}</strong>
       </div>
     </div>
+  </div>
 
-    <div class="su-section">
-      <div>${photoHtml}</div>
+  <div class="body">
+    <div class="resident">
+      ${photoHtml}
       <div style="flex:1">
-        <p class="su-title">Service User: ${name}</p>
-        <table class="su-table">
-          <tr><td>Address</td><td>${address}</td></tr>
-          <tr><td>Telephone</td><td>${phone}</td></tr>
-          <tr><td>Mobile</td><td>${su?.mobile || su?.phone || '—'}</td></tr>
-          <tr><td>Email</td><td>${su?.email || '—'}</td></tr>
-          <tr><td>Preferred Name</td><td>${su?.preferred_name || '—'}</td></tr>
-          <tr><td>Date of Birth</td><td>${dob}${age ? ' (' + age + ' yrs)' : ''}</td></tr>
-          <tr><td>Gender</td><td>${su?.gender || '—'}</td></tr>
-          <tr><td>Gender At Birth</td><td>${su?.gender_at_birth || '—'}</td></tr>
-          <tr><td>NHS Number</td><td>${su?.nhs_number || '—'}</td></tr>
+        <div class="res-name">${name}</div>
+        <table class="res-tbl">
+          <tr><td>Date of Birth</td><td>${dob}${age ? ` (${age} yrs)` : ''}</td><td style="padding-left:20px">NHS Number</td><td>${su?.nhs_number || '—'}</td></tr>
+          <tr><td>Gender</td><td>${su?.gender || '—'}</td><td style="padding-left:20px">Preferred Name</td><td>${su?.preferred_name || '—'}</td></tr>
+          <tr><td>Address</td><td colspan="3">${address}</td></tr>
+          <tr><td>Phone</td><td>${su?.phone || '—'}</td><td style="padding-left:20px">Email</td><td>${su?.email || '—'}</td></tr>
         </table>
       </div>
     </div>
 
-    <div class="plan-title">${planLabel}</div>
+    <div class="plan-banner">${planLabel}</div>
 
-    ${goldSection('My Aims & Objectives', plan.aims_outcomes || '')}
-    ${goldSection('What I Can Do', plan.what_i_can_do || '')}
-    ${goldSection('How To Support Me', plan.how_to_support || '')}
-    ${plan.attachments_notes ? section('Attachments / Notes', plan.attachments_notes) : ''}
+    ${goldSec('My Aims & Objectives', plan.aims_outcomes)}
+    ${goldSec('What I Can Do', plan.what_i_can_do)}
+    ${goldSec('How To Support Me', plan.how_to_support)}
+    ${plainSec('Attachments / Notes', plan.attachments_notes)}
     ${consentHtml}
-    ${signOffHtml}
-    <p class="reads">Last read: ${lastRead} &nbsp;|&nbsp; Total reads: ${reads.length}</p>
-  </body></html>`
+
+    <div class="signoff">
+      <div class="signoff-title">Sign Off</div>
+      <div class="sig-grid">
+        ${sigBlock('Service User / Family Representative', plan.su_signed_by, plan.su_signature_dataurl, plan.su_signed_date, !!plan.su_sign_off)}
+        ${sigBlock('Staff Member', plan.staff_signed_by, plan.staff_signature_dataurl, plan.staff_signed_date, !!plan.staff_sign_off)}
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="confid">CONFIDENTIAL</span>
+      <span>${lastRead}</span>
+      <span>Total reads: ${reads.length} &nbsp;·&nbsp; Printed ${new Date().toLocaleDateString('en-GB')}</span>
+    </div>
+  </div>
+</body></html>`
 }
 
 export default function CarePlans() {
@@ -297,26 +303,21 @@ export default function CarePlans() {
     const reads = planReads[plan.id] || []
     let suFull = selectedSu
     if (selectedSu?.id) {
-      const full = await fetchSuFull(selectedSu.id)
-      if (full) suFull = full
+      try { const full = await fetchSuFull(selectedSu.id); if (full) suFull = full } catch {}
     }
-    const html = buildPrintHtml(plan, suFull, reads)
-    const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400) }
+    doPrint(buildPrintHtml(plan, suFull, reads))
   }
 
   const printAll = async () => {
     if (!selectedSu) return
     let suFull = selectedSu
-    const full = await fetchSuFull(selectedSu.id)
-    if (full) suFull = full
+    try { const full = await fetchSuFull(selectedSu.id); if (full) suFull = full } catch {}
     const name = getName(suFull)
     const rows = plans.map(plan => buildPrintHtml(plan, suFull, planReads[plan.id] || []))
     const html = `<!DOCTYPE html><html><head><title>${name} — All Support Plans</title>
-      <style>body{font-family:Arial,sans-serif;margin:0} .page{page-break-after:always} @media print{.page:last-child{page-break-after:avoid}}</style>
-      </head><body>${rows.map(h => `<div class="page">${h.replace(/<!DOCTYPE html>[\s\S]*?<body>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}</div>`).join('')}</body></html>`
-    const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400) }
+      <style>body{font-family:'Segoe UI',Arial,sans-serif;margin:0} .page{page-break-after:always} @media print{.page:last-child{page-break-after:avoid};print-color-adjust:exact}</style>
+      </head><body>${rows.map(h => `<div class="page">${h.replace(/<!DOCTYPE html>[\s\S]*?<body[^>]*>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}</div>`).join('')}</body></html>`
+    doPrint(html)
   }
 
   const openAdminReads = async () => {

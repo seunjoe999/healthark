@@ -88,6 +88,52 @@
     .hm-val{font-size:1.1rem;font-weight:800;color:var(--white);font-family:'Fraunces',serif}
     .hm-label{font-size:.72rem;color:var(--grey);margin-top:1px}
 
+    /* ── CSS DASHBOARD MOCKUP ── */
+    .css-dashboard{width:100%;height:100%;background:#0d1117;display:flex;flex-direction:column;font-family:'Segoe UI',Arial,sans-serif}
+    .dash-topbar{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:#161b22;border-bottom:1px solid rgba(212,160,23,.2)}
+    .dash-logo-row{display:flex;align-items:center}
+    .dash-dot{width:10px;height:10px;border-radius:50%}
+    .dash-dot.red{background:#ff5f57}.dash-dot.amber{background:#febc2e}.dash-dot.green{background:#28c840}
+    .dash-body{display:flex;flex:1;overflow:hidden}
+    .dash-sidebar{width:48px;background:#0d1117;border-right:1px solid rgba(212,160,23,.1);display:flex;flex-direction:column;align-items:center;padding:.75rem 0;gap:.5rem}
+    .dsb-item{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.35)}
+    .dsb-item svg{width:16px;height:16px}
+    .dsb-item.active{background:rgba(212,160,23,.15);color:#d4a017}
+    .dash-main-area{flex:1;padding:1rem;overflow:hidden;display:flex;flex-direction:column;gap:.75rem}
+    .dash-heading{font-size:.85rem;font-weight:700;color:#fff;opacity:.9}
+    .dash-cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+    .dash-card{background:#161b22;border:1px solid rgba(212,160,23,.15);border-radius:10px;padding:.6rem .75rem}
+    .dash-card.gold{border-color:rgba(212,160,23,.4);background:rgba(212,160,23,.08)}
+    .dc-val{font-size:1.15rem;font-weight:800;color:#d4a017;font-family:'Fraunces',serif}
+    .dc-lbl{font-size:.6rem;color:rgba(255,255,255,.45);margin-top:1px}
+    .dash-section-title{font-size:.65rem;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em}
+    .dash-row-list{display:flex;flex-direction:column;gap:.4rem}
+    .dash-row-item{display:flex;align-items:center;gap:.5rem;background:#161b22;border-radius:8px;padding:.45rem .6rem;border:1px solid rgba(255,255,255,.05)}
+    .dash-avatar{width:24px;height:24px;border-radius:50%;flex-shrink:0}
+    .av1{background:linear-gradient(135deg,#d4a017,#b45309)}
+    .av2{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+    .av3{background:linear-gradient(135deg,#10b981,#047857)}
+    .dash-row-info{flex:1;min-width:0}
+    .dri-name{font-size:.65rem;font-weight:700;color:#fff}
+    .dri-sub{font-size:.55rem;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dash-badge{font-size:.5rem;font-weight:700;padding:.15rem .4rem;border-radius:4px;white-space:nowrap}
+    .dash-badge.done{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.25)}
+    .dash-badge.pend{background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
+    .dash-mar-bar{display:flex;align-items:center;gap:.5rem;background:#161b22;border-radius:8px;padding:.5rem .7rem;border:1px solid rgba(212,160,23,.15)}
+    .dmb-label{font-size:.58rem;color:rgba(255,255,255,.5);white-space:nowrap}
+    .dmb-track{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+    .dmb-fill{height:100%;width:94%;background:linear-gradient(90deg,#d4a017,#fbbf24);border-radius:3px}
+    .dmb-pct{font-size:.62rem;font-weight:700;color:#d4a017;white-space:nowrap}
+    /* ── CSS CARE SCENE ── */
+    .css-care-scene{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+    .ccs-bg{position:absolute;inset:0;background:linear-gradient(135deg,#0d1117 0%,#1a1200 40%,#2d1a00 100%)}
+    .ccs-content{position:relative;text-align:center;padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:.75rem}
+    .ccs-icon-wrap{width:120px;height:120px}
+    .ccs-label{font-size:1.1rem;font-weight:800;color:#fff;font-family:'Fraunces',serif}
+    .ccs-sub{font-size:.78rem;color:rgba(212,160,23,.8)}
+    .ccs-pills{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center}
+    .ccs-pills span{background:rgba(212,160,23,.12);border:1px solid rgba(212,160,23,.3);color:#d4a017;font-size:.62rem;font-weight:700;padding:.2rem .55rem;border-radius:50px}
+
     /* ── STATS BAND ── */
     .stats-band{background:var(--black2);padding:56px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
     .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;text-align:center}
@@ -358,10 +404,72 @@
       <!-- Photo Collage -->
       <div class="hero-photos">
         <div class="hero-photo-main">
-          <img src="https://images.unsplash.com/photo-1576765608866-5b51046452be?w=700&h=500&auto=format&fit=crop" alt="Caregiver supporting resident" loading="eager"/>
+          <div class="css-dashboard">
+            <div class="dash-topbar">
+              <div class="dash-logo-row">
+                <img src="https://app.comprehensivecare.org.uk/pwa-192.png" style="width:26px;height:26px;border-radius:6px;object-fit:cover"/>
+                <span style="color:#d4a017;font-weight:800;font-size:.9rem;margin-left:.4rem">CompCare Hub</span>
+              </div>
+              <div style="display:flex;gap:.5rem">
+                <div class="dash-dot red"></div><div class="dash-dot amber"></div><div class="dash-dot green"></div>
+              </div>
+            </div>
+            <div class="dash-body">
+              <div class="dash-sidebar">
+                <div class="dsb-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+                <div class="dsb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg></div>
+                <div class="dsb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+                <div class="dsb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></div>
+                <div class="dsb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg></div>
+              </div>
+              <div class="dash-main-area">
+                <div class="dash-heading">Good morning, Sarah</div>
+                <div class="dash-cards-row">
+                  <div class="dash-card gold"><div class="dc-val">24</div><div class="dc-lbl">Residents</div></div>
+                  <div class="dash-card"><div class="dc-val">8</div><div class="dc-lbl">Staff Today</div></div>
+                  <div class="dash-card"><div class="dc-val">100%</div><div class="dc-lbl">MAR Done</div></div>
+                </div>
+                <div class="dash-section-title">Today's Care Rounds</div>
+                <div class="dash-row-list">
+                  <div class="dash-row-item"><div class="dash-avatar av1"></div><div class="dash-row-info"><div class="dri-name">Margaret T.</div><div class="dri-sub">Care plan reviewed · Room 4</div></div><div class="dash-badge done">Done</div></div>
+                  <div class="dash-row-item"><div class="dash-avatar av2"></div><div class="dash-row-info"><div class="dri-name">James H.</div><div class="dri-sub">Morning medication given</div></div><div class="dash-badge done">Done</div></div>
+                  <div class="dash-row-item"><div class="dash-avatar av3"></div><div class="dash-row-info"><div class="dri-name">Dorothy K.</div><div class="dri-sub">Risk assessment pending</div></div><div class="dash-badge pend">Pending</div></div>
+                </div>
+                <div class="dash-mar-bar">
+                  <div class="dmb-label">MAR Completion</div>
+                  <div class="dmb-track"><div class="dmb-fill"></div></div>
+                  <div class="dmb-pct">94%</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="hero-photo-secondary">
-          <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=500&h=350&auto=format&fit=crop" alt="Care professional" loading="eager"/>
+          <div class="css-care-scene">
+            <div class="ccs-bg"></div>
+            <div class="ccs-content">
+              <div class="ccs-icon-wrap">
+                <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+                  <circle cx="40" cy="40" r="40" fill="rgba(212,160,23,0.12)"/>
+                  <circle cx="30" cy="28" r="9" fill="#d4a017" opacity=".9"/>
+                  <circle cx="52" cy="25" r="7" fill="#b45309" opacity=".8"/>
+                  <rect x="16" y="42" width="28" height="22" rx="8" fill="#d4a017" opacity=".7"/>
+                  <rect x="38" y="38" width="22" height="18" rx="6" fill="#b45309" opacity=".6"/>
+                  <path d="M28 52 Q32 48 36 52" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <path d="M50 46 Q54 43 58 46" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                  <circle cx="32" cy="58" r="3" fill="rgba(255,255,255,.4)"/>
+                  <circle cx="52" cy="50" r="2" fill="rgba(255,255,255,.3)"/>
+                </svg>
+              </div>
+              <div class="ccs-label">Compassionate Care</div>
+              <div class="ccs-sub">Person-centred support, every day</div>
+              <div class="ccs-pills">
+                <span>24/7 Monitoring</span>
+                <span>Digital Records</span>
+                <span>CQC Ready</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="hero-metric hm1">
           <div class="hm-icon">
