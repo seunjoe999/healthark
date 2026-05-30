@@ -67,12 +67,13 @@ export default function PerformanceMatrix() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [view, setView] = useState<'matrix' | 'history'>('matrix')
+  const [view, setView] = useState<'matrix' | 'history' | 'shift_matrix'>('matrix')
   const [selectedStaff, setSelectedStaff] = useState('')
 
   const canAssess = isRole('home_manager', 'group_admin')
   const isGroupAdmin = isRole('group_admin')
   const [autoGenerating, setAutoGenerating] = useState(false)
+  const [shiftMatrixData, setShiftMatrixData] = useState<{ staff: any[]; homes: any[]; shiftMap: Record<string, Record<string, number>> } | null>(null)
 
   async function autoGenerate() {
     if (!window.confirm('Auto-generate performance records for all staff? This will create/update records based on training, DBS, incidents and clock-in data.')) return
@@ -121,14 +122,16 @@ export default function PerformanceMatrix() {
     setLoading(true)
     const homeParam = selectedHome || undefined
     try {
-      const [matrixRes, staffRes, historyRes] = await Promise.all([
+      const [matrixRes, staffRes, historyRes, shiftRes] = await Promise.all([
         api.get('/performance/matrix', { params: homeParam ? { homeId: homeParam } : {} }),
         api.get('/staff', { params: homeParam ? { homeId: homeParam } : {} }),
         api.get('/performance', { params: { ...(homeParam ? { homeId: homeParam } : {}), ...(selectedStaff ? { staffId: selectedStaff } : {}) } }),
+        api.get('/performance/shift-matrix', { params: homeParam ? { homeId: homeParam } : {} }),
       ])
       setMatrix(matrixRes.data.data || [])
       setStaff(staffRes.data.data || [])
       setHistory(historyRes.data.data || [])
+      setShiftMatrixData(shiftRes.data.data || null)
     } catch {}
     setLoading(false)
   }
@@ -197,11 +200,15 @@ export default function PerformanceMatrix() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: '#1a1a1a' }}>
-        {(['matrix', 'history'] as const).map(t => (
-          <button key={t} onClick={() => setView(t)}
-            className={clsx('px-5 py-2 rounded-lg text-sm font-medium transition-all', view === t ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
-            style={view === t ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : {}}>
-            {t === 'matrix' ? 'Matrix Overview' : 'Review History'}
+        {([
+          { key: 'matrix', label: 'Matrix Overview' },
+          { key: 'shift_matrix', label: 'Shift Matrix' },
+          { key: 'history', label: 'Review History' },
+        ] as const).map(t => (
+          <button key={t.key} onClick={() => setView(t.key as any)}
+            className={clsx('px-5 py-2 rounded-lg text-sm font-medium transition-all', view === t.key ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
+            style={view === t.key ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : {}}>
+            {t.label}
           </button>
         ))}
       </div>
@@ -287,6 +294,85 @@ export default function PerformanceMatrix() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )
+          )}
+
+          {view === 'shift_matrix' && (
+            !shiftMatrixData || shiftMatrixData.staff.length === 0 ? (
+              <EmptyState title="No shift data" description="No shifts have been scheduled yet" />
+            ) : (
+              <div>
+                <p className="text-slate-400 text-sm mb-4">
+                  Performance Matrix ({shiftMatrixData.staff.length}) — showing shift counts per care worker per location
+                </p>
+                <div className="overflow-x-auto rounded-xl border border-white/10">
+                  <table className="w-full text-sm border-collapse" style={{ background: '#111' }}>
+                    <thead>
+                      <tr style={{ background: '#1e1e1e' }}>
+                        <th className="text-left py-3 px-4 text-amber-400 font-bold border-b border-white/10 min-w-40">Care Worker</th>
+                        {shiftMatrixData.homes.map(h => (
+                          <th key={h.id} className="text-center py-3 px-2 text-slate-300 font-semibold border-b border-white/10 min-w-20"
+                            title={h.name}>
+                            {h.name.length > 7 ? h.name.substring(0, 7).toUpperCase() : h.name.toUpperCase()}
+                          </th>
+                        ))}
+                        <th className="text-center py-3 px-3 text-amber-400 font-bold border-b border-white/10">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shiftMatrixData.staff.map((s, idx) => {
+                        const staffShifts = shiftMatrixData.shiftMap[s.id] || {}
+                        const rowTotal = shiftMatrixData.homes.reduce((sum, h) => sum + (staffShifts[h.id] || 0), 0)
+                        return (
+                          <tr key={s.id} className={clsx('border-b border-white/5 transition-colors hover:bg-white/3', idx % 2 === 0 ? '' : 'bg-white/2')}>
+                            <td className="py-2.5 px-4">
+                              <p className="font-medium text-white text-sm">{s.name}</p>
+                              <p className="text-xs text-slate-500 capitalize">{s.role?.replace(/_/g, ' ')}</p>
+                            </td>
+                            {shiftMatrixData.homes.map(h => {
+                              const count = staffShifts[h.id] || 0
+                              return (
+                                <td key={h.id} className="py-2.5 px-2 text-center">
+                                  {count > 0 ? (
+                                    <span className="inline-block w-8 h-8 rounded-lg flex items-center justify-center font-bold text-slate-900 text-sm"
+                                      style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                                      {count}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-700">—</span>
+                                  )}
+                                </td>
+                              )
+                            })}
+                            <td className="py-2.5 px-3 text-center">
+                              <span className={clsx('font-bold', rowTotal > 0 ? 'text-amber-400' : 'text-slate-600')}>
+                                {rowTotal || '—'}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: '#1a1a1a' }}>
+                        <td className="py-2.5 px-4 text-amber-400 font-bold text-sm">Total</td>
+                        {shiftMatrixData.homes.map(h => {
+                          const colTotal = shiftMatrixData.staff.reduce((sum, s) => sum + (shiftMatrixData.shiftMap[s.id]?.[h.id] || 0), 0)
+                          return (
+                            <td key={h.id} className="py-2.5 px-2 text-center font-bold text-amber-400">
+                              {colTotal || '—'}
+                            </td>
+                          )
+                        })}
+                        <td className="py-2.5 px-3 text-center font-bold text-amber-400">
+                          {shiftMatrixData.staff.reduce((sum, s) =>
+                            sum + shiftMatrixData.homes.reduce((s2, h) => s2 + (shiftMatrixData.shiftMap[s.id]?.[h.id] || 0), 0), 0)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             )
           )}

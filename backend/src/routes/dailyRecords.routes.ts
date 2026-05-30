@@ -194,11 +194,22 @@ router.post('/', [
           break;
         }
         case 'behaviour': {
-          const { mood, behaviourNoted, triggersNoted, actionTaken, escalated } = req.body;
+          const { mood, behaviourNoted, triggersNoted, actionTaken, escalated,
+                  behaviourTypes, antecedents, consequences, careIntervention, otherStaffInvolved } = req.body;
           await client.query(
-            `INSERT INTO records_behaviour (daily_record_id, mood, behaviour_noted, triggers_noted, action_taken, escalated)
-             VALUES ($1,$2,$3,$4,$5,$6)`,
-            [dr.id, mood || null, behaviourNoted || null, triggersNoted || null, actionTaken || null, escalated || false]
+            `INSERT INTO records_behaviour (daily_record_id, mood, behaviour_noted, triggers_noted, action_taken, escalated,
+               behaviour_types, antecedents, consequences, care_intervention, other_staff_involved)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [dr.id, mood || null,
+             behaviourNoted || null,
+             antecedents || triggersNoted || null,
+             careIntervention || actionTaken || null,
+             escalated || otherStaffInvolved || false,
+             behaviourTypes && behaviourTypes.length ? behaviourTypes : null,
+             antecedents || null,
+             consequences || null,
+             careIntervention || null,
+             otherStaffInvolved || escalated || false]
           );
           break;
         }
@@ -280,11 +291,18 @@ router.post('/', [
           break;
         }
         case 'prn_medication': {
-          const { medicationName, dose, reason, witnessedBy, outcomeNotes } = req.body;
+          const { medicationName, dose, reason, witnessedBy, outcomeNotes,
+                  medicineType, administered, sideEffects, sideEffectsNotes, emotion, completed } = req.body;
           await client.query(
-            `INSERT INTO records_prn_medication (daily_record_id, medication_name, dose, reason, administered_by, witnessed_by, outcome_notes)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [dr.id, medicationName, dose || null, reason, staffId, witnessedBy || null, outcomeNotes || null]
+            `INSERT INTO records_prn_medication (daily_record_id, medication_name, dose, reason, administered_by, witnessed_by, outcome_notes,
+               medicine_type, administered, side_effects, side_effects_notes, emotion, completed)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+            [dr.id, medicationName, dose || null, reason || null, staffId,
+             witnessedBy || null, outcomeNotes || notes || null,
+             medicineType || null,
+             administered !== undefined ? administered : true,
+             sideEffects || false, sideEffectsNotes || null,
+             emotion || null, completed || false]
           );
           break;
         }

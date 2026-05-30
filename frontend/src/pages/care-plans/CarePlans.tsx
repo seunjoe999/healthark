@@ -848,12 +848,43 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
             {plan.regular_medications && <Field label="Regular Medications" value={plan.regular_medications} />}
             {plan.prn_medications && <Field label="PRN Medications" value={plan.prn_medications} />}
             {plan.otc_medications && <Field label="Over-The-Counter Medications" value={plan.otc_medications} />}
-            {plan.prn_protocol && (
-              <div className="p-3 bg-rose-50 rounded-lg border border-rose-100">
-                <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-1">PRN Protocol</p>
-                <p className="text-sm text-slate-700 whitespace-pre-line">{plan.prn_protocol}</p>
-              </div>
-            )}
+            {plan.prn_list && <Field label="PRN List" value={plan.prn_list} />}
+            {plan.indication_for_use && <Field label="Indication for Use" value={plan.indication_for_use} />}
+            {(() => {
+              const td = plan.template_data || {}
+              const prnSections = [
+                { key: 'prnAssessment', label: 'Assessment Before Administration' },
+                { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
+                { key: 'prnAdminProcess', label: 'Administration Process' },
+                { key: 'prnRefusal', label: 'PRN Refusal' },
+                { key: 'prnMonitoring', label: 'Monitoring After Administration' },
+                { key: 'prnEvaluation', label: 'Evaluation' },
+                { key: 'prnDocumentation', label: 'Documentation' },
+                { key: 'prnEmergency', label: 'When to Seek Advice / Emergency' },
+                { key: 'prnSpecial', label: 'Special Considerations' },
+                { key: 'prnTraining', label: 'Staff Training Requirements' },
+              ].filter(s => td[s.key])
+              if (!prnSections.length && !plan.prn_protocol) return null
+              return (
+                <div className="p-3 bg-rose-50 rounded-lg border border-rose-100">
+                  <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-2">PRN Medication Protocol</p>
+                  <div className="space-y-2">
+                    {prnSections.map(s => (
+                      <div key={s.key}>
+                        <p className="text-xs font-semibold text-rose-600">{s.label}</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-line">{td[s.key]}</p>
+                      </div>
+                    ))}
+                    {plan.prn_protocol && (
+                      <div>
+                        <p className="text-xs font-semibold text-rose-600">General Notes</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-line">{plan.prn_protocol}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </>
         ) : isTemplatedPlan ? (
           <div className="space-y-4">
@@ -1203,6 +1234,34 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
                 <div><label className="label">My Regular Medications</label><textarea className="input w-full" rows={3} value={form.regularMedications} onChange={e => set('regularMedications', e.target.value)} placeholder="List each medication, dose, frequency and purpose..." /></div>
                 <div><label className="label">My PRN Medications</label><textarea className="input w-full" rows={2} value={form.prnMedications} onChange={e => set('prnMedications', e.target.value)} /></div>
                 <div><label className="label">Over-The-Counter Medications (OTC)</label><textarea className="input w-full" rows={2} value={form.otcMedications} onChange={e => set('otcMedications', e.target.value)} /></div>
+                <div><label className="label">PRN List (name, dose, max daily dose)</label><textarea className="input w-full" rows={2} value={form.prnList} onChange={e => set('prnList', e.target.value)} placeholder="e.g. Paracetamol 500mg – max 4 times/day" /></div>
+                <div><label className="label">Indication for Use</label><textarea className="input w-full" rows={2} value={form.indicationForUse} onChange={e => set('indicationForUse', e.target.value)} placeholder="When should PRN medications be given and why?" /></div>
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-100">
+              <p className="text-xs font-bold text-rose-700 uppercase tracking-wide mb-3">PRN MEDICATION PROTOCOL</p>
+              <div className="space-y-3">
+                <p className="text-xs text-rose-600">Complete all sections below to ensure consistent, safe PRN administration across all staff.</p>
+                {[
+                  { key: 'prnAssessment', label: 'Assessment Before Administration', ph: 'Steps staff must take before administering PRN (e.g. check vital signs, assess pain level)...' },
+                  { key: 'prnStaffInvolvement', label: 'Staff Involvement', ph: 'Who can administer? Witness requirements?' },
+                  { key: 'prnAdminProcess', label: 'Administration Process', ph: 'Step-by-step administration instructions...' },
+                  { key: 'prnRefusal', label: 'PRN Refusal — What to do if the person refuses', ph: 'Actions if the person refuses the medication...' },
+                  { key: 'prnMonitoring', label: 'Monitoring After Administration', ph: 'What to observe and for how long after giving the medication...' },
+                  { key: 'prnEvaluation', label: 'Evaluation', ph: 'How to assess effectiveness — what indicates success or failure?' },
+                  { key: 'prnDocumentation', label: 'Documentation', ph: 'What must be recorded and where?' },
+                  { key: 'prnEmergency', label: 'When to Seek Advice / Emergency', ph: 'Signs that require contacting GP, pharmacy, 999...' },
+                  { key: 'prnSpecial', label: 'Special Considerations', ph: 'Allergies, interactions, specific timing restrictions...' },
+                  { key: 'prnTraining', label: 'Staff Training Requirements', ph: 'Any specific training needed to administer this PRN?' },
+                ].map(({ key, label, ph }) => (
+                  <div key={key}>
+                    <label className="label">{label}</label>
+                    <textarea className="input w-full" rows={2} value={form.templateData?.[key] || ''}
+                      onChange={e => set('templateData', { ...form.templateData, [key]: e.target.value })}
+                      placeholder={ph} />
+                  </div>
+                ))}
+                <div><label className="label">General PRN Protocol Notes</label><textarea className="input w-full" rows={3} value={form.prnProtocol} onChange={e => set('prnProtocol', e.target.value)} placeholder="Any additional protocol information or overarching guidance..." /></div>
               </div>
             </div>
           </>
@@ -1258,10 +1317,18 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
     consentGiven: plan.consent_given || false,
     consentDate: plan.consent_date ? plan.consent_date.split('T')[0] : '',
     templateData: (plan.template_data || {}) as Record<string, any>,
+    // Medication support plan fields
+    regularMedications: plan.regular_medications || '',
+    prnMedications: plan.prn_medications || '',
+    otcMedications: plan.otc_medications || '',
+    prnList: plan.prn_list || '',
+    indicationForUse: plan.indication_for_use || '',
+    prnProtocol: plan.prn_protocol || '',
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
   const isTemplated = TEMPLATED_TYPES.has(plan.plan_type)
+  const isMedPlan = plan.plan_type === 'medication_support'
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1276,7 +1343,43 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
   return (
     <Modal open={true} onClose={onClose} title={`Edit: ${label}`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-        {isTemplated ? (
+        {isMedPlan ? (
+          <>
+            <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
+            <div><label className="label">What I can do</label><textarea className="input" rows={2} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
+            <div><label className="label">How to support me</label><textarea className="input" rows={2} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} /></div>
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-100 space-y-3">
+              <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">Medications</p>
+              <div><label className="label">Regular Medications</label><textarea className="input w-full" rows={2} value={form.regularMedications} onChange={e => set('regularMedications', e.target.value)} /></div>
+              <div><label className="label">PRN Medications</label><textarea className="input w-full" rows={2} value={form.prnMedications} onChange={e => set('prnMedications', e.target.value)} /></div>
+              <div><label className="label">OTC Medications</label><textarea className="input w-full" rows={2} value={form.otcMedications} onChange={e => set('otcMedications', e.target.value)} /></div>
+              <div><label className="label">PRN List</label><textarea className="input w-full" rows={2} value={form.prnList} onChange={e => set('prnList', e.target.value)} /></div>
+              <div><label className="label">Indication for Use</label><textarea className="input w-full" rows={2} value={form.indicationForUse} onChange={e => set('indicationForUse', e.target.value)} /></div>
+            </div>
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 space-y-3">
+              <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">PRN Medication Protocol</p>
+              {[
+                { key: 'prnAssessment', label: 'Assessment Before Administration' },
+                { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
+                { key: 'prnAdminProcess', label: 'Administration Process' },
+                { key: 'prnRefusal', label: 'PRN Refusal' },
+                { key: 'prnMonitoring', label: 'Monitoring After Administration' },
+                { key: 'prnEvaluation', label: 'Evaluation' },
+                { key: 'prnDocumentation', label: 'Documentation' },
+                { key: 'prnEmergency', label: 'When to Seek Advice / Emergency' },
+                { key: 'prnSpecial', label: 'Special Considerations' },
+                { key: 'prnTraining', label: 'Staff Training Requirements' },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <label className="label">{label}</label>
+                  <textarea className="input w-full" rows={2} value={form.templateData?.[key] || ''}
+                    onChange={e => set('templateData', { ...form.templateData, [key]: e.target.value })} />
+                </div>
+              ))}
+              <div><label className="label">General PRN Protocol Notes</label><textarea className="input w-full" rows={3} value={form.prnProtocol} onChange={e => set('prnProtocol', e.target.value)} /></div>
+            </div>
+          </>
+        ) : isTemplated ? (
           <>
             {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && (
               <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>

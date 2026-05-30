@@ -255,4 +255,65 @@ router.post('/auto-generate', async (req: Request, res: Response, next: NextFunc
   } catch (err) { next(err); }
 });
 
+// GET /api/performance/shift-matrix — cross-reference of staff × homes with shift counts
+router.get('/shift-matrix', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const role = tok(req, 'role');
+    const orgId = tok(req, 'organisationId');
+    const homeId = (req.query.homeId as string) || tok(req, 'homeId');
+
+    let staffRows: any[];
+    let homeRows: any[];
+    let shiftRows: any[];
+
+    if (role === 'group_admin' && !homeId) {
+      // Group admin: all homes in org
+      homeRows = await query(
+        `SELECT id, name FROM homes WHERE organisation_id = $1 ORDER BY name`, [orgId]
+      );
+      staffRows = await query(
+        `SELECT DISTINCT s.id, s.first_name || ' ' || s.last_name AS name, s.role
+         FROM staff s
+         WHERE s.organisation_id = $1 AND s.is_active = TRUE
+         ORDER BY s.first_name, s.last_name`, [orgId]
+      );
+      shiftRows = await query(
+        `SELECT ss.staff_id, ss.home_id, COUNT(*) as shift_count
+         FROM staff_shifts ss
+         JOIN staff s ON s.id = ss.staff_id
+         WHERE s.organisation_id = $1 AND ss.staff_id IS NOT NULL
+         GROUP BY ss.staff_id, ss.home_id`, [orgId]
+      );
+    } else {
+      // Single home: staff from this home vs all homes in org
+      const homeOrg = await query<any>(`SELECT organisation_id FROM homes WHERE id = $1`, [homeId]);
+      const orgIdForHome = homeOrg[0]?.organisation_id || orgId;
+      homeRows = await query(
+        `SELECT id, name FROM homes WHERE organisation_id = $1 ORDER BY name`, [orgIdForHome]
+      );
+      staffRows = await query(
+        `SELECT DISTINCT s.id, s.first_name || ' ' || s.last_name AS name, s.role
+         FROM staff s
+         WHERE s.home_id = $1 AND s.is_active = TRUE
+         ORDER BY s.first_name, s.last_name`, [homeId]
+      );
+      shiftRows = await query(
+        `SELECT ss.staff_id, ss.home_id, COUNT(*) as shift_count
+         FROM staff_shifts ss
+         WHERE ss.staff_id = ANY(SELECT id FROM staff WHERE home_id = $1 AND is_active = TRUE) AND ss.staff_id IS NOT NULL
+         GROUP BY ss.staff_id, ss.home_id`, [homeId]
+      );
+    }
+
+    // Build shift map: staffId -> homeId -> count
+    const shiftMap: Record<string, Record<string, number>> = {};
+    for (const r of shiftRows as any[]) {
+      if (!shiftMap[r.staff_id]) shiftMap[r.staff_id] = {};
+      shiftMap[r.staff_id][r.home_id] = parseInt(r.shift_count);
+    }
+
+    res.json({ success: true, data: { staff: staffRows, homes: homeRows, shiftMap } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 export default router;

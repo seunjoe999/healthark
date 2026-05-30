@@ -35,6 +35,50 @@ const RECORD_TYPES = [
 ]
 
 const FOOD_AMOUNTS = ['None', 'Quarter', 'Half', 'Three quarters', 'Full']
+
+const ABC_BEHAVIOUR_TYPES = [
+  'Physical aggression (towards others)',
+  'Physical aggression (self-injurious)',
+  'Verbal aggression',
+  'Property destruction',
+  'Screaming / shouting',
+  'Spitting',
+  'Biting',
+  'Hitting',
+  'Kicking',
+  'Scratching',
+  'Throwing objects',
+  'Stripping off clothing',
+  'Running away / absconding',
+  'Non-compliance',
+  'Refusing food or drink',
+  'Refusing medication',
+  'Inappropriate sexual behaviour',
+  'Smearing',
+  'Stereotyped / repetitive behaviour',
+  'Mood change / distress',
+  'Verbal threats',
+  'Intimidation',
+  'Anxiety / panic attack',
+  'Other behaviour',
+]
+
+const EMOTIONS = [
+  { value: 'happy', label: '😊 Happy' },
+  { value: 'calm', label: '😌 Calm' },
+  { value: 'anxious', label: '😟 Anxious' },
+  { value: 'agitated', label: '😤 Agitated' },
+  { value: 'distressed', label: '😢 Distressed' },
+  { value: 'withdrawn', label: '😶 Withdrawn' },
+  { value: 'angry', label: '😠 Angry' },
+  { value: 'sad', label: '😔 Sad' },
+  { value: 'confused', label: '😕 Confused' },
+  { value: 'other', label: 'Other' },
+]
+
+const MEDICINE_TYPES = [
+  'Tablet', 'Capsule', 'Liquid', 'Patch', 'Injection', 'Inhaler', 'Cream / Ointment', 'Drops', 'Other',
+]
 const FLUID_TYPES = [
   { label: 'Water', ml: 200 }, { label: 'Tea', ml: 200 }, { label: 'Coffee', ml: 200 },
   { label: 'Juice', ml: 150 }, { label: 'Milk', ml: 200 }, { label: 'Soup', ml: 250 },
@@ -274,6 +318,8 @@ function RecordSummary({ record: r }: { record: any }) {
   if (type === 'vitals_oxygen') return <p className="text-sm text-slate-700">SpO2: <strong>{r.spo2_percent}%</strong>{r.supplemental_o2 ? ' (on O₂)' : ''}</p>
   if (type === 'vitals_weight') return <p className="text-sm text-slate-700">Weight: <strong>{r.weight_kg}kg</strong>{r.bmi ? ` · BMI: ${r.bmi}` : ''}</p>
   if (type === 'bowel_movement') return <p className="text-sm text-slate-700">Bristol type {r.bristol_type || '—'}{r.notes ? ` · ${r.notes}` : ''}</p>
+  if (type === 'behaviour') return <p className="text-sm text-slate-700">{r.notes || 'Behaviour recorded'}</p>
+  if (type === 'prn_medication') return <p className="text-sm text-slate-700">{r.notes || 'PRN medication administered'}</p>
   return <p className="text-sm text-slate-700">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p>
 }
 
@@ -365,6 +411,79 @@ function RecordForm({ type, form, set }: { type: string; form: Record<string, an
         <Select label="Bristol stool type" value={form.bristolType || ''} onChange={e => set('bristolType', parseInt(e.target.value))}
           options={[1,2,3,4,5,6,7].map(n => ({ value: String(n), label: `Type ${n} — ${['Separate hard lumps','Lumpy sausage','Cracked sausage','Smooth sausage','Soft blobs','Fluffy mushy','Watery'][n-1]}` }))} placeholder="Select type" />
         <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
+      </div>
+    )
+    case 'behaviour': return (
+      <div className="space-y-4">
+        <div>
+          <label className="label mb-2">Behaviour type(s) observed — tick all that apply</label>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 p-3 rounded-xl border border-slate-200 bg-slate-50">
+            {ABC_BEHAVIOUR_TYPES.map(bt => (
+              <label key={bt} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input type="checkbox"
+                  checked={(form.behaviourTypes || []).includes(bt)}
+                  onChange={e => {
+                    const cur: string[] = form.behaviourTypes || []
+                    set('behaviourTypes', e.target.checked ? [...cur, bt] : cur.filter((x: string) => x !== bt))
+                  }}
+                  className="rounded" />
+                {bt}
+              </label>
+            ))}
+          </div>
+        </div>
+        <Input label="Trigger" value={form.triggersNoted || ''} onChange={e => set('triggersNoted', e.target.value)} placeholder="What appeared to trigger this behaviour?" />
+        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+          <input type="checkbox" checked={form.otherStaffInvolved || false} onChange={e => set('otherStaffInvolved', e.target.checked)} className="rounded" />
+          Were other staff involved?
+        </label>
+        <Textarea label="A — Antecedents (what happened before)" value={form.antecedents || ''} onChange={e => set('antecedents', e.target.value)} rows={2} placeholder="Describe what was happening immediately before the behaviour..." />
+        <Textarea label="B — Behaviour (describe in detail)" value={form.behaviourNoted || ''} onChange={e => set('behaviourNoted', e.target.value)} rows={3} placeholder="Describe the behaviour observed in detail..." />
+        <Textarea label="C — Consequences (what happened after)" value={form.consequences || ''} onChange={e => set('consequences', e.target.value)} rows={2} placeholder="What happened as a result of the behaviour?" />
+        <Textarea label="Care / Intervention" value={form.careIntervention || ''} onChange={e => set('careIntervention', e.target.value)} rows={2} placeholder="What care or intervention was provided?" />
+        <Select label="Emotion / Mood" value={form.mood || ''} onChange={e => set('mood', e.target.value)} options={EMOTIONS} placeholder="Select emotion" />
+      </div>
+    )
+    case 'prn_medication': return (
+      <div className="space-y-3">
+        <Input label="PRN medication name *" value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Paracetamol 500mg" required />
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Medicine type" value={form.medicineType || ''} onChange={e => set('medicineType', e.target.value)}
+            options={MEDICINE_TYPES.map(t => ({ value: t, label: t }))} placeholder="Select type" />
+          <Input label="Amount / dose given" value={form.dose || ''} onChange={e => set('dose', e.target.value)} placeholder="e.g. 2 tablets, 5ml" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Administered?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.administered !== false} onChange={() => set('administered', true)} /> Yes</label>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.administered === false} onChange={() => set('administered', false)} /> No</label>
+            </div>
+          </div>
+          <div>
+            <label className="label">Side effects?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.sideEffects === true} onChange={() => set('sideEffects', true)} /> Yes</label>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={!form.sideEffects} onChange={() => set('sideEffects', false)} /> No</label>
+            </div>
+          </div>
+        </div>
+        {form.sideEffects && (
+          <Textarea label="Side effect details" value={form.sideEffectsNotes || ''} onChange={e => set('sideEffectsNotes', e.target.value)} rows={2} placeholder="Describe any side effects observed..." />
+        )}
+        <Textarea label="Reason / indication" value={form.reason || ''} onChange={e => set('reason', e.target.value)} rows={2} placeholder="Why was this PRN medication given?" />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Request signoff by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Name of person to countersign" />
+          <div>
+            <label className="label">Completed?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.completed === true} onChange={() => set('completed', true)} /> Yes</label>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={!form.completed} onChange={() => set('completed', false)} /> No</label>
+            </div>
+          </div>
+        </div>
+        <Select label="Emotion / Mood" value={form.emotion || ''} onChange={e => set('emotion', e.target.value)} options={EMOTIONS} placeholder="Select emotion" />
+        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any additional notes..." />
       </div>
     )
     case 'incident': return (

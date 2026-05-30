@@ -1042,6 +1042,19 @@ async function ensureColumns() {
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS su_signature_dataurl    TEXT`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS staff_signature_dataurl TEXT`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS template_data           JSONB DEFAULT '{}'::jsonb`,
+    // ── records_behaviour — ABC chart extended fields ─────────────────────────
+    `ALTER TABLE records_behaviour ADD COLUMN IF NOT EXISTS behaviour_types      TEXT[]`,
+    `ALTER TABLE records_behaviour ADD COLUMN IF NOT EXISTS antecedents          TEXT`,
+    `ALTER TABLE records_behaviour ADD COLUMN IF NOT EXISTS consequences         TEXT`,
+    `ALTER TABLE records_behaviour ADD COLUMN IF NOT EXISTS care_intervention    TEXT`,
+    `ALTER TABLE records_behaviour ADD COLUMN IF NOT EXISTS other_staff_involved BOOLEAN NOT NULL DEFAULT FALSE`,
+    // ── records_prn_medication — extended PRN fields ──────────────────────────
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS medicine_type      TEXT`,
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS administered        BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS side_effects        BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS side_effects_notes  TEXT`,
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS emotion             TEXT`,
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS completed           BOOLEAN NOT NULL DEFAULT FALSE`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
