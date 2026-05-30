@@ -165,6 +165,14 @@ export default function DailyRecords() {
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
+          <select
+            className="input mb-2 text-sm"
+            value={selectedSu?.id || ''}
+            onChange={e => { const su = sus.find(s => s.id === e.target.value); if (su) selectSu(su) }}
+          >
+            <option value="" disabled>Select resident...</option>
+            {sus.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
+          </select>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input className="input pl-8 text-sm" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />

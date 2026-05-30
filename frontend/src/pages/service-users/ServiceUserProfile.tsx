@@ -202,8 +202,11 @@ export default function ServiceUserProfile() {
                   {su.nhsNumber && ` · NHS: ${su.nhsNumber}`}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" icon={<QrCode className="w-3.5 h-3.5" />} onClick={() => setQrOpen(true)}>QR clock-in</Button>
+                <Link to={`/reports/handover?suId=${su.id}`}>
+                  <Button variant="outline" size="sm" icon={<FileText className="w-3.5 h-3.5" />}>Handover</Button>
+                </Link>
                 {true && (
                   <Link to={`/service-users/${su.id}/edit`}>
                     <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
