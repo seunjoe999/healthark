@@ -79,15 +79,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  // If we are on the app subdomain (or localhost), the root '/' goes straight to login.
-  // If we are on the main domain, '/' goes to the Landing Page.
-  const isAppSubdomain = window.location.hostname.startsWith('app.');
-
   return (
     <Routes>
       <Route path="/setup" element={<Setup />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/" element={isAppSubdomain ? <Navigate to="/login" replace /> : <LandingPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/clockin/home/:token" element={<ClockIn />} />
       <Route path="/clockin/:token" element={<ClockIn />} />
       <Route path="/clockin-admin" element={<ProtectedRoute><ClockInAdmin /></ProtectedRoute>} />
