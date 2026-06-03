@@ -1064,6 +1064,19 @@ async function ensureColumns() {
        PRIMARY KEY (staff_id, module_id)
      )`,
     `CREATE INDEX IF NOT EXISTS idx_stm_staff ON staff_training_modules(staff_id)`,
+    // Clock-in home postcodes
+    `CREATE TABLE IF NOT EXISTS home_postcodes (
+       id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id    UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       postcode   VARCHAR(20) NOT NULL,
+       label      VARCHAR(100),
+       latitude   DECIMAL(10,7),
+       longitude  DECIMAL(10,7),
+       radius     INTEGER NOT NULL DEFAULT 200,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       UNIQUE (home_id, postcode)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_hp_home ON home_postcodes(home_id)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
