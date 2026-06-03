@@ -7,6 +7,7 @@ import { ClipboardList, Plus, Search, ChevronLeft, ChevronRight, Droplets, Edit,
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
+import SeizureForm from './forms/SeizureForm'
 import SpeechInput from '../../components/SpeechInput'
 
 const RECORD_TYPES = [
@@ -32,6 +33,7 @@ const RECORD_TYPES = [
   { value: 'vitals_oxygen', label: 'Oxygen (SpO2)', icon: '🫁' },
   { value: 'vitals_weight', label: 'Weight & MUST', icon: '⚖️' },
   { value: 'body_map', label: 'Body map / skin', icon: '🗺️' },
+  { value: 'seizure', label: 'Seizure episode', icon: '⚡' },
 ]
 
 const FOOD_AMOUNTS = ['None', 'Quarter', 'Half', 'Three quarters', 'Full']
@@ -356,11 +358,13 @@ function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; home
           <BodyMap suId={suId} onSaved={onSaved} />
         ) : type === 'incident' ? (
           <IncidentForm suId={suId} onSaved={onSaved} />
+        ) : type === 'seizure' ? (
+          <SeizureForm suId={suId} onSaved={onSaved} />
         ) : (
           <RecordForm type={type} form={form} set={set} />
         )}
 
-        {type !== 'body_map' && type !== 'incident' && (
+        {type !== 'body_map' && type !== 'incident' && type !== 'seizure' && (
           <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button loading={loading} onClick={save}>Save record</Button>
