@@ -105,17 +105,30 @@ export default function Incidents() {
     suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || [])).catch(() => {})
   }, [selectedHome])
 
+  const loadIncidents = (homeId: string) => {
+    setLoading(true)
+    const params: Record<string, string> = { homeId }
+    if (startDate) params.start_date = startDate
+    if (endDate) params.end_date = endDate
+    if (filterType) params.incident_type = filterType
+    if (search) params.search = search
+    api.get('/incidents', { params })
+      .then(res => setIncidents(res.data.data || []))
+      .catch(() => toast.error('Failed to load incidents'))
+      .finally(() => setLoading(false))
+  }
+
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!createForm.suId) { toast.error('Select a service user'); return }
     if (!createForm.description.trim()) { toast.error('Description is required'); return }
     setCreating(true)
     try {
-      const res = await api.post('/incidents', { ...createForm, homeId: selectedHome })
-      setIncidents(prev => [{ ...res.data.data, record_date: createForm.incidentDate, resident_name: sus.find(s => s.id === createForm.suId)?.first_name + ' ' + sus.find(s => s.id === createForm.suId)?.last_name }, ...prev])
+      await api.post('/incidents', { ...createForm, homeId: selectedHome })
       setCreateOpen(false)
       setCreateForm({ ...BLANK_INC })
       toast.success('Incident logged')
+      loadIncidents(selectedHome)
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to log incident') }
     finally { setCreating(false) }
   }
@@ -123,17 +136,7 @@ export default function Incidents() {
   // Load incidents
   useEffect(() => {
     if (!selectedHome) return
-    setLoading(true)
-    const params: Record<string, string> = { homeId: selectedHome }
-    if (startDate) params.start_date = startDate
-    if (endDate) params.end_date = endDate
-    if (filterType) params.incident_type = filterType
-    if (search) params.search = search
-
-    api.get('/incidents', { params })
-      .then(res => setIncidents(res.data.data || []))
-      .catch(() => toast.error('Failed to load incidents'))
-      .finally(() => setLoading(false))
+    loadIncidents(selectedHome)
   }, [selectedHome, startDate, endDate, filterType, search])
 
   const stats = useMemo(() => {
