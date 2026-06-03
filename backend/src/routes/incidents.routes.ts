@@ -179,6 +179,36 @@ Provide a clear, concise, professional analysis.`;
   }
 );
 
+// POST /api/incidents — create a standalone incident (creates daily_record + records_incidents)
+router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const homeId = req.body.homeId || fromToken(req, 'homeId');
+    const { suId, incidentType, description, location, incidentDate, injuries, injuryDetails,
+            immediateAction, witnesses, medicalNeeded, medicalDetails, cqcNotified, familyNotified } = req.body;
+    if (!suId) throw new AppError('suId required', 400);
+    if (!homeId) throw new AppError('homeId required', 400);
+    if (!staffId) throw new AppError('staffId not found in token', 401);
+    const recordDate = incidentDate || new Date().toISOString().split('T')[0];
+    const drRow = await query<{ id: string }>(
+      `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, record_date, notes)
+       VALUES ($1,$2,$3,'incident',$4,$5) RETURNING id`,
+      [suId, homeId, staffId, recordDate, description || '']
+    );
+    const drId = (drRow[0] as any).id;
+    const incRow = await query(
+      `INSERT INTO records_incidents (daily_record_id, incident_type, location, description,
+         injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action,
+         cqc_notified, family_notified)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [drId, incidentType || 'other', location || null, description || '',
+       injuries || false, injuryDetails || null, medicalNeeded || false, medicalDetails || null,
+       witnesses || null, immediateAction || null, cqcNotified || false, familyNotified || false]
+    );
+    res.status(201).json({ success: true, data: incRow[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/incidents/:id — delete an incident record (managers and admins only)
 router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

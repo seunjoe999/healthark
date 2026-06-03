@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import api from '../../api'
-import { homesApi } from '../../api'
+import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-import { Spinner, EmptyState, Button, PrintButton } from '../../components/ui'
-import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X } from 'lucide-react'
+import { Spinner, EmptyState, Button, PrintButton, Modal } from '../../components/ui'
+import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ── Severity helpers ──────────────────────────────────────────────
@@ -64,6 +64,13 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 // ── Main component ────────────────────────────────────────────────
 
+const BLANK_INC = {
+  suId: '', incidentDate: new Date().toISOString().split('T')[0],
+  incidentType: 'fall', location: '', description: '', immediateAction: '',
+  witnesses: '', injuries: false, injuryDetails: '', medicalNeeded: false, medicalDetails: '',
+  cqcNotified: false, familyNotified: false,
+}
+
 export default function Incidents() {
   const { user, isRole } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
@@ -73,6 +80,10 @@ export default function Incidents() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [aiAnalysis, setAiAnalysis] = useState<Record<string, string>>({})
   const [aiLoading, setAiLoading] = useState<string | null>(null)
+  const [sus, setSus] = useState<any[]>([])
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState({ ...BLANK_INC })
+  const [creating, setCreating] = useState(false)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -88,6 +99,26 @@ export default function Incidents() {
       setSelectedHome(user?.homeId || h[0]?.id || '')
     }).catch(console.error)
   }, [user])
+
+  useEffect(() => {
+    if (!selectedHome) return
+    suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || [])).catch(() => {})
+  }, [selectedHome])
+
+  const handleCreateIncident = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!createForm.suId) { toast.error('Select a service user'); return }
+    if (!createForm.description.trim()) { toast.error('Description is required'); return }
+    setCreating(true)
+    try {
+      const res = await api.post('/incidents', { ...createForm, homeId: selectedHome })
+      setIncidents(prev => [{ ...res.data.data, record_date: createForm.incidentDate, resident_name: sus.find(s => s.id === createForm.suId)?.first_name + ' ' + sus.find(s => s.id === createForm.suId)?.last_name }, ...prev])
+      setCreateOpen(false)
+      setCreateForm({ ...BLANK_INC })
+      toast.success('Incident logged')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to log incident') }
+    finally { setCreating(false) }
+  }
 
   // Load incidents
   useEffect(() => {
@@ -170,6 +201,9 @@ export default function Incidents() {
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
+          <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setCreateForm({ ...BLANK_INC }); setCreateOpen(true) }}>
+            Log Incident
+          </Button>
         </div>
       </div>
 
@@ -370,6 +404,75 @@ export default function Incidents() {
           })}
         </div>
       )}
+
+      {/* Create incident modal */}
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Log New Incident" size="lg">
+        <form onSubmit={handleCreateIncident} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="label">Service User *</label>
+              <select className="input w-full" value={createForm.suId} onChange={e => setCreateForm(f => ({ ...f, suId: e.target.value }))} required>
+                <option value="">Select resident...</option>
+                {sus.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Incident Date *</label>
+              <input type="date" className="input w-full" value={createForm.incidentDate} onChange={e => setCreateForm(f => ({ ...f, incidentDate: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="label">Incident Type *</label>
+              <select className="input w-full" value={createForm.incidentType} onChange={e => setCreateForm(f => ({ ...f, incidentType: e.target.value }))}>
+                {INCIDENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Location</label>
+              <input className="input w-full" placeholder="e.g. Bedroom, Bathroom" value={createForm.location} onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Witnesses</label>
+              <input className="input w-full" placeholder="Names of anyone present" value={createForm.witnesses} onChange={e => setCreateForm(f => ({ ...f, witnesses: e.target.value }))} />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Description / What happened *</label>
+              <textarea className="input w-full" rows={3} placeholder="Describe what happened..." value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} required />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Immediate action taken</label>
+              <textarea className="input w-full" rows={2} placeholder="What was done immediately after the incident..." value={createForm.immediateAction} onChange={e => setCreateForm(f => ({ ...f, immediateAction: e.target.value }))} />
+            </div>
+            <div className="col-span-2 flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={createForm.injuries} onChange={e => setCreateForm(f => ({ ...f, injuries: e.target.checked }))} className="w-4 h-4 rounded accent-red-600" />
+                <span className="text-sm font-medium text-slate-700">Injuries sustained</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={createForm.medicalNeeded} onChange={e => setCreateForm(f => ({ ...f, medicalNeeded: e.target.checked }))} className="w-4 h-4 rounded accent-red-600" />
+                <span className="text-sm font-medium text-slate-700">Medical attention required</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={createForm.cqcNotified} onChange={e => setCreateForm(f => ({ ...f, cqcNotified: e.target.checked }))} className="w-4 h-4 rounded accent-purple-600" />
+                <span className="text-sm font-medium text-slate-700">CQC notified</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={createForm.familyNotified} onChange={e => setCreateForm(f => ({ ...f, familyNotified: e.target.checked }))} className="w-4 h-4 rounded accent-purple-600" />
+                <span className="text-sm font-medium text-slate-700">Family notified</span>
+              </label>
+            </div>
+            {createForm.injuries && (
+              <div className="col-span-2">
+                <label className="label">Injury details</label>
+                <input className="input w-full" placeholder="Describe the injuries..." value={createForm.injuryDetails} onChange={e => setCreateForm(f => ({ ...f, injuryDetails: e.target.value }))} />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={creating}>Log Incident</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

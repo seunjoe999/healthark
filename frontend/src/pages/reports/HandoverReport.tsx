@@ -191,6 +191,7 @@ function RecordSummary({ records }: { records: any[] }) {
 
 export default function HandoverReport() {
   const { user } = useAuth()
+  const urlSuId = new URLSearchParams(window.location.search).get('suId') || ''
   const [homes, setHomes] = useState<any[]>([])
   const [sus, setSus] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
@@ -201,7 +202,7 @@ export default function HandoverReport() {
   const [previous, setPrevious] = useState<PreviousNote[]>([])
   const [loadingPrev, setLoadingPrev] = useState(false)
   const [todayRecords, setTodayRecords] = useState<any[]>([])
-  const [filterSuId, setFilterSuId] = useState<string>('')
+  const [filterSuId, setFilterSuId] = useState<string>(urlSuId)
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {

@@ -18,7 +18,6 @@ const REPORT_TYPES = [
   { value: 'medication-report', label: 'Medication Report', description: 'All medications by resident' },
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
-  { value: 'monthly-reviews-history', label: 'Monthly Reviews History', description: 'History of every care review by month' },
   { value: 'incident-analysis', label: 'AI Incident Analysis', description: 'AI-powered analysis of incident patterns' },
 ]
 
@@ -150,8 +149,6 @@ export default function Reports() {
         <FluidReport data={data} />
       ) : reportType === 'training-compliance' ? (
         <TrainingCompliance data={data} />
-      ) : reportType === 'monthly-reviews-history' ? (
-        <MonthlyReviewsHistory data={data} />
       ) : reportType === 'incident-analysis' ? (
         <IncidentAnalysis data={data} />
       ) : (
@@ -258,50 +255,6 @@ function TrainingCompliance({ data }: { data: any[] }) {
         </tbody>
       </table>
       {data.length === 0 && <p className="text-center text-slate-400 p-8 text-sm">No training records found</p>}
-    </div>
-  )
-}
-
-function MonthlyReviewsHistory({ data }: { data: any }) {
-  const months: any[] = data?.months || []
-  if (!months.length) return <EmptyState title="No review history" description="No care reviews have been recorded yet" />
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
-        <p className="text-sm text-slate-600"><strong>{data.total}</strong> total care reviews recorded</p>
-      </div>
-      {months.map((m: any) => (
-        <div key={m.month} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
-            <h3 className="font-semibold text-purple-900">{m.month}</h3>
-            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">{m.reviews.length} review{m.reviews.length !== 1 ? 's' : ''}</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
-                {['Resident','Review type','Review date','Reviewed by','Status'].map(h => (
-                  <th key={h} className="px-4 py-2 text-left text-xs font-medium text-slate-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {m.reviews.map((r: any) => (
-                <tr key={r.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{r.su_name}</td>
-                  <td className="px-4 py-2.5 capitalize text-slate-600">{(r.review_type || '').replace(/_/g, ' ')}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{r.review_date ? format(new Date(r.review_date), 'd MMM yyyy') : '—'}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{r.reviewed_by_name || '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {r.status || 'scheduled'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
     </div>
   )
 }

@@ -44,7 +44,7 @@ import DbsTracker from './pages/dbs/DBSTracker'
 import Timesheets from './pages/timesheets/Timesheets'
 import CQCNotifications from './pages/cqc-notifications/CQCNotifications'
 import AuditTrail from './pages/audit-trail/AuditTrail'
-import SupervisionAppraisal from './pages/supervision-appraisal/SupervisionAppraisal'
+
 import PPEStock from './pages/ppe/PPE'
 import Holidays from './pages/holidays/Holidays'
 import Policies from './pages/policies/Policies'
@@ -121,7 +121,7 @@ function AppRoutes() {
       <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
       <Route path="/cqc-notifications" element={<ProtectedRoute><CQCNotifications /></ProtectedRoute>} />
       <Route path="/audit-trail" element={<ProtectedRoute><AuditTrail /></ProtectedRoute>} />
-      <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
+      <Route path="/risk-assessment" element={<Navigate to="/risk-management" replace />} />
       <Route path="/ppe" element={<ProtectedRoute><PPEStock /></ProtectedRoute>} />
       <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
       <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
