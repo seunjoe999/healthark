@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, PrintButton } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
 import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -76,25 +76,28 @@ export default function RiskManagement() {
 
   const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
 
-  const printAssessment = (ra: any) => {
+  const RA_PRINT_CSS = `
+    body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:780px;margin:0 auto}
+    h1{font-size:1.3rem;margin-bottom:4px}
+    .meta{font-size:.8rem;color:#555;margin-bottom:20px}
+    .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-left:10px}
+    .badge-low{background:#dcfce7;color:#166534}
+    .badge-medium{background:#fef9c3;color:#854d0e}
+    .badge-high{background:#ffedd5;color:#9a3412}
+    .badge-critical{background:#fee2e2;color:#991b1b}
+    section{margin-bottom:18px}
+    section h3{font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px}
+    section p{font-size:.9rem;line-height:1.6;margin:0}
+    .mgmt{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:18px}
+    .mgmt h3{color:#1d4ed8}
+    .page{page-break-after:always}
+    .page:last-child{page-break-after:avoid}
+    @media print{body{padding:0}}
+  `
+
+  const buildRaBody = (ra: any) => {
     const rl = RISK_LEVELS.find(r => r.value === (ra.risk_rating || ra.current_risk_level))
-    const html = `<!DOCTYPE html><html><head><title>${ra.assessment_name} — Risk Assessment</title>
-      <style>
-        body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:780px;margin:0 auto}
-        h1{font-size:1.3rem;margin-bottom:4px}
-        .meta{font-size:.8rem;color:#555;margin-bottom:20px}
-        .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-left:10px}
-        .badge-low{background:#dcfce7;color:#166534}
-        .badge-medium{background:#fef9c3;color:#854d0e}
-        .badge-high{background:#ffedd5;color:#9a3412}
-        .badge-critical{background:#fee2e2;color:#991b1b}
-        section{margin-bottom:18px}
-        section h3{font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px}
-        section p{font-size:.9rem;line-height:1.6;margin:0}
-        .mgmt{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:18px}
-        .mgmt h3{color:#1d4ed8}
-        @media print{body{padding:0}}
-      </style></head><body>
+    return `
       <h1>${ra.assessment_name}
         <span class="badge badge-${ra.risk_rating || ra.current_risk_level}">${rl?.label || ra.risk_rating || 'Unknown'} Risk</span>
       </h1>
@@ -112,7 +115,21 @@ export default function RiskManagement() {
       ${ra.evaluation_of_risk ? `<section><h3>Evaluation of risk</h3><p>${ra.evaluation_of_risk}</p></section>` : ''}
       ${ra.risk_acceptable ? `<section><h3>Risk acceptable</h3><p>${ra.risk_acceptable}</p></section>` : ''}
       ${ra.risk_after_controls ? `<section><h3>Risk after controls</h3><p>${ra.risk_after_controls}</p></section>` : ''}
-    </body></html>`
+    `
+  }
+
+  const printAssessment = (ra: any) => {
+    const html = `<!DOCTYPE html><html><head><title>${ra.assessment_name} — Risk Assessment</title><style>${RA_PRINT_CSS}</style></head><body>${buildRaBody(ra)}</body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print() }
+  }
+
+  const printAll = () => {
+    if (!assessments.length) return
+    const suName = selectedSu ? sus.find(s => s.id === selectedSu) : null
+    const title = suName ? `${suName.first_name} ${suName.last_name} — All Risk Assessments` : 'All Risk Assessments'
+    const pages = assessments.map(ra => `<div class="page">${buildRaBody(ra)}</div>`).join('')
+    const html = `<!DOCTYPE html><html><head><title>${title}</title><style>${RA_PRINT_CSS}</style></head><body>${pages}</body></html>`
     const w = window.open('', '_blank')
     if (w) { w.document.write(html); w.document.close(); w.focus(); w.print() }
   }
@@ -280,7 +297,11 @@ export default function RiskManagement() {
           <p className="text-slate-500 text-sm mt-0.5">Risk management plans for service users</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          {assessments.length > 0 && (
+            <Button size="sm" variant="outline" icon={<Printer className="w-4 h-4" />} onClick={printAll}>
+              Print all
+            </Button>
+          )}
           {homes.length > 1 && (
             <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
