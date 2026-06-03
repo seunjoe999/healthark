@@ -33,6 +33,17 @@ export default function Outcomes() {
 
   const [form, setForm] = useState({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
   const [reviewForm, setReviewForm] = useState({ status: 'ongoing', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+
+  async function quickUpdateStatus(id: string, status: string) {
+    setUpdatingStatus(`${id}-${status}`)
+    try {
+      await api.patch(`/outcomes/${id}`, { status })
+      setOutcomes(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+      toast.success(`Marked as ${STATUSES.find(s => s.value === status)?.label}`)
+    } catch { toast.error('Failed to update status') }
+    setUpdatingStatus(null)
+  }
 
   async function load() {
     setLoading(true)
@@ -159,6 +170,20 @@ export default function Outcomes() {
                           </div>
                           <p className="font-semibold text-white">{o.goal}</p>
                           {o.description && <p className="text-sm text-slate-400 mt-0.5">{o.description}</p>}
+                          <div className="flex flex-wrap gap-1.5 mt-2" onClick={e => e.stopPropagation()}>
+                            {[{ value: 'yes', label: 'Achieved', active: 'bg-emerald-600 text-white', inactive: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' },
+                              { value: 'partially', label: 'Partial', active: 'bg-amber-500 text-white', inactive: 'bg-amber-500/10 text-amber-400 border border-amber-500/30' },
+                              { value: 'no', label: 'Not Achieved', active: 'bg-rose-600 text-white', inactive: 'bg-rose-500/10 text-rose-400 border border-rose-500/30' },
+                              { value: 'ongoing', label: 'Ongoing', active: 'bg-blue-600 text-white', inactive: 'bg-blue-500/10 text-blue-400 border border-blue-500/30' },
+                            ].map(btn => (
+                              <button key={btn.value}
+                                disabled={updatingStatus !== null}
+                                onClick={() => o.status !== btn.value && quickUpdateStatus(o.id, btn.value)}
+                                className={clsx('text-xs px-2.5 py-1 rounded-full font-semibold transition-all', o.status === btn.value ? btn.active : btn.inactive, o.status === btn.value ? 'cursor-default' : 'hover:opacity-80 cursor-pointer')}>
+                                {updatingStatus === `${o.id}-${btn.value}` ? '…' : btn.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                         <div className="text-right text-xs text-slate-400 flex-shrink-0">
                           {o.target_date && <div>Target: {new Date(o.target_date).toLocaleDateString('en-GB')}</div>}

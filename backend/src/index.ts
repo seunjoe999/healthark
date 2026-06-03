@@ -1055,6 +1055,15 @@ async function ensureColumns() {
     `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS side_effects_notes  TEXT`,
     `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS emotion             TEXT`,
     `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS completed           BOOLEAN NOT NULL DEFAULT FALSE`,
+    // ── staff_training_modules — inbuilt training hub completion tracking ─────
+    `CREATE TABLE IF NOT EXISTS staff_training_modules (
+       staff_id     UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       module_id    VARCHAR(100) NOT NULL,
+       module_name  VARCHAR(255),
+       completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (staff_id, module_id)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_stm_staff ON staff_training_modules(staff_id)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
