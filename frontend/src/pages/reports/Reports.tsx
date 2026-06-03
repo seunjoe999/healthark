@@ -18,7 +18,7 @@ const REPORT_TYPES = [
   { value: 'medication-report', label: 'Medication Report', description: 'All medications by resident' },
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
-  { value: 'incident-analysis', label: 'AI Incident Analysis', description: 'AI-powered analysis of incident patterns' },
+  { value: 'incident-analysis', label: 'Incident Analysis', description: 'Analysis of incident patterns' },
 ]
 
 const DAILY_RECORD_TYPES = [
@@ -260,7 +260,7 @@ function TrainingCompliance({ data }: { data: any[] }) {
 }
 
 function IncidentAnalysis({ data }: { data: any }) {
-  if (!data) return <EmptyState title="No analysis available" description="Run the report to generate an AI analysis of incidents" />
+  if (!data) return <EmptyState title="No analysis available" description="Run the report to generate an analysis of incidents" />
 
   const { analysis, incidents, count, period } = data
 
@@ -275,12 +275,12 @@ function IncidentAnalysis({ data }: { data: any }) {
       <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl p-4">
         <Brain className="w-5 h-5 text-purple-600 flex-shrink-0" />
         <div>
-          <p className="font-semibold text-purple-900 text-sm">AI-Powered Incident Analysis</p>
+          <p className="font-semibold text-purple-900 text-sm">Incident Analysis</p>
           <p className="text-xs text-purple-600 mt-0.5">{count} incident{count !== 1 ? 's' : ''} analysed · Period: {period}</p>
         </div>
       </div>
 
-      {/* AI Analysis text */}
+      {/* Analysis text */}
       {analysis ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-3 bg-slate-50 border-b border-slate-200">
@@ -304,7 +304,7 @@ function IncidentAnalysis({ data }: { data: any }) {
         </div>
       ) : (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <p className="text-sm text-amber-800">AI analysis not available — {count} incidents found in this period.</p>
+          <p className="text-sm text-amber-800">Analysis not available — {count} incidents found in this period.</p>
         </div>
       )}
 

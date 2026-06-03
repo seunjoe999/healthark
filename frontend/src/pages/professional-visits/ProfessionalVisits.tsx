@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Stethoscope, Plus, CalendarClock, CheckCircle2 } from 'lucide-react'
+import { Stethoscope, Plus, CalendarClock, CheckCircle2, Pencil } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
@@ -45,6 +45,9 @@ export default function ProfessionalVisits() {
   const [selectedSU, setSelectedSU] = useState('')
   const [selectedType, setSelectedType] = useState('')
   const [view, setView] = useState<'log' | 'followups'>('log')
+  const [editVisit, setEditVisit] = useState<any>(null)
+  const [editForm, setEditForm] = useState({ outcome: '', instructionsLeft: '', followUpDate: '', followUpNotes: '' })
+  const [editSubmitting, setEditSubmitting] = useState(false)
 
   const [form, setForm] = useState({
     suId: '', visitDate: new Date().toISOString().slice(0, 10),
@@ -85,6 +88,28 @@ export default function ProfessionalVisits() {
       load()
     } catch {}
     setSubmitting(false)
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editVisit) return
+    setEditSubmitting(true)
+    try {
+      await api.patch(`/professional-visits/${editVisit.id}`, editForm)
+      setEditVisit(null)
+      load()
+    } catch {}
+    setEditSubmitting(false)
+  }
+
+  function openEdit(r: any) {
+    setEditVisit(r)
+    setEditForm({
+      outcome: r.outcome || '',
+      instructionsLeft: r.instructions_left || '',
+      followUpDate: r.follow_up_date ? r.follow_up_date.slice(0, 10) : '',
+      followUpNotes: r.follow_up_notes || '',
+    })
   }
 
   async function markFollowUpDone(id: string) {
@@ -193,9 +218,13 @@ export default function ProfessionalVisits() {
                         {r.outcome && <p className="text-sm text-amber-400/80 mt-1">Outcome: {r.outcome}</p>}
                         {r.instructions_left && <p className="text-sm text-blue-300/80 mt-1">Instructions: {r.instructions_left}</p>}
                       </div>
-                      <div className="text-right text-xs text-slate-400 flex-shrink-0">
+                      <div className="text-right text-xs text-slate-400 flex-shrink-0 flex flex-col items-end gap-2">
                         <div className="text-white font-medium">{format(parseISO(r.visit_date), 'dd MMM yyyy')}</div>
-                        <div className="mt-1">{r.recorded_by_name}</div>
+                        <div>{r.recorded_by_name}</div>
+                        <button onClick={() => openEdit(r)}
+                          className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors">
+                          <Pencil className="w-3 h-3" /> Edit outcome
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -205,6 +234,37 @@ export default function ProfessionalVisits() {
           )}
         </>
       )}
+
+      <Modal open={!!editVisit} onClose={() => setEditVisit(null)} title="Update Visit Outcome" size="md">
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Outcome / Findings</label>
+            <textarea className="input" rows={3} value={editForm.outcome}
+              onChange={e => setEditForm(f => ({ ...f, outcome: e.target.value }))}
+              placeholder="What was found / decided?" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Instructions left</label>
+            <textarea className="input" rows={2} value={editForm.instructionsLeft}
+              onChange={e => setEditForm(f => ({ ...f, instructionsLeft: e.target.value }))}
+              placeholder="Any instructions for care team..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Follow-up date" type="date" value={editForm.followUpDate}
+              onChange={e => setEditForm(f => ({ ...f, followUpDate: e.target.value }))} />
+            <div>
+              <label className="text-xs font-medium text-slate-400 block mb-1.5">Follow-up notes</label>
+              <input className="input w-full" value={editForm.followUpNotes}
+                onChange={e => setEditForm(f => ({ ...f, followUpNotes: e.target.value }))}
+                placeholder="What needs to happen?" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setEditVisit(null)}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={editSubmitting}>Save</Button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Log Professional Visit" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -81,6 +81,24 @@ router.post('/', [
   } catch (err) { next(err); }
 });
 
+// PATCH /api/professional-visits/:id — update outcome, instructions, follow-up
+router.patch('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { outcome, instructionsLeft, followUpDate, followUpNotes, followUpDone } = req.body;
+      await query(
+        `UPDATE professional_visits
+         SET outcome=$1, instructions_left=$2, follow_up_date=$3, follow_up_notes=$4,
+             follow_up_done=COALESCE($5, follow_up_done)
+         WHERE id=$6`,
+        [outcome ?? null, instructionsLeft ?? null, followUpDate || null, followUpNotes ?? null, followUpDone ?? null, req.params.id]
+      );
+      const rows = await query('SELECT * FROM professional_visits WHERE id=$1', [req.params.id]);
+      res.json({ success: true, data: (rows as any[])[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // PATCH /api/professional-visits/:id/follow-up-done
 router.patch('/:id/follow-up-done', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
