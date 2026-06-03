@@ -634,8 +634,20 @@ export default function CarePlans() {
     if (!selectedSu) return
     let suFull = selectedSu
     try { const full = await fetchSuFull(selectedSu.id); if (full) suFull = full } catch {}
+
+    const missing = plans.filter(p => !planReads[p.id])
+    let allReads = { ...planReads }
+    if (missing.length) {
+      const results = await Promise.allSettled(missing.map(p => api.get(`/care-plans/${p.id}/reads`)))
+      missing.forEach((p, i) => {
+        const r = results[i]
+        allReads[p.id] = r.status === 'fulfilled' ? (r.value.data.data || []) : []
+      })
+      setPlanReads(allReads)
+    }
+
     const name = getName(suFull)
-    const rows = plans.map(plan => buildPrintHtml(plan, suFull, planReads[plan.id] || []))
+    const rows = plans.map(plan => buildPrintHtml(plan, suFull, allReads[plan.id] || []))
     const html = `<!DOCTYPE html><html><head><title>${name} — All Support Plans</title>
       <style>body{font-family:'Segoe UI',Arial,sans-serif;margin:0} .page{page-break-after:always} @media print{.page:last-child{page-break-after:avoid};print-color-adjust:exact}</style>
       </head><body>${rows.map(h => `<div class="page">${h.replace(/<!DOCTYPE html>[\s\S]*?<body[^>]*>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}</div>`).join('')}</body></html>`

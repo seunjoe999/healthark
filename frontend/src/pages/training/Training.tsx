@@ -96,9 +96,9 @@ export default function Training() {
   const [activeModule, setActiveModule] = useState<typeof MODULES[0] | null>(null)
   const [activeSection, setActiveSection] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [externalCourses, setExternalCourses] = useState<any[]>([])
 
   useEffect(() => {
-    // Load completions from backend
     api.get('/staff-hr/training-modules').then(res => {
       const data = res.data.data || []
       const map: Record<string, boolean> = {}
@@ -106,6 +106,13 @@ export default function Training() {
       setCompletions(map)
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    api.get(`/staff-hr/training/${user.id}`).then(res => {
+      setExternalCourses(res.data.data || [])
+    }).catch(() => {})
+  }, [user?.id])
 
   const resetModule = async (moduleId: string) => {
     if (!window.confirm('Reset this module? You will need to complete it again.')) return
@@ -208,6 +215,41 @@ export default function Training() {
           )
         })}
       </div>
+
+      {/* External / manually-added training records */}
+      {externalCourses.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-display text-lg text-slate-900 font-semibold mb-3 flex items-center gap-2">
+            <Award className="w-5 h-5 text-purple-500" /> External Training &amp; Courses
+          </h2>
+          <div className="space-y-2">
+            {externalCourses.map((c: any) => (
+              <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card px-5 py-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900 text-sm">{c.course_name}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Completed: {c.completed_date ? new Date(c.completed_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    {c.duration_hours ? ` · ${c.duration_hours}h` : ''}
+                  </p>
+                </div>
+                {c.expiry_date && (
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-slate-500">Expires</p>
+                    <p className={`text-xs font-semibold ${new Date(c.expiry_date) < new Date() ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {new Date(c.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+                {c.certificate_url && (
+                  <a href={c.certificate_url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-purple-600 hover:underline flex-shrink-0">Certificate</a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Module viewer modal */}
       {activeModule && (

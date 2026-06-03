@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Zap, Plus, AlertTriangle, Clock } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
@@ -24,18 +25,20 @@ function formatDuration(seconds: number | null) {
 }
 
 export default function SeizureLog() {
+  const [searchParams] = useSearchParams()
+  const initSuId = searchParams.get('suId') || ''
   const [records, setRecords] = useState<any[]>([])
   const [stats, setStats] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [selectedSU, setSelectedSU] = useState('')
+  const [selectedSU, setSelectedSU] = useState(initSuId)
   const [view, setView] = useState<'log' | 'stats'>('log')
   const [preview, setPreview] = useState<any>(null)
 
   const [form, setForm] = useState({
-    suId: '', seizureAt: new Date().toISOString().slice(0, 16),
+    suId: initSuId, seizureAt: new Date().toISOString().slice(0, 16),
     seizureType: 'tonic_clonic', durationSeconds: '', description: '',
     recoveryTime: '', postIctal: '', action: '',
     notifiedGP: false, notifiedFamily: false, notes: '',

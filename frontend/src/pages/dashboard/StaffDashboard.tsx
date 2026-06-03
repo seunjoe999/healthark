@@ -27,24 +27,32 @@ export default function StaffDashboard() {
 
   useEffect(() => {
     if (!user) return
-    Promise.all([
-      api.get('/shifts', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
-      api.get('/tasks', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
-      api.get('/staff-hr/leave', { params: { staffId: user.id } }),
-      api.get('/notifications'),
-      staffApi.get(user.id),
-      suApi.list(user.homeId || '', { status: 'live' }),
-    ]).then(([shiftsRes, tasksRes, leaveRes, notifRes, profileRes, suRes]) => {
-      const allShifts = shiftsRes.data.data || []
-      setMyShifts(allShifts.filter((s: any) => s.staff_id === user.id))
-      setMyTasks((tasksRes.data.data || []).filter((t: any) =>
-        !t.assigned_role || t.assigned_role === (profileRes.data.data?.role || '')
-      ))
-      setMyLeave(leaveRes.data.data || [])
-      setNotifications((notifRes.data.data || []).filter((n: any) => !n.is_read).slice(0, 5))
-      setMyProfile(profileRes.data.data)
-      setResidents(suRes.data.data || [])
-    }).catch(console.error).finally(() => setLoading(false))
+    const load = async () => {
+      try {
+        const [shiftsR, tasksR, leaveR, notifR, profileR, suR] = await Promise.allSettled([
+          api.get('/shifts', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
+          api.get('/tasks', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
+          api.get('/staff-hr/leave', { params: { staffId: user.id } }),
+          api.get('/notifications'),
+          staffApi.get(user.id),
+          suApi.list(user.homeId || '', { status: 'live' }),
+        ])
+        const v = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null
+        const profileData = v(profileR)?.data.data
+        const allShifts = v(shiftsR)?.data.data || []
+        setMyShifts(allShifts.filter((s: any) => s.staff_id === user.id))
+        setMyTasks((v(tasksR)?.data.data || []).filter((t: any) =>
+          !t.assigned_role || t.assigned_role === (profileData?.role || '')
+        ))
+        setMyLeave(v(leaveR)?.data.data || [])
+        setNotifications((v(notifR)?.data.data || []).filter((n: any) => !n.is_read).slice(0, 5))
+        setMyProfile(profileData)
+        setResidents(v(suR)?.data.data || [])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [user])
 
   const pendingTasks = myTasks.filter(t => t.status === 'pending')
