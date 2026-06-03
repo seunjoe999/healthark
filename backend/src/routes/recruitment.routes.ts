@@ -119,7 +119,7 @@ router.post('/:id/email', param('id').isUUID(), body('type').notEmpty(), validat
 
       const { type, subject: customSubject, message } = req.body;
       const contactName = req.body.contactName || 'Recruitment Team';
-      const contactEmail = req.body.contactEmail || (process.env.SMTP_USER || '');
+      const contactEmail = req.body.contactEmail || '';
 
       let html = '';
       let subject = '';

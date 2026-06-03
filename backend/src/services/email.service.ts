@@ -161,7 +161,7 @@ export function offerLetterEmail(candidate: { first_name: string; last_name: str
       <li>Proof of right to work in the UK</li>
       <li>Completion of all required pre-employment checks</li>
     </ul>
-    <p>Please confirm your acceptance by replying to this email or contacting <strong>${details.contactName}</strong> at <a href="mailto:${details.contactEmail}">${details.contactEmail}</a>.</p>
+    <p>Please confirm your acceptance by replying to this email or contacting <strong>${details.contactName}</strong>${details.contactEmail.includes('@') ? ` at <a href="mailto:${details.contactEmail}">${details.contactEmail}</a>` : ''}.</p>
     <p>We look forward to welcoming you to our team.</p>
     <p>Kind regards,<br/><strong>${details.contactName}</strong></p>
   `);
