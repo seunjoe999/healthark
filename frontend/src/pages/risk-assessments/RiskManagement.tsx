@@ -270,126 +270,6 @@ export default function RiskManagement() {
     } catch { toast.error('Failed to archive') }
   }
 
-  const PlanForm = ({ onSave, isEdit }: { onSave: () => void; isEdit?: boolean }) => (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-      {!isEdit && (
-        <div>
-          <label className="text-xs font-semibold text-slate-600 block mb-1">Service User *</label>
-          <select className="input w-full" value={form.suId} onChange={e => setF('suId', e.target.value)}>
-            <option value="">Select service user...</option>
-            {sus.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
-          </select>
-        </div>
-      )}
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Plan Name *</label>
-        <input className="input w-full" placeholder="e.g. Falls Risk, Pressure Sores" value={form.assessmentName}
-          onChange={e => setF('assessmentName', e.target.value)} disabled={isEdit} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Review Frequency</label>
-        <select className="input w-full" value={form.reviewFrequency} onChange={e => setF('reviewFrequency', e.target.value)}>
-          <option value="weekly">Weekly</option>
-          <option value="fortnightly">Fortnightly</option>
-          <option value="monthly">Monthly</option>
-          <option value="eight_weekly">Every 8 weeks</option>
-          <option value="yearly">Yearly</option>
-        </select>
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">What is the risk</label>
-        <textarea className="input w-full" rows={2} placeholder="Brief overview of the risk..."
-          value={form.description} onChange={e => setF('description', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Rating</label>
-        <select className="input w-full" value={form.riskRating} onChange={e => { setF('riskRating', e.target.value); setF('currentRiskLevel', e.target.value) }}>
-          {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Historical Context</label>
-        <textarea className="input w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
-          value={form.historicalContext} onChange={e => setF('historicalContext', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk</label>
-        <input className="input w-full" placeholder="e.g. Service user, staff, visitors"
-          value={form.whoIsAtRisk} onChange={e => setF('whoIsAtRisk', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">What could happen</label>
-        <textarea className="input w-full" rows={2} placeholder="Describe the potential harm or consequence..."
-          value={form.whatCouldHappen} onChange={e => setF('whatCouldHappen', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Triggers</label>
-        <textarea className="input w-full" rows={2} placeholder="What situations or behaviours trigger this risk..."
-          value={form.triggers} onChange={e => setF('triggers', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Protective Factors</label>
-        <textarea className="input w-full" rows={2} placeholder="What reduces or protects against this risk..."
-          value={form.protectiveFactors} onChange={e => setF('protectiveFactors', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Management Plan</label>
-        <textarea className="input w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
-          value={form.managementPlan} onChange={e => setF('managementPlan', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk before intervention?</label>
-        <textarea className="input w-full" rows={2} placeholder="Describe the risk before any intervention..."
-          value={form.riskBeforeIntervention} onChange={e => setF('riskBeforeIntervention', e.target.value)} />
-      </div>
-
-      <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
-        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Risk Rating</p>
-        {RISK_SCORE_OPTIONS.map(opt => (
-          <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
-            <input type="radio" name="riskRatingOption" value={opt.value}
-              checked={form.riskRatingOption === opt.value}
-              onChange={() => setF('riskRatingOption', opt.value)}
-              className="mt-0.5 flex-shrink-0" />
-            <span className="text-xs text-slate-700 leading-relaxed">{opt.label}</span>
-          </label>
-        ))}
-      </div>
-
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Total Risk Score</label>
-        <input type="number" className="input w-full" placeholder="Enter numeric score..."
-          value={form.riskScore} onChange={e => setF('riskScore', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Evaluation of risk?</label>
-        <textarea className="input w-full" rows={2} placeholder="Your evaluation of the overall risk..."
-          value={form.evaluationOfRisk} onChange={e => setF('evaluationOfRisk', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Is the level of risk identified acceptable?</label>
-        <select className="input w-full" value={form.riskAcceptable} onChange={e => setF('riskAcceptable', e.target.value)}>
-          <option value="">Select...</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-          <option value="with_controls">Yes with controls in place</option>
-        </select>
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk occurring following control measures</label>
-        <textarea className="input w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
-          value={form.riskAfterControls} onChange={e => setF('riskAfterControls', e.target.value)} />
-      </div>
-
-      <div className="flex gap-3 justify-end pt-2">
-        <Button variant="outline" onClick={() => isEdit ? setEditItem(null) : setCreateOpen(false)}>Cancel</Button>
-        <Button loading={saving} onClick={onSave} icon={<Check className="w-4 h-4" />}>
-          {isEdit ? 'Save Changes' : 'Create Plan'}
-        </Button>
-      </div>
-    </div>
-  )
-
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-start justify-between mb-6">
@@ -569,12 +449,14 @@ export default function RiskManagement() {
 
       {/* Create modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Risk Management Plan">
-        <PlanForm onSave={handleCreate} />
+        <PlanForm form={form} setF={setF} sus={sus} getName={getName} saving={saving}
+          onCancel={() => setCreateOpen(false)} onSave={handleCreate} isEdit={false} />
       </Modal>
 
       {/* Edit modal */}
       <Modal open={!!editItem} onClose={() => setEditItem(null)} title={`Edit: ${editItem?.assessment_name}`}>
-        <PlanForm onSave={handleEdit} isEdit />
+        <PlanForm form={form} setF={setF} sus={sus} getName={getName} saving={saving}
+          onCancel={() => setEditItem(null)} onSave={handleEdit} isEdit />
       </Modal>
 
       {/* Sign-off modal */}
@@ -619,6 +501,128 @@ export default function RiskManagement() {
           </div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }: {
+  form: any; setF: (k: string, v: string) => void; sus: any[]; getName: (s: any) => string;
+  saving: boolean; onSave: () => void; onCancel: () => void; isEdit?: boolean
+}) {
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      {!isEdit && (
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Service User *</label>
+          <select className="input w-full" value={form.suId} onChange={e => setF('suId', e.target.value)}>
+            <option value="">Select service user...</option>
+            {sus.map((s: any) => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+          </select>
+        </div>
+      )}
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Plan Name *</label>
+        <input className="input w-full" placeholder="e.g. Falls Risk, Pressure Sores" value={form.assessmentName}
+          onChange={e => setF('assessmentName', e.target.value)} disabled={isEdit} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Review Frequency</label>
+        <select className="input w-full" value={form.reviewFrequency} onChange={e => setF('reviewFrequency', e.target.value)}>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="monthly">Monthly</option>
+          <option value="eight_weekly">Every 8 weeks</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">What is the risk</label>
+        <textarea className="input w-full" rows={2} placeholder="Brief overview of the risk..."
+          value={form.description} onChange={e => setF('description', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Rating</label>
+        <select className="input w-full" value={form.riskRating} onChange={e => { setF('riskRating', e.target.value); setF('currentRiskLevel', e.target.value) }}>
+          {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Historical Context</label>
+        <textarea className="input w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
+          value={form.historicalContext} onChange={e => setF('historicalContext', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk</label>
+        <input className="input w-full" placeholder="e.g. Service user, staff, visitors"
+          value={form.whoIsAtRisk} onChange={e => setF('whoIsAtRisk', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">What could happen</label>
+        <textarea className="input w-full" rows={2} placeholder="Describe the potential harm or consequence..."
+          value={form.whatCouldHappen} onChange={e => setF('whatCouldHappen', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Triggers</label>
+        <textarea className="input w-full" rows={2} placeholder="What situations or behaviours trigger this risk..."
+          value={form.triggers} onChange={e => setF('triggers', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Protective Factors</label>
+        <textarea className="input w-full" rows={2} placeholder="What reduces or protects against this risk..."
+          value={form.protectiveFactors} onChange={e => setF('protectiveFactors', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Management Plan</label>
+        <textarea className="input w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
+          value={form.managementPlan} onChange={e => setF('managementPlan', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk before intervention?</label>
+        <textarea className="input w-full" rows={2} placeholder="Describe the risk before any intervention..."
+          value={form.riskBeforeIntervention} onChange={e => setF('riskBeforeIntervention', e.target.value)} />
+      </div>
+      <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Risk Rating</p>
+        {RISK_SCORE_OPTIONS.map(opt => (
+          <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="riskRatingOption" value={opt.value}
+              checked={form.riskRatingOption === opt.value}
+              onChange={() => setF('riskRatingOption', opt.value)}
+              className="mt-0.5 flex-shrink-0" />
+            <span className="text-xs text-slate-700 leading-relaxed">{opt.label}</span>
+          </label>
+        ))}
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Total Risk Score</label>
+        <input type="number" className="input w-full" placeholder="Enter numeric score..."
+          value={form.riskScore} onChange={e => setF('riskScore', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Evaluation of risk?</label>
+        <textarea className="input w-full" rows={2} placeholder="Your evaluation of the overall risk..."
+          value={form.evaluationOfRisk} onChange={e => setF('evaluationOfRisk', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Is the level of risk identified acceptable?</label>
+        <select className="input w-full" value={form.riskAcceptable} onChange={e => setF('riskAcceptable', e.target.value)}>
+          <option value="">Select...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+          <option value="with_controls">Yes with controls in place</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk occurring following control measures</label>
+        <textarea className="input w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
+          value={form.riskAfterControls} onChange={e => setF('riskAfterControls', e.target.value)} />
+      </div>
+      <div className="flex gap-3 justify-end pt-2">
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button loading={saving} onClick={onSave} icon={<Check className="w-4 h-4" />}>
+          {isEdit ? 'Save Changes' : 'Create Plan'}
+        </Button>
+      </div>
     </div>
   )
 }
