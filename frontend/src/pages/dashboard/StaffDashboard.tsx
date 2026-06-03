@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
-import { staffApi } from '../../api'
+import { staffApi, suApi } from '../../api'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui'
 import TaskPopup from '../../components/TaskPopup'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
-  ChevronRight, CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare
+  CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare
 } from 'lucide-react'
 
 export default function StaffDashboard() {
@@ -18,6 +18,7 @@ export default function StaffDashboard() {
   const [myLeave, setMyLeave] = useState<any[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [myProfile, setMyProfile] = useState<any>(null)
+  const [residents, setResidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showTaskPopup, setShowTaskPopup] = useState(true)
 
@@ -32,7 +33,8 @@ export default function StaffDashboard() {
       api.get('/staff-hr/leave', { params: { staffId: user.id } }),
       api.get('/notifications'),
       staffApi.get(user.id),
-    ]).then(([shiftsRes, tasksRes, leaveRes, notifRes, profileRes]) => {
+      suApi.list(user.homeId || '', { status: 'live' }),
+    ]).then(([shiftsRes, tasksRes, leaveRes, notifRes, profileRes, suRes]) => {
       const allShifts = shiftsRes.data.data || []
       setMyShifts(allShifts.filter((s: any) => s.staff_id === user.id))
       setMyTasks((tasksRes.data.data || []).filter((t: any) =>
@@ -41,6 +43,7 @@ export default function StaffDashboard() {
       setMyLeave(leaveRes.data.data || [])
       setNotifications((notifRes.data.data || []).filter((n: any) => !n.is_read).slice(0, 5))
       setMyProfile(profileRes.data.data)
+      setResidents(suRes.data.data || [])
     }).catch(console.error).finally(() => setLoading(false))
   }, [user])
 
@@ -141,6 +144,51 @@ export default function StaffDashboard() {
         )}
       </div>
 
+      {/* My residents */}
+      {residents.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-500" /> Residents in your home
+            </h2>
+            <Link to="/service-users" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-2">
+            {residents.slice(0, 6).map((r: any) => {
+              const initials = `${(r.first_name || '?')[0]}${(r.last_name || '?')[0]}`
+              return (
+                <Link key={r.id} to={`/service-users/${r.id}`}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-purple-200 hover:bg-purple-50 transition-all">
+                  <div className="relative w-9 h-9 flex-shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
+                      {initials}
+                    </div>
+                    {r.photo_url && (
+                      <img src={r.photo_url} alt={`${r.first_name} ${r.last_name}`}
+                        className="absolute inset-0 w-9 h-9 rounded-full object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{r.first_name} {r.last_name}</p>
+                    {r.room_number && <p className="text-xs text-slate-400">Room {r.room_number}</p>}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+          {residents.length > 6 && (
+            <div className="px-5 pb-4 text-center">
+              <Link to="/service-users" className="text-xs text-purple-600 font-semibold">
+                + {residents.length - 6} more residents
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* My leave */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
@@ -164,18 +212,6 @@ export default function StaffDashboard() {
           </div>
         ))}
       </div>
-
-      {/* Residents link */}
-      <Link to="/service-users" className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 shadow-card p-5 hover:shadow-card-hover transition-all">
-        <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
-          <Users className="w-5 h-5 text-purple-600" />
-        </div>
-        <div className="flex-1">
-          <p className="font-semibold text-slate-800">Residents</p>
-          <p className="text-xs text-slate-400 mt-0.5">View profiles, care plans and daily records</p>
-        </div>
-        <ChevronRight className="w-5 h-5 text-slate-300" />
-      </Link>
 
       <TaskPopup open={showTaskPopup} onClose={() => setShowTaskPopup(false)} />
     </div>

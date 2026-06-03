@@ -138,7 +138,7 @@ export default function MAR() {
     <div className="flex flex-col h-full overflow-hidden bg-white">
 
       {/* ── Top control bar (RoundSys-style) ─────────────────────────── */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="no-print bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
         {/* Title */}
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <Pill className="w-4 h-4 text-purple-600" /> MAR
@@ -217,13 +217,14 @@ export default function MAR() {
 
           {/* ── Resident profile strip ───────────────────────────────── */}
           <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-start gap-4">
-            <div className="flex-shrink-0">
-              {su?.photo_url ? (
-                <img src={su.photo_url} alt={getName(su)} className="w-12 h-12 rounded-full object-cover border-2 border-slate-200" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-base font-bold border-2 border-purple-200">
-                  {suInitials}
-                </div>
+            <div className="flex-shrink-0 relative w-12 h-12">
+              <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-base font-bold border-2 border-purple-200">
+                {suInitials}
+              </div>
+              {su?.photo_url && (
+                <img src={su.photo_url} alt={getName(su)}
+                  className="absolute inset-0 w-12 h-12 rounded-full object-cover border-2 border-slate-200"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
               )}
             </div>
             <div className="flex-1 grid grid-cols-3 gap-4 text-xs">
@@ -261,7 +262,7 @@ export default function MAR() {
           </div>
 
           {/* ── Tabs ───────────────────────────────────────────────── */}
-          <div className="bg-white border-b border-slate-200 px-4 flex gap-0">
+          <div className="no-print bg-white border-b border-slate-200 px-4 flex gap-0">
             {[
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
@@ -488,7 +489,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                     borderRight: '1px solid #d1d5db',
                     background: '#fff',
                   }}>
-                    <div className="font-semibold text-slate-800" style={{ fontSize: 11, lineHeight: 1.3 }}>{med.medication_name}</div>
+                    <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: '#111' }}>{med.medication_name}</div>
                     {showPrescriptions && med.dose && (
                       <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
                         {med.dose}
@@ -884,10 +885,8 @@ function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; st
   const [ed, setEd] = useState(endDate)
 
   const open = () => {
-    const token = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token') || ''
-    ;(window as any).__HA_TOKEN__ = token
-    window.open(`/mar/${suId}/print?startDate=${sd}&endDate=${ed}`, '_blank', 'width=1200,height=900')
     onClose()
+    setTimeout(() => window.print(), 350)
   }
 
   return (
@@ -900,7 +899,7 @@ function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; st
         </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button icon={<Printer className="w-4 h-4" />} onClick={open}>Open Medication Administration Record</Button>
+          <Button icon={<Printer className="w-4 h-4" />} onClick={open}>Print MAR</Button>
         </div>
       </div>
     </Modal>

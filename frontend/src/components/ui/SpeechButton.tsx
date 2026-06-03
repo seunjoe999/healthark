@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { Mic, Square } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface SpeechButtonProps {
   onTranscript: (text: string) => void
@@ -38,7 +39,14 @@ export default function SpeechButton({ onTranscript, className = '' }: SpeechBut
       rec.onend = () => setListening(false)
       rec.onerror = (e: any) => {
         setListening(false)
-        if (e.error === 'not-allowed') alert('Microphone access denied. Please allow microphone in your browser settings.')
+        const msgs: Record<string, string> = {
+          'not-allowed': 'Microphone access denied — allow it in your browser settings',
+          'no-speech': 'No speech detected — try speaking louder',
+          'network': 'Speech recognition network error — check your connection',
+          'audio-capture': 'No microphone found',
+        }
+        const msg = msgs[e.error]
+        if (msg) toast.error(msg)
       }
       rec.start()
       recRef.current = rec
@@ -54,8 +62,8 @@ export default function SpeechButton({ onTranscript, className = '' }: SpeechBut
     return (
       <button
         type="button"
-        disabled
-        title="Speech-to-text not supported in this browser (use Chrome or Edge)"
+        onClick={() => toast.error('Voice input requires Chrome or Edge browser')}
+        title="Speech-to-text not supported — use Chrome or Edge"
         className={`flex-shrink-0 p-2 rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed ${className}`}
       >
         <Mic className="w-4 h-4" />
