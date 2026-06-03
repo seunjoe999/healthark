@@ -69,7 +69,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // GET /api/staff/:id
-router.get('/:id', param('id').isUUID(), validateRequest,
+router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
@@ -404,7 +404,7 @@ router.post('/:id/clock',
 );
 
 // GET /api/staff/:id/clock - clock history
-router.get('/:id/clock', param('id').isUUID(), validateRequest,
+router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { from, to } = req.query;

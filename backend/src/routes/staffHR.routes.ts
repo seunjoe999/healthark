@@ -89,7 +89,7 @@ router.post('/leave',
 
 
 // ── Training ──────────────────────────────────────────────────────
-router.get('/training/:staffId', param('staffId').isUUID(), validateRequest,
+router.get('/training/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(

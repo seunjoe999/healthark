@@ -164,7 +164,7 @@ router.post('/right-to-work',
 );
 
 // ── Summary for a staff member ────────────────────────────────────────────────
-router.get('/summary/:staffId', param('staffId').isUUID(), validateRequest,
+router.get('/summary/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
