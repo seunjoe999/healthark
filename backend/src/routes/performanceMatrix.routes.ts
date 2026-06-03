@@ -45,7 +45,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
              LEFT JOIN staff a ON a.id = pm.assessed_by
              WHERE pm.home_id = $1`;
       params.push(homeId);
-      if (filterStaff) { sql += ` AND pm.staff_id = $2`; params.push(filterStaff); }
+      if (role === 'care_staff') {
+        sql += ` AND pm.staff_id = $${params.length + 1}`;
+        params.push(tok(req, 'staffId'));
+      } else if (filterStaff) {
+        sql += ` AND pm.staff_id = $${params.length + 1}`;
+        params.push(filterStaff);
+      }
     }
     sql += ' ORDER BY pm.created_at DESC LIMIT 200';
     const rows = await query(sql, params);

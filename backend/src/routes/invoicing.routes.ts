@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param, query } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query as dbQuery } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -18,7 +18,7 @@ function fromToken(req: Request, field: string): string {
 router.use(authenticate);
 
 // GET /api/invoicing?homeId=xxx&status=pending
-router.get('/', validateRequest,
+router.get('/', requireRole('home_manager', 'group_admin'), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.query.homeId as string;

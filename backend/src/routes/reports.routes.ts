@@ -125,7 +125,7 @@ router.get('/staff-attendance', async (req: Request, res: Response, next: NextFu
 });
 
 // GET /api/reports/training-compliance
-router.get('/training-compliance', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/training-compliance', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const rows = await query(

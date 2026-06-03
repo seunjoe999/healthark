@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -26,7 +26,7 @@ function fromToken(req: Request, field: string): string {
 }
 
 // GET /api/recruitment?homeId=
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const rows = await query(

@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
@@ -28,7 +28,7 @@ function score(compliant: number, total: number): number {
 }
 
 // GET /api/compliance/dashboard?homeId=
-router.get('/dashboard', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/dashboard', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId) {
