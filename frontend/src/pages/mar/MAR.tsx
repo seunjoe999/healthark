@@ -213,7 +213,7 @@ export default function MAR() {
           <EmptyState title="Select a resident" description="Use the Service User dropdown above to load their Medication Administration Record" />
         </div>
       ) : (
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
           {/* ── Resident profile strip ───────────────────────────────── */}
           <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-start gap-4">
@@ -277,7 +277,7 @@ export default function MAR() {
           </div>
 
           {/* ── Content ────────────────────────────────────────────── */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 min-h-0 overflow-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48"><Spinner /></div>
             ) : tab === 'mar' ? (
@@ -422,8 +422,8 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
   const tdBase = 'border border-slate-200 text-center text-xs'
 
   return (
-    <div className="overflow-auto h-full">
-      <table style={{ borderCollapse: 'collapse', minWidth: '100%', fontSize: 11 }}>
+    <div style={{ overflowX: 'auto', overflowY: 'auto', width: '100%', height: '100%' }}>
+      <table style={{ borderCollapse: 'collapse', minWidth: 'max-content', fontSize: 11 }}>
         <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
           {/* Week header */}
           <tr>
