@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { FileText, Plus, Trash2, Search, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
+import { FileText, Plus, Trash2, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const REVIEW_TYPES = [
@@ -36,8 +36,6 @@ export default function Reviews() {
   const [loading, setLoading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [previewReview, setPreviewReview] = useState<any>(null)
-  const [search, setSearch] = useState('')
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -49,7 +47,7 @@ export default function Reviews() {
 
   useEffect(() => {
     if (!selectedHome) return
-    suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
+    suApi.list(selectedHome).then(res => setSus(res.data.data || []))
   }, [selectedHome])
 
   const deleteReview = async (id: string) => {
@@ -63,7 +61,6 @@ export default function Reviews() {
 
   const selectSu = async (su: any) => {
     setSelectedSu(su)
-    setMobileSidebarOpen(false)
     setLoading(true)
     try {
       const res = await api.get(`/reviews/su/${su.id}`)
@@ -73,125 +70,122 @@ export default function Reviews() {
   }
 
   const getName = (su: any) => `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
-  const filteredSus = sus.filter(su => getName(su).toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
-        <div className="p-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-purple-600" /> Reviews & Feedback
-          </h2>
-          {homes.length > 1 && <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <input className="input pl-8 text-sm" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
+    <div className="flex flex-col h-full">
+      {/* Top control bar */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
+          <FileText className="w-4 h-4 text-purple-600" /> Reviews &amp; Feedback
+        </span>
+
+        {homes.length > 1 && (
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+            value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelectedSu(null); setReviews([]) }}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Resident</label>
+          <select
+            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-[180px]"
+            value={selectedSu?.id || ''}
+            onChange={e => {
+              if (!e.target.value) { setSelectedSu(null); setReviews([]); return }
+              const su = sus.find(s => s.id === e.target.value)
+              if (su) selectSu(su)
+            }}>
+            <option value="">— Select resident —</option>
+            {sus.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
+          </select>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {filteredSus.map(su => {
-            const name = getName(su)
-            const isSelected = selectedSu?.id === su.id
-            return (
-              <button key={su.id} onClick={() => selectSu(su)}
-                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
-                <p className={`text-sm font-medium truncate ${isSelected ? 'text-purple-900' : 'text-slate-800'}`}>{name}</p>
-              </button>
-            )
-          })}
+
+        <div className="ml-auto flex items-center gap-2">
+          <PrintButton />
+          {selectedSu && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddOpen(true)}>Add review</Button>}
         </div>
       </div>
 
-      <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
-        {selectedSu && (
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
-            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">
-              ← Back
-            </button>
-            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
-          </div>
-        )}
-        <div className="p-6 flex-1">
-        {!selectedSu ? (
-          <div className="flex items-center justify-center h-full">
-            <EmptyState title="Select a resident" description="Choose a resident to view their reviews and feedback" />
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display text-xl text-slate-900">{getName(selectedSu)}</h2>
-              <div className="flex items-center gap-2">
-                <PrintButton />
-                <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddOpen(true)}>Add review</Button>
-              </div>
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto bg-slate-50">
+        <div className="p-6">
+          {!selectedSu ? (
+            <div className="flex items-center justify-center h-full min-h-[300px]">
+              <EmptyState title="Select a resident" description="Choose a resident to view their reviews and feedback" />
             </div>
-
-            {loading ? <Spinner /> : reviews.length === 0 ? (
-              <EmptyState title="No reviews yet" description="Document care reviews and resident feedback"
-                action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add first review</Button>} />
-            ) : (
-              <div className="space-y-4">
-                {reviews.map((r: any) => (
-                  <div key={r.id} className="cursor-pointer" onClick={() => setPreviewReview(r)}>
-                  <Card className="p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText className="w-4 h-4 text-purple-500" />
-                          <h3 className="font-semibold text-slate-900">
-                            {REVIEW_TYPES.find(t => t.value === r.review_type)?.label || r.review_type}
-                          </h3>
-                        </div>
-                        <p className="text-xs text-slate-400">
-                          {r.review_date ? format(new Date(r.review_date), 'd MMMM yyyy') : ''} · {r.created_by_name}
-                        </p>
-                        {r.attendees && <p className="text-xs text-slate-400 mt-0.5">Attendees: {parseAttendees(r.attendees)}</p>}
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {r.next_review_date && (
-                          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg font-medium">
-                            Next: {format(new Date(r.next_review_date), 'd MMM yyyy')}
-                          </span>
-                        )}
-                        <button onClick={() => setPreviewReview(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Preview">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => deleteReview(r.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Summary</p>
-                        <p className="text-sm text-slate-700 whitespace-pre-line">{r.summary}</p>
-                      </div>
-                      {r.resident_feedback && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Resident feedback</p>
-                          <p className="text-sm text-slate-700 italic">"{r.resident_feedback}"</p>
-                        </div>
-                      )}
-                      {r.family_feedback && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Family feedback</p>
-                          <p className="text-sm text-slate-700 italic">"{r.family_feedback}"</p>
-                        </div>
-                      )}
-                      {r.outcomes && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Outcomes & actions</p>
-                          <p className="text-sm text-slate-700 whitespace-pre-line">{r.outcomes}</p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                  </div>
-                ))}
+          ) : (
+            <div className="max-w-3xl mx-auto">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="font-display text-xl text-slate-900">{getName(selectedSu)}</h2>
               </div>
-            )}
-          </div>
-        )}
+
+              {loading ? <Spinner /> : reviews.length === 0 ? (
+                <EmptyState title="No reviews yet" description="Document care reviews and resident feedback"
+                  action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add first review</Button>} />
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((r: any) => (
+                    <div key={r.id} className="cursor-pointer" onClick={() => setPreviewReview(r)}>
+                    <Card className="p-5 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <FileText className="w-4 h-4 text-purple-500" />
+                            <h3 className="font-semibold text-slate-900">
+                              {REVIEW_TYPES.find(t => t.value === r.review_type)?.label || r.review_type}
+                            </h3>
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {r.review_date ? format(new Date(r.review_date), 'd MMMM yyyy') : ''} · {r.created_by_name}
+                          </p>
+                          {r.attendees && <p className="text-xs text-slate-400 mt-0.5">Attendees: {parseAttendees(r.attendees)}</p>}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {r.next_review_date && (
+                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-lg font-medium">
+                              Next: {format(new Date(r.next_review_date), 'd MMM yyyy')}
+                            </span>
+                          )}
+                          <button onClick={() => setPreviewReview(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors" title="Preview">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteReview(r.id) }} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Summary</p>
+                          <p className="text-sm text-slate-700 whitespace-pre-line">{r.summary}</p>
+                        </div>
+                        {r.resident_feedback && (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Resident feedback</p>
+                            <p className="text-sm text-slate-700 italic">"{r.resident_feedback}"</p>
+                          </div>
+                        )}
+                        {r.family_feedback && (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Family feedback</p>
+                            <p className="text-sm text-slate-700 italic">"{r.family_feedback}"</p>
+                          </div>
+                        )}
+                        {r.outcomes && (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Outcomes & actions</p>
+                            <p className="text-sm text-slate-700 whitespace-pre-line">{r.outcomes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

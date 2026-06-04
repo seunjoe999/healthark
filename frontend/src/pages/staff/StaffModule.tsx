@@ -6,7 +6,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInYears } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, Search, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
+import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]
@@ -34,11 +34,9 @@ export default function StaffModule() {
   const [staff, setStaff] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
   const [tab, setTab] = useState<StaffTab>('profile')
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
   const [loading, setLoading] = useState(true)
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
-  const [search, setSearch] = useState('')
   const [training, setTraining] = useState<any[]>([])
   const [leave, setLeave] = useState<any[]>([])
   const [onboarding, setOnboarding] = useState<any>(null)
@@ -70,7 +68,6 @@ export default function StaffModule() {
   const selectStaff = async (s: any) => {
     setSelected(s)
     setTab('profile')
-    setMobileSidebarOpen(false)
     try {
       const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes] = await Promise.all([
         api.get(`/staff-hr/training/${s.id}`),
@@ -94,7 +91,6 @@ export default function StaffModule() {
   }
 
   const getName = (s: any) => `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()
-  const filteredStaff = staff.filter(s => getName(s).toLowerCase().includes(search.toLowerCase()))
 
   const tabs: { key: StaffTab; label: string }[] = [
     { key: 'profile', label: 'Profile' },
@@ -108,58 +104,42 @@ export default function StaffModule() {
   ]
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      {/* Left — staff list */}
-      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
-        <div className="p-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900 mb-3">Staff</h2>
-          {homes.length > 1 && (
-            <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-          )}
-          <div className="flex gap-2 mb-3">
-            <Link to="/staff/new" className="flex-1">
-              <button className="w-full py-2 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
-                + Add staff member
-              </button>
-            </Link>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <input className="input pl-8 text-sm" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
+    <div className="flex flex-col h-full">
+      {/* Top control bar */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {homes.length > 1 && (
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+            value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelected(null) }}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Staff member</label>
+          <select
+            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-[200px]"
+            value={selected?.id || ''}
+            onChange={e => {
+              if (!e.target.value) { setSelected(null); return }
+              const s = staff.find(x => x.id === e.target.value)
+              if (s) selectStaff(s)
+            }}>
+            <option value="">— Select staff member —</option>
+            {staff.map(s => <option key={s.id} value={s.id}>{getName(s)} · {(s.role || '').replace(/_/g, ' ')}</option>)}
+          </select>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {loading ? <Spinner /> : filteredStaff.map(s => {
-            const name = getName(s)
-            const isSelected = selected?.id === s.id
-            return (
-              <button key={s.id} onClick={() => selectStaff(s)}
-                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-slate-50 border-l-2 border-l-slate-900' : ''}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                    {(s.first_name || s.firstName || '?')[0]}{(s.last_name || s.lastName || '?')[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>{name}</p>
-                    <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+
+        <div className="ml-auto">
+          <Link to="/staff/new">
+            <button className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
+              + Add staff member
+            </button>
+          </Link>
         </div>
       </div>
 
-      {/* Right — staff detail */}
-      <div className={`${!mobileSidebarOpen || !selected ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
-        {selected && (
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
-            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">← Back</button>
-            <span className="text-white text-sm font-semibold">{getName(selected)}</span>
-          </div>
-        )}
+      {/* Staff detail — full width */}
+      <div className="flex flex-col flex-1 overflow-y-auto bg-slate-50">
         <div className="p-6 flex-1">
         {!selected ? (
           <div className="flex items-center justify-center h-full">
@@ -188,7 +168,7 @@ export default function StaffModule() {
                   <p className="text-sm text-slate-500 capitalize">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
                   <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
                     {selected.start_date && <span>Started {format(new Date(selected.start_date), 'd MMM yyyy')}</span>}
-                    <span className="text-emerald-600 font-medium">{(selected.leave_hours_total || 224) - (selected.leave_hours_used || 0)} hrs leave remaining</span>
+                    <span className="text-emerald-600 font-medium">{selected.leave_hours_remaining ?? 210} hrs leave remaining</span>
                   </div>
                   <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>
                 </div>
@@ -237,7 +217,7 @@ export default function StaffModule() {
                     <InfoField label="Start date" value={selected.start_date ? format(new Date(selected.start_date), 'd MMMM yyyy') : null} />
                     <InfoField label="Annual leave total" value={`${selected.leave_hours_total || 224} hours`} />
                     <InfoField label="Leave used" value={`${selected.leave_hours_used || 0} hours`} />
-                    <InfoField label="Leave remaining" value={`${(selected.leave_hours_total || 224) - (selected.leave_hours_used || 0)} hours`} />
+                    <InfoField label="Leave remaining" value={`${selected.leave_hours_remaining ?? 210} hours`} />
                   </dl>
                 </Card>
                 {selected.emergency_name && (

@@ -1098,6 +1098,21 @@ async function ensureColumns() {
        updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_ssr_home ON shift_swap_requests(home_id, status)`,
+    // Task templates
+    `CREATE TABLE IF NOT EXISTS task_templates (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id UUID NOT NULL,
+       title TEXT NOT NULL,
+       category TEXT NOT NULL DEFAULT 'general',
+       description TEXT,
+       frequency TEXT NOT NULL DEFAULT 'daily',
+       due_time TEXT,
+       assigned_role TEXT,
+       priority TEXT NOT NULL DEFAULT 'normal',
+       su_id UUID,
+       is_active BOOLEAN NOT NULL DEFAULT true,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

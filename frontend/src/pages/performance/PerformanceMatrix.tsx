@@ -73,6 +73,7 @@ export default function PerformanceMatrix() {
   const canAssess = isRole('home_manager', 'group_admin')
   const isGroupAdmin = isRole('group_admin')
   const [autoGenerating, setAutoGenerating] = useState(false)
+  const [autoGenResult, setAutoGenResult] = useState<any>(null)
   const [shiftMatrixData, setShiftMatrixData] = useState<{ staff: any[]; homes: any[]; shiftMap: Record<string, Record<string, number>> } | null>(null)
 
   async function autoGenerate() {
@@ -80,10 +81,9 @@ export default function PerformanceMatrix() {
     setAutoGenerating(true)
     try {
       const res = await api.post('/performance/auto-generate', { homeId: selectedHome || undefined })
-      const { staffProcessed, created } = res.data.data
       load()
-      setView('history') // Instantly switch to the History tab so the user sees the new records!
-      alert(`Done — processed ${staffProcessed} staff, created ${created} new records.`)
+      setView('history')
+      setAutoGenResult(res.data.data)
     } catch (e: any) {
       alert('Auto-generate failed: ' + (e?.response?.data?.error || e?.message || 'Unknown error'))
     }
@@ -424,6 +424,33 @@ export default function PerformanceMatrix() {
             )
           )}
         </>
+      )}
+
+      {/* Auto-generate result modal */}
+      {autoGenResult && (
+        <Modal open={true} onClose={() => setAutoGenResult(null)} title="Auto-generate complete" size="md">
+          <div className="space-y-4">
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
+              <p className="text-emerald-400 font-bold text-lg">
+                Processed {autoGenResult.staffProcessed ?? 0} staff &middot; {autoGenResult.created ?? 0} new records created
+              </p>
+            </div>
+            {autoGenResult.records && autoGenResult.records.length > 0 && (
+              <div className="max-h-64 overflow-y-auto space-y-1">
+                {autoGenResult.records.map((r: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg bg-white/5">
+                    <span className="text-slate-300">{r.staffName || r.staff_name}</span>
+                    <span className="text-xs text-slate-500 capitalize">{r.action}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="ghost" onClick={() => setAutoGenResult(null)}>Close</Button>
+              <Button variant="gold" onClick={() => { setAutoGenResult(null); setView('history') }}>View history</Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="New Performance Review" size="lg">

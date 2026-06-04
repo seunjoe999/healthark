@@ -150,6 +150,30 @@ router.post('/generate-daily', async (req: Request, res: Response, next: NextFun
 });
 
 
+// DELETE /api/tasks/templates/:id — soft-delete a template
+router.delete('/templates/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('UPDATE task_templates SET is_active=false WHERE id=$1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/tasks/templates/:id — update a template
+router.put('/templates/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { title, category, description, frequency, dueTime, assignedRole, priority } = req.body;
+      await query(
+        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7 WHERE id=$8`,
+        [title, category, description||null, frequency, dueTime||null, assignedRole||null, priority, req.params.id]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

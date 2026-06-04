@@ -3,7 +3,7 @@ import { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, subDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
-import { ClipboardList, Plus, Search, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
+import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
@@ -99,10 +99,8 @@ export default function DailyRecords() {
   const [addOpen, setAddOpen] = useState(false)
   const [recordType, setRecordType] = useState('personal_care')
   const [viewDate, setViewDate] = useState(new Date())
-  const [search, setSearch] = useState('')
   const [editingRecord, setEditingRecord] = useState<any>(null)
   const [editNotes, setEditNotes] = useState('')
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -114,12 +112,11 @@ export default function DailyRecords() {
 
   useEffect(() => {
     if (!selectedHome) return
-    suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
+    suApi.list(selectedHome).then(res => setSus(res.data.data || []))
   }, [selectedHome])
 
   const selectSu = async (su: any) => {
     setSelectedSu(su)
-    setMobileSidebarOpen(false)
     await loadRecords(su.id, viewDate)
   }
 
@@ -143,7 +140,6 @@ export default function DailyRecords() {
   }
 
   const getName = (su: any) => `${su.first_name || ''} ${su.last_name || ''}`.trim()
-  const filteredSus = sus.filter(su => getName(su).toLowerCase().includes(search.toLowerCase()))
 
   const groupedRecords = records.reduce((acc: Record<string, any[]>, r: any) => {
     const type = r.record_type || 'other'
@@ -155,64 +151,55 @@ export default function DailyRecords() {
   const isToday = format(viewDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
-      {/* Left — resident selector */}
-      <div className={`${mobileSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-72 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-100`}>
-        <div className="p-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-purple-600" /> Daily Records
-          </h2>
-          {homes.length > 1 && (
-            <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-          )}
+    <div className="flex flex-col h-full">
+      {/* Top control bar */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
+          <ClipboardList className="w-4 h-4 text-purple-600" /> Daily Records
+        </span>
+
+        {homes.length > 1 && (
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+            value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelectedSu(null); setRecords([]) }}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Resident</label>
           <select
-            className="input mb-2 text-sm"
+            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-[180px]"
             value={selectedSu?.id || ''}
-            onChange={e => { const su = sus.find(s => s.id === e.target.value); if (su) selectSu(su) }}
-          >
-            <option value="" disabled>Select resident...</option>
+            onChange={e => {
+              if (!e.target.value) { setSelectedSu(null); setRecords([]); return }
+              const su = sus.find(s => s.id === e.target.value)
+              if (su) selectSu(su)
+            }}>
+            <option value="">— Select resident —</option>
             {sus.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
           </select>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <input className="input pl-8 text-sm" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {filteredSus.map(su => {
-            const isSelected = selectedSu?.id === su.id
-            return (
-              <button key={su.id} onClick={() => selectSu(su)}
-                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden ${isSelected ? 'ring-2 ring-purple-400' : ''}`}
-                    style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
-                    {su.photo_url ? <img src={su.photo_url} className="w-full h-full object-cover" alt="" /> : `${(su.first_name||'?')[0]}${(su.last_name||'?')[0]}`}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${isSelected ? 'text-purple-900' : 'text-slate-800'}`}>{getName(su)}</p>
-                    <p className="text-xs text-slate-400 capitalize">{(su.status || '').replace('_', ' ')}</p>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+
+        <div className="flex items-center gap-1 border border-slate-300 rounded overflow-hidden ml-2">
+          <button onClick={() => changeDate(subDays(viewDate, 1))} className="px-1.5 py-1 hover:bg-slate-100 text-slate-600 transition-colors">
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-sm font-medium text-slate-700 px-2 min-w-28 text-center">
+            {isToday ? 'Today' : format(viewDate, 'd MMM yyyy')}
+          </span>
+          <button onClick={() => changeDate(new Date(viewDate.getTime() + 86400000))} disabled={isToday} className="px-1.5 py-1 hover:bg-slate-100 text-slate-600 transition-colors disabled:opacity-30">
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <PrintButton />
+          {selectedSu && isToday && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddOpen(true)}>Add record</Button>}
         </div>
       </div>
 
-      {/* Right — records */}
-      <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
-        {/* Mobile back button */}
-        {selectedSu && (
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
-            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
-          </div>
-        )}
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto bg-slate-50">
         {!selectedSu ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState title="Select a resident" description="Choose a resident to view and add daily records" />
@@ -228,22 +215,6 @@ export default function DailyRecords() {
                   {fluidTotal}ml / {selectedSu.min_fluid_ml || 1500}ml fluids today
                   {fluidTotal < (selectedSu.min_fluid_ml || 1500) && <span className="text-xs text-amber-500">⚠ Below target</span>}
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Date navigation */}
-                <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1">
-                  <button onClick={() => changeDate(subDays(viewDate, 1))} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                    <ChevronLeft className="w-4 h-4 text-slate-600" />
-                  </button>
-                  <span className="text-sm font-medium text-slate-700 px-2 min-w-28 text-center">
-                    {isToday ? 'Today' : format(viewDate, 'd MMM yyyy')}
-                  </span>
-                  <button onClick={() => changeDate(new Date(viewDate.getTime() + 86400000))} disabled={isToday} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-30">
-                    <ChevronRight className="w-4 h-4 text-slate-600" />
-                  </button>
-                </div>
-                <PrintButton />
-                {isToday && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add record</Button>}
               </div>
             </div>
 
