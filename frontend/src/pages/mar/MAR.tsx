@@ -550,10 +550,11 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                   let subDisplay = ''
 
                   if (rec) {
-                    if (rec.given) { bg = '#d1fae5'; textColor = '#065f46'; display = rec.initials || 'OK' }
-                    else if (rec.refused) { bg = '#fee2e2'; textColor = '#991b1b'; display = 'X'; subDisplay = 'R' }
-                    else if (rec.omitted) { bg = '#fef9c3'; textColor = '#78350f'; display = 'O' }
-                    else { bg = '#f3f4f6'; display = '—' }
+                    const code = rec.mar_code
+                    if (rec.given) { bg = '#d1fae5'; textColor = '#065f46'; display = code || 'G' }
+                    else if (rec.refused) { bg = '#fee2e2'; textColor = '#991b1b'; display = code || 'R' }
+                    else if (rec.omitted) { bg = '#fef9c3'; textColor = '#78350f'; display = code || 'O' }
+                    else { bg = '#f3f4f6'; display = code || '—' }
                   } else if (isToday && !isFuture) {
                     bg = '#fef3c720'
                   }
@@ -577,7 +578,6 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                       }}
                       className={!isFuture ? 'hover:opacity-80' : ''}>
                       <div>{display}</div>
-                      {subDisplay && <div style={{ fontSize: 7 }}>{subDisplay}</div>}
                     </td>
                   )
                 })}
@@ -767,8 +767,8 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="md">
-      <div className="space-y-4">
+    <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="lg">
+      <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <p className="text-xs text-slate-400">
           {format(parseISO(date), 'EEEE, d MMMM yyyy')} · {slot}
         </p>
