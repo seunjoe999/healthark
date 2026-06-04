@@ -181,7 +181,7 @@ export default function Training() {
           return (
             <div key={mod.id}
               className={`bg-white rounded-2xl border shadow-card p-5 transition-all ${done ? 'border-emerald-200' : locked ? 'border-slate-100 opacity-60' : 'border-slate-100 hover:border-slate-200 hover:shadow-card-hover cursor-pointer'}`}
-              onClick={() => !locked && setActiveModule(mod)}
+              onClick={() => { if (!locked) { setActiveModule(mod); setActiveSection(0) } }}
               style={!locked ? {cursor:'pointer'} : {}}>
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${done ? 'bg-emerald-50' : locked ? 'bg-slate-50' : 'bg-gold-50'}`}>

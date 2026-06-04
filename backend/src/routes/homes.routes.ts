@@ -29,7 +29,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = req.staff?.staffId;
     const role = req.staff?.role;
-    const organisationId = getOrgId(req);
+    let organisationId = getOrgId(req);
+    // If JWT is missing organisationId, look it up from the database
+    if (!organisationId && staffId) {
+      const adminRow = await query<any>('SELECT organisation_id FROM staff WHERE id=$1', [staffId]);
+      organisationId = adminRow[0]?.organisation_id || '';
+    }
 
     console.log('HOMES: role=%s orgId=%s staffId=%s', role, organisationId, staffId);
 

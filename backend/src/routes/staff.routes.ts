@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { authService } from '../services/auth.service';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
+import { logAudit } from './auditTrail.routes';
 
 const router = Router();
 const laxUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,9 +22,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const decoded = token ? require("jsonwebtoken").decode(token) as any : {};
     const staffId = req.staff?.staffId || decoded?.staffId || "";
     const role = req.staff?.role || decoded?.role || "";
-    const organisationId = req.staff?.organisationId || decoded?.organisationId || "";
+    let organisationId = req.staff?.organisationId || decoded?.organisationId || "";
     const homeId = req.staff?.homeId || decoded?.homeId || "";
     const filterHomeId = req.query.homeId as string | undefined;
+
+    // If JWT is missing organisationId, look it up from the database
+    if (!organisationId && staffId) {
+      const adminRow = await query<any>('SELECT organisation_id FROM staff WHERE id=$1', [staffId]);
+      organisationId = adminRow[0]?.organisation_id || "";
+    }
 
     let rows;
     if (role === 'group_admin') {
@@ -155,10 +162,12 @@ router.post(
          emergencyName || null, emergencyPhone || null, emergencyNotes || null]
       );
 
-      const newStaff = rows[0] as { id: string };
+      const newStaff = rows[0] as { id: string; first_name: string; last_name: string; home_id: string };
 
       // Create onboarding record
       await query('INSERT INTO staff_onboarding (staff_id) VALUES ($1)', [newStaff.id]);
+
+      logAudit({ homeId: newStaff.home_id || homeId || defaultHomeId || '', staffId: decoded?.staffId || '', staffName: '', action: 'create', resourceType: 'staff', resourceId: newStaff.id, resourceLabel: `${firstName} ${lastName}` });
 
       res.status(201).json({
         success: true,
@@ -231,7 +240,9 @@ router.put(
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);
-      res.json({ success: true, data: rows[0] } as ApiResponse);
+      const updated = rows[0] as any;
+      logAudit({ homeId: updated.home_id || homeId || '', staffId, staffName: '', action: 'update', resourceType: 'staff', resourceId: targetId, resourceLabel: `${updated.first_name} ${updated.last_name}` });
+      res.json({ success: true, data: updated } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
@@ -432,11 +443,15 @@ router.delete('/:id', requireRole('group_admin', 'home_manager'),
       const token = req.headers.authorization?.substring(7);
       const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
       const callerRole = req.staff?.role || decoded?.role;
+      const staffRow = await query<any>('SELECT first_name, last_name, home_id FROM staff WHERE id=$1', [req.params.id]);
       if (callerRole === 'group_admin') {
-        // Hard delete for group_admin — cascade handled by DB ON DELETE SET NULL/CASCADE
         await query('UPDATE staff SET is_active=false, status=$1, refresh_token=NULL WHERE id=$2', ['terminated', req.params.id]);
       } else {
         await query('UPDATE staff SET is_active=false, status=$1 WHERE id=$2', ['terminated', req.params.id]);
+      }
+      if (staffRow[0]) {
+        const s = staffRow[0];
+        logAudit({ homeId: s.home_id || '', staffId: decoded?.staffId || '', staffName: '', action: 'delete', resourceType: 'staff', resourceId: req.params.id, resourceLabel: `${s.first_name} ${s.last_name}` });
       }
       res.json({ success: true, message: 'Account deleted' } as ApiResponse);
     } catch (err) { next(err); }

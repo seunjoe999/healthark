@@ -1,6 +1,6 @@
 import React, { useState, ReactNode } from 'react'
 import NotificationsBell from './NotificationsBell'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import {
@@ -10,8 +10,8 @@ import {
   Pill, CheckSquare, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
-  Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music
-, FileSignature
+  Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
+  FileSignature, Search
 } from 'lucide-react'
 
 const navSections = [
@@ -114,6 +114,27 @@ interface SidebarProps {
   onNavClick: () => void
 }
 
+function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
+  const [q, setQ] = React.useState('')
+  const navigate = useNavigate()
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (q.trim().length >= 2) { navigate(`/search?q=${encodeURIComponent(q.trim())}`); onNavClick(); setQ('') }
+  }
+  return (
+    <form onSubmit={submit} className="px-3 mb-3">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/8 focus-within:border-amber-500/40 transition-colors">
+        <Search className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+        <input
+          value={q} onChange={e => setQ(e.target.value)}
+          placeholder="Search…"
+          className="flex-1 bg-transparent text-sm text-slate-300 placeholder-slate-600 outline-none min-w-0"
+        />
+      </div>
+    </form>
+  )
+}
+
 function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   return (
     <div className="flex flex-col h-full" style={{ background: '#000000' }}>
@@ -129,7 +150,9 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
         </div>
       </div>
 
-      <div className="mx-5 mb-4 h-px" style={{ background: 'linear-gradient(90deg, rgba(232,177,48,0.6) 0%, rgba(232,177,48,0.15) 100%)' }} />
+      <div className="mx-5 mb-3 h-px" style={{ background: 'linear-gradient(90deg, rgba(232,177,48,0.6) 0%, rgba(232,177,48,0.15) 100%)' }} />
+
+      <SidebarSearch onNavClick={onNavClick} />
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-4 pb-4">
         {navSections.map((section, si) => {
@@ -191,6 +214,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isRole } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const pageTitle = allNavItems.find(item => location.pathname.startsWith(item.to) && item.to !== '/dashboard')?.label
     ?? (location.pathname === '/dashboard' ? 'Dashboard' : 'CompCare Hub')
@@ -216,6 +240,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <button onClick={() => setMobileOpen(true)} style={{ color: '#e8b130' }} className="p-1"><Menu className="w-5 h-5" /></button>
           <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
           <span className="text-base flex-1 truncate font-bold" style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}>{pageTitle}</span>
+          <button onClick={() => navigate('/search')} className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Search">
+            <Search className="w-5 h-5" />
+          </button>
           <NotificationsBell />
         </header>
         <main className="flex-1 overflow-y-auto" style={{ background: '#0a0a0a' }}>{children}</main>

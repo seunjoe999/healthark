@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../api'
 import { Search as SearchIcon, Users, UserSquare, FileText } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -7,7 +7,8 @@ import { differenceInYears } from 'date-fns'
 
 export default function GlobalSearch() {
   const { user } = useAuth()
-  const [query, setQuery] = useState('')
+  const [searchParams] = useSearchParams()
+  const [query, setQuery] = useState(searchParams.get('q') || '')
   const [results, setResults] = useState<any>({ residents: [], staff: [], carePlans: [] })
   const [loading, setLoading] = useState(false)
 

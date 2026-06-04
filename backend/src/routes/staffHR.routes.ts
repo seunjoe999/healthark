@@ -43,8 +43,12 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
         [homeId]
       );
     } else {
+      // Care staff: show all leave in their home so they can see who has requested/been approved leave
       rows = await query(
-        `SELECT * FROM staff_leave WHERE staff_id = $1 ORDER BY created_at DESC`, [tokenStaffId]
+        `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name, s.photo_url
+         FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
+         WHERE sl.home_id = $1 ORDER BY sl.created_at DESC`,
+        [homeId]
       );
     }
     res.json({ success: true, data: rows } as ApiResponse);
