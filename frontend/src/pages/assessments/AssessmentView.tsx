@@ -1,12 +1,87 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { assessmentsApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
-import { ChevronLeft, Trash2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Paperclip, Upload, X, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+type AttachmentItem = { url: string; name: string }
+
+function AssessmentAttachments({ assessmentId, initial }: { assessmentId: string; initial: any[] }) {
+  const [attachments, setAttachments] = useState<AttachmentItem[]>(
+    (initial || []).map((a: any) => typeof a === 'string'
+      ? { url: a, name: decodeURIComponent(a.split('/').pop() || a) }
+      : { url: a.url || '', name: a.name || decodeURIComponent((a.url || '').split('/').pop() || '') })
+  )
+  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const url: string = res.data.data.fileUrl
+      const name: string = res.data.data.fileName || file.name
+      await api.post(`/assessments/${assessmentId}/attachments`, { url, name })
+      setAttachments(prev => [...prev, { url, name }])
+      toast.success('Attachment uploaded')
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false); if (inputRef.current) inputRef.current.value = '' }
+  }
+
+  const remove = async (url: string) => {
+    if (!window.confirm('Remove this attachment?')) return
+    try {
+      await api.delete(`/assessments/${assessmentId}/attachments`, { data: { url } })
+      setAttachments(prev => prev.filter(a => a.url !== url))
+      toast.success('Removed')
+    } catch { toast.error('Failed to remove') }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm mt-4">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+        <div className="flex items-center gap-2.5">
+          <Paperclip className="w-4 h-4 text-slate-500" />
+          <h2 className="font-semibold text-slate-800 text-sm">Attachments</h2>
+          {attachments.length > 0 && <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">{attachments.length}</span>}
+        </div>
+        <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : 'text-slate-600 bg-slate-100 hover:bg-slate-200'}`}>
+          <Upload className="w-3.5 h-3.5" />
+          {uploading ? 'Uploading…' : 'Upload file'}
+          <input ref={inputRef} type="file" className="sr-only" onChange={upload} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
+        </label>
+      </div>
+      {attachments.length === 0 ? (
+        <div className="px-6 py-5 text-center">
+          <p className="text-sm text-slate-400">No attachments yet — upload evidence or supporting documents</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-50">
+          {attachments.map((a, i) => (
+            <div key={i} className="flex items-center gap-3 px-6 py-3">
+              <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <p className="flex-1 text-sm text-slate-700 truncate">{a.name}</p>
+              <a href={a.url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50">
+                <Download className="w-4 h-4" />
+              </a>
+              <button onClick={() => remove(a.url)} className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function RiskBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
@@ -164,6 +239,8 @@ export default function AssessmentView() {
           )}
         </div>
       )}
+
+      <AssessmentAttachments assessmentId={assessment.id} initial={assessment.attachments || []} />
     </div>
   )
 }

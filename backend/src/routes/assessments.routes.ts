@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { param } from 'express-validator';
 import { authenticate, requireRole } from '../middleware/auth';
+import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 
 const router = Router();
@@ -1607,6 +1610,37 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// POST /api/assessments/:id/attachments — add attachment URL
+router.post('/:id/attachments', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { url, name } = req.body;
+      if (!url) throw new AppError('url required', 400);
+      const rows = await query<any>('SELECT attachments FROM assessments WHERE id=$1', [req.params.id]);
+      if (!rows.length) throw new AppError('Assessment not found', 404);
+      const existing: any[] = rows[0].attachments || [];
+      const updated = [...existing, { url, name: name || url.split('/').pop(), addedAt: new Date().toISOString() }];
+      await query('UPDATE assessments SET attachments=$1 WHERE id=$2', [JSON.stringify(updated), req.params.id]);
+      res.json({ success: true, data: updated } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/assessments/:id/attachments — remove attachment by URL
+router.delete('/:id/attachments', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { url } = req.body;
+      const rows = await query<any>('SELECT attachments FROM assessments WHERE id=$1', [req.params.id]);
+      if (!rows.length) throw new AppError('Assessment not found', 404);
+      const existing: any[] = rows[0].attachments || [];
+      const updated = existing.filter((a: any) => a.url !== url);
+      await query('UPDATE assessments SET attachments=$1 WHERE id=$2', [JSON.stringify(updated), req.params.id]);
+      res.json({ success: true, data: updated } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // DELETE /api/assessments/:id
 router.delete('/:id', requireRole('home_manager', 'group_admin'),
