@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format, parseISO, startOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { format, parseISO, startOfWeek, startOfMonth, endOfMonth, addDays, differenceInCalendarDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -122,11 +122,11 @@ export default function MAR() {
   }, [startDate, endDate])
 
   const shiftMonth = (dir: number) => {
-    const d = new Date(startDate + 'T00:00:00')
-    d.setMonth(d.getMonth() + dir)
-    const newStart = format(startOfMonth(d), 'yyyy-MM-dd')
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-    const newEnd = format(lastDay, 'yyyy-MM-dd')
+    const start = parseISO(startDate)
+    const end = parseISO(endDate)
+    const span = differenceInCalendarDays(end, start) + 1
+    const newStart = format(addDays(start, dir * span), 'yyyy-MM-dd')
+    const newEnd = format(addDays(end, dir * span), 'yyyy-MM-dd')
     setStartDate(newStart)
     setEndDate(newEnd)
   }
