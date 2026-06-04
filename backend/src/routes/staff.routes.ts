@@ -31,6 +31,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       const adminRow = await query<any>('SELECT organisation_id FROM staff WHERE id=$1', [staffId]);
       organisationId = adminRow[0]?.organisation_id || "";
     }
+    // Last resort: derive org from the staff member's home
+    if (!organisationId && (homeId || staffId)) {
+      const src = homeId
+        ? await query<any>('SELECT organisation_id FROM homes WHERE id=$1', [homeId])
+        : await query<any>('SELECT h.organisation_id FROM homes h JOIN staff s ON s.home_id=h.id WHERE s.id=$1 LIMIT 1', [staffId]);
+      organisationId = src[0]?.organisation_id || "";
+    }
 
     let rows;
     if (role === 'group_admin') {

@@ -204,7 +204,7 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
 export default function Compliance() {
   const { user } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
-  const [selectedHome, setSelectedHome] = useState('')
+  const [selectedHome, setSelectedHome] = useState(user?.homeId || '')
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
@@ -216,7 +216,9 @@ export default function Compliance() {
       const h = res.data.data || []
       setHomes(h)
       setSelectedHome(user?.homeId || h[0]?.id || '')
-    }).catch(() => {})
+    }).catch(() => {
+      if (user?.homeId) setSelectedHome(user.homeId)
+    })
   }, [user])
 
   const load = useCallback(async (homeId: string) => {

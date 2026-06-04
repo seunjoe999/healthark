@@ -381,7 +381,7 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
     if (!form.staffId || !form.startDate || !form.endDate) { toast.error('Please fill all required fields'); return }
     setLoading(true)
     try {
-      await api.post('/staff-hr/leave', { ...form, totalHours: parseFloat(form.totalHours) || null })
+      await api.post('/staff-hr/leave', { ...form, homeId, totalHours: parseFloat(form.totalHours) || null })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }

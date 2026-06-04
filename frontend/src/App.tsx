@@ -69,6 +69,8 @@ import Compliance from './pages/compliance/Compliance'
 import SupervisionAppraisal from './pages/supervision-appraisal/SupervisionAppraisal'
 import ClockInAnalytics from './pages/clockin/ClockInAnalytics'
 import NotificationsManager from './pages/notifications/NotificationsManager'
+import AssessmentForm from './pages/assessments/AssessmentForm'
+import AssessmentView from './pages/assessments/AssessmentView'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -113,6 +115,8 @@ function AppRoutes() {
       <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
       <Route path="/invoicing" element={<ProtectedRoute><Invoicing /></ProtectedRoute>} />
       <Route path="/complaints" element={<ProtectedRoute><QualityAssurance /></ProtectedRoute>} />
+      <Route path="/assessments/new" element={<ProtectedRoute><AssessmentForm /></ProtectedRoute>} />
+      <Route path="/assessments/:id" element={<ProtectedRoute><AssessmentView /></ProtectedRoute>} />
       <Route path="/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />
       <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
