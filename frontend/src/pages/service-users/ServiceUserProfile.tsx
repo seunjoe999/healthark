@@ -159,11 +159,11 @@ export default function ServiceUserProfile() {
           <NilByMouthBanner nilByMouth={su.nilByMouth} />
         </div>
         {su.needToKnow && (
-          <div className="flex items-start gap-3 p-4 bg-amber-400 border-2 border-amber-600 rounded-xl mb-4">
-            <AlertTriangle className="w-5 h-5 text-amber-900 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl mb-4">
+            <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-black text-amber-900 uppercase tracking-widest mb-1">⚠ Need To Know</p>
-              <p className="text-sm font-bold text-amber-950">{su.needToKnow}</p>
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Need To Know</p>
+              <p className="text-sm font-medium text-slate-800">{su.needToKnow}</p>
             </div>
           </div>
         )}
