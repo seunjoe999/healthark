@@ -1079,6 +1079,10 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_hp_home ON home_postcodes(home_id)`,
     // Allow null hours_requested on leave requests (field is optional in the form)
     `ALTER TABLE staff_leave ALTER COLUMN hours_requested DROP NOT NULL`,
+    // Allow null for optional numeric fields on service users
+    `ALTER TABLE service_users ALTER COLUMN min_fluid_ml DROP NOT NULL`,
+    `ALTER TABLE service_users ALTER COLUMN height_cm DROP NOT NULL`,
+    `ALTER TABLE service_users ALTER COLUMN weight_kg DROP NOT NULL`,
     // Shift swap requests table
     `CREATE TABLE IF NOT EXISTS shift_swap_requests (
        id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
