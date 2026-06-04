@@ -160,10 +160,10 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
                WHERE sl.home_id = $1`;
     const params: unknown[] = [homeId];
     if (weekStart) {
-      sql += ` AND sl.leave_date >= $2 AND sl.leave_date < $2::date + interval '7 days'`;
+      sql += ` AND sl.start_date < $2::date + interval '7 days' AND sl.end_date >= $2::date`;
       params.push(weekStart);
     }
-    sql += ' ORDER BY sl.leave_date, s.last_name';
+    sql += ' ORDER BY sl.start_date, s.last_name';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -174,19 +174,19 @@ router.post('/leave', async (req: Request, res: Response, next: NextFunction) =>
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const createdBy = fromToken(req, 'staffId');
-    const { staffId, leaveDate, leaveType, notes } = req.body;
-    if (!staffId || !leaveDate) return res.status(400).json({ success: false, error: 'staffId and leaveDate required' } as ApiResponse);
+    const { staffId, leaveDate, startDate, endDate, leaveType, notes } = req.body;
+    const sd = startDate || leaveDate;
+    const ed = endDate || leaveDate;
+    if (!staffId || !sd) return res.status(400).json({ success: false, error: 'staffId and startDate required' } as ApiResponse);
     const rows = await query(
-      `INSERT INTO staff_leave (home_id, staff_id, leave_date, leave_type, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (staff_id, leave_date) DO UPDATE SET leave_type=$4, notes=$5, created_by=$6
-       RETURNING *`,
-      [homeId, staffId, leaveDate, leaveType || 'annual', notes || null, createdBy]
+      `INSERT INTO staff_leave (home_id, staff_id, start_date, end_date, leave_type, reason, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [homeId, staffId, sd, ed, leaveType || 'annual', notes || null, createdBy]
     );
-    // Auto-remove any shifts for this staff on this date
+    // Auto-remove any shifts for this staff in the leave range
     await query(
-      `DELETE FROM staff_shifts WHERE staff_id = $1 AND shift_date = $2`,
-      [staffId, leaveDate]
+      `DELETE FROM staff_shifts WHERE staff_id = $1 AND shift_date >= $2 AND shift_date <= $3`,
+      [staffId, sd, ed]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }

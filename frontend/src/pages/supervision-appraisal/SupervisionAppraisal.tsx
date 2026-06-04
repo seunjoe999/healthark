@@ -360,7 +360,7 @@ function CreateModal({ open, onClose, homeId, type, onSaved }: {
         if (!form.staffId || !form.appraiserId || !form.appraisalDate) {
           toast.error('Please fill required fields'); setLoading(false); return
         }
-        await api.post('/appraisal', { homeId, ...form })
+        await api.post('/supervision/appraisal', { homeId, ...form })
       }
       toast.success('Record created')
       onSaved()

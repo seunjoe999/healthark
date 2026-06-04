@@ -19,6 +19,27 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
+// GET /api/reviews?homeId=&dueSoon=7 — all SU reviews for a home (dashboard widget)
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const dueSoon = parseInt(req.query.dueSoon as string) || 0;
+    let sql = `SELECT r.*, s.first_name || ' ' || s.last_name as created_by_name,
+                      su.first_name as su_first_name, su.last_name as su_last_name
+               FROM su_reviews r
+               LEFT JOIN staff s ON s.id = r.created_by
+               LEFT JOIN service_users su ON su.id = r.su_id
+               WHERE su.home_id = $1`;
+    const params: unknown[] = [homeId];
+    if (dueSoon > 0) {
+      sql += ` AND r.next_review_date <= NOW() + interval '${dueSoon} days'`;
+    }
+    sql += ' ORDER BY r.next_review_date ASC NULLS LAST LIMIT 100';
+    const rows = await query(sql, params);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // ── Service User Reviews ─────────────────────────────────────────
 router.get('/su/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

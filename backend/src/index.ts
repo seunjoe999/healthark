@@ -1077,6 +1077,22 @@ async function ensureColumns() {
        UNIQUE (home_id, postcode)
      )`,
     `CREATE INDEX IF NOT EXISTS idx_hp_home ON home_postcodes(home_id)`,
+    // Allow null hours_requested on leave requests (field is optional in the form)
+    `ALTER TABLE staff_leave ALTER COLUMN hours_requested DROP NOT NULL`,
+    // Shift swap requests table
+    `CREATE TABLE IF NOT EXISTS shift_swap_requests (
+       id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id             UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       shift_id            UUID NOT NULL REFERENCES staff_shifts(id) ON DELETE CASCADE,
+       requesting_staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       target_staff_id     UUID REFERENCES staff(id) ON DELETE SET NULL,
+       status              VARCHAR(20) NOT NULL DEFAULT 'pending',
+       notes               TEXT,
+       response_notes      TEXT,
+       created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_ssr_home ON shift_swap_requests(home_id, status)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
