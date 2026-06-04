@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format, parseISO, startOfWeek, startOfMonth } from 'date-fns'
+import { format, parseISO, startOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -80,7 +80,7 @@ export default function MAR() {
   const [showPrescriptions, setShowPrescriptions] = useState(true)
   const [showDirections, setShowDirections] = useState(true)
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'))
-  const [endDate, setEndDate] = useState(format(now, 'yyyy-MM-dd'))
+  const [endDate, setEndDate] = useState(format(endOfMonth(now), 'yyyy-MM-dd'))
   const today = format(now, 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function MAR() {
     const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0)
     const newEnd = format(lastDay, 'yyyy-MM-dd')
     setStartDate(newStart)
-    setEndDate(newEnd > today ? today : newEnd)
+    setEndDate(newEnd)
   }
 
   const su = chartData?.serviceUser || selectedSu
@@ -288,7 +288,7 @@ export default function MAR() {
                 today={today}
                 onCellClick={(med, date, records, slot) => {
                   if (records.length > 0) setCellDetail({ med, date, records })
-                  else if (date <= today) setLogModal({ med, date, slot })
+                  else setLogModal({ med, date, slot })
                 }}
                 onRefresh={() => fetchAll(selectedSu)}
               />
@@ -560,7 +560,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                   }
 
                   return (
-                    <td key={d} onClick={() => !isFuture && onCellClick(med, d, dayRecs, slot)}
+                    <td key={d} onClick={() => onCellClick(med, d, dayRecs, slot)}
                       style={{
                         border: `1px solid ${isToday ? '#fbbf24' : '#e2e8f0'}`,
                         textAlign: 'center',
@@ -571,12 +571,12 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                         width: 30,
                         background: isToday && !rec ? '#fffbeb' : bg,
                         color: textColor,
-                        cursor: isFuture ? 'default' : 'pointer',
+                        cursor: 'pointer',
                         fontWeight: 700,
                         lineHeight: 1.1,
                         transition: 'background 0.1s',
                       }}
-                      className={!isFuture ? 'hover:opacity-80' : ''}>
+                      className="hover:opacity-80">
                       <div>{display}</div>
                     </td>
                   )
