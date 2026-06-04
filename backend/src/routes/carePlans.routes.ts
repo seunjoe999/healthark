@@ -44,6 +44,29 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/care-plans/reads-summary?homeId=xxx  — admin: who read which plan (must be before /:id)
+router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT cp.id as plan_id, cp.plan_type, cp.custom_name,
+              su.first_name || ' ' || su.last_name as su_name,
+              COUNT(cpr.id) as total_reads,
+              MAX(cpr.read_at) as last_read_at,
+              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
+       FROM care_plans cp
+       JOIN service_users su ON su.id = cp.su_id
+       LEFT JOIN care_plan_reads cpr ON cpr.plan_id = cp.id
+       LEFT JOIN staff s ON s.id = cpr.staff_id
+       WHERE cp.home_id = $1 AND cp.is_active IS NOT FALSE
+       GROUP BY cp.id, su.first_name, su.last_name
+       ORDER BY su.last_name, cp.plan_type`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/care-plans/:id
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -245,29 +268,6 @@ router.get('/:id/reads', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
-
-// GET /api/care-plans/reads-summary?homeId=xxx  — admin: who read which plan
-router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const rows = await query(
-      `SELECT cp.id as plan_id, cp.plan_type, cp.custom_name,
-              su.first_name || ' ' || su.last_name as su_name,
-              COUNT(cpr.id) as total_reads,
-              MAX(cpr.read_at) as last_read_at,
-              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
-       FROM care_plans cp
-       JOIN service_users su ON su.id = cp.su_id
-       LEFT JOIN care_plan_reads cpr ON cpr.plan_id = cp.id
-       LEFT JOIN staff s ON s.id = cpr.staff_id
-       WHERE cp.home_id = $1 AND cp.is_active IS NOT FALSE
-       GROUP BY cp.id, su.first_name, su.last_name
-       ORDER BY su.last_name, cp.plan_type`,
-      [homeId]
-    );
-    res.json({ success: true, data: rows } as ApiResponse);
-  } catch (err) { next(err); }
-});
 
 // DELETE /api/care-plans/:id (soft delete)
 router.delete('/:id', requireRole('home_manager', 'group_admin'),

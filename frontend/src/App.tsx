@@ -64,6 +64,7 @@ import Recruitment from './pages/recruitment/Recruitment'
 import HandoverReport from './pages/reports/HandoverReport'
 import Training from './pages/training/Training'
 import RiskManagement from './pages/risk-assessments/RiskManagement'
+import Calendar from './pages/calendar/Calendar'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -141,6 +142,7 @@ function AppRoutes() {
       <Route path="/reports/handover" element={<ProtectedRoute><HandoverReport /></ProtectedRoute>} />
       <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
       <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

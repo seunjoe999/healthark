@@ -8,6 +8,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 
 const router = Router();
+const laxUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
@@ -173,7 +174,7 @@ router.post(
 // PUT /api/staff/:id
 router.put(
   '/:id',
-  [param('id').isUUID()],
+  [param('id').matches(laxUuid)],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -237,7 +238,7 @@ router.put(
 
 // PUT /api/staff/:id/feature-flags — super admin sets feature access for an account
 router.put('/:id/feature-flags', requireRole('group_admin'),
-  param('id').isUUID(), validateRequest,
+  param('id').matches(laxUuid), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { featureFlags } = req.body;
@@ -254,7 +255,7 @@ router.put('/:id/feature-flags', requireRole('group_admin'),
 
 // GET /api/staff/:id/access
 router.get('/:id/access', requireRole('group_admin', 'home_manager'),
-  param('id').isUUID(), validateRequest,
+  param('id').matches(laxUuid), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(
@@ -271,7 +272,7 @@ router.get('/:id/access', requireRole('group_admin', 'home_manager'),
 // PUT /api/staff/:id/access/:homeId - set permissions
 router.put('/:id/access/:homeId',
   requireRole('group_admin'),
-  [param('id').isUUID(), param('homeId').isUUID()],
+  [param('id').matches(laxUuid), param('homeId').matches(laxUuid)],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -425,7 +426,7 @@ router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{
 
 // DELETE /api/staff/:id — permanently delete (group_admin only) or terminate (home_manager)
 router.delete('/:id', requireRole('group_admin', 'home_manager'),
-  param('id').isUUID(), validateRequest,
+  param('id').matches(laxUuid), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
