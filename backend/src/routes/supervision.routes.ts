@@ -35,21 +35,6 @@ router.get('/', validateRequest,
   }
 );
 
-// GET /api/supervision/:id
-router.get('/:id', param('id').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const rows = await query(
-        `SELECT sup.*, s.first_name || ' ' || s.last_name as staff_name, svr.first_name || ' ' || svr.last_name as supervisor_name 
-         FROM supervisions sup JOIN staff s ON s.id = sup.staff_id JOIN staff svr ON svr.id = sup.supervisor_id WHERE sup.id = $1`,
-        [req.params.id]
-      );
-      if (!rows.length) { return next(new AppError('Supervision record not found', 404)); }
-      res.json({ success: true, data: rows[0] } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
 // POST /api/supervision — create supervision record
 router.post('/', [
   body('homeId').isUUID(),
@@ -87,6 +72,106 @@ router.post('/', [
   }
 );
 
+// ===== APPRAISALS — must be before /:id to avoid param conflict =====
+
+// GET /api/supervision/appraisal?homeId=xxx&staffId=xxx
+router.get('/appraisal', validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { homeId, staffId } = req.query;
+      let sql = 'SELECT apr.*, s.first_name || \' \' || s.last_name as staff_name, apr_s.first_name || \' \' || apr_s.last_name as appraiser_name FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id';
+      const params: any[] = [];
+      if (homeId) { sql += ` WHERE apr.home_id = $${params.length + 1}`; params.push(homeId); }
+      if (staffId) { sql += params.length ? ` AND apr.staff_id = $${params.length + 1}` : ` WHERE apr.staff_id = $${params.length + 1}`; params.push(staffId); }
+      sql += ' ORDER BY apr.appraisal_date DESC';
+      const rows = await query(sql, params);
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/supervision/appraisal/:id
+router.get('/appraisal/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT apr.*, s.first_name || ' ' || s.last_name as staff_name, apr_s.first_name || ' ' || apr_s.last_name as appraiser_name
+         FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id WHERE apr.id = $1`,
+        [req.params.id]
+      );
+      if (!rows.length) { return next(new AppError('Appraisal record not found', 404)); }
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/supervision/appraisal — create appraisal
+router.post('/appraisal', [
+  body('homeId').isUUID(),
+  body('staffId').isUUID(),
+  body('appraiserId').isUUID(),
+  body('appraisalDate').isISO8601(),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { homeId, staffId, appraiserId, appraisalDate, rating, performanceSummary, comments, goals, nextReviewDate } = req.body;
+      const rows = await query(
+        `INSERT INTO appraisals (home_id, staff_id, appraiser_id, appraisal_date, rating, performance_summary, comments, goals, next_review_date)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [homeId, staffId, appraiserId, appraisalDate, rating || null, performanceSummary || null, comments || null, goals || null, nextReviewDate || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PATCH /api/supervision/appraisal/:id
+router.patch('/appraisal/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { rating, performanceSummary, comments, goals, nextReviewDate } = req.body;
+      const updates: string[] = [];
+      const vals: any[] = [];
+      if (rating !== undefined) { updates.push(`rating=$${updates.length + 1}`); vals.push(rating); }
+      if (performanceSummary !== undefined) { updates.push(`performance_summary=$${updates.length + 1}`); vals.push(performanceSummary); }
+      if (comments !== undefined) { updates.push(`comments=$${updates.length + 1}`); vals.push(comments); }
+      if (goals !== undefined) { updates.push(`goals=$${updates.length + 1}`); vals.push(goals); }
+      if (nextReviewDate !== undefined) { updates.push(`next_review_date=$${updates.length + 1}`); vals.push(nextReviewDate || null); }
+      if (!updates.length) { return res.status(400).json({ success: false, error: 'No fields to update' }); }
+      vals.push(req.params.id);
+      const rows = await query(`UPDATE appraisals SET ${updates.join(', ')}, updated_at=NOW() WHERE id=$${vals.length} RETURNING *`, vals);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/supervision/appraisal/:id
+router.delete('/appraisal/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM appraisals WHERE id = $1', [req.params.id]);
+      res.json({ success: true, message: 'Appraisal record deleted' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// ===== Supervision param routes (must come after named sub-paths) =====
+
+// GET /api/supervision/:id
+router.get('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT sup.*, s.first_name || ' ' || s.last_name as staff_name, svr.first_name || ' ' || svr.last_name as supervisor_name
+         FROM supervisions sup JOIN staff s ON s.id = sup.staff_id JOIN staff svr ON svr.id = sup.supervisor_id WHERE sup.id = $1`,
+        [req.params.id]
+      );
+      if (!rows.length) { return next(new AppError('Supervision record not found', 404)); }
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // PATCH /api/supervision/:id
 router.patch('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -113,89 +198,6 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
     try {
       await query('DELETE FROM supervisions WHERE id = $1', [req.params.id]);
       res.json({ success: true, message: 'Supervision record deleted' } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
-// ===== APPRAISALS =====
-
-// GET /api/appraisal/?homeId=xxx&staffId=xxx
-router.get('/appraisal', validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { homeId, staffId } = req.query;
-      let sql = 'SELECT apr.*, s.first_name || \' \' || s.last_name as staff_name, apr_s.first_name || \' \' || apr_s.last_name as appraiser_name FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id';
-      const params: any[] = [];
-      if (homeId) { sql += ` WHERE apr.home_id = $${params.length + 1}`; params.push(homeId); }
-      if (staffId) { sql += params.length ? ` AND apr.staff_id = $${params.length + 1}` : ` WHERE apr.staff_id = $${params.length + 1}`; params.push(staffId); }
-      sql += ' ORDER BY apr.appraisal_date DESC';
-      const rows = await query(sql, params);
-      res.json({ success: true, data: rows } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
-// GET /api/appraisal/:id
-router.get('/appraisal/:id', param('id').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const rows = await query(
-        `SELECT apr.*, s.first_name || ' ' || s.last_name as staff_name, apr_s.first_name || ' ' || apr_s.last_name as appraiser_name 
-         FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id WHERE apr.id = $1`,
-        [req.params.id]
-      );
-      if (!rows.length) { return next(new AppError('Appraisal record not found', 404)); }
-      res.json({ success: true, data: rows[0] } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
-// POST /api/appraisal — create appraisal
-router.post('/appraisal', [
-  body('homeId').isUUID(),
-  body('staffId').isUUID(),
-  body('appraiserId').isUUID(),
-  body('appraisalDate').isISO8601(),
-], validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { homeId, staffId, appraiserId, appraisalDate, rating, performanceSummary, comments, goals, nextReviewDate } = req.body;
-      const rows = await query(
-        `INSERT INTO appraisals (home_id, staff_id, appraiser_id, appraisal_date, rating, performance_summary, comments, goals, next_review_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-        [homeId, staffId, appraiserId, appraisalDate, rating || null, performanceSummary || null, comments || null, goals || null, nextReviewDate || null]
-      );
-      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
-// PATCH /api/appraisal/:id
-router.patch('/appraisal/:id', param('id').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { rating, performanceSummary, comments, goals, nextReviewDate } = req.body;
-      const updates: string[] = [];
-      const vals: any[] = [];
-      if (rating !== undefined) { updates.push(`rating=$${updates.length + 1}`); vals.push(rating); }
-      if (performanceSummary !== undefined) { updates.push(`performance_summary=$${updates.length + 1}`); vals.push(performanceSummary); }
-      if (comments !== undefined) { updates.push(`comments=$${updates.length + 1}`); vals.push(comments); }
-      if (goals !== undefined) { updates.push(`goals=$${updates.length + 1}`); vals.push(goals); }
-      if (nextReviewDate !== undefined) { updates.push(`next_review_date=$${updates.length + 1}`); vals.push(nextReviewDate || null); }
-      if (!updates.length) { return res.status(400).json({ success: false, error: 'No fields to update' }); }
-      vals.push(req.params.id);
-      const rows = await query(`UPDATE appraisals SET ${updates.join(', ')}, updated_at=NOW() WHERE id=$${vals.length} RETURNING *`, vals);
-      res.json({ success: true, data: rows[0] } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
-// DELETE /api/appraisal/:id
-router.delete('/appraisal/:id', param('id').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await query('DELETE FROM appraisals WHERE id = $1', [req.params.id]);
-      res.json({ success: true, message: 'Appraisal record deleted' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

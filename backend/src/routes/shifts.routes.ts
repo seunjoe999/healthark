@@ -179,9 +179,9 @@ router.post('/leave', async (req: Request, res: Response, next: NextFunction) =>
     const ed = endDate || leaveDate;
     if (!staffId || !sd) return res.status(400).json({ success: false, error: 'staffId and startDate required' } as ApiResponse);
     const rows = await query(
-      `INSERT INTO staff_leave (home_id, staff_id, start_date, end_date, leave_type, reason, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [homeId, staffId, sd, ed, leaveType || 'annual', notes || null, createdBy]
+      `INSERT INTO staff_leave (home_id, staff_id, start_date, end_date, leave_type, reason)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [homeId, staffId, sd, ed, leaveType || 'annual', notes || null]
     );
     // Auto-remove any shifts for this staff in the leave range
     await query(
