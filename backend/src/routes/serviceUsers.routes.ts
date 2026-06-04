@@ -249,11 +249,17 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       let idx = 1;
 
       const numericFields = new Set(['heightCm', 'weightKg', 'minFluidMl']);
+      const dateFields = new Set([
+        'dateOfBirth', 'admissionDate', 'annualHealthDate', 'gpReviewDate',
+        'mentalHealthDate', 'dentistDate', 'carePlanLiveDate',
+        'dolsStartDate', 'dolsEndDate',
+      ]);
       for (const [camel, snake] of Object.entries(fieldMap)) {
         if (req.body[camel] !== undefined) {
           updates.push(`${snake} = $${idx++}`);
           const v = req.body[camel];
-          values.push((v === '' || v === null) && numericFields.has(camel) ? null : v);
+          const emptyToNull = (v === '' || v === null) && (numericFields.has(camel) || dateFields.has(camel));
+          values.push(emptyToNull ? null : v);
         }
       }
 
