@@ -465,12 +465,13 @@ export default function AdminAccounts() {
   const load = async () => {
     setLoading(true)
     try {
-      const [staffRes, homesRes] = await Promise.all([
+      const [staffRes, homesRes] = await Promise.allSettled([
         api.get('/staff'),
         homesApi.list(),
       ])
-      setAdmins(staffRes.data.data || [])
-      setHomes(homesRes.data.data || [])
+      if (staffRes.status === 'fulfilled') setAdmins(staffRes.value.data.data || [])
+      else toast.error('Failed to load staff accounts')
+      if (homesRes.status === 'fulfilled') setHomes(homesRes.value.data.data || [])
     } catch { toast.error('Failed to load accounts') }
     finally { setLoading(false) }
   }

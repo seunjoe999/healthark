@@ -280,7 +280,7 @@ function CandidateCard({ candidate, onEdit, onDelete, onView, onEmail, onMoveSta
   const stageColor = getStageColor(candidate.pipeline_stage)
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">

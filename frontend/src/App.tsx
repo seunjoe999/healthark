@@ -65,6 +65,10 @@ import HandoverReport from './pages/reports/HandoverReport'
 import Training from './pages/training/Training'
 import RiskManagement from './pages/risk-assessments/RiskManagement'
 import Calendar from './pages/calendar/Calendar'
+import Compliance from './pages/compliance/Compliance'
+import SupervisionAppraisal from './pages/supervision-appraisal/SupervisionAppraisal'
+import ClockInAnalytics from './pages/clockin/ClockInAnalytics'
+import NotificationsManager from './pages/notifications/NotificationsManager'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -143,6 +147,10 @@ function AppRoutes() {
       <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
       <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+      <Route path="/compliance" element={<ProtectedRoute><Compliance /></ProtectedRoute>} />
+      <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
+      <Route path="/clockin-analytics" element={<ProtectedRoute><ClockInAnalytics /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
