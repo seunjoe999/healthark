@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -53,7 +53,7 @@ export default function PPE() {
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          {isRole('home_manager', 'group_admin') && <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddItemOpen(true)}>Add item</Button>}
+          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddItemOpen(true)}>Add item</Button>}
         </div>
       </div>
 

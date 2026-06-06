@@ -1,0 +1,30 @@
+const { Client } = require('ssh2');
+
+const conn = new Client();
+const WP = '/homepages/3/d954356341/htdocs/Comprehensive/Comprehensive/updatedsite/public_html';
+
+conn.on('ready', () => {
+  console.log('Connected!');
+  const cmd = [
+    // Rename advanced-cache.php so WordPress ignores it
+    `mv ${WP}/wp-content/advanced-cache.php ${WP}/wp-content/advanced-cache.php.bak 2>&1 && echo "advanced-cache.php renamed OK"`,
+    // Disable WP_CACHE in wp-config.php
+    `sed -i "s/define( *'WP_CACHE' *, *true *)/define('WP_CACHE', false)/" ${WP}/wp-config.php && echo "WP_CACHE disabled OK"`,
+    // Verify both changes
+    `grep -i "WP_CACHE" ${WP}/wp-config.php`,
+    `ls -la ${WP}/wp-content/advanced-cache*`,
+  ].join(' && ');
+
+  conn.exec(cmd, (err, stream) => {
+    if (err) { console.error('Exec error:', err.message); conn.end(); return; }
+    stream.on('data', d => process.stdout.write(d.toString()));
+    stream.stderr.on('data', d => process.stderr.write(d.toString()));
+    stream.on('close', () => { console.log('\nDone.'); conn.end(); });
+  });
+}).connect({
+  host: 'access954356341.webspace-data.io',
+  port: 22,
+  username: 'u111498889',
+  password: 'March@2005',
+  readyTimeout: 15000,
+});

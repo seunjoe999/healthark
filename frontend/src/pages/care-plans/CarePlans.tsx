@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+﻿import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -675,7 +675,7 @@ export default function CarePlans() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">View and manage individual support plans</p>
         </div>
-        {isRole('home_manager', 'group_admin') && (
+        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
           <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}>
             Who read plans
           </Button>
@@ -767,7 +767,7 @@ export default function CarePlans() {
         <PlanDetailModal
           plan={viewPlan}
           reads={planReads[viewPlan.id] || []}
-          canDelete={isRole('home_manager', 'group_admin')}
+          canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
           onClose={() => setViewPlan(null)}
           onEdit={() => { setEditPlan(viewPlan); setViewPlan(null) }}
           onDelete={async () => { await deletePlan(viewPlan.id) }}

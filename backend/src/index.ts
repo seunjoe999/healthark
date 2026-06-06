@@ -1101,6 +1101,15 @@ async function ensureColumns() {
        updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_ssr_home ON shift_swap_requests(home_id, status)`,
+    // Role permissions — per-home, per-role permission overrides
+    `CREATE TABLE IF NOT EXISTS role_permissions (
+       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       role        VARCHAR(50) NOT NULL,
+       permission  VARCHAR(100) NOT NULL,
+       granted     BOOLEAN NOT NULL DEFAULT false,
+       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (home_id, role, permission)
+     )`,
     // Task templates
     `CREATE TABLE IF NOT EXISTS task_templates (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1125,6 +1134,36 @@ async function ensureColumns() {
   logger.info('Schema verified');
 }
 
+const ROLE_PERMISSION_DEFAULTS: Record<string, Record<string, boolean>> = {
+  care_staff:     { edit_service_users: false, edit_care_plans: false, view_sensitive_info: false, edit_staff: false, manage_rota: false, approve_leave: false, manage_tasks: false, view_reports: false, access_all_residents: false },
+  team_leader:    { edit_service_users: false, edit_care_plans: false, view_sensitive_info: true,  edit_staff: false, manage_rota: true,  approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
+  admin:          { edit_service_users: false, edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  deputy_manager: { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  home_manager:   { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  group_admin:    { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+};
+
+async function seedRolePermissions() {
+  try {
+    const homes = await pool.query('SELECT id FROM homes WHERE is_active = true');
+    for (const home of homes.rows) {
+      for (const [role, perms] of Object.entries(ROLE_PERMISSION_DEFAULTS)) {
+        for (const [permission, granted] of Object.entries(perms)) {
+          await pool.query(
+            `INSERT INTO role_permissions (home_id, role, permission, granted)
+             VALUES ($1,$2,$3,$4)
+             ON CONFLICT (home_id, role, permission) DO NOTHING`,
+            [home.id, role, permission, granted]
+          );
+        }
+      }
+    }
+    logger.info('Role permissions seeded');
+  } catch (err: any) {
+    logger.warn('Role permissions seed skipped: ' + err?.message);
+  }
+}
+
 async function bootstrap() {
   try {
     await pool.query('SELECT 1');
@@ -1145,6 +1184,7 @@ async function bootstrap() {
   `).catch((err: any) => logger.warn('Enum update skipped: ' + err?.message));
 
   await ensureColumns();
+  await seedRolePermissions();
 
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);

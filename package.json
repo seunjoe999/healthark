@@ -8,5 +8,8 @@
   "scripts": {
     "build": "cd frontend && rm -rf dist && npm install --include=dev && npm run build && cd ../backend && rm -rf dist && npm install --include=dev && npm run build",
     "start": "cd backend && node dist/index.js"
+  },
+  "dependencies": {
+    "node-ssh": "^13.2.1"
   }
 }

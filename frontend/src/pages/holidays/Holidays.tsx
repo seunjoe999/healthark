@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { homesApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -132,7 +132,7 @@ export default function Holidays() {
       </div>
 
       {/* Pending approvals banner */}
-      {allPending.length > 0 && isRole('home_manager', 'group_admin') && view !== 'requests' && (
+      {allPending.length > 0 && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && view !== 'requests' && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-amber-600" />

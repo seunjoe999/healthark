@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Card, SectionHeading, Spinner } from '../../components/ui'
-import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 
@@ -150,6 +150,19 @@ export default function Settings() {
       <p className="text-slate-400 text-sm mb-7">Manage your care home settings and account</p>
 
       <div className="space-y-6">
+        {/* Role permissions shortcut */}
+        <Link to="/settings/role-permissions"
+          className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group">
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-purple-600" />
+            <div>
+              <p className="font-semibold text-slate-800">Role Permissions</p>
+              <p className="text-sm text-slate-500">Configure what Care Staff, Team Leaders, Managers etc. can see and do</p>
+            </div>
+          </div>
+          <span className="text-purple-500 text-sm font-medium group-hover:underline">Manage →</span>
+        </Link>
+
         {/* Registration code */}
         <Card>
           <SectionHeading title="Staff registration code" description="Share this code with new staff so they can self-register. Each home has a unique code." />

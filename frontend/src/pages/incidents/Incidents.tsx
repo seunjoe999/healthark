@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+﻿import React, { useEffect, useState, useMemo } from 'react'
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -392,7 +392,7 @@ export default function Incidents() {
                         </div>
                       )}
                     </div>
-                    {isRole('home_manager', 'group_admin') && (
+                    {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                       <div className="flex justify-end pt-2 border-t border-slate-50">
                         <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
                           onClick={() => deleteIncident(inc)}>

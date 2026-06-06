@@ -15,7 +15,7 @@ const RECORD_TYPES = [
   { value: 'food_intake', label: 'Food intake', icon: '🍽️' },
   { value: 'fluid_intake', label: 'Fluid / drinks', icon: '💧' },
   { value: 'bowel_movement', label: 'Bowel movement', icon: '📋' },
-  { value: 'behaviour', label: 'Behaviour', icon: '💭' },
+  { value: 'behaviour', label: 'Behavior record (ABC)', icon: '💭' },
   { value: 'welfare_check', label: 'Welfare check', icon: '✅' },
   { value: 'repositioning', label: 'Repositioning', icon: '🔄' },
   { value: 'oral_care', label: 'Oral care', icon: '🦷' },
@@ -244,22 +244,32 @@ export default function DailyRecords() {
                                 <p className="text-xs text-slate-400">{r.created_at ? format(new Date(r.created_at), 'HH:mm') : ''}</p>
                                 <p className="text-xs text-slate-400">{r.staff_name || ''}</p>
                                 <div className="flex gap-1 mt-1 justify-end">
-                                  <button onClick={() => setEditingRecord(r)}
-                                    className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"
-                                    title="Edit record">
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button onClick={async () => {
-                                    if (!confirm('Delete this record? This cannot be undone.')) return
-                                    try {
-                                      await dailyRecordsApi.delete(r.id)
-                                      await loadRecords(selectedSu.id, viewDate)
-                                      toast.success('Record deleted')
-                                    } catch { toast.error('Failed to delete') }
-                                  }} className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors text-slate-400 hover:text-rose-600"
-                                  title="Delete record">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  {(() => {
+                                    const isCareStaff = user?.role === 'care_staff'
+                                    const isToday = r.record_date === format(viewDate, 'yyyy-MM-dd') && format(viewDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+                                    const isOwn = r.staff_id === user?.id
+                                    const canEdit = !isCareStaff || (isToday && isOwn)
+                                    return canEdit ? (
+                                      <button onClick={() => setEditingRecord(r)}
+                                        className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"
+                                        title="Edit record">
+                                        <Edit className="w-3.5 h-3.5" />
+                                      </button>
+                                    ) : null
+                                  })()}
+                                  {user?.role !== 'care_staff' && (
+                                    <button onClick={async () => {
+                                      if (!confirm('Delete this record? This cannot be undone.')) return
+                                      try {
+                                        await dailyRecordsApi.delete(r.id)
+                                        await loadRecords(selectedSu.id, viewDate)
+                                        toast.success('Record deleted')
+                                      } catch { toast.error('Failed to delete') }
+                                    }} className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors text-slate-400 hover:text-rose-600"
+                                    title="Delete record">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { suApi, homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -57,7 +57,7 @@ export default function ServiceUserList() {
           <h1 className="font-display text-2xl text-slate-900">Residents</h1>
           <p className="text-slate-400 text-sm mt-0.5">{filtered.length} resident{filtered.length !== 1 ? 's' : ''} {statusFilter ? `· ${statusFilter}` : ''}</p>
         </div>
-        {isRole('home_manager', 'group_admin', 'senior_carer', 'admin') && (
+        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
           <Link to="/service-users/new">
             <Button icon={<UserPlus className="w-4 h-4" />}>Add resident</Button>
           </Link>
@@ -87,7 +87,7 @@ export default function ServiceUserList() {
 
       {loading ? <Spinner /> : filtered.length === 0 ? (
         <EmptyState title="No residents found" description="Try adjusting your search or filter"
-          action={isRole('home_manager', 'group_admin') ? <Link to="/service-users/new"><Button icon={<UserPlus className="w-4 h-4" />}>Add first resident</Button></Link> : undefined} />
+          action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Link to="/service-users/new"><Button icon={<UserPlus className="w-4 h-4" />}>Add first resident</Button></Link> : undefined} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map(su => {

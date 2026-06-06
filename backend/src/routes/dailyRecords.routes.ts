@@ -405,6 +405,20 @@ router.put('/:id', param('id').isUUID(), validateRequest,
     try {
       const { notes, description, recordType, ...rest } = req.body;
       const updateText = notes || description || '';
+      const role = getRole(req);
+      const staffId = getStaffId(req);
+
+      // care_staff can only edit their own records from today
+      if (role === 'care_staff') {
+        const existing = await query<any>('SELECT staff_id, record_date FROM daily_records WHERE id=$1', [req.params.id]);
+        if (!existing.length) throw new AppError('Record not found', 404);
+        const rec = existing[0];
+        const today = new Date().toISOString().split('T')[0];
+        if (rec.staff_id !== staffId) throw new AppError('You can only edit your own records', 403);
+        if (rec.record_date?.toISOString?.()?.split('T')[0] !== today && String(rec.record_date) !== today) {
+          throw new AppError('Care staff can only edit records from today', 403);
+        }
+      }
 
       // Update the parent record notes field
       const rows = await query(
@@ -422,8 +436,8 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = getRole(req);
-      if (!['home_manager', 'group_admin', 'senior_carer'].includes(role)) {
-        throw new AppError('Only managers and senior carers can delete records', 403);
+      if (!['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'].includes(role)) {
+        throw new AppError('Only managers and team leaders can delete records', 403);
       }
       await query('DELETE FROM daily_records WHERE id=$1', [req.params.id]);
       res.json({ success: true, message: 'Record deleted' } as ApiResponse);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { staffApi, homesApi } from '../../api'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { Link } from 'react-router-dom'
@@ -237,7 +237,7 @@ export default function StaffModule() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-slate-900">Training & certificates</h3>
-                  {isRole('home_manager', 'group_admin') && (
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                     <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTrainingOpen(true)}>Add training</Button>
                   )}
                 </div>
@@ -293,7 +293,7 @@ export default function StaffModule() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${l.status === 'approved' ? 'bg-green-100 text-green-700' : l.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                           {l.status}
                         </span>
-                        {l.status === 'pending' && isRole('home_manager', 'group_admin') && (
+                        {l.status === 'pending' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                           <div className="flex gap-1">
                             <Button size="sm" variant="teal" onClick={async () => {
                               await api.put(`/staff-hr/leave/${l.id}/approve`, { action: 'approve' })
@@ -403,7 +403,7 @@ export default function StaffModule() {
                           <span className="badge badge-warning capitalize">{(c.caution_type || '').replace('_', ' ')}</span>
                           <div className="flex items-center gap-2">
                             <p className="text-xs text-slate-400">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''}</p>
-                            {isRole('home_manager', 'group_admin') && (
+                            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                               <button onClick={async () => {
                                 if (!window.confirm('Delete this caution?')) return
                                 try {

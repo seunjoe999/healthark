@@ -38,7 +38,7 @@ export default function Timesheets() {
   const [submitting, setSubmitting] = useState(false)
   const [stats, setStats] = useState<any>(null)
 
-  const canManage = isRole('home_manager', 'group_admin')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
 
   async function load() {
     setLoading(true)

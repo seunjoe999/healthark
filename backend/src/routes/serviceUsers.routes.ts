@@ -83,6 +83,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, search } = req.query as Record<string, string>;
     const homeId = req.query.homeId as string || getHomeId(req);
+    const staffId = getStaffId(req);
+    const role = getRole(req);
 
     if (!homeId) throw new AppError('homeId required', 400);
 
@@ -97,6 +99,22 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                WHERE su.home_id = $1`;
     const params: unknown[] = [homeId];
     let idx = 2;
+
+    // Restricted roles only see residents they're assigned to via shifts
+    if (['care_staff', 'team_leader'].includes(role) && staffId) {
+      const assigned = await query<{ su_id: string }>(
+        `SELECT DISTINCT su_id FROM staff_shifts
+         WHERE staff_id = $1 AND su_id IS NOT NULL
+         AND shift_date BETWEEN CURRENT_DATE - INTERVAL '60 days' AND CURRENT_DATE + INTERVAL '30 days'`,
+        [staffId]
+      );
+      if (assigned.length > 0) {
+        const ids = assigned.map((r: any) => r.su_id);
+        sql += ` AND su.id = ANY($${idx++})`;
+        params.push(ids);
+      }
+      // If no shifts found, they see all (fallback to avoid empty screen)
+    }
 
     if (status) { sql += ` AND su.status = $${idx++}`; params.push(status); }
     if (search) {
@@ -129,6 +147,8 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+const MANAGER_ROLES = ['deputy_manager', 'home_manager', 'group_admin'];
+
 // POST /api/service-users
 router.post('/',
   [
@@ -140,6 +160,10 @@ router.post('/',
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = getRole(req);
+      if (!MANAGER_ROLES.includes(role)) {
+        throw new AppError('Only managers can add service user details', 403);
+      }
       const {
         homeId, firstName, lastName, preferredName, dateOfBirth, gender, pronouns,
         status, emergencyRating, nhsNumber, niNumber, dnar, dnarFormUrl,
@@ -204,6 +228,10 @@ router.post('/',
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const roleCheck = getRole(req);
+      if (!MANAGER_ROLES.includes(roleCheck)) {
+        throw new AppError('Only managers can edit service user details', 403);
+      }
       // dnarFormUrl is optional — removed hard block to allow saving other fields
 
       const fieldMap: Record<string, string> = {

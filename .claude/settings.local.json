@@ -35,7 +35,15 @@
       "Bash(echo \"Frontend PID: $!\")",
       "Bash(npx ts-node -e ' *)",
       "PowerShell(cd C:\\\\Users\\\\Admin\\\\healthark\\\\backend; $env:NODE_PATH = \"C:\\\\Users\\\\Admin\\\\healthark\\\\backend\\\\node_modules\"; node ../test_insert.js 2>&1)",
-      "PowerShell(cd C:\\\\Users\\\\Admin\\\\healthark\\\\backend; $env:NODE_PATH = \"C:\\\\Users\\\\Admin\\\\healthark\\\\backend\\\\node_modules\"; node ../direct_copy.js \"postgresql://healthark_user:yplXYLHUaPksCpMi57e6PebPK0Yi6laF@dpg-d88dabjbc2fs73eqf960-a.oregon-postgres.render.com/healthark\" 2>&1 | Select-String -Pattern \"\\(✓|Total|ERR\\)\")"
+      "PowerShell(cd C:\\\\Users\\\\Admin\\\\healthark\\\\backend; $env:NODE_PATH = \"C:\\\\Users\\\\Admin\\\\healthark\\\\backend\\\\node_modules\"; node ../direct_copy.js \"postgresql://healthark_user:yplXYLHUaPksCpMi57e6PebPK0Yi6laF@dpg-d88dabjbc2fs73eqf960-a.oregon-postgres.render.com/healthark\" 2>&1 | Select-String -Pattern \"\\(✓|Total|ERR\\)\")",
+      "WebFetch(domain:comprehensivecare.org.uk)",
+      "WebFetch(domain:www.comprehensivecare.org.uk)",
+      "PowerShell(Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory\\('C:\\\\Users\\\\Admin\\\\Downloads\\\\consentstemplate.zip', 'C:\\\\Users\\\\Admin\\\\Downloads\\\\consentstemplate_out'\\); Get-ChildItem 'C:\\\\Users\\\\Admin\\\\Downloads\\\\consentstemplate_out' -Recurse | Select-Object FullName)",
+      "PowerShell($zip = [System.IO.Compression.ZipFile]::OpenRead\\('C:\\\\Users\\\\Admin\\\\Downloads\\\\consentstemplate.zip'\\); $zip.Entries | Select-Object Name, FullName, Length; $zip.Dispose\\(\\))",
+      "PowerShell(Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [System.IO.Compression.ZipFile]::OpenRead\\('C:\\\\Users\\\\Admin\\\\Downloads\\\\consentstemplate.zip'\\); $zip.Entries | Select-Object Name, FullName, Length; $zip.Dispose\\(\\))",
+      "PowerShell(node \"C:\\\\Users\\\\Admin\\\\Desktop\\\\genhash.js\")",
+      "Bash(node *)",
+      "WebFetch(domain:compcarehub.onrender.com)"
     ]
   }
 }

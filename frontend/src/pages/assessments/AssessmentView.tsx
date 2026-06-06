@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+﻿import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { assessmentsApi } from '../../api'
 import api from '../../api'
@@ -158,7 +158,7 @@ export default function AssessmentView() {
           className="flex items-center gap-1 text-slate-500 hover:text-slate-700 text-sm">
           <ChevronLeft className="w-4 h-4" /> Back to assessments
         </button>
-        {isRole('home_manager', 'group_admin') && (
+        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
           <button onClick={deleteAssessment}
             className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
             <Trash2 className="w-4 h-4" /> Delete assessment

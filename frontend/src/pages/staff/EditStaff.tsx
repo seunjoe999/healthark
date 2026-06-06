@@ -9,11 +9,11 @@ import toast from 'react-hot-toast'
 
 const ROLES = [
   { value: 'care_staff', label: 'Care Staff' },
-  { value: 'senior_carer', label: 'Senior Carer' },
   { value: 'team_leader', label: 'Team Leader' },
-  { value: 'home_manager', label: 'Home Manager' },
-  { value: 'auditor', label: 'Auditor' },
-  { value: 'group_admin', label: 'Group Admin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'deputy_manager', label: 'Deputy Manager' },
+  { value: 'home_manager', label: 'Manager' },
+  { value: 'group_admin', label: 'Director' },
 ]
 const STATUSES = [{ value: 'active', label: 'Active' }, { value: 'pending', label: 'Pending' }, { value: 'suspended', label: 'Suspended' }, { value: 'terminated', label: 'Terminated' }]
 const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'non_binary', label: 'Non-binary' }, { value: 'other', label: 'Other' }]

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+﻿import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -254,7 +254,7 @@ export default function Audits() {
             audit={selectedAudit}
             homeName={selectedHomeObj?.name}
             homeAddress={selectedHomeObj?.address1}
-            canDelete={isRole('home_manager', 'group_admin')}
+            canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
             onDelete={deleteAudit}
             onOpenActionPlan={() => { setActionPlanAutoAI(false); setActionPlanOpen(true) }}
             onAIActionPlan={() => { setActionPlanAutoAI(true); setActionPlanOpen(true) }}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -127,7 +127,7 @@ export default function Tasks() {
           <PrintButton />
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
           {pageTab === 'tasks' && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}
-          {pageTab === 'templates' && isRole('home_manager', 'group_admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
+          {pageTab === 'templates' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
         </div>
       </div>
 
@@ -169,7 +169,7 @@ export default function Tasks() {
                 </button>
               ))}
             </div>
-            {isRole('home_manager', 'group_admin') && (
+            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
               <Button size="sm" variant="outline" icon={<Zap className="w-3.5 h-3.5" />} loading={generatingDaily} onClick={generateDaily}>
                 Generate today's tasks
               </Button>
@@ -201,7 +201,7 @@ export default function Tasks() {
                       {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium flex items-center gap-0.5"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
                     </div>
                   </div>
-                  {isRole('home_manager', 'group_admin') && (
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                     <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -217,7 +217,7 @@ export default function Tasks() {
         <>
           {templates.length === 0 ? (
             <EmptyState title="No templates" description="Templates let you auto-generate recurring tasks each day"
-              action={isRole('home_manager', 'group_admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add first template</Button> : undefined} />
+              action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add first template</Button> : undefined} />
           ) : (
             <div className="space-y-3">
               {templates.map((tmpl: any) => (
@@ -235,7 +235,7 @@ export default function Tasks() {
                       {tmpl.assigned_role && <span>Role: {tmpl.assigned_role.replace('_', ' ')}</span>}
                     </div>
                   </div>
-                  {isRole('home_manager', 'group_admin') && (
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                     <div className="flex gap-1 flex-shrink-0">
                       <button onClick={() => setEditTemplateOpen(tmpl)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors">
                         <Pencil className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -117,18 +117,18 @@ export default function Safeguarding() {
                   <Field label="Management recommendations" value={c.management_recs} />
                   <Field label="Prevention actions" value={c.prevention_actions} />
                   <div className="flex gap-2 flex-wrap">
-                    {!c.manager_ack && isRole('home_manager', 'group_admin') && (
+                    {!c.manager_ack && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                       <Button size="sm" icon={<CheckCircle className="w-4 h-4" />} onClick={() => acknowledge(c.id)}>
                         Acknowledge this concern
                       </Button>
                     )}
-                    {isRole('home_manager', 'group_admin') && (
+                    {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                       <Button size="sm" variant="secondary" icon={<Bell className="w-4 h-4" />}
                         onClick={() => { setCqcConcern(c); setCqcOpen(true) }}>
                         Notify CQC
                       </Button>
                     )}
-                    {isRole('home_manager', 'group_admin') && (
+                    {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                       <Button size="sm" variant="danger" icon={<Trash2 className="w-4 h-4" />} onClick={() => deleteConcern(c.id)}>
                         Delete
                       </Button>

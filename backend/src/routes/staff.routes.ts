@@ -132,7 +132,7 @@ router.post(
     body('email').isEmail().normalizeEmail(),
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
-    body('role').isIn(['care_staff','senior_carer','team_leader','home_manager','group_admin','auditor']),
+    body('role').isIn(['care_staff','team_leader','admin','deputy_manager','home_manager','group_admin','senior_carer','auditor']),
     body('password').optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage('Minimum 8 characters'),
     body('homeId').optional({ checkFalsy: true }).isUUID(),
   ],
@@ -461,6 +461,66 @@ router.delete('/:id', requireRole('group_admin', 'home_manager'),
         logAudit({ homeId: s.home_id || '', staffId: decoded?.staffId || '', staffName: '', action: 'delete', resourceType: 'staff', resourceId: req.params.id, resourceLabel: `${s.first_name} ${s.last_name}` });
       }
       res.json({ success: true, message: 'Account deleted' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+
+// ── Role Permissions ─────────────────────────────────────────────────────────
+
+const DEFAULT_PERMS: Record<string, Record<string, boolean>> = {
+  care_staff:     { edit_service_users: false, edit_care_plans: false, view_sensitive_info: false, edit_staff: false, manage_rota: false, approve_leave: false, manage_tasks: false, view_reports: false, access_all_residents: false },
+  team_leader:    { edit_service_users: false, edit_care_plans: false, view_sensitive_info: true,  edit_staff: false, manage_rota: true,  approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
+  admin:          { edit_service_users: false, edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  deputy_manager: { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  home_manager:   { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  group_admin:    { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+};
+
+// GET /api/staff/role-permissions?homeId=xxx
+router.get('/role-permissions', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const homeId = req.query.homeId as string || decoded?.homeId;
+      if (!homeId) throw new AppError('homeId required', 400);
+
+      const rows = await query<any>(
+        'SELECT role, permission, granted FROM role_permissions WHERE home_id = $1',
+        [homeId]
+      );
+
+      // Build result, filling defaults for any missing rows
+      const result: Record<string, Record<string, boolean>> = {};
+      for (const [role, perms] of Object.entries(DEFAULT_PERMS)) {
+        result[role] = { ...perms };
+        for (const [perm, def] of Object.entries(perms)) {
+          const row = rows.find((r: any) => r.role === role && r.permission === perm);
+          result[role][perm] = row ? row.granted : def;
+        }
+      }
+      res.json({ success: true, data: result } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/staff/role-permissions
+router.put('/role-permissions', requireRole('home_manager', 'group_admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const { homeId, role, permission, granted } = req.body;
+      const hId = homeId || decoded?.homeId;
+      if (!hId || !role || !permission) throw new AppError('homeId, role, permission required', 400);
+      await query(
+        `INSERT INTO role_permissions (home_id, role, permission, granted, updated_at)
+         VALUES ($1,$2,$3,$4,NOW())
+         ON CONFLICT (home_id, role, permission) DO UPDATE SET granted=$4, updated_at=NOW()`,
+        [hId, role, permission, !!granted]
+      );
+      res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

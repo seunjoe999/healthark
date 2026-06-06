@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { BarChart3, Plus, Star, CheckCircle2, XCircle, Zap, ClipboardCheck } from 'lucide-react'
 import { Button, Modal, Select, Input, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
@@ -70,7 +70,7 @@ export default function PerformanceMatrix() {
   const [view, setView] = useState<'matrix' | 'history' | 'shift_matrix'>('matrix')
   const [selectedStaff, setSelectedStaff] = useState('')
 
-  const canAssess = isRole('home_manager', 'group_admin')
+  const canAssess = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
   const isGroupAdmin = isRole('group_admin')
   const [autoGenerating, setAutoGenerating] = useState(false)
   const [autoGenResult, setAutoGenResult] = useState<any>(null)
