@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Wrench, Plus, AlertTriangle, CheckCircle, Clock, Filter, Search } from 'lucide-react'
-import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
+import { Wrench, Plus, Search, Phone, Mail, User, Trash2, PhoneCall } from 'lucide-react'
+import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api, { homesApi } from '../../api'
 import clsx from 'clsx'
+import toast from 'react-hot-toast'
 
 const CATEGORIES = [
   { value: 'electrical', label: 'Electrical' },
@@ -63,8 +64,15 @@ export default function Maintenance() {
 
   const [form, setForm] = useState({ title: '', description: '', category: 'other', priority: 'medium', location: '' })
   const [updateForm, setUpdateForm] = useState({ status: '', resolutionNotes: '' })
+  const [tab, setTab] = useState<'log' | 'contacts'>('log')
+  const [contacts, setContacts] = useState<any[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [showNewContact, setShowNewContact] = useState(false)
+  const [contactForm, setContactForm] = useState({ name: '', role: '', company: '', email: '', phone: '', notes: '' })
+  const [savingContact, setSavingContact] = useState(false)
 
-  const canManage = isRole('home_manager', 'group_admin', 'senior_carer')
+  const canManage = isRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin')
+  const canManageContacts = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
 
   useEffect(() => {
     if (isRole('group_admin')) {
@@ -93,6 +101,45 @@ export default function Maintenance() {
   }
 
   useEffect(() => { load() }, [filterStatus, filterPriority, selectedHome])
+
+  const loadContacts = async () => {
+    setContactsLoading(true)
+    try {
+      const params: any = {}
+      if (isRole('group_admin') && selectedHome) params.homeId = selectedHome
+      const res = await api.get('/maintenance/contacts', { params })
+      setContacts(res.data.data || [])
+    } catch {}
+    setContactsLoading(false)
+  }
+
+  useEffect(() => { if (tab === 'contacts') loadContacts() }, [tab, selectedHome])
+
+  const handleAddContact = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!contactForm.name.trim()) { toast.error('Name is required'); return }
+    setSavingContact(true)
+    try {
+      await api.post('/maintenance/contacts', {
+        ...contactForm,
+        homeId: isRole('group_admin') ? selectedHome : undefined,
+      })
+      setShowNewContact(false)
+      setContactForm({ name: '', role: '', company: '', email: '', phone: '', notes: '' })
+      loadContacts()
+      toast.success('Contact added')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setSavingContact(false) }
+  }
+
+  const deleteContact = async (id: string) => {
+    if (!window.confirm('Remove this contact?')) return
+    try {
+      await api.delete(`/maintenance/contacts/${id}`)
+      setContacts(c => c.filter(x => x.id !== id))
+      toast.success('Contact removed')
+    } catch { toast.error('Failed to remove') }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -124,20 +171,46 @@ export default function Maintenance() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Wrench className="w-6 h-6 text-amber-400" /> Maintenance Log
+            <Wrench className="w-6 h-6 text-amber-400" /> Maintenance
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Track and resolve facility issues</p>
+          <p className="text-slate-400 text-sm mt-1">Track facility issues and maintenance contacts</p>
         </div>
         <div className="flex items-center gap-2">
           <PrintButton />
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNew(true)}>
-            Report Issue
-          </Button>
+          {tab === 'log' && (
+            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNew(true)}>
+              Report Issue
+            </Button>
+          )}
+          {tab === 'contacts' && canManageContacts && (
+            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNewContact(true)}>
+              Add Contact
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-6 w-fit">
+        {[{ id: 'log', label: 'Issue Log' }, { id: 'contacts', label: 'Maintenance Contacts' }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as any)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t.id ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'contacts' ? (
+        <ContactsSection
+          contacts={contacts}
+          loading={contactsLoading}
+          canManage={canManageContacts}
+          onDelete={deleteContact}
+        />
+      ) : (<>
 
       {/* Stats */}
       {stats && (
@@ -202,6 +275,8 @@ export default function Maintenance() {
         </div>
       )}
 
+      </>)} {/* end log tab */}
+
       {/* New Issue Modal */}
       <Modal open={showNew} onClose={() => setShowNew(false)} title="Report Maintenance Issue">
         <form onSubmit={handleCreate} className="space-y-4">
@@ -219,6 +294,26 @@ export default function Maintenance() {
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
             <Button type="submit" variant="gold" loading={submitting}>Submit Issue</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Contact Modal */}
+      <Modal open={showNewContact} onClose={() => setShowNewContact(false)} title="Add Maintenance Contact">
+        <form onSubmit={handleAddContact} className="space-y-4">
+          <Input label="Name *" required value={contactForm.name} onChange={e => setContactForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. John Smith" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Role / Speciality" value={contactForm.role} onChange={e => setContactForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Electrician, Plumber" />
+            <Input label="Company" value={contactForm.company} onChange={e => setContactForm(f => ({ ...f, company: e.target.value }))} placeholder="e.g. ABC Repairs Ltd" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Phone" type="tel" value={contactForm.phone} onChange={e => setContactForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. 07700 900000" />
+            <Input label="Email" type="email" value={contactForm.email} onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. john@repairs.com" />
+          </div>
+          <SpeechTextarea label="Notes" rows={2} value={contactForm.notes} onChange={v => setContactForm(f => ({ ...f, notes: v }))} placeholder="Any additional info..." />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setShowNewContact(false)}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={savingContact}>Add Contact</Button>
           </div>
         </form>
       </Modal>
@@ -256,3 +351,52 @@ export default function Maintenance() {
   )
 }
 
+function ContactsSection({ contacts, loading, canManage, onDelete }: {
+  contacts: any[]; loading: boolean; canManage: boolean; onDelete: (id: string) => void
+}) {
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
+  if (!contacts.length) return (
+    <EmptyState title="No maintenance contacts" description="Add contact details for plumbers, electricians, and other maintenance professionals so staff know who to call" />
+  )
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {contacts.map(c => (
+        <div key={c.id} className="card p-5 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">{c.name}</h3>
+                {c.role && <p className="text-xs text-amber-400">{c.role}</p>}
+                {c.company && <p className="text-xs text-slate-400">{c.company}</p>}
+              </div>
+            </div>
+            {canManage && (
+              <button onClick={() => onDelete(c.id)}
+                className="text-slate-500 hover:text-rose-400 transition-colors flex-shrink-0">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {c.phone && (
+              <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-sm text-slate-300 hover:text-amber-400 transition-colors">
+                <Phone className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                {c.phone}
+              </a>
+            )}
+            {c.email && (
+              <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-slate-300 hover:text-amber-400 transition-colors">
+                <Mail className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                {c.email}
+              </a>
+            )}
+            {c.notes && <p className="text-xs text-slate-400 pt-1">{c.notes}</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

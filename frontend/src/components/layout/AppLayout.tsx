@@ -32,20 +32,25 @@ const navSections = [
       { label: 'Other Risk Assessment',            to: '/risk-management',     icon: Shield,        roles: [],                                           featureKey: 'risk_management' },
       { label: 'Medication Administration Record', to: '/mar',                 icon: Pill,          roles: [],                                           featureKey: 'mar' },
       { label: 'Medication Stock',                 to: '/medication-stock',    icon: Boxes,         roles: ['home_manager','group_admin','senior_carer'], featureKey: 'medication_stock' },
-      { label: 'Daily Records',                    to: '/daily-records',       icon: ClipboardList, roles: [],                                           featureKey: 'daily_records' },
-      { label: 'Service User Outcome Reports',                    to: '/outcomes',            icon: Target,        roles: [],                                           featureKey: 'outcomes' },
+      { label: 'Service User Outcome Reports',     to: '/outcomes',            icon: Target,        roles: [],                                           featureKey: 'outcomes' },
       { label: 'Care Reviews',                     to: '/reviews',             icon: ClipboardCheck,roles: [],                                           featureKey: 'reviews' },
       { label: 'Service User Diary',               to: '/diary',               icon: BookOpen,      roles: [],                                           featureKey: 'diary' },
+      { label: 'Calendar',                         to: '/calendar',            icon: Calendar,      roles: ['home_manager','group_admin'],                featureKey: 'calendar' },
+      { label: 'Safeguarding',                     to: '/safeguarding',        icon: ShieldCheck,   roles: [],                                           featureKey: 'safeguarding' },
+      { label: 'Incidents',                        to: '/incidents',           icon: AlertTriangle, roles: [],                                           featureKey: 'incidents' },
+      { label: 'Consents & Signatures',            to: '/consents',            icon: FileSignature, roles: [],                                           featureKey: 'consents' },
+    ]
+  },
+  {
+    label: 'Daily Records',
+    items: [
+      { label: 'Daily Records',                    to: '/daily-records',       icon: ClipboardList, roles: [],                                           featureKey: 'daily_records' },
       { label: 'Social Activities',                to: '/social-activities',   icon: Music,         roles: [],                                           featureKey: 'social_activities' },
       { label: 'Bath Records',                     to: '/bath-chart',          icon: Droplets,      roles: [],                                           featureKey: 'bath_chart' },
       { label: 'Bowel Chart',                      to: '/bowel-chart',         icon: Droplets,      roles: [],                                           featureKey: 'bowel_chart' },
       { label: 'Observations',                     to: '/observations',        icon: Thermometer,   roles: [],                                           featureKey: 'observations' },
       { label: 'Professional Visits',              to: '/professional-visits', icon: Stethoscope,   roles: [],                                           featureKey: 'professional_visits' },
-      { label: 'Calendar',                         to: '/calendar',            icon: Calendar,      roles: ['home_manager','group_admin'],                featureKey: 'calendar' },
-      { label: 'Safeguarding',                     to: '/safeguarding',        icon: ShieldCheck,   roles: [],                                           featureKey: 'safeguarding' },
-      { label: 'Incidents',                        to: '/incidents',           icon: AlertTriangle, roles: [],                                           featureKey: 'incidents' },
-      { label: 'Handover',                to: '/reports/handover',      icon: ArrowLeftRight,roles: [],                                           featureKey: 'handover' },
-      { label: 'Consents & Signatures',          to: '/consents',            icon: FileSignature, roles: [],                                           featureKey: 'consents' },
+      { label: 'Handover',                         to: '/reports/handover',    icon: ArrowLeftRight,roles: [],                                           featureKey: 'handover' },
     ]
   },
   {

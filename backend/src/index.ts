@@ -1110,6 +1110,28 @@ async function ensureColumns() {
        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
        PRIMARY KEY (home_id, role, permission)
      )`,
+    // Maintenance contacts
+    `CREATE TABLE IF NOT EXISTS maintenance_contacts (
+       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id    UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       name       VARCHAR(255) NOT NULL,
+       role       VARCHAR(255),
+       company    VARCHAR(255),
+       email      VARCHAR(255),
+       phone      VARCHAR(50),
+       notes      TEXT,
+       created_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mc_home ON maintenance_contacts(home_id)`,
+    // Role-level access rights (feature flags per role, not per user)
+    `CREATE TABLE IF NOT EXISTS role_access_rights (
+       home_id       UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       role          VARCHAR(50) NOT NULL,
+       feature_flags JSONB NOT NULL DEFAULT '{}',
+       updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (home_id, role)
+     )`,
     // Task templates
     `CREATE TABLE IF NOT EXISTS task_templates (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

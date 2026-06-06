@@ -150,6 +150,19 @@ export default function Settings() {
       <p className="text-slate-400 text-sm mb-7">Manage your care home settings and account</p>
 
       <div className="space-y-6">
+        {/* Access rights shortcut */}
+        <Link to="/settings/access-rights"
+          className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors group">
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-emerald-600" />
+            <div>
+              <p className="font-semibold text-slate-800">Access Rights</p>
+              <p className="text-sm text-slate-500">Control which sections each role can access in the navigation</p>
+            </div>
+          </div>
+          <span className="text-emerald-500 text-sm font-medium group-hover:underline">Manage →</span>
+        </Link>
+
         {/* Role permissions shortcut */}
         <Link to="/settings/role-permissions"
           className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group">
@@ -157,7 +170,7 @@ export default function Settings() {
             <Shield className="w-5 h-5 text-purple-600" />
             <div>
               <p className="font-semibold text-slate-800">Role Permissions</p>
-              <p className="text-sm text-slate-500">Configure what Care Staff, Team Leaders, Managers etc. can see and do</p>
+              <p className="text-sm text-slate-500">Configure what Care Staff, Team Leaders, Managers etc. can do</p>
             </div>
           </div>
           <span className="text-purple-500 text-sm font-medium group-hover:underline">Manage →</span>

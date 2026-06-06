@@ -525,4 +525,44 @@ router.put('/role-permissions', requireRole('home_manager', 'group_admin'),
   }
 );
 
+// GET /api/staff/role-access-rights?homeId=xxx
+router.get('/role-access-rights', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const homeId = req.query.homeId as string || decoded?.homeId;
+      if (!homeId) throw new AppError('homeId required', 400);
+
+      const rows = await query<any>(
+        'SELECT role, feature_flags FROM role_access_rights WHERE home_id = $1',
+        [homeId]
+      );
+      const result: Record<string, Record<string, boolean>> = {};
+      for (const r of rows) result[r.role] = r.feature_flags || {};
+      res.json({ success: true, data: result } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/staff/role-access-rights
+router.put('/role-access-rights', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const { homeId, role, featureFlags } = req.body;
+      const hId = homeId || decoded?.homeId;
+      if (!hId || !role) throw new AppError('homeId and role required', 400);
+      await query(
+        `INSERT INTO role_access_rights (home_id, role, feature_flags, updated_at)
+         VALUES ($1,$2,$3::jsonb,NOW())
+         ON CONFLICT (home_id, role) DO UPDATE SET feature_flags=$3::jsonb, updated_at=NOW()`,
+        [hId, role, JSON.stringify(featureFlags || {})]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

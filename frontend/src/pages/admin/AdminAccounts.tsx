@@ -565,12 +565,6 @@ export default function AdminAccounts() {
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0 flex-wrap">
-                {admin.role !== 'group_admin' && (
-                  <Button size="sm" variant="outline" icon={<Sliders className="w-3.5 h-3.5" />}
-                    onClick={() => setAccessModal(admin)}>
-                    Access
-                  </Button>
-                )}
                 <Button size="sm" variant="outline" icon={<RefreshCw className="w-3.5 h-3.5" />}
                   onClick={() => { setResetOpen(admin); setNewPassword(''); setShowPwd(false) }}>
                   Reset pwd

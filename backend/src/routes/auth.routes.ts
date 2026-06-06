@@ -234,12 +234,24 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
     }
     if (!rows.length) throw new AppError('Staff not found', 404);
     const s = rows[0];
+    // Merge role-level access rights with per-user overrides
+    let roleFlags: Record<string, boolean> = {};
+    if (s.home_id) {
+      try {
+        const rf = await query<any>(
+          'SELECT feature_flags FROM role_access_rights WHERE home_id=$1 AND role=$2',
+          [s.home_id, s.role]
+        );
+        if (rf.length) roleFlags = rf[0].feature_flags || {};
+      } catch {}
+    }
+    const mergedFlags = { ...roleFlags, ...(s.feature_flags || {}) };
     res.json({ success: true, data: {
       id: s.id, email: s.email,
       firstName: s.first_name, lastName: s.last_name,
       role: s.role, homeId: s.home_id,
       organisationId: s.organisation_id, photoUrl: s.photo_url,
-      featureFlags: s.feature_flags || {},
+      featureFlags: mergedFlags,
     }} as ApiResponse);
   } catch (err) { next(err); }
 });

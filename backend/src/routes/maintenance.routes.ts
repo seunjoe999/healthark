@@ -117,4 +117,45 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'),
   }
 );
 
+// ── Maintenance Contacts ───────────────────────────────────────────
+router.get('/contacts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      'SELECT * FROM maintenance_contacts WHERE home_id = $1 ORDER BY name',
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.post('/contacts',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  [body('name').notEmpty().withMessage('Name is required')], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { name, role, company, email, phone, notes } = req.body;
+      const rows = await query(
+        `INSERT INTO maintenance_contacts (home_id, name, role, company, email, phone, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        [homeId, name, role || null, company || null, email || null, phone || null, notes || null, staffId]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/contacts/:id',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM maintenance_contacts WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

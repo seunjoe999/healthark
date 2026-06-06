@@ -38,6 +38,7 @@ import Assessments from './pages/assessments/Assessments'
 import AdminAccounts from './pages/admin/AdminAccounts'
 import Settings from './pages/settings/Settings'
 import RolePermissions from './pages/settings/RolePermissions'
+import AccessRights from './pages/settings/AccessRights'
 import Maintenance from './pages/maintenance/Maintenance'
 import Incidents from './pages/incidents/Incidents'
 import DbsTracker from './pages/dbs/DBSTracker'
@@ -125,6 +126,7 @@ function AppRoutes() {
       <Route path="/admin/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/settings/role-permissions" element={<ProtectedRoute><RolePermissions /></ProtectedRoute>} />
+      <Route path="/settings/access-rights" element={<ProtectedRoute><AccessRights /></ProtectedRoute>} />
       <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
       <Route path="/incidents" element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
       <Route path="/dbs" element={<ProtectedRoute><DbsTracker /></ProtectedRoute>} />
