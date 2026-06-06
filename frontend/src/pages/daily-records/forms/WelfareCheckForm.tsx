@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
-import { Button, Select, Input } from '../../../components/ui'
+import { Button, Select, Input, SpeechTextarea } from '../../../components/ui'
 
 export default function WelfareCheckForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
   const [form, setForm] = useState({ checkType: 'welfare', suStatus: '', environmentOk: true, environmentNotes: '', actionTaken: '' })
@@ -25,7 +25,7 @@ export default function WelfareCheckForm({ suId, onSaved }: { suId: string; onSa
         <label htmlFor="envok" className="text-sm text-slate-700">Environment is satisfactory (temperature, comfort)</label>
       </div>
       {!form.environmentOk && <Input label="Environment concerns" value={form.environmentNotes} onChange={e => set('environmentNotes', e.target.value)} placeholder="Describe the concern..." />}
-      <div><label className="label">Action taken (if any)</label><textarea className="input" rows={2} value={form.actionTaken} onChange={e => set('actionTaken', e.target.value)} /></div>
+      <SpeechTextarea label="Action taken (if any)" rows={2} value={form.actionTaken} onChange={v => set('actionTaken', v)} />
       <Button type="submit" loading={loading} className="w-full">Save check</Button>
     </form>
   )

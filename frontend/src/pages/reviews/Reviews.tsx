@@ -3,7 +3,7 @@ import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton, SpeechTextarea } from '../../components/ui'
 import { FileText, Plus, Trash2, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -308,10 +308,10 @@ function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClo
           <Input label="Review date *" type="date" required value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         </div>
         <Input label="Attendees" value={form.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." />
-        <div><label className="label">Summary *</label><textarea required className="input" rows={4} value={form.summary} onChange={e => set('summary', e.target.value)} placeholder="Summary of the review, key discussion points..." /></div>
-        <div><label className="label">Resident's feedback / views</label><textarea className="input" rows={3} value={form.residentFeedback} onChange={e => set('residentFeedback', e.target.value)} placeholder="What did the resident say about their care..." /></div>
-        <div><label className="label">Family / advocate feedback</label><textarea className="input" rows={3} value={form.familyFeedback} onChange={e => set('familyFeedback', e.target.value)} placeholder="Feedback from family members or advocates..." /></div>
-        <div><label className="label">Outcomes & action points</label><textarea className="input" rows={3} value={form.outcomes} onChange={e => set('outcomes', e.target.value)} placeholder="What was agreed, changes to be made..." /></div>
+        <SpeechTextarea required label="Summary *" rows={4} value={form.summary} onChange={v => set('summary', v)} placeholder="Summary of the review, key discussion points..." />
+        <SpeechTextarea label="Resident's feedback / views" rows={3} value={form.residentFeedback} onChange={v => set('residentFeedback', v)} placeholder="What did the resident say about their care..." />
+        <SpeechTextarea label="Family / advocate feedback" rows={3} value={form.familyFeedback} onChange={v => set('familyFeedback', v)} placeholder="Feedback from family members or advocates..." />
+        <SpeechTextarea label="Outcomes & action points" rows={3} value={form.outcomes} onChange={v => set('outcomes', v)} placeholder="What was agreed, changes to be made..." />
         <Input label="Next review date" type="date" value={form.nextReviewDate} onChange={e => set('nextReviewDate', e.target.value)} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, SpeechTextarea } from '../../components/ui'
 import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -510,12 +510,9 @@ export default function RiskManagement() {
               {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Update Notes *</label>
-            <textarea className="input w-full" rows={4}
-              placeholder="Describe what has changed, any new information, actions taken, review outcome..."
-              value={updateNotes} onChange={e => setUpdateNotes(e.target.value)} />
-          </div>
+          <SpeechTextarea label="Update Notes *" required className="w-full" rows={4}
+            placeholder="Describe what has changed, any new information, actions taken, review outcome..."
+            value={updateNotes} onChange={v => setUpdateNotes(v)} />
           <div className="flex gap-3 justify-end">
             <Button variant="outline" onClick={() => setUpdateNotesItem(null)}>Cancel</Button>
             <Button loading={saving} onClick={handleAddUpdate} icon={<Check className="w-4 h-4" />}>Save Update</Button>
@@ -556,52 +553,31 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
           <option value="yearly">Yearly</option>
         </select>
       </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">What is the risk</label>
-        <textarea className="input w-full" rows={2} placeholder="Brief overview of the risk..."
-          value={form.description} onChange={e => setF('description', e.target.value)} />
-      </div>
+      <SpeechTextarea label="What is the risk" className="w-full" rows={2} placeholder="Brief overview of the risk..."
+        value={form.description} onChange={v => setF('description', v)} />
       <div>
         <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Rating</label>
         <select className="input w-full" value={form.riskRating} onChange={e => { setF('riskRating', e.target.value); setF('currentRiskLevel', e.target.value) }}>
           {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
       </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Historical Context</label>
-        <textarea className="input w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
-          value={form.historicalContext} onChange={e => setF('historicalContext', e.target.value)} />
-      </div>
+      <SpeechTextarea label="Historical Context" className="w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
+        value={form.historicalContext} onChange={v => setF('historicalContext', v)} />
       <div>
         <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk</label>
         <input className="input w-full" placeholder="e.g. Service user, staff, visitors"
           value={form.whoIsAtRisk} onChange={e => setF('whoIsAtRisk', e.target.value)} />
       </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">What could happen</label>
-        <textarea className="input w-full" rows={2} placeholder="Describe the potential harm or consequence..."
-          value={form.whatCouldHappen} onChange={e => setF('whatCouldHappen', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Triggers</label>
-        <textarea className="input w-full" rows={2} placeholder="What situations or behaviours trigger this risk..."
-          value={form.triggers} onChange={e => setF('triggers', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Protective Factors</label>
-        <textarea className="input w-full" rows={2} placeholder="What reduces or protects against this risk..."
-          value={form.protectiveFactors} onChange={e => setF('protectiveFactors', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Management Plan</label>
-        <textarea className="input w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
-          value={form.managementPlan} onChange={e => setF('managementPlan', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk before intervention?</label>
-        <textarea className="input w-full" rows={2} placeholder="Describe the risk before any intervention..."
-          value={form.riskBeforeIntervention} onChange={e => setF('riskBeforeIntervention', e.target.value)} />
-      </div>
+      <SpeechTextarea label="What could happen" className="w-full" rows={2} placeholder="Describe the potential harm or consequence..."
+        value={form.whatCouldHappen} onChange={v => setF('whatCouldHappen', v)} />
+      <SpeechTextarea label="Triggers" className="w-full" rows={2} placeholder="What situations or behaviours trigger this risk..."
+        value={form.triggers} onChange={v => setF('triggers', v)} />
+      <SpeechTextarea label="Protective Factors" className="w-full" rows={2} placeholder="What reduces or protects against this risk..."
+        value={form.protectiveFactors} onChange={v => setF('protectiveFactors', v)} />
+      <SpeechTextarea label="Risk Management Plan" className="w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
+        value={form.managementPlan} onChange={v => setF('managementPlan', v)} />
+      <SpeechTextarea label="Risk before intervention?" className="w-full" rows={2} placeholder="Describe the risk before any intervention..."
+        value={form.riskBeforeIntervention} onChange={v => setF('riskBeforeIntervention', v)} />
       <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
         <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Risk Rating</p>
         {RISK_SCORE_OPTIONS.map(opt => (
@@ -619,11 +595,8 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
         <input type="number" className="input w-full" placeholder="Enter numeric score..."
           value={form.riskScore} onChange={e => setF('riskScore', e.target.value)} />
       </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Evaluation of risk?</label>
-        <textarea className="input w-full" rows={2} placeholder="Your evaluation of the overall risk..."
-          value={form.evaluationOfRisk} onChange={e => setF('evaluationOfRisk', e.target.value)} />
-      </div>
+      <SpeechTextarea label="Evaluation of risk?" className="w-full" rows={2} placeholder="Your evaluation of the overall risk..."
+        value={form.evaluationOfRisk} onChange={v => setF('evaluationOfRisk', v)} />
       <div>
         <label className="text-xs font-semibold text-slate-600 block mb-1">Is the level of risk identified acceptable?</label>
         <select className="input w-full" value={form.riskAcceptable} onChange={e => setF('riskAcceptable', e.target.value)}>
@@ -633,11 +606,8 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
           <option value="with_controls">Yes with controls in place</option>
         </select>
       </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk occurring following control measures</label>
-        <textarea className="input w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
-          value={form.riskAfterControls} onChange={e => setF('riskAfterControls', e.target.value)} />
-      </div>
+      <SpeechTextarea label="Risk occurring following control measures" className="w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
+        value={form.riskAfterControls} onChange={v => setF('riskAfterControls', v)} />
       <div className="flex gap-3 justify-end pt-2">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button loading={saving} onClick={onSave} icon={<Check className="w-4 h-4" />}>

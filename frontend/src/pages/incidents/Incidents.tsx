@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
-import { Spinner, EmptyState, Button, PrintButton, Modal } from '../../components/ui'
+import { Spinner, EmptyState, Button, PrintButton, Modal, SpeechTextarea } from '../../components/ui'
 import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -438,12 +438,10 @@ export default function Incidents() {
               <input className="input w-full" placeholder="Names of anyone present" value={createForm.witnesses} onChange={e => setCreateForm(f => ({ ...f, witnesses: e.target.value }))} />
             </div>
             <div className="col-span-2">
-              <label className="label">Description / What happened *</label>
-              <textarea className="input w-full" rows={3} placeholder="Describe what happened..." value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} required />
+              <SpeechTextarea required label="Description / What happened *" rows={3} placeholder="Describe what happened..." value={createForm.description} onChange={v => setCreateForm(f => ({ ...f, description: v }))} />
             </div>
             <div className="col-span-2">
-              <label className="label">Immediate action taken</label>
-              <textarea className="input w-full" rows={2} placeholder="What was done immediately after the incident..." value={createForm.immediateAction} onChange={e => setCreateForm(f => ({ ...f, immediateAction: e.target.value }))} />
+              <SpeechTextarea label="Immediate action taken" rows={2} placeholder="What was done immediately after the incident..." value={createForm.immediateAction} onChange={v => setCreateForm(f => ({ ...f, immediateAction: v }))} />
             </div>
             <div className="col-span-2 flex flex-wrap gap-6">
               <label className="flex items-center gap-2 cursor-pointer">

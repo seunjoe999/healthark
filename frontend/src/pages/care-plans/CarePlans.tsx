@@ -3,7 +3,7 @@ import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
          History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -188,7 +188,7 @@ function TemplateFields({ planType, data, onChange }: { planType: string; data: 
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
           <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Support</p>
           <YesNoRow label="I require support with my oral hygiene" value={tv('requiresSupport')} onChange={v => set('requiresSupport', v)} />
-          <div className="mt-3"><label className="label">Details</label><textarea className="input w-full" rows={3} value={tv('supportDetails')} onChange={e => set('supportDetails', e.target.value)} /></div>
+          <div className="mt-3"><SpeechTextarea label="Details" className="w-full" rows={3} value={tv('supportDetails')} onChange={v => set('supportDetails', v)} /></div>
         </div>
       </div>
     )
@@ -198,10 +198,7 @@ function TemplateFields({ planType, data, onChange }: { planType: string; data: 
     return (
       <div className="space-y-3">
         {AUTISM_SECTIONS.map(s => (
-          <div key={s.key}>
-            <label className="label font-semibold">{s.label}</label>
-            <textarea className="input w-full text-sm" rows={4} value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
-          </div>
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
         ))}
       </div>
     )
@@ -211,10 +208,7 @@ function TemplateFields({ planType, data, onChange }: { planType: string; data: 
     return (
       <div className="space-y-3">
         {ADHD_SECTIONS.map(s => (
-          <div key={s.key}>
-            <label className="label font-semibold">{s.label}</label>
-            <textarea className="input w-full text-sm" rows={3} value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
-          </div>
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
         ))}
       </div>
     )
@@ -235,10 +229,7 @@ function TemplateFields({ planType, data, onChange }: { planType: string; data: 
           </div>
         </div>
         {MONTHLY_BODY_SECTIONS.map(s => (
-          <div key={s.key}>
-            <label className="label font-semibold">{s.label}</label>
-            <textarea className="input w-full text-sm" rows={3} value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
-          </div>
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
         ))}
       </div>
     )
@@ -1219,8 +1210,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
                   </label>
                 </div>
                 <div>
-                  <label className="label">Level of Support Required</label>
-                  <textarea className="input w-full" rows={2} value={form.levelOfSupport} onChange={e => set('levelOfSupport', e.target.value)} />
+                  <SpeechTextarea label="Level of Support Required" className="w-full" rows={2} value={form.levelOfSupport} onChange={v => set('levelOfSupport', v)} />
                 </div>
               </div>
             </div>
@@ -1240,14 +1230,14 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
               <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">OTHER INFORMATION</p>
               <div className="space-y-3">
-                <div><label className="label">My Aims / Outcomes</label><textarea className="input w-full" rows={2} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
-                <div><label className="label">What I Can Do</label><textarea className="input w-full" rows={2} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
-                <div><label className="label">What You Can Do To Support Me</label><textarea className="input w-full" rows={2} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} /></div>
-                <div><label className="label">My Regular Medications</label><textarea className="input w-full" rows={3} value={form.regularMedications} onChange={e => set('regularMedications', e.target.value)} placeholder="List each medication, dose, frequency and purpose..." /></div>
-                <div><label className="label">My PRN Medications</label><textarea className="input w-full" rows={2} value={form.prnMedications} onChange={e => set('prnMedications', e.target.value)} /></div>
-                <div><label className="label">Over-The-Counter Medications (OTC)</label><textarea className="input w-full" rows={2} value={form.otcMedications} onChange={e => set('otcMedications', e.target.value)} /></div>
-                <div><label className="label">PRN List (name, dose, max daily dose)</label><textarea className="input w-full" rows={2} value={form.prnList} onChange={e => set('prnList', e.target.value)} placeholder="e.g. Paracetamol 500mg – max 4 times/day" /></div>
-                <div><label className="label">Indication for Use</label><textarea className="input w-full" rows={2} value={form.indicationForUse} onChange={e => set('indicationForUse', e.target.value)} placeholder="When should PRN medications be given and why?" /></div>
+                <SpeechTextarea label="My Aims / Outcomes" className="w-full" rows={2} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
+                <SpeechTextarea label="What I Can Do" className="w-full" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
+                <SpeechTextarea label="What You Can Do To Support Me" className="w-full" rows={2} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
+                <SpeechTextarea label="My Regular Medications" className="w-full" rows={3} value={form.regularMedications} onChange={v => set('regularMedications', v)} placeholder="List each medication, dose, frequency and purpose..." />
+                <SpeechTextarea label="My PRN Medications" className="w-full" rows={2} value={form.prnMedications} onChange={v => set('prnMedications', v)} />
+                <SpeechTextarea label="Over-The-Counter Medications (OTC)" className="w-full" rows={2} value={form.otcMedications} onChange={v => set('otcMedications', v)} />
+                <SpeechTextarea label="PRN List (name, dose, max daily dose)" className="w-full" rows={2} value={form.prnList} onChange={v => set('prnList', v)} placeholder="e.g. Paracetamol 500mg – max 4 times/day" />
+                <SpeechTextarea label="Indication for Use" className="w-full" rows={2} value={form.indicationForUse} onChange={v => set('indicationForUse', v)} placeholder="When should PRN medications be given and why?" />
               </div>
             </div>
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-100">
@@ -1266,29 +1256,26 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
                   { key: 'prnSpecial', label: 'Special Considerations', ph: 'Allergies, interactions, specific timing restrictions...' },
                   { key: 'prnTraining', label: 'Staff Training Requirements', ph: 'Any specific training needed to administer this PRN?' },
                 ].map(({ key, label, ph }) => (
-                  <div key={key}>
-                    <label className="label">{label}</label>
-                    <textarea className="input w-full" rows={2} value={form.templateData?.[key] || ''}
-                      onChange={e => set('templateData', { ...form.templateData, [key]: e.target.value })}
-                      placeholder={ph} />
-                  </div>
+                  <SpeechTextarea key={key} label={label} className="w-full" rows={2} value={form.templateData?.[key] || ''}
+                    onChange={v => set('templateData', { ...form.templateData, [key]: v })}
+                    placeholder={ph} />
                 ))}
-                <div><label className="label">General PRN Protocol Notes</label><textarea className="input w-full" rows={3} value={form.prnProtocol} onChange={e => set('prnProtocol', e.target.value)} placeholder="Any additional protocol information or overarching guidance..." /></div>
+                <SpeechTextarea label="General PRN Protocol Notes" className="w-full" rows={3} value={form.prnProtocol} onChange={v => set('prnProtocol', v)} placeholder="Any additional protocol information or overarching guidance..." />
               </div>
             </div>
           </>
         ) : isTemplated ? (
           <>
             {(form.planType === 'autism' || form.planType === 'adhd') && (
-              <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} placeholder="List the aims and outcomes for this person..." /></div>
+              <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
             <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} />
           </>
         ) : (
           <>
-            <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} placeholder="What are we working towards for this person..." /></div>
-            <div><label className="label">What I can do independently</label><textarea className="input" rows={3} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} placeholder="The person's strengths and capabilities..." /></div>
-            <div><label className="label">How you can support me</label><textarea className="input" rows={3} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} placeholder="Specific guidance for staff supporting this person..." /></div>
+            <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="What are we working towards for this person..." />
+            <SpeechTextarea label="What I can do independently" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} placeholder="The person's strengths and capabilities..." />
+            <SpeechTextarea label="How you can support me" rows={3} value={form.howToSupport} onChange={v => set('howToSupport', v)} placeholder="Specific guidance for staff supporting this person..." />
           </>
         )}
 
@@ -1296,7 +1283,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
 
         <div>
           <label className="label flex items-center gap-1"><Paperclip className="w-3.5 h-3.5" /> Attachments / document links</label>
-          <textarea className="input" rows={2} value={form.attachmentsNotes} onChange={e => set('attachmentsNotes', e.target.value)} placeholder="Paste document links or note attachment references..." />
+          <SpeechTextarea rows={2} value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} placeholder="Paste document links or note attachment references..." />
         </div>
 
         <div className="flex gap-3 justify-end pt-2">
@@ -1357,16 +1344,16 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
       <form onSubmit={save} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
         {isMedPlan ? (
           <>
-            <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
-            <div><label className="label">What I can do</label><textarea className="input" rows={2} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
-            <div><label className="label">How to support me</label><textarea className="input" rows={2} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} /></div>
+            <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
+            <SpeechTextarea label="What I can do" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
+            <SpeechTextarea label="How to support me" rows={2} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-100 space-y-3">
               <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">Medications</p>
-              <div><label className="label">Regular Medications</label><textarea className="input w-full" rows={2} value={form.regularMedications} onChange={e => set('regularMedications', e.target.value)} /></div>
-              <div><label className="label">PRN Medications</label><textarea className="input w-full" rows={2} value={form.prnMedications} onChange={e => set('prnMedications', e.target.value)} /></div>
-              <div><label className="label">OTC Medications</label><textarea className="input w-full" rows={2} value={form.otcMedications} onChange={e => set('otcMedications', e.target.value)} /></div>
-              <div><label className="label">PRN List</label><textarea className="input w-full" rows={2} value={form.prnList} onChange={e => set('prnList', e.target.value)} /></div>
-              <div><label className="label">Indication for Use</label><textarea className="input w-full" rows={2} value={form.indicationForUse} onChange={e => set('indicationForUse', e.target.value)} /></div>
+              <SpeechTextarea label="Regular Medications" className="w-full" rows={2} value={form.regularMedications} onChange={v => set('regularMedications', v)} />
+              <SpeechTextarea label="PRN Medications" className="w-full" rows={2} value={form.prnMedications} onChange={v => set('prnMedications', v)} />
+              <SpeechTextarea label="OTC Medications" className="w-full" rows={2} value={form.otcMedications} onChange={v => set('otcMedications', v)} />
+              <SpeechTextarea label="PRN List" className="w-full" rows={2} value={form.prnList} onChange={v => set('prnList', v)} />
+              <SpeechTextarea label="Indication for Use" className="w-full" rows={2} value={form.indicationForUse} onChange={v => set('indicationForUse', v)} />
             </div>
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 space-y-3">
               <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">PRN Medication Protocol</p>
@@ -1382,43 +1369,40 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
                 { key: 'prnSpecial', label: 'Special Considerations' },
                 { key: 'prnTraining', label: 'Staff Training Requirements' },
               ].map(({ key, label }) => (
-                <div key={key}>
-                  <label className="label">{label}</label>
-                  <textarea className="input w-full" rows={2} value={form.templateData?.[key] || ''}
-                    onChange={e => set('templateData', { ...form.templateData, [key]: e.target.value })} />
-                </div>
+                <SpeechTextarea key={key} label={label} className="w-full" rows={2} value={form.templateData?.[key] || ''}
+                  onChange={v => set('templateData', { ...form.templateData, [key]: v })} />
               ))}
-              <div><label className="label">General PRN Protocol Notes</label><textarea className="input w-full" rows={3} value={form.prnProtocol} onChange={e => set('prnProtocol', e.target.value)} /></div>
+              <SpeechTextarea label="General PRN Protocol Notes" className="w-full" rows={3} value={form.prnProtocol} onChange={v => set('prnProtocol', v)} />
             </div>
           </>
         ) : isTemplated ? (
           <>
             {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && (
-              <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
+              <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
             <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} />
           </>
         ) : (
           <>
-            <div><label className="label">My aims & outcomes</label><textarea className="input" rows={3} value={form.aimsOutcomes} onChange={e => set('aimsOutcomes', e.target.value)} /></div>
-            <div><label className="label">What I can do</label><textarea className="input" rows={3} value={form.whatICanDo} onChange={e => set('whatICanDo', e.target.value)} /></div>
-            <div><label className="label">How to support me</label><textarea className="input" rows={3} value={form.howToSupport} onChange={e => set('howToSupport', e.target.value)} /></div>
+            <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
+            <SpeechTextarea label="What I can do" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
+            <SpeechTextarea label="How to support me" rows={3} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
           </>
         )}
         <Select label="Outcome achieved" value={form.outcomeAchieved} onChange={e => set('outcomeAchieved', e.target.value)} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
         <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
-        <div><label className="label">Review notes (what changed and why)</label><textarea className="input" rows={3} value={form.updateNotes} onChange={e => set('updateNotes', e.target.value)} /></div>
+        <SpeechTextarea label="Review notes (what changed and why)" rows={3} value={form.updateNotes} onChange={v => set('updateNotes', v)} />
 
         <div>
           <label className="label flex items-center gap-1"><Paperclip className="w-3.5 h-3.5" /> Attachments / document links</label>
-          <textarea className="input" rows={2} value={form.attachmentsNotes} onChange={e => set('attachmentsNotes', e.target.value)} placeholder="Paste document links or note attachment references..." />
+          <SpeechTextarea rows={2} value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} placeholder="Paste document links or note attachment references..." />
         </div>
 
         {/* Consent section */}
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
           <h4 className="font-semibold text-blue-800 text-sm mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Consent</h4>
           <div className="space-y-3">
-            <div><label className="label">Consent notes</label><textarea className="input" rows={2} value={form.consentNotes} onChange={e => set('consentNotes', e.target.value)} placeholder="Describe what the service user or representative has consented to..." /></div>
+            <SpeechTextarea label="Consent notes" rows={2} value={form.consentNotes} onChange={v => set('consentNotes', v)} placeholder="Describe what the service user or representative has consented to..." />
             <div className="flex gap-4 items-center flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.consentGiven} onChange={e => set('consentGiven', e.target.checked)} className="w-4 h-4 rounded" />
@@ -1477,3 +1461,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
     </Modal>
   )
 }
+
+
+
+

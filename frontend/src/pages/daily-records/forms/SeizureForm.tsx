@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import api from '../../../api'
-import { Button, Input, Select } from '../../../components/ui'
+import { Button, Input, Select, SpeechTextarea } from '../../../components/ui'
 import { Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -66,23 +66,14 @@ export default function SeizureForm({ suId, onSaved }: { suId: string; onSaved: 
         <Input label="Recovery time (minutes)" type="number" placeholder="e.g. 5" value={form.recoveryTime} onChange={e => set('recoveryTime', e.target.value)} />
       </div>
 
-      <div>
-        <label className="label">Description of episode</label>
-        <textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)}
-          placeholder="Describe what happened, movements, loss of consciousness..." />
-      </div>
+      <SpeechTextarea label="Description of episode" rows={3} value={form.description} onChange={v => set('description', v)}
+        placeholder="Describe what happened, movements, loss of consciousness..." />
 
-      <div>
-        <label className="label">Action taken</label>
-        <textarea className="input" rows={2} value={form.action} onChange={e => set('action', e.target.value)}
-          placeholder="e.g. Positioned on side, timed episode, called for assistance..." />
-      </div>
+      <SpeechTextarea label="Action taken" rows={2} value={form.action} onChange={v => set('action', v)}
+        placeholder="e.g. Positioned on side, timed episode, called for assistance..." />
 
-      <div>
-        <label className="label">Post-ictal state</label>
-        <textarea className="input" rows={2} value={form.postIctal} onChange={e => set('postIctal', e.target.value)}
-          placeholder="e.g. Drowsy, confused, sleeping..." />
-      </div>
+      <SpeechTextarea label="Post-ictal state" rows={2} value={form.postIctal} onChange={v => set('postIctal', v)}
+        placeholder="e.g. Drowsy, confused, sleeping..." />
 
       <div className="flex gap-6">
         <label className="flex items-center gap-2 cursor-pointer">

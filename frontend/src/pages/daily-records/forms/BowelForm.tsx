@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
-import { Button, Select, Input } from '../../../components/ui'
+import { Button, Select, Input, SpeechTextarea } from '../../../components/ui'
 
 const BRISTOL = [
   { value: '1', label: 'Type 1 — Separate hard lumps (very constipated)' },
@@ -35,10 +35,7 @@ export default function BowelForm({ suId, onSaved }: { suId: string; onSaved: ()
         <Select label="Colour" value={form.colour} onChange={e => set('colour', e.target.value)}
           options={[{ value: 'brown', label: 'Brown' }, { value: 'yellow', label: 'Yellow' }, { value: 'green', label: 'Green' }, { value: 'black', label: 'Black' }, { value: 'red', label: 'Red' }, { value: 'pale', label: 'Pale' }]} placeholder="Select colour" />
       </div>
-      <div>
-        <label className="label">Additional notes (optional)</label>
-        <textarea className="input" rows={2} value={form.consistencyNotes} onChange={e => set('consistencyNotes', e.target.value)} placeholder="Any other observations..." />
-      </div>
+      <SpeechTextarea label="Additional notes (optional)" rows={2} value={form.consistencyNotes} onChange={v => set('consistencyNotes', v)} placeholder="Any other observations..." />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="lax" checked={form.laxativeGiven} onChange={e => set('laxativeGiven', e.target.checked)} className="rounded" />
         <label htmlFor="lax" className="text-sm text-slate-700">Laxative given today</label>

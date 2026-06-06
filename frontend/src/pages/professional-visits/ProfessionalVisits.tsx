@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Stethoscope, Plus, CalendarClock, CheckCircle2, Pencil } from 'lucide-react'
-import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
+import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import { format, isPast, parseISO } from 'date-fns'
@@ -237,18 +237,12 @@ export default function ProfessionalVisits() {
 
       <Modal open={!!editVisit} onClose={() => setEditVisit(null)} title="Update Visit Outcome" size="md">
         <form onSubmit={handleEditSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Outcome / Findings</label>
-            <textarea className="input" rows={3} value={editForm.outcome}
-              onChange={e => setEditForm(f => ({ ...f, outcome: e.target.value }))}
-              placeholder="What was found / decided?" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Instructions left</label>
-            <textarea className="input" rows={2} value={editForm.instructionsLeft}
-              onChange={e => setEditForm(f => ({ ...f, instructionsLeft: e.target.value }))}
-              placeholder="Any instructions for care team..." />
-          </div>
+          <SpeechTextarea label="Outcome / Findings" rows={3} value={editForm.outcome}
+            onChange={v => setEditForm(f => ({ ...f, outcome: v }))}
+            placeholder="What was found / decided?" />
+          <SpeechTextarea label="Instructions left" rows={2} value={editForm.instructionsLeft}
+            onChange={v => setEditForm(f => ({ ...f, instructionsLeft: v }))}
+            placeholder="Any instructions for care team..." />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Follow-up date" type="date" value={editForm.followUpDate}
               onChange={e => setEditForm(f => ({ ...f, followUpDate: e.target.value }))} />
@@ -277,18 +271,9 @@ export default function ProfessionalVisits() {
             <Input label="Professional Name" value={form.professionalName} onChange={e => setForm(f => ({ ...f, professionalName: e.target.value }))} placeholder="e.g. Dr. Smith" />
           </div>
           <Input label="Organisation / Practice" value={form.organisation} onChange={e => setForm(f => ({ ...f, organisation: e.target.value }))} placeholder="e.g. Riverside Medical Practice" />
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Reason for visit</label>
-            <textarea className="input" rows={2} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Why did they visit?" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Outcome / Findings</label>
-            <textarea className="input" rows={2} value={form.outcome} onChange={e => setForm(f => ({ ...f, outcome: e.target.value }))} placeholder="What was found / decided?" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Instructions left</label>
-            <textarea className="input" rows={2} value={form.instructionsLeft} onChange={e => setForm(f => ({ ...f, instructionsLeft: e.target.value }))} placeholder="Any instructions for care team..." />
-          </div>
+          <SpeechTextarea label="Reason for visit" rows={2} value={form.reason} onChange={v => setForm(f => ({ ...f, reason: v }))} placeholder="Why did they visit?" />
+          <SpeechTextarea label="Outcome / Findings" rows={2} value={form.outcome} onChange={v => setForm(f => ({ ...f, outcome: v }))} placeholder="What was found / decided?" />
+          <SpeechTextarea label="Instructions left" rows={2} value={form.instructionsLeft} onChange={v => setForm(f => ({ ...f, instructionsLeft: v }))} placeholder="Any instructions for care team..." />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Follow-up date (if needed)" type="date" value={form.followUpDate} onChange={e => setForm(f => ({ ...f, followUpDate: e.target.value }))} />
             <div>

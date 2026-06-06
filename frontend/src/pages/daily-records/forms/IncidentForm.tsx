@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
-import { Button, Input, Select, Toggle } from '../../../components/ui'
+import { Button, Input, Select, Toggle, SpeechTextarea } from '../../../components/ui'
 import { AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -103,12 +103,8 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
         <Input label="Location" value={form.location} onChange={e => set('location', e.target.value)} placeholder="e.g. Bedroom, Lounge, Garden..." />
       </div>
 
-      <div>
-        <label className="label">Incident description *</label>
-        <textarea required className="input" rows={4} value={form.description}
-          onChange={e => set('description', e.target.value)}
-          placeholder="Describe exactly what happened, in your own words. Be factual and accurate..." />
-      </div>
+      <SpeechTextarea required label="Incident description *" rows={4} value={form.description} onChange={v => set('description', v)}
+        placeholder="Describe exactly what happened, in your own words. Be factual and accurate..." />
 
       <Input label="Witness names" value={form.witnesses} onChange={e => set('witnesses', e.target.value)}
         placeholder="Names of anyone who witnessed the incident" />
@@ -117,52 +113,32 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
         <Toggle label="Medical attention required" checked={form.medicalAttentionRequired}
           onChange={v => set('medicalAttentionRequired', v)} description="Was first aid or medical treatment given?" />
         {form.medicalAttentionRequired && (
-          <div>
-            <label className="label">Medical attention details</label>
-            <textarea className="input" rows={2} value={form.medicalDetails}
-              onChange={e => set('medicalDetails', e.target.value)}
-              placeholder="What treatment was given and by whom?" />
-          </div>
+          <SpeechTextarea label="Medical attention details" rows={2} value={form.medicalDetails} onChange={v => set('medicalDetails', v)}
+            placeholder="What treatment was given and by whom?" />
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="label">Injury details</label>
-          <textarea className="input" rows={2} value={form.injuryDetails}
-            onChange={e => set('injuryDetails', e.target.value)}
-            placeholder="Describe any injuries sustained..." />
-        </div>
+        <SpeechTextarea label="Injury details" rows={2} value={form.injuryDetails} onChange={v => set('injuryDetails', v)}
+          placeholder="Describe any injuries sustained..." />
         <Select label="Injured body part" value={form.injuredBodyPart}
           onChange={e => set('injuredBodyPart', e.target.value)}
           options={BODY_PARTS.map(b => ({ value: b.toLowerCase(), label: b }))}
           placeholder="Select if applicable" />
       </div>
 
-      <div>
-        <label className="label">Immediate actions taken</label>
-        <textarea className="input" rows={3} value={form.immediateActions}
-          onChange={e => set('immediateActions', e.target.value)}
-          placeholder="What did you do immediately after the incident?" />
-      </div>
+      <SpeechTextarea label="Immediate actions taken" rows={3} value={form.immediateActions} onChange={v => set('immediateActions', v)}
+        placeholder="What did you do immediately after the incident?" />
 
       <Input label="Outside agencies contacted" value={form.agenciesContacted}
         onChange={e => set('agenciesContacted', e.target.value)}
         placeholder="e.g. Ambulance, Police, Social Services, GP..." />
 
-      <div>
-        <label className="label">Lessons learned</label>
-        <textarea className="input" rows={2} value={form.lessonsLearned}
-          onChange={e => set('lessonsLearned', e.target.value)}
-          placeholder="What can be learned from this incident?" />
-      </div>
+      <SpeechTextarea label="Lessons learned" rows={2} value={form.lessonsLearned} onChange={v => set('lessonsLearned', v)}
+        placeholder="What can be learned from this incident?" />
 
-      <div>
-        <label className="label">Prevention measures</label>
-        <textarea className="input" rows={2} value={form.preventionMeasures}
-          onChange={e => set('preventionMeasures', e.target.value)}
-          placeholder="What actions will be taken to prevent this happening again?" />
-      </div>
+      <SpeechTextarea label="Prevention measures" rows={2} value={form.preventionMeasures} onChange={v => set('preventionMeasures', v)}
+        placeholder="What actions will be taken to prevent this happening again?" />
 
       <div className="space-y-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
         <Toggle label="Reported to management" checked={form.reportedToManagement}
@@ -180,23 +156,15 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
           onChange={v => set('cqcNotified', v)}
           description="Was the Care Quality Commission notified of this incident?" />
         {!form.cqcNotified && (
-          <div>
-            <label className="label">Reason CQC was not notified</label>
-            <textarea className="input" rows={2} value={form.cqcNotNotifiedReason}
-              onChange={e => set('cqcNotNotifiedReason', e.target.value)}
-              placeholder="State why CQC notification was not required or not made..." />
-          </div>
+          <SpeechTextarea label="Reason CQC was not notified" rows={2} value={form.cqcNotNotifiedReason} onChange={v => set('cqcNotNotifiedReason', v)}
+            placeholder="State why CQC notification was not required or not made..." />
         )}
         <Toggle label="Family / next of kin notified" checked={form.familyNotified}
           onChange={v => set('familyNotified', v)}
           description="Was the service user's family or next of kin informed?" />
         {!form.familyNotified && (
-          <div>
-            <label className="label">Reason family was not notified</label>
-            <textarea className="input" rows={2} value={form.familyNotNotifiedReason}
-              onChange={e => set('familyNotNotifiedReason', e.target.value)}
-              placeholder="State why family notification was not made..." />
-          </div>
+          <SpeechTextarea label="Reason family was not notified" rows={2} value={form.familyNotNotifiedReason} onChange={v => set('familyNotNotifiedReason', v)}
+            placeholder="State why family notification was not made..." />
         )}
       </div>
 

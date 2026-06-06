@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Thermometer, Plus, AlertTriangle, TrendingUp, Activity } from 'lucide-react'
-import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
+import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
@@ -337,10 +337,7 @@ export default function Observations() {
           {showGlucose && (
             <Input label="Blood Glucose (mmol/L)" type="number" step="0.1" placeholder="e.g. 5.4" value={form.bloodGlucose} onChange={e => setForm(f => ({ ...f, bloodGlucose: e.target.value }))} />
           )}
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1.5">Notes</label>
-            <textarea className="input" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any relevant notes..." />
-          </div>
+          <SpeechTextarea label="Notes" rows={2} value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} placeholder="Any relevant notes..." />
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
             <Button type="submit" variant="gold" loading={submitting}>Save Observation</Button>

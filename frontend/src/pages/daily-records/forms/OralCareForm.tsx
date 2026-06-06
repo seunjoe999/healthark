@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
-import { Button, Select } from '../../../components/ui'
+import { Button, Select, SpeechTextarea } from '../../../components/ui'
 
 const CARE_TYPES = ['Teeth brushed', 'Dentures cleaned', 'Mouthwash', 'Oral swab']
 
@@ -41,7 +41,7 @@ export default function OralCareForm({ suId, onSaved }: { suId: string; onSaved:
         <Select label="Denture type" value={form.dentureType} onChange={e => setForm(p => ({ ...p, dentureType: e.target.value }))}
           options={[{ value: 'upper', label: 'Upper' }, { value: 'lower', label: 'Lower' }, { value: 'full', label: 'Full' }]} placeholder="Select type" />
       )}
-      <div><label className="label">Notes</label><textarea className="input" rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
+      <SpeechTextarea label="Notes" rows={2} value={form.notes} onChange={v => setForm(p => ({ ...p, notes: v }))} />
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>
   )
