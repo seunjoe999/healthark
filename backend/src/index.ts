@@ -34,6 +34,9 @@ import publicRoutes from './routes/public.routes';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
 
+// Trust Render's reverse proxy so req.ip is the real client IP (not the proxy IP)
+app.set('trust proxy', 1);
+
 // â”€â”€ Security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -66,8 +69,8 @@ app.use(cors({
 }));
 
 // â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.use('/api', rateLimit({ windowMs: 900000, max: 500, standardHeaders: true, legacyHeaders: false }));
-app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 10, standardHeaders: true, legacyHeaders: false }));
+app.use('/api', rateLimit({ windowMs: 900000, max: 1000, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 50, standardHeaders: true, legacyHeaders: false }));
 
 // â”€â”€ General middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(compression());
