@@ -23,11 +23,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const filterCol = type === 'sent' ? 'm.sender_id' : 'm.recipient_id';
     const rows = await query(`
       SELECT m.*,
-             s.first_name || ' ' || s.last_name AS sender_name,
-             r.first_name || ' ' || r.last_name AS recipient_name
+             COALESCE(s.first_name || ' ' || s.last_name, 'Deleted User') AS sender_name,
+             COALESCE(r.first_name || ' ' || r.last_name, 'Deleted User') AS recipient_name
       FROM staff_messages m
-      JOIN staff s ON s.id = m.sender_id
-      JOIN staff r ON r.id = m.recipient_id
+      LEFT JOIN staff s ON s.id = m.sender_id
+      LEFT JOIN staff r ON r.id = m.recipient_id
       WHERE ${filterCol} = $1
       ORDER BY m.created_at DESC
       LIMIT 100`, [staffId]);

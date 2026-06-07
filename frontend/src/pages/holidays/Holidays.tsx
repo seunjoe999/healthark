@@ -281,10 +281,14 @@ export default function Holidays() {
         </div>
       ) : (
         <div className="space-y-3">
-          {leaves.length === 0 ? (
-            <EmptyState title="No leave requests this month" description="All leave requests will appear here"
-              action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Request leave</Button>} />
-          ) : leaves.map((l: any) => (
+          {(() => {
+            const canSeeAll = isRole('home_manager','group_admin','senior_carer','deputy_manager','admin')
+            const displayLeaves = canSeeAll ? leaves : leaves.filter(l => l.staff_id === user?.id)
+            if (displayLeaves.length === 0) return (
+              <EmptyState title="No leave requests this month" description="All leave requests will appear here"
+                action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Request leave</Button>} />
+            )
+            return displayLeaves.map((l: any) => (
             <div key={l.id} className={`bg-white rounded-2xl border shadow-card p-5 flex items-start justify-between gap-4 ${
               l.status === 'approved' ? 'border-emerald-200' : l.status === 'declined' ? 'border-rose-200' : 'border-amber-200'
             }`}>
@@ -321,7 +325,8 @@ export default function Holidays() {
                 )}
               </div>
             </div>
-          ))}
+          ))
+          })()}
         </div>
       )}
 

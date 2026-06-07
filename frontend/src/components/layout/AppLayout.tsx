@@ -34,7 +34,6 @@ const navSections = [
       { label: 'Medication Stock',                 to: '/medication-stock',    icon: Boxes,         roles: ['home_manager','group_admin','senior_carer'], featureKey: 'medication_stock' },
       { label: 'Service User Outcome Reports',     to: '/outcomes',            icon: Target,        roles: [],                                           featureKey: 'outcomes' },
       { label: 'Care Reviews',                     to: '/reviews',             icon: ClipboardCheck,roles: [],                                           featureKey: 'reviews' },
-      { label: 'Service User Diary',               to: '/diary',               icon: BookOpen,      roles: [],                                           featureKey: 'diary' },
       { label: 'Calendar',                         to: '/calendar',            icon: Calendar,      roles: ['home_manager','group_admin'],                featureKey: 'calendar' },
       { label: 'Safeguarding',                     to: '/safeguarding',        icon: ShieldCheck,   roles: [],                                           featureKey: 'safeguarding' },
       { label: 'Incidents',                        to: '/incidents',           icon: AlertTriangle, roles: [],                                           featureKey: 'incidents' },
@@ -51,6 +50,7 @@ const navSections = [
       { label: 'Observations',                     to: '/observations',        icon: Thermometer,   roles: [],                                           featureKey: 'observations' },
       { label: 'Professional Visits',              to: '/professional-visits', icon: Stethoscope,   roles: [],                                           featureKey: 'professional_visits' },
       { label: 'Handover',                         to: '/reports/handover',    icon: ArrowLeftRight,roles: [],                                           featureKey: 'handover' },
+      { label: 'Service Users Health Check',       to: '/diary',               icon: BookOpen,      roles: [],                                           featureKey: 'diary' },
     ]
   },
   {

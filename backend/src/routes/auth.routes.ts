@@ -67,6 +67,18 @@ router.post('/login',
         );
       } catch {}
 
+      // Merge role-level access rights with per-user overrides (same as /me endpoint)
+      let loginRoleFlags: Record<string, boolean> = {};
+      if (staff.home_id) {
+        try {
+          const rf = await query<any>(
+            'SELECT feature_flags FROM role_access_rights WHERE home_id=$1 AND role=$2',
+            [staff.home_id, staff.role]
+          );
+          if (rf.length) loginRoleFlags = rf[0].feature_flags || {};
+        } catch {}
+      }
+      const loginMergedFlags = { ...loginRoleFlags, ...(staff.feature_flags || {}) };
       res.json({
         success: true,
         data: {
@@ -76,7 +88,7 @@ router.post('/login',
             firstName: staff.first_name, lastName: staff.last_name,
             role: staff.role, homeId: staff.home_id,
             organisationId: staff.organisation_id, photoUrl: staff.photo_url,
-            featureFlags: staff.feature_flags || {},
+            featureFlags: loginMergedFlags,
           },
         },
       } as ApiResponse);

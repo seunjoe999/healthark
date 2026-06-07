@@ -100,20 +100,21 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const params: unknown[] = [homeId];
     let idx = 2;
 
-    // Restricted roles only see residents they're assigned to via shifts
+    // Restricted roles only see residents they're assigned to
     if (['care_staff', 'team_leader'].includes(role) && staffId) {
       const assigned = await query<{ su_id: string }>(
         `SELECT DISTINCT su_id FROM staff_shifts
          WHERE staff_id = $1 AND su_id IS NOT NULL
-         AND shift_date BETWEEN CURRENT_DATE - INTERVAL '60 days' AND CURRENT_DATE + INTERVAL '30 days'`,
+         AND shift_date BETWEEN CURRENT_DATE - INTERVAL '90 days' AND CURRENT_DATE + INTERVAL '60 days'`,
         [staffId]
       );
-      if (assigned.length > 0) {
-        const ids = assigned.map((r: any) => r.su_id);
+      const ids = assigned.map((r: any) => r.su_id).filter(Boolean);
+      if (ids.length > 0) {
         sql += ` AND su.id = ANY($${idx++})`;
         params.push(ids);
+      } else {
+        sql += ` AND 1=0`; // No assigned residents — show empty list
       }
-      // If no shifts found, they see all (fallback to avoid empty screen)
     }
 
     if (status) { sql += ` AND su.status = $${idx++}`; params.push(status); }

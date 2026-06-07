@@ -157,7 +157,7 @@ export default function Messages() {
                   <p className={`text-sm truncate ${!msg.is_read && view === 'inbox' ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
                     {view === 'inbox' ? (msg.sender_name || 'Unknown') : (msg.recipient_name || 'Unknown')}
                   </p>
-                  <p className="text-xs text-slate-500 truncate mt-0.5">{msg.subject || msg.message?.substring(0, 50)}</p>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{msg.subject || msg.message?.substring(0, 50) || msg.body?.substring(0, 50)}</p>
                   <p className="text-xs text-slate-600 mt-1">{msg.created_at ? format(new Date(msg.created_at), 'd MMM, HH:mm') : ''}</p>
                 </div>
                 {!msg.is_read && view === 'inbox' && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: '#e8b130' }} />}
@@ -210,7 +210,7 @@ export default function Messages() {
               </div>
               {selected.recipient_name && <p className="text-sm text-slate-500 mt-1">To: <span className="font-medium text-slate-300">{selected.recipient_name}</span></p>}
             </div>
-            <p className="text-slate-300 whitespace-pre-line leading-relaxed text-sm">{selected.message}</p>
+            <p className="text-slate-300 whitespace-pre-line leading-relaxed text-sm">{selected.message || selected.body}</p>
             <div className="flex gap-3 mt-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <button onClick={() => reply(selected)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white transition-colors"
