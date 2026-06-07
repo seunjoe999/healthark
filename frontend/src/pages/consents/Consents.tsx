@@ -7,7 +7,7 @@ import {
   FileSignature, CheckCircle, XCircle, AlertCircle, Plus,
   User, Moon, Home, UtensilsCrossed, Globe2, Brain,
   Pill, ShieldCheck, Heart, DollarSign, Users, AlertTriangle,
-  UserX, ChevronRight, RotateCcw
+  UserX, ChevronRight, RotateCcw, ClipboardList
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -25,6 +25,7 @@ const CONSENT_TYPES = [
   { key: 'family_social_contact',             label: 'Family and Social Contact',           icon: Users,            color: 'sky',    description: 'Consent for arrangements regarding family contact, visits, and social relationships.' },
   { key: 'self_harm',                         label: 'Self-Harm',                           icon: AlertTriangle,    color: 'red',    description: 'Consent for self-harm risk management strategies and safeguarding interventions.' },
   { key: 'behaviour_towards_staff',           label: 'Behaviour Towards Staff',             icon: UserX,            color: 'zinc',   description: 'Consent for agreed management strategies for behaviour directed towards staff members.' },
+  { key: 'care_plan_support',                 label: 'Care Plan Support Consent',           icon: ClipboardList,    color: 'violet', description: 'Declaration that the service user has read their care plan and consents to be supported as detailed within it.' },
 ]
 
 const COLOR_MAP: Record<string, { bg: string; border: string; icon: string; badge: string }> = {
@@ -41,6 +42,7 @@ const COLOR_MAP: Record<string, { bg: string; border: string; icon: string; badg
   sky:     { bg: 'bg-sky-50',     border: 'border-sky-200',     icon: 'text-sky-600',     badge: 'bg-sky-100 text-sky-700' },
   red:     { bg: 'bg-red-50',     border: 'border-red-200',     icon: 'text-red-600',     badge: 'bg-red-100 text-red-700' },
   zinc:    { bg: 'bg-zinc-50',    border: 'border-zinc-200',    icon: 'text-zinc-600',    badge: 'bg-zinc-100 text-zinc-700' },
+  violet:  { bg: 'bg-violet-50', border: 'border-violet-200',  icon: 'text-violet-600',  badge: 'bg-violet-100 text-violet-700' },
 }
 
 const CAPACITY_OPTIONS = [
@@ -157,6 +159,7 @@ export default function Consents() {
   const statusText = (key: string) => {
     const c = getConsent(key)
     if (!c) return 'Not recorded'
+    if (key === 'care_plan_support') return c.consent_given ? 'I Consent' : 'I Do Not Consent'
     if (c.has_capacity === 'no') return 'Best interest decision'
     if (c.has_capacity === 'fluctuating') return 'Fluctuating capacity'
     return c.consent_given ? 'Consent given' : 'Consent withheld'
@@ -251,95 +254,158 @@ export default function Consents() {
           title={`${activeType.label} — Consent`}
           size="lg">
           <div className="space-y-4">
-            <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">{activeType.description}</p>
 
-            {/* Capacity */}
-            <div>
-              <label className="label">Mental capacity assessment</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {CAPACITY_OPTIONS.map(o => (
-                  <button key={o.value} type="button"
-                    onClick={() => set('hasCapacity', o.value)}
-                    className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.hasCapacity === o.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Input label="Capacity assessment notes (optional)" value={form.capacityNotes}
-              onChange={e => set('capacityNotes', e.target.value)}
-              placeholder="Briefly describe the capacity assessment..." />
-
-            {form.hasCapacity !== 'no' ? (
+            {modalType === 'care_plan_support' ? (
+              /* Care Plan Support Consent — simplified declaration form */
               <>
+                <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-violet-900 mb-1">Declaration</p>
+                  <p className="text-sm text-violet-800 italic">
+                    "I declare that I have read my care plan and I consent to be supported as detailed in my care plan."
+                  </p>
+                </div>
+
                 <div>
-                  <label className="label">Consent given?</label>
+                  <label className="label">Declaration</label>
                   <div className="flex gap-3 mt-1">
-                    {[{ v: true, l: 'Yes — consent given' }, { v: false, l: 'No — consent withheld' }].map(o => (
+                    {[{ v: true, l: 'I Consent' }, { v: false, l: 'I Do Not Consent' }].map(o => (
                       <button key={String(o.v)} type="button"
                         onClick={() => set('consentGiven', o.v)}
-                        className={`px-4 py-2 rounded-lg border text-sm transition-colors ${form.consentGiven === o.v ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600') : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
+                        className={`px-5 py-2 rounded-lg border text-sm font-medium transition-colors ${form.consentGiven === o.v ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600') : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
                         {o.l}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Comprehensive Care's signature */}
+                <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-semibold text-slate-700">Comprehensive Care's Signature</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input label="Name" value={form.staffSignedBy}
+                      onChange={e => set('staffSignedBy', e.target.value)}
+                      placeholder="Staff member name" />
+                    <Input label="Date signed" type="date" value={form.staffSignedDate}
+                      onChange={e => set('staffSignedDate', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Comments</label>
+                    <textarea className="input w-full" rows={2} value={form.capacityNotes}
+                      onChange={e => set('capacityNotes', e.target.value)}
+                      placeholder="Any comments from Comprehensive Care..." />
+                  </div>
+                </div>
+
+                {/* Service User's signature */}
+                <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-semibold text-slate-700">Service User's Signature</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input label="Name" value={form.suSignedBy}
+                      onChange={e => set('suSignedBy', e.target.value)}
+                      placeholder="Service user name" />
+                    <Input label="Date signed" type="date" value={form.suSignedDate}
+                      onChange={e => set('suSignedDate', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Comments</label>
+                    <textarea className="input w-full" rows={2} value={form.notes}
+                      onChange={e => set('notes', e.target.value)}
+                      placeholder="Any comments from the service user..." />
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Standard consent form for all 13 care area types */
+              <>
+                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">{activeType.description}</p>
+
                 <div>
-                  <label className="label">Method of consent</label>
+                  <label className="label">Mental capacity assessment</label>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {METHOD_OPTIONS.map(o => (
+                    {CAPACITY_OPTIONS.map(o => (
                       <button key={o.value} type="button"
-                        onClick={() => set('consentMethod', o.value)}
-                        className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.consentMethod === o.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
+                        onClick={() => set('hasCapacity', o.value)}
+                        className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.hasCapacity === o.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
                         {o.label}
                       </button>
                     ))}
                   </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="label">Best interest decision</label>
-                  <textarea className="input w-full" rows={3} value={form.bestInterestDecision}
-                    onChange={e => set('bestInterestDecision', e.target.value)}
-                    placeholder="Describe the best interest decision made on behalf of the person..." />
+
+                <Input label="Capacity assessment notes (optional)" value={form.capacityNotes}
+                  onChange={e => set('capacityNotes', e.target.value)}
+                  placeholder="Briefly describe the capacity assessment..." />
+
+                {form.hasCapacity !== 'no' ? (
+                  <>
+                    <div>
+                      <label className="label">Consent given?</label>
+                      <div className="flex gap-3 mt-1">
+                        {[{ v: true, l: 'Yes — consent given' }, { v: false, l: 'No — consent withheld' }].map(o => (
+                          <button key={String(o.v)} type="button"
+                            onClick={() => set('consentGiven', o.v)}
+                            className={`px-4 py-2 rounded-lg border text-sm transition-colors ${form.consentGiven === o.v ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600') : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">Method of consent</label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {METHOD_OPTIONS.map(o => (
+                          <button key={o.value} type="button"
+                            onClick={() => set('consentMethod', o.value)}
+                            className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.consentMethod === o.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="label">Best interest decision</label>
+                      <textarea className="input w-full" rows={3} value={form.bestInterestDecision}
+                        onChange={e => set('bestInterestDecision', e.target.value)}
+                        placeholder="Describe the best interest decision made on behalf of the person..." />
+                    </div>
+                    <Input label="Decision maker (name / role)" value={form.decisionMaker}
+                      onChange={e => set('decisionMaker', e.target.value)}
+                      placeholder="e.g. Next of kin — Jane Smith / Deputy" />
+                  </>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input label="Review date" type="date" value={form.reviewDate}
+                    onChange={e => set('reviewDate', e.target.value)} />
                 </div>
-                <Input label="Decision maker (name / role)" value={form.decisionMaker}
-                  onChange={e => set('decisionMaker', e.target.value)}
-                  placeholder="e.g. Next of kin — Jane Smith / Deputy" />
+
+                <div>
+                  <label className="label">Additional notes (optional)</label>
+                  <textarea className="input w-full" rows={3} value={form.notes}
+                    onChange={e => set('notes', e.target.value)}
+                    placeholder="Any further detail or context..." />
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Sign-off</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input label="Service user / decision maker signed by" value={form.suSignedBy}
+                      onChange={e => set('suSignedBy', e.target.value)}
+                      placeholder="Name of person who signed" />
+                    <Input label="Date signed" type="date" value={form.suSignedDate}
+                      onChange={e => set('suSignedDate', e.target.value)} />
+                    <Input label="Staff signed by" value={form.staffSignedBy}
+                      onChange={e => set('staffSignedBy', e.target.value)}
+                      placeholder="Staff member completing this record" />
+                    <Input label="Date signed" type="date" value={form.staffSignedDate}
+                      onChange={e => set('staffSignedDate', e.target.value)} />
+                  </div>
+                </div>
               </>
             )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Review date" type="date" value={form.reviewDate}
-                onChange={e => set('reviewDate', e.target.value)} />
-            </div>
-
-            <div>
-              <label className="label">Additional notes (optional)</label>
-              <textarea className="input w-full" rows={3} value={form.notes}
-                onChange={e => set('notes', e.target.value)}
-                placeholder="Any further detail or context..." />
-            </div>
-
-            {/* Sign-off section */}
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="text-sm font-semibold text-slate-700 mb-3">Sign-off</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input label="Service user / decision maker signed by" value={form.suSignedBy}
-                  onChange={e => set('suSignedBy', e.target.value)}
-                  placeholder="Name of person who signed" />
-                <Input label="Date signed" type="date" value={form.suSignedDate}
-                  onChange={e => set('suSignedDate', e.target.value)} />
-                <Input label="Staff signed by" value={form.staffSignedBy}
-                  onChange={e => set('staffSignedBy', e.target.value)}
-                  placeholder="Staff member completing this record" />
-                <Input label="Date signed" type="date" value={form.staffSignedDate}
-                  onChange={e => set('staffSignedDate', e.target.value)} />
-              </div>
-            </div>
 
             <div className="flex gap-3 pt-2">
               <Button onClick={save} loading={saving} className="flex-1">Save consent record</Button>
