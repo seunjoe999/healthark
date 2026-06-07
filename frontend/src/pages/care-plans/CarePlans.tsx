@@ -160,7 +160,7 @@ function YesNoRow({ label, value, onChange }: { label: string; value: string; on
   )
 }
 
-function TemplateFields({ planType, data, onChange }: { planType: string; data: any; onChange: (d: any) => void }) {
+function TemplateFields({ planType, data, onChange, suName }: { planType: string; data: any; onChange: (d: any) => void; suName?: string }) {
   const set = (key: string, val: string) => onChange({ ...data, [key]: val })
   const tv = (key: string) => data?.[key] || ''
 
@@ -216,20 +216,48 @@ function TemplateFields({ planType, data, onChange }: { planType: string; data: 
 
   if (planType === 'monthly_progress') {
     return (
-      <div className="space-y-4">
-        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Monthly Progress Report</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {MONTHLY_HEADER_SECTIONS.map(s => (
-              <div key={s.key}>
-                <label className="label">{s.label}</label>
-                <input className="input w-full text-sm" value={tv(s.key)} onChange={e => set(s.key, e.target.value)} />
-              </div>
-            ))}
+      <div className="space-y-0 border border-slate-300 rounded-xl overflow-hidden">
+        {/* Template header */}
+        <div className="bg-slate-800 text-white px-5 py-3 text-center">
+          <p className="text-sm font-bold tracking-widest uppercase">Monthly Progress Report</p>
+        </div>
+        {/* Header fields */}
+        <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Service User Name:</span>
+            <span className="flex-1 border-b border-slate-400 pb-0.5 text-sm text-slate-900 font-medium min-h-[22px]">{suName || '—'}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Month:</span>
+            <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+              value={tv('month')} onChange={e => set('month', e.target.value)} placeholder="e.g. June 2026" />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Completed by (Name &amp; Role):</span>
+            <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+              value={tv('completedBy')} onChange={e => set('completedBy', e.target.value)} placeholder="Name and role" />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Date Completed:</span>
+            <input type="date" className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+              value={tv('dateCompleted')} onChange={e => set('dateCompleted', e.target.value)} />
           </div>
         </div>
-        {MONTHLY_BODY_SECTIONS.map(s => (
-          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        {/* Care area sections */}
+        {MONTHLY_BODY_SECTIONS.map((s, i) => (
+          <div key={s.key} className={`border-b border-slate-200 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+            <div className="px-5 pt-3 pb-1">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">{s.label}</p>
+            </div>
+            <div className="px-5 pb-3">
+              <textarea
+                rows={s.key === 'summaryNotes' ? 4 : 3}
+                className="w-full text-sm border-0 bg-transparent outline-none resize-none text-slate-800 placeholder-slate-300 leading-relaxed"
+                value={tv(s.key)} onChange={e => set(s.key, e.target.value)}
+                placeholder={`Enter notes for ${s.label.toLowerCase()}...`}
+              />
+            </div>
+          </div>
         ))}
       </div>
     )
@@ -304,14 +332,46 @@ function TemplateDetail({ plan }: { plan: any }) {
 
   if (pt === 'monthly_progress') {
     return (
-      <div className="space-y-3">
-        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Report Details</p>
-          {row('Month', tv('month'))}
-          {row('Completed by', tv('completedBy'))}
-          {row('Date Completed', tv('dateCompleted'))}
+      <div className="space-y-0 border border-slate-300 rounded-xl overflow-hidden">
+        <div className="bg-slate-800 text-white px-5 py-3 text-center">
+          <p className="text-sm font-bold tracking-widest uppercase">Monthly Progress Report</p>
         </div>
-        {MONTHLY_BODY_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+        <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 space-y-2">
+          {plan.su_name && (
+            <div className="flex gap-3 py-1 border-b border-slate-200 last:border-0">
+              <span className="text-sm font-semibold text-slate-500 w-52 flex-shrink-0">Service User Name:</span>
+              <span className="text-sm text-slate-900">{plan.su_name}</span>
+            </div>
+          )}
+          {tv('month') && (
+            <div className="flex gap-3 py-1 border-b border-slate-200 last:border-0">
+              <span className="text-sm font-semibold text-slate-500 w-52 flex-shrink-0">Month:</span>
+              <span className="text-sm text-slate-900">{tv('month')}</span>
+            </div>
+          )}
+          {tv('completedBy') && (
+            <div className="flex gap-3 py-1 border-b border-slate-200 last:border-0">
+              <span className="text-sm font-semibold text-slate-500 w-52 flex-shrink-0">Completed by (Name &amp; Role):</span>
+              <span className="text-sm text-slate-900">{tv('completedBy')}</span>
+            </div>
+          )}
+          {tv('dateCompleted') && (
+            <div className="flex gap-3 py-1">
+              <span className="text-sm font-semibold text-slate-500 w-52 flex-shrink-0">Date Completed:</span>
+              <span className="text-sm text-slate-900">{tv('dateCompleted')}</span>
+            </div>
+          )}
+        </div>
+        {MONTHLY_BODY_SECTIONS.map((s, i) => tv(s.key) ? (
+          <div key={s.key} className={`border-b border-slate-200 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+            <div className="px-5 pt-3 pb-1">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{s.label}</p>
+            </div>
+            <div className="px-5 pb-3">
+              <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{tv(s.key)}</p>
+            </div>
+          </div>
+        ) : null)}
       </div>
     )
   }
@@ -345,7 +405,7 @@ function doPrint(html: string) {
   }, 700)
 }
 
-function buildTemplatePrintHtml(plan: any): string {
+function buildTemplatePrintHtml(plan: any, su?: any): string {
   const td = plan.template_data || {}
   const tv = (key: string) => (td[key] || '').toString().trim()
   const p = plan.plan_type
@@ -399,15 +459,32 @@ function buildTemplatePrintHtml(plan: any): string {
   }
 
   if (p === 'monthly_progress') {
-    const header = `
-      <div class="cs"><div class="cs-hd">Report Details</div>
-        <div class="cs-bd"><table style="width:100%;border-collapse:collapse;font-size:11px">
-          ${tv('month') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;width:40%">Month</td><td>${tv('month')}</td></tr>` : ''}
-          ${tv('completedBy') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0">Completed by</td><td>${tv('completedBy')}</td></tr>` : ''}
-          ${tv('dateCompleted') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0">Date Completed</td><td>${tv('dateCompleted')}</td></tr>` : ''}
-        </table></div>
+    const suDisplayName = su ? `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim() : (plan.su_name || '')
+    const fieldRow = (label: string, value: string) =>
+      `<tr>
+        <td style="font-size:11px;font-weight:700;color:#334155;padding:7px 16px 7px 0;width:220px;white-space:nowrap;vertical-align:top">${label}</td>
+        <td style="font-size:11px;color:#1e293b;padding:7px 0;border-bottom:1.5px solid #334155;min-width:250px">${value || ''}</td>
+      </tr>`
+    const sectionHtml = (label: string, value: string) =>
+      `<div style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;overflow:hidden;page-break-inside:avoid">
+        <div style="background:#1e293b;color:#fff;padding:6px 14px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">${label}</div>
+        <div style="padding:10px 14px;min-height:${value ? 'auto' : '44px'};font-size:11px;color:#334155;line-height:1.7">${value ? value.replace(/\n/g,'<br/>') : '<span style="color:#cbd5e1">—</span>'}</div>
       </div>`
-    return header + MONTHLY_BODY_SECTIONS.map(s => plainSec(s.label, tv(s.key))).join('')
+    const header = `
+      <div style="border:2px solid #1e293b;border-radius:8px;margin-bottom:16px;overflow:hidden;page-break-inside:avoid">
+        <div style="background:#1e293b;color:#fff;text-align:center;padding:10px 20px">
+          <div style="font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase">Monthly Progress Report</div>
+        </div>
+        <div style="padding:14px 20px;background:#f8fafc">
+          <table style="border-collapse:collapse;width:100%">
+            ${fieldRow('Service User Name:', suDisplayName)}
+            ${fieldRow('Month:', tv('month'))}
+            ${fieldRow('Completed by (Name &amp; Role):', tv('completedBy'))}
+            ${fieldRow('Date Completed:', tv('dateCompleted'))}
+          </table>
+        </div>
+      </div>`
+    return header + MONTHLY_BODY_SECTIONS.map(s => sectionHtml(s.label, tv(s.key))).join('')
   }
 
   // Default — standard 3 fields
@@ -523,7 +600,7 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
 
     <div class="plan-banner">${planLabel}</div>
 
-    ${buildTemplatePrintHtml(plan)}
+    ${buildTemplatePrintHtml(plan, su)}
     ${plainSec('Attachments / Notes', plan.attachments_notes)}
     ${consentHtml}
 
@@ -750,7 +827,7 @@ export default function CarePlans() {
 
       {/* Add plan modal */}
       <AddPlanModal open={addPlanOpen} onClose={() => setAddPlanOpen(false)}
-        suId={selectedSu?.id} homeId={selectedHome}
+        suId={selectedSu?.id} homeId={selectedHome} suName={selectedSu ? getName(selectedSu) : undefined}
         onSaved={async () => { setAddPlanOpen(false); await refreshPlans(); toast.success('Support plan created') }} />
 
       {/* View plan modal */}
@@ -768,9 +845,10 @@ export default function CarePlans() {
 
       {/* Edit plan modal */}
       {editPlan && (
-        <EditPlanModal plan={editPlan} suId={selectedSu?.id || ''} onClose={() => setEditPlan(null)} onSaved={async () => {
-          setEditPlan(null); await refreshPlans(); toast.success('Support plan updated')
-        }} />
+        <EditPlanModal plan={editPlan} suId={selectedSu?.id || ''} suName={selectedSu ? getName(selectedSu) : undefined}
+          onClose={() => setEditPlan(null)} onSaved={async () => {
+            setEditPlan(null); await refreshPlans(); toast.success('Support plan updated')
+          }} />
       )}
 
       {/* Admin reads summary modal */}
@@ -1081,8 +1159,8 @@ const EMPTY_ADD_FORM = {
 
 const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress'])
 
-function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
-  open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void
+function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
+  open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void; suName?: string
 }) {
   const [form, setForm] = useState<any>({ ...EMPTY_ADD_FORM })
   const [loading, setLoading] = useState(false)
@@ -1269,7 +1347,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
             {(form.planType === 'autism' || form.planType === 'adhd') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
-            <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} />
+            <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
           </>
         ) : (
           <>
@@ -1295,7 +1373,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved }: {
   )
 }
 
-function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: string; onClose: () => void; onSaved: () => void }) {
+function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; suId: string; onClose: () => void; onSaved: () => void; suName?: string }) {
   const [form, setForm] = useState({
     aimsOutcomes: plan.aims_outcomes || '',
     whatICanDo: plan.what_i_can_do || '',
@@ -1380,7 +1458,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved }: { plan: any; suId: stri
             {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
-            <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} />
+            <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
           </>
         ) : (
           <>
