@@ -174,6 +174,7 @@ import medicineRiskRoutes from './routes/medicineRisk.routes';
 import performanceMatrixRoutes from './routes/performanceMatrix.routes';
 import socialActivitiesRoutes from './routes/socialActivities.routes';
 import recruitmentRoutes from './routes/recruitment.routes';
+import consentsRoutes from './routes/consents.routes';
 app.use('/api/noticeboard', noticeboardRoutes);
 app.use('/api/observations', observationsRoutes);
 app.use('/api/seizures', seizuresRoutes);
@@ -184,6 +185,7 @@ app.use('/api/medicine-risk', medicineRiskRoutes);
 app.use('/api/performance', performanceMatrixRoutes);
 app.use('/api/social-activities', socialActivitiesRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
+app.use('/api/consents', consentsRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
@@ -1132,6 +1134,31 @@ async function ensureColumns() {
        updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
        PRIMARY KEY (home_id, role)
      )`,
+    // Consent forms per service user
+    `CREATE TABLE IF NOT EXISTS su_consents (
+       id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id                  UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id                UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       consent_type           VARCHAR(100) NOT NULL,
+       has_capacity           VARCHAR(20)  NOT NULL DEFAULT 'yes',
+       capacity_notes         TEXT,
+       consent_given          BOOLEAN      NOT NULL DEFAULT FALSE,
+       consent_method         VARCHAR(100),
+       best_interest_decision TEXT,
+       decision_maker         VARCHAR(255),
+       review_date            DATE,
+       notes                  TEXT,
+       created_by             UUID REFERENCES staff(id) ON DELETE SET NULL,
+       su_signed_by           TEXT,
+       su_signed_date         DATE,
+       staff_signed_by        TEXT,
+       staff_signed_date      DATE,
+       created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+       updated_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+       UNIQUE (su_id, consent_type)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_consents_su   ON su_consents(su_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_consents_home ON su_consents(home_id)`,
     // Task templates
     `CREATE TABLE IF NOT EXISTS task_templates (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

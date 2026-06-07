@@ -168,7 +168,7 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
           if (!visible.length) return null
           return (
             <div key={si}>
-              {section.label && <p className="px-3 mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-600">{section.label}</p>}
+              {section.label && <p className="px-3 mb-1.5 text-xs font-semibold tracking-wide text-slate-500">{section.label}</p>}
               <div className="space-y-0.5">
                 {visible.map(item => {
                   const Icon = item.icon
