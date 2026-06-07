@@ -77,12 +77,12 @@ export default function PerformanceMatrix() {
   const [shiftMatrixData, setShiftMatrixData] = useState<{ staff: any[]; homes: any[]; shiftMap: Record<string, Record<string, number>> } | null>(null)
 
   async function autoGenerate() {
-    if (!window.confirm('Auto-generate performance records for all staff? This will create/update records based on training, DBS, incidents and clock-in data.')) return
+    if (!window.confirm('Auto-generate performance matrix for all staff? This will build records from training, DBS, incidents and shift data.')) return
     setAutoGenerating(true)
     try {
       const res = await api.post('/performance/auto-generate', { homeId: selectedHome || undefined })
-      load()
-      setView('history')
+      await load()
+      setView('shift_matrix')
       setAutoGenResult(res.data.data)
     } catch (e: any) {
       alert('Auto-generate failed: ' + (e?.response?.data?.error || e?.message || 'Unknown error'))
@@ -447,7 +447,7 @@ export default function PerformanceMatrix() {
             )}
             <div className="flex gap-3 justify-end pt-2">
               <Button variant="ghost" onClick={() => setAutoGenResult(null)}>Close</Button>
-              <Button variant="gold" onClick={() => { setAutoGenResult(null); setView('history') }}>View history</Button>
+              <Button variant="gold" onClick={() => { setAutoGenResult(null); setView('shift_matrix') }}>View Shift Matrix</Button>
             </div>
           </div>
         </Modal>
