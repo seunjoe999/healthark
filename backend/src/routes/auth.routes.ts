@@ -281,15 +281,17 @@ router.get('/events', (req: Request, res: Response) => {
     res.status(401).end();
     return;
   }
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
   res.write('event: connected\ndata: ok\n\n');
+  const heartbeat = setInterval(() => {
+    try { res.write(': ping\n\n'); } catch { clearInterval(heartbeat); }
+  }, 25000);
   addSseClient(homeId, res);
-  req.on('close', () => removeSseClient(homeId, res));
+  req.on('close', () => { removeSseClient(homeId, res); clearInterval(heartbeat); });
 });
 
 // PUT /api/auth/activate/:staffId — manager activates pending staff
