@@ -114,8 +114,9 @@ export default function AccessRights() {
       const featLabel = FEATURES.find(f => f.key === key)?.label ?? key
       const roleLabel = ROLES.find(r => r.value === role)?.label ?? role
       toast.success(current ? `${featLabel} removed for ${roleLabel}` : `${featLabel} granted to ${roleLabel}`)
-    } catch {
-      toast.error('Failed to update')
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to update'
+      toast.error(msg)
     } finally { setSaving(null) }
   }
 
