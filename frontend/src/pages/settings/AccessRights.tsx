@@ -111,6 +111,9 @@ export default function AccessRights() {
     try {
       await api.put('/staff/role-access-rights', { homeId: selectedHome, role, featureFlags: nextFlags })
       setFlags(f => ({ ...f, [role]: nextFlags }))
+      const featLabel = FEATURES.find(f => f.key === key)?.label ?? key
+      const roleLabel = ROLES.find(r => r.value === role)?.label ?? role
+      toast.success(current ? `${featLabel} removed for ${roleLabel}` : `${featLabel} granted to ${roleLabel}`)
     } catch {
       toast.error('Failed to update')
     } finally { setSaving(null) }
