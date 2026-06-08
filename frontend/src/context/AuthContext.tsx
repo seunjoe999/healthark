@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { authApi } from '../api'
 import { AuthUser } from '../types'
 
@@ -119,9 +119,10 @@ function clearSession() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => loadSession().user)
 
-  // Refresh user profile (incl. feature_flags) from DB on every app load
-  // so feature flag changes by admins take effect without requiring re-login
-  useEffect(() => {
+  // Refresh user profile (incl. merged role access rights) from DB.
+  // Called on mount and whenever the window regains focus so access right
+  // changes made by an admin take effect immediately without requiring re-login.
+  const refreshUser = useCallback(() => {
     const { token } = loadSession()
     if (!token) return
     authApi.me().then(res => {
@@ -130,6 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(fresh)
     }).catch(() => {})
   }, [])
+
+  useEffect(() => { refreshUser() }, [])
+
+  useEffect(() => {
+    window.addEventListener('focus', refreshUser)
+    return () => window.removeEventListener('focus', refreshUser)
+  }, [refreshUser])
 
   // Listen for 401 events dispatched by the axios interceptor
   useEffect(() => {
