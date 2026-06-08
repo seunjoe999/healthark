@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ function fromToken(req: Request, field: string): string {
 router.get('/medications/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.suId);
       const rows = await query(
         'SELECT * FROM su_medications WHERE su_id = $1 AND is_active = true ORDER BY medication_name',
         [req.params.suId]

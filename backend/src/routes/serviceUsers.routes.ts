@@ -20,6 +20,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess, getAssignedSuIds, RESTRICTED_ROLES } from '../utils/residentAccess';
 
 
 // Auto-lookup UK postcode GPS coordinates
@@ -100,15 +101,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const params: unknown[] = [homeId];
     let idx = 2;
 
-    // Restricted roles only see residents they're assigned to
-    if (['care_staff', 'team_leader'].includes(role) && staffId) {
-      const assigned = await query<{ su_id: string }>(
-        `SELECT DISTINCT su_id FROM staff_shifts
-         WHERE staff_id = $1 AND su_id IS NOT NULL
-         AND shift_date BETWEEN CURRENT_DATE - INTERVAL '90 days' AND CURRENT_DATE + INTERVAL '60 days'`,
-        [staffId]
-      );
-      const ids = assigned.map((r: any) => r.su_id).filter(Boolean);
+    // Restricted roles only see residents explicitly assigned to them
+    if (RESTRICTED_ROLES.includes(role) && staffId) {
+      const ids = await getAssignedSuIds(staffId);
       if (ids.length > 0) {
         sql += ` AND su.id = ANY($${idx++})`;
         params.push(ids);
@@ -133,6 +128,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.id);
       const rows = await query(
         `SELECT su.*, h.name as home_name, h.postcode as home_postcode
          FROM service_users su JOIN homes h ON h.id = su.home_id
@@ -432,6 +428,74 @@ router.get('/:id/about-me', param('id').isUUID(), validateRequest,
     try {
       const rows = await query('SELECT * FROM su_about_me WHERE su_id=$1', [req.params.id]);
       res.json({ success: true, data: rows[0] || {} } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// ── Staff Assignments ─────────────────────────────────────────────
+// GET /api/service-users/assignments?homeId=xxx  — list all assignments for a home
+router.get('/assignments/list', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || getHomeId(req);
+    const rows = await query(
+      `SELECT a.id, a.staff_id, a.su_id, a.created_at,
+              s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
+              su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo, su.status as su_status
+       FROM staff_service_user_assignments a
+       JOIN staff s ON s.id = a.staff_id
+       JOIN service_users su ON su.id = a.su_id
+       WHERE a.home_id = $1
+       ORDER BY su.last_name, su.first_name, s.last_name`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// GET /api/service-users/assignments/by-staff/:staffId
+router.get('/assignments/by-staff/:staffId', param('staffId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT a.su_id, su.first_name, su.last_name, su.photo_url, su.status
+         FROM staff_service_user_assignments a
+         JOIN service_users su ON su.id = a.su_id
+         WHERE a.staff_id = $1
+         ORDER BY su.last_name, su.first_name`,
+        [req.params.staffId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/service-users/assignments — assign staff to resident
+router.post('/assignments',
+  [body('staffId').isUUID(), body('suId').isUUID()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || getHomeId(req);
+      const { staffId, suId } = req.body;
+      await query(
+        `INSERT INTO staff_service_user_assignments (home_id, staff_id, su_id)
+         VALUES ($1, $2, $3) ON CONFLICT (staff_id, su_id) DO NOTHING`,
+        [homeId, staffId, suId]
+      );
+      res.status(201).json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/service-users/assignments — remove assignment
+router.delete('/assignments',
+  [body('staffId').isUUID(), body('suId').isUUID()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query(
+        'DELETE FROM staff_service_user_assignments WHERE staff_id = $1 AND su_id = $2',
+        [req.body.staffId, req.body.suId]
+      );
+      res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

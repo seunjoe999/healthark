@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 router.use(authenticate);
@@ -20,6 +21,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = tok(req, 'homeId');
     const { suId, from, to } = req.query as Record<string, string>;
+    if (suId) await assertResidentAccess(req, suId);
     let sql = `
       SELECT sz.*, s.first_name || ' ' || s.last_name AS recorded_by_name,
              su.first_name || ' ' || su.last_name AS su_name

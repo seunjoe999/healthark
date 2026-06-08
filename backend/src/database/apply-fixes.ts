@@ -57,6 +57,18 @@ const STATEMENTS = [
   `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS strengths            TEXT`,
   `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS areas_for_improvement TEXT`,
   `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS next_date            DATE`,
+
+  // ── staff_service_user_assignments ─────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS staff_service_user_assignments (
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    home_id    UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+    staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+    su_id      UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (staff_id, su_id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ssua_staff ON staff_service_user_assignments(staff_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_ssua_su    ON staff_service_user_assignments(su_id)`,
 ];
 
 async function applyFixes() {

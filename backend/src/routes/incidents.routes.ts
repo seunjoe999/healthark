@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { start_date, end_date, incident_type, search, suId } = req.query;
+    if (suId) await assertResidentAccess(req, suId as string);
 
     let sql = `
       SELECT

@@ -6,6 +6,7 @@ import { query, transaction } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { suId, homeId, date, recordType } = req.query as Record<string, string>;
     if (!suId && !homeId) throw new AppError('suId or homeId required', 400);
+    if (suId) await assertResidentAccess(req, suId);
 
     let sql = `SELECT dr.*,
                       s.first_name || ' ' || s.last_name as staff_name,

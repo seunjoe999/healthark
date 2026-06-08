@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 

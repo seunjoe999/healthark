@@ -1,7 +1,6 @@
-const CACHE = 'compcare-v1';
+const CACHE = 'compcare-v3';
 const OFFLINE_URL = '/index.html';
 
-// Assets to pre-cache on install
 const PRECACHE = [
   '/',
   '/index.html',
@@ -13,15 +12,17 @@ const PRECACHE = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(cache => cache.addAll(PRECACHE))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -29,22 +30,36 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and API calls — always go to network for those
+  // Never intercept non-GET or API requests — let browser handle them directly
   if (request.method !== 'GET') return;
   if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/uploads/')) return;
 
-  // For navigation requests (page loads), use network-first with offline fallback
+  // Navigation requests (page loads) — always try network first, fall back to cached index.html
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match(OFFLINE_URL))
+      fetch(request)
+        .then(response => {
+          // Cache a fresh copy of index.html on each successful navigation
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE).then(cache => cache.put(OFFLINE_URL, clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(OFFLINE_URL);
+          return cached || new Response('Offline — please check your connection', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        })
     );
     return;
   }
 
-  // For static assets: cache-first
-  if (
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2|woff|ttf)$/)
-  ) {
+  // Static assets (JS/CSS/images/fonts) — cache-first, network fallback
+  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2|woff|ttf)$/)) {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) return cached;
@@ -54,14 +69,14 @@ self.addEventListener('fetch', event => {
             caches.open(CACHE).then(cache => cache.put(request, clone));
           }
           return response;
-        });
+        }).catch(() => new Response('', { status: 503 }));
       })
     );
     return;
   }
 
-  // Everything else: network-first
+  // Everything else — network only, no caching
   event.respondWith(
-    fetch(request).catch(() => caches.match(request))
+    fetch(request).catch(() => new Response('', { status: 503 }))
   );
 });

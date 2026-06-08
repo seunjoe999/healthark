@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 router.use(authenticate);
@@ -21,6 +22,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const suId = req.query.suId as string;
     const from = req.query.from as string;
     const to = req.query.to as string;
+    if (suId) await assertResidentAccess(req, suId);
 
     let sql = `
       SELECT b.*,

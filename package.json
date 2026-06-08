@@ -10,6 +10,8 @@
     "start": "cd backend && node dist/index.js"
   },
   "dependencies": {
-    "node-ssh": "^13.2.1"
+    "bcryptjs": "^3.0.3",
+    "node-ssh": "^13.2.1",
+    "pg": "^8.21.0"
   }
 }

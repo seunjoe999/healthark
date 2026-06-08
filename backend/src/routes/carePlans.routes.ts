@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -24,6 +25,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { suId, homeId } = req.query as Record<string, string>;
     const targetHomeId = homeId || fromToken(req, 'homeId');
+
+    if (suId) await assertResidentAccess(req, suId);
 
     let sql = `SELECT cp.*,
                       su.first_name || ' ' || su.last_name as su_name,
