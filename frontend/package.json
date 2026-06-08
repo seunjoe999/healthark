@@ -9,16 +9,21 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.473",
+    "@remotion/player": "^4.0.473",
     "axios": "^1.7.2",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "framer-motion": "^12.40.0",
     "lucide-react": "^0.400.0",
+    "motion": "^12.40.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.52.1",
     "react-hot-toast": "^2.4.1",
     "react-query": "^3.39.3",
-    "react-router-dom": "^6.24.1"
+    "react-router-dom": "^6.24.1",
+    "remotion": "^4.0.473"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

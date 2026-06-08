@@ -106,7 +106,7 @@ function AnswerDisplay({ q, value }: { q: any; value: any }) {
     return <span className={`font-semibold uppercase text-sm ${colors[value] || 'text-slate-700'}`}>{value}</span>
   }
   if (q.type === 'scale') {
-    const labels = ['Never', 'Rarely', 'Sometimes', 'Often', 'Always']
+    const labels = ['Not at All', 'Rarely', 'Sometimes', 'Often', 'Very Often']
     return <span className="text-sm font-semibold text-purple-700">{value}/4 — {labels[value]}</span>
   }
   if (Array.isArray(value)) {
@@ -179,12 +179,16 @@ export default function AssessmentView() {
               {(assessment.auditor_name || assessment.conducted_by_name) && ` · Conducted by ${assessment.auditor_name || assessment.conducted_by_name}`}
             </p>
           </div>
-          {assessment.max_score > 0 && (
+          {(assessment.max_score > 0 || assessment.risk_level) && (
             <div className="text-center flex-shrink-0">
-              <p className="text-4xl font-bold text-purple-700">{Math.round(assessment.score_pct)}%</p>
-              <p className="text-xs text-slate-400 mt-0.5">{assessment.total_score} / {assessment.max_score} pts</p>
+              {assessment.max_score > 0 && (
+                <>
+                  <p className="text-4xl font-bold text-purple-700">{Math.round(assessment.score_pct)}%</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{assessment.total_score} / {assessment.max_score} pts</p>
+                </>
+              )}
               {assessment.risk_level && (
-                <div className="mt-2">
+                <div className={assessment.max_score > 0 ? 'mt-2' : ''}>
                   <RiskBadge level={assessment.risk_level} />
                 </div>
               )}

@@ -8,7 +8,15 @@ import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
 import SeizureForm from './forms/SeizureForm'
-import SpeechInput from '../../components/SpeechInput'
+import OralCareForm from './forms/OralCareForm'
+import PersonalCareForm from './forms/PersonalCareForm'
+import WelfareCheckForm from './forms/WelfareCheckForm'
+import RepositioningForm from './forms/RepositioningForm'
+import VitalsForm from './forms/VitalsForm'
+import FoodDrinkForm from './forms/FoodDrinkForm'
+import BowelForm from './forms/BowelForm'
+import BehaviourForm from './forms/BehaviourForm'
+import GeneralForm from './forms/GeneralForm'
 import SocialActivities from '../social-activities/SocialActivities'
 import BathChart from '../bath-chart/BathChart'
 import BowelChart from '../bowel-chart/BowelChart'
@@ -29,81 +37,31 @@ const DR_TABS = [
 ]
 
 const RECORD_TYPES = [
-  { value: 'personal_care', label: 'Personal care', icon: '🧼' },
-  { value: 'food_intake', label: 'Food intake', icon: '🍽️' },
-  { value: 'fluid_intake', label: 'Fluid / drinks', icon: '💧' },
-  { value: 'bowel_movement', label: 'Bowel movement', icon: '📋' },
-  { value: 'behaviour', label: 'Behavior record (ABC)', icon: '💭' },
-  { value: 'welfare_check', label: 'Welfare check', icon: '✅' },
+  { value: 'personal_care', label: 'Personal Care', icon: '🧼' },
+  { value: 'food_intake', label: 'Food Intake', icon: '🍽️' },
+  { value: 'fluid_intake', label: 'Fluid / Drinks', icon: '💧' },
+  { value: 'bowel_movement', label: 'Bowel Movement', icon: '📋' },
+  { value: 'behaviour', label: 'Behavior Record (ABC)', icon: '💭' },
+  { value: 'welfare_check', label: 'Welfare Check', icon: '✅' },
   { value: 'repositioning', label: 'Repositioning', icon: '🔄' },
-  { value: 'oral_care', label: 'Oral care', icon: '🦷' },
-  { value: 'one_to_one', label: '1-to-1 conversation', icon: '💬' },
-  { value: 'social_activity', label: 'Social activity', icon: '🎮' },
-  { value: 'social_visit', label: 'Social visit', icon: '👥' },
-  { value: 'family_visit', label: 'Family visit', icon: '👨‍👩‍👧' },
+  { value: 'oral_care', label: 'Oral Care', icon: '🦷' },
+  { value: 'one_to_one', label: '1-to-1 Conversation', icon: '💬' },
+  { value: 'social_activity', label: 'Social Activity', icon: '🎮' },
+  { value: 'social_visit', label: 'Social Visit', icon: '👥' },
+  { value: 'family_visit', label: 'Family Visit', icon: '👨‍👩‍👧' },
   { value: 'incident', label: 'Incident', icon: '⚠️' },
-  { value: 'prn_medication', label: 'PRN medication', icon: '💊' },
-  { value: 'handover', label: 'Handover note', icon: '📝' },
-  { value: 'general_support', label: 'General support', icon: '🤝' },
+  { value: 'prn_medication', label: 'PRN Medication', icon: '💊' },
+  { value: 'handover', label: 'Handover Note', icon: '📝' },
+  { value: 'general_support', label: 'General Support', icon: '🤝' },
   { value: 'communication', label: 'Communication', icon: '📣' },
-  { value: 'vitals_bp', label: 'Blood pressure', icon: '❤️' },
+  { value: 'vitals_bp', label: 'Blood Pressure', icon: '❤️' },
   { value: 'vitals_temp', label: 'Temperature', icon: '🌡️' },
   { value: 'vitals_oxygen', label: 'Oxygen (SpO2)', icon: '🫁' },
   { value: 'vitals_weight', label: 'Weight & MUST', icon: '⚖️' },
-  { value: 'body_map', label: 'Body map / skin', icon: '🗺️' },
-  { value: 'seizure', label: 'Seizure episode', icon: '⚡' },
+  { value: 'body_map', label: 'Body Map / Skin', icon: '🗺️' },
+  { value: 'seizure', label: 'Seizure Episode', icon: '⚡' },
 ]
 
-const FOOD_AMOUNTS = ['None', 'Quarter', 'Half', 'Three quarters', 'Full']
-
-const ABC_BEHAVIOUR_TYPES = [
-  'Absconding',
-  'Aggression (e.g. hitting, kicking, biting)',
-  'Begging for alm',
-  'Blockage of facility\'s entrance',
-  'Breaking house rules',
-  'Crying',
-  'False alarm',
-  'False allegation',
-  'Inappropriate detention of office property',
-  'Insomnia',
-  'Intoxication',
-  'Isolation',
-  'Itchy Eyes',
-  'Pacing around',
-  'Self-injurious behaviour (e.g. head banging, biting self, hitting self)',
-  'Selling of belonging',
-  'Sexualised behaviour in public',
-  'Shouting / swearing',
-  'Smoking in the room',
-  'Soiling / smearing',
-  'Staff assault',
-  'Starvation',
-  'Suicidal ideation',
-  'Throwing items / breaking things',
-]
-
-const EMOTIONS = [
-  { value: 'happy', label: '😊 Happy' },
-  { value: 'calm', label: '😌 Calm' },
-  { value: 'anxious', label: '😟 Anxious' },
-  { value: 'agitated', label: '😤 Agitated' },
-  { value: 'distressed', label: '😢 Distressed' },
-  { value: 'withdrawn', label: '😶 Withdrawn' },
-  { value: 'angry', label: '😠 Angry' },
-  { value: 'sad', label: '😔 Sad' },
-  { value: 'confused', label: '😕 Confused' },
-  { value: 'other', label: 'Other' },
-]
-
-const MEDICINE_TYPES = [
-  'Tablet', 'Capsule', 'Liquid', 'Patch', 'Injection', 'Inhaler', 'Cream / Ointment', 'Drops', 'Other',
-]
-const FLUID_TYPES = [
-  { label: 'Water', ml: 200 }, { label: 'Tea', ml: 200 }, { label: 'Coffee', ml: 200 },
-  { label: 'Juice', ml: 150 }, { label: 'Milk', ml: 200 }, { label: 'Soup', ml: 250 },
-  { label: 'Supplement drink', ml: 200 }, { label: 'Other', ml: 200 },
-]
 
 export default function DailyRecords() {
   const { user } = useAuth()
@@ -274,7 +232,7 @@ export default function DailyRecords() {
                     <div key={type} className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
                       <div className="px-5 py-3 border-b border-slate-50 flex items-center gap-2">
                         <span className="text-base">{typeInfo?.icon || '📋'}</span>
-                        <h3 className="font-semibold text-slate-800 text-sm">{typeInfo?.label || type.replace(/_/g, ' ')}</h3>
+                        <h3 className="font-semibold text-slate-800 text-sm">{typeInfo?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h3>
                         <span className="text-xs text-slate-400 ml-auto">{(typeRecords as any[]).length} record{(typeRecords as any[]).length > 1 ? 's' : ''}</span>
                       </div>
                       <div className="divide-y divide-slate-50">
@@ -362,191 +320,40 @@ function RecordSummary({ record: r }: { record: any }) {
 
 function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; homeId: string; onClose: () => void; onSaved: () => void }) {
   const [type, setType] = useState('personal_care')
-  const [form, setForm] = useState<Record<string, any>>({})
-  const [loading, setLoading] = useState(false)
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
-  const save = async () => {
-    setLoading(true)
-    try {
-      await dailyRecordsApi.create({ suId, homeId, recordType: type, ...form })
-      onSaved()
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
-    finally { setLoading(false) }
+  const renderForm = () => {
+    const p = { suId, onSaved }
+    switch (type) {
+      case 'body_map':        return <BodyMap suId={suId} onSaved={onSaved} />
+      case 'incident':        return <IncidentForm suId={suId} onSaved={onSaved} />
+      case 'seizure':         return <SeizureForm suId={suId} onSaved={onSaved} />
+      case 'personal_care':   return <PersonalCareForm {...p} />
+      case 'oral_care':       return <OralCareForm {...p} />
+      case 'welfare_check':   return <WelfareCheckForm {...p} />
+      case 'repositioning':   return <RepositioningForm {...p} />
+      case 'behaviour':       return <BehaviourForm {...p} />
+      case 'bowel_movement':  return <BowelForm {...p} />
+      case 'fluid_intake':
+      case 'food_intake':     return <FoodDrinkForm {...p} />
+      case 'vitals_bp':       return <VitalsForm type="bp" {...p} />
+      case 'vitals_temp':     return <VitalsForm type="temp" {...p} />
+      case 'vitals_oxygen':   return <VitalsForm type="oxygen" {...p} />
+      case 'vitals_weight':   return <VitalsForm type="weight" {...p} />
+      default:                return <GeneralForm type={type} {...p} />
+    }
   }
 
   return (
     <Modal open={true} onClose={onClose} title="Add daily record" size="lg">
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-        <Select label="Record type" value={type} onChange={e => { setType(e.target.value); setForm({}) }}
+        <Select label="Record type" value={type} onChange={e => setType(e.target.value)}
           options={RECORD_TYPES.map(r => ({ value: r.value, label: `${r.icon} ${r.label}` }))} />
-
-        {type === 'body_map' ? (
-          <BodyMap suId={suId} onSaved={onSaved} />
-        ) : type === 'incident' ? (
-          <IncidentForm suId={suId} onSaved={onSaved} />
-        ) : type === 'seizure' ? (
-          <SeizureForm suId={suId} onSaved={onSaved} />
-        ) : (
-          <RecordForm type={type} form={form} set={set} />
-        )}
-
-        {type !== 'body_map' && type !== 'incident' && type !== 'seizure' && (
-          <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button loading={loading} onClick={save}>Save record</Button>
-          </div>
-        )}
+        {renderForm()}
       </div>
     </Modal>
   )
 }
 
-function RecordForm({ type, form, set }: { type: string; form: Record<string, any>; set: (k: string, v: any) => void }) {
-  switch (type) {
-    case 'fluid_intake': return (
-      <div className="space-y-3">
-        <Select label="Drink type" value={form.fluidType || ''} onChange={e => { set('fluidType', e.target.value); const ft = FLUID_TYPES.find(f => f.label === e.target.value); if (ft) set('amountMl', ft.ml) }} options={FLUID_TYPES.map(f => ({ value: f.label, label: f.label }))} placeholder="Select drink" />
-        <div><label className="label">Amount (ml)</label><input type="number" className="input" value={form.amountMl || ''} onChange={e => set('amountMl', parseInt(e.target.value))} placeholder="e.g. 200" /></div>
-        <div><label className="label flex justify-between"><span>Notes</span><SpeechInput onTranscript={t => set('notes', (form.notes || '') + (form.notes ? ' ' : '') + t)} className="text-xs" /></label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
-      </div>
-    )
-    case 'food_intake': return (
-      <div className="space-y-3">
-        <Select label="Meal type" value={form.mealType || ''} onChange={e => set('mealType', e.target.value)} options={[{ value: 'breakfast', label: 'Breakfast' }, { value: 'lunch', label: 'Lunch' }, { value: 'dinner', label: 'Dinner' }, { value: 'snack', label: 'Snack' }]} placeholder="Select meal" />
-        <Select label="Amount eaten" value={form.amountEaten || ''} onChange={e => set('amountEaten', e.target.value)} options={FOOD_AMOUNTS.map(a => ({ value: a, label: a }))} placeholder="How much was eaten?" />
-        <div><label className="label">What was served</label><input className="input" value={form.foodDescription || ''} onChange={e => set('foodDescription', e.target.value)} placeholder="e.g. Roast chicken with vegetables..." /></div>
-        <div><label className="label flex justify-between"><span>Notes</span><SpeechInput onTranscript={t => set('notes', (form.notes || '') + (form.notes ? ' ' : '') + t)} className="text-xs" /></label><textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} /></div>
-      </div>
-    )
-    case 'vitals_bp': return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-3">
-          <div><label className="label">Systolic</label><input type="number" className="input" value={form.systolic || ''} onChange={e => set('systolic', parseInt(e.target.value))} placeholder="120" /></div>
-          <div><label className="label">Diastolic</label><input type="number" className="input" value={form.diastolic || ''} onChange={e => set('diastolic', parseInt(e.target.value))} placeholder="80" /></div>
-          <div><label className="label">Pulse (bpm)</label><input type="number" className="input" value={form.pulse || ''} onChange={e => set('pulse', parseInt(e.target.value))} placeholder="72" /></div>
-        </div>
-        {form.systolic > 180 || form.diastolic > 110 ? <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">⚠ Reading outside safe range</div> : null}
-        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
-      </div>
-    )
-    case 'vitals_temp': return (
-      <div className="space-y-3">
-        <div><label className="label">Temperature (°C)</label><input type="number" step="0.1" className="input" value={form.tempCelsius || ''} onChange={e => set('tempCelsius', parseFloat(e.target.value))} placeholder="36.5" /></div>
-        {form.tempCelsius && (form.tempCelsius < 35 || form.tempCelsius > 37.5) ? <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">⚠ Temperature outside normal range (35–37.5°C)</div> : null}
-        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
-      </div>
-    )
-    case 'vitals_oxygen': return (
-      <div className="space-y-3">
-        <div><label className="label">SpO2 (%)</label><input type="number" className="input" value={form.spo2Percent || ''} onChange={e => set('spo2Percent', parseInt(e.target.value))} placeholder="98" /></div>
-        {form.spo2Percent && form.spo2Percent < 94 ? <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">⚠ SpO2 below 94%</div> : null}
-        <div className="flex items-center gap-2"><input type="checkbox" id="o2" checked={form.supplementalO2 || false} onChange={e => set('supplementalO2', e.target.checked)} /><label htmlFor="o2" className="text-sm text-slate-700">On supplemental oxygen</label></div>
-        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
-      </div>
-    )
-    case 'bowel_movement': return (
-      <div className="space-y-3">
-        <Select label="Bristol stool type" value={form.bristolType || ''} onChange={e => set('bristolType', parseInt(e.target.value))}
-          options={[1,2,3,4,5,6,7].map(n => ({ value: String(n), label: `Type ${n} — ${['Separate hard lumps','Lumpy sausage','Cracked sausage','Smooth sausage','Soft blobs','Fluffy mushy','Watery'][n-1]}` }))} placeholder="Select type" />
-        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} />
-      </div>
-    )
-    case 'behaviour': return (
-      <div className="space-y-4">
-        <div>
-          <label className="label mb-2">Behaviour type(s) observed — tick all that apply</label>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 p-3 rounded-xl border border-slate-200 bg-slate-50">
-            {ABC_BEHAVIOUR_TYPES.map(bt => (
-              <label key={bt} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                <input type="checkbox"
-                  checked={(form.behaviourTypes || []).includes(bt)}
-                  onChange={e => {
-                    const cur: string[] = form.behaviourTypes || []
-                    set('behaviourTypes', e.target.checked ? [...cur, bt] : cur.filter((x: string) => x !== bt))
-                  }}
-                  className="rounded" />
-                {bt}
-              </label>
-            ))}
-          </div>
-        </div>
-        <Input label="Trigger" value={form.triggersNoted || ''} onChange={e => set('triggersNoted', e.target.value)} placeholder="What appeared to trigger this behaviour?" />
-        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-          <input type="checkbox" checked={form.otherStaffInvolved || false} onChange={e => set('otherStaffInvolved', e.target.checked)} className="rounded" />
-          Were other staff involved?
-        </label>
-        <Textarea label="A — Antecedents (what happened before)" value={form.antecedents || ''} onChange={e => set('antecedents', e.target.value)} rows={2} placeholder="Describe what was happening immediately before the behaviour..." />
-        <Textarea label="B — Behaviour (describe in detail)" value={form.behaviourNoted || ''} onChange={e => set('behaviourNoted', e.target.value)} rows={3} placeholder="Describe the behaviour observed in detail..." />
-        <Textarea label="C — Consequences (what happened after)" value={form.consequences || ''} onChange={e => set('consequences', e.target.value)} rows={2} placeholder="What happened as a result of the behaviour?" />
-        <Textarea label="Care / Intervention" value={form.careIntervention || ''} onChange={e => set('careIntervention', e.target.value)} rows={2} placeholder="What care or intervention was provided?" />
-        <Select label="Emotion / Mood" value={form.mood || ''} onChange={e => set('mood', e.target.value)} options={EMOTIONS} placeholder="Select emotion" />
-      </div>
-    )
-    case 'prn_medication': return (
-      <div className="space-y-3">
-        <Input label="PRN medication name *" value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Paracetamol 500mg" required />
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Medicine type" value={form.medicineType || ''} onChange={e => set('medicineType', e.target.value)}
-            options={MEDICINE_TYPES.map(t => ({ value: t, label: t }))} placeholder="Select type" />
-          <Input label="Amount / dose given" value={form.dose || ''} onChange={e => set('dose', e.target.value)} placeholder="e.g. 2 tablets, 5ml" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Administered?</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.administered !== false} onChange={() => set('administered', true)} /> Yes</label>
-              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.administered === false} onChange={() => set('administered', false)} /> No</label>
-            </div>
-          </div>
-          <div>
-            <label className="label">Side effects?</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.sideEffects === true} onChange={() => set('sideEffects', true)} /> Yes</label>
-              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={!form.sideEffects} onChange={() => set('sideEffects', false)} /> No</label>
-            </div>
-          </div>
-        </div>
-        {form.sideEffects && (
-          <Textarea label="Side effect details" value={form.sideEffectsNotes || ''} onChange={e => set('sideEffectsNotes', e.target.value)} rows={2} placeholder="Describe any side effects observed..." />
-        )}
-        <Textarea label="Reason / indication" value={form.reason || ''} onChange={e => set('reason', e.target.value)} rows={2} placeholder="Why was this PRN medication given?" />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Request signoff by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Name of person to countersign" />
-          <div>
-            <label className="label">Completed?</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={form.completed === true} onChange={() => set('completed', true)} /> Yes</label>
-              <label className="flex items-center gap-2 text-sm"><input type="radio" checked={!form.completed} onChange={() => set('completed', false)} /> No</label>
-            </div>
-          </div>
-        </div>
-        <Select label="Emotion / Mood" value={form.emotion || ''} onChange={e => set('emotion', e.target.value)} options={EMOTIONS} placeholder="Select emotion" />
-        <Textarea label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any additional notes..." />
-      </div>
-    )
-    case 'incident': return (
-      <div className="space-y-3">
-        <Select label="Incident Type" value={form.incidentType || ''} onChange={e => set('incidentType', e.target.value)}
-          options={['fall','medication_error','aggressive_behaviour','self_harm','missing_person','property_damage','injury','near_miss','other'].map(v => ({ value: v, label: v.replace(/_/g, ' ') }))} placeholder="Select incident type" />
-        <Input label="Location" value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Where did it happen?" />
-        <Textarea label="Description of incident" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={3} placeholder="Exactly what happened..." required />
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.injuries || false} onChange={e => set('injuries', e.target.checked)} /> Injuries sustained?</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.medicalNeeded || false} onChange={e => set('medicalNeeded', e.target.checked)} /> Medical attention required?</label>
-        </div>
-        {(form.injuries || form.medicalNeeded) && (
-          <Textarea label="Injury / Medical Details" value={form.injuryDetails || ''} onChange={e => set('injuryDetails', e.target.value)} rows={2} placeholder="Details of injuries or medical help given..." />
-        )}
-        <Input label="Witnesses" value={form.witnesses || ''} onChange={e => set('witnesses', e.target.value)} placeholder="Names of any witnesses" />
-        <Textarea label="Immediate Action Taken" value={form.immediateAction || ''} onChange={e => set('immediateAction', e.target.value)} rows={2} placeholder="What did you do immediately after?" required />
-      </div>
-    )
-    default: return (
-      <Textarea label="Notes / description" value={form.notes || ''} onChange={e => set('notes', e.target.value)} rows={4} placeholder="Describe what happened, what was observed..." />
-    )
-  }
-}
 
 function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState<Record<string, any>>(() => {

@@ -24,7 +24,7 @@ function QuestionField({ q, value, onChange }: { q: any; value: any; onChange: (
   }
 
   if (q.type === 'scale') {
-    const labels = ['Never', 'Rarely', 'Sometimes', 'Often', 'Always']
+    const labels = ['Not at All', 'Rarely', 'Sometimes', 'Often', 'Very Often']
     return (
       <div className="flex gap-2 flex-wrap">
         {[0, 1, 2, 3, 4].map(n => (
@@ -150,13 +150,17 @@ export default function AssessmentForm() {
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Assessment complete</h2>
           <p className="text-slate-500 mb-6">Assessment for <strong>{subjectName}</strong> has been saved.</p>
-          {result.max_score > 0 && (
+          {(result.max_score > 0 || result.risk_level) && (
             <div className="bg-slate-50 rounded-xl p-6 mb-6 inline-block min-w-[180px]">
-              <p className="text-5xl font-bold text-purple-700">{Math.round(result.score_pct)}%</p>
-              <p className="text-xs text-slate-400 mt-1">{result.total_score} / {result.max_score} points</p>
+              {result.max_score > 0 && (
+                <>
+                  <p className="text-5xl font-bold text-purple-700">{Math.round(result.score_pct)}%</p>
+                  <p className="text-xs text-slate-400 mt-1">{result.total_score} / {result.max_score} points</p>
+                </>
+              )}
               {result.risk_level && (
-                <p className={`text-sm font-bold mt-2 capitalize ${riskColor}`}>
-                  {result.risk_level.replace(/_/g, ' ')}
+                <p className={`text-sm font-bold ${result.max_score > 0 ? 'mt-2' : ''} capitalize ${riskColor}`}>
+                  Burnout Level: {result.risk_level.replace(/_/g, ' ')}
                 </p>
               )}
             </div>
