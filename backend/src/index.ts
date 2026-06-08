@@ -1174,6 +1174,16 @@ async function ensureColumns() {
        is_active BOOLEAN NOT NULL DEFAULT true,
        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
+    `CREATE TABLE IF NOT EXISTS staff_service_user_assignments (
+       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id    UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       su_id      UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       created_at TIMESTAMPTZ DEFAULT NOW(),
+       UNIQUE (staff_id, su_id)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_ssua_staff ON staff_service_user_assignments(staff_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ssua_su    ON staff_service_user_assignments(su_id)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
