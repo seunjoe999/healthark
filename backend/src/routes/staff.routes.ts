@@ -7,6 +7,7 @@ import { authService } from '../services/auth.service';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import { logAudit } from './auditTrail.routes';
+import { notifyHomeClients } from '../services/sse.service';
 
 const router = Router();
 const laxUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -164,6 +165,7 @@ router.put('/role-access-rights', requireRole('home_manager', 'group_admin', 'de
          ON CONFLICT (home_id, role) DO UPDATE SET feature_flags=$3::jsonb, updated_at=NOW()`,
         [hId, role, JSON.stringify(featureFlags || {})]
       );
+      notifyHomeClients(hId, 'access-refresh', role);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

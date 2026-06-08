@@ -146,11 +146,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshUser])
 
-  // Poll every 60 seconds while logged in so access right changes apply automatically
+  // SSE — server pushes 'access-refresh' the instant an admin changes role rights
   useEffect(() => {
     if (!user) return
-    const id = setInterval(refreshUser, 60_000)
-    return () => clearInterval(id)
+    const { token } = loadSession()
+    if (!token) return
+    let es: EventSource | null = null
+    let retryTimer: ReturnType<typeof setTimeout>
+
+    const connect = () => {
+      es = new EventSource(`/api/auth/events?token=${encodeURIComponent(token)}`)
+      es.addEventListener('access-refresh', () => refreshUser())
+      es.onerror = () => {
+        es?.close()
+        retryTimer = setTimeout(connect, 5000)
+      }
+    }
+    connect()
+    return () => { es?.close(); clearTimeout(retryTimer) }
   }, [!!user, refreshUser])
 
   // Listen for 401 events dispatched by the axios interceptor

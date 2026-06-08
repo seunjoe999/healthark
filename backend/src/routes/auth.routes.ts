@@ -7,6 +7,7 @@ import { authenticate } from '../middleware/auth';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
+import { addSseClient, removeSseClient } from '../services/sse.service';
 
 const router = Router();
 
@@ -266,6 +267,29 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
       featureFlags: mergedFlags,
     }} as ApiResponse);
   } catch (err) { next(err); }
+});
+
+// GET /api/auth/events?token=xxx — SSE stream; pushes 'access-refresh' when role rights change
+// EventSource cannot send Authorization headers, so token is passed as query param
+router.get('/events', (req: Request, res: Response) => {
+  const token = (req.query.token as string) || req.headers.authorization?.substring(7) || '';
+  let homeId = '';
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    homeId = decoded?.homeId || '';
+  } catch {
+    res.status(401).end();
+    return;
+  }
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write('event: connected\ndata: ok\n\n');
+  addSseClient(homeId, res);
+  req.on('close', () => removeSseClient(homeId, res));
 });
 
 // PUT /api/auth/activate/:staffId — manager activates pending staff
