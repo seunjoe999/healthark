@@ -471,7 +471,7 @@ router.get('/assignments/by-staff/:staffId', param('staffId').isUUID(), validate
 
 // POST /api/service-users/assignments — assign staff to resident
 router.post('/assignments',
-  [body('staffId').isUUID(), body('suId').isUUID()], validateRequest,
+  [body('staffId').isString().notEmpty(), body('suId').isString().notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || getHomeId(req);
@@ -488,7 +488,7 @@ router.post('/assignments',
 
 // DELETE /api/service-users/assignments — remove assignment
 router.delete('/assignments',
-  [body('staffId').isUUID(), body('suId').isUUID()], validateRequest,
+  [body('staffId').isString().notEmpty(), body('suId').isString().notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query(
