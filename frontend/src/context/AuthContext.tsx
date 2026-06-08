@@ -134,10 +134,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refreshUser() }, [])
 
+  // Re-fetch on window focus or tab becoming visible
   useEffect(() => {
-    window.addEventListener('focus', refreshUser)
-    return () => window.removeEventListener('focus', refreshUser)
+    const onFocus = () => refreshUser()
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshUser() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [refreshUser])
+
+  // Poll every 60 seconds while logged in so access right changes apply automatically
+  useEffect(() => {
+    if (!user) return
+    const id = setInterval(refreshUser, 60_000)
+    return () => clearInterval(id)
+  }, [!!user, refreshUser])
 
   // Listen for 401 events dispatched by the axios interceptor
   useEffect(() => {
