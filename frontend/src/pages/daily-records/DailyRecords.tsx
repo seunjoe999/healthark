@@ -3,12 +3,30 @@ import { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, subDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
-import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
+import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check, Music, Thermometer, Stethoscope, ArrowLeftRight, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
 import SeizureForm from './forms/SeizureForm'
 import SpeechInput from '../../components/SpeechInput'
+import SocialActivities from '../social-activities/SocialActivities'
+import BathChart from '../bath-chart/BathChart'
+import BowelChart from '../bowel-chart/BowelChart'
+import Observations from '../observations/Observations'
+import ProfessionalVisits from '../professional-visits/ProfessionalVisits'
+import HandoverReport from '../reports/HandoverReport'
+import ResidentDiary from '../diary/ResidentDiary'
+
+const DR_TABS = [
+  { key: 'daily_records',       label: 'Daily Records',      icon: ClipboardList },
+  { key: 'social_activities',   label: 'Social Activities',  icon: Music },
+  { key: 'bath_chart',          label: 'Bath Chart',          icon: Droplets },
+  { key: 'bowel_chart',         label: 'Bowel Chart',         icon: Droplets },
+  { key: 'observations',        label: 'Observations',        icon: Thermometer },
+  { key: 'professional_visits', label: 'Professional Visits', icon: Stethoscope },
+  { key: 'handover',            label: 'Handover',            icon: ArrowLeftRight },
+  { key: 'health_check',        label: 'Health Check',        icon: BookOpen },
+]
 
 const RECORD_TYPES = [
   { value: 'personal_care', label: 'Personal care', icon: '🧼' },
@@ -101,6 +119,7 @@ export default function DailyRecords() {
   const [viewDate, setViewDate] = useState(new Date())
   const [editingRecord, setEditingRecord] = useState<any>(null)
   const [editNotes, setEditNotes] = useState('')
+  const [activeTab, setActiveTab] = useState('daily_records')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -152,6 +171,31 @@ export default function DailyRecords() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Tab bar */}
+      <div className="bg-white border-b border-slate-200 px-2 flex gap-0 overflow-x-auto shrink-0">
+        {DR_TABS.map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === tab.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}>
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab !== 'daily_records' ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {activeTab === 'social_activities'   && <SocialActivities />}
+          {activeTab === 'bath_chart'           && <BathChart />}
+          {activeTab === 'bowel_chart'          && <BowelChart />}
+          {activeTab === 'observations'         && <Observations />}
+          {activeTab === 'professional_visits'  && <ProfessionalVisits />}
+          {activeTab === 'handover'             && <HandoverReport />}
+          {activeTab === 'health_check'         && <ResidentDiary />}
+        </div>
+      ) : (
+      <>
       {/* Top control bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
@@ -295,6 +339,8 @@ export default function DailyRecords() {
       {editingRecord && selectedSu && (
         <EditRecordModal record={editingRecord} onClose={() => setEditingRecord(null)}
           onSaved={async () => { setEditingRecord(null); await loadRecords(selectedSu.id, viewDate); toast.success('Record updated') }} />
+      )}
+      </>
       )}
     </div>
   )

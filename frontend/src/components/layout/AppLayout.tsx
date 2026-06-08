@@ -43,14 +43,7 @@ const navSections = [
   {
     label: 'Daily Records',
     items: [
-      { label: 'Daily Records',                    to: '/daily-records',       icon: ClipboardList, roles: [],                                           featureKey: 'daily_records' },
-      { label: 'Social Activities',                to: '/social-activities',   icon: Music,         roles: [],                                           featureKey: 'social_activities' },
-      { label: 'Bath Records',                     to: '/bath-chart',          icon: Droplets,      roles: [],                                           featureKey: 'bath_chart' },
-      { label: 'Bowel Chart',                      to: '/bowel-chart',         icon: Droplets,      roles: [],                                           featureKey: 'bowel_chart' },
-      { label: 'Observations',                     to: '/observations',        icon: Thermometer,   roles: [],                                           featureKey: 'observations' },
-      { label: 'Professional Visits',              to: '/professional-visits', icon: Stethoscope,   roles: [],                                           featureKey: 'professional_visits' },
-      { label: 'Handover',                         to: '/reports/handover',    icon: ArrowLeftRight,roles: [],                                           featureKey: 'handover' },
-      { label: 'Service Users Health Check',       to: '/diary',               icon: BookOpen,      roles: [],                                           featureKey: 'diary' },
+      { label: 'Daily Records', to: '/daily-records', icon: ClipboardList, roles: [], featureKey: 'daily_records' },
     ]
   },
   {
