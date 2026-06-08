@@ -73,6 +73,7 @@ export default function MAR() {
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy'>('mar')
   const [addMedOpen, setAddMedOpen] = useState(false)
+  const [editMedModal, setEditMedModal] = useState<any>(null)
   const [stockModalMed, setStockModalMed] = useState<any>(null)
   const [printModal, setPrintModal] = useState(false)
   const [cellDetail, setCellDetail] = useState<any>(null)
@@ -298,25 +299,44 @@ export default function MAR() {
                   <EmptyState title="No medications" description="Add medications for this resident"
                     action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>} />
                 ) : medications.map((med: any) => (
-                  <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-start justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Pill className="w-4 h-4 text-purple-500" />
-                        <h3 className="font-semibold text-slate-900">{med.medication_name}</h3>
-                        {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
+                  <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Pill className="w-4 h-4 text-purple-500 shrink-0" />
+                          <h3 className="font-semibold text-slate-900">{med.medication_name}</h3>
+                          {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
+                        </div>
+                        <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
+                        {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Prescribed by: {med.prescribed_by}</p>}
+                        {med.start_date && <p className="text-xs text-slate-400">Started: {format(new Date(med.start_date), 'd MMM yyyy')}</p>}
+                        {med.instructions && (
+                          <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mt-1.5">{med.instructions}</p>
+                        )}
+                        {med.location_access_code && (
+                          <p className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1 mt-1.5 flex items-start gap-1">
+                            <MapPin className="w-3 h-3 shrink-0 mt-0.5 text-slate-400" />
+                            <span><span className="font-semibold">Location / Access:</span> {med.location_access_code}</span>
+                          </p>
+                        )}
+                        {med.medicine_warning && (
+                          <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1.5 flex items-start gap-1">
+                            <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                            <span><span className="font-semibold">Warning:</span> {med.medicine_warning}</span>
+                          </p>
+                        )}
                       </div>
-                      <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
-                      {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Prescribed by: {med.prescribed_by}</p>}
-                      {med.start_date && <p className="text-xs text-slate-400">Started: {format(new Date(med.start_date), 'd MMM yyyy')}</p>}
-                      {med.instructions && <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mt-1">{med.instructions}</p>}
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => setEditMedModal(med)}>Edit</Button>
+                        <Button size="sm" variant="ghost" onClick={async () => {
+                          if (!confirm('Discontinue this medication?')) return
+                          await api.delete(`/mar/medications/${med.id}`)
+                          const res = await api.get(`/mar/medications/${selectedSu.id}`)
+                          setMedications(res.data.data || [])
+                          toast.success('Medication discontinued')
+                        }}>Discontinue</Button>
+                      </div>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={async () => {
-                      if (!confirm('Discontinue this medication?')) return
-                      await api.delete(`/mar/medications/${med.id}`)
-                      const res = await api.get(`/mar/medications/${selectedSu.id}`)
-                      setMedications(res.data.data || [])
-                      toast.success('Medication discontinued')
-                    }}>Discontinue</Button>
                   </div>
                 ))}
               </div>
@@ -358,6 +378,15 @@ export default function MAR() {
           await fetchAll(selectedSu)
           toast.success('Medication added')
         }} />
+
+      {editMedModal && (
+        <EditMedicationModal med={editMedModal} onClose={() => setEditMedModal(null)}
+          onSaved={async () => {
+            setEditMedModal(null)
+            await fetchAll(selectedSu)
+            toast.success('Medication updated')
+          }} />
+      )}
 
       {stockModalMed && (
         <StockCountModal med={stockModalMed} suId={selectedSu?.id} onClose={() => setStockModalMed(null)}
@@ -773,6 +802,23 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
           {format(parseISO(date), 'EEEE, d MMMM yyyy')} · {slot}
         </p>
 
+        {(med.location_access_code || med.medicine_warning) && (
+          <div className="space-y-1.5">
+            {med.location_access_code && (
+              <div className="flex items-start gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+                <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+                <span><span className="font-semibold">Location / Access:</span> {med.location_access_code}</span>
+              </div>
+            )}
+            {med.medicine_warning && (
+              <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span><span className="font-semibold">Warning:</span> {med.medicine_warning}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select outcome</p>
           <div className="grid grid-cols-4 gap-2">
@@ -819,7 +865,7 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
 
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', medicationCode: '', atcCode: '' })
+  const [form, setForm] = useState({ medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', medicationCode: '', atcCode: '', locationAccessCode: '', medicineWarning: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
@@ -848,6 +894,14 @@ function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; o
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
         </div>
+        <div>
+          <label className="label flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Access code</label>
+          <textarea className="input" rows={2} value={form.locationAccessCode} onChange={e => set('locationAccessCode', e.target.value)} placeholder="Where is the medication stored? Any access instructions..." />
+        </div>
+        <div>
+          <label className="label flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Medicine Warning</label>
+          <textarea className="input" rows={2} value={form.medicineWarning} onChange={e => set('medicineWarning', e.target.value)} placeholder="e.g. May cause drowsiness. Do not stop taking without medical advice..." />
+        </div>
         <div className="border-t pt-3">
           <p className="text-xs font-semibold text-slate-600 mb-3">Pharmacy & GP Details</p>
           <div className="grid grid-cols-2 gap-3">
@@ -873,6 +927,82 @@ function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; o
         <div className="flex gap-3 justify-end pt-2 border-t">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading} icon={<Pill className="w-4 h-4" />}>Add medication</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/* ─── Edit Medication Modal ────────────────────────────────────────────── */
+function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    dose: med.dose || '',
+    frequency: med.frequency || '',
+    route: med.route || '',
+    prescribedBy: med.prescribed_by || '',
+    startDate: med.start_date ? med.start_date.split('T')[0] : '',
+    instructions: med.instructions || '',
+    locationAccessCode: med.location_access_code || '',
+    medicineWarning: med.medicine_warning || '',
+    isPrn: med.is_prn || false,
+    pharmacyName: med.pharmacy_name || '',
+    pharmacyPhone: med.pharmacy_phone || '',
+    gpName: med.gp_name || '',
+    gpPhone: med.gp_phone || '',
+  })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try { await api.patch(`/mar/medications/${med.id}`, form); onSaved() }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Edit — ${med.medication_name}`} size="lg">
+      <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
+          <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
+          <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
+        </div>
+        <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+        <div>
+          <label className="label">Directions / Instructions</label>
+          <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
+        </div>
+        <div>
+          <label className="label flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Access code</label>
+          <textarea className="input" rows={2} value={form.locationAccessCode} onChange={e => set('locationAccessCode', e.target.value)} placeholder="Where is the medication stored? Any access instructions..." />
+        </div>
+        <div>
+          <label className="label flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Medicine Warning</label>
+          <textarea className="input" rows={2} value={form.medicineWarning} onChange={e => set('medicineWarning', e.target.value)} placeholder="e.g. May cause drowsiness. Do not stop taking without medical advice..." />
+        </div>
+        <div className="border-t pt-3">
+          <p className="text-xs font-semibold text-slate-600 mb-3">Pharmacy & GP Details</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Pharmacy name" value={form.pharmacyName} onChange={e => set('pharmacyName', e.target.value)} placeholder="Pharmacy name" />
+            <Input label="Pharmacy phone" value={form.pharmacyPhone} onChange={e => set('pharmacyPhone', e.target.value)} placeholder="Phone number" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <Input label="GP name" value={form.gpName} onChange={e => set('gpName', e.target.value)} placeholder="GP name" />
+            <Input label="GP phone" value={form.gpPhone} onChange={e => set('gpPhone', e.target.value)} placeholder="Phone number" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="edit-prn" checked={form.isPrn} onChange={e => set('isPrn', e.target.checked)} className="rounded" />
+          <label htmlFor="edit-prn" className="text-sm font-medium text-slate-700">This is a PRN (as required) medication</label>
+        </div>
+        <div className="flex gap-3 justify-end pt-2 border-t">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading} icon={<Pill className="w-4 h-4" />}>Save changes</Button>
         </div>
       </form>
     </Modal>
