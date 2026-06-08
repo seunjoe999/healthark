@@ -920,7 +920,9 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
           <>
             {plan.medication_support_level && <Field label="Medication Support Level" value={plan.medication_support_level} />}
             {plan.level_of_support && <Field label="Level of Support" value={plan.level_of_support} />}
-            {plan.support_types && <Field label="Type of Support" value={plan.support_types} />}
+            {plan.template_data?.requiresSupportManage && <Field label="Requires Support To Manage Medication" value={plan.template_data.requiresSupportManage} />}
+            {plan.template_data?.hasPrescribedCreams && <Field label="Has Prescribed Creams / Eyedrops / Inhalers" value={plan.template_data.hasPrescribedCreams} />}
+            {plan.support_types && <Field label="Type of Support Required" value={plan.support_types} />}
             <div className="space-y-4">
               {plan.aims_outcomes && <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />}
               {plan.what_i_can_do && <GoldSection label="What I Can Do" value={plan.what_i_can_do} />}
@@ -1294,6 +1296,17 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
             </div>
             <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
               <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">SUPPORT</p>
+              <div className="mb-3">
+                <YesNoRow
+                  label="I Require Support To Manage My Medication (i.e. Ordering, Collecting, or Reminding To Take)"
+                  value={form.templateData?.requiresSupportManage || 'No'}
+                  onChange={v => set('templateData', { ...form.templateData, requiresSupportManage: v })} />
+                <YesNoRow
+                  label="I Have Prescribed Creams, Eyedrops or Inhalers Which I Require Support With"
+                  value={form.templateData?.hasPrescribedCreams || 'No'}
+                  onChange={v => set('templateData', { ...form.templateData, hasPrescribedCreams: v })} />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 mb-1.5">Type of Support Required:</p>
               {SUPPORT_TYPE_OPTIONS.map(s => (
                 <label key={s} className="flex items-center gap-2 cursor-pointer mb-1.5">
                   <input type="checkbox" checked={form.supportTypes.includes(s)} onChange={() => toggleSupport(s)} className="rounded" />
@@ -1425,6 +1438,17 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
             <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             <SpeechTextarea label="What I can do" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
             <SpeechTextarea label="How to support me" rows={2} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Support</p>
+              <YesNoRow
+                label="I Require Support To Manage My Medication (i.e. Ordering, Collecting, or Reminding To Take)"
+                value={form.templateData?.requiresSupportManage || 'No'}
+                onChange={v => set('templateData', { ...form.templateData, requiresSupportManage: v })} />
+              <YesNoRow
+                label="I Have Prescribed Creams, Eyedrops or Inhalers Which I Require Support With"
+                value={form.templateData?.hasPrescribedCreams || 'No'}
+                onChange={v => set('templateData', { ...form.templateData, hasPrescribedCreams: v })} />
+            </div>
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-100 space-y-3">
               <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">Medications</p>
               <SpeechTextarea label="Regular Medications" className="w-full" rows={2} value={form.regularMedications} onChange={v => set('regularMedications', v)} />
