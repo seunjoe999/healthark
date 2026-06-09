@@ -27,7 +27,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     let sql = `
       SELECT
-        ri.*,
+        ri.id, ri.daily_record_id, ri.incident_type, ri.location, ri.description,
+        ri.injuries, ri.injury_details, ri.medical_needed, ri.medical_details,
+        ri.witnesses, ri.immediate_action, ri.cqc_notified, ri.family_notified,
+        ri.manager_reviewed, ri.manager_reviewed_at,
+        ri.emotion, ri.review_notes, ri.signature, ri.updated_at,
         dr.id as daily_record_id,
         dr.home_id,
         dr.su_id,
@@ -208,6 +212,56 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
        witnesses || null, immediateAction || null, cqcNotified || false, familyNotified || false]
     );
     res.status(201).json({ success: true, data: incRow[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/incidents/:id — update incident fields (description, emotion, immediate_action)
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const { description, emotion, immediateAction } = req.body;
+    const sets: string[] = [];
+    const params: any[] = [];
+    if (description !== undefined) { params.push(description); sets.push(`description = $${params.length}`); }
+    if (emotion !== undefined) { params.push(emotion); sets.push(`emotion = $${params.length}`); }
+    if (immediateAction !== undefined) { params.push(immediateAction); sets.push(`immediate_action = $${params.length}`); }
+    sets.push(`updated_at = NOW()`);
+    params.push(req.params.id);
+    if (sets.length === 1) { res.json({ success: true }); return; }
+    await query(`UPDATE records_incidents SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
+    res.json({ success: true } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/incidents/:id/review-note — append a timestamped review note (managers/team leaders)
+router.post('/:id/review-note', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const { note } = req.body;
+    if (!note?.trim()) throw new AppError('Note text is required', 400);
+    const staffRows = await query<any>('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
+    const authorName = staffRows.length ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'Unknown';
+    const entry = { text: note.trim(), author: authorName, timestamp: new Date().toISOString() };
+    await query(
+      `UPDATE records_incidents SET review_notes = review_notes || $1::jsonb, updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify([entry]), req.params.id]
+    );
+    res.json({ success: true, data: entry } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/incidents/:id/signature — record a digital signature
+router.post('/:id/signature', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const staffRows = await query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
+    const s = staffRows[0];
+    const sig = { name: `${s.first_name} ${s.last_name}`, role: s.role, timestamp: new Date().toISOString() };
+    await query(
+      `UPDATE records_incidents SET signature = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify(sig), req.params.id]
+    );
+    res.json({ success: true, data: sig } as ApiResponse);
   } catch (err) { next(err); }
 });
 

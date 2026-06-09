@@ -1184,6 +1184,13 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_ssua_staff ON staff_service_user_assignments(staff_id)`,
     `CREATE INDEX IF NOT EXISTS idx_ssua_su    ON staff_service_user_assignments(su_id)`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS emotion       TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS review_notes  JSONB NOT NULL DEFAULT '[]'::jsonb`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS signature     JSONB`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS updated_at    TIMESTAMPTZ DEFAULT NOW()`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='team_leader' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'team_leader'; END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='admin' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'admin'; END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='deputy_manager' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'deputy_manager'; END IF; END $$`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

@@ -4,8 +4,48 @@ import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, PrintButton, Modal, SpeechTextarea } from '../../components/ui'
-import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus, Pencil, CheckCircle, MessageSquarePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// ── Emotion picker ─────────────────────────────────────────────────
+
+const EMOTIONS = [
+  { value: 'distressed', emoji: '😢', label: 'Distressed', color: 'bg-red-500' },
+  { value: 'neutral',    emoji: '😐', label: 'Neutral',    color: 'bg-yellow-400' },
+  { value: 'settled',    emoji: '😊', label: 'Settled',    color: 'bg-emerald-500' },
+] as const
+
+function EmotionPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Emotion / Mood</p>
+      <div className="flex gap-6">
+        {EMOTIONS.map(e => (
+          <button key={e.value} type="button" onClick={() => onChange(e.value)}
+            className="flex flex-col items-center gap-1 group">
+            <span className={`text-3xl transition-transform ${value === e.value ? 'scale-125' : 'opacity-50 group-hover:opacity-80'}`}>
+              {e.emoji}
+            </span>
+            <div className={`w-10 h-1 rounded-full transition-colors ${value === e.value ? e.color : 'bg-slate-200'}`} />
+            <span className={`text-xs font-medium ${value === e.value ? 'text-slate-800' : 'text-slate-400'}`}>{e.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EmotionDisplay({ value }: { value?: string }) {
+  if (!value) return null
+  const e = EMOTIONS.find(x => x.value === value)
+  if (!e) return null
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xl">{e.emoji}</span>
+      <span className="text-sm font-medium text-slate-700">{e.label}</span>
+    </div>
+  )
+}
 
 // ── Severity helpers ──────────────────────────────────────────────
 
@@ -85,6 +125,15 @@ export default function Incidents() {
   const [createForm, setCreateForm] = useState({ ...BLANK_INC })
   const [creating, setCreating] = useState(false)
 
+  // Edit incident state
+  const [editOpen, setEditOpen] = useState(false)
+  const [editInc, setEditInc] = useState<any>(null)
+  const [editForm, setEditForm] = useState({ description: '', immediateAction: '', emotion: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [reviewNote, setReviewNote] = useState('')
+  const [addingNote, setAddingNote] = useState(false)
+  const [signing, setSigning] = useState(false)
+
   // Filters
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
@@ -157,6 +206,54 @@ export default function Incidents() {
       setAiAnalysis(prev => ({ ...prev, [inc.id]: res.data.data.analysis }))
     } catch { toast.error('AI analysis failed. Check API key is configured.') }
     finally { setAiLoading(null) }
+  }
+
+  const openEdit = (inc: any) => {
+    setEditInc(inc)
+    setEditForm({ description: inc.description || '', immediateAction: inc.immediate_action || '', emotion: inc.emotion || '' })
+    setReviewNote('')
+    setEditOpen(true)
+  }
+
+  const saveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editInc) return
+    setEditSaving(true)
+    try {
+      await api.put(`/incidents/${editInc.id}`, editForm)
+      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, description: editForm.description, immediate_action: editForm.immediateAction, emotion: editForm.emotion, updated_at: new Date().toISOString() } : i))
+      toast.success('Incident updated')
+      setEditOpen(false)
+    } catch { toast.error('Failed to save') }
+    finally { setEditSaving(false) }
+  }
+
+  const addReviewNote = async () => {
+    if (!reviewNote.trim() || !editInc) return
+    setAddingNote(true)
+    try {
+      const res = await api.post(`/incidents/${editInc.id}/review-note`, { note: reviewNote })
+      const entry = res.data.data
+      const updated = [...(editInc.review_notes || []), entry]
+      setEditInc((p: any) => ({ ...p, review_notes: updated }))
+      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, review_notes: updated } : i))
+      setReviewNote('')
+      toast.success('Review note added')
+    } catch { toast.error('Failed to add note') }
+    finally { setAddingNote(false) }
+  }
+
+  const addSignature = async () => {
+    if (!editInc) return
+    setSigning(true)
+    try {
+      const res = await api.post(`/incidents/${editInc.id}/signature`)
+      const sig = res.data.data
+      setEditInc((p: any) => ({ ...p, signature: sig }))
+      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, signature: sig } : i))
+      toast.success(`Signed off by ${sig.name}`)
+    } catch { toast.error('Failed to add signature') }
+    finally { setSigning(false) }
   }
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault() }
@@ -331,7 +428,7 @@ export default function Incidents() {
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-3">
+                  <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <IncidentField label="Service User" value={inc.resident_name} />
                       <IncidentField label="Incident type" value={TYPE_LABELS[incidentType] || incidentType} />
@@ -345,6 +442,15 @@ export default function Incidents() {
                     {inc.description && <IncidentField label="Details of Incident" value={inc.description} />}
                     {inc.witnesses && <IncidentField label="Witnesses" value={inc.witnesses} />}
                     {inc.immediate_action && <IncidentField label="Immediate action taken" value={inc.immediate_action} />}
+
+                    {/* Emotion display */}
+                    {inc.emotion && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Resident Emotion</p>
+                        <EmotionDisplay value={inc.emotion} />
+                      </div>
+                    )}
+
                     {/* Notification section */}
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 grid sm:grid-cols-2 gap-3">
                       <div>
@@ -352,22 +458,51 @@ export default function Incidents() {
                         <p className={`text-sm font-medium ${inc.cqc_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
                           {inc.cqc_notified ? 'Yes' : 'No'}
                         </p>
-                        {!inc.cqc_notified && inc.cqc_not_notified_reason && (
-                          <p className="text-xs text-slate-500 mt-0.5">Reason: {inc.cqc_not_notified_reason}</p>
-                        )}
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-blue-700 mb-0.5">Family / next of kin notified</p>
                         <p className={`text-sm font-medium ${inc.family_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
                           {inc.family_notified ? 'Yes' : 'No'}
                         </p>
-                        {!inc.family_notified && inc.family_not_notified_reason && (
-                          <p className="text-xs text-slate-500 mt-0.5">Reason: {inc.family_not_notified_reason}</p>
-                        )}
                       </div>
                     </div>
+
+                    {/* Review Notes */}
+                    {(inc.review_notes?.length > 0 || inc.signature) && (
+                      <div className="space-y-2">
+                        {inc.review_notes?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Review Notes</p>
+                            <div className="space-y-2">
+                              {inc.review_notes.map((note: any, i: number) => (
+                                <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700">
+                                  <p className="text-xs text-slate-400 mb-1">
+                                    On {format(new Date(note.timestamp), 'd MMM yyyy HH:mm')} {note.author} wrote:
+                                  </p>
+                                  {note.text}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {inc.signature && (
+                          <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <p className="text-xs text-emerald-700">
+                              Signed off by <strong>{inc.signature.name}</strong> on {format(new Date(inc.signature.timestamp), 'd MMM yyyy HH:mm')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Last modified */}
+                    {inc.updated_at && (
+                      <p className="text-xs text-slate-400">Last modified: {format(new Date(inc.updated_at), 'd MMM yyyy HH:mm')}</p>
+                    )}
+
                     {/* AI Analysis */}
-                    <div className="pt-2 border-t border-slate-50">
+                    <div className="pt-2 border-t border-slate-100">
                       {!aiAnalysis[inc.id] ? (
                         <Button size="sm" variant="outline"
                           icon={<Sparkles className="w-3.5 h-3.5 text-purple-500" />}
@@ -392,14 +527,19 @@ export default function Incidents() {
                         </div>
                       )}
                     </div>
-                    {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-                      <div className="flex justify-end pt-2 border-t border-slate-50">
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
+                        onClick={() => openEdit(inc)}>
+                        Edit / Review
+                      </Button>
+                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                         <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
                           onClick={() => deleteIncident(inc)}>
-                          Delete incident
+                          Delete
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -407,6 +547,89 @@ export default function Incidents() {
           })}
         </div>
       )}
+
+      {/* Edit / Review incident modal */}
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Incident" size="lg">
+        {editInc && (
+          <form onSubmit={saveEdit} className="space-y-5">
+            <div>
+              <label className="label">Description</label>
+              <textarea className="input w-full" rows={4}
+                value={editForm.description}
+                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Immediate action taken</label>
+              <textarea className="input w-full" rows={2}
+                value={editForm.immediateAction}
+                onChange={e => setEditForm(f => ({ ...f, immediateAction: e.target.value }))} />
+            </div>
+
+            <EmotionPicker value={editForm.emotion} onChange={v => setEditForm(f => ({ ...f, emotion: v }))} />
+
+            {editInc.updated_at && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Last Modified</p>
+                <p className="text-sm text-slate-600">{format(new Date(editInc.updated_at), 'd MMM yyyy HH:mm')}</p>
+              </div>
+            )}
+
+            {/* Review Notes */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Review Notes</p>
+              {editInc.review_notes?.length > 0 ? (
+                <div className="space-y-2 mb-3">
+                  {editInc.review_notes.map((note: any, i: number) => (
+                    <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700">
+                      <p className="text-xs text-slate-400 mb-1">
+                        On {format(new Date(note.timestamp), 'd MMM yyyy HH:mm')} {note.author} wrote:
+                      </p>
+                      {note.text}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 mb-2">No review notes yet.</p>
+              )}
+              <div className="flex gap-2">
+                <textarea className="input flex-1 text-sm" rows={2} placeholder="Add a review note…"
+                  value={reviewNote} onChange={e => setReviewNote(e.target.value)} />
+                <Button type="button" size="sm" variant="outline"
+                  icon={<MessageSquarePlus className="w-4 h-4" />}
+                  loading={addingNote}
+                  onClick={addReviewNote}>
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Signature */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Sign-off</p>
+              {editInc.signature ? (
+                <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  <p className="text-xs text-emerald-700">
+                    Signed by <strong>{editInc.signature.name}</strong> on {format(new Date(editInc.signature.timestamp), 'd MMM yyyy HH:mm')}
+                  </p>
+                </div>
+              ) : (
+                <Button type="button" size="sm" variant="outline"
+                  icon={<CheckCircle className="w-4 h-4 text-emerald-600" />}
+                  loading={signing}
+                  onClick={addSignature}>
+                  Add Signature
+                </Button>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={editSaving}>Save</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* Create incident modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Log New Incident" size="lg">
