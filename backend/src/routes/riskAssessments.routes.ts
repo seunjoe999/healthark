@@ -72,7 +72,8 @@ router.post('/',
               protectiveFactors, managementPlan, reviewFrequency,
               historicalContext, riskRating,
               riskBeforeIntervention, riskScore, riskRatingOption,
-              evaluationOfRisk, riskAcceptable, riskAfterControls } = req.body;
+              evaluationOfRisk, riskAcceptable, riskAfterControls,
+              riskUpdateTracking, lastAssessedDate } = req.body;
 
       if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
         res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
@@ -90,8 +91,9 @@ router.post('/',
           protective_factors, management_plan, review_frequency, next_review_date, created_by,
           historical_context, risk_rating,
           risk_before_intervention, risk_score, risk_rating_option,
-          evaluation_of_risk, risk_acceptable, risk_after_controls)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+          evaluation_of_risk, risk_acceptable, risk_after_controls,
+          risk_update_tracking, last_assessed_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25) RETURNING *`,
         [trimmedSuId, homeId, assessmentName, description || null, riskLevel || 'low',
          currentRiskLevel || riskLevel || 'low', whoIsAtRisk || null,
          isHistorical || false, whatCouldHappen || null, triggers || null,
@@ -99,7 +101,8 @@ router.post('/',
          reviewFrequency || 'monthly', nextReview.toISOString().split('T')[0], staffId,
          historicalContext || null, riskRating || currentRiskLevel || riskLevel || 'low',
          riskBeforeIntervention || null, riskScore ?? null, riskRatingOption || null,
-         evaluationOfRisk || null, riskAcceptable || null, riskAfterControls || null]
+         evaluationOfRisk || null, riskAcceptable || null, riskAfterControls || null,
+         riskUpdateTracking || null, lastAssessedDate || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -115,7 +118,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
               historicalContext, riskRating,
               riskBeforeIntervention, riskScore, riskRatingOption,
               evaluationOfRisk, riskAcceptable, riskAfterControls,
-              signedOff, signedOffBy, signedOffDate } = req.body;
+              signedOff, signedOffBy, signedOffDate,
+              riskUpdateTracking, lastAssessedDate } = req.body;
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const freq = reviewFrequency || 'monthly';
       const nextReview = new Date();
@@ -143,14 +147,17 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           risk_after_controls        = COALESCE($17, risk_after_controls),
           signed_off                 = COALESCE($18, signed_off),
           signed_off_by              = COALESCE($19, signed_off_by),
-          signed_off_date            = COALESCE($20, signed_off_date)
+          signed_off_date            = COALESCE($20, signed_off_date),
+          risk_update_tracking       = COALESCE($21, risk_update_tracking),
+          last_assessed_date         = COALESCE($22, last_assessed_date)
          WHERE id = $9`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
          historicalContext ?? null, riskRating ?? null,
          riskBeforeIntervention ?? null, riskScore ?? null, riskRatingOption ?? null,
          evaluationOfRisk ?? null, riskAcceptable ?? null, riskAfterControls ?? null,
-         signedOff ?? null, signedOffBy ?? null, nd(signedOffDate)]
+         signedOff ?? null, signedOffBy ?? null, nd(signedOffDate),
+         riskUpdateTracking ?? null, lastAssessedDate ?? null]
       );
 
       if (updateNotes) {

@@ -64,6 +64,8 @@ router.post('/', [body('suId').isUUID()], validateRequest,
         covertMeds, covertNotes, prnProtocol, prnNotes, crushingRequired, crushingNotes,
         administrationRoute, knownAllergies, storageLocation,
         riskLevel, riskNotes, reviewDate, triggers, protectiveFactors, attachmentNotes,
+        controlledMeds, controlledNotes, controlledWitness, controlledWitnessSig,
+        documentUrl, documentName, signedOffBy, signedOffDate, staffSignature,
       } = req.body;
       const rows = await query(
         `INSERT INTO medicine_risk_assessments
@@ -71,8 +73,10 @@ router.post('/', [body('suId').isUUID()], validateRequest,
             swallowing_risk, swallowing_notes, covert_meds, covert_notes,
             prn_protocol, prn_notes, crushing_required, crushing_notes,
             administration_route, known_allergies, storage_location,
-            risk_level, risk_notes, review_date, triggers, protective_factors, attachment_notes)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
+            risk_level, risk_notes, review_date, triggers, protective_factors, attachment_notes,
+            controlled_meds, controlled_notes, controlled_witness, controlled_witness_sig,
+            document_url, document_name, signed_off_by, signed_off_date, staff_signature)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31) RETURNING *`,
         [homeId, suId, staffId,
          selfMedicate ?? false, selfMedicateNotes || null,
          swallowingRisk || 'none', swallowingNotes || null,
@@ -82,7 +86,11 @@ router.post('/', [body('suId').isUUID()], validateRequest,
          administrationRoute || 'oral', knownAllergies || null,
          storageLocation || null, riskLevel || 'low',
          riskNotes || null, reviewDate || null,
-         triggers || null, protectiveFactors || null, attachmentNotes || null]
+         triggers || null, protectiveFactors || null, attachmentNotes || null,
+         controlledMeds ?? false, controlledNotes || null,
+         controlledWitness || null, controlledWitnessSig || null,
+         documentUrl || null, documentName || null,
+         signedOffBy || null, signedOffDate || null, staffSignature || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -99,6 +107,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         covertMeds, covertNotes, prnProtocol, prnNotes, crushingRequired, crushingNotes,
         administrationRoute, knownAllergies, storageLocation,
         riskLevel, riskNotes, reviewDate, triggers, protectiveFactors, attachmentNotes,
+        controlledMeds, controlledNotes, controlledWitness, controlledWitnessSig,
+        documentUrl, documentName, signedOffBy, signedOffDate, staffSignature,
       } = req.body;
       const rows = await query(
         `UPDATE medicine_risk_assessments SET
@@ -111,6 +121,10 @@ router.put('/:id', param('id').isUUID(), validateRequest,
            administration_route = $12, known_allergies = $13, storage_location = $14,
            risk_level = $15, risk_notes = $16, review_date = $17,
            triggers = $18, protective_factors = $19, attachment_notes = $20,
+           controlled_meds = $22, controlled_notes = $23,
+           controlled_witness = $24, controlled_witness_sig = $25,
+           document_url = $26, document_name = $27,
+           signed_off_by = $28, signed_off_date = $29, staff_signature = $30,
            assessed_at = NOW()
          WHERE id = $21 RETURNING *`,
         [staffId,
@@ -123,7 +137,11 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          storageLocation || null, riskLevel || 'low',
          riskNotes || null, reviewDate || null,
          triggers || null, protectiveFactors || null, attachmentNotes || null,
-         req.params.id]
+         req.params.id,
+         controlledMeds ?? false, controlledNotes || null,
+         controlledWitness || null, controlledWitnessSig || null,
+         documentUrl || null, documentName || null,
+         signedOffBy || null, signedOffDate || null, staffSignature || null]
       );
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

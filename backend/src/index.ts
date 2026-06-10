@@ -1213,6 +1213,19 @@ async function ensureColumns() {
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='team_leader' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'team_leader'; END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='admin' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'admin'; END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='deputy_manager' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'deputy_manager'; END IF; END $$`,
+    // ── medicine_risk_assessments — controlled meds, document, sign-off ──────
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_meds          BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_notes         TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_witness       VARCHAR(255)`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_witness_sig   TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS document_url             VARCHAR(500)`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS document_name            VARCHAR(255)`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS signed_off_by            VARCHAR(255)`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS signed_off_date          DATE`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS staff_signature          TEXT`,
+    // ── risk_assessments — update tracking and last assessed date ─────────────
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_update_tracking TEXT`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS last_assessed_date   DATE`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

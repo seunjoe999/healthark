@@ -8,11 +8,22 @@ import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer
 import toast from 'react-hot-toast'
 
 const RISK_LEVELS = [
-  { value: 'low',    label: 'Low',    color: 'bg-green-100 text-green-700 border-green-200' },
-  { value: 'medium', label: 'Medium', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { value: 'high',   label: 'High',   color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { value: 'low',      label: 'Low',      color: 'bg-green-100 text-green-700 border-green-200' },
+  { value: 'medium',   label: 'Medium',   color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'high',     label: 'High',     color: 'bg-orange-100 text-orange-700 border-orange-200' },
   { value: 'critical', label: 'Critical', color: 'bg-red-100 text-red-700 border-red-200' },
 ]
+
+const LIKELIHOOD_OPTIONS = [
+  { value: '1', label: '1 — Rare',        riskLevel: 'low' },
+  { value: '2', label: '2 — Possible',    riskLevel: 'medium' },
+  { value: '3', label: '3 — Likely',      riskLevel: 'high' },
+  { value: '4', label: '4 — Very Likely', riskLevel: 'critical' },
+]
+
+function likelihoodToRiskLevel(v: string): string {
+  return LIKELIHOOD_OPTIONS.find(o => o.value === v)?.riskLevel || 'low'
+}
 
 function RiskBadge({ level }: { level: string }) {
   const cfg = RISK_LEVELS.find(r => r.value === level) || RISK_LEVELS[0]
@@ -33,20 +44,12 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-const RISK_SCORE_OPTIONS = [
-  { value: '20-25', label: '20–25 = Unacceptable / Very likely (Additional measures must be introduced to reduce risk to a more acceptable level)' },
-  { value: '10-16', label: '10–16 = Substantial / Likely (Additional controls must be introduced in the short term)' },
-  { value: '6-9',   label: '6–9 = Moderate / Fairly likely (If reasonably practicable, aim to reduce risk within 2 months)' },
-  { value: '3-5',   label: '3–5 = Tolerable / Unlikely (If simple action can reduce the risk further at little or no cost then do so)' },
-  { value: '1-2',   label: '1–2 = Trivial / Very Unlikely (No significant risk, no action to be taken)' },
-]
-
 const BLANK_FORM = {
-  assessmentName: '', description: '', riskRating: 'medium', currentRiskLevel: 'medium',
+  assessmentName: '', description: '', riskRating: 'low', currentRiskLevel: 'low',
   whoIsAtRisk: '', whatCouldHappen: '', triggers: '', protectiveFactors: '',
   managementPlan: '', historicalContext: '', reviewFrequency: 'monthly',
-  riskBeforeIntervention: '', riskScore: '', riskRatingOption: '',
-  evaluationOfRisk: '', riskAcceptable: '', riskAfterControls: '',
+  riskBeforeIntervention: '', riskRatingOption: '', riskAfterControls: '',
+  riskUpdateTracking: '', lastAssessedDate: '',
 }
 
 export default function RiskManagement() {
@@ -96,25 +99,25 @@ export default function RiskManagement() {
   `
 
   const buildRaBody = (ra: any) => {
-    const rl = RISK_LEVELS.find(r => r.value === (ra.risk_rating || ra.current_risk_level))
+    const riskLevel = ra.risk_rating || ra.current_risk_level
+    const rl = RISK_LEVELS.find(r => r.value === riskLevel)
+    const likelihood = LIKELIHOOD_OPTIONS.find(o => o.value === ra.risk_rating_option)
     return `
       <h1>${ra.assessment_name}
-        <span class="badge badge-${ra.risk_rating || ra.current_risk_level}">${rl?.label || ra.risk_rating || 'Unknown'} Risk</span>
+        <span class="badge badge-${riskLevel}">${rl?.label || 'Unknown'} Risk</span>
       </h1>
-      <p class="meta">Resident: <strong>${ra.su_name || '—'}</strong> &nbsp;|&nbsp; Next review: <strong>${ra.next_review_date ? new Date(ra.next_review_date).toLocaleDateString('en-GB') : '—'}</strong> &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
+      <p class="meta">Resident: <strong>${ra.su_name || '—'}</strong> &nbsp;|&nbsp; Next review: <strong>${ra.next_review_date ? new Date(ra.next_review_date).toLocaleDateString('en-GB') : '—'}</strong>${ra.last_assessed_date ? ` &nbsp;|&nbsp; Last assessed: <strong>${new Date(ra.last_assessed_date).toLocaleDateString('en-GB')}</strong>` : ''} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
       ${ra.description ? `<section><h3>What is the risk</h3><p>${ra.description.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.historical_context ? `<section><h3>Historical context</h3><p>${ra.historical_context.replace(/\n/g,'<br/>')}</p></section>` : ''}
       ${ra.risk_before_intervention ? `<section><h3>Risk before intervention</h3><p>${ra.risk_before_intervention.replace(/\n/g,'<br/>')}</p></section>` : ''}
       ${ra.who_is_at_risk ? `<section><h3>Who is at risk</h3><p>${ra.who_is_at_risk}</p></section>` : ''}
       ${ra.what_could_happen ? `<section><h3>What could happen</h3><p>${ra.what_could_happen.replace(/\n/g,'<br/>')}</p></section>` : ''}
       ${ra.triggers ? `<section><h3>Triggers</h3><p>${ra.triggers.replace(/\n/g,'<br/>')}</p></section>` : ''}
       ${ra.protective_factors ? `<section><h3>Protective factors</h3><p>${ra.protective_factors.replace(/\n/g,'<br/>')}</p></section>` : ''}
       ${ra.management_plan ? `<div class="mgmt"><h3>Risk management plan</h3><p>${ra.management_plan.replace(/\n/g,'<br/>')}</p></div>` : ''}
-      ${ra.risk_rating_option ? `<section><h3>Risk rating</h3><p>${RISK_SCORE_OPTIONS.find(o=>o.value===ra.risk_rating_option)?.label||ra.risk_rating_option}</p></section>` : ''}
-      ${ra.risk_score != null ? `<section><h3>Total risk score</h3><p><strong>${ra.risk_score}</strong></p></section>` : ''}
-      ${ra.evaluation_of_risk ? `<section><h3>Evaluation of risk</h3><p>${ra.evaluation_of_risk}</p></section>` : ''}
-      ${ra.risk_acceptable ? `<section><h3>Risk acceptable</h3><p>${ra.risk_acceptable}</p></section>` : ''}
-      ${ra.risk_after_controls ? `<section><h3>Risk after controls</h3><p>${ra.risk_after_controls}</p></section>` : ''}
+      ${likelihood ? `<section><h3>Risk likelihood</h3><p>${likelihood.label}</p></section>` : ''}
+      ${ra.risk_after_controls ? `<section><h3>Risk occurring following control measures</h3><p>${ra.risk_after_controls.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      ${ra.risk_update_tracking ? `<section><h3>Risk update tracking</h3><p>${ra.risk_update_tracking.replace(/\n/g,'<br/>')}</p></section>` : ''}
+      <section><h3>Summary — Risk Level</h3><p><strong>${rl?.label || 'Unknown'}</strong></p></section>
     `
   }
 
@@ -173,21 +176,20 @@ export default function RiskManagement() {
     if (!form.suId || !form.assessmentName) { toast.error('Service user and plan name are required'); return }
     setSaving(true)
     try {
+      const riskLevel = form.riskRatingOption ? likelihoodToRiskLevel(form.riskRatingOption) : form.riskRating
       await api.post('/risk-assessments', {
         suId: form.suId, homeId: selectedHome,
         assessmentName: form.assessmentName, description: form.description,
-        riskLevel: form.riskRating, currentRiskLevel: form.currentRiskLevel,
-        riskRating: form.riskRating,
+        riskLevel, currentRiskLevel: riskLevel, riskRating: riskLevel,
         whoIsAtRisk: form.whoIsAtRisk, whatCouldHappen: form.whatCouldHappen,
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
         managementPlan: form.managementPlan, historicalContext: form.historicalContext,
         reviewFrequency: form.reviewFrequency,
         riskBeforeIntervention: form.riskBeforeIntervention,
-        riskScore: form.riskScore ? parseInt(form.riskScore) : undefined,
         riskRatingOption: form.riskRatingOption,
-        evaluationOfRisk: form.evaluationOfRisk,
-        riskAcceptable: form.riskAcceptable,
         riskAfterControls: form.riskAfterControls,
+        riskUpdateTracking: form.riskUpdateTracking,
+        lastAssessedDate: form.lastAssessedDate || undefined,
       })
       toast.success('Risk management plan created')
       setCreateOpen(false)
@@ -201,17 +203,17 @@ export default function RiskManagement() {
     if (!editItem) return
     setSaving(true)
     try {
+      const riskLevel = form.riskRatingOption ? likelihoodToRiskLevel(form.riskRatingOption) : form.riskRating
       await api.put(`/risk-assessments/${editItem.id}`, {
-        description: form.description, currentRiskLevel: form.currentRiskLevel,
-        riskRating: form.riskRating, managementPlan: form.managementPlan,
+        description: form.description, currentRiskLevel: riskLevel,
+        riskRating: riskLevel, managementPlan: form.managementPlan,
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
         historicalContext: form.historicalContext, reviewFrequency: form.reviewFrequency,
         riskBeforeIntervention: form.riskBeforeIntervention,
-        riskScore: form.riskScore ? parseInt(form.riskScore) : undefined,
         riskRatingOption: form.riskRatingOption,
-        evaluationOfRisk: form.evaluationOfRisk,
-        riskAcceptable: form.riskAcceptable,
         riskAfterControls: form.riskAfterControls,
+        riskUpdateTracking: form.riskUpdateTracking,
+        lastAssessedDate: form.lastAssessedDate || undefined,
       })
       toast.success('Risk management plan updated')
       setEditItem(null)
@@ -258,8 +260,8 @@ export default function RiskManagement() {
     setForm({
       assessmentName: ra.assessment_name || '',
       description: ra.description || '',
-      riskRating: ra.risk_rating || ra.current_risk_level || 'medium',
-      currentRiskLevel: ra.current_risk_level || 'medium',
+      riskRating: ra.risk_rating || ra.current_risk_level || 'low',
+      currentRiskLevel: ra.current_risk_level || 'low',
       whoIsAtRisk: ra.who_is_at_risk || '',
       whatCouldHappen: ra.what_could_happen || '',
       triggers: ra.triggers || '',
@@ -269,11 +271,10 @@ export default function RiskManagement() {
       reviewFrequency: ra.review_frequency || 'monthly',
       suId: ra.su_id || '',
       riskBeforeIntervention: ra.risk_before_intervention || '',
-      riskScore: ra.risk_score != null ? String(ra.risk_score) : '',
       riskRatingOption: ra.risk_rating_option || '',
-      evaluationOfRisk: ra.evaluation_of_risk || '',
-      riskAcceptable: ra.risk_acceptable || '',
       riskAfterControls: ra.risk_after_controls || '',
+      riskUpdateTracking: ra.risk_update_tracking || '',
+      lastAssessedDate: ra.last_assessed_date ? ra.last_assessed_date.split('T')[0] : '',
     })
     setEditItem(ra)
   }
@@ -348,6 +349,7 @@ export default function RiskManagement() {
         <div className="space-y-3">
           {assessments.map((ra: any) => {
             const isExpanded = expandedId === ra.id
+            const likelihood = LIKELIHOOD_OPTIONS.find(o => o.value === ra.risk_rating_option)
             return (
               <div key={ra.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                 <button onClick={() => setExpandedId(p => p === ra.id ? null : ra.id)}
@@ -362,6 +364,9 @@ export default function RiskManagement() {
                         <span>{ra.su_name}</span>
                         {ra.next_review_date && (
                           <span>Review: {format(new Date(ra.next_review_date), 'd MMM yyyy')}</span>
+                        )}
+                        {ra.last_assessed_date && (
+                          <span>Last assessed: {format(new Date(ra.last_assessed_date), 'd MMM yyyy')}</span>
                         )}
                       </div>
                     </div>
@@ -388,35 +393,40 @@ export default function RiskManagement() {
                         Print assessment
                       </button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    {/* Single-column detail view */}
+                    <div className="space-y-4">
                       <Field label="What is the risk" value={ra.description} />
-                      <Field label="Historical Context" value={ra.historical_context} />
                       <Field label="Risk before intervention" value={ra.risk_before_intervention} />
                       <Field label="Who is at risk" value={ra.who_is_at_risk} />
                       <Field label="What could happen" value={ra.what_could_happen} />
                       <Field label="Triggers" value={ra.triggers} />
                       <Field label="Protective Factors" value={ra.protective_factors} />
                     </div>
+
                     {ra.management_plan && (
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                         <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Risk Management Plan</p>
                         <p className="text-sm text-slate-700 whitespace-pre-line">{ra.management_plan}</p>
                       </div>
                     )}
-                    {(ra.risk_rating_option || ra.risk_score != null) && (
+
+                    {/* Risk Rating */}
+                    {likelihood && (
                       <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Risk Rating</p>
-                        {ra.risk_rating_option && <p className="text-sm text-slate-700 mb-1">{RISK_SCORE_OPTIONS.find(o => o.value === ra.risk_rating_option)?.label || ra.risk_rating_option}</p>}
-                        {ra.risk_score != null && <p className="text-sm font-bold text-slate-800">Total Risk Score: {ra.risk_score}</p>}
+                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Risk Rating — Likelihood</p>
+                        <p className="text-sm font-semibold text-slate-800">{likelihood.label}</p>
                       </div>
                     )}
-                    {(ra.evaluation_of_risk || ra.risk_acceptable || ra.risk_after_controls) && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Evaluation of risk" value={ra.evaluation_of_risk} />
-                        <Field label="Risk acceptable?" value={ra.risk_acceptable} />
-                        <Field label="Risk after controls" value={ra.risk_after_controls} />
-                      </div>
-                    )}
+
+                    <Field label="Risk occurring following control measures" value={ra.risk_after_controls} />
+                    <Field label="Risk Update Tracking" value={ra.risk_update_tracking} />
+
+                    {/* Summary */}
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary — Risk Level</span>
+                      <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} />
+                    </div>
 
                     {/* Sign-off status */}
                     {ra.signed_off ? (
@@ -527,6 +537,10 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
   form: any; setF: (k: string, v: string) => void; sus: any[]; getName: (s: any) => string;
   saving: boolean; onSave: () => void; onCancel: () => void; isEdit?: boolean
 }) {
+  const derivedRiskLevel = form.riskRatingOption
+    ? LIKELIHOOD_OPTIONS.find(o => o.value === form.riskRatingOption)?.riskLevel
+    : null
+
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
       {!isEdit && (
@@ -539,9 +553,14 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
         </div>
       )}
       <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Plan Name *</label>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk (Plan Name) *</label>
         <input className="input w-full" placeholder="e.g. Falls Risk, Pressure Sores" value={form.assessmentName}
           onChange={e => setF('assessmentName', e.target.value)} disabled={isEdit} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Last Assessed</label>
+        <input type="date" className="input w-full" value={form.lastAssessedDate}
+          onChange={e => setF('lastAssessedDate', e.target.value)} />
       </div>
       <div>
         <label className="text-xs font-semibold text-slate-600 block mb-1">Review Frequency</label>
@@ -553,22 +572,16 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
           <option value="yearly">Yearly</option>
         </select>
       </div>
-      <SpeechTextarea label="What is the risk" className="w-full" rows={2} placeholder="Brief overview of the risk..."
+      <SpeechTextarea label="What is the risk?" className="w-full" rows={2} placeholder="Brief overview of the risk..."
         value={form.description} onChange={v => setF('description', v)} />
+      <SpeechTextarea label="Risk before intervention?" className="w-full" rows={2} placeholder="Describe the risk before any intervention..."
+        value={form.riskBeforeIntervention} onChange={v => setF('riskBeforeIntervention', v)} />
       <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Rating</label>
-        <select className="input w-full" value={form.riskRating} onChange={e => { setF('riskRating', e.target.value); setF('currentRiskLevel', e.target.value) }}>
-          {RISK_LEVELS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-        </select>
-      </div>
-      <SpeechTextarea label="Historical Context" className="w-full" rows={2} placeholder="Any relevant background history, previous incidents, or context..."
-        value={form.historicalContext} onChange={v => setF('historicalContext', v)} />
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk</label>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk?</label>
         <input className="input w-full" placeholder="e.g. Service user, staff, visitors"
           value={form.whoIsAtRisk} onChange={e => setF('whoIsAtRisk', e.target.value)} />
       </div>
-      <SpeechTextarea label="What could happen" className="w-full" rows={2} placeholder="Describe the potential harm or consequence..."
+      <SpeechTextarea label="What could happen?" className="w-full" rows={2} placeholder="Describe the potential harm or consequence..."
         value={form.whatCouldHappen} onChange={v => setF('whatCouldHappen', v)} />
       <SpeechTextarea label="Triggers" className="w-full" rows={2} placeholder="What situations or behaviours trigger this risk..."
         value={form.triggers} onChange={v => setF('triggers', v)} />
@@ -576,38 +589,42 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
         value={form.protectiveFactors} onChange={v => setF('protectiveFactors', v)} />
       <SpeechTextarea label="Risk Management Plan" className="w-full" rows={3} placeholder="Step-by-step actions staff must take to manage this risk..."
         value={form.managementPlan} onChange={v => setF('managementPlan', v)} />
-      <SpeechTextarea label="Risk before intervention?" className="w-full" rows={2} placeholder="Describe the risk before any intervention..."
-        value={form.riskBeforeIntervention} onChange={v => setF('riskBeforeIntervention', v)} />
-      <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
-        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Risk Rating</p>
-        {RISK_SCORE_OPTIONS.map(opt => (
-          <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
-            <input type="radio" name="riskRatingOption" value={opt.value}
+
+      {/* Risk Rating — Likelihood */}
+      <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 space-y-2">
+        <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">
+          Risk Rating = Likelihood
+        </p>
+        {LIKELIHOOD_OPTIONS.map(opt => (
+          <label key={opt.value} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-amber-100 transition-colors">
+            <input type="radio" name="likelihoodOption" value={opt.value}
               checked={form.riskRatingOption === opt.value}
-              onChange={() => setF('riskRatingOption', opt.value)}
-              className="mt-0.5 flex-shrink-0" />
-            <span className="text-xs text-slate-700 leading-relaxed">{opt.label}</span>
+              onChange={() => {
+                setF('riskRatingOption', opt.value)
+                setF('riskRating', opt.riskLevel)
+                setF('currentRiskLevel', opt.riskLevel)
+              }}
+              className="flex-shrink-0" />
+            <span className="text-sm font-medium text-slate-700">{opt.label}</span>
           </label>
         ))}
       </div>
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Total Risk Score</label>
-        <input type="number" className="input w-full" placeholder="Enter numeric score..."
-          value={form.riskScore} onChange={e => setF('riskScore', e.target.value)} />
-      </div>
-      <SpeechTextarea label="Evaluation of risk?" className="w-full" rows={2} placeholder="Your evaluation of the overall risk..."
-        value={form.evaluationOfRisk} onChange={v => setF('evaluationOfRisk', v)} />
-      <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Is the level of risk identified acceptable?</label>
-        <select className="input w-full" value={form.riskAcceptable} onChange={e => setF('riskAcceptable', e.target.value)}>
-          <option value="">Select...</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-          <option value="with_controls">Yes with controls in place</option>
-        </select>
-      </div>
+
       <SpeechTextarea label="Risk occurring following control measures" className="w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
         value={form.riskAfterControls} onChange={v => setF('riskAfterControls', v)} />
+      <SpeechTextarea label="Risk Update Tracking" className="w-full" rows={2} placeholder="Log any ongoing updates or changes to this risk..."
+        value={form.riskUpdateTracking} onChange={v => setF('riskUpdateTracking', v)} />
+
+      {/* Summary */}
+      {derivedRiskLevel && (
+        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-3">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary — Risk Level</span>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border capitalize ${RISK_LEVELS.find(r => r.value === derivedRiskLevel)?.color}`}>
+            {RISK_LEVELS.find(r => r.value === derivedRiskLevel)?.label}
+          </span>
+        </div>
+      )}
+
       <div className="flex gap-3 justify-end pt-2">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button loading={saving} onClick={onSave} icon={<Check className="w-4 h-4" />}>
