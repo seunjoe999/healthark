@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText } from 'lucide-react'
+import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText, Edit2 } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
+import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
 
@@ -36,6 +37,7 @@ const statusConfig: Record<string, { color: string; badge: string }> = {
 }
 
 export default function Outcomes() {
+  const { user } = useAuth()
   const [outcomes, setOutcomes] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,11 +45,13 @@ export default function Outcomes() {
   const [filterStatus, setFilterStatus] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [showReview, setShowReview] = useState<any>(null)
+  const [showEdit, setShowEdit] = useState<any>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [reviews, setReviews] = useState<Record<string, any[]>>({})
   const [submitting, setSubmitting] = useState(false)
 
   const [form, setForm] = useState({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
+  const [editForm, setEditForm] = useState({ goal: '', description: '', targetDate: '', status: 'ongoing' })
   const [addMode, setAddMode] = useState<'goal' | 'monthly'>('goal')
   const [monthlyForm, setMonthlyForm] = useState({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
   const [reviewForm, setReviewForm] = useState({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
@@ -66,9 +70,10 @@ export default function Outcomes() {
   async function load() {
     setLoading(true)
     try {
+      const homeId = user?.homeId || ''
       const [outRes, suRes] = await Promise.all([
-        api.get('/outcomes', { params: { suId: filterSU || undefined } }),
-        api.get('/service-users'),
+        api.get('/outcomes', { params: { suId: filterSU || undefined, homeId } }),
+        api.get('/service-users', { params: { homeId } }),
       ])
       setOutcomes(outRes.data.data || [])
       setServiceUsers(suRes.data.data || [])
@@ -118,6 +123,24 @@ export default function Outcomes() {
       load()
       toast.success('Outcome saved')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save outcome') }
+    setSubmitting(false)
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!showEdit) return
+    setSubmitting(true)
+    try {
+      await api.patch(`/outcomes/${showEdit.id}`, {
+        goal: editForm.goal,
+        description: editForm.description,
+        targetDate: editForm.targetDate || undefined,
+        status: editForm.status,
+      })
+      setShowEdit(null)
+      load()
+      toast.success('Outcome updated')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update') }
     setSubmitting(false)
   }
 
@@ -231,6 +254,12 @@ export default function Outcomes() {
                     </div>
                     {expanded === o.id && (
                       <div className="border-t border-white/5 p-4 space-y-3" style={{ background: '#0a0a0a' }}>
+                        {o.description && (
+                          <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                            <p className="text-sm text-slate-300 whitespace-pre-line">{o.description}</p>
+                          </div>
+                        )}
                         {o.progress_notes && (
                           <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Progress Notes</p>
@@ -241,7 +270,7 @@ export default function Outcomes() {
                           <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Review History</p>
                             {reviews[o.id].map(r => (
-                              <div key={r.id} className="flex gap-3 mb-2">
+                              <div key={r.id} className="flex gap-3 mb-2 p-2 rounded-lg" style={{ background: '#111' }}>
                                 <div className="text-xs text-slate-400 w-20 flex-shrink-0">{new Date(r.review_date).toLocaleDateString('en-GB')}</div>
                                 <div className="flex-1">
                                   <span className={clsx('badge text-xs', statusConfig[r.status]?.badge)}>{STATUSES.find(s => s.value === r.status)?.label}</span>
@@ -251,9 +280,19 @@ export default function Outcomes() {
                             ))}
                           </div>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] }) }}>
-                          Add Review
-                        </Button>
+                        <div className="flex gap-2 pt-1">
+                          <Button size="sm" variant="outline"
+                            icon={<Edit2 className="w-3.5 h-3.5" />}
+                            onClick={() => {
+                              setEditForm({ goal: o.goal || '', description: o.description || '', targetDate: o.target_date ? o.target_date.split('T')[0] : '', status: o.status || 'ongoing' })
+                              setShowEdit(o)
+                            }}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] }) }}>
+                            Add Review
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -350,6 +389,29 @@ export default function Outcomes() {
             <Button type="submit" variant="gold" loading={submitting}>Save</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Edit Outcome Modal */}
+      <Modal open={!!showEdit} onClose={() => setShowEdit(null)} title="Edit Outcome">
+        {showEdit && (
+          <form onSubmit={handleEdit} className="space-y-4">
+            <Input label="Goal *" required value={editForm.goal}
+              onChange={e => setEditForm(f => ({ ...f, goal: e.target.value }))}
+              placeholder="e.g. Improve mobility to walk 10 metres independently" />
+            <Textarea label="Description" value={editForm.description}
+              onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3} />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Target Date" type="date" value={editForm.targetDate}
+                onChange={e => setEditForm(f => ({ ...f, targetDate: e.target.value }))} />
+              <Select label="Status" options={STATUSES} value={editForm.status}
+                onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowEdit(null)}>Cancel</Button>
+              <Button type="submit" variant="gold" loading={submitting}>Save Changes</Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* Review Modal */}

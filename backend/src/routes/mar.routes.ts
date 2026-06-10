@@ -41,18 +41,20 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const staffId = fromToken(req, 'staffId');
       const homeId = fromToken(req, 'homeId');
       const { suId, medicationName, dose, frequency, route, prescribedBy,
-              startDate, endDate, instructions, isPrn, pharmacyName, pharmacyPhone,
+              startDate, endDate, instructions, isPrn, isControlled, pharmacyName, pharmacyPhone,
               gpName, gpPhone, medicationCode, atcCode,
               locationAccessCode, medicineWarning } = req.body;
+      const bodyHomeId = req.body.homeId;
+      const effectiveHomeId = bodyHomeId || homeId;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescribed_by, start_date, end_date, instructions, is_prn, added_by,
+          prescribed_by, start_date, end_date, instructions, is_prn, is_controlled, added_by,
           pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code,
           location_access_code, medicine_warning)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
-        [suId, homeId, medicationName, dose || null, frequency || null, route || null,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
+        [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
-         instructions || null, isPrn || false, staffId,
+         instructions || null, isPrn || false, isControlled || false, staffId,
          pharmacyName || null, pharmacyPhone || null, gpName || null, gpPhone || null,
          medicationCode || null, atcCode || null,
          locationAccessCode || null, medicineWarning || null]
@@ -66,7 +68,7 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn,
+      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled,
               pharmacyName, pharmacyPhone, gpName, gpPhone, medicationCode, atcCode,
               locationAccessCode, medicineWarning } = req.body;
       const updates = [
@@ -78,6 +80,7 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'end_date', val: nd(endDate) },
         { field: 'instructions', val: instructions },
         { field: 'is_prn', val: isPrn },
+        { field: 'is_controlled', val: isControlled },
         { field: 'pharmacy_name', val: pharmacyName },
         { field: 'pharmacy_phone', val: pharmacyPhone },
         { field: 'gp_name', val: gpName },
@@ -131,18 +134,65 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const homeId = fromToken(req, 'homeId');
-      const { suId, medicationId, given, refused, reason, notes, scheduledTime, recordDate, marCode } = req.body;
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { suId, medicationId, given, refused, reason, notes, scheduledTime, recordDate, marCode,
+              controlledWitnessId, controlledWitnessName } = req.body;
       const rows = await query(
         `INSERT INTO mar_records (su_id, home_id, medication_id, given_by, given, refused,
-          refused_reason, notes, scheduled_time, record_date, mar_code)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+          refused_reason, notes, scheduled_time, record_date, mar_code,
+          controlled_witness_id, controlled_witness_name)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
         [suId, homeId, medicationId, staffId, given ?? null, refused || false,
          reason || null, notes || null, scheduledTime || null,
          recordDate || new Date().toISOString().split('T')[0],
-         marCode || null]
+         marCode || null,
+         controlledWitnessId || null, controlledWitnessName || null]
       );
-      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+      const record = rows[0] as any;
+
+      // Send notification to witness if controlled medication
+      if (controlledWitnessId) {
+        try {
+          const staffRows = await query('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
+          const adminName = staffRows.length ? `${(staffRows[0] as any).first_name} ${(staffRows[0] as any).last_name}` : 'Staff';
+          const medRows = await query('SELECT medication_name FROM su_medications WHERE id = $1', [medicationId]);
+          const medName = medRows.length ? (medRows[0] as any).medication_name : 'medication';
+          await query(
+            'INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,$5,$6)',
+            [controlledWitnessId, homeId,
+             'Controlled Medication — Witness Sign-Off Required',
+             `${adminName} administered ${medName} on ${recordDate || new Date().toISOString().split('T')[0]} and selected you as a witness. Please sign off.`,
+             'controlled_med_witness',
+             `/mar?witnessRecord=${record.id}`]
+          );
+        } catch (notifErr) { /* non-fatal */ }
+      }
+
+      res.status(201).json({ success: true, data: record } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/mar/records/:id/witness-signoff
+router.post('/records/:id/witness-signoff', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const { mgmt } = req.body; // true = management sign-off, false = witness sign-off
+      if (mgmt) {
+        const staffRows = await query('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
+        const name = staffRows.length ? `${(staffRows[0] as any).first_name} ${(staffRows[0] as any).last_name}` : 'Staff';
+        await query(
+          `UPDATE mar_records SET mgmt_sign_off_by = $1, mgmt_sign_off_at = NOW() WHERE id = $2`,
+          [name, req.params.id]
+        );
+      } else {
+        await query(
+          `UPDATE mar_records SET controlled_witness_signed = true, controlled_witness_signed_at = NOW() WHERE id = $1`,
+          [req.params.id]
+        );
+      }
+      res.json({ success: true, message: 'Sign-off recorded' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

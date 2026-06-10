@@ -1213,6 +1213,15 @@ async function ensureColumns() {
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='team_leader' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'team_leader'; END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='admin' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'admin'; END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='deputy_manager' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'deputy_manager'; END IF; END $$`,
+    // ── su_medications — controlled medication flag ───────────────────────────
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS is_controlled BOOLEAN NOT NULL DEFAULT FALSE`,
+    // ── mar_records — controlled medication witness sign-off ──────────────────
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS controlled_witness_id     UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS controlled_witness_name   VARCHAR(255)`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS controlled_witness_signed BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS controlled_witness_signed_at TIMESTAMPTZ`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mgmt_sign_off_by          VARCHAR(255)`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mgmt_sign_off_at          TIMESTAMPTZ`,
     // ── medicine_risk_assessments — controlled meds, document, sign-off ──────
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_meds          BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_notes         TEXT`,

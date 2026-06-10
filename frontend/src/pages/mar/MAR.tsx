@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, startOfWeek, startOfMonth, endOfMonth, addDays, differenceInCalendarDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin } from 'lucide-react'
+import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQ_TIMES: Record<string, string[]> = {
@@ -78,6 +78,7 @@ export default function MAR() {
   const [printModal, setPrintModal] = useState(false)
   const [cellDetail, setCellDetail] = useState<any>(null)
   const [logModal, setLogModal] = useState<any>(null)
+  const [witnessSignOffModal, setWitnessSignOffModal] = useState<string | null>(null)
   const [showPrescriptions, setShowPrescriptions] = useState(true)
   const [showDirections, setShowDirections] = useState(true)
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'))
@@ -91,6 +92,12 @@ export default function MAR() {
       setSelectedHome(user?.homeId || h[0]?.id || '')
     })
   }, [user])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const wrid = params.get('witnessRecord')
+    if (wrid) setWitnessSignOffModal(wrid)
+  }, [])
 
   useEffect(() => {
     if (!selectedHome) return
@@ -306,6 +313,7 @@ export default function MAR() {
                           <Pill className="w-4 h-4 text-purple-500 shrink-0" />
                           <h3 className="font-semibold text-slate-900">{med.medication_name}</h3>
                           {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
+                          {med.is_controlled && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Shield className="w-3 h-3" />CD</span>}
                         </div>
                         <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
                         {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Prescribed by: {med.prescribed_by}</p>}
@@ -373,6 +381,7 @@ export default function MAR() {
 
       {/* ── Modals ─────────────────────────────────────────────────── */}
       <AddMedicationModal open={addMedOpen} onClose={() => setAddMedOpen(false)} suId={selectedSu?.id}
+        homeId={selectedHome}
         onSaved={async () => {
           setAddMedOpen(false)
           await fetchAll(selectedSu)
@@ -403,17 +412,24 @@ export default function MAR() {
       )}
 
       {cellDetail && (
-        <CellDetailModal data={cellDetail} onClose={() => setCellDetail(null)} />
+        <CellDetailModal data={cellDetail} currentUser={user} onClose={() => setCellDetail(null)}
+          onRefresh={() => fetchAll(selectedSu)} />
       )}
 
       {logModal && selectedSu && (
         <LogMARModal med={logModal.med} date={logModal.date} slot={logModal.slot} suId={selectedSu.id}
+          homeId={selectedHome}
           onClose={() => setLogModal(null)}
           onSaved={async () => {
             setLogModal(null)
             await fetchAll(selectedSu)
             toast.success('Recorded')
           }} />
+      )}
+
+      {witnessSignOffModal && (
+        <WitnessSignOffModal recordId={witnessSignOffModal}
+          onClose={() => { setWitnessSignOffModal(null); window.history.replaceState({}, '', '/mar') }} />
       )}
     </div>
   )
@@ -528,9 +544,14 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                     {showPrescriptions && med.prescribed_by && (
                       <div style={{ fontSize: 9, color: '#9ca3af' }}>Rx: {med.prescribed_by}</div>
                     )}
-                    {med.is_prn && (
-                      <span style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', fontSize: 8, padding: '1px 4px', borderRadius: 3, marginTop: 2, fontWeight: 700 }}>PRN</span>
-                    )}
+                    <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginTop: 2 }}>
+                      {med.is_prn && (
+                        <span style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', fontSize: 8, padding: '1px 4px', borderRadius: 3, fontWeight: 700 }}>PRN</span>
+                      )}
+                      {med.is_controlled && (
+                        <span style={{ display: 'inline-block', background: '#ede9fe', color: '#7c3aed', fontSize: 8, padding: '1px 4px', borderRadius: 3, fontWeight: 700 }}>CD</span>
+                      )}
+                    </div>
                   </td>
                 )}
 
@@ -688,12 +709,38 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
 }
 
 /* ─── Cell Detail Modal ────────────────────────────────────────────────── */
-function CellDetailModal({ data, onClose }: { data: any; onClose: () => void }) {
+function CellDetailModal({ data, currentUser, onClose, onRefresh }: { data: any; currentUser: any; onClose: () => void; onRefresh: () => void }) {
   const { med, date, records } = data
   const rec = records[0]
+  const [signingOff, setSigningOff] = useState(false)
+  const isManager = currentUser?.role === 'admin' || currentUser?.role === 'manager'
+
+  const signOffMgmt = async () => {
+    if (!rec) return
+    setSigningOff(true)
+    try {
+      await api.post(`/mar/records/${rec.id}/witness-signoff`, { mgmt: true })
+      toast.success('Management sign-off recorded')
+      onRefresh()
+      onClose()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setSigningOff(false) }
+  }
+
   return (
     <Modal open={true} onClose={onClose} title={med.medication_name} size="md">
       <div className="space-y-3 text-sm">
+        <div className="flex items-center gap-2">
+          {med.is_controlled && (
+            <span className="flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+              <Shield className="w-3 h-3" /> Controlled Drug (CD)
+            </span>
+          )}
+          {med.is_prn && (
+            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-semibold">PRN</span>
+          )}
+        </div>
+
         <div className={`flex items-center gap-2 text-sm font-semibold p-3 rounded-xl ${rec?.given ? 'bg-emerald-50 text-emerald-700' : rec?.refused ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-600'}`}>
           {rec?.given ? <Check className="w-4 h-4" /> : rec?.refused ? <X className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
           {rec?.given
@@ -702,6 +749,7 @@ function CellDetailModal({ data, onClose }: { data: any; onClose: () => void }) 
               ? `Refused on ${format(parseISO(date), 'd MMM yyyy')}${rec.refused_reason ? ' — ' + rec.refused_reason : ''}`
               : `Omitted on ${format(parseISO(date), 'd MMM yyyy')}${rec?.omit_reason ? ' — ' + rec.omit_reason : ''}`}
         </div>
+
         <table className="w-full text-xs text-slate-600 border-collapse">
           <tbody>
             {[
@@ -721,6 +769,48 @@ function CellDetailModal({ data, onClose }: { data: any; onClose: () => void }) 
             ))}
           </tbody>
         </table>
+
+        {/* Controlled medication sign-off status */}
+        {med.is_controlled && rec && (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-purple-800 flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" /> Controlled Drug Sign-Off Status
+            </p>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">Administered by:</span>
+                <span className="font-semibold text-slate-800">{rec.given_by_name || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">Witness:</span>
+                <span className="font-semibold text-slate-800">{rec.controlled_witness_name || 'Not selected'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">Witness signed:</span>
+                <span className={`font-semibold ${rec.controlled_witness_signed ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {rec.controlled_witness_signed
+                    ? `Yes — ${rec.controlled_witness_signed_at ? format(new Date(rec.controlled_witness_signed_at), 'd MMM yyyy HH:mm') : ''}`
+                    : 'Pending'}
+                </span>
+              </div>
+              {rec.mgmt_sign_off_by && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Management sign-off:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {rec.mgmt_sign_off_by} — {rec.mgmt_sign_off_at ? format(new Date(rec.mgmt_sign_off_at), 'd MMM HH:mm') : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+            {isManager && !rec.mgmt_sign_off_by && (
+              <Button size="sm" loading={signingOff} onClick={signOffMgmt}
+                className="w-full mt-2" icon={<UserCheck className="w-3.5 h-3.5" />}>
+                Sign off as management
+              </Button>
+            )}
+          </div>
+        )}
+
         {records.length > 1 && (
           <div>
             <p className="text-xs font-semibold text-slate-500 mb-1">All records for this date:</p>
@@ -739,6 +829,48 @@ function CellDetailModal({ data, onClose }: { data: any; onClose: () => void }) 
           </div>
         )}
         <div className="flex justify-end pt-1">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/* ─── Witness Sign-Off Modal (deep-link from notification) ─────────────── */
+function WitnessSignOffModal({ recordId, onClose }: { recordId: string; onClose: () => void }) {
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const signOff = async () => {
+    setLoading(true)
+    try {
+      await api.post(`/mar/records/${recordId}/witness-signoff`, { mgmt: false })
+      setDone(true)
+      toast.success('Witness sign-off recorded')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to sign off') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Controlled Medication — Witness Sign-Off" size="sm">
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+          <Shield className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-purple-800">You have been selected as a witness</p>
+            <p className="text-xs text-purple-600 mt-1">A colleague has administered a controlled medication and selected you as the witness. Please confirm you witnessed the administration.</p>
+          </div>
+        </div>
+        {done ? (
+          <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 p-3 rounded-xl font-semibold">
+            <Check className="w-4 h-4" /> Witness sign-off recorded successfully.
+          </div>
+        ) : (
+          <Button loading={loading} onClick={signOff} className="w-full" icon={<UserCheck className="w-4 h-4" />}>
+            Confirm — I witnessed this administration
+          </Button>
+        )}
+        <div className="flex justify-end">
           <Button variant="outline" onClick={onClose}>Close</Button>
         </div>
       </div>
@@ -766,22 +898,37 @@ const MAR_CODE_OPTIONS = [
   { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
 ]
 
-function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
-  med: any; date: string; slot: string; suId: string; onClose: () => void; onSaved: () => void
+function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
+  med: any; date: string; slot: string; suId: string; homeId?: string; onClose: () => void; onSaved: () => void
 }) {
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
+  const [staffList, setStaffList] = useState<any[]>([])
+  const [witnessId, setWitnessId] = useState('')
+  const [witnessName, setWitnessName] = useState('')
 
   const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
+  const isControlled = med.is_controlled
+
+  useEffect(() => {
+    if (isControlled && homeId) {
+      api.get('/staff', { params: { homeId } }).then(res => {
+        setStaffList(res.data.data || [])
+      }).catch(() => {})
+    }
+  }, [isControlled, homeId])
 
   const save = async () => {
     if (!selectedCode) { toast.error('Select an outcome'); return }
+    if (isControlled && selected?.given && !witnessId) {
+      toast.error('A witness is required for controlled medication administration'); return
+    }
     setLoading(true)
     try {
-      await api.post('/mar/records', {
-        suId, medicationId: med.id,
+      const payload: any = {
+        suId, homeId, medicationId: med.id,
         given: selected?.given ?? false,
         refused: selected?.refused ?? false,
         marCode: selectedCode,
@@ -789,7 +936,12 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
         reason: reason || undefined,
         scheduledTime: slot,
         recordDate: date,
-      })
+      }
+      if (isControlled && witnessId) {
+        payload.controlledWitnessId = witnessId
+        payload.controlledWitnessName = witnessName
+      }
+      await api.post('/mar/records', payload)
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
@@ -798,9 +950,14 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
   return (
     <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="lg">
       <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-        <p className="text-xs text-slate-400">
-          {format(parseISO(date), 'EEEE, d MMMM yyyy')} · {slot}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-slate-400">{format(parseISO(date), 'EEEE, d MMMM yyyy')} · {slot}</p>
+          {isControlled && (
+            <span className="flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
+              <Shield className="w-3 h-3" /> Controlled Drug
+            </span>
+          )}
+        </div>
 
         {(med.location_access_code || med.medicine_warning) && (
           <div className="space-y-1.5">
@@ -845,6 +1002,34 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
           )}
         </div>
 
+        {/* Witness selection — required for controlled medication when giving */}
+        {isControlled && selected?.given && (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-purple-800 flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" /> Witness required for controlled drug
+            </p>
+            <p className="text-xs text-purple-600">Select the colleague who witnessed the administration. They will receive a notification to confirm.</p>
+            <select
+              className="input text-sm"
+              value={witnessId}
+              onChange={e => {
+                const s = staffList.find((x: any) => x.id === e.target.value)
+                setWitnessId(e.target.value)
+                setWitnessName(s ? `${s.first_name} ${s.last_name}` : '')
+              }}>
+              <option value="">— Select witness —</option>
+              {staffList.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.first_name} {s.last_name}{s.role ? ` (${s.role})` : ''}</option>
+              ))}
+            </select>
+            {witnessId && (
+              <p className="text-xs text-purple-700 font-semibold">
+                ✓ {witnessName} will be notified to sign off
+              </p>
+            )}
+          </div>
+        )}
+
         {(selected?.refused || selectedCode === 'A' || selectedCode === 'F' || selectedCode === 'H' || selectedCode === 'O' || selectedCode === 'E') && (
           <Input label="Reason / notes" value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason..." />
         )}
@@ -864,22 +1049,29 @@ function LogMARModal({ med, date, slot, suId, onClose, onSaved }: {
 }
 
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
-function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', medicationCode: '', atcCode: '', locationAccessCode: '', medicineWarning: '' })
+function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
+  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', medicationCode: '', atcCode: '', locationAccessCode: '', medicineWarning: '' }
+  const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.medicationName.trim()) { toast.error('Medication name is required'); return }
+    if (!suId) { toast.error('No service user selected'); return }
     setLoading(true)
-    try { await api.post('/mar/medications', { suId, ...form }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    try {
+      await api.post('/mar/medications', { suId, homeId, ...form })
+      setForm(BLANK)
+      onSaved()
+    }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save medication') }
     finally { setLoading(false) }
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Add medication" size="lg">
-      <form onSubmit={save} className="space-y-4 max-h-96 overflow-y-auto">
+      <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <Input label="Medication name *" required value={form.medicationName} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Amlodipine, Paracetamol..." />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
@@ -920,9 +1112,18 @@ function AddMedicationModal({ open, onClose, suId, onSaved }: { open: boolean; o
             <Input label="ATC code" value={form.atcCode} onChange={e => set('atcCode', e.target.value)} placeholder="e.g. C09CA01" />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="prn" checked={form.isPrn} onChange={e => set('isPrn', e.target.checked)} className="rounded" />
-          <label htmlFor="prn" className="text-sm font-medium text-slate-700">This is a PRN (as required) medication</label>
+        <div className="border-t pt-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="add-prn" checked={form.isPrn} onChange={e => set('isPrn', e.target.checked)} className="rounded" />
+            <label htmlFor="add-prn" className="text-sm font-medium text-slate-700">This is a PRN (as required) medication</label>
+          </div>
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-purple-50 border border-purple-200">
+            <input type="checkbox" id="add-controlled" checked={form.isControlled} onChange={e => set('isControlled', e.target.checked)} className="rounded mt-0.5" />
+            <div>
+              <label htmlFor="add-controlled" className="text-sm font-semibold text-purple-800 cursor-pointer">This is a controlled medication</label>
+              <p className="text-xs text-purple-600 mt-0.5">Controlled drugs require two staff sign-offs when administered — the administering staff and a witness.</p>
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 justify-end pt-2 border-t">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -945,6 +1146,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     locationAccessCode: med.location_access_code || '',
     medicineWarning: med.medicine_warning || '',
     isPrn: med.is_prn || false,
+    isControlled: med.is_controlled || false,
     pharmacyName: med.pharmacy_name || '',
     pharmacyPhone: med.pharmacy_phone || '',
     gpName: med.gp_name || '',
@@ -996,9 +1198,18 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
             <Input label="GP phone" value={form.gpPhone} onChange={e => set('gpPhone', e.target.value)} placeholder="Phone number" />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="edit-prn" checked={form.isPrn} onChange={e => set('isPrn', e.target.checked)} className="rounded" />
-          <label htmlFor="edit-prn" className="text-sm font-medium text-slate-700">This is a PRN (as required) medication</label>
+        <div className="border-t pt-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="edit-prn" checked={form.isPrn} onChange={e => set('isPrn', e.target.checked)} className="rounded" />
+            <label htmlFor="edit-prn" className="text-sm font-medium text-slate-700">This is a PRN (as required) medication</label>
+          </div>
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-purple-50 border border-purple-200">
+            <input type="checkbox" id="edit-controlled" checked={form.isControlled} onChange={e => set('isControlled', e.target.checked)} className="rounded mt-0.5" />
+            <div>
+              <label htmlFor="edit-controlled" className="text-sm font-semibold text-purple-800 cursor-pointer">This is a controlled medication</label>
+              <p className="text-xs text-purple-600 mt-0.5">Controlled drugs require two staff sign-offs when administered — the administering staff and a witness.</p>
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 justify-end pt-2 border-t">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

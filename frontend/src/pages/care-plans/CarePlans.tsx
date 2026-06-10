@@ -587,64 +587,94 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;background:#fff}
-    .hdr{background:#1e293b;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:flex-start}
-    .hdr-company{font-size:15px;font-weight:700;letter-spacing:.02em;margin-bottom:3px}
-    .hdr-addr{font-size:9px;color:rgba(255,255,255,.6);line-height:1.7}
-    .hdr-badge{background:rgba(212,160,23,.25);color:#fbbf24;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:4px;margin-bottom:8px;display:inline-block}
-    .hdr-meta{font-size:9px;color:rgba(255,255,255,.6);line-height:1.8;text-align:right}
+    .cover{display:flex;flex-direction:column;min-height:100vh;page-break-after:always}
+    .hdr{background:#1e293b;color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:flex-start}
+    .hdr-company{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
+    .hdr-addr{font-size:10px;color:rgba(255,255,255,.65);line-height:1.8}
+    .hdr-badge{background:rgba(212,160,23,.3);color:#fbbf24;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:4px;margin-bottom:10px;display:inline-block}
+    .hdr-meta{font-size:10px;color:rgba(255,255,255,.65);line-height:2;text-align:right}
     .hdr-meta strong{color:#fff}
-    .body{padding:18px 20px}
-    .resident{display:flex;gap:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:14px}
-    .res-name{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px}
-    .res-tbl{border-collapse:collapse;font-size:10px;width:100%}
-    .res-tbl td{padding:2px 10px 2px 0;vertical-align:top}
-    .res-tbl td:first-child{font-weight:600;color:#64748b;min-width:110px;white-space:nowrap}
-    .plan-banner{background:#b45309;color:#fff;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.02em;margin-bottom:14px}
-    .cs{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:10px;overflow:hidden;page-break-inside:avoid}
-    .cs-hd{padding:6px 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:#f1f5f9;color:#64748b;border-left:4px solid #94a3b8}
+    .cover-body{padding:32px 28px;flex:1}
+    .resident{display:flex;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:24px}
+    .res-photo{flex-shrink:0}
+    .res-name{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:14px;border-bottom:2px solid #e2e8f0;padding-bottom:10px}
+    .res-tbl{border-collapse:collapse;font-size:11px;width:100%}
+    .res-tbl td{padding:5px 14px 5px 0;vertical-align:top;border-bottom:1px solid #f1f5f9}
+    .res-tbl td:first-child{font-weight:600;color:#64748b;min-width:130px;white-space:nowrap}
+    .res-tbl tr:last-child td{border-bottom:none}
+    .plan-title-block{background:linear-gradient(135deg,#b45309,#92400e);color:#fff;padding:18px 24px;border-radius:8px;margin-top:16px}
+    .plan-title-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.7);margin-bottom:4px}
+    .plan-title-name{font-size:16px;font-weight:700}
+    .plan-meta{display:flex;gap:32px;margin-top:12px;font-size:10px;color:rgba(255,255,255,.8)}
+    .content-page{padding:20px 28px}
+    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin-bottom:14px;margin-top:24px}
+    .section-title:first-child{margin-top:0}
+    .cs{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid}
+    .cs-hd{padding:8px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:#f8fafc;color:#64748b;border-left:4px solid #94a3b8}
     .cs-hd.gold{color:#b45309;border-left-color:#b45309;background:#fffbeb}
-    .cs-bd{padding:10px 12px;font-size:11px;line-height:1.7;color:#334155}
-    .signoff{border:1px solid #e2e8f0;border-radius:6px;padding:14px;margin-top:12px;page-break-inside:avoid}
-    .signoff-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
-    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-    .footer{margin-top:16px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#94a3b8}
-    .confid{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:2px 8px;border-radius:4px;font-weight:700;font-size:8px;letter-spacing:.05em}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:10mm;size:A4}}
+    .cs-bd{padding:12px 14px;font-size:11px;line-height:1.8;color:#334155}
+    .signoff{border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-top:20px;page-break-inside:avoid;background:#f8fafc}
+    .signoff-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #e2e8f0}
+    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+    .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#94a3b8}
+    .confid{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:3px 10px;border-radius:4px;font-weight:700;font-size:8px;letter-spacing:.05em}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:12mm;size:A4}}
   </style></head><body>
-  <div class="hdr">
-    <div>
-      <div class="hdr-company">Comprehensive Care Ltd</div>
-      <div class="hdr-addr">Ivy Business Centre, Office 3-13 Crown Street<br/>Failsworth, Manchester, M35 9BG</div>
+
+  <!-- PAGE 1: Personal Information -->
+  <div class="cover">
+    <div class="hdr">
+      <div>
+        <div class="hdr-company">Comprehensive Care Ltd</div>
+        <div class="hdr-addr">Ivy Business Centre, Office 3-13 Crown Street<br/>Failsworth, Manchester, M35 9BG</div>
+      </div>
+      <div style="text-align:right">
+        <div class="hdr-badge">Support Plan</div>
+        <div class="hdr-meta">
+          Author: <strong>${plan.created_by_name || '—'}</strong><br/>
+          ${plan.staff_signature_dataurl
+            ? `<img src="${plan.staff_signature_dataurl}" style="height:30px;max-width:120px;display:inline-block;vertical-align:middle;margin:2px 0"/><br/>`
+            : (plan.staff_signed_by ? `<span style="font-family:'Brush Script MT',cursive;font-size:16px;color:#fff">${plan.staff_signed_by}</span><br/>` : '')}
+          Review Date: <strong>${reviewDate}</strong><br/>
+          Next Review: <strong>${nextReview}</strong>
+        </div>
+      </div>
     </div>
-    <div style="text-align:right">
-      <div class="hdr-badge">Support Plan</div>
-      <div class="hdr-meta">
-        Author: <strong>${plan.created_by_name || '—'}</strong><br/>
-        ${plan.staff_signature_dataurl
-          ? `<img src="${plan.staff_signature_dataurl}" style="height:30px;max-width:120px;display:inline-block;vertical-align:middle;margin:2px 0"/><br/>`
-          : (plan.staff_signed_by ? `<span style="font-family:'Brush Script MT',cursive;font-size:16px;color:#fff">${plan.staff_signed_by}</span><br/>` : '')}
-        Review Date: <strong>${reviewDate}</strong><br/>
-        Next Review: <strong>${nextReview}</strong>
+
+    <div class="cover-body">
+      <div class="resident">
+        <div class="res-photo">${photoHtml}</div>
+        <div style="flex:1">
+          <div class="res-name">${name}</div>
+          <table class="res-tbl">
+            <tr><td>Date of Birth</td><td>${dob}${age ? ` (${age} yrs)` : ''}</td><td style="padding-left:24px">NHS Number</td><td>${su?.nhs_number || '—'}</td></tr>
+            <tr><td>Gender</td><td>${su?.gender || '—'}</td><td style="padding-left:24px">Preferred Name</td><td>${su?.preferred_name || '—'}</td></tr>
+            <tr><td>Address</td><td colspan="3">${address}</td></tr>
+            <tr><td>Phone</td><td>${su?.phone || '—'}</td><td style="padding-left:24px">Email</td><td>${su?.email || '—'}</td></tr>
+            ${su?.nhs_number ? '' : ''}
+            ${su?.admission_date ? `<tr><td>Admission Date</td><td colspan="3">${new Date(su.admission_date).toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}</td></tr>` : ''}
+            ${su?.gp_name ? `<tr><td>GP</td><td colspan="3">${su.gp_name}${su.gp_phone ? ` · ${su.gp_phone}` : ''}</td></tr>` : ''}
+            ${su?.pharmacy_name ? `<tr><td>Pharmacy</td><td colspan="3">${su.pharmacy_name}${su.pharmacy_phone ? ` · ${su.pharmacy_phone}` : ''}</td></tr>` : ''}
+            ${su?.food_allergies || su?.allergies ? `<tr><td>Known Allergies</td><td colspan="3" style="color:#991b1b;font-weight:600">${[su.food_allergies, su.allergies].filter(Boolean).join(', ')}</td></tr>` : ''}
+          </table>
+        </div>
+      </div>
+
+      <div class="plan-title-block">
+        <div class="plan-title-label">Support Plan</div>
+        <div class="plan-title-name">${planLabel}</div>
+        <div class="plan-meta">
+          <span>Review frequency: ${(plan.review_frequency || 'monthly').replace(/_/g, ' ')}</span>
+          <span>Last review: ${reviewDate}</span>
+          <span>Next review: ${nextReview}</span>
+          ${lastRead ? `<span>${lastRead}</span>` : ''}
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="body">
-    <div class="resident">
-      ${photoHtml}
-      <div style="flex:1">
-        <div class="res-name">${name}</div>
-        <table class="res-tbl">
-          <tr><td>Date of Birth</td><td>${dob}${age ? ` (${age} yrs)` : ''}</td><td style="padding-left:20px">NHS Number</td><td>${su?.nhs_number || '—'}</td></tr>
-          <tr><td>Gender</td><td>${su?.gender || '—'}</td><td style="padding-left:20px">Preferred Name</td><td>${su?.preferred_name || '—'}</td></tr>
-          <tr><td>Address</td><td colspan="3">${address}</td></tr>
-          <tr><td>Phone</td><td>${su?.phone || '—'}</td><td style="padding-left:20px">Email</td><td>${su?.email || '—'}</td></tr>
-        </table>
-      </div>
-    </div>
-
-    <div class="plan-banner">${planLabel}</div>
-
+  <!-- PAGE 2+: Plan Content -->
+  <div class="content-page">
     ${buildTemplatePrintHtml(plan, su)}
     ${plainSec('Attachments / Notes', plan.attachments_notes)}
     ${consentHtml}
@@ -659,8 +689,8 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
 
     <div class="footer">
       <span class="confid">CONFIDENTIAL</span>
-      <span>${lastRead}</span>
-      <span>Total reads: ${reads.length} &nbsp;·&nbsp; Printed ${new Date().toLocaleDateString('en-GB')}</span>
+      <span>Total reads: ${reads.length}</span>
+      <span>Printed ${new Date().toLocaleDateString('en-GB')}</span>
     </div>
   </div>
 </body></html>`
