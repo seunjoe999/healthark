@@ -1,9 +1,25 @@
 import React, { useState, useEffect } from 'react'
-import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown } from 'lucide-react'
+import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
+
+const MONTHLY_SECTIONS = [
+  { key: 'mentalHealth',       label: 'Mental Health & Emotional Wellbeing',       hint: 'Mood, motivation, emotional presentation. Any changes in mental state or signs of distress.' },
+  { key: 'financialMgmt',      label: 'Financial Management',                      hint: 'How finances are managed (independently or with staff support). Any issues, discrepancies, or improvements noted.' },
+  { key: 'familyContact',      label: 'Family and Social Contact',                 hint: 'Communication or visits with family and friends. Impact on wellbeing.' },
+  { key: 'selfHarm',           label: 'Self-Harm',                                 hint: 'Any evidence, reports, or concerns. Management and support strategies in place.' },
+  { key: 'behaviourStaff',     label: 'Behaviour Towards Staff / Outcome Achieved', hint: 'Nature of interactions with staff. Any concerns, improvements, or positive relationships noted.' },
+  { key: 'summaryNotes',       label: 'Summary / Additional Notes',                hint: '' },
+]
+
+function formatMonthlyDescription(fields: Record<string, string>): string {
+  return MONTHLY_SECTIONS
+    .filter(s => fields[s.key]?.trim())
+    .map(s => `**${s.label}**\n${fields[s.key].trim()}`)
+    .join('\n\n')
+}
 
 const STATUSES = [
   { value: 'ongoing', label: 'Ongoing' },
@@ -32,6 +48,8 @@ export default function Outcomes() {
   const [submitting, setSubmitting] = useState(false)
 
   const [form, setForm] = useState({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
+  const [addMode, setAddMode] = useState<'goal' | 'monthly'>('goal')
+  const [monthlyForm, setMonthlyForm] = useState({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
   const [reviewForm, setReviewForm] = useState({ status: 'ongoing', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
@@ -73,12 +91,30 @@ export default function Outcomes() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.suId || !form.goal) { toast.error('Service User and Goal are required'); return }
+    if (!form.suId && !(monthlyForm as any).suId) { toast.error('Please select a service user'); return }
     setSubmitting(true)
     try {
-      await api.post('/outcomes', form)
-      setShowAdd(false)
-      setForm({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
+      if (addMode === 'monthly') {
+        if (!monthlyForm.month.trim()) { toast.error('Please enter the month'); setSubmitting(false); return }
+        const suId = form.suId
+        const goal = `Monthly Outcome Report — ${monthlyForm.month}`
+        const description = [
+          `Month: ${monthlyForm.month}`,
+          monthlyForm.completedBy ? `Completed by: ${monthlyForm.completedBy}` : '',
+          monthlyForm.dateCompleted ? `Date completed: ${monthlyForm.dateCompleted}` : '',
+          '',
+          formatMonthlyDescription(monthlyForm),
+        ].filter(l => l !== undefined).join('\n').trim()
+        await api.post('/outcomes', { suId, goal, description, status: 'ongoing', targetDate: monthlyForm.dateCompleted || undefined })
+        setShowAdd(false)
+        setMonthlyForm({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
+        setForm(f => ({ ...f, suId: '' }))
+      } else {
+        if (!form.goal) { toast.error('Goal is required'); setSubmitting(false); return }
+        await api.post('/outcomes', form)
+        setShowAdd(false)
+        setForm({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
+      }
       load()
       toast.success('Outcome saved')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save outcome') }
@@ -228,23 +264,89 @@ export default function Outcomes() {
       )}
 
       {/* Add Outcome Modal */}
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Care Outcome">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <Select label="Service User" options={suOptions} placeholder="Select service user..." value={form.suId}
-            onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} />
-          <Input label="Goal" placeholder="e.g. Improve mobility to walk 10 metres independently" value={form.goal} required
-            onChange={e => setForm(f => ({ ...f, goal: e.target.value }))} />
-          <Textarea label="Description" value={form.description}
-            onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Target Date" type="date" value={form.targetDate}
-              onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))} />
-            <Select label="Status" options={STATUSES} value={form.status}
-              onChange={e => setForm(f => ({ ...f, status: e.target.value }))} />
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setAddMode('goal') }} title="Add Care Outcome" size="lg">
+        <form onSubmit={handleAdd} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+          {/* Mode toggle */}
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+            {[{ v: 'goal' as const, label: 'Individual Goal' }, { v: 'monthly' as const, label: 'Monthly Outcome Report' }].map(({ v, label }) => (
+              <button key={v} type="button" onClick={() => setAddMode(v)}
+                className={clsx('flex-1 py-2 rounded-lg text-sm font-semibold transition-all',
+                  addMode === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>
+                {label}
+              </button>
+            ))}
           </div>
+
+          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId}
+            onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} />
+
+          {addMode === 'goal' ? (
+            <>
+              <Input label="Goal *" placeholder="e.g. Improve mobility to walk 10 metres independently" value={form.goal} required
+                onChange={e => setForm(f => ({ ...f, goal: e.target.value }))} />
+              <Textarea label="Description" value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Target Date" type="date" value={form.targetDate}
+                  onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))} />
+                <Select label="Status" options={STATUSES} value={form.status}
+                  onChange={e => setForm(f => ({ ...f, status: e.target.value }))} />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-0 border border-slate-200 rounded-xl overflow-hidden">
+              {/* Template header */}
+              <div className="bg-slate-800 text-white px-5 py-3 text-center">
+                <p className="text-sm font-bold tracking-widest uppercase flex items-center justify-center gap-2">
+                  <FileText className="w-4 h-4" /> Service User Monthly Outcome Report
+                </p>
+              </div>
+              <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Service User Name:</span>
+                  <span className="flex-1 text-sm text-slate-900 font-medium border-b border-slate-400 pb-0.5 min-h-[22px]">
+                    {suOptions.find(s => s.value === form.suId)?.label || '—'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Month:</span>
+                  <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+                    value={monthlyForm.month} onChange={e => setMonthlyForm(f => ({ ...f, month: e.target.value }))}
+                    placeholder="e.g. June 2026" required />
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Completed by (Name &amp; Role):</span>
+                  <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+                    value={monthlyForm.completedBy} onChange={e => setMonthlyForm(f => ({ ...f, completedBy: e.target.value }))}
+                    placeholder="Name and role" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Date Completed:</span>
+                  <input type="date" className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+                    value={monthlyForm.dateCompleted} onChange={e => setMonthlyForm(f => ({ ...f, dateCompleted: e.target.value }))} />
+                </div>
+              </div>
+              {MONTHLY_SECTIONS.map((s, i) => (
+                <div key={s.key} className={`border-b border-slate-200 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                  <div className="px-5 pt-3 pb-1">
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">{s.label}</p>
+                    {s.hint && <p className="text-xs text-slate-400 mt-0.5">{s.hint}</p>}
+                  </div>
+                  <div className="px-5 pb-3">
+                    <textarea rows={s.key === 'summaryNotes' ? 4 : 3}
+                      className="w-full text-sm border-0 bg-transparent outline-none resize-none text-slate-800 placeholder-slate-300 leading-relaxed"
+                      value={(monthlyForm as any)[s.key]}
+                      onChange={e => setMonthlyForm(f => ({ ...f, [s.key]: e.target.value }))}
+                      placeholder={`Enter notes…`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Outcome</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setAddMode('goal') }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>Save</Button>
           </div>
         </form>
       </Modal>

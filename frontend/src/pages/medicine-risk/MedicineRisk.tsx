@@ -219,7 +219,14 @@ export default function MedicineRisk() {
             return (
               <button
                 key={r.su_id}
-                onClick={() => openView(r)}
+                onClick={() => {
+                  if (!r.id) {
+                    setForm({ ...EMPTY_FORM, suId: r.su_id })
+                    setShowForm(true)
+                  } else {
+                    openView(r)
+                  }
+                }}
                 className="rounded-2xl flex flex-col gap-3 p-4 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
                 style={{ background: '#111111', border: `1px solid ${borderColor}`, boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
               >

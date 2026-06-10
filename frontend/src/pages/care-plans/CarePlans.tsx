@@ -5,8 +5,54 @@ import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
-         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy } from 'lucide-react'
+         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+async function uploadDoc(file: File): Promise<{ fileUrl: string; fileName: string }> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return res.data.data
+}
+
+function AttachmentUploader({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const { fileUrl, fileName } = await uploadDoc(file)
+      const base = window.location.origin
+      const fullUrl = fileUrl.startsWith('http') ? fileUrl : `${base}${fileUrl}`
+      const line = `${fileName}: ${fullUrl}`
+      onChange(value ? `${value}\n${line}` : line)
+      toast.success(`${fileName} uploaded`)
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false); if (inputRef.current) inputRef.current.value = '' }
+  }
+
+  return (
+    <div>
+      <label className="label flex items-center gap-1"><Paperclip className="w-3.5 h-3.5" /> Attachments / document links</label>
+      <SpeechTextarea rows={2} value={value} onChange={onChange} placeholder="Paste document links or note attachment references..." />
+      <div className="mt-1.5 flex items-center gap-2">
+        <button type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50">
+          <Upload className="w-3.5 h-3.5" /> {uploading ? 'Uploading…' : 'Upload file'}
+        </button>
+        <span className="text-xs text-slate-400">PDF, Word, Excel, images up to 20MB</span>
+        <input ref={inputRef} type="file" className="hidden"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+          onChange={handleFile} />
+      </div>
+    </div>
+  )
+}
 
 const PLAN_TYPES = [
   { value: 'physical_health', label: 'Physical Health Support Plan' },
@@ -1372,10 +1418,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
 
         <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
 
-        <div>
-          <label className="label flex items-center gap-1"><Paperclip className="w-3.5 h-3.5" /> Attachments / document links</label>
-          <SpeechTextarea rows={2} value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} placeholder="Paste document links or note attachment references..." />
-        </div>
+        <AttachmentUploader value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} />
 
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
@@ -1495,10 +1538,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
         <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
         <SpeechTextarea label="Review notes (what changed and why)" rows={3} value={form.updateNotes} onChange={v => set('updateNotes', v)} />
 
-        <div>
-          <label className="label flex items-center gap-1"><Paperclip className="w-3.5 h-3.5" /> Attachments / document links</label>
-          <SpeechTextarea rows={2} value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} placeholder="Paste document links or note attachment references..." />
-        </div>
+        <AttachmentUploader value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} />
 
         {/* Consent section */}
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
