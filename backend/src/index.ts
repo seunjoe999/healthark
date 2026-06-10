@@ -175,6 +175,7 @@ import performanceMatrixRoutes from './routes/performanceMatrix.routes';
 import socialActivitiesRoutes from './routes/socialActivities.routes';
 import recruitmentRoutes from './routes/recruitment.routes';
 import consentsRoutes from './routes/consents.routes';
+import confidentialRoutes from './routes/confidential.routes';
 app.use('/api/noticeboard', noticeboardRoutes);
 app.use('/api/observations', observationsRoutes);
 app.use('/api/seizures', seizuresRoutes);
@@ -186,6 +187,7 @@ app.use('/api/performance', performanceMatrixRoutes);
 app.use('/api/social-activities', socialActivitiesRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
 app.use('/api/consents', consentsRoutes);
+app.use('/api/confidential', confidentialRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
@@ -1190,6 +1192,24 @@ async function ensureColumns() {
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS review_notes   JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS signature      JSONB`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ DEFAULT NOW()`,
+    // ── Confidential Information ──────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS confidential_info (
+       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id       UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       subject_type  VARCHAR(20) NOT NULL CHECK (subject_type IN ('service_user','staff')),
+       subject_id    UUID NOT NULL,
+       title         VARCHAR(255) NOT NULL,
+       content       TEXT,
+       document_url  VARCHAR(500),
+       document_name VARCHAR(255),
+       signature_data TEXT,
+       signed_by     VARCHAR(255),
+       created_by    UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_confinfo_home    ON confidential_info(home_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_confinfo_subject ON confidential_info(subject_id, subject_type)`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='team_leader' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'team_leader'; END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='admin' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'admin'; END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='deputy_manager' AND enumtypid=(SELECT oid FROM pg_type WHERE typname='staff_role')) THEN ALTER TYPE staff_role ADD VALUE 'deputy_manager'; END IF; END $$`,

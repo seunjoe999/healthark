@@ -74,6 +74,7 @@ import ClockInAnalytics from './pages/clockin/ClockInAnalytics'
 import NotificationsManager from './pages/notifications/NotificationsManager'
 import AssessmentForm from './pages/assessments/AssessmentForm'
 import AssessmentView from './pages/assessments/AssessmentView'
+import Confidential from './pages/confidential/Confidential'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -161,6 +162,7 @@ function AppRoutes() {
       <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
       <Route path="/clockin-analytics" element={<ProtectedRoute><ClockInAnalytics /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
+      <Route path="/confidential" element={<ProtectedRoute><Confidential /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
