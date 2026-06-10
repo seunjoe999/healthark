@@ -175,7 +175,7 @@ Incident details:
 Provide a clear, concise, professional analysis.`;
 
       const message = await client.messages.create({
-        model: 'claude-haiku-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }],
       });
@@ -266,7 +266,7 @@ router.post('/:id/signature', async (req: Request, res: Response, next: NextFunc
 });
 
 // DELETE /api/incidents/:id — delete an incident record (managers and admins only)
-router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Deletes the records_incidents row; the parent daily_record is kept for audit

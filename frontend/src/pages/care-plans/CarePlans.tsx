@@ -56,7 +56,6 @@ function AttachmentUploader({ value, onChange }: { value: string; onChange: (v: 
 
 const PLAN_TYPES = [
   { value: 'physical_health', label: 'Physical Health Support Plan' },
-  { value: 'physical', label: 'Physical Health Support Plan' },
   { value: 'communication', label: 'Communication Support Plan' },
   { value: 'oral_care', label: 'Oral Care Support Plan' },
   { value: 'medical', label: 'Medical Support Plan' },

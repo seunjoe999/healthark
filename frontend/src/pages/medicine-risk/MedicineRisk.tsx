@@ -4,6 +4,7 @@ import { Button, Modal, Select, Spinner, EmptyState, PrintButton } from '../../c
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
+import toast from 'react-hot-toast'
 
 const SWALLOWING_RISK = [
   { value: 'none',   label: 'None' },
@@ -156,13 +157,15 @@ export default function MedicineRisk() {
           ].filter(Boolean).join('\n')
         : form.covertNotes
 
-      await api.post('/medicine-risk', {
-        ...form,
-        covertNotes: covertNotesCombined,
-      })
+      if (form.id) {
+        await api.put(`/medicine-risk/${form.id}`, { ...form, covertNotes: covertNotesCombined })
+      } else {
+        await api.post('/medicine-risk', { ...form, covertNotes: covertNotesCombined })
+      }
       setShowForm(false)
       load()
-    } catch {}
+      toast.success('Assessment saved')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save assessment') }
     setSubmitting(false)
   }
 

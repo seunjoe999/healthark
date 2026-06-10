@@ -89,6 +89,47 @@ router.post('/', [body('suId').isUUID()], validateRequest,
   }
 );
 
+// PUT /api/medicine-risk/:id — update existing assessment
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = tok(req, 'staffId');
+      const {
+        selfMedicate, selfMedicateNotes, swallowingRisk, swallowingNotes,
+        covertMeds, covertNotes, prnProtocol, prnNotes, crushingRequired, crushingNotes,
+        administrationRoute, knownAllergies, storageLocation,
+        riskLevel, riskNotes, reviewDate, triggers, protectiveFactors, attachmentNotes,
+      } = req.body;
+      const rows = await query(
+        `UPDATE medicine_risk_assessments SET
+           assessed_by = $1,
+           self_medicate = $2, self_medicate_notes = $3,
+           swallowing_risk = $4, swallowing_notes = $5,
+           covert_meds = $6, covert_notes = $7,
+           prn_protocol = $8, prn_notes = $9,
+           crushing_required = $10, crushing_notes = $11,
+           administration_route = $12, known_allergies = $13, storage_location = $14,
+           risk_level = $15, risk_notes = $16, review_date = $17,
+           triggers = $18, protective_factors = $19, attachment_notes = $20,
+           assessed_at = NOW()
+         WHERE id = $21 RETURNING *`,
+        [staffId,
+         selfMedicate ?? false, selfMedicateNotes || null,
+         swallowingRisk || 'none', swallowingNotes || null,
+         covertMeds ?? false, covertNotes || null,
+         prnProtocol ?? false, prnNotes || null,
+         crushingRequired ?? false, crushingNotes || null,
+         administrationRoute || 'oral', knownAllergies || null,
+         storageLocation || null, riskLevel || 'low',
+         riskNotes || null, reviewDate || null,
+         triggers || null, protectiveFactors || null, attachmentNotes || null,
+         req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // DELETE /api/medicine-risk/:id
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

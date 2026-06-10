@@ -50,7 +50,7 @@ export default function Outcomes() {
   const [form, setForm] = useState({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
   const [addMode, setAddMode] = useState<'goal' | 'monthly'>('goal')
   const [monthlyForm, setMonthlyForm] = useState({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
-  const [reviewForm, setReviewForm] = useState({ status: 'ongoing', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
+  const [reviewForm, setReviewForm] = useState({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   async function quickUpdateStatus(id: string, status: string) {
@@ -70,7 +70,7 @@ export default function Outcomes() {
         api.get('/outcomes', { params: { suId: filterSU || undefined } }),
         api.get('/service-users'),
       ])
-      setOutcomes(outRes.data.data)
+      setOutcomes(outRes.data.data || [])
       setServiceUsers(suRes.data.data || [])
     } catch {}
     setLoading(false)
@@ -124,6 +124,7 @@ export default function Outcomes() {
   async function handleReview(e: React.FormEvent) {
     e.preventDefault()
     if (!showReview) return
+    if (!reviewForm.status) { toast.error('Please select an outcome status'); return }
     setSubmitting(true)
     try {
       await api.post(`/outcomes/${showReview.id}/reviews`, reviewForm)
@@ -250,7 +251,7 @@ export default function Outcomes() {
                             ))}
                           </div>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: o.status, notes: '', reviewDate: new Date().toISOString().split('T')[0] }) }}>
+                        <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] }) }}>
                           Add Review
                         </Button>
                       </div>
@@ -361,8 +362,8 @@ export default function Outcomes() {
                         <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Outcome Status</label>
               <div className="flex flex-col gap-2">
-                {['Achieved', 'Partially Achieved', 'Not Achieved'].map(statusOption => {
-                  const val = statusOption === 'Achieved' ? 'yes' : statusOption === 'Partially Achieved' ? 'partially' : 'no';
+                {['Achieved', 'Partially Achieved', 'Not Achieved', 'Ongoing'].map(statusOption => {
+                  const val = statusOption === 'Achieved' ? 'yes' : statusOption === 'Partially Achieved' ? 'partially' : statusOption === 'Not Achieved' ? 'no' : 'ongoing';
                   const active = reviewForm.status === val;
                   return (
                     <button

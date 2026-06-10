@@ -5,6 +5,7 @@ import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
+import toast from 'react-hot-toast'
 
 const SEIZURE_TYPES = [
   { value: 'tonic_clonic', label: 'Tonic-Clonic (Grand Mal)' },
@@ -72,7 +73,8 @@ export default function SeizureLog() {
       })
       setShowAdd(false)
       load()
-    } catch {}
+      toast.success('Seizure episode logged')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to log seizure') }
     setSubmitting(false)
   }
 

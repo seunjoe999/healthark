@@ -4,6 +4,7 @@ import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
+import toast from 'react-hot-toast'
 
 const BRISTOL_TYPES = [
   { value: '1', label: 'Type 1 – Separate hard lumps (severe constipation)' },
@@ -92,7 +93,8 @@ export default function BowelChart() {
       setShowAdd(false)
       setForm(f => ({ ...f, suId: '', bristolType: '4', amount: '', colour: 'brown', consistency: '', blood: false, mucus: false, notes: '' }))
       load()
-    } catch {}
+      toast.success('Bowel movement recorded')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save record') }
     setSubmitting(false)
   }
 
