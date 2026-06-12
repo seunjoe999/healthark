@@ -498,7 +498,7 @@ export default function LandingPage() {
             {VALUES.map(v => (
               <div key={v.title}
                 className={`group p-8 rounded-3xl border ${v.light} hover:scale-[1.03] transition-all duration-300 cursor-default`}>
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${v.gradient} flex items-center justify-center text-2xl mb-5 shadow-lg`}>
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${v.color} flex items-center justify-center text-2xl mb-5 shadow-lg`}>
                   {v.icon}
                 </div>
                 <h3 className={`text-xl font-extrabold mb-3 ${v.text}`}>{v.title}</h3>
