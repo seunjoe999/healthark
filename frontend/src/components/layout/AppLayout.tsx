@@ -16,7 +16,7 @@ import {
 
 const navSections = [
   {
-    label: '',
+    label: 'DASHBOARD', highlight: true,
     items: [
       { label: 'Dashboard',   to: '/dashboard',   icon: LayoutDashboard, roles: [], featureKey: 'dashboard' },
       { label: 'Inbox',       to: '/messages',    icon: MessageSquare,   roles: [], featureKey: 'messages' },
@@ -24,7 +24,7 @@ const navSections = [
     ]
   },
   {
-    label: 'Service User',
+    label: 'SERVICE USERS', highlight: true,
     items: [
       { label: 'Residents',                        to: '/service-users',       icon: Users,         roles: [], featureKey: 'service_users' },
       { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
@@ -42,13 +42,13 @@ const navSections = [
     ]
   },
   {
-    label: 'Daily Records',
+    label: 'CARE RECORD', highlight: true,
     items: [
       { label: 'Daily Records', to: '/daily-records', icon: ClipboardList, roles: [], featureKey: 'daily_records' },
     ]
   },
   {
-    label: 'Staff Records',
+    label: 'STAFF RECORDS', highlight: true,
     items: [
       { label: 'Staff Profile',          to: '/staff',                 icon: UserSquare,    roles: [], featureKey: 'staff' },
       { label: 'Assessment',             to: '/assessments?tab=staff', icon: FileCheck,     roles: [], featureKey: 'staff_assessment' },
@@ -59,13 +59,13 @@ const navSections = [
     ]
   },
   {
-    label: 'Family Portal',
+    label: 'FAMILY PORTAL', highlight: true,
     items: [
       { label: 'Family Portal', to: '/family-portal', icon: Users2, roles: [], featureKey: 'family_portal' },
     ]
   },
   {
-    label: 'Quality Assurance',
+    label: 'QUALITY ASSURANCE', highlight: true,
     items: [
       { label: 'Compliance',               to: '/compliance',              icon: ShieldCheck, roles: [], featureKey: 'compliance' },
       { label: 'Complaints & Compliments', to: '/complaints',              icon: ThumbsUp,    roles: [], featureKey: 'complaints' },
@@ -77,21 +77,36 @@ const navSections = [
     ]
   },
   {
-    label: 'Operations',
+    label: 'RECRUITMENT', highlight: true,
     items: [
-      { label: 'Tasks',               to: '/tasks',             icon: CheckSquare,   roles: [], featureKey: 'tasks' },
-      { label: 'Rota',                to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
-      { label: 'Timesheets',          to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
-      { label: 'Leave & Holidays',    to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
-      { label: 'Invoicing',           to: '/invoicing',         icon: DollarSign,    roles: [], featureKey: 'invoicing' },
-      { label: 'Recruitment',         to: '/recruitment',       icon: UserCheck,     roles: [], featureKey: 'recruitment' },
-      { label: 'Maintenance',         to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
-      { label: 'Clock In Analytics',  to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
-      { label: 'Alerts',              to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
-      { label: 'Notifications',       to: '/notifications',     icon: Send,          roles: [], featureKey: 'notifications' },
-      { label: 'Policies',            to: '/policies',          icon: BookOpen,      roles: [], featureKey: 'policies' },
-      { label: 'PPE Stock',           to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
-      { label: 'Settings',            to: '/settings',          icon: Settings,      roles: ['group_admin'], featureKey: 'settings' },
+      { label: 'Recruitment', to: '/recruitment', icon: UserCheck, roles: [], featureKey: 'recruitment' },
+    ]
+  },
+  {
+    label: 'OPERATIONS',
+    items: [
+      { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: [], featureKey: 'tasks' },
+      { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
+      { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
+      { label: 'Leave & Holidays',   to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
+      { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: [], featureKey: 'invoicing' },
+      { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
+      { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
+      { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
+      { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: [], featureKey: 'notifications' },
+      { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
+    ]
+  },
+  {
+    label: 'POLICIES',
+    items: [
+      { label: 'Policies', to: '/policies', icon: BookOpen, roles: [], featureKey: 'policies' },
+    ]
+  },
+  {
+    label: 'SETTINGS',
+    items: [
+      { label: 'Settings', to: '/settings', icon: Settings, roles: ['group_admin'], featureKey: 'settings' },
     ]
   },
   {
@@ -162,7 +177,11 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
           if (!visible.length) return null
           return (
             <div key={si}>
-              {section.label && <p className="px-3 mb-1.5 text-xs font-semibold tracking-wide text-slate-500">{section.label}</p>}
+              {section.label && (
+                <p className={`px-3 mb-1.5 text-xs font-bold tracking-widest ${(section as any).highlight ? 'text-amber-400' : 'text-slate-500'}`}>
+                  {section.label}
+                </p>
+              )}
               <div className="space-y-0.5">
                 {visible.map(item => {
                   const Icon = item.icon

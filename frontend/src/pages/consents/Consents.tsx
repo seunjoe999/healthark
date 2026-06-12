@@ -2,14 +2,14 @@ import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
+import { Spinner, EmptyState, Button, Modal, Input, PrintButton } from '../../components/ui'
 import {
   FileSignature, CheckCircle, XCircle, AlertCircle,
   User, Moon, Home, UtensilsCrossed, Globe2, Brain,
   Pill, ShieldCheck, Heart, DollarSign, Users, AlertTriangle,
   UserX, ChevronRight, ClipboardList,
   Shield, ShieldAlert, CalendarCheck, Camera, Package, Database,
-  UserCheck, Syringe, Wrench, Share2, Wallet, MapPin, Key
+  UserCheck, Syringe, Wrench, Share2, Wallet, MapPin, Key, PenLine
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -46,6 +46,7 @@ const DECLARATION_TYPES = [
   { key: 'financial_support',              label: 'Consent — Financial Support',        icon: Wallet,        color: 'green',   description: 'Consent for staff to provide financial support including budgeting, shopping, and transaction recording.' },
   { key: 'community_access_activities',    label: 'Consent — Community Access',         icon: MapPin,        color: 'emerald', description: 'Consent for participation in supported community activities and outings with staff or authorised carers.' },
   { key: 'rent_service_charge',            label: 'Rent & Service Charge Agreement',    icon: Key,           color: 'stone',   description: 'Agreement to pay rent, service charges, and utility bills as applicable under the tenancy with Comprehensive Care.' },
+  { key: 'custom_other',                   label: 'Custom / Other Consent',             icon: PenLine,       color: 'slate',   description: 'Record a consent for any purpose not already listed above. Enter a custom title and declaration text.' },
 ]
 
 const ALL_CONSENT_TYPES = [...CARE_AREA_TYPES, ...DECLARATION_TYPES]
@@ -126,6 +127,11 @@ const DECLARATION_META: Record<string, {
     consentLabel: 'I Consent to the Rent and Service Charge / Utility Bill Payment Agreement. I shall pay all my Rent, Service Charge or Utility Bill as applicable.',
     noConsentLabel: 'I Do NOT Consent — I understand that by refusing this agreement, I am no longer eligible to remain in the accommodation provided by Comprehensive Care.',
   },
+  custom_other: {
+    text: '',
+    consentLabel: 'I Consent',
+    noConsentLabel: 'I Do Not Consent',
+  },
 }
 
 const PHOTO_PURPOSES = [
@@ -200,8 +206,9 @@ export default function Consents() {
   const [modalType, setModalType] = useState<string | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
-  // photo consent purposes
   const [photoPurposes, setPhotoPurposes] = useState<string[]>([])
+  const [customTitle, setCustomTitle] = useState('')
+  const [customText, setCustomText] = useState('')
 
   useEffect(() => {
     api.get('/service-users', { params: { homeId: user?.homeId, status: 'live', limit: 200 } })
@@ -245,9 +252,15 @@ export default function Consents() {
       if (key === 'photo_consent') {
         setPhotoPurposes((existing.notes || '').split(',').filter(Boolean))
       }
+      if (key === 'custom_other') {
+        setCustomTitle(existing.capacity_notes || '')
+        setCustomText(existing.best_interest_decision || '')
+      }
     } else {
       setForm({ ...EMPTY_FORM })
       setPhotoPurposes([])
+      setCustomTitle('')
+      setCustomText('')
     }
     setModalType(key)
   }
@@ -263,6 +276,10 @@ export default function Consents() {
       }
       if (modalType === 'monthly_joint_care_plan_review') {
         payload.consentGiven = true
+      }
+      if (modalType === 'custom_other') {
+        payload.capacityNotes = customTitle
+        payload.bestInterestDecision = customText
       }
       await api.post('/consents', {
         suId: selectedSu,
@@ -302,6 +319,10 @@ export default function Consents() {
       if (v === 'consent_with_family') return 'Consent incl. family'
       if (v === 'consent_no_family') return 'Consent — no family'
       if (v === 'no_consent') return 'No consent given'
+    }
+    if (key === 'custom_other') {
+      const title = c.capacity_notes
+      return c.consent_given ? `Consent — ${title || 'custom'}` : `Declined — ${title || 'custom'}`
     }
     if (DECLARATION_KEYS.has(key)) return c.consent_given ? 'I Consent' : 'I Do Not Consent'
     if (c.has_capacity === 'no') return 'Best interest decision'
@@ -348,6 +369,43 @@ export default function Consents() {
 
   const DeclarationForm = ({ meta, type }: { meta: typeof DECLARATION_META[string]; type: string }) => {
     const textLines = meta.text.split('\n')
+
+    if (type === 'custom_other') {
+      return (
+        <>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Consent Details</p>
+            <Input label="Consent title *" value={customTitle} onChange={e => setCustomTitle(e.target.value)}
+              placeholder="e.g. Consent for use of mobility equipment" />
+            <div>
+              <label className="label">Declaration / consent text</label>
+              <textarea className="input w-full" rows={4} value={customText}
+                onChange={e => setCustomText(e.target.value)}
+                placeholder="Enter the declaration text for this custom consent..." />
+            </div>
+          </div>
+          {!meta.noChoice && (
+            <div>
+              <label className="label">Declaration</label>
+              <div className="flex flex-col gap-2 mt-1">
+                {[
+                  { v: true,  l: meta.consentLabel || 'I Consent' },
+                  { v: false, l: meta.noConsentLabel || 'I Do Not Consent' },
+                ].map(o => (
+                  <button key={String(o.v)} type="button"
+                    onClick={() => set('consentGiven', o.v)}
+                    className={`px-4 py-2.5 rounded-lg border text-sm font-medium text-left transition-colors ${form.consentGiven === o.v
+                      ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600')
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )
+    }
 
     if (type === 'photo_consent') {
       return (
@@ -481,13 +539,16 @@ export default function Consents() {
             <p className="text-slate-500 text-sm">Record and manage consent for all care areas and agreements.</p>
           </div>
         </div>
-        {sus.length > 1 && (
-          <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
-            {sus.map(s => (
-              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {sus.length > 1 && (
+            <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
+              {sus.map(s => (
+                <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+              ))}
+            </select>
+          )}
+          {selectedSu && <PrintButton label="Print consents" />}
+        </div>
       </div>
 
       {/* Progress summary */}

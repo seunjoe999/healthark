@@ -106,9 +106,9 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 const BLANK_INC = {
   suId: '', incidentDate: new Date().toISOString().split('T')[0],
-  incidentType: 'fall', location: '', description: '', immediateAction: '',
+  incidentTime: '', incidentType: 'fall', location: '', description: '', immediateAction: '',
   witnesses: '', injuries: false, injuryDetails: '', medicalNeeded: false, medicalDetails: '',
-  cqcNotified: false, familyNotified: false,
+  familyNotified: false, contributingFactors: '', preventionActions: '',
 }
 
 export default function Incidents() {
@@ -128,7 +128,7 @@ export default function Incidents() {
   // Edit incident state
   const [editOpen, setEditOpen] = useState(false)
   const [editInc, setEditInc] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ description: '', immediateAction: '', emotion: '' })
+  const [editForm, setEditForm] = useState({ description: '', immediateAction: '', emotion: '', cqcNotified: false })
   const [editSaving, setEditSaving] = useState(false)
   const [reviewNote, setReviewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
@@ -210,7 +210,7 @@ export default function Incidents() {
 
   const openEdit = (inc: any) => {
     setEditInc(inc)
-    setEditForm({ description: inc.description || '', immediateAction: inc.immediate_action || '', emotion: inc.emotion || '' })
+    setEditForm({ description: inc.description || '', immediateAction: inc.immediate_action || '', emotion: inc.emotion || '', cqcNotified: inc.cqc_notified || false })
     setReviewNote('')
     setEditOpen(true)
   }
@@ -221,7 +221,7 @@ export default function Incidents() {
     setEditSaving(true)
     try {
       await api.put(`/incidents/${editInc.id}`, editForm)
-      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, description: editForm.description, immediate_action: editForm.immediateAction, emotion: editForm.emotion, updated_at: new Date().toISOString() } : i))
+      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, description: editForm.description, immediate_action: editForm.immediateAction, emotion: editForm.emotion, cqc_notified: editForm.cqcNotified, updated_at: new Date().toISOString() } : i))
       toast.success('Incident updated')
       setEditOpen(false)
     } catch { toast.error('Failed to save') }
@@ -453,12 +453,14 @@ export default function Incidents() {
 
                     {/* Notification section */}
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 grid sm:grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs font-semibold text-blue-700 mb-0.5">CQC notified</p>
-                        <p className={`text-sm font-medium ${inc.cqc_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
-                          {inc.cqc_notified ? 'Yes' : 'No'}
-                        </p>
-                      </div>
+                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                        <div>
+                          <p className="text-xs font-semibold text-blue-700 mb-0.5">CQC notified</p>
+                          <p className={`text-sm font-medium ${inc.cqc_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
+                            {inc.cqc_notified ? 'Yes' : 'No'}
+                          </p>
+                        </div>
+                      )}
                       <div>
                         <p className="text-xs font-semibold text-blue-700 mb-0.5">Family / next of kin notified</p>
                         <p className={`text-sm font-medium ${inc.family_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
@@ -508,13 +510,13 @@ export default function Incidents() {
                           icon={<Sparkles className="w-3.5 h-3.5 text-purple-500" />}
                           loading={aiLoading === inc.id}
                           onClick={() => requestAiAnalysis(inc)}>
-                          AI Incident Analysis
+                          Incident Analysis
                         </Button>
                       ) : (
                         <div className="bg-purple-50 rounded-xl border border-purple-100 p-4">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5" /> AI Incident Analysis
+                              <Sparkles className="w-3.5 h-3.5" /> Incident Analysis
                             </p>
                             <button onClick={() => setAiAnalysis(p => { const n = {...p}; delete n[inc.id]; return n })}
                               className="text-purple-400 hover:text-purple-600">
@@ -623,6 +625,19 @@ export default function Incidents() {
               )}
             </div>
 
+            {/* CQC Notification — admin / management only */}
+            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">CQC Notification</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded accent-blue-600"
+                    checked={editForm.cqcNotified}
+                    onChange={e => setEditForm(f => ({ ...f, cqcNotified: e.target.checked }))} />
+                  <span className="text-sm font-medium text-slate-700">CQC has been notified of this incident</span>
+                </label>
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
               <Button type="submit" loading={editSaving}>Save</Button>
@@ -633,7 +648,7 @@ export default function Incidents() {
 
       {/* Create incident modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Log New Incident" size="lg">
-        <form onSubmit={handleCreateIncident} className="space-y-4">
+        <form onSubmit={handleCreateIncident} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="label">Service User *</label>
@@ -647,6 +662,10 @@ export default function Incidents() {
               <input type="date" className="input w-full" value={createForm.incidentDate} onChange={e => setCreateForm(f => ({ ...f, incidentDate: e.target.value }))} required />
             </div>
             <div>
+              <label className="label">Time of Incident</label>
+              <input type="time" className="input w-full" value={createForm.incidentTime} onChange={e => setCreateForm(f => ({ ...f, incidentTime: e.target.value }))} />
+            </div>
+            <div>
               <label className="label">Incident Type *</label>
               <select className="input w-full" value={createForm.incidentType} onChange={e => setCreateForm(f => ({ ...f, incidentType: e.target.value }))}>
                 {INCIDENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
@@ -656,15 +675,21 @@ export default function Incidents() {
               <label className="label">Location</label>
               <input className="input w-full" placeholder="e.g. Bedroom, Bathroom" value={createForm.location} onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))} />
             </div>
-            <div>
-              <label className="label">Witnesses</label>
-              <input className="input w-full" placeholder="Names of anyone present" value={createForm.witnesses} onChange={e => setCreateForm(f => ({ ...f, witnesses: e.target.value }))} />
+            <div className="col-span-2">
+              <label className="label">Witnesses present</label>
+              <input className="input w-full" placeholder="Names of anyone who witnessed or was present" value={createForm.witnesses} onChange={e => setCreateForm(f => ({ ...f, witnesses: e.target.value }))} />
             </div>
             <div className="col-span-2">
-              <SpeechTextarea required label="Description / What happened *" rows={3} placeholder="Describe what happened..." value={createForm.description} onChange={v => setCreateForm(f => ({ ...f, description: v }))} />
+              <SpeechTextarea required label="Description / What happened *" rows={3} placeholder="Describe what happened in detail..." value={createForm.description} onChange={v => setCreateForm(f => ({ ...f, description: v }))} />
             </div>
             <div className="col-span-2">
               <SpeechTextarea label="Immediate action taken" rows={2} placeholder="What was done immediately after the incident..." value={createForm.immediateAction} onChange={v => setCreateForm(f => ({ ...f, immediateAction: v }))} />
+            </div>
+            <div className="col-span-2">
+              <SpeechTextarea label="Contributing factors" rows={2} placeholder="e.g. environmental hazards, equipment failure, staffing, resident behaviour..." value={createForm.contributingFactors} onChange={v => setCreateForm(f => ({ ...f, contributingFactors: v }))} />
+            </div>
+            <div className="col-span-2">
+              <SpeechTextarea label="Actions to prevent recurrence" rows={2} placeholder="What will be done to prevent this happening again..." value={createForm.preventionActions} onChange={v => setCreateForm(f => ({ ...f, preventionActions: v }))} />
             </div>
             <div className="col-span-2 flex flex-wrap gap-6">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -676,18 +701,20 @@ export default function Incidents() {
                 <span className="text-sm font-medium text-slate-700">Medical attention required</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={createForm.cqcNotified} onChange={e => setCreateForm(f => ({ ...f, cqcNotified: e.target.checked }))} className="w-4 h-4 rounded accent-purple-600" />
-                <span className="text-sm font-medium text-slate-700">CQC notified</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={createForm.familyNotified} onChange={e => setCreateForm(f => ({ ...f, familyNotified: e.target.checked }))} className="w-4 h-4 rounded accent-purple-600" />
-                <span className="text-sm font-medium text-slate-700">Family notified</span>
+                <span className="text-sm font-medium text-slate-700">Family / next of kin notified</span>
               </label>
             </div>
             {createForm.injuries && (
               <div className="col-span-2">
                 <label className="label">Injury details</label>
                 <input className="input w-full" placeholder="Describe the injuries..." value={createForm.injuryDetails} onChange={e => setCreateForm(f => ({ ...f, injuryDetails: e.target.value }))} />
+              </div>
+            )}
+            {createForm.medicalNeeded && (
+              <div className="col-span-2">
+                <label className="label">Medical details</label>
+                <input className="input w-full" placeholder="Who was contacted, what treatment was given..." value={createForm.medicalDetails} onChange={e => setCreateForm(f => ({ ...f, medicalDetails: e.target.value }))} />
               </div>
             )}
           </div>

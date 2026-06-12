@@ -1235,6 +1235,43 @@ async function ensureColumns() {
     // ── risk_assessments — update tracking and last assessed date ─────────────
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_update_tracking TEXT`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS last_assessed_date   DATE`,
+    // ── su_documents — service user key documents ─────────────────────────────
+    `CREATE TABLE IF NOT EXISTS su_documents (
+       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       su_id         UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id       UUID REFERENCES homes(id) ON DELETE SET NULL,
+       uploaded_by   UUID REFERENCES staff(id) ON DELETE SET NULL,
+       document_type VARCHAR(100) NOT NULL DEFAULT 'other',
+       title         VARCHAR(255),
+       file_url      TEXT NOT NULL,
+       file_name     VARCHAR(255),
+       file_size     INTEGER,
+       mime_type     VARCHAR(100),
+       notes         TEXT,
+       expiry_date   DATE,
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_su_docs_su ON su_documents(su_id)`,
+    // ── staff_documents — certificates and training records ───────────────────
+    `CREATE TABLE IF NOT EXISTS staff_documents (
+       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       staff_id      UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       uploaded_by   UUID REFERENCES staff(id) ON DELETE SET NULL,
+       document_type VARCHAR(100) NOT NULL DEFAULT 'other',
+       title         VARCHAR(255),
+       file_url      TEXT NOT NULL,
+       file_name     VARCHAR(255),
+       file_size     INTEGER,
+       mime_type     VARCHAR(100),
+       notes         TEXT,
+       expiry_date   DATE,
+       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_staff_docs_staff ON staff_documents(staff_id)`,
+    // ── records_incidents — time of incident and extra template fields ─────────
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS incident_time        TIME`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS contributing_factors TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS prevention_actions   TEXT`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

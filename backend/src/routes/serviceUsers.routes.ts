@@ -288,6 +288,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         }
       }
 
+      // Auto-calculate BMI whenever height or weight is provided
+      const hv = req.body.heightCm ? parseFloat(req.body.heightCm) : null;
+      const wv = req.body.weightKg ? parseFloat(req.body.weightKg) : null;
+      if (hv && wv && hv > 0) {
+        updates.push(`bmi = $${idx++}`);
+        values.push(Math.round((wv / Math.pow(hv / 100, 2)) * 10) / 10);
+      }
+
       if (!updates.length) throw new AppError('No fields to update', 400);
       updates.push('updated_at = NOW()');
       values.push(req.params.id);

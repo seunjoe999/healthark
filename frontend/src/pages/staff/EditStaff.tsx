@@ -1,11 +1,99 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { staffApi, homesApi } from '../../api'
 import api from '../../api'
-import { Button, Input, Select, Card, SectionHeading, Spinner } from '../../components/ui'
+import { Button, Input, Select, Card, SectionHeading, Spinner, Modal } from '../../components/ui'
 import PhotoUpload from '../../components/ui/PhotoUpload'
-import { ArrowLeft, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Upload, FileText, FileImage, Eye, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { format } from 'date-fns'
+
+const STAFF_DOC_TYPES = [
+  { value: 'certificate', label: 'Training certificate' },
+  { value: 'dbs', label: 'DBS certificate' },
+  { value: 'right_to_work', label: 'Right to work / ID' },
+  { value: 'contract', label: 'Employment contract' },
+  { value: 'appraisal', label: 'Appraisal / review' },
+  { value: 'reference', label: 'Reference' },
+  { value: 'qualification', label: 'Qualification / degree' },
+  { value: 'nmc_pin', label: 'NMC PIN / professional registration' },
+  { value: 'other', label: 'Other document' },
+]
+
+function UploadStaffDocModal({ open, onClose, staffId, onUploaded }: {
+  open: boolean; onClose: () => void; staffId: string; onUploaded: (doc: any) => void
+}) {
+  const [docType, setDocType] = useState('')
+  const [title, setTitle] = useState('')
+  const [notes, setNotes] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [loading, setLoading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file || !docType) { toast.error('Select a file and document type'); return }
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', docType)
+      formData.append('title', title || file.name)
+      if (notes) formData.append('notes', notes)
+      if (expiryDate) formData.append('expiryDate', expiryDate)
+      const res = await fetch(`/api/documents/staff/${staffId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      onUploaded(data.data)
+      setFile(null); setTitle(''); setNotes(''); setExpiryDate(''); setDocType('')
+    } catch (err: any) { toast.error(err?.message || 'Upload failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Upload certificate / document" size="md">
+      <form onSubmit={save} className="space-y-4">
+        <Select label="Document type *" required value={docType} onChange={e => setDocType(e.target.value)}
+          options={STAFF_DOC_TYPES} placeholder="Select document type" />
+        <Input label="Document title" value={title} onChange={e => setTitle(e.target.value)}
+          placeholder="e.g. Moving & Handling certificate 2024" hint="Leave blank to use the filename" />
+        <div>
+          <label className="label">Select file *</label>
+          <div
+            onClick={() => fileRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${file ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'}`}>
+            {file ? (
+              <div className="flex items-center justify-center gap-2 text-emerald-700">
+                <FileText className="w-5 h-5" />
+                <span className="font-medium text-sm">{file.name}</span>
+              </div>
+            ) : (
+              <div className="text-slate-400">
+                <Upload className="w-8 h-8 mx-auto mb-2" />
+                <p className="text-sm font-medium">Click to choose a file</p>
+                <p className="text-xs mt-0.5">PDF, JPG, PNG · Max 10MB</p>
+              </div>
+            )}
+            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+              onChange={e => setFile(e.target.files?.[0] || null)} />
+          </div>
+        </div>
+        <Input label="Expiry date" type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} hint="Optional — for certificates that expire" />
+        <Input label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes about this document" />
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading} icon={<Upload className="w-4 h-4" />}>Upload</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
 
 const ROLES = [
   { value: 'care_staff', label: 'Care Staff' },
@@ -55,6 +143,8 @@ export default function EditStaff() {
   const [deleting, setDeleting] = useState(false)
   const [homes, setHomes] = useState<any[]>([])
   const [newPassword, setNewPassword] = useState('')
+  const [documents, setDocuments] = useState<any[]>([])
+  const [uploadDocOpen, setUploadDocOpen] = useState(false)
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }))
 
   useEffect(() => {
@@ -63,7 +153,17 @@ export default function EditStaff() {
       setForm(norm(sRes.data.data))
       setHomes(hRes.data.data || [])
     }).catch(console.error).finally(() => setLoading(false))
+    api.get(`/documents/staff/${id}`).then(res => setDocuments(res.data.data || [])).catch(() => setDocuments([]))
   }, [id])
+
+  const deleteDoc = async (docId: string) => {
+    if (!id || !confirm('Delete this document?')) return
+    try {
+      await api.delete(`/documents/staff/${id}/${docId}`)
+      setDocuments(prev => prev.filter(d => d.id !== docId))
+      toast.success('Document deleted')
+    } catch { toast.error('Failed to delete') }
+  }
 
   const save = async () => {
     setSaving(true)
@@ -176,6 +276,50 @@ export default function EditStaff() {
         <Card>
           <SectionHeading title="Reset password" description="Leave blank to keep the current password" />
           <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 8 characters" hint="Only fill this in if you want to reset their password" />
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <SectionHeading title="Certificates & Documents" description="Training certificates, DBS, contracts and other key documents" />
+            <Button size="sm" variant="outline" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setUploadDocOpen(true)}>
+              Upload
+            </Button>
+          </div>
+          {documents.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No documents uploaded yet</p>
+              <button onClick={() => setUploadDocOpen(true)} className="mt-2 text-xs text-amber-600 hover:underline font-medium">Upload a document</button>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {documents.map((doc: any) => (
+                <div key={doc.id} className="border border-slate-100 rounded-xl p-4 flex items-center gap-4 bg-slate-50">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+                    {doc.mime_type?.startsWith('image') ? <FileImage className="w-5 h-5 text-slate-500" /> : <FileText className="w-5 h-5 text-slate-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 truncate text-sm">{doc.title || doc.file_name}</p>
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5 flex-wrap">
+                      <span className="capitalize">{STAFF_DOC_TYPES.find(t => t.value === doc.document_type)?.label || doc.document_type}</span>
+                      <span>·</span>
+                      <span>{doc.created_at ? format(new Date(doc.created_at), 'd MMM yyyy') : ''}</span>
+                      {doc.expiry_date && <><span>·</span><span className="text-amber-600 font-medium">Expires {format(new Date(doc.expiry_date), 'd MMM yyyy')}</span></>}
+                    </div>
+                    {doc.notes && <p className="text-xs text-slate-400 mt-1 italic">{doc.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <a href={doc.file_url} target="_blank" rel="noreferrer">
+                      <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
+                    </a>
+                    <Button size="sm" variant="ghost" icon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />} onClick={() => deleteDoc(doc.id)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {id && <UploadStaffDocModal open={uploadDocOpen} onClose={() => setUploadDocOpen(false)} staffId={id}
+            onUploaded={(doc) => { setDocuments(prev => [doc, ...prev]); setUploadDocOpen(false); toast.success('Document uploaded') }} />}
         </Card>
 
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
