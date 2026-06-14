@@ -1272,6 +1272,15 @@ async function ensureColumns() {
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS incident_time        TIME`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS contributing_factors TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS prevention_actions   TEXT`,
+    // ── su_medications — pharmacy, GP, codes, location, warning ──────────────
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS pharmacy_name          VARCHAR(255)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS pharmacy_phone         VARCHAR(20)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS gp_name                VARCHAR(255)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS gp_phone               VARCHAR(20)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medication_code        VARCHAR(50)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS atc_code               VARCHAR(50)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS location_access_code   TEXT`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_warning       TEXT`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

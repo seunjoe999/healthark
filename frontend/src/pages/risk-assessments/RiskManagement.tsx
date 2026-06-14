@@ -292,8 +292,8 @@ export default function RiskManagement() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Shield className="w-6 h-6 text-rose-500" /> Risk Management
+          <h1 className="text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
+            <Shield className="w-6 h-6" style={{ color: '#e8b130' }} /> RISK MANAGEMENT
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Risk management plans for service users</p>
         </div>

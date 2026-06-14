@@ -813,8 +813,8 @@ export default function CarePlans() {
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-slate-600" /> Support Plans
+          <h1 className="text-xl sm:text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
+            <FileText className="w-6 h-6" style={{ color: '#e8b130' }} /> SUPPORT PLANS
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">View and manage individual support plans</p>
         </div>

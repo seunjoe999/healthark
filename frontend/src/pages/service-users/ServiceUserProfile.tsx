@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { suApi } from '../../api'
+import { suApi, getToken } from '../../api'
 import api from '../../api'
 import {
   Spinner, StatusBadge, EmergencyBadge, DNARBanner, NilByMouthBanner,
@@ -563,7 +563,7 @@ function UploadDocModal({ open, onClose, suId, onUploaded }: {
     if (!file || !docType) { toast.error('Please select a document type and file'); return }
     setLoading(true)
     try {
-      const token = (window as any).__HA_TOKEN__
+      const token = getToken()
       const formData = new FormData()
       formData.append('file', file)
       formData.append('documentType', docType)

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { staffApi, homesApi } from '../../api'
+import { staffApi, homesApi, getToken } from '../../api'
 import api from '../../api'
 import { Button, Input, Select, Card, SectionHeading, Spinner, Modal } from '../../components/ui'
 import PhotoUpload from '../../components/ui/PhotoUpload'
@@ -36,7 +36,7 @@ function UploadStaffDocModal({ open, onClose, staffId, onUploaded }: {
     if (!file || !docType) { toast.error('Select a file and document type'); return }
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getToken()
       const formData = new FormData()
       formData.append('file', file)
       formData.append('documentType', docType)

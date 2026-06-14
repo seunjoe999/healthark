@@ -1050,7 +1050,7 @@ function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
 
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
-  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', medicationCode: '', atcCode: '', locationAccessCode: '', medicineWarning: '' }
+  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '' }
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -1103,13 +1103,6 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
           <div className="grid grid-cols-2 gap-3 mt-3">
             <Input label="GP name" value={form.gpName} onChange={e => set('gpName', e.target.value)} placeholder="GP name" />
             <Input label="GP phone" value={form.gpPhone} onChange={e => set('gpPhone', e.target.value)} placeholder="Phone number" />
-          </div>
-        </div>
-        <div className="border-t pt-3">
-          <p className="text-xs font-semibold text-slate-600 mb-3">Medication Codes</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Medication code" value={form.medicationCode} onChange={e => set('medicationCode', e.target.value)} placeholder="e.g. BNF code" />
-            <Input label="ATC code" value={form.atcCode} onChange={e => set('atcCode', e.target.value)} placeholder="e.g. C09CA01" />
           </div>
         </div>
         <div className="border-t pt-3 space-y-3">
