@@ -19,12 +19,21 @@ const appStorage = multer.diskStorage({
   },
 });
 
+const ALLOWED_APP_EXTS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']);
+const ALLOWED_APP_MIMES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+]);
+
 const appUpload = multer({
   storage: appStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
-    if (allowed.includes(path.extname(file.originalname).toLowerCase())) cb(null, true);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED_APP_EXTS.has(ext) && ALLOWED_APP_MIMES.has(file.mimetype)) cb(null, true);
     else cb(new Error('Only PDF, Word documents, and images are allowed'));
   },
 });

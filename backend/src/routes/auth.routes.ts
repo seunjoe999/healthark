@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { validateRequest } from '../middleware/validate';
@@ -296,13 +296,21 @@ router.get('/events', (req: Request, res: Response) => {
 
 // PUT /api/auth/activate/:staffId — manager activates pending staff
 router.put('/activate/:staffId', authenticate,
+  param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const token = req.headers.authorization?.substring(7);
-      const decoded = token ? jwt.decode(token) as any : {};
-      const role = decoded?.role;
+      const { role, homeId, organisationId } = req.staff;
       if (!['home_manager', 'group_admin'].includes(role))
         throw new AppError('Only managers can activate staff accounts', 403);
+
+      // Ensure the target staff belongs to the manager's organisation (and home for home_manager)
+      const scopeQuery = role === 'group_admin'
+        ? 'SELECT id FROM staff WHERE id=$1 AND organisation_id=$2'
+        : 'SELECT id FROM staff WHERE id=$1 AND home_id=$2';
+      const scopeParam = role === 'group_admin' ? organisationId : homeId;
+      const scopeRows = await query(scopeQuery, [req.params.staffId, scopeParam]);
+      if (!scopeRows.length) throw new AppError('Staff member not found in your organisation', 403);
+
       await query(
         `UPDATE staff SET status='active', is_active=true WHERE id=$1`,
         [req.params.staffId]

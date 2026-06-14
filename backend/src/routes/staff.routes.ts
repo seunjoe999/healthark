@@ -8,6 +8,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import { logAudit } from './auditTrail.routes';
 import { notifyHomeClients } from '../services/sse.service';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 const laxUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -91,7 +92,7 @@ router.get('/role-permissions', requireRole('home_manager', 'group_admin', 'depu
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const homeId = req.query.homeId as string || decoded?.homeId;
       if (!homeId) throw new AppError('homeId required', 400);
       const rows = await query<any>(
@@ -116,7 +117,7 @@ router.put('/role-permissions', requireRole('home_manager', 'group_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const { homeId, role, permission, granted } = req.body;
       const hId = homeId || decoded?.homeId;
       if (!hId || !role || !permission) throw new AppError('homeId, role, permission required', 400);
@@ -136,7 +137,7 @@ router.get('/role-access-rights', requireRole('home_manager', 'group_admin', 'de
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const homeId = req.query.homeId as string || decoded?.homeId;
       if (!homeId) throw new AppError('homeId required', 400);
       const rows = await query<any>(
@@ -155,7 +156,7 @@ router.put('/role-access-rights', requireRole('home_manager', 'group_admin', 'de
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const { homeId, role, featureFlags } = req.body;
       const hId = homeId || decoded?.homeId;
       if (!hId || !role) throw new AppError('homeId and role required', 400);
@@ -178,7 +179,7 @@ router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const role = req.staff?.role || decoded?.role;
       const staffId = req.staff?.staffId || decoded?.staffId;
       const organisationId = req.staff?.organisationId || decoded?.organisationId;
@@ -230,7 +231,7 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const orgId = req.staff?.organisationId || decoded?.organisationId || '';
       const defaultHomeId = req.body.homeId || decoded?.homeId || null;
 
@@ -538,7 +539,7 @@ router.delete('/:id', requireRole('group_admin', 'home_manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
-      const decoded = token ? require('jsonwebtoken').decode(token) as any : {};
+      const decoded = token ? jwt.decode(token) as any : {};
       const callerRole = req.staff?.role || decoded?.role;
       const staffRow = await query<any>('SELECT first_name, last_name, home_id FROM staff WHERE id=$1', [req.params.id]);
       if (callerRole === 'group_admin') {

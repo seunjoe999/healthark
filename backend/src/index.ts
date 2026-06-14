@@ -228,23 +228,32 @@ async function ensureColumns() {
   const stmts = [
     // ── New tables ─────────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS staff_training (
-       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-       staff_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-       course_name VARCHAR(255) NOT NULL,
-       expiry_date DATE,
-       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+       id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       staff_id       UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       course_name    VARCHAR(255) NOT NULL,
+       completed_date DATE,
+       duration_hours NUMERIC(5,2),
+       expiry_date    DATE,
+       certificate_url VARCHAR(500),
+       created_by     UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_st_staff  ON staff_training(staff_id)`,
     `CREATE INDEX IF NOT EXISTS idx_st_expiry ON staff_training(expiry_date)`,
     `CREATE TABLE IF NOT EXISTS mar_records (
-       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-       home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
-       su_id       UUID REFERENCES service_users(id) ON DELETE CASCADE,
-       record_date DATE NOT NULL DEFAULT CURRENT_DATE,
-       given       BOOLEAN NOT NULL DEFAULT FALSE,
-       refused     BOOLEAN NOT NULL DEFAULT FALSE,
-       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+       id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       home_id         UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id           UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE,
+       given_by        UUID REFERENCES staff(id) ON DELETE SET NULL,
+       record_date     DATE NOT NULL DEFAULT CURRENT_DATE,
+       scheduled_time  TIME,
+       given           BOOLEAN NOT NULL DEFAULT FALSE,
+       refused         BOOLEAN NOT NULL DEFAULT FALSE,
+       refused_reason  TEXT,
+       notes           TEXT,
+       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_mar_home ON mar_records(home_id)`,
     `CREATE INDEX IF NOT EXISTS idx_mar_su   ON mar_records(su_id)`,
@@ -668,6 +677,17 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
+    // ── mar_records — columns added to CREATE TABLE but may be missing from existing DB ─
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS given_by        UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS scheduled_time  TIME`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS refused_reason  TEXT`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS notes           TEXT`,
+    // ── staff_training — columns added to CREATE TABLE but may be missing from existing DB ──
+    `ALTER TABLE staff_training ADD COLUMN IF NOT EXISTS completed_date  DATE`,
+    `ALTER TABLE staff_training ADD COLUMN IF NOT EXISTS duration_hours  NUMERIC(5,2)`,
+    `ALTER TABLE staff_training ADD COLUMN IF NOT EXISTS certificate_url VARCHAR(500)`,
+    `ALTER TABLE staff_training ADD COLUMN IF NOT EXISTS created_by      UUID REFERENCES staff(id) ON DELETE SET NULL`,
     // Add new audit types to enum
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='staff_all' AND enumtypid='audit_type'::regtype) THEN ALTER TYPE audit_type ADD VALUE 'staff_all'; END IF; END $$`,
     // Notifications table
@@ -984,6 +1004,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_php_su   ON physical_health_plans(su_id, created_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_php_home ON physical_health_plans(home_id)`,
     // ── quality_records — complaints/compliments extra fields ─────────────────
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS related_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS from_type     VARCHAR(50)`,
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS from_name     VARCHAR(255)`,
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS lessons_learnt TEXT`,
@@ -1186,8 +1207,12 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_ssua_staff ON staff_service_user_assignments(staff_id)`,
     `CREATE INDEX IF NOT EXISTS idx_ssua_su    ON staff_service_user_assignments(su_id)`,
-    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS cqc_notified   BOOLEAN NOT NULL DEFAULT FALSE`,
-    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS family_notified BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS cqc_notified               BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS family_notified            BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS cqc_not_notified_reason    TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS family_not_notified_reason TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS reported_to                TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS safeguarding_ref           TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS emotion        TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS review_notes   JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS signature      JSONB`,
@@ -1281,6 +1306,35 @@ async function ensureColumns() {
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS atc_code               VARCHAR(50)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS location_access_code   TEXT`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_warning       TEXT`,
+    // ── staff_cautions — columns used in reviews.routes.ts INSERT but missing from 001_schema ──
+    `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS home_id      UUID REFERENCES homes(id) ON DELETE SET NULL`,
+    `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS created_by   UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS caution_type VARCHAR(50) NOT NULL DEFAULT 'verbal'`,
+    `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS review_date  DATE`,
+    // ── staff_supervisions — columns used in reviews.routes.ts INSERT but missing from 003_new_features ──
+    `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS conducted_by         UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS action_points        TEXT`,
+    `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS next_supervision_date DATE`,
+    // ── must_scores — table used in reviews.routes.ts but missing from all migrations ──────────
+    `CREATE TABLE IF NOT EXISTS must_scores (
+       id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       su_id                UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id              UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       assessed_by          UUID REFERENCES staff(id) ON DELETE SET NULL,
+       weight_kg            NUMERIC(6,2),
+       height_cm            NUMERIC(5,1),
+       bmi                  NUMERIC(5,2),
+       bmi_score            INTEGER NOT NULL DEFAULT 0,
+       weight_loss_score    INTEGER NOT NULL DEFAULT 0,
+       acute_disease_score  INTEGER NOT NULL DEFAULT 0,
+       total_score          INTEGER NOT NULL DEFAULT 0,
+       risk_level           VARCHAR(20) NOT NULL DEFAULT 'low',
+       action_plan          TEXT,
+       next_assessment_date DATE,
+       created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_must_scores_su   ON must_scores(su_id, created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_must_scores_home ON must_scores(home_id)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

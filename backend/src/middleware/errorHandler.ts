@@ -48,10 +48,11 @@ export function errorHandler(
     return;
   }
 
-  // Default 500 — include message in all envs so the UI can show the real error
+  // Default 500 — only expose error detail in development; hide internals in production
+  const isProd = process.env.NODE_ENV === 'production';
   res.status(500).json({
     success: false,
-    error: err.message || 'Internal server error',
+    error: isProd ? 'Internal server error' : (err.message || 'Internal server error'),
   } as ApiResponse);
 }
 

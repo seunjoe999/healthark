@@ -70,7 +70,7 @@ export function requireRole(...roles: StaffRole[]) {
     if (!roles.includes(req.staff.role)) {
       res.status(403).json({
         success: false,
-        error: `Requires one of: ${roles.join(', ')}. You are: ${req.staff.role}`
+        error: 'You do not have permission to perform this action'
       } as ApiResponse);
       return;
     }

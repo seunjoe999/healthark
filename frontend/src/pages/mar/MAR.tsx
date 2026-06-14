@@ -713,7 +713,7 @@ function CellDetailModal({ data, currentUser, onClose, onRefresh }: { data: any;
   const { med, date, records } = data
   const rec = records[0]
   const [signingOff, setSigningOff] = useState(false)
-  const isManager = currentUser?.role === 'admin' || currentUser?.role === 'manager'
+  const isManager = currentUser?.role === 'home_manager' || currentUser?.role === 'group_admin'
 
   const signOffMgmt = async () => {
     if (!rec) return

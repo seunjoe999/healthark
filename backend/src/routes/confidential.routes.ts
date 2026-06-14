@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { param } from 'express-validator';
 import { authenticate } from '../middleware/auth';
+import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 
@@ -84,7 +86,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // GET /api/confidential/su/:suId — records for a specific service user (management only)
-router.get('/su/:suId', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/su/:suId', param('suId').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!isMgmt(req)) {
       res.status(403).json({ success: false, error: 'Access denied' } as ApiResponse);
@@ -105,7 +107,7 @@ router.get('/su/:suId', async (req: Request, res: Response, next: NextFunction) 
 });
 
 // GET /api/confidential/staff/:staffId — records for a specific staff member (management only)
-router.get('/staff/:staffId', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/staff/:staffId', param('staffId').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!isMgmt(req)) {
       res.status(403).json({ success: false, error: 'Access denied' } as ApiResponse);
@@ -126,7 +128,7 @@ router.get('/staff/:staffId', async (req: Request, res: Response, next: NextFunc
 });
 
 // DELETE /api/confidential/:id — management only
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', param('id').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!isMgmt(req)) {
       res.status(403).json({ success: false, error: 'Access denied' } as ApiResponse);

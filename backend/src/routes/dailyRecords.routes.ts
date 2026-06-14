@@ -21,7 +21,7 @@ function getStaffId(req: Request): string {
 }
 function getRole(req: Request): string {
   const token = req.headers.authorization?.substring(7);
-  if (token) { const d = require('jsonwebtoken').decode(token) as any; return d?.role || ''; }
+  if (token) { const d = jwt.decode(token) as any; return d?.role || ''; }
   return '';
 }
 
