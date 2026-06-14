@@ -104,10 +104,80 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 // ── Main component ────────────────────────────────────────────────
 
+const BODY_PARTS_FRONT = [
+  ['Head', 'Face', 'Neck'],
+  ['L. Shoulder', 'Chest', 'R. Shoulder'],
+  ['L. Upper Arm', 'Upper Abdomen', 'R. Upper Arm'],
+  ['L. Forearm', 'Lower Abdomen', 'R. Forearm'],
+  ['L. Hand', 'Pelvis / Groin', 'R. Hand'],
+  ['L. Thigh', 'R. Thigh'],
+  ['L. Knee', 'R. Knee'],
+  ['L. Shin', 'R. Shin'],
+  ['L. Foot', 'R. Foot'],
+]
+const BODY_PARTS_BACK = [
+  ['Back of Head', 'Back of Neck'],
+  ['L. Shoulder', 'Upper Back', 'R. Shoulder'],
+  ['L. Upper Arm', 'Mid Back', 'R. Upper Arm'],
+  ['L. Forearm', 'Lower Back', 'R. Forearm'],
+  ['L. Hand', 'Buttocks', 'R. Hand'],
+  ['L. Thigh', 'R. Thigh'],
+  ['Back of L. Knee', 'Back of R. Knee'],
+  ['L. Calf', 'R. Calf'],
+  ['L. Heel', 'R. Heel'],
+]
+
+function BodyMap({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const selected = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+  const toggle = (part: string) => {
+    const next = selected.includes(part) ? selected.filter(p => p !== part) : [...selected, part]
+    onChange(next.join(', '))
+  }
+  const isSel = (p: string) => selected.includes(p)
+  const Part = ({ p }: { p: string }) => (
+    <button type="button" onClick={() => toggle(p)}
+      className={`px-2 py-1 rounded-lg border text-xs font-medium transition-all ${isSel(p) ? 'bg-red-500 text-white border-red-500' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'}`}>
+      {p}
+    </button>
+  )
+  return (
+    <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+      <p className="text-xs font-bold text-red-700 uppercase tracking-wide mb-3">Body Map — click to mark injury location(s)</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs text-slate-400 text-center font-semibold mb-2">FRONT</p>
+          <div className="space-y-1.5">
+            {BODY_PARTS_FRONT.map((row, i) => (
+              <div key={i} className="flex gap-1.5 flex-wrap justify-center">
+                {row.map(p => <Part key={p} p={p} />)}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-slate-400 text-center font-semibold mb-2">BACK</p>
+          <div className="space-y-1.5">
+            {BODY_PARTS_BACK.map((row, i) => (
+              <div key={i} className="flex gap-1.5 flex-wrap justify-center">
+                {row.map(p => <Part key={p} p={p} />)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {selected.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-red-200">
+          <p className="text-xs text-red-700 font-semibold">Marked: {selected.join(', ')}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const BLANK_INC = {
   suId: '', incidentDate: new Date().toISOString().split('T')[0],
   incidentTime: '', incidentType: 'fall', location: '', description: '', immediateAction: '',
-  witnesses: '', injuries: false, injuryDetails: '', medicalNeeded: false, medicalDetails: '',
+  witnesses: '', injuries: false, injuryLocations: '', injuryDetails: '', medicalNeeded: false, medicalDetails: '',
   familyNotified: false, contributingFactors: '', preventionActions: '',
 }
 
@@ -173,7 +243,11 @@ export default function Incidents() {
     if (!createForm.description.trim()) { toast.error('Description is required'); return }
     setCreating(true)
     try {
-      await api.post('/incidents', { ...createForm, homeId: selectedHome })
+      const payload = { ...createForm, homeId: selectedHome }
+      if (createForm.injuryLocations) {
+        payload.injuryDetails = `Locations: ${createForm.injuryLocations}${createForm.injuryDetails ? ' — ' + createForm.injuryDetails : ''}`
+      }
+      await api.post('/incidents', payload)
       setCreateOpen(false)
       setCreateForm({ ...BLANK_INC })
       toast.success('Incident logged')
@@ -452,21 +526,11 @@ export default function Incidents() {
                     )}
 
                     {/* Notification section */}
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 grid sm:grid-cols-2 gap-3">
-                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-                        <div>
-                          <p className="text-xs font-semibold text-blue-700 mb-0.5">CQC notified</p>
-                          <p className={`text-sm font-medium ${inc.cqc_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
-                            {inc.cqc_notified ? 'Yes' : 'No'}
-                          </p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-xs font-semibold text-blue-700 mb-0.5">Family / next of kin notified</p>
-                        <p className={`text-sm font-medium ${inc.family_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
-                          {inc.family_notified ? 'Yes' : 'No'}
-                        </p>
-                      </div>
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <p className="text-xs font-semibold text-blue-700 mb-0.5">Family / next of kin notified</p>
+                      <p className={`text-sm font-medium ${inc.family_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {inc.family_notified ? 'Yes' : 'No'}
+                      </p>
                     </div>
 
                     {/* Review Notes */}
@@ -625,19 +689,6 @@ export default function Incidents() {
               )}
             </div>
 
-            {/* CQC Notification — admin / management only */}
-            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">CQC Notification</p>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded accent-blue-600"
-                    checked={editForm.cqcNotified}
-                    onChange={e => setEditForm(f => ({ ...f, cqcNotified: e.target.checked }))} />
-                  <span className="text-sm font-medium text-slate-700">CQC has been notified of this incident</span>
-                </label>
-              </div>
-            )}
-
             <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
               <Button type="submit" loading={editSaving}>Save</Button>
@@ -706,10 +757,15 @@ export default function Incidents() {
               </label>
             </div>
             {createForm.injuries && (
-              <div className="col-span-2">
-                <label className="label">Injury details</label>
-                <input className="input w-full" placeholder="Describe the injuries..." value={createForm.injuryDetails} onChange={e => setCreateForm(f => ({ ...f, injuryDetails: e.target.value }))} />
-              </div>
+              <>
+                <div className="col-span-2">
+                  <BodyMap value={createForm.injuryLocations} onChange={v => setCreateForm(f => ({ ...f, injuryLocations: v }))} />
+                </div>
+                <div className="col-span-2">
+                  <label className="label">Additional injury details</label>
+                  <input className="input w-full" placeholder="Describe the injuries in more detail..." value={createForm.injuryDetails} onChange={e => setCreateForm(f => ({ ...f, injuryDetails: e.target.value }))} />
+                </div>
+              </>
             )}
             {createForm.medicalNeeded && (
               <div className="col-span-2">

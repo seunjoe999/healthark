@@ -4,7 +4,7 @@ import { assessmentsApi, homesApi, suApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, PrintButton } from '../../components/ui'
-import { ClipboardCheck, ChevronRight } from 'lucide-react'
+import { ClipboardCheck, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function RiskBadge({ level }: { level: string }) {
@@ -20,6 +20,60 @@ function RiskBadge({ level }: { level: string }) {
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${colors[level] || 'bg-slate-100 text-slate-600'}`}>
       {(level || '').replace(/_/g, ' ')}
     </span>
+  )
+}
+
+function AuditHistoryCard({ a, templateName }: { a: any; templateName: string }) {
+  const [open, setOpen] = useState(false)
+  const score = a.max_score > 0 ? Math.round(a.score_pct) : null
+  const scoreColor = score === null ? '' : score >= 75 ? 'text-emerald-700' : score >= 60 ? 'text-amber-600' : 'text-red-600'
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full text-left p-4 hover:bg-slate-50 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-0.5">
+              <p className="font-semibold text-slate-900 text-sm">{a.subject_name}</p>
+              <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">{templateName}</span>
+              {a.risk_level && <RiskBadge level={a.risk_level} />}
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-400">
+              <span>{format(new Date(a.assessment_date), 'd MMM yyyy')}</span>
+              {(a.auditor_name || a.conducted_by_name) && <span>by {a.auditor_name || a.conducted_by_name}</span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {score !== null && <span className={`text-lg font-bold ${scoreColor}`}>{score}%</span>}
+            {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 px-4 pb-4 pt-3">
+          {score !== null && (
+            <div className="mb-3">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${score}%`, background: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }} />
+                </div>
+                <span className={`text-sm font-bold w-10 text-right ${scoreColor}`}>{score}%</span>
+              </div>
+              <p className="text-xs text-slate-400">{a.total_score} / {a.max_score} pts</p>
+            </div>
+          )}
+          {a.actions_identified && (
+            <div className="mb-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Actions identified</p>
+              <p className="text-sm text-slate-700 whitespace-pre-line">{a.actions_identified}</p>
+            </div>
+          )}
+          <Link to={`/assessments/${a.id}`}
+            className="inline-flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-800 font-medium mt-1">
+            View full report <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -121,7 +175,7 @@ export default function Assessments() {
 
       {/* Template grid */}
       <div className="mb-8">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Start a new assessment</h2>
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Start a new audit</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {filteredTemplates.map(t => (
             <button key={t.key} onClick={() => openStart(t)}
@@ -135,49 +189,19 @@ export default function Assessments() {
 
       {/* History */}
       <div>
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Recent assessments</h2>
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Audit history</h2>
         {loading ? <Spinner /> : assessments.length === 0 ? (
-          <EmptyState title="No assessments completed yet" description="Select an assessment type above to get started" />
+          <EmptyState title="No audits completed yet" description="Select an audit type above to get started" />
         ) : (
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>
-                  {['Subject', 'Assessment', 'Date', 'Score', 'Risk level', 'Conducted by', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left font-medium text-slate-600 text-xs">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {assessments.map((a: any) => (
-                  <tr key={a.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">{a.subject_name}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{templateName(a.template_key)}</td>
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{format(new Date(a.assessment_date), 'd MMM yyyy')}</td>
-                    <td className="px-4 py-3">
-                      {a.max_score > 0
-                        ? <span className="font-semibold text-slate-800">{Math.round(a.score_pct)}%</span>
-                        : <span className="text-slate-400 text-xs">N/A</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {a.risk_level ? <RiskBadge level={a.risk_level} /> : <span className="text-slate-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">{a.auditor_name || a.conducted_by_name || '—'}</td>
-                    <td className="px-4 py-3">
-                      <Link to={`/assessments/${a.id}`}
-                        className="flex items-center gap-1 text-purple-600 hover:text-purple-800 text-xs font-medium">
-                        View <ChevronRight className="w-3 h-3" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {assessments.map((a: any) => (
+              <AuditHistoryCard key={a.id} a={a} templateName={templateName(a.template_key)} />
+            ))}
           </div>
         )}
       </div>
 
-      <Modal open={startModal} onClose={() => setStartModal(false)} title={`Start: ${selectedTemplate?.name}`}>
+      <Modal open={startModal} onClose={() => setStartModal(false)} title={`Start audit: ${selectedTemplate?.name}`}>
         <div className="space-y-4">
           <Select
             label={tab === 'service_user' ? 'Select resident *' : 'Select staff member *'}
@@ -188,7 +212,7 @@ export default function Assessments() {
           />
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="outline" onClick={() => setStartModal(false)}>Cancel</Button>
-            <Button onClick={startAssessment} disabled={!subjectId}>Start assessment</Button>
+            <Button onClick={startAssessment} disabled={!subjectId}>Start audit</Button>
           </div>
         </div>
       </Modal>

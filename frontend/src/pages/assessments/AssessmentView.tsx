@@ -4,7 +4,7 @@ import { assessmentsApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, Button } from '../../components/ui'
+import { Spinner, Button, PrintButton } from '../../components/ui'
 import { ChevronLeft, Trash2, Paperclip, Upload, X, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -156,14 +156,17 @@ export default function AssessmentView() {
       <div className="flex items-center justify-between mb-5">
         <button onClick={() => navigate('/assessments')}
           className="flex items-center gap-1 text-slate-500 hover:text-slate-700 text-sm">
-          <ChevronLeft className="w-4 h-4" /> Back to assessments
+          <ChevronLeft className="w-4 h-4" /> Back to audits
         </button>
-        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-          <button onClick={deleteAssessment}
-            className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-            <Trash2 className="w-4 h-4" /> Delete assessment
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintButton label="Print report" />
+          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+            <button onClick={deleteAssessment}
+              className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+              <Trash2 className="w-4 h-4" /> Delete audit
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Header card */}

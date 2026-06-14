@@ -67,13 +67,18 @@ const navSections = [
   {
     label: 'QUALITY ASSURANCE', highlight: true,
     items: [
-      { label: 'Compliance',               to: '/compliance',              icon: ShieldCheck, roles: [], featureKey: 'compliance' },
-      { label: 'Complaints & Compliments', to: '/complaints',              icon: ThumbsUp,    roles: [], featureKey: 'complaints' },
-      { label: 'Audit',                    to: '/assessments?tab=resident',icon: FileCheck,   roles: [], featureKey: 'assessments' },
-      { label: 'Audit Reports',            to: '/audits',                  icon: Activity,    roles: [], featureKey: 'audits' },
-      { label: 'Audit Trail',              to: '/audit-trail',             icon: History,     roles: [], featureKey: 'audit_trail' },
-      { label: 'Reports',                  to: '/reports',                 icon: BarChart2,   roles: [], featureKey: 'reports' },
-      { label: 'CQC Alerts',              to: '/cqc-notifications',       icon: AlertCircle, roles: [], featureKey: 'cqc_notifications' },
+      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: [], featureKey: 'compliance' },
+      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: [], featureKey: 'complaints' },
+      { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: [], featureKey: 'audit_trail' },
+      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: [], featureKey: 'reports' },
+      { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: [], featureKey: 'cqc_notifications' },
+    ]
+  },
+  {
+    label: 'AUDIT', highlight: true,
+    items: [
+      { label: 'Audit Templates', to: '/assessments?tab=resident', icon: FileCheck, roles: [], featureKey: 'assessments' },
+      { label: 'Audit Reports',   to: '/audits',                   icon: Activity,  roles: [], featureKey: 'audits' },
     ]
   },
   {
