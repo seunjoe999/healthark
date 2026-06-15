@@ -47,6 +47,116 @@ function EmotionDisplay({ value }: { value?: string }) {
   )
 }
 
+// ── Incident Analysis Card ────────────────────────────────────────
+
+interface AnalysisData {
+  riskRating?: string
+  summary?: string
+  rootCause?: string
+  contributingFactors?: string[]
+  immediateActionsReview?: string
+  followUpActions?: string[]
+  preventionStrategies?: string[]
+  systemicRisk?: string
+}
+
+function IncidentAnalysisCard({ raw, onDismiss }: { raw: string; onDismiss: () => void }) {
+  let data: AnalysisData | null = null
+  try { data = JSON.parse(raw) } catch { /* raw text fallback */ }
+
+  const ratingColor = data?.riskRating === 'High'
+    ? 'bg-red-900/40 text-red-300 border-red-700/50'
+    : data?.riskRating === 'Medium'
+    ? 'bg-amber-900/40 text-amber-300 border-amber-700/50'
+    : 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50'
+
+  return (
+    <div className="rounded-xl border border-purple-500/25 bg-purple-500/8 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+          <span className="text-xs font-bold text-purple-300 uppercase tracking-wide">Incident Analysis</span>
+          {data?.riskRating && (
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${ratingColor}`}>
+              {data.riskRating} Risk
+            </span>
+          )}
+        </div>
+        <button onClick={onDismiss} className="text-slate-500 hover:text-slate-300">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {data ? (
+        <div className="space-y-3 text-xs">
+          {data.summary && (
+            <div>
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Summary</p>
+              <p className="text-slate-200 leading-relaxed">{data.summary}</p>
+            </div>
+          )}
+          {data.rootCause && (
+            <div>
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Root Cause</p>
+              <p className="text-slate-300 leading-relaxed">{data.rootCause}</p>
+            </div>
+          )}
+          {data.contributingFactors?.length ? (
+            <div>
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-1">Contributing Factors</p>
+              <ol className="space-y-0.5 list-none">
+                {data.contributingFactors.map((f, i) => (
+                  <li key={i} className="flex gap-2 text-slate-300">
+                    <span className="text-purple-400 font-semibold shrink-0">{i + 1}.</span>{f}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+          {data.immediateActionsReview && (
+            <div>
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Immediate Actions Review</p>
+              <p className="text-slate-300 leading-relaxed">{data.immediateActionsReview}</p>
+            </div>
+          )}
+          {data.followUpActions?.length ? (
+            <div>
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-1">Follow-up Actions</p>
+              <ul className="space-y-0.5">
+                {data.followUpActions.map((a, i) => (
+                  <li key={i} className="flex gap-2 text-slate-300">
+                    <span className="text-emerald-400 shrink-0">→</span>{a}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {data.preventionStrategies?.length ? (
+            <div>
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-1">Prevention Strategies</p>
+              <ul className="space-y-0.5">
+                {data.preventionStrategies.map((s, i) => (
+                  <li key={i} className="flex gap-2 text-slate-300">
+                    <span className="text-amber-400 shrink-0">◆</span>{s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {data.systemicRisk && (
+            <div className="border-t border-white/8 pt-2">
+              <p className="font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Systemic Risk</p>
+              <p className="text-slate-300 leading-relaxed">{data.systemicRisk}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">{raw}</div>
+      )}
+    </div>
+  )
+}
+
 // ── Severity helpers ──────────────────────────────────────────────
 
 type Severity = 'critical' | 'high' | 'medium' | 'low'
@@ -757,20 +867,10 @@ export default function Incidents() {
                           Incident Analysis
                         </Button>
                       ) : (
-                        <div className="bg-purple-50 rounded-xl border border-purple-100 p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5" /> Incident Analysis
-                            </p>
-                            <button onClick={() => setAiAnalysis(p => { const n = {...p}; delete n[inc.id]; return n })}
-                              className="text-purple-400 hover:text-purple-600">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
-                            {aiAnalysis[inc.id]}
-                          </div>
-                        </div>
+                        <IncidentAnalysisCard
+                          raw={aiAnalysis[inc.id]}
+                          onDismiss={() => setAiAnalysis(p => { const n = {...p}; delete n[inc.id]; return n })}
+                        />
                       )}
                     </div>
 
