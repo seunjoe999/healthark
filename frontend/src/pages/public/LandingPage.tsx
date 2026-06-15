@@ -7,10 +7,13 @@ import {
   Trophy, Brain, Globe, Menu, X, Lock, Activity,
   BarChart3, FileText, GraduationCap, HeartHandshake,
   UserCheck, CalendarCheck, Sparkles, Quote,
-  TrendingUp, Smile, Target,
+  TrendingUp, Smile, Target, ChevronRight, Download,
 } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
+
+// ── TypeScript ease constant ───────────────────────────────────────────────────
+const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 // ── Scroll helper ──────────────────────────────────────────────────────────────
 function scrollTo(id: string) {
@@ -26,7 +29,7 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
       ref={ref}
       initial={{ opacity: 0, y: 40 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{ duration: 0.7, delay, ease: EASE }}
     >
       {children}
     </motion.div>
@@ -78,6 +81,35 @@ function StatCounter({ target, suffix, label }: { target: number; suffix: string
 }
 
 // ── Data ───────────────────────────────────────────────────────────────────────
+
+const SUPPORTED_LIVING_SUBTYPES = [
+  {
+    title: 'Independent Living',
+    description: 'Service users can choose to live independently in their own flat or house, with as much or as little support as needed. This can be in one of our existing properties or in a new property sourced through our housing partners to suit their specific requirements.',
+  },
+  {
+    title: 'Shared Living',
+    description: 'For those who are not yet ready to live alone, we help them connect with others who share similar goals of independent living. Service users will have their own private space, while benefiting from socialising with peers and sharing communal areas and household bills.',
+  },
+  {
+    title: 'Apartment Living',
+    description: 'This option offers a balance of privacy and social opportunities. Service users can have their own modern apartment with some shared communal spaces, allowing them the freedom to choose when to socialise. We have collaborated with housing partners to develop this popular accommodation style.',
+  },
+  {
+    title: 'Stepping-Stone Accommodation',
+    description: 'Designed to provide stability while transitioning to long-term solutions, this option helps service users plan for a more structured future. We support individuals in developing the skills needed to live independently when they are ready to move on.',
+  },
+];
+
+const DOMICILIARY_SUBTYPES = [
+  { title: 'End of Life Care', description: 'We offer compassionate and comprehensive care for individuals nearing the end of life. Working closely with families, we ensure their loved ones\' wishes are respected, providing a peaceful and dignified experience.' },
+  { title: 'Personal and Hygiene Care', description: 'We pride ourselves on delivering a high standard of bespoke care, assisting with dressing, undressing, bathing, toileting, and more — always with dignity and respect.' },
+  { title: 'Staying Active', description: 'We encourage and support individuals to engage in activities that promote both physical and mental health, from simple walks to structured exercises, helping to reduce social isolation.' },
+  { title: 'Meal Preparation and Groceries', description: 'Our team assists with grocery shopping, meal planning, and preparation, ensuring that meals meet the dietary needs and preferences of our service users.' },
+  { title: 'Medication Support', description: 'We provide timely medication reminders for service users who can manage their medication but may need support due to the challenges of ageing.' },
+  { title: 'Housekeeping', description: 'As part of our care package, we assist with housekeeping tasks such as washing dishes, laundry, cleaning, and taking out the bins to help maintain a clean and comfortable home environment.' },
+];
+
 const CORE_SERVICES = [
   {
     title: 'Supported Living',
@@ -85,8 +117,8 @@ const CORE_SERVICES = [
     accentColor: '#e8b130',
     borderTop: 'border-t-[#e8b130]',
     description:
-      'Enabling people with complex needs to live in their own home with personalised 24/7 support tailored to their individual goals and aspirations.',
-    features: ['Cluster & shared living', 'Apartment living', 'Step-down support', 'Skills development'],
+      'We offer a range of supported living services designed to meet the unique needs of each individual. Our accommodations are modern, comfortable, and tailored to help service users take control of their lives, make their own choices, and gain independence.',
+    subtypes: SUPPORTED_LIVING_SUBTYPES,
   },
   {
     title: 'Domiciliary Care',
@@ -94,8 +126,8 @@ const CORE_SERVICES = [
     accentColor: '#64748b',
     borderTop: 'border-t-slate-400',
     description:
-      'Flexible care from 30 minutes to 24 hours, delivered in the comfort of your own home — personal hygiene, medication reminders, community engagement and more.',
-    features: ['30 minutes to 24-hour care', 'Personal hygiene & dignity', 'Medication reminders', 'Meal prep & housekeeping'],
+      'We offer personalised care services ranging from 30 minutes to 24 hours, ensuring high-quality professional support tailored to your needs. Our flexible care options promote independent living, lifestyle choices, and provide one-on-one care or shared care for couples.',
+    subtypes: DOMICILIARY_SUBTYPES,
   },
   {
     title: 'Respite Care',
@@ -103,8 +135,8 @@ const CORE_SERVICES = [
     accentColor: '#f59e0b',
     borderTop: 'border-t-amber-400',
     description:
-      'Short-term, high-quality relief care for families and primary caregivers — giving everyone a well-deserved and refreshing break.',
-    features: ['Short-term placements', 'Emergency respite', 'Family carer support', 'Smooth transitions'],
+      'We offer Respite Care for adults with learning disabilities, autism, complex mental health needs, acquired brain injuries, physical disabilities, and the elderly. This service can be provided either in one of our supported living accommodations or in the comfort of your own home. Our respite care gives families and caregivers a well-deserved break, offering flexible care with no long-term commitment.',
+    subtypes: [],
   },
   {
     title: 'Live-In Care',
@@ -112,17 +144,16 @@ const CORE_SERVICES = [
     accentColor: '#6366f1',
     borderTop: 'border-t-indigo-500',
     description:
-      'Round-the-clock, one-to-one dedicated support from a carer living in your home — the premium alternative to residential care.',
-    features: ['24/7 dedicated carer', 'Hospital avoidance', 'Maximum independence', 'Family peace of mind'],
+      'Live-in care is when a trained professional carer stays with you or your loved one at home to provide ongoing care and support. Carers are carefully matched on their skills to deliver high-quality care, and by their personalities to enrich and complement your lifestyle. Live-in care can be arranged on a short-term (respite) basis or as long-term care, and we also offer specialist services for those living with complex conditions at home.',
+    subtypes: [],
   },
 ];
 
 const PROVIDER_AREAS = [
   'Complex Mental Health', 'Learning Disabilities', 'Autism Spectrum Disorders',
-  'Drug & Alcohol Misuse', 'Physical Complex Health', 'ADHD',
+  'Drug and Alcohol Misuse', 'Physical Complex Health', 'ADHD',
   'Acquired Brain Injury', 'Physical Disabilities', 'Court of Protection DOLs',
-  'Elderly Care', 'End of Life Care', 'Respite Care', 'Live In Care',
-  'Private & Local Authority',
+  'Physical Health Needs', 'Elderly Care', 'End of Life Care', 'Respite Care', 'Live In Care',
 ];
 
 const AGENCY_SETTINGS = [
@@ -144,16 +175,111 @@ const WHY_US = [
   { Icon: Brain, title: 'PBS Methodology', desc: 'We use Positive Behaviour Support to improve quality of life and reduce restrictive practices for people with complex needs.', gradient: 'from-violet-500 to-purple-600' },
   { Icon: Clock, title: '24/7 Support', desc: "Our teams are available around the clock, every day of the year — because care needs don't follow a 9-to-5 schedule.", gradient: 'from-blue-500 to-cyan-600' },
   { Icon: UserCheck, title: 'Expert-Led Staffing', desc: 'All staff are DBS-checked, trained to Care Certificate standard, and matched to the specific needs of each service user.', gradient: 'from-emerald-500 to-teal-600' },
-  { Icon: MapPin, title: 'Manchester & Warrington', desc: 'Operating across Greater Manchester and Warrington, with deep roots in the communities we serve.', gradient: 'from-[#e8b130] to-amber-500' },
+  { Icon: MapPin, title: 'Greater Manchester', desc: 'Operating across Greater Manchester, with deep roots in the communities we serve.', gradient: 'from-[#e8b130] to-amber-500' },
 ];
 
 const VALUES = [
-  { title: 'Privacy', Icon: Lock, iconBg: 'bg-purple-500/10', iconColor: 'text-purple-400', description: 'The right of individuals to be left alone and free from intrusion into their affairs, taken into account in the formulation of all care plans.' },
-  { title: 'Dignity', Icon: Star, iconBg: 'bg-[#e8b130]/10', iconColor: 'text-[#e8b130]', description: 'All individuals, whatever their circumstances, have the right to be treated with dignity and respect in every single interaction.' },
-  { title: 'Anti-Discrimination', Icon: Users, iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-400', description: 'We respect all clients regardless of age, disability, gender, marital status, sexual orientation, culture, religion or nationality.' },
-  { title: 'Communication', Icon: MessageCircle, iconBg: 'bg-blue-500/10', iconColor: 'text-blue-400', description: 'Clients have the right to be fully informed on all aspects of their care. Methods are tailored and appropriate to each individual.' },
-  { title: 'Independence', Icon: Award, iconBg: 'bg-rose-500/10', iconColor: 'text-rose-400', description: 'We encourage service users to make their own choices and remain as independent as possible while receiving the support they need.' },
-  { title: 'Person-Centred', Icon: Heart, iconBg: 'bg-indigo-500/10', iconColor: 'text-indigo-400', description: 'Every care plan is built around the individual — their values, preferences, desires, and goals — never a one-size-fits-all approach.' },
+  {
+    title: 'Warm',
+    Icon: Heart,
+    iconBg: 'bg-rose-500/10',
+    iconColor: 'text-rose-400',
+    description: 'We promote the development of warm, supportive relationships between service users and carers that foster attachment and a sense of stability. A key aspect of this involves ensuring carers receive training and support to enhance their skills and maintain a consistent approach — one that balances clear guidance and boundary-setting with emotional warmth, nurturing, and excellent physical care.',
+  },
+  {
+    title: 'Bespoke',
+    Icon: Star,
+    iconBg: 'bg-[#e8b130]/10',
+    iconColor: 'text-[#e8b130]',
+    description: 'Our service users receive care that is personalized to their individual needs through a person-centred approach. We deliver care in the way they prefer, working closely with them to ensure an exceptional care experience. The relationships between our staff and service users are key to the quality of care and support provided.',
+  },
+  {
+    title: 'Compassionate',
+    Icon: HeartHandshake,
+    iconBg: 'bg-emerald-500/10',
+    iconColor: 'text-emerald-400',
+    description: 'Compassion is the foundation of how we provide care, built on relationships of empathy, respect, and dignity. Research has shown that compassionate care enhances health outcomes, reduces stress and anxiety, and supports healing and recovery. Our care staff are trained to understand each individual\'s health and social needs. We prioritize your care above all.',
+  },
+];
+
+const SPECIALISMS = [
+  {
+    title: 'Complex Mental Health',
+    Icon: Brain,
+    gradient: 'from-violet-500 to-purple-600',
+    description: 'Comprehensive Care provides specialised support for individuals with complex mental health needs and learning disabilities, using Positive Behaviour Support (PBS) as our model of care. This service is designed to facilitate progress in the personal recovery journey of our clients, preparing them to transition to independent living or to live with reduced support.',
+    offers: [
+      'Support throughout the recovery journey',
+      'Emotional and practical support',
+      'Assistance with managing personal finances',
+      'Help with planning and budgeting',
+      'Support with personal care activities',
+      'One-on-one support',
+      'Community engagement opportunities',
+      'Assistance in developing or regaining independent living skills',
+      'Medication management',
+      'Encouragement to live a full and active life within the local community',
+      'Guidance in establishing and maintaining a tenancy',
+      'Support in building motivation, confidence, and self-esteem',
+    ],
+  },
+  {
+    title: 'Learning Disability Services',
+    Icon: GraduationCap,
+    gradient: 'from-emerald-500 to-teal-600',
+    description: 'Comprehensive Care provides high-level support to individuals with learning disabilities using the Positive Behaviour Support (PBS) approach. We offer person-centred care by actively involving our service users in all aspects of their care.',
+    offers: [
+      'PBS approach',
+      'Support with budgeting and planning skills',
+      'Person-centred care',
+      'Community inclusion',
+      'Enhanced care levels with a flexible approach',
+      'Guidance through physical and emotional support',
+      'Assistance with personal care activities',
+      'Help with medical and welfare needs',
+      'Support in maximising outcomes',
+      'Practical and emotional support',
+      'Safeguarding from harm and abuse',
+      'Annual health checks',
+      'One-page profiles',
+    ],
+  },
+  {
+    title: 'Autism Care & Support',
+    Icon: Smile,
+    gradient: 'from-blue-500 to-cyan-600',
+    description: 'Comprehensive Care provides support for individuals living with autism, using the Positive Behaviour Support (PBS) model of care. Our aim is to help service users develop their independence across all areas of daily life including personal care, meal preparation, engaging in hobbies and activities, and enjoying life in the community.',
+    offers: [
+      'Respectful personal care, along with practical and emotional support',
+      'Supporting service users to maintain their independence for as long as possible',
+      'Identifying and creating opportunities to help service users lead meaningful, fulfilling lifestyles',
+      'Assistance with planning and budgeting',
+      'Annual health checks',
+      'One-page profiles',
+      'Community engagement',
+      'One-on-one support',
+    ],
+  },
+  {
+    title: 'Domiciliary Care, Supported Living & Live In Services',
+    Icon: Home,
+    gradient: 'from-[#e8b130] to-amber-500',
+    description: 'Comprehensive Care offers innovative services focused on helping individuals live independent lives and actively engage in their local community. Through person-centred care, we help individuals pursue their personal goals and lead as normal a life as possible.',
+    offers: [
+      'Personal care support',
+      'Shopping assistance',
+      'One-on-one care',
+      'Healthy eating guidance',
+      'Medication management',
+      'Budgeting and planning support',
+      'Assistance with paying bills',
+      'Maintaining tenancy',
+      'Encouraging a fulfilling social life',
+      'Activities of choice',
+      'Empowerment and confidence building',
+      'Support in developing daily living skills',
+    ],
+  },
 ];
 
 const ACCOMMODATION = [
@@ -201,6 +327,16 @@ const ABOUT_BADGES = [
   { Icon: Smile, label: 'Social Activities' },
 ];
 
+const CAREER_BANNER_BENEFITS = [
+  'Comprehensive Care LTD offers full-time and part-time hours',
+  'We provide a range of exclusive benefits to all our staff as a recognition of their dedication and hard work',
+  'We are looking for motivated and driven individuals committed to delivering the highest standards of care',
+  'Our dedicated management team will provide enthusiastic and supportive guidance every step of the way',
+  'We offer flexible shift patterns and working hours including night shifts and part-time opportunities',
+  'There are ample opportunities for career advancement in a variety of rewarding and diverse roles',
+  'We offer both long-term and short-term temporary placements, tailored to your requirements',
+];
+
 const CAREER_BENEFITS = [
   { Icon: Briefcase, title: 'Competitive Pay', desc: 'Fair, competitive wages with regular pay reviews and overtime rates' },
   { Icon: GraduationCap, title: 'Free Training', desc: 'All training is fully funded — from induction to specialist qualifications' },
@@ -217,12 +353,163 @@ const HUB_FEATURES = [
   { Icon: Users, text: 'Staff scheduling, training, and compliance tracking' },
 ];
 
+// ── Expandable Service Card ─────────────────────────────────────────────────────
+function ExpandableServiceCard({ service }: {
+  service: {
+    title: string;
+    Icon: React.ElementType;
+    accentColor: string;
+    borderTop: string;
+    description: string;
+    subtypes: { title: string; description: string }[];
+  };
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasSubtypes = service.subtypes.length > 0;
+
+  return (
+    <motion.div
+      variants={cardAnim}
+      whileHover={{ y: -6 }}
+      transition={{ duration: 0.2 }}
+      className={`rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-shadow duration-300 border-t-4 ${service.borderTop}`}
+    >
+      <div className="bg-white p-7">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 border border-slate-100"
+          style={{ background: `${service.accentColor}15` }}>
+          <service.Icon size={22} style={{ color: service.accentColor }} />
+        </div>
+        <h3 className="text-lg font-extrabold text-slate-900 mb-2">{service.title}</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-5">{service.description}</p>
+
+        {hasSubtypes && (
+          <>
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="flex items-center gap-2 text-sm font-bold mb-4 cursor-pointer select-none"
+              style={{ color: service.accentColor }}
+              aria-expanded={expanded}
+            >
+              <ChevronRight
+                size={16}
+                style={{
+                  transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                  color: service.accentColor,
+                }}
+              />
+              {expanded ? 'Hide service types' : 'View service types'}
+            </button>
+
+            <AnimatePresence initial={false}>
+              {expanded && (
+                <motion.div
+                  key="subtypes"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-3 pt-1">
+                    {service.subtypes.map(sub => (
+                      <div key={sub.title} className="p-4 rounded-xl border border-slate-100 bg-slate-50">
+                        <p className="font-bold text-slate-800 text-sm mb-1">{sub.title}</p>
+                        <p className="text-slate-500 text-xs leading-relaxed">{sub.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Expandable Specialism Card ──────────────────────────────────────────────────
+function SpecialismCard({ spec }: {
+  spec: {
+    title: string;
+    Icon: React.ElementType;
+    gradient: string;
+    description: string;
+    offers: string[];
+  };
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <motion.div
+      variants={cardAnim}
+      className="rounded-2xl overflow-hidden border border-white/[0.08] transition-all duration-300"
+      style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(8px)' }}
+    >
+      <button
+        className="w-full text-left p-8 cursor-pointer"
+        onClick={() => setExpanded(v => !v)}
+        aria-expanded={expanded}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${spec.gradient} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+              <spec.Icon size={20} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-extrabold text-white mb-2">{spec.title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>{spec.description}</p>
+            </div>
+          </div>
+          <ChevronDown
+            size={20}
+            className="text-[#e8b130] flex-shrink-0 mt-1"
+            style={{
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.25s ease',
+            }}
+          />
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="offers"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: EASE }}
+            className="overflow-hidden"
+          >
+            <div className="px-8 pb-8 pt-0">
+              <div className="border-t border-white/[0.06] pt-5">
+                <p className="text-[#e8b130] text-xs font-bold uppercase tracking-widest mb-4">What We Offer</p>
+                <ul className="grid sm:grid-cols-2 gap-2">
+                  {spec.offers.map(o => (
+                    <li key={o} className="flex items-start gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                      <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                      {o}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '',
     position: 'Care Assistant', message: '',
   });
+  const [cvFile, setCvFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -238,7 +525,14 @@ export default function LandingPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/public/apply', form);
+      if (cvFile) {
+        const fd = new FormData();
+        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+        fd.append('cv', cvFile);
+        await api.post('/public/apply', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        await api.post('/public/apply', form);
+      }
       setSubmitted(true);
       toast.success('Application submitted successfully!');
     } catch (err: unknown) {
@@ -370,46 +664,44 @@ export default function LandingPage() {
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.04] tracking-tight mb-6"
+                transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
+                className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight mb-4"
               >
-                <span className="text-white">The Provider</span>
+                <span className="text-white">The Provider of Choice</span>
                 <br />
                 <span className="bg-gradient-to-r from-[#e8b130] to-amber-400 bg-clip-text text-transparent relative">
-                  of Choice
-                  {/* Animated gold underline */}
+                  for the Domiciliary
                   <motion.span
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.8, delay: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    transition={{ duration: 0.8, delay: 0.6, ease: EASE }}
                     className="absolute -bottom-1 left-0 right-0 h-0.5 origin-left"
                     style={{ background: 'linear-gradient(to right, #e8b130, rgba(232,177,48,0.2))' }}
                   />
                 </span>
                 <br />
-                <span className="text-white/60 text-4xl md:text-5xl lg:text-6xl font-bold">for Complex Care</span>
+                <span className="text-white/60 text-3xl md:text-4xl lg:text-5xl font-bold">and Supported Living Services</span>
               </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.25 }}
-                className="text-lg leading-relaxed mb-4 max-w-lg"
-                style={{ color: 'rgba(255,255,255,0.6)' }}
-              >
-                Comprehensive Care delivers outstanding, person-centred support across Greater Manchester
-                and Warrington — from supported living to complex health conditions.
-              </motion.p>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.35 }}
-                className="text-sm font-semibold mb-10 flex items-center gap-2"
-                style={{ color: 'rgba(232,177,48,0.8)' }}
+                transition={{ duration: 0.5, delay: 0.22 }}
+                className="text-base font-bold mb-4 flex items-center gap-2"
+                style={{ color: 'rgba(232,177,48,0.9)' }}
               >
                 <span className="w-8 h-px inline-block" style={{ background: 'rgba(232,177,48,0.6)' }} />
-                Domiciliary Care · Supported Living · Respite · Live-In Care
+                Your care our priority
+              </motion.p>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="text-lg leading-relaxed mb-10 max-w-lg"
+                style={{ color: 'rgba(255,255,255,0.6)' }}
+              >
+                Comprehensive Care is a CQC-registered provider specialising in a wide range of complex care services. We offer tailored support for individuals with various needs, using a Positive Behaviour Support (PBS) approach. We also offer additional therapeutic services through an in-house therapist, providing free CBT therapy, mindfulness, DBT, and behaviour therapy.
               </motion.p>
 
               <motion.div
@@ -437,7 +729,7 @@ export default function LandingPage() {
             <motion.div
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+              transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
               className="hidden lg:flex flex-col items-center gap-8"
             >
               <div className="relative">
@@ -506,30 +798,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-60px' }}
           >
             {CORE_SERVICES.map(s => (
-              <motion.div
-                key={s.title}
-                variants={cardAnim}
-                whileHover={{ y: -6 }}
-                transition={{ duration: 0.2 }}
-                className={`rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-shadow duration-300 border-t-4 ${s.borderTop}`}
-              >
-                <div className="bg-white p-7">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 border border-slate-100"
-                    style={{ background: `${s.accentColor}15` }}>
-                    <s.Icon size={22} style={{ color: s.accentColor }} />
-                  </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 mb-2">{s.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed mb-5">{s.description}</p>
-                  <ul className="space-y-2">
-                    {s.features.map(f => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-slate-700 font-medium">
-                        <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
+              <ExpandableServiceCard key={s.title} service={s} />
             ))}
           </motion.div>
         </div>
@@ -538,7 +807,7 @@ export default function LandingPage() {
       {/* ── About ───────────────────────────────────────────────────────────── */}
       <section id="about" className="py-28" style={{ background: '#060b14' }}>
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
+          <div className="grid lg:grid-cols-2 gap-20 items-start">
             <Reveal>
               <div>
                 <span className="inline-block text-[#e8b130] text-xs font-bold tracking-widest uppercase mb-4">Who We Are</span>
@@ -546,12 +815,34 @@ export default function LandingPage() {
                   Putting People First,<br />
                   <span className="bg-gradient-to-r from-[#e8b130] to-amber-400 bg-clip-text text-transparent">Always</span>
                 </h2>
-                <p className="text-lg leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                  Comprehensive Care is a CQC-registered domiciliary and supported living care provider based in Greater Manchester and Warrington. We are committed to delivering outstanding, person-centred support to individuals and their families.
-                </p>
-                <p className="text-lg leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                  Using <strong className="text-white font-semibold">Positive Behaviour Support (PBS)</strong> methodology, our specialist teams manage complex care situations and deliver individualised, one-on-one services across a wide range of settings and health conditions.
-                </p>
+
+                {/* Our Mission */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-extrabold text-[#e8b130] mb-3">Our Mission</h3>
+                  <p className="text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    Our mission is to empower individuals with disabilities and complex care needs to live independently within their community, providing opportunities for them to lead fulfilling lives. We provide supported living and domiciliary care services designed to meet the specific needs of each person. We also offer additional therapeutic services through an in-house therapist, providing free intensive CBT therapy, mindfulness, DBT, and behaviour therapy. Our goal is to support them to lead valued and independent lives, stay connected to their local community and maintain their dignity regardless of their disability.
+                  </p>
+                </div>
+
+                {/* Our Aims & Objectives */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-extrabold text-[#e8b130] mb-4">Our Aims &amp; Objectives</h3>
+                  <ul className="space-y-3">
+                    {[
+                      'To provide a consistent and exceptional quality of care tailored to the individual needs of our service users.',
+                      'To provide support that promotes independent choice, control and creates a significant impact in the lives of our service users.',
+                      'To encourage staff development by offering new opportunities for growth.',
+                      'To create a stable, secure, and non-judgmental environment where individuals feel safe to express and explore their feelings.',
+                      'To work in partnership with individuals, their families, and other agencies to strengthen relationships and provide good quality care.',
+                    ].map(aim => (
+                      <li key={aim} className="flex items-start gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                        <CheckCircle size={15} className="text-[#e8b130] flex-shrink-0 mt-0.5" />
+                        {aim}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   {ABOUT_BADGES.map(a => (
                     <div key={a.label} className="flex items-center gap-3 p-3 rounded-xl border"
@@ -573,6 +864,26 @@ export default function LandingPage() {
                   style={{ background: 'rgba(6,11,20,0.9)', backdropFilter: 'blur(12px)', color: '#e8b130' }}>
                   <Brain size={14} className="inline mr-2 mb-0.5" />
                   Your Care · Our Priority
+                </div>
+
+                {/* Accreditations block */}
+                <div className="mt-8 p-6 rounded-2xl border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <p className="text-[#e8b130] text-xs font-bold uppercase tracking-widest mb-4">Accreditations</p>
+                  <ul className="space-y-2">
+                    {[
+                      'Care Quality Commission registered (CQC)',
+                      'SSIP Registered',
+                      'ICO registered',
+                      'Skills for life registered',
+                      'Currently in the process of registering with ISO 9001 standards and UKHCA',
+                      'Approved Provider for the Complex Mental Health Framework',
+                    ].map(acc => (
+                      <li key={acc} className="flex items-start gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        <CheckCircle size={13} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                        {acc}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </Reveal>
@@ -627,18 +938,32 @@ export default function LandingPage() {
       </section>
 
       {/* ── Specialisms ─────────────────────────────────────────────────────── */}
-      <section id="specialisms" className="py-28 bg-white">
+      <section id="specialisms" className="py-28" style={{ background: '#060b14' }}>
         <div className="max-w-7xl mx-auto px-6">
           <Reveal>
             <div className="text-center mb-16">
               <span className="inline-block text-[#e8b130] text-xs font-bold tracking-widest uppercase mb-4">Our Expertise</span>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4">Care Areas & Specialisms</h2>
-              <p className="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed">
+              <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">Care Areas &amp; Specialisms</h2>
+              <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
                 From complex mental health to end of life care — our teams are trained to support a wide range of needs and conditions.
               </p>
             </div>
           </Reveal>
 
+          {/* Expandable specialism cards */}
+          <motion.div
+            className="space-y-4 mb-16"
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
+          >
+            {SPECIALISMS.map(spec => (
+              <SpecialismCard key={spec.title} spec={spec} />
+            ))}
+          </motion.div>
+
+          {/* Provider areas / Agency settings / Health conditions */}
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Provider areas */}
             <Reveal delay={0}>
@@ -707,13 +1032,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── Accommodation ───────────────────────────────────────────────────── */}
-      <section className="py-28" style={{ background: '#060b14' }}>
+      <section className="py-28 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <Reveal>
             <div className="text-center mb-16">
               <span className="inline-block text-[#e8b130] text-xs font-bold tracking-widest uppercase mb-4">Where We Support</span>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">Accommodation Options</h2>
-              <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4">Accommodation Options</h2>
+              <p className="text-lg max-w-2xl mx-auto leading-relaxed text-slate-500">
                 We offer a range of accommodation styles — all designed to maximise independence, comfort, and community belonging.
               </p>
             </div>
@@ -738,12 +1063,12 @@ export default function LandingPage() {
                 <div className={`w-12 h-12 rounded-xl ${acc.iconBg} flex items-center justify-center mb-5`}>
                   <acc.Icon size={22} className={acc.iconColor} />
                 </div>
-                <h3 className="text-lg font-extrabold text-white mb-3">{acc.title}</h3>
-                <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.5)' }}>{acc.description}</p>
+                <h3 className="text-lg font-extrabold text-slate-900 mb-3">{acc.title}</h3>
+                <p className="text-sm leading-relaxed mb-6 text-slate-500">{acc.description}</p>
                 <ul className="space-y-2.5">
                   {acc.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                      <CheckCircle size={14} className="text-emerald-400 flex-shrink-0" />
+                    <li key={f} className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
                       {f}
                     </li>
                   ))}
@@ -760,7 +1085,7 @@ export default function LandingPage() {
           <Reveal>
             <div className="text-center mb-16">
               <span className="inline-block text-[#e8b130] text-xs font-bold tracking-widest uppercase mb-4">What Drives Us</span>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4">Our Core Values</h2>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4">Our Values — Warm, Bespoke and Compassionate Care</h2>
               <p className="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed">
                 Everything we do is underpinned by these principles — guiding every care plan, every interaction, and every decision we make.
               </p>
@@ -768,7 +1093,7 @@ export default function LandingPage() {
           </Reveal>
 
           <motion.div
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid sm:grid-cols-1 lg:grid-cols-3 gap-6"
             variants={stagger}
             initial="hidden"
             whileInView="visible"
@@ -804,7 +1129,7 @@ export default function LandingPage() {
                 <img src="/eol.png" alt="End of Life Care" className="relative rounded-3xl w-full object-cover shadow-2xl max-h-96" />
                 <div className="absolute -bottom-4 -right-4 rounded-2xl shadow-2xl p-4 border border-rose-500/20"
                   style={{ background: 'rgba(6,11,20,0.9)', backdropFilter: 'blur(12px)' }}>
-                  <p className="text-rose-400 font-bold text-sm">Palliative & End of Life</p>
+                  <p className="text-rose-400 font-bold text-sm">Palliative &amp; End of Life</p>
                   <p className="text-white/40 text-xs mt-0.5">Compassionate support at every stage</p>
                 </div>
               </div>
@@ -815,7 +1140,7 @@ export default function LandingPage() {
                 <span className="inline-block text-rose-400 text-xs font-bold tracking-widest uppercase mb-4">Compassionate Support</span>
                 <h2 className="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-6">
                   End of Life<br />
-                  <span className="text-rose-400">& Palliative Care</span>
+                  <span className="text-rose-400">&amp; Palliative Care</span>
                 </h2>
                 <p className="text-lg leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.6)' }}>
                   Providing personalised care in the final year or months of life leads to a more meaningful experience — centred on what matters most to the individual and their family.
@@ -967,7 +1292,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <Reveal>
             <div className="text-center mb-12">
-              <span className="inline-block text-[#e8b130] text-xs font-bold tracking-widest uppercase mb-4">Trusted & Accredited</span>
+              <span className="inline-block text-[#e8b130] text-xs font-bold tracking-widest uppercase mb-4">Trusted &amp; Accredited</span>
               <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900">Recognised Standards</h2>
             </div>
           </Reveal>
@@ -993,6 +1318,28 @@ export default function LandingPage() {
       {/* ── Careers ─────────────────────────────────────────────────────────── */}
       <section id="careers" className="py-28 bg-white">
         <div className="max-w-6xl mx-auto px-6">
+
+          {/* Recruitment banner */}
+          <Reveal>
+            <div className="rounded-2xl p-8 mb-16 border border-[#e8b130]/25"
+              style={{ background: 'linear-gradient(135deg, rgba(232,177,48,0.07), rgba(232,177,48,0.03))' }}>
+              <div className="max-w-3xl">
+                <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Ready to Join a Reliable Company?</h2>
+                <p className="text-slate-600 text-lg mb-6">
+                  If you're a support worker or healthcare professional seeking a trustworthy and reliable employer, your search ends here.
+                </p>
+                <ul className="space-y-3">
+                  {CAREER_BANNER_BENEFITS.map(b => (
+                    <li key={b} className="flex items-start gap-3 text-slate-700 text-sm">
+                      <CheckCircle size={16} className="text-[#e8b130] flex-shrink-0 mt-0.5" />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Reveal>
+
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <Reveal>
               <div className="lg:sticky lg:top-32">
@@ -1093,6 +1440,22 @@ export default function LandingPage() {
                           value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
                           placeholder="Tell us a bit about yourself or ask any questions..." />
                       </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Upload CV (optional)</label>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-[#e8b130] focus:ring-4 focus:ring-[#e8b130]/10 outline-none transition-all text-slate-800 font-medium file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#e8b130]/10 file:text-[#e8b130] cursor-pointer"
+                            onChange={e => setCvFile(e.target.files?.[0] ?? null)}
+                          />
+                        </div>
+                        {cvFile && (
+                          <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1">
+                            <CheckCircle size={12} /> {cvFile.name}
+                          </p>
+                        )}
+                      </div>
                       <button disabled={loading} type="submit"
                         className="w-full bg-[#e8b130] text-slate-900 font-bold text-lg py-4 rounded-xl transition-all shadow-lg shadow-[#e8b130]/20 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-amber-400 hover:-translate-y-0.5 flex items-center justify-center gap-2">
                         {loading ? (
@@ -1160,28 +1523,19 @@ export default function LandingPage() {
             ))}
           </motion.div>
 
-          {/* Office addresses */}
+          {/* Office address — Manchester only */}
           <Reveal delay={0.08}>
-            <div className="grid sm:grid-cols-2 gap-5 mb-12 text-left">
-              {[
-                {
-                  city: 'Manchester Office',
-                  address: 'Ivy Business Centre, Office 3-13\nCrown Street, Failsworth\nManchester M35 9BG',
-                },
-                {
-                  city: 'Warrington Office',
-                  address: 'Regus Cinnamon House, Office 204e\nCrab Lane, Fearnhead\nWarrington WA2 0XP',
-                },
-              ].map(o => (
-                <div key={o.city} className="p-6 rounded-2xl border text-left"
-                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin size={16} className="text-[#e8b130] flex-shrink-0" />
-                    <span className="text-[#e8b130] text-xs font-bold uppercase tracking-widest">{o.city}</span>
-                  </div>
-                  <p className="text-sm font-medium whitespace-pre-line" style={{ color: 'rgba(255,255,255,0.6)' }}>{o.address}</p>
+            <div className="mb-12 text-left max-w-sm mx-auto">
+              <div className="p-6 rounded-2xl border"
+                style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPin size={16} className="text-[#e8b130] flex-shrink-0" />
+                  <span className="text-[#e8b130] text-xs font-bold uppercase tracking-widest">Manchester Office</span>
                 </div>
-              ))}
+                <p className="text-sm font-medium whitespace-pre-line" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                  {'Ivy Business Centre, Office 3-13\nCrown Street, Failsworth\nManchester M35 9BG'}
+                </p>
+              </div>
             </div>
           </Reveal>
 
@@ -1193,7 +1547,7 @@ export default function LandingPage() {
               <p className="mb-2 max-w-lg mx-auto" style={{ color: 'rgba(255,255,255,0.5)' }}>
                 Our assessment team will contact you within one working day to discuss your needs and arrange an initial care assessment at no cost.
               </p>
-              <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.35)' }}>Mon–Fri 9am–5pm · Weekends & bank holidays closed</p>
+              <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.35)' }}>Mon–Fri 9am–5pm · Weekends &amp; bank holidays closed</p>
               <div className="flex flex-wrap justify-center gap-4">
                 <a href="tel:01616676030"
                   className="px-8 py-4 bg-[#e8b130] text-slate-900 font-bold rounded-2xl shadow-lg shadow-[#e8b130]/20 hover:bg-amber-400 transition-all flex items-center gap-2">
@@ -1204,6 +1558,32 @@ export default function LandingPage() {
                   <Mail size={16} /> Email Us
                 </a>
               </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── Download Brochure ───────────────────────────────────────────────── */}
+      <section className="py-20" style={{ background: '#0a1525' }}>
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <Reveal>
+            <div className="rounded-2xl p-10 border border-[#e8b130]/20"
+              style={{ background: 'linear-gradient(135deg, rgba(232,177,48,0.08), rgba(232,177,48,0.02))' }}>
+              <div className="w-14 h-14 rounded-2xl bg-[#e8b130]/10 flex items-center justify-center mx-auto mb-6">
+                <Download size={26} className="text-[#e8b130]" />
+              </div>
+              <h2 className="text-3xl font-extrabold text-white mb-3">Download Our Brochure</h2>
+              <p className="text-lg mb-8" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                To learn more about our award-winning care services, simply download our brochure.
+              </p>
+              <a
+                href="/Comprehensive-Care Service Brochure.pdf"
+                download
+                className="inline-flex items-center gap-3 px-8 py-4 bg-[#e8b130] text-slate-900 font-bold text-base rounded-2xl shadow-2xl shadow-[#e8b130]/20 hover:bg-amber-400 hover:-translate-y-1 transition-all duration-200"
+              >
+                <Download size={18} />
+                Download Brochure
+              </a>
             </div>
           </Reveal>
         </div>
@@ -1222,7 +1602,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-sm leading-relaxed max-w-xs mb-6" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                A CQC-registered care provider and staffing agency delivering outstanding, person-centred care across Greater Manchester and Warrington.
+                A CQC-registered care provider and staffing agency delivering outstanding, person-centred care across Greater Manchester.
               </p>
               <div className="flex items-center gap-3 mb-5">
                 <img src="/cqc-good.jpg" alt="CQC Good" className="h-9 object-contain rounded-lg opacity-50" />
@@ -1230,12 +1610,12 @@ export default function LandingPage() {
                 <img src="/pqs-logo.png" alt="PQS" className="h-9 object-contain rounded-lg opacity-50" />
               </div>
               <div className="flex items-center gap-3">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
+                <a href="https://www.facebook.com/ComprehensiveCareServices" target="_blank" rel="noopener noreferrer"
                   className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center hover:border-[#e8b130]/40 hover:bg-[#e8b130]/10 transition-all"
                   aria-label="Facebook">
                   <svg className="w-4 h-4 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
                 </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+                <a href="https://www.instagram.com/comprehensivecareservices" target="_blank" rel="noopener noreferrer"
                   className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center hover:border-[#e8b130]/40 hover:bg-[#e8b130]/10 transition-all"
                   aria-label="Instagram">
                   <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" /></svg>
@@ -1273,7 +1653,12 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <MapPin size={13} className="text-[#e8b130] mt-0.5 flex-shrink-0" />
-                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Manchester & Warrington<br />Mon–Fri 9am–5pm</span>
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    Ivy Business Centre, Office 3-13<br />
+                    Crown Street, Failsworth<br />
+                    Manchester M35 9BG<br />
+                    Mon–Fri 9am–5pm
+                  </span>
                 </li>
                 <li className="pt-1">
                   <a href="/login" className="font-semibold text-[#e8b130] hover:opacity-80 transition-colors text-xs">
@@ -1286,7 +1671,7 @@ export default function LandingPage() {
 
           <div className="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
             <p style={{ color: 'rgba(255,255,255,0.3)' }}>&copy; {new Date().getFullYear()} Comprehensive Care Services Ltd. All rights reserved.</p>
-            <p style={{ color: 'rgba(255,255,255,0.2)' }}>Registered in England & Wales · CQC Registered Provider · ICO Registered</p>
+            <p style={{ color: 'rgba(255,255,255,0.2)' }}>Registered in England &amp; Wales · CQC Registered Provider · ICO Registered</p>
           </div>
         </div>
       </footer>
