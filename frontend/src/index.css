@@ -36,26 +36,6 @@
     color: #f5f0e8;
   }
 
-  /* Force dark background on ALL native inputs and textareas */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]) {
-    background-color: #1a1a1a !important;
-    color: #f5f0e8 !important;
-    border: 1px solid rgba(232,177,48,0.25) !important;
-    border-radius: 8px;
-  }
-  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"])::placeholder {
-    color: #6b6b5a !important;
-  }
-  textarea {
-    background-color: #1a1a1a !important;
-    color: #f5f0e8 !important;
-    border: 1px solid rgba(232,177,48,0.25) !important;
-    border-radius: 8px;
-  }
-  textarea::placeholder {
-    color: #6b6b5a !important;
-  }
-
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #111; }
@@ -320,6 +300,49 @@
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes slideInLeft { 0% { opacity: 0; transform: translateX(-12px); } 100% { opacity: 1; transform: translateX(0); } }
 @keyframes pulseSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+/* ── Dark theme: force dark on ALL native inputs, textareas, selects (outside @layer for max specificity) ── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]) {
+  background-color: #1a1a1a !important;
+  color: #f5f0e8 !important;
+  border: 1px solid rgba(232,177,48,0.25) !important;
+  border-radius: 10px;
+  outline: none;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"])::placeholder {
+  color: #6b6b5a !important;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]):focus {
+  border-color: #e8b130 !important;
+  box-shadow: 0 0 0 3px rgba(232,177,48,0.12) !important;
+}
+textarea {
+  background-color: #1a1a1a !important;
+  color: #f5f0e8 !important;
+  border: 1px solid rgba(232,177,48,0.25) !important;
+  border-radius: 10px;
+  outline: none;
+}
+textarea::placeholder { color: #6b6b5a !important; }
+textarea:focus {
+  border-color: #e8b130 !important;
+  box-shadow: 0 0 0 3px rgba(232,177,48,0.12) !important;
+}
+select {
+  background-color: #1a1a1a !important;
+  color: #f5f0e8 !important;
+  border: 1px solid rgba(232,177,48,0.25) !important;
+  border-radius: 10px;
+  outline: none;
+}
+select:focus {
+  border-color: #e8b130 !important;
+  box-shadow: 0 0 0 3px rgba(232,177,48,0.12) !important;
+}
+select option {
+  background-color: #1a1a1a !important;
+  color: #f5f0e8 !important;
+}
 
 /* ── Print styles ────────────────────────────────────────────────────────── */
 @media print {
