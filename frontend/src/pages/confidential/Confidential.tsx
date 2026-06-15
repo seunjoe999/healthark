@@ -112,7 +112,7 @@ export default function Confidential() {
     if (!form.title) { toast.error('Please enter a title'); return }
     setSaving(true)
     try {
-      await api.post('/confidential', {
+      const res = await api.post('/confidential', {
         homeId,
         subjectType: tab,
         subjectId: form.subjectId,
@@ -124,9 +124,13 @@ export default function Confidential() {
         signedBy: form.signedBy || `${user?.firstName} ${user?.lastName}`
       })
       toast.success('Confidential record saved securely')
+      const newRec: ConfidentialRecord = res.data?.data
+      if (isMgmt && newRec) {
+        setRecords(prev => [newRec, ...prev])
+      }
       setForm(BLANK)
       if (fileRef.current) fileRef.current.value = ''
-      if (isMgmt) { setShowForm(false); loadRecords() }
+      if (isMgmt) setShowForm(false)
     } catch {
       toast.error('Failed to save record')
     } finally {
@@ -244,10 +248,10 @@ export default function Confidential() {
                       )}
                       {rec.document_url && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-500 mb-1">Attached Document</p>
+                          <p className="text-xs font-semibold text-slate-400 mb-2">Attached Document</p>
                           <a href={rec.document_url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 font-medium underline">
-                            <FileText className="w-3.5 h-3.5" />{rec.document_name || 'View Document'}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold hover:bg-purple-500/20 transition-colors">
+                            <FileText className="w-4 h-4" /> {rec.document_name || 'View Document'} ↗
                           </a>
                         </div>
                       )}

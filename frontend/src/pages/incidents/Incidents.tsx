@@ -451,7 +451,14 @@ export default function Incidents() {
     try {
       const res = await api.post(`/incidents/${inc.id}/ai-analysis`)
       setAiAnalysis(prev => ({ ...prev, [inc.id]: res.data.data.analysis }))
-    } catch { toast.error('AI analysis failed. Check API key is configured.') }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Analysis failed'
+      if (msg.includes('API key') || msg.includes('ANTHROPIC') || msg.includes('401') || msg.includes('not configured')) {
+        toast.error('Incident analysis requires the AI service to be configured. Contact your administrator.')
+      } else {
+        toast.error('Incident analysis failed — please try again.')
+      }
+    }
     finally { setAiLoading(null) }
   }
 

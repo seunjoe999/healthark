@@ -477,6 +477,21 @@ export default function ServiceUserProfile() {
           </Card>
         </div>
       )}
+      {/* Print-only documents section — renders regardless of active tab */}
+      <div className="hidden print:block mt-6">
+        <h3 className="font-bold text-black text-sm uppercase mb-2">Documents</h3>
+        {documents.length === 0 ? (
+          <p className="text-xs text-black">No documents uploaded.</p>
+        ) : (
+          documents.map(doc => (
+            <div key={doc.id} className="flex items-center gap-2 text-xs text-black py-1 border-b border-gray-200">
+              <span>{doc.title || doc.file_name}</span>
+              <span className="text-gray-500 capitalize">({SU_DOC_TYPES.find(t => t.value === doc.document_type)?.label || doc.document_type})</span>
+              {doc.file_url && <a href={doc.file_url} className="text-blue-700 underline ml-2">{doc.file_url}</a>}
+            </div>
+          ))
+        )}
+      </div>
       {qrOpen && su && <QRModal open={qrOpen} onClose={() => setQrOpen(false)} suId={su.id} suName={`${su.firstName} ${su.lastName}`} />}
     </div>
   )

@@ -82,7 +82,7 @@ export default function PerformanceMatrix() {
     try {
       const res = await api.post('/performance/auto-generate', { homeId: selectedHome || undefined })
       await load()
-      setView('shift_matrix')
+      setView('matrix')
       setAutoGenResult(res.data.data)
     } catch (e: any) {
       alert('Auto-generate failed: ' + (e?.response?.data?.error || e?.message || 'Unknown error'))
@@ -132,7 +132,9 @@ export default function PerformanceMatrix() {
       setStaff(staffRes.data.data || [])
       setHistory(historyRes.data.data || [])
       setShiftMatrixData(shiftRes.data.data || null)
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load performance data:', err)
+    }
     setLoading(false)
   }
 
@@ -226,7 +228,7 @@ export default function PerformanceMatrix() {
         <>
           {view === 'matrix' && (
             matrix.length === 0 ? <EmptyState title="No staff found" /> : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border border-white/8 rounded-xl" style={{ background: '#111' }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-slate-500 uppercase tracking-wider">

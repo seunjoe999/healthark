@@ -386,8 +386,16 @@ select option {
   * { color: #000 !important; background-color: transparent !important; }
   .text-slate-400, .text-slate-500 { color: #555 !important; }
 
-  a { color: #000 !important; text-decoration: none !important; }
+  /* Ensure attachment links and document previews print clearly */
+  a { color: #0066cc !important; text-decoration: underline !important; }
+  a[href]::after { content: " (" attr(href) ")"; font-size: 10px; color: #555 !important; }
+  /* Don't print href for nav/header/sidebar links */
+  nav a::after, aside a::after, header a::after { content: none !important; }
+
   .badge { border: 1px solid #aaa !important; }
+
+  /* Show document attachment areas in print */
+  [class*="document"], [class*="attachment"], .print-content { display: block !important; }
 
   /* Print header */
   .print-header { display: block !important; }

@@ -138,7 +138,12 @@ router.post('/:id/ai-analysis', param('id').isUUID(), validateRequest,
       if (!rows.length) throw new AppError('Incident not found', 404);
       const inc = rows[0] as any;
 
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const apiKey = process.env.ANTHROPIC_API_KEY
+      if (!apiKey) {
+        res.status(503).json({ success: false, error: 'ANTHROPIC_API_KEY not configured on this server. Set it in your deployment environment variables.' } as ApiResponse)
+        return
+      }
+      const client = new Anthropic({ apiKey });
       const prompt = `You are a care home quality and safety analyst. Analyse this incident report and provide a structured professional report with the following sections:
 
 **1. Root Cause Analysis**
