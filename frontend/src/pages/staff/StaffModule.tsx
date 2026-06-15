@@ -49,6 +49,8 @@ export default function StaffModule() {
   const [addSupervisionOpen, setAddSupervisionOpen] = useState(false)
   const [addLeaveOpen, setAddLeaveOpen] = useState(false)
   const [addTrainingOpen, setAddTrainingOpen] = useState(false)
+  const [trainingCertificates, setTrainingCertificates] = useState<any[]>([])
+  const [uploadingCert, setUploadingCert] = useState(false)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -82,7 +84,9 @@ export default function StaffModule() {
       setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
       setOnboarding(onboardingRes.data.data)
       setClockHistory(clockRes.data.data || [])
-      setStaffDocs(docsRes.data.data || [])
+      const allDocs = docsRes.data.data || []
+      setStaffDocs(allDocs)
+      setTrainingCertificates(allDocs.filter((d: any) => d.document_type === 'training_certificate'))
       setCautions(cautionsRes.data.data || [])
       setSupervisions(supervisionsRes.data.data || [])
     } catch (e) {
@@ -268,6 +272,64 @@ export default function StaffModule() {
                 )}
                 <AddTrainingModal open={addTrainingOpen} onClose={() => setAddTrainingOpen(false)} staffId={selected.id}
                   onSaved={async () => { setAddTrainingOpen(false); const res = await api.get(`/staff-hr/training/${selected.id}`); setTraining(res.data.data || []); toast.success('Training added') }} />
+
+                {/* Training Certificates upload section */}
+                <div className="mt-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold text-slate-900 text-sm">Training Certificates ({trainingCertificates.length})</h4>
+                    <label className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${uploadingCert ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+                      style={{ background: 'linear-gradient(135deg,#e8b130,#d4961a)', color: '#000' }}>
+                      <Upload className="w-3.5 h-3.5" />
+                      {uploadingCert ? 'Uploading…' : 'Upload Certificate'}
+                      <input
+                        type="file"
+                        className="sr-only"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                        disabled={uploadingCert}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          setUploadingCert(true)
+                          try {
+                            const fd = new FormData()
+                            fd.append('file', file)
+                            fd.append('staffId', selected.id)
+                            fd.append('documentType', 'training_certificate')
+                            fd.append('title', file.name.replace(/\.[^/.]+$/, ''))
+                            const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+                            const newDoc = res.data.data || res.data
+                            setTrainingCertificates(prev => [newDoc, ...prev])
+                            setStaffDocs(prev => [newDoc, ...prev])
+                            toast.success('Certificate uploaded')
+                          } catch (err: any) {
+                            toast.error(err?.response?.data?.error || 'Upload failed')
+                          } finally {
+                            setUploadingCert(false)
+                            e.target.value = ''
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {trainingCertificates.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No training certificates uploaded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {trainingCertificates.map((doc: any) => (
+                        <div key={doc.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 flex items-center gap-3">
+                          <FileImage className="w-5 h-5 flex-shrink-0 text-amber-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-900 text-sm truncate">{doc.title || doc.file_name}</p>
+                            <p className="text-xs text-slate-400">{doc.created_at ? format(new Date(doc.created_at), 'd MMM yyyy') : ''}</p>
+                          </div>
+                          <a href={doc.file_url} target="_blank" rel="noreferrer">
+                            <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

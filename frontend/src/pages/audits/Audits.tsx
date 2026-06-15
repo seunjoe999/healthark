@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -8,7 +8,7 @@ import {
   Activity, Plus, CheckCircle, XCircle, AlertTriangle,
   ClipboardList, Shield, Pill, Users, FileText,
   Flame, Zap, Heart, Home, RefreshCw, Trash2, TrendingUp,
-  Calendar, User, Award, ChevronRight, Building2,
+  Calendar, User, Award, ChevronDown, ChevronUp, ChevronRight, Building2,
   ListChecks, Circle, Clock, CheckSquare, Check, Paperclip, Upload, X, Download
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -100,7 +100,8 @@ export default function Audits() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [generateOpen, setGenerateOpen] = useState(false)
-  const [selectedAudit, setSelectedAudit] = useState<any>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [actionAudit, setActionAudit] = useState<any>(null)
   const [polling, setPolling] = useState<string | null>(null)
   const [actionPlanOpen, setActionPlanOpen] = useState(false)
   const [actionPlanAutoAI, setActionPlanAutoAI] = useState(false)
@@ -123,7 +124,7 @@ export default function Audits() {
       const audit = (await api.get(`/audits/${polling}`)).data.data
       if (audit.status !== 'generating') {
         setPolling(null)
-        setSelectedAudit(audit)
+        setExpandedId(audit.id)
         clearInterval(interval)
       }
     }, 2000)
@@ -138,7 +139,7 @@ export default function Audits() {
     finally { setLoading(false) }
   }
 
-  const generate = async (auditType: string, customName: string) => {
+  const startAudit = async (auditType: string, customName: string) => {
     setGenerating(true)
     try {
       const res = await api.post('/audits/generate', { homeId: selectedHome, auditType, customName })
@@ -156,7 +157,7 @@ export default function Audits() {
     try {
       await api.delete(`/audits/${id}`)
       setAudits(prev => prev.filter(a => a.id !== id))
-      if (selectedAudit?.id === id) setSelectedAudit(null)
+      if (expandedId === id) setExpandedId(null)
       toast.success('Audit deleted')
     } catch { toast.error('Failed to delete') }
   }
@@ -164,117 +165,160 @@ export default function Audits() {
   const completedCount = audits.filter(a => a.status === 'completed').length
   const selectedHomeObj = homes.find(h => h.id === selectedHome)
 
+  const toggleExpand = (id: string) => {
+    setExpandedId(prev => prev === id ? null : id)
+  }
+
   return (
-    <div className="flex h-full">
-      {/* Left panel */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col">
-        <div className="p-4 border-b border-slate-100">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-900 flex items-center gap-2 text-sm">
-              <Activity className="w-4 h-4 text-purple-600" /> Audit Reports
-            </h2>
-            <button onClick={load} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600">
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
+    <div className="min-h-full bg-slate-50">
+      {/* Page header */}
+      <div className="bg-white border-b border-slate-100 px-6 py-5">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-purple-600" /> Audits
+            </h1>
+            <p className="text-sm text-slate-400 mt-0.5">{completedCount} completed report{completedCount !== 1 ? 's' : ''}</p>
           </div>
-          {homes.length > 1 && (
-            <select className="input mb-3 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-          )}
-          <Button size="sm" className="w-full" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setGenerateOpen(true)}>
-            Generate audit
-          </Button>
-          <p className="text-xs text-slate-400 mt-2">{completedCount} completed report{completedCount !== 1 ? 's' : ''}</p>
+          <div className="flex items-center gap-3">
+            {homes.length > 1 && (
+              <select className="input text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+                {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+              </select>
+            )}
+            <button onClick={load} className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600" title="Refresh">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <Button icon={<Plus className="w-4 h-4" />} onClick={() => setGenerateOpen(true)}>
+              Start Audit
+            </Button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {loading ? <Spinner size="sm" /> : audits.length === 0 ? (
-            <div className="text-center py-8 px-4">
-              <Activity className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-xs text-slate-400">No audits yet — generate your first report above</p>
-            </div>
-          ) : audits.map((audit: any) => {
-            const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
-            const isSelected = selectedAudit?.id === audit.id
-            const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
-            const ap = audit.id ? getActionPlan(audit.id) : {}
-            const apDone = Object.values(ap).filter(s => s === 'done').length
-            const recs = parseRecommendations(audit.recommendations || '')
-            return (
-              <button key={audit.id} onClick={() => setSelectedAudit(audit)}
-                className={`w-full text-left px-4 py-3.5 border-b border-slate-50 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50 border-l-2 border-l-purple-600' : ''}`}>
-                <div className="flex items-start gap-2.5">
-                  <div className="flex-shrink-0 mt-0.5">
-                    {audit.status === 'completed' ? <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      : audit.status === 'failed' ? <XCircle className="w-4 h-4 text-rose-400" />
-                      : <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isSelected ? 'text-purple-900' : 'text-slate-800'}`}>
-                      {audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {audit.generated_at ? format(new Date(audit.generated_at), 'd MMM yyyy')
-                        : audit.created_at ? format(new Date(audit.created_at), 'd MMM yyyy') : ''}
-                    </p>
-                    {score !== null && (
-                      <div className="mt-1.5">
-                        <div className="w-full bg-slate-100 rounded-full h-1">
-                          <div className="h-1 rounded-full transition-all"
-                            style={{ width: `${score}%`, background: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }} />
-                        </div>
-                        <p className="text-xs font-semibold mt-0.5" style={{ color: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }}>
-                          {score}%
-                        </p>
+      </div>
+
+      {/* Audit cards list */}
+      <div className="max-w-4xl mx-auto px-6 py-6 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-16"><Spinner size="sm" /></div>
+        ) : audits.length === 0 ? (
+          <EmptyState
+            title="No audits yet"
+            description="Start your first audit to generate a compliance report."
+            action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setGenerateOpen(true)}>Start Audit</Button>}
+          />
+        ) : audits.map((audit: any) => {
+          const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
+          const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
+          const rating = score !== null ? ratingFromScore(score) : null
+          const ap = audit.id ? getActionPlan(audit.id) : {}
+          const apDone = Object.values(ap).filter(s => s === 'done').length
+          const recs = parseRecommendations(audit.recommendations || '')
+          const isExpanded = expandedId === audit.id
+          const dateStr = audit.generated_at
+            ? format(new Date(audit.generated_at), 'd MMM yyyy')
+            : audit.created_at ? format(new Date(audit.created_at), 'd MMM yyyy') : ''
+
+          return (
+            <div key={audit.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              {/* Card header — always visible, clickable to expand */}
+              <button
+                onClick={() => toggleExpand(audit.id)}
+                className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-slate-50/70 transition-colors"
+              >
+                {/* Status icon */}
+                <div className="flex-shrink-0">
+                  {audit.status === 'completed'
+                    ? <CheckCircle className="w-5 h-5 text-emerald-500" />
+                    : audit.status === 'failed'
+                    ? <XCircle className="w-5 h-5 text-rose-400" />
+                    : <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />}
+                </div>
+
+                {/* Type badge */}
+                {typeInfo && (
+                  <span className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0 ${typeInfo.color}`}>
+                    {typeInfo.icon} {typeInfo.label}
+                  </span>
+                )}
+
+                {/* Title + date */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> {dateStr}
+                  </p>
+                </div>
+
+                {/* Score bar */}
+                {score !== null && (
+                  <div className="hidden md:flex items-center gap-3 flex-shrink-0 w-40">
+                    <div className="flex-1">
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${score}%`, background: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }} />
                       </div>
-                    )}
-                    {recs.length > 0 && apDone > 0 && (
-                      <p className="text-xs text-emerald-600 font-medium mt-0.5">{apDone}/{recs.length} actions done</p>
-                    )}
+                    </div>
+                    <span className="text-sm font-bold w-10 text-right flex-shrink-0"
+                      style={{ color: score >= 75 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626' }}>
+                      {score}%
+                    </span>
                   </div>
+                )}
+
+                {/* Rating badge */}
+                {rating && (
+                  <span className={`hidden lg:inline-flex text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${rating.badge}`}>
+                    {rating.label}
+                  </span>
+                )}
+
+                {/* Action plan progress */}
+                {recs.length > 0 && apDone > 0 && (
+                  <span className="hidden sm:inline text-xs text-emerald-600 font-medium flex-shrink-0">
+                    {apDone}/{recs.length} actions done
+                  </span>
+                )}
+
+                {/* Chevron */}
+                <div className="flex-shrink-0 text-slate-400">
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </button>
-            )
-          })}
-        </div>
-      </div>
 
-      {/* Right panel */}
-      <div className="flex-1 overflow-y-auto bg-slate-50">
-        {!selectedAudit ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <ClipboardList className="w-14 h-14 text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 font-medium">Select an audit report</p>
-              <p className="text-slate-300 text-sm mt-1">Or generate a new compliance audit</p>
+              {/* Expanded content */}
+              {isExpanded && (
+                <div className="border-t border-slate-100">
+                  <AuditReport
+                    audit={audit}
+                    homeName={selectedHomeObj?.name}
+                    homeAddress={selectedHomeObj?.address1}
+                    canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
+                    onDelete={deleteAudit}
+                    onOpenActionPlan={() => { setActionAudit(audit); setActionPlanAutoAI(false); setActionPlanOpen(true) }}
+                    onAIActionPlan={() => { setActionAudit(audit); setActionPlanAutoAI(true); setActionPlanOpen(true) }}
+                    onAIComplianceFix={() => { setActionAudit(audit); setComplianceFixOpen(true) }}
+                  />
+                </div>
+              )}
             </div>
-          </div>
-        ) : (
-          <AuditReport
-            audit={selectedAudit}
-            homeName={selectedHomeObj?.name}
-            homeAddress={selectedHomeObj?.address1}
-            canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
-            onDelete={deleteAudit}
-            onOpenActionPlan={() => { setActionPlanAutoAI(false); setActionPlanOpen(true) }}
-            onAIActionPlan={() => { setActionPlanAutoAI(true); setActionPlanOpen(true) }}
-            onAIComplianceFix={() => setComplianceFixOpen(true)}
-          />
-        )}
+          )
+        })}
       </div>
 
-      <GenerateModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={generate} loading={generating} />
+      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} />
 
-      {selectedAudit && actionPlanOpen && (
+      {actionAudit && actionPlanOpen && (
         <ActionPlanModal
-          audit={selectedAudit}
+          audit={actionAudit}
           autoGenerate={actionPlanAutoAI}
           onClose={() => { setActionPlanOpen(false); setActionPlanAutoAI(false) }}
         />
       )}
-      {selectedAudit && complianceFixOpen && (
+      {actionAudit && complianceFixOpen && (
         <AIComplianceFixModal
-          audit={selectedAudit}
+          audit={actionAudit}
           onClose={() => setComplianceFixOpen(false)}
           onGenerateNew={() => setGenerateOpen(true)}
         />
@@ -591,7 +635,7 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
             <Award className="w-5 h-5 text-amber-400" />
             <div>
               <p className="text-white text-sm font-semibold">Audit complete</p>
-              <p className="text-slate-400 text-xs">Generated by CompCare Hub AI audit engine</p>
+              <p className="text-slate-400 text-xs">Generated by CompCare Hub</p>
             </div>
           </div>
           {score !== null && (
@@ -1044,17 +1088,17 @@ function AIComplianceFixModal({ audit, onClose, onGenerateNew }: { audit: any; o
   )
 }
 
-function GenerateModal({ open, onClose, onGenerate, loading }: {
+function StartAuditModal({ open, onClose, onGenerate, loading }: {
   open: boolean; onClose: () => void; onGenerate: (type: string, name: string) => void; loading: boolean
 }) {
   const [auditType, setAuditType] = useState('care_plan')
   const [customName, setCustomName] = useState('')
 
   return (
-    <Modal open={open} onClose={onClose} title="Generate audit report" size="md">
+    <Modal open={open} onClose={onClose} title="Start Audit" size="md">
       <div className="space-y-5">
         <p className="text-sm text-slate-500">
-          Select an audit type. The AI will analyse your live care data and produce a detailed compliance report.
+          Select an audit type. The system will analyse your live care data and produce a detailed compliance report.
         </p>
         <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
           {AUDIT_TYPES.map(t => (
@@ -1074,7 +1118,7 @@ function GenerateModal({ open, onClose, onGenerate, loading }: {
         <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button loading={loading} icon={<Activity className="w-4 h-4" />} onClick={() => onGenerate(auditType, customName)}>
-            Generate report
+            Start Audit
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+﻿import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
@@ -341,9 +341,9 @@ export default function Consents() {
     return (
       <button
         onClick={() => openModal(ct.key)}
-        className={`text-left p-4 rounded-xl border-2 transition-all hover:shadow-md hover:scale-[1.01] ${colors.bg} ${colors.border} group`}>
+        className={`text-left p-4 rounded-xl border transition-all hover:scale-[1.01] bg-white/5 hover:bg-white/10 ${colors.border} group`}>
         <div className="flex items-start justify-between mb-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${colors.bg}`}>
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-white/5`}>
             <Icon className={`w-5 h-5 ${colors.icon}`} />
           </div>
           <div className="flex items-center gap-1">
@@ -351,16 +351,16 @@ export default function Consents() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
-        <h3 className="font-semibold text-slate-900 text-sm mb-1 leading-tight">{ct.label}</h3>
-        <p className="text-xs text-slate-500 mb-2 line-clamp-2">{ct.description}</p>
+        <h3 className="font-semibold text-white text-sm mb-1 leading-tight">{ct.label}</h3>
+        <p className="text-xs text-slate-400 mb-2 line-clamp-2">{ct.description}</p>
         <div className="flex items-center justify-between">
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c
-            ? (c.consent_given ? 'bg-green-100 text-green-700' : c.has_capacity === 'no' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')
-            : 'bg-slate-100 text-slate-500'}`}>
+            ? (c.consent_given ? 'bg-green-500/15 text-green-400' : c.has_capacity === 'no' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400')
+            : 'bg-white/10 text-slate-400'}`}>
             {statusText(ct.key)}
           </span>
           {c?.review_date && (
-            <span className="text-xs text-slate-400">Review: {format(new Date(c.review_date), 'dd MMM yyyy')}</span>
+            <span className="text-xs text-slate-500">Review: {format(new Date(c.review_date), 'dd MMM yyyy')}</span>
           )}
         </div>
       </button>
@@ -373,8 +373,8 @@ export default function Consents() {
     if (type === 'custom_other') {
       return (
         <>
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Consent Details</p>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Custom Consent Details</p>
             <Input label="Consent title *" value={customTitle} onChange={e => setCustomTitle(e.target.value)}
               placeholder="e.g. Consent for use of mobility equipment" />
             <div>
@@ -396,7 +396,7 @@ export default function Consents() {
                     onClick={() => set('consentGiven', o.v)}
                     className={`px-4 py-2.5 rounded-lg border text-sm font-medium text-left transition-colors ${form.consentGiven === o.v
                       ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600')
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
+                      : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/30 hover:text-slate-200'}`}>
                     {o.l}
                   </button>
                 ))}
@@ -411,9 +411,9 @@ export default function Consents() {
       return (
         <>
           <div className="bg-fuchsia-50 border border-fuchsia-200 rounded-lg p-4">
-            <p className="text-sm font-semibold text-fuchsia-900 mb-2">Declaration</p>
+            <p className="text-sm font-semibold text-white mb-2">Declaration</p>
             {textLines.map((line, i) => (
-              <p key={i} className="text-sm text-fuchsia-800 mb-1">{line}</p>
+              <p key={i} className="text-sm text-slate-300 mb-1">{line}</p>
             ))}
           </div>
           <div>
@@ -431,7 +431,7 @@ export default function Consents() {
                       )
                     }}
                   />
-                  <span className="text-sm text-slate-700">{p.label}</span>
+                  <span className="text-sm text-slate-300">{p.label}</span>
                 </label>
               ))}
               <label className="flex items-start gap-3 cursor-pointer pt-1 border-t border-slate-200">
@@ -453,9 +453,9 @@ export default function Consents() {
       return (
         <>
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <p className="text-sm font-semibold text-indigo-900 mb-2">Declaration</p>
+            <p className="text-sm font-semibold text-white mb-2">Declaration</p>
             {textLines.map((line, i) => (
-              <p key={i} className="text-sm text-indigo-800 mb-1">{line || ' '}</p>
+              <p key={i} className="text-sm text-slate-300 mb-1">{line || ' '}</p>
             ))}
           </div>
           <div>
@@ -473,7 +473,7 @@ export default function Consents() {
                       set('consentGiven', o.value !== 'no_consent')
                     }}
                   />
-                  <span className="text-sm text-slate-700">{o.label}</span>
+                  <span className="text-sm text-slate-300">{o.label}</span>
                 </label>
               ))}
             </div>
@@ -484,22 +484,16 @@ export default function Consents() {
 
     const bgColor = type === 'care_plan_support' ? 'bg-violet-50 border-violet-200'
       : type === 'monthly_joint_care_plan_review' ? 'bg-cyan-50 border-cyan-200'
-      : 'bg-slate-50 border-slate-200'
-    const textColor = type === 'care_plan_support' ? 'text-violet-900'
-      : type === 'monthly_joint_care_plan_review' ? 'text-cyan-900'
-      : 'text-slate-800'
-    const headingColor = type === 'care_plan_support' ? 'text-violet-900'
-      : type === 'monthly_joint_care_plan_review' ? 'text-cyan-900'
-      : 'text-slate-900'
+      : 'bg-white/5 border-white/10'
 
     return (
       <>
         <div className={`border rounded-lg p-4 ${bgColor}`}>
-          <p className={`text-sm font-semibold mb-2 ${headingColor}`}>Declaration</p>
+          <p className={`text-sm font-semibold mb-2 text-white`}>Declaration</p>
           {textLines.map((line, i) => (
             line.startsWith('•')
-              ? <p key={i} className={`text-sm pl-3 mb-0.5 ${textColor}`}>{line}</p>
-              : <p key={i} className={`text-sm mb-1 ${textColor}`}>{line || ' '}</p>
+              ? <p key={i} className={`text-sm pl-3 mb-0.5 text-slate-300`}>{line}</p>
+              : <p key={i} className={`text-sm mb-1 text-slate-300`}>{line || ' '}</p>
           ))}
         </div>
 
@@ -515,7 +509,7 @@ export default function Consents() {
                   onClick={() => set('consentGiven', o.v)}
                   className={`px-4 py-2.5 rounded-lg border text-sm font-medium text-left transition-colors ${form.consentGiven === o.v
                     ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600')
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
+                    : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/30 hover:text-slate-200'}`}>
                   {o.l}
                 </button>
               ))}
@@ -531,12 +525,12 @@ export default function Consents() {
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-            <FileSignature className="w-5 h-5 text-purple-600" />
+          <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+            <FileSignature className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Consents & Signatures</h1>
-            <p className="text-slate-500 text-sm">Record and manage consent for all care areas and agreements.</p>
+            <h1 className="text-2xl font-bold text-white">Consents & Signatures</h1>
+            <p className="text-slate-400 text-sm">Record and manage consent for all care areas and agreements.</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -553,15 +547,15 @@ export default function Consents() {
 
       {/* Progress summary */}
       {selectedSu && !loading && (
-        <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-6 flex-wrap">
+        <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10 flex items-center gap-6 flex-wrap">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-green-500" />
-            <span className="text-sm font-medium text-slate-700">{given} of {total} consents recorded</span>
+            <span className="text-sm font-medium text-slate-300">{given} of {total} consents recorded</span>
           </div>
-          <div className="flex-1 bg-slate-200 rounded-full h-2 min-w-[120px]">
+          <div className="flex-1 bg-white/10 rounded-full h-2 min-w-[120px]">
             <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(given / total) * 100}%` }} />
           </div>
-          <span className="text-sm text-slate-500">{total - consents.length} not yet recorded</span>
+          <span className="text-sm text-slate-400">{total - consents.length} not yet recorded</span>
         </div>
       )}
 
@@ -572,9 +566,9 @@ export default function Consents() {
           {/* Section 1: Care Area Consents */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-white/10" />
               <span className="text-xs font-semibold uppercase tracking-widest text-slate-400 px-3">Care Area Consents</span>
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-white/10" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {CARE_AREA_TYPES.map(ct => <ConsentCard key={ct.key} ct={ct} />)}
@@ -584,9 +578,9 @@ export default function Consents() {
           {/* Section 2: Agreements & Declarations */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-white/10" />
               <span className="text-xs font-semibold uppercase tracking-widest text-slate-400 px-3">Agreements & Declarations</span>
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-white/10" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {DECLARATION_TYPES.map(ct => <ConsentCard key={ct.key} ct={ct} />)}
@@ -613,8 +607,8 @@ export default function Consents() {
                 />
 
                 {/* Comprehensive Care's signature */}
-                <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700">Comprehensive Care's Signature</h4>
+                <div className="border border-white/10 bg-white/5 rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-semibold text-slate-400">Comprehensive Care's Signature</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input label="Name" value={form.staffSignedBy}
                       onChange={e => set('staffSignedBy', e.target.value)}
@@ -631,8 +625,8 @@ export default function Consents() {
                 </div>
 
                 {/* Service User's signature */}
-                <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700">Service User's Signature</h4>
+                <div className="border border-white/10 bg-white/5 rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-semibold text-slate-400">Service User's Signature</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input label="Name" value={form.suSignedBy}
                       onChange={e => set('suSignedBy', e.target.value)}
@@ -653,7 +647,7 @@ export default function Consents() {
             ) : (
               // ── Clinical capacity-based form ────────────────────────────
               <>
-                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">{activeType.description}</p>
+                <p className="text-sm text-slate-400 bg-white/5 border border-white/10 p-3 rounded-lg">{activeType.description}</p>
 
                 <div>
                   <label className="label">Mental capacity assessment</label>
@@ -661,7 +655,7 @@ export default function Consents() {
                     {CAPACITY_OPTIONS.map(o => (
                       <button key={o.value} type="button"
                         onClick={() => set('hasCapacity', o.value)}
-                        className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.hasCapacity === o.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
+                        className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.hasCapacity === o.value ? 'bg-teal-600 text-white border-teal-600' : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/30 hover:text-slate-200'}`}>
                         {o.label}
                       </button>
                     ))}
@@ -680,7 +674,7 @@ export default function Consents() {
                         {[{ v: true, l: 'Yes — consent given' }, { v: false, l: 'No — consent withheld' }].map(o => (
                           <button key={String(o.v)} type="button"
                             onClick={() => set('consentGiven', o.v)}
-                            className={`px-4 py-2 rounded-lg border text-sm transition-colors ${form.consentGiven === o.v ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600') : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}>
+                            className={`px-4 py-2 rounded-lg border text-sm transition-colors ${form.consentGiven === o.v ? (o.v ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600') : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/30 hover:text-slate-200'}`}>
                             {o.l}
                           </button>
                         ))}
@@ -692,7 +686,7 @@ export default function Consents() {
                         {METHOD_OPTIONS.map(o => (
                           <button key={o.value} type="button"
                             onClick={() => set('consentMethod', o.value)}
-                            className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.consentMethod === o.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-900'}`}>
+                            className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${form.consentMethod === o.value ? 'bg-teal-600 text-white border-teal-600' : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/30 hover:text-slate-200'}`}>
                             {o.label}
                           </button>
                         ))}
@@ -725,8 +719,8 @@ export default function Consents() {
                     placeholder="Any further detail or context..." />
                 </div>
 
-                <div className="border-t border-slate-200 pt-4">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Sign-off</h4>
+                <div className="border-t border-white/10 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-400 mb-3">Sign-off</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input label="Service user / decision maker signed by" value={form.suSignedBy}
                       onChange={e => set('suSignedBy', e.target.value)}

@@ -406,7 +406,7 @@ export default function RiskManagement() {
 
                     {ra.management_plan && (
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Risk Management Plan</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#e8b130' }}>Risk Management Plan</p>
                         <p className="text-sm text-slate-700 whitespace-pre-line">{ra.management_plan}</p>
                       </div>
                     )}
@@ -414,7 +414,7 @@ export default function RiskManagement() {
                     {/* Risk Rating */}
                     {likelihood && (
                       <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Risk Rating — Likelihood</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#e8b130' }}>Risk Rating — Likelihood</p>
                         <p className="text-sm font-semibold text-slate-800">{likelihood.label}</p>
                       </div>
                     )}
@@ -424,7 +424,7 @@ export default function RiskManagement() {
 
                     {/* Summary */}
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary — Risk Level</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#e8b130' }}>Summary — Risk Level</span>
                       <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} />
                     </div>
 
@@ -592,7 +592,7 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
 
       {/* Risk Rating — Likelihood */}
       <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 space-y-2">
-        <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">
+        <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#e8b130' }}>
           Risk Rating = Likelihood
         </p>
         {LIKELIHOOD_OPTIONS.map(opt => (
@@ -618,7 +618,7 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
       {/* Summary */}
       {derivedRiskLevel && (
         <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Summary — Risk Level</span>
+          <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#e8b130' }}>Summary — Risk Level</span>
           <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border capitalize ${RISK_LEVELS.find(r => r.value === derivedRiskLevel)?.color}`}>
             {RISK_LEVELS.find(r => r.value === derivedRiskLevel)?.label}
           </span>

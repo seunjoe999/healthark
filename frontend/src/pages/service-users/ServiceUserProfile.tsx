@@ -304,7 +304,13 @@ export default function ServiceUserProfile() {
             <div className="grid grid-cols-3 gap-3">
               <Metric label="Height" value={su.heightCm ? `${su.heightCm}cm` : '—'} />
               <Metric label="Weight" value={su.weightKg ? `${su.weightKg}kg` : '—'} />
-              <Metric label="BMI" value={su.bmi ? String(su.bmi) : '—'} />
+              <Metric label="BMI" value={
+                su.bmi
+                  ? String(su.bmi)
+                  : (su.heightCm && su.weightKg)
+                    ? (su.weightKg / Math.pow(su.heightCm / 100, 2)).toFixed(1)
+                    : '—'
+              } />
             </div>
           </Card>
           <Card>
@@ -402,7 +408,7 @@ export default function ServiceUserProfile() {
                     <a href={doc.file_url} target="_blank" rel="noreferrer">
                       <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                     </a>
-                    {true && (
+                    {(
                       <Button size="sm" variant="ghost" icon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />} onClick={() => deleteDoc(doc.id)} />
                     )}
                   </div>
@@ -576,10 +582,19 @@ function UploadDocModal({ open, onClose, suId, onUploaded }: {
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `Upload failed (${res.status})`)
+      }
       const data = await res.json()
-      if (!data.success) throw new Error(data.error)
+      if (!data.success) throw new Error(data.error || 'Upload failed')
+      // Reset form fields before closing
+      setDocType('')
+      setTitle('')
+      setNotes('')
+      setExpiryDate('')
+      setFile(null)
       onUploaded(data.data)
-      toast.success('Document uploaded successfully')
     } catch (err: any) { toast.error(err?.message || 'Upload failed') }
     finally { setLoading(false) }
   }

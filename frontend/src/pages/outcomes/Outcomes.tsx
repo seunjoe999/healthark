@@ -7,18 +7,107 @@ import clsx from 'clsx'
 import toast from 'react-hot-toast'
 
 const MONTHLY_SECTIONS = [
-  { key: 'mentalHealth',       label: 'Mental Health & Emotional Wellbeing',       hint: 'Mood, motivation, emotional presentation. Any changes in mental state or signs of distress.' },
-  { key: 'financialMgmt',      label: 'Financial Management',                      hint: 'How finances are managed (independently or with staff support). Any issues, discrepancies, or improvements noted.' },
-  { key: 'familyContact',      label: 'Family and Social Contact',                 hint: 'Communication or visits with family and friends. Impact on wellbeing.' },
-  { key: 'selfHarm',           label: 'Self-Harm',                                 hint: 'Any evidence, reports, or concerns. Management and support strategies in place.' },
-  { key: 'behaviourStaff',     label: 'Behaviour Towards Staff / Outcome Achieved', hint: 'Nature of interactions with staff. Any concerns, improvements, or positive relationships noted.' },
-  { key: 'summaryNotes',       label: 'Summary / Additional Notes',                hint: '' },
+  {
+    key: 'personalCare',
+    label: 'Personal Care',
+    hint: 'Independence level, hygiene, grooming, and dressing support.',
+    checks: ['Maintains personal hygiene independently / with support', 'Grooming and dressing completed to personal standard'],
+  },
+  {
+    key: 'sleep',
+    label: 'Sleep',
+    hint: 'Usual sleep pattern, quality, changes, and restlessness noted.',
+    checks: ['Sleeping pattern is consistent with usual routine', 'No significant restlessness or sleep disturbance reported'],
+  },
+  {
+    key: 'householdTasks',
+    label: 'Household Tasks',
+    hint: 'Cleaning, laundry, housekeeping, and level of support needed.',
+    checks: ['Participates in household tasks (cleaning/laundry)', 'Support level appropriate to assessed needs'],
+  },
+  {
+    key: 'nutritionHydration',
+    label: 'Nutrition and Hydration',
+    hint: 'Appetite, fluid intake, and any nutritional concerns.',
+    checks: ['Maintaining adequate food intake / no appetite concerns', 'Adequate fluid intake maintained throughout the month'],
+  },
+  {
+    key: 'communityEngagement',
+    label: 'Community Engagement',
+    hint: 'Activities participated in, interaction with peers.',
+    checks: ['Engaged in planned activities during the month', 'Positive interaction with peers and community noted'],
+  },
+  {
+    key: 'behaviouralConcerns',
+    label: 'Behavioural Concerns',
+    hint: 'Challenging behaviour, triggers identified, strategies in place.',
+    checks: ['No significant challenging behaviour recorded this month', 'Agreed behaviour support strategies are being followed'],
+  },
+  {
+    key: 'medicationCompliance',
+    label: 'Medication Compliance',
+    hint: 'Independence or level of support with medication, missed doses, refusals.',
+    checks: ['All prescribed medication taken as directed', 'No missed doses or medication refusals recorded'],
+  },
+  {
+    key: 'communityAccessSafeguarding',
+    label: 'Community Access and Safeguarding',
+    hint: 'Community access risks and any safeguarding concerns.',
+    checks: ['Community access completed safely with appropriate support', 'No safeguarding concerns raised this month'],
+  },
+  {
+    key: 'mentalHealth',
+    label: 'Mental Health & Emotional Wellbeing',
+    hint: 'Mood, motivation, emotional presentation, any changes or signs of distress.',
+    checks: ['Mood and emotional wellbeing stable this month', 'No significant changes in mental health presentation noted'],
+  },
+  {
+    key: 'financialMgmt',
+    label: 'Financial Management',
+    hint: 'Independence with finances, any issues or discrepancies noted.',
+    checks: ['Managing finances independently / with appropriate support', 'No financial concerns or discrepancies noted this month'],
+  },
+  {
+    key: 'familyContact',
+    label: 'Family and Social Contact',
+    hint: 'Visits, communication with family and friends, impact on wellbeing.',
+    checks: ['Regular contact with family/friends maintained', 'Social contact has had a positive impact on wellbeing'],
+  },
+  {
+    key: 'selfHarm',
+    label: 'Self-Harm',
+    hint: 'Any evidence, reports, or concerns. Management and support strategies in place.',
+    checks: ['No evidence of self-harm reported this month', 'Self-harm management plan is in place and being followed'],
+  },
+  {
+    key: 'behaviourStaff',
+    label: 'Behaviour Towards Staff',
+    hint: 'Nature of interactions with staff, concerns, improvements, or positive relationships.',
+    checks: ['Interactions with staff are respectful and cooperative', 'No concerning behaviour directed towards staff recorded'],
+  },
+  {
+    key: 'outcomeAchieved',
+    label: 'Outcome Achieved for the Month',
+    hint: 'Summary of key outcomes achieved during this reporting period.',
+    checks: ['Key care goals progressed or maintained this month', 'Service user and staff agree on outcomes achieved'],
+  },
+  {
+    key: 'summaryNotes',
+    label: 'Summary / Additional Notes',
+    hint: '',
+    checks: [],
+  },
 ]
 
-function formatMonthlyDescription(fields: Record<string, string>): string {
+function formatMonthlyDescription(fields: Record<string, string>, checks: Record<string, boolean[]>): string {
   return MONTHLY_SECTIONS
-    .filter(s => fields[s.key]?.trim())
-    .map(s => `**${s.label}**\n${fields[s.key].trim()}`)
+    .filter(s => fields[s.key]?.trim() || (checks[s.key] || []).some(Boolean))
+    .map(s => {
+      const checkedItems = (s.checks || []).filter((_, i) => (checks[s.key] || [])[i])
+      const checkStr = checkedItems.length ? checkedItems.map(c => `☑ ${c}`).join('\n') : ''
+      const noteStr = fields[s.key]?.trim() || ''
+      return `**${s.label}**\n${[checkStr, noteStr].filter(Boolean).join('\n')}`
+    })
     .join('\n\n')
 }
 
@@ -54,6 +143,9 @@ export default function Outcomes() {
   const [editForm, setEditForm] = useState({ goal: '', description: '', targetDate: '', status: 'ongoing' })
   const [addMode, setAddMode] = useState<'goal' | 'monthly'>('goal')
   const [monthlyForm, setMonthlyForm] = useState({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
+  const [monthlyChecks, setMonthlyChecks] = useState<Record<string, boolean[]>>(
+    Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, (s.checks || []).map(() => false)]))
+  )
   const [reviewForm, setReviewForm] = useState({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
@@ -108,11 +200,12 @@ export default function Outcomes() {
           monthlyForm.completedBy ? `Completed by: ${monthlyForm.completedBy}` : '',
           monthlyForm.dateCompleted ? `Date completed: ${monthlyForm.dateCompleted}` : '',
           '',
-          formatMonthlyDescription(monthlyForm),
+          formatMonthlyDescription(monthlyForm, monthlyChecks),
         ].filter(l => l !== undefined).join('\n').trim()
         await api.post('/outcomes', { suId, goal, description, status: 'ongoing', targetDate: monthlyForm.dateCompleted || undefined })
         setShowAdd(false)
         setMonthlyForm({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
+        setMonthlyChecks(Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, (s.checks || []).map(() => false)])))
         setForm(f => ({ ...f, suId: '' }))
       } else {
         if (!form.goal) { toast.error('Goal is required'); setSubmitting(false); return }
@@ -369,15 +462,34 @@ export default function Outcomes() {
               {MONTHLY_SECTIONS.map((s, i) => (
                 <div key={s.key} className={`border-b border-slate-200 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                   <div className="px-5 pt-3 pb-1">
-                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">{s.label}</p>
+                    <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#e8b130' }}>{s.label}</p>
                     {s.hint && <p className="text-xs text-slate-400 mt-0.5">{s.hint}</p>}
                   </div>
+                  {s.checks && s.checks.length > 0 && (
+                    <div className="px-5 pb-1 space-y-1.5">
+                      {s.checks.map((checkLabel, ci) => (
+                        <label key={ci} className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 rounded border-slate-300 w-4 h-4 flex-shrink-0"
+                            checked={(monthlyChecks[s.key] || [])[ci] ?? false}
+                            onChange={e => {
+                              const updated = [...(monthlyChecks[s.key] || s.checks!.map(() => false))]
+                              updated[ci] = e.target.checked
+                              setMonthlyChecks(prev => ({ ...prev, [s.key]: updated }))
+                            }}
+                          />
+                          <span className="text-xs text-slate-600">{checkLabel}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   <div className="px-5 pb-3">
-                    <textarea rows={s.key === 'summaryNotes' ? 4 : 3}
+                    <textarea rows={s.key === 'summaryNotes' ? 4 : 2}
                       className="w-full text-sm border-0 bg-transparent outline-none resize-none text-slate-800 placeholder-slate-300 leading-relaxed"
                       value={(monthlyForm as any)[s.key]}
                       onChange={e => setMonthlyForm(f => ({ ...f, [s.key]: e.target.value }))}
-                      placeholder={`Enter notes…`} />
+                      placeholder={s.key === 'summaryNotes' ? 'Enter any additional notes or summary…' : 'Additional notes…'} />
                   </div>
                 </div>
               ))}

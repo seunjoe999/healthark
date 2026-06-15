@@ -77,8 +77,7 @@ const navSections = [
   {
     label: 'AUDIT', highlight: true,
     items: [
-      { label: 'Audit Templates', to: '/assessments?tab=resident', icon: FileCheck, roles: [], featureKey: 'assessments' },
-      { label: 'Audit Reports',   to: '/audits',                   icon: Activity,  roles: [], featureKey: 'audits' },
+      { label: 'Audits', to: '/audits', icon: Activity, roles: [], featureKey: 'audits' },
     ]
   },
   {

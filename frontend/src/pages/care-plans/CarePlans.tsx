@@ -231,7 +231,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
           <div className="mt-3"><label className="label">My toothpaste preference</label><input className="input w-full text-sm" value={tv('toothpastePreference')} onChange={e => set('toothpastePreference', e.target.value)} /></div>
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Support</p>
+          <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: '#e8b130' }}>Support</p>
           <YesNoRow label="I require support with my oral hygiene" value={tv('requiresSupport')} onChange={v => set('requiresSupport', v)} />
           <div className="mt-3"><SpeechTextarea label="Details" className="w-full" rows={3} value={tv('supportDetails')} onChange={v => set('supportDetails', v)} /></div>
         </div>
@@ -351,7 +351,7 @@ function TemplateDetail({ plan }: { plan: any }) {
           {row('My toothpaste preference', tv('toothpastePreference'))}
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Support</p>
+          <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#e8b130' }}>Support</p>
           {row('I require support with my oral hygiene', tv('requiresSupport'))}
           {tv('supportDetails') && <p className="text-sm text-slate-700 mt-2 whitespace-pre-line">{tv('supportDetails')}</p>}
         </div>
@@ -1085,8 +1085,8 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
 
         {/* Sign-off section */}
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <h4 className="font-semibold text-slate-800 text-sm mb-3 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-slate-500" /> Sign Off
+          <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 uppercase tracking-wide" style={{ color: '#e8b130' }}>
+            <ShieldCheck className="w-4 h-4" style={{ color: '#e8b130' }} /> Sign Off
           </h4>
           <div className="grid grid-cols-2 gap-6">
             <div>
@@ -1370,7 +1370,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
               </div>
             </div>
             <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">SUPPORT</p>
+              <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: '#e8b130' }}>SUPPORT</p>
               <div className="mb-3">
                 <YesNoRow
                   label="I Require Support To Manage My Medication (i.e. Ordering, Collecting, or Reminding To Take)"
@@ -1511,7 +1511,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
             <SpeechTextarea label="What I can do" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
             <SpeechTextarea label="How to support me" rows={2} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
             <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Support</p>
+              <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#e8b130' }}>Support</p>
               <YesNoRow
                 label="I Require Support To Manage My Medication (i.e. Ordering, Collecting, or Reminding To Take)"
                 value={form.templateData?.requiresSupportManage || 'No'}

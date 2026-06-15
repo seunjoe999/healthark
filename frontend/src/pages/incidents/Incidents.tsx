@@ -136,7 +136,7 @@ function BodyMap({ value, onChange }: { value: string; onChange: (v: string) => 
   const isSel = (p: string) => selected.includes(p)
   const Part = ({ p }: { p: string }) => (
     <button type="button" onClick={() => toggle(p)}
-      className={`px-2 py-1 rounded-lg border text-xs font-medium transition-all ${isSel(p) ? 'bg-red-500 text-white border-red-500' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'}`}>
+      className={`px-2 py-1 rounded-lg border text-xs font-medium transition-all ${isSel(p) ? 'bg-red-500 text-white border-red-500' : 'bg-white/5 border-white/10 text-slate-400 hover:border-red-400/50 hover:text-red-400'}`}>
       {p}
     </button>
   )
@@ -267,26 +267,26 @@ const BACK_ZONES = [
 function BodySilhouette({ side }: { side: 'front' | 'back' }) {
   return (
     <svg viewBox="0 0 100 260" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="50" cy="22" rx="18" ry="20" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.5"/>
-      <rect x="43" y="40" width="14" height="10" rx="3" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.2"/>
-      <path d="M32 52 Q20 55 16 90 L18 90 Q24 68 34 65 L34 118 Q34 122 50 122 Q66 122 66 118 L66 65 Q76 68 82 90 L84 90 Q80 55 68 52 Z" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.5"/>
-      <path d="M16 90 L14 128 L22 132 L24 100 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-      <path d="M84 90 L86 128 L78 132 L76 100 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-      <ellipse cx="18" cy="135" rx="7" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-      <ellipse cx="82" cy="135" rx="7" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-      <path d="M34 120 Q30 125 30 140 L30 185 Q30 190 40 190 L42 190 L42 120 Z" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.3"/>
-      <path d="M66 120 Q70 125 70 140 L70 185 Q70 190 60 190 L58 190 L58 120 Z" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.3"/>
-      <path d="M30 185 L28 230 Q28 236 38 236 L44 236 L44 185 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-      <path d="M70 185 L72 230 Q72 236 62 236 L56 236 L56 185 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      <ellipse cx="50" cy="22" rx="18" ry="20" fill="#2dd4bf" opacity="0.85" stroke="#5eead4" strokeWidth="1.5"/>
+      <rect x="43" y="40" width="14" height="10" rx="3" fill="#2dd4bf" opacity="0.85" stroke="#5eead4" strokeWidth="1.2"/>
+      <path d="M32 52 Q20 55 16 90 L18 90 Q24 68 34 65 L34 118 Q34 122 50 122 Q66 122 66 118 L66 65 Q76 68 82 90 L84 90 Q80 55 68 52 Z" fill="#2dd4bf" opacity="0.85" stroke="#5eead4" strokeWidth="1.5"/>
+      <path d="M16 90 L14 128 L22 132 L24 100 Z" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+      <path d="M84 90 L86 128 L78 132 L76 100 Z" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+      <ellipse cx="18" cy="135" rx="7" ry="5" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+      <ellipse cx="82" cy="135" rx="7" ry="5" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+      <path d="M34 120 Q30 125 30 140 L30 185 Q30 190 40 190 L42 190 L42 120 Z" fill="#2dd4bf" opacity="0.85" stroke="#5eead4" strokeWidth="1.3"/>
+      <path d="M66 120 Q70 125 70 140 L70 185 Q70 190 60 190 L58 190 L58 120 Z" fill="#2dd4bf" opacity="0.85" stroke="#5eead4" strokeWidth="1.3"/>
+      <path d="M30 185 L28 230 Q28 236 38 236 L44 236 L44 185 Z" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+      <path d="M70 185 L72 230 Q72 236 62 236 L56 236 L56 185 Z" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
       {side === 'front' ? (
         <>
-          <ellipse cx="36" cy="238" rx="12" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-          <ellipse cx="64" cy="238" rx="12" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+          <ellipse cx="36" cy="238" rx="12" ry="5" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+          <ellipse cx="64" cy="238" rx="12" ry="5" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
         </>
       ) : (
         <>
-          <ellipse cx="36" cy="238" rx="10" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
-          <ellipse cx="64" cy="238" rx="10" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+          <ellipse cx="36" cy="238" rx="10" ry="5" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
+          <ellipse cx="64" cy="238" rx="10" ry="5" fill="#2dd4bf" opacity="0.8" stroke="#5eead4" strokeWidth="1.2"/>
         </>
       )}
     </svg>
@@ -302,23 +302,23 @@ function VisualBodyMap({ value, onChange }: { value: string; onChange: (v: strin
   const isSel = (p: string) => selected.includes(p)
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 text-center">
+    <div className="rounded-xl border border-teal-500/30 p-4" style={{ background: 'rgba(13,20,30,0.8)' }}>
+      <p className="text-xs font-semibold text-teal-400 uppercase tracking-wide mb-3 text-center">
         Click body to mark injury location(s)
       </p>
       <div className="grid grid-cols-2 gap-4">
         {([['Front', FRONT_ZONES], ['Back', BACK_ZONES]] as const).map(([label, zones]) => (
           <div key={label}>
-            <p className="text-xs font-semibold text-slate-400 text-center mb-2">{label}</p>
-            <div className="relative mx-auto" style={{ width: 110, height: 260 }}>
+            <p className="text-xs font-semibold text-teal-300 text-center mb-2">{label}</p>
+            <div className="relative mx-auto rounded-lg overflow-hidden" style={{ width: 110, height: 260, background: 'rgba(0,0,0,0.3)' }}>
               <div className="absolute inset-0"><BodySilhouette side={label === 'Front' ? 'front' : 'back'} /></div>
               {zones.map(z => (
                 <button key={z.part} type="button" onClick={() => toggle(z.part)} title={z.part}
-                  className="absolute rounded transition-all hover:bg-red-400/30"
+                  className="absolute rounded transition-all hover:bg-red-400/40"
                   style={{
                     left: z.x, top: z.y, width: z.w, height: z.h,
-                    background: isSel(z.part) ? 'rgba(239,68,68,0.45)' : 'transparent',
-                    border: isSel(z.part) ? '1.5px solid #ef4444' : '1px solid transparent',
+                    background: isSel(z.part) ? 'rgba(239,68,68,0.55)' : 'transparent',
+                    border: isSel(z.part) ? '1.5px solid #ef4444' : '1px solid rgba(255,255,255,0.05)',
                   }}
                 />
               ))}
@@ -327,10 +327,10 @@ function VisualBodyMap({ value, onChange }: { value: string; onChange: (v: strin
         ))}
       </div>
       {selected.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-200 flex flex-wrap gap-1.5">
+        <div className="mt-3 pt-3 border-t border-teal-500/20 flex flex-wrap gap-1.5">
           {selected.map(part => (
             <button key={part} type="button" onClick={() => toggle(part)}
-              className="bg-red-100 text-red-700 text-xs px-2.5 py-1 rounded-full hover:bg-red-200 border border-red-200 font-medium">
+              className="bg-red-500/20 text-red-400 text-xs px-2.5 py-1 rounded-full hover:bg-red-500/30 border border-red-500/30 font-medium">
               {part} ×
             </button>
           ))}
@@ -357,7 +357,7 @@ export default function Incidents() {
   // Edit incident state
   const [editOpen, setEditOpen] = useState(false)
   const [editInc, setEditInc] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ description: '', immediateAction: '', emotion: '', cqcNotified: false })
+  const [editForm, setEditForm] = useState({ description: '', immediateAction: '', emotion: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [reviewNote, setReviewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
@@ -457,7 +457,7 @@ export default function Incidents() {
 
   const openEdit = (inc: any) => {
     setEditInc(inc)
-    setEditForm({ description: inc.description || '', immediateAction: inc.immediate_action || '', emotion: inc.emotion || '', cqcNotified: inc.cqc_notified || false })
+    setEditForm({ description: inc.description || '', immediateAction: inc.immediate_action || '', emotion: inc.emotion || '' })
     setReviewNote('')
     setEditOpen(true)
   }
@@ -468,7 +468,7 @@ export default function Incidents() {
     setEditSaving(true)
     try {
       await api.put(`/incidents/${editInc.id}`, editForm)
-      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, description: editForm.description, immediate_action: editForm.immediateAction, emotion: editForm.emotion, cqc_notified: editForm.cqcNotified, updated_at: new Date().toISOString() } : i))
+      setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, description: editForm.description, immediate_action: editForm.immediateAction, emotion: editForm.emotion, updated_at: new Date().toISOString() } : i))
       toast.success('Incident updated')
       setEditOpen(false)
     } catch { toast.error('Failed to save') }
@@ -959,25 +959,27 @@ export default function Incidents() {
             <input className="input w-full" value={createForm.locationDetails} onChange={e => setCreateForm(f => ({ ...f, locationDetails: e.target.value }))} />
           </div>
 
-          {/* Body Map */}
-          <VisualBodyMap value={createForm.injuryLocations} onChange={v => setCreateForm(f => ({ ...f, injuryLocations: v }))} />
+          {/* Service User Injured */}
+          <div>
+            <label className="label">Service User Injured?</label>
+            <select className="input w-full" value={createForm.serviceUserInjured} onChange={e => setCreateForm(f => ({ ...f, serviceUserInjured: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
 
-          {/* Service User Injured / Staff Injured */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Service User Injured?</label>
-              <select className="input w-full" value={createForm.serviceUserInjured} onChange={e => setCreateForm(f => ({ ...f, serviceUserInjured: e.target.value }))}>
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Staff Member Injured?</label>
-              <select className="input w-full" value={createForm.staffInjured} onChange={e => setCreateForm(f => ({ ...f, staffInjured: e.target.value }))}>
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-              </select>
-            </div>
+          {/* Body Map — only shown when service user is injured */}
+          {createForm.serviceUserInjured === 'Yes' && (
+            <VisualBodyMap value={createForm.injuryLocations} onChange={v => setCreateForm(f => ({ ...f, injuryLocations: v }))} />
+          )}
+
+          {/* Staff Member Injured */}
+          <div>
+            <label className="label">Staff Member Injured?</label>
+            <select className="input w-full" value={createForm.staffInjured} onChange={e => setCreateForm(f => ({ ...f, staffInjured: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
           </div>
 
           {/* Witnessed By */}
