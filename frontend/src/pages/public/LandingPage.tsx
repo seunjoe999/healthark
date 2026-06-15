@@ -7,7 +7,7 @@ import {
   Trophy, Brain, Globe, Menu, X, Lock, Activity,
   BarChart3, FileText, GraduationCap, HeartHandshake,
   UserCheck, CalendarCheck, Sparkles, Quote,
-  TrendingUp, Smile, Target, ChevronRight, Download,
+  TrendingUp, Smile, Target, ChevronRight,
 } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -1563,31 +1563,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Download Brochure ───────────────────────────────────────────────── */}
-      <section className="py-20" style={{ background: '#0a1525' }}>
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <Reveal>
-            <div className="rounded-2xl p-10 border border-[#e8b130]/20"
-              style={{ background: 'linear-gradient(135deg, rgba(232,177,48,0.08), rgba(232,177,48,0.02))' }}>
-              <div className="w-14 h-14 rounded-2xl bg-[#e8b130]/10 flex items-center justify-center mx-auto mb-6">
-                <Download size={26} className="text-[#e8b130]" />
-              </div>
-              <h2 className="text-3xl font-extrabold text-white mb-3">Download Our Brochure</h2>
-              <p className="text-lg mb-8" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                To learn more about our award-winning care services, simply download our brochure.
-              </p>
-              <a
-                href="/Comprehensive-Care Service Brochure.pdf"
-                download
-                className="inline-flex items-center gap-3 px-8 py-4 bg-[#e8b130] text-slate-900 font-bold text-base rounded-2xl shadow-2xl shadow-[#e8b130]/20 hover:bg-amber-400 hover:-translate-y-1 transition-all duration-200"
-              >
-                <Download size={18} />
-                Download Brochure
-              </a>
-            </div>
-          </Reveal>
-        </div>
-      </section>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer className="py-16 border-t border-white/[0.06]" style={{ background: '#030710', color: 'rgba(255,255,255,0.4)' }}>
