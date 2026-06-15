@@ -7,7 +7,26 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
-import Anthropic from '@anthropic-ai/sdk';
+async function callGroq(prompt: string, maxTokens = 1200): Promise<string> {
+  const key = process.env.GROQ_API_KEY || '';
+  if (!key || key === 'placeholder') throw Object.assign(new Error('GROQ_API_KEY not configured on this server'), { isKeyMissing: true });
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: maxTokens,
+      temperature: 0.3,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as any;
+    throw Object.assign(new Error(err?.error?.message || `Groq API error ${res.status}`), { isKeyMissing: res.status === 401 });
+  }
+  const data = await res.json() as any;
+  return data.choices?.[0]?.message?.content || '';
+}
 
 const router = Router();
 router.use(authenticate);
@@ -138,12 +157,6 @@ router.post('/:id/ai-analysis', param('id').isUUID(), validateRequest,
       if (!rows.length) throw new AppError('Incident not found', 404);
       const inc = rows[0] as any;
 
-      const apiKey = process.env.ANTHROPIC_API_KEY
-      if (!apiKey) {
-        res.status(503).json({ success: false, error: 'ANTHROPIC_API_KEY not configured on this server. Set it in your deployment environment variables.' } as ApiResponse)
-        return
-      }
-      const client = new Anthropic({ apiKey });
       const prompt = `You are a care home quality and safety analyst. Analyse this incident report and provide a structured professional report with the following sections:
 
 **1. Root Cause Analysis**
@@ -156,7 +169,7 @@ What circumstances or conditions contributed to this incident occurring?
 Were the immediate actions taken appropriate and sufficient?
 
 **4. Recommended Follow-up Actions**
-What specific steps should be taken in the next 24–72 hours?
+What specific steps should be taken in the next 24-72 hours?
 
 **5. Prevention Strategies**
 How can this type of incident be prevented in future?
@@ -170,21 +183,15 @@ Incident details:
 - Date: ${inc.record_date || 'unknown'}
 - Description: ${inc.description || 'none provided'}
 - Location: ${inc.location || 'not recorded'}
-- Injuries sustained: ${inc.injuries ? `Yes — ${inc.injury_details || 'details not provided'}` : 'No'}
-- Medical attention: ${inc.medical_needed ? `Yes — ${inc.medical_details || 'details not provided'}` : 'No'}
+- Injuries sustained: ${inc.injuries ? `Yes - ${inc.injury_details || 'details not provided'}` : 'No'}
+- Medical attention: ${inc.medical_needed ? `Yes - ${inc.medical_details || 'details not provided'}` : 'No'}
 - Immediate action taken: ${inc.immediate_action || 'none recorded'}
 - Witnesses: ${inc.witnesses || 'none recorded'}
-- CQC notified: ${inc.cqc_notified ? 'Yes' : 'No'}
 - Family notified: ${inc.family_notified ? 'Yes' : 'No'}
 
 Provide a clear, concise, professional analysis.`;
 
-      const message = await client.messages.create({
-        model: 'claude-haiku-4-5',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const analysis = (message.content[0] as any).text as string;
+      const analysis = await callGroq(prompt, 1200);
       res.json({ success: true, data: { analysis } } as ApiResponse);
     } catch (err) { next(err); }
   }
