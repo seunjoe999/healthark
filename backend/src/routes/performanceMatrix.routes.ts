@@ -71,7 +71,7 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
       rows = await query(`
         SELECT DISTINCT ON (s.id)
                s.id AS staff_id, s.first_name || ' ' || s.last_name AS staff_name,
-               s.role, s.job_title, s.home_id,
+               s.role, s.home_id,
                pm.id AS review_id, pm.period, pm.overall_score, pm.risk_rating,
                pm.training_compliance, pm.supervision_completed,
                pm.punctuality_score, pm.care_quality_score, pm.created_at,
@@ -86,7 +86,7 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
       rows = await query(`
         SELECT DISTINCT ON (s.id)
                s.id AS staff_id, s.first_name || ' ' || s.last_name AS staff_name,
-               s.role, s.job_title,
+               s.role,
                pm.id AS review_id, pm.period, pm.overall_score, pm.risk_rating,
                pm.training_compliance, pm.supervision_completed,
                pm.punctuality_score, pm.care_quality_score, pm.created_at,
