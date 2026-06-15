@@ -286,7 +286,7 @@ export default function Compliance() {
               onClick={() => setAiFixOpen(true)}
               className="btn px-4 py-2 text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700"
             >
-              <Zap className="w-4 h-4" /> AI Fix
+              <Zap className="w-4 h-4" /> Improvement Plan
             </button>
           )}
         </div>
@@ -500,7 +500,7 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose, onRefresh }: {
         <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-purple-600" />
-            <h2 className="font-bold text-slate-900">AI Compliance Improvement Plan</h2>
+            <h2 className="font-bold text-slate-900">Compliance Improvement Plan</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <X className="w-5 h-5" />
@@ -512,7 +512,7 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose, onRefresh }: {
             <div className="flex flex-col items-center justify-center py-16">
               <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
               <p className="text-slate-700 font-semibold">Analysing all compliance areas...</p>
-              <p className="text-slate-400 text-sm mt-1">AI is reviewing your scores and building a targeted plan</p>
+              <p className="text-slate-400 text-sm mt-1">Reviewing your scores and building a targeted plan</p>
             </div>
           ) : error ? (
             <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>
@@ -542,7 +542,7 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose, onRefresh }: {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
-                        <Zap className="w-4 h-4" /> {plan.available_fixes.length} issue{plan.available_fixes.length !== 1 ? 's' : ''} can be auto-fixed by AI right now
+                        <Zap className="w-4 h-4" /> {plan.available_fixes.length} issue{plan.available_fixes.length !== 1 ? 's' : ''} can be auto-fixed right now
                       </p>
                       <ul className="space-y-0.5">
                         {plan.available_fixes.map((f: string) => (

@@ -448,8 +448,8 @@ export default function PerformanceMatrix() {
               </div>
             )}
             <div className="flex gap-3 justify-end pt-2">
-              <Button variant="ghost" onClick={() => setAutoGenResult(null)}>Close</Button>
-              <Button variant="gold" onClick={() => { setAutoGenResult(null); setView('shift_matrix') }}>View Shift Matrix</Button>
+              <Button variant="ghost" onClick={() => { setAutoGenResult(null); setView('shift_matrix') }}>View Shift Matrix</Button>
+              <Button variant="gold" onClick={() => { setAutoGenResult(null); setView('matrix') }}>View Matrix</Button>
             </div>
           </div>
         </Modal>
