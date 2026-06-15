@@ -159,7 +159,7 @@ export default function ServiceUserProfile() {
           <NilByMouthBanner nilByMouth={su.nilByMouth} />
         </div>
         {su.needToKnow && (
-          <div className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl mb-4">
+          <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/12 rounded-xl mb-4">
             <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Need To Know</p>
@@ -219,7 +219,7 @@ export default function ServiceUserProfile() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0.5 bg-white rounded-2xl border border-slate-100 shadow-card p-1 mb-5 overflow-x-auto">
+      <div className="flex gap-0.5 bg-white/5 rounded-2xl border border-white/10 shadow-card p-1 mb-5 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${

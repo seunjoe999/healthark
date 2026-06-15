@@ -14,11 +14,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ variant = 'primary', size = 'md', loading, icon, children, className, ...props }: ButtonProps) {
   const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed select-none'
   const variants: Record<string, string> = {
-    primary: 'bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white shadow-sm',
-    secondary: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm',
+    primary: 'bg-white/8 hover:bg-white/12 text-white shadow-sm',
+    secondary: 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/15 shadow-sm',
     gold: 'text-slate-900 font-semibold shadow-sm',
-    outline: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm',
-    ghost: 'bg-transparent hover:bg-slate-100 text-slate-700',
+    outline: 'bg-transparent hover:bg-white/5 text-slate-300 border border-white/20',
+    ghost: 'bg-transparent hover:bg-white/8 text-slate-300',
     danger: 'bg-rose-500 hover:bg-rose-600 text-white shadow-sm',
     teal: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm',
   }

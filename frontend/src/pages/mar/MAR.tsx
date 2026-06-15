@@ -143,10 +143,10 @@ export default function MAR() {
   const suInitials = su ? `${(su.first_name || su.firstName || '?')[0]}${(su.last_name || su.lastName || '?')[0]}` : '?'
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0a0a0a' }}>
 
       {/* ── Top control bar (RoundSys-style) ─────────────────────────── */}
-      <div className="no-print bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="no-print border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
         {/* Title */}
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <Pill className="w-4 h-4 text-purple-600" /> MAR
@@ -224,7 +224,7 @@ export default function MAR() {
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
           {/* ── Resident profile strip ───────────────────────────────── */}
-          <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-start gap-4">
+          <div className="border-b border-white/10 px-4 py-2 flex items-start gap-4" style={{ background: '#111' }}>
             <div className="flex-shrink-0 relative w-12 h-12">
               <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-base font-bold border-2 border-purple-200">
                 {suInitials}
@@ -270,7 +270,7 @@ export default function MAR() {
           </div>
 
           {/* ── Tabs ───────────────────────────────────────────────── */}
-          <div className="no-print bg-white border-b border-slate-200 px-4 flex gap-0">
+          <div className="no-print border-b border-white/10 px-4 flex gap-0" style={{ background: '#111' }}>
             {[
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
@@ -306,12 +306,12 @@ export default function MAR() {
                   <EmptyState title="No medications" description="Add medications for this resident"
                     action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>} />
                 ) : medications.map((med: any) => (
-                  <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                  <div key={med.id} className="bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Pill className="w-4 h-4 text-purple-500 shrink-0" />
-                          <h3 className="font-semibold text-slate-900">{med.medication_name}</h3>
+                          <h3 className="font-semibold text-white">{med.medication_name}</h3>
                           {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
                           {med.is_controlled && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Shield className="w-3 h-3" />CD</span>}
                         </div>
@@ -356,9 +356,9 @@ export default function MAR() {
                 {medications.map((med: any) => {
                   const stock = stockData.find((s: any) => s.medication_id === med.id)
                   return (
-                    <div key={med.id} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between shadow-sm">
+                    <div key={med.id} className="bg-white/5 rounded-xl border border-white/10 p-4 flex items-center justify-between shadow-sm">
                       <div>
-                        <p className="font-semibold text-slate-900">{med.medication_name}</p>
+                        <p className="font-semibold text-white">{med.medication_name}</p>
                         <p className="text-sm text-slate-500">{med.dose}</p>
                         {stock && <p className="text-xs text-slate-400 mt-1">Last count: {stock.current_count} · {stock.last_counted_at ? format(new Date(stock.last_counted_at), 'd MMM, HH:mm') : 'Never'}</p>}
                       </div>
@@ -459,8 +459,8 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
 
   const weeks = buildWeeks(dates)
 
-  const stickyMed: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 2, minWidth: 160, maxWidth: 160, width: 160, background: '#fff', borderRight: '1px solid #d1d5db' }
-  const stickyDir: React.CSSProperties = { position: 'sticky', left: 160, zIndex: 2, minWidth: 140, maxWidth: 140, width: 140, background: '#fff', borderRight: '1px solid #d1d5db' }
+  const stickyMed: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 2, minWidth: 160, maxWidth: 160, width: 160, background: '#111', borderRight: '1px solid #2a2a2a' }
+  const stickyDir: React.CSSProperties = { position: 'sticky', left: 160, zIndex: 2, minWidth: 140, maxWidth: 140, width: 140, background: '#111', borderRight: '1px solid #2a2a2a' }
   const stickyTime: React.CSSProperties = { position: 'sticky', left: 300, zIndex: 2, minWidth: 50, maxWidth: 50, width: 50, background: '#f8fafc', borderRight: '2px solid #94a3b8', textAlign: 'center' }
 
   const thBase = 'border border-slate-200 text-center text-xs font-semibold py-1 px-0.5 bg-slate-100 text-slate-700'
@@ -523,18 +523,18 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
           {medications.map((med: any) => {
             const slots: string[] = med.time_slots || FREQ_TIMES[med.frequency] || ['08:00']
             return slots.map((slot: string, si: number) => (
-              <tr key={`${med.id}-${slot}`} style={{ backgroundColor: si % 2 === 0 ? '#fff' : '#fafafa' }}>
+              <tr key={`${med.id}-${slot}`} style={{ backgroundColor: si % 2 === 0 ? '#111' : '#161616' }}>
                 {/* Medication name — spans all time slots */}
                 {si === 0 && (
                   <td rowSpan={slots.length} style={{
                     ...stickyMed,
                     padding: '6px 8px',
                     verticalAlign: 'top',
-                    border: '1px solid #e2e8f0',
-                    borderRight: '1px solid #d1d5db',
-                    background: '#fff',
+                    border: '1px solid #2a2a2a',
+                    borderRight: '1px solid #2a2a2a',
+                    background: '#111',
                   }}>
-                    <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: '#111' }}>{med.medication_name}</div>
+                    <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: '#f5f0e8' }}>{med.medication_name}</div>
                     {showPrescriptions && med.dose && (
                       <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
                         {med.dose}
@@ -561,11 +561,11 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                     ...stickyDir,
                     padding: '6px 8px',
                     verticalAlign: 'top',
-                    border: '1px solid #e2e8f0',
-                    borderRight: '1px solid #d1d5db',
-                    background: '#fff',
+                    border: '1px solid #2a2a2a',
+                    borderRight: '1px solid #2a2a2a',
+                    background: '#111',
                     fontSize: 9,
-                    color: '#374151',
+                    color: '#b8b3a7',
                     lineHeight: 1.4,
                   }}>
                     {med.instructions || med.notes || <span style={{ color: '#d1d5db' }}>—</span>}
@@ -663,7 +663,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
           <span className="text-slate-400">|</span>
           <span className="text-slate-500 italic">Click any past cell to log or view record</span>
         </div>
-        <div className="font-mono text-slate-600 bg-white border border-slate-200 rounded px-3 py-1.5 leading-relaxed">
+        <div className="font-mono text-slate-300 bg-white/5 border border-white/10 rounded px-3 py-1.5 leading-relaxed">
           <span className="font-bold text-slate-800">Attempted codes:</span>{' '}
           {['A','D','DC','E','F','H','L','MR','N','NR','NT','O','R','S','SM'].map((code, i, arr) => (
             <span key={code}>
@@ -1255,8 +1255,8 @@ function GPPharmacyTab({ su, medications }: { su: any; medications: any[] }) {
   return (
     <div className="p-5 space-y-6 max-w-3xl">
       {/* GP Details */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100">
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-3 bg-blue-500/10 border-b border-blue-500/20">
           <Stethoscope className="w-4 h-4 text-blue-600" />
           <span className="font-semibold text-blue-800 text-sm">GP Details</span>
         </div>
@@ -1276,8 +1276,8 @@ function GPPharmacyTab({ su, medications }: { su: any; medications: any[] }) {
       </div>
 
       {/* Pharmacy Details */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border-b border-emerald-100">
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border-b border-emerald-500/20">
           <Pill className="w-4 h-4 text-emerald-600" />
           <span className="font-semibold text-emerald-800 text-sm">Pharmacy Details</span>
         </div>
@@ -1298,10 +1298,10 @@ function GPPharmacyTab({ su, medications }: { su: any; medications: any[] }) {
 
       {/* Per-medication GP/Pharmacy */}
       {medsWithGpOrPharm.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
-            <MapPin className="w-4 h-4 text-slate-500" />
-            <span className="font-semibold text-slate-700 text-sm">Medication-Specific GP / Pharmacy</span>
+        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden shadow-sm">
+          <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
+            <MapPin className="w-4 h-4 text-slate-400" />
+            <span className="font-semibold text-slate-300 text-sm">Medication-Specific GP / Pharmacy</span>
           </div>
           <div className="divide-y divide-slate-100">
             {medsWithGpOrPharm.map((med: any) => (

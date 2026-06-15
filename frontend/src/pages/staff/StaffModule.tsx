@@ -110,7 +110,7 @@ export default function StaffModule() {
   return (
     <div className="flex flex-col h-full">
       {/* Top control bar */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2" style={{ background: '#111' }}>
         {homes.length > 1 && (
           <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
             value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelected(null) }}>
@@ -153,7 +153,7 @@ export default function StaffModule() {
           <div className="max-w-4xl mx-auto">
             {/* Header */}
             {/* WhatsApp-style clickable profile header */}
-            <Link to={`/staff/${selected.id}/edit`} className="block bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4 hover:border-purple-200 hover:shadow-md transition-all group">
+            <Link to={`/staff/${selected.id}/edit`} className="block bg-white/5 rounded-xl border border-white/10 shadow-sm p-5 mb-4 hover:border-purple-400/40 hover:shadow-md transition-all group">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <PhotoUpload
@@ -180,7 +180,7 @@ export default function StaffModule() {
             </Link>
 
             {/* Tabs */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-5">
+            <div className="bg-white/5 rounded-2xl border border-white/10 shadow-card mb-5">
               <div className="flex overflow-x-auto">
                 {tabs.map((t, i) => (
                   <button key={t.key} onClick={() => setTab(t.key)}
@@ -253,7 +253,7 @@ export default function StaffModule() {
                       const expiring = t.expiry_date && differenceInYears(new Date(t.expiry_date), new Date()) < 1
                       const expired = t.expiry_date && new Date(t.expiry_date) < new Date()
                       return (
-                        <div key={t.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                        <div key={t.id} className="bg-white/5 rounded-xl border border-white/10 shadow-sm p-4 flex items-center gap-4">
                           <Award className={`w-5 h-5 flex-shrink-0 ${expired ? 'text-red-500' : expiring ? 'text-orange-500' : 'text-green-500'}`} />
                           <div className="flex-1">
                             <p className="font-medium text-slate-900">{t.course_name}</p>
@@ -316,7 +316,7 @@ export default function StaffModule() {
                   ) : (
                     <div className="space-y-2">
                       {trainingCertificates.map((doc: any) => (
-                        <div key={doc.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-3 flex items-center gap-3">
+                        <div key={doc.id} className="bg-white/5 rounded-xl border border-white/10 shadow-sm p-3 flex items-center gap-3">
                           <FileImage className="w-5 h-5 flex-shrink-0 text-amber-500" />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-slate-900 text-sm truncate">{doc.title || doc.file_name}</p>
@@ -344,7 +344,7 @@ export default function StaffModule() {
                 ) : (
                   <div className="space-y-2">
                     {leave.map((l: any) => (
-                      <div key={l.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                      <div key={l.id} className="bg-white/5 rounded-xl border border-white/10 shadow-sm p-4 flex items-center gap-4">
                         <Calendar className="w-5 h-5 flex-shrink-0 text-slate-600" />
                         <div className="flex-1">
                           <p className="font-medium text-slate-900 capitalize">{(l.leave_type || '').replace('_', ' ')}</p>
@@ -424,7 +424,7 @@ export default function StaffModule() {
                 ) : (
                   <div className="space-y-2">
                     {staffDocs.map((doc: any) => (
-                      <div key={doc.id} className="bg-white rounded-xl border border-slate-100 shadow-card p-4 flex items-center gap-4">
+                      <div key={doc.id} className="bg-white/5 rounded-xl border border-white/10 shadow-card p-4 flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
                           <FileText className="w-5 h-5 text-slate-500" />
                         </div>
@@ -460,7 +460,7 @@ export default function StaffModule() {
                 ) : (
                   <div className="space-y-3">
                     {cautions.map((c: any) => (
-                      <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                      <div key={c.id} className="bg-white/5 rounded-2xl border border-white/10 shadow-card p-5">
                         <div className="flex items-start justify-between mb-3">
                           <span className="badge badge-warning capitalize">{(c.caution_type || '').replace('_', ' ')}</span>
                           <div className="flex items-center gap-2">
@@ -517,7 +517,7 @@ export default function StaffModule() {
                           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 capitalize">{label}</h4>
                           <div className="space-y-3">
                             {items.map((s: any) => (
-                              <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+                              <div key={s.id} className="bg-white/5 rounded-2xl border border-white/10 shadow-card p-5">
                                 <div className="flex items-start justify-between mb-2">
                                   <span className="badge badge-info capitalize">{(s.supervision_type || '').replace(/_/g, ' ')}</span>
                                   <p className="text-xs text-slate-400">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''}</p>
@@ -553,7 +553,7 @@ export default function StaffModule() {
                 ) : (
                   <div className="space-y-2">
                     {clockHistory.slice(0, 20).map((e: any) => (
-                      <div key={e.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                      <div key={e.id} className="bg-white/5 rounded-xl border border-white/10 shadow-sm p-4 flex items-center gap-4">
                         <Clock className={`w-5 h-5 flex-shrink-0 ${e.event_type === 'clock_in' ? 'text-green-500' : 'text-red-500'}`} />
                         <div className="flex-1">
                           <p className="font-medium text-slate-900 capitalize">{(e.event_type || '').replace('_', ' ')}</p>

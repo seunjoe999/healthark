@@ -161,7 +161,7 @@ export default function Confidential() {
           <Lock className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Confidential Information</h1>
+          <h1 className="text-xl font-bold text-white">Confidential Information</h1>
           <p className="text-sm text-slate-500">Restricted — securely stored records</p>
         </div>
       </div>
@@ -179,10 +179,10 @@ export default function Confidential() {
 
       {/* Tabs — management sees both, staff only see Service Users */}
       {isMgmt && (
-        <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
+        <div className="flex gap-1 p-1 rounded-xl bg-white/8 w-fit">
           {(['service_user', 'staff'] as const).map(t => (
             <button key={t} onClick={() => { setTab(t); setShowForm(false); setExpanded(null) }}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t ? 'bg-white/15 text-white shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}>
               {t === 'service_user' ? (
                 <span className="flex items-center gap-2"><Users className="w-4 h-4" />Service Users</span>
               ) : (
@@ -197,7 +197,7 @@ export default function Confidential() {
       {isMgmt && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700">
+            <p className="text-sm font-semibold text-slate-300">
               {tabRecords.length} record{tabRecords.length !== 1 ? 's' : ''} — {tab === 'service_user' ? 'Service Users' : 'Staff'}
             </p>
             <button onClick={() => setShowForm(v => !v)}
@@ -210,21 +210,21 @@ export default function Confidential() {
           {loading ? (
             <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 text-purple-500 animate-spin" /></div>
           ) : tabRecords.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
+            <div className="text-center py-12 border-2 border-dashed border-white/15 rounded-2xl">
               <Lock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="text-slate-500 text-sm">No confidential records yet</p>
             </div>
           ) : (
             <div className="space-y-2">
               {tabRecords.map(rec => (
-                <div key={rec.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                  <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                <div key={rec.id} className="border border-white/12 rounded-xl overflow-hidden bg-white/5">
+                  <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-white/5 transition-colors"
                     onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}>
                     <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
                       <FileText className="w-4 h-4 text-purple-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900 text-sm truncate">{rec.title}</p>
+                      <p className="font-semibold text-white text-sm truncate">{rec.title}</p>
                       <p className="text-xs text-slate-500 truncate">
                         {rec.subject_name} · {new Date(rec.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })} · by {rec.created_by_name}
                       </p>
@@ -235,11 +235,11 @@ export default function Confidential() {
                   </div>
 
                   {expanded === rec.id && (
-                    <div className="border-t border-slate-100 p-4 space-y-3 bg-slate-50">
+                    <div className="border-t border-white/8 p-4 space-y-3 bg-white/3">
                       {rec.content && (
                         <div>
                           <p className="text-xs font-semibold text-slate-500 mb-1">Content</p>
-                          <p className="text-sm text-slate-800 whitespace-pre-wrap">{rec.content}</p>
+                          <p className="text-sm text-slate-200 whitespace-pre-wrap">{rec.content}</p>
                         </div>
                       )}
                       {rec.document_url && (
@@ -254,7 +254,7 @@ export default function Confidential() {
                       {rec.signature_data && (
                         <div>
                           <p className="text-xs font-semibold text-slate-500 mb-1">Signature</p>
-                          <div className="border border-emerald-200 rounded-xl overflow-hidden bg-white w-64">
+                          <div className="border border-emerald-500/30 rounded-xl overflow-hidden bg-white/5 w-64">
                             <img src={rec.signature_data} alt="Signature" className="w-full h-16 object-contain" />
                           </div>
                           {rec.signed_by && <p className="text-xs text-slate-500 mt-1">Signed by: {rec.signed_by}</p>}
@@ -278,12 +278,12 @@ export default function Confidential() {
 
       {/* Form — always visible to staff; toggled for management */}
       {showForm && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="bg-white/5 rounded-2xl border border-white/12 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100"
             style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.06),rgba(109,40,217,0.03))' }}>
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-purple-600" />
-              <h2 className="font-semibold text-slate-900 text-sm">
+              <h2 className="font-semibold text-white text-sm">
                 New {tab === 'service_user' ? 'Service User' : 'Staff'} Confidential Record
               </h2>
             </div>
@@ -297,11 +297,11 @@ export default function Confidential() {
           <form onSubmit={handleSubmit} className="p-5 space-y-5">
             {/* Subject select */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">
                 {tab === 'service_user' ? 'Service User' : 'Staff Member'} *
               </label>
               <select value={form.subjectId} onChange={e => setForm(f => ({ ...f, subjectId: e.target.value }))}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all">
+                className="input">
                 <option value="">— Select —</option>
                 {subjectList.map(s => (
                   <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
@@ -311,23 +311,23 @@ export default function Confidential() {
 
             {/* Title */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Title / Type *</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Title / Type *</label>
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 placeholder="e.g. Safeguarding concern, Personal disclosure, Legal matter…"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all" />
+                className="input" />
             </div>
 
             {/* Content */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Confidential Details</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Confidential Details</label>
               <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                 rows={5} placeholder="Document the confidential information here…"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 resize-none focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all" />
+                className="input resize-none" />
             </div>
 
             {/* Document upload */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Attach Document (optional)</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Attach Document (optional)</label>
               {form.documentUrl ? (
                 <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50">
                   <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
@@ -338,7 +338,7 @@ export default function Confidential() {
                   </button>
                 </div>
               ) : (
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploading ? 'border-purple-200 bg-purple-50' : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50'}`}>
+                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploading ? 'border-purple-400/40 bg-purple-500/8' : 'border-white/15 hover:border-purple-400/50 hover:bg-purple-500/8'}`}>
                   {uploading ? <Loader2 className="w-4 h-4 text-purple-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-400" />}
                   <span className="text-sm text-slate-500">{uploading ? 'Uploading…' : 'Click to attach a document'}</span>
                   <input ref={fileRef} type="file" className="hidden" disabled={uploading}
@@ -350,7 +350,7 @@ export default function Confidential() {
 
             {/* Signature */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Signature</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Signature</label>
               <SignaturePad
                 label=""
                 onSave={dataUrl => setForm(f => ({ ...f, signatureData: dataUrl }))}
@@ -362,7 +362,7 @@ export default function Confidential() {
             <div className="flex gap-3 pt-2">
               {isMgmt && (
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                  className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-slate-400 hover:bg-white/5 transition-colors">
                   Cancel
                 </button>
               )}

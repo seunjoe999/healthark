@@ -20,7 +20,7 @@ export default function SignaturePad({ onSave, label, savedSignature, disabled }
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.strokeStyle = '#1e2d4a'
+    ctx.strokeStyle = '#f5f0e8'
     ctx.lineWidth = 2
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -88,7 +88,7 @@ export default function SignaturePad({ onSave, label, savedSignature, disabled }
       {label && <p className="text-sm font-semibold text-slate-600">{label}</p>}
 
       {saved ? (
-        <div className="relative border-2 border-emerald-200 rounded-xl overflow-hidden bg-white">
+        <div className="relative border-2 border-emerald-500/30 rounded-xl overflow-hidden bg-white/5">
           <img src={saved} alt="Signature" className="w-full h-24 object-contain" />
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1">
             <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -103,8 +103,7 @@ export default function SignaturePad({ onSave, label, savedSignature, disabled }
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden bg-slate-50 hover:border-slate-300 transition-colors"
-            style={{ touchAction: 'none' }}>
+          <div className="relative border-2 border-dashed border-white/20 rounded-xl overflow-hidden hover:border-white/35 transition-colors" style={{ background: '#1a1a1a', touchAction: 'none' }}>
             <canvas
               ref={canvasRef}
               width={600}

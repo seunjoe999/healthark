@@ -130,7 +130,7 @@ export default function DailyRecords() {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
-      <div className="bg-white border-b border-slate-200 px-2 flex gap-0 overflow-x-auto shrink-0">
+      <div className="border-b border-white/10 px-2 flex gap-0 overflow-x-auto shrink-0" style={{ background: '#111' }}>
         {DR_TABS.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
@@ -155,7 +155,7 @@ export default function DailyRecords() {
       ) : (
       <>
       {/* Top control bar */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <ClipboardList className="w-4 h-4 text-purple-600" /> Daily Records
         </span>
@@ -229,7 +229,7 @@ export default function DailyRecords() {
                 {Object.entries(groupedRecords).map(([type, typeRecords]) => {
                   const typeInfo = RECORD_TYPES.find(r => r.value === type)
                   return (
-                    <div key={type} className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
+                    <div key={type} className="bg-white/5 rounded-2xl border border-white/10 shadow-card overflow-hidden">
                       <div className="px-5 py-3 border-b border-slate-50 flex items-center gap-2">
                         <span className="text-base">{typeInfo?.icon || '📋'}</span>
                         <h3 className="font-semibold text-slate-800 text-sm">{typeInfo?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h3>

@@ -36,6 +36,26 @@
     color: #f5f0e8;
   }
 
+  /* Force dark background on ALL native inputs and textareas */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]) {
+    background-color: #1a1a1a !important;
+    color: #f5f0e8 !important;
+    border: 1px solid rgba(232,177,48,0.25) !important;
+    border-radius: 8px;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"])::placeholder {
+    color: #6b6b5a !important;
+  }
+  textarea {
+    background-color: #1a1a1a !important;
+    color: #f5f0e8 !important;
+    border: 1px solid rgba(232,177,48,0.25) !important;
+    border-radius: 8px;
+  }
+  textarea::placeholder {
+    color: #6b6b5a !important;
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #111; }
@@ -276,6 +296,11 @@
   .bg-pink-100    { background-color: rgba(236,72,153,0.12)  !important; }
   .bg-slate-300   { background-color: #2a2a2a                !important; }
   .bg-slate-400   { background-color: #333333                !important; }
+
+  /* Override light focus rings for dark theme */
+  .focus\:ring-purple-100:focus { --tw-ring-color: rgba(168,85,247,0.2) !important; }
+  .focus\:ring-blue-100:focus { --tw-ring-color: rgba(59,130,246,0.2) !important; }
+  .focus\:ring-indigo-100:focus { --tw-ring-color: rgba(99,102,241,0.2) !important; }
 
   /* hover:bg-*-50/100 overrides */
   .hover\:bg-red-50:hover     { background-color: rgba(239,68,68,0.08)   !important; }
