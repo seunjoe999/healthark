@@ -121,20 +121,18 @@ export default function PerformanceMatrix() {
   async function load() {
     setLoading(true)
     const homeParam = selectedHome || undefined
-    try {
-      const [matrixRes, staffRes, historyRes, shiftRes] = await Promise.all([
-        api.get('/performance/matrix', { params: homeParam ? { homeId: homeParam } : {} }),
-        api.get('/staff', { params: homeParam ? { homeId: homeParam } : {} }),
-        api.get('/performance', { params: { ...(homeParam ? { homeId: homeParam } : {}), ...(selectedStaff ? { staffId: selectedStaff } : {}) } }),
-        api.get('/performance/shift-matrix', { params: homeParam ? { homeId: homeParam } : {} }),
-      ])
-      setMatrix(matrixRes.data.data || [])
-      setStaff(staffRes.data.data || [])
-      setHistory(historyRes.data.data || [])
-      setShiftMatrixData(shiftRes.data.data || null)
-    } catch (err) {
-      console.error('Failed to load performance data:', err)
-    }
+    const p = homeParam ? { homeId: homeParam } : {}
+    const [matrixRes, staffRes, historyRes, shiftRes] = await Promise.allSettled([
+      api.get('/performance/matrix', { params: p }),
+      api.get('/staff', { params: p }),
+      api.get('/performance', { params: { ...p, ...(selectedStaff ? { staffId: selectedStaff } : {}) } }),
+      api.get('/performance/shift-matrix', { params: p }),
+    ])
+    if (matrixRes.status === 'fulfilled') setMatrix(matrixRes.value.data.data || [])
+    else console.error('matrix load failed', (matrixRes as any).reason)
+    if (staffRes.status === 'fulfilled') setStaff(staffRes.value.data.data || [])
+    if (historyRes.status === 'fulfilled') setHistory(historyRes.value.data.data || [])
+    if (shiftRes.status === 'fulfilled') setShiftMatrixData(shiftRes.value.data.data || null)
     setLoading(false)
   }
 

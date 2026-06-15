@@ -283,13 +283,15 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
          WHERE s.organisation_id = $1 AND s.is_active = TRUE
          ORDER BY s.first_name, s.last_name`, [orgId]
       );
-      shiftRows = await query(
-        `SELECT ss.staff_id, ss.home_id, COUNT(*) as shift_count
-         FROM staff_shifts ss
-         JOIN staff s ON s.id = ss.staff_id
-         WHERE s.organisation_id = $1 AND ss.staff_id IS NOT NULL
-         GROUP BY ss.staff_id, ss.home_id`, [orgId]
-      );
+      try {
+        shiftRows = await query(
+          `SELECT ss.staff_id, ss.home_id, COUNT(*) as shift_count
+           FROM staff_shifts ss
+           JOIN staff s ON s.id = ss.staff_id
+           WHERE s.organisation_id = $1 AND ss.staff_id IS NOT NULL
+           GROUP BY ss.staff_id, ss.home_id`, [orgId]
+        );
+      } catch { shiftRows = []; }
     } else {
       // Single home: staff from this home vs all homes in org
       const homeOrg = await query<any>(`SELECT organisation_id FROM homes WHERE id = $1`, [homeId]);
@@ -303,12 +305,14 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
          WHERE s.home_id = $1 AND s.is_active = TRUE
          ORDER BY s.first_name, s.last_name`, [homeId]
       );
-      shiftRows = await query(
-        `SELECT ss.staff_id, ss.home_id, COUNT(*) as shift_count
-         FROM staff_shifts ss
-         WHERE ss.staff_id = ANY(SELECT id FROM staff WHERE home_id = $1 AND is_active = TRUE) AND ss.staff_id IS NOT NULL
-         GROUP BY ss.staff_id, ss.home_id`, [homeId]
-      );
+      try {
+        shiftRows = await query(
+          `SELECT ss.staff_id, ss.home_id, COUNT(*) as shift_count
+           FROM staff_shifts ss
+           WHERE ss.staff_id = ANY(SELECT id FROM staff WHERE home_id = $1 AND is_active = TRUE) AND ss.staff_id IS NOT NULL
+           GROUP BY ss.staff_id, ss.home_id`, [homeId]
+        );
+      } catch { shiftRows = []; }
     }
 
     // Build shift map: staffId -> homeId -> count
