@@ -174,11 +174,170 @@ function BodyMap({ value, onChange }: { value: string; onChange: (v: string) => 
   )
 }
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
+
+function nowHour() { return String(new Date().getHours()).padStart(2, '0') }
+function nowMinute() { return String(Math.floor(new Date().getMinutes() / 5) * 5).padStart(2, '0') }
+
 const BLANK_INC = {
-  suId: '', incidentDate: new Date().toISOString().split('T')[0],
-  incidentTime: '', incidentType: 'fall', location: '', description: '', immediateAction: '',
-  witnesses: '', injuries: false, injuryLocations: '', injuryDetails: '', medicalNeeded: false, medicalDetails: '',
-  familyNotified: false, contributingFactors: '', preventionActions: '',
+  suId: '',
+  incidentDate: new Date().toISOString().split('T')[0],
+  incidentHour: nowHour(),
+  incidentMinute: nowMinute(),
+  incidentType: '',
+  incidentDuration: '',
+  incidentDurationUnknown: false,
+  location: '',
+  locationDetails: '',
+  staffInvolved: 'No',
+  staffInvolvedList: '',
+  injuryLocations: '',
+  serviceUserInjured: 'No',
+  staffInjured: 'No',
+  witnessedBy: 'Nobody',
+  residentProvideInfo: 'Yes',
+  residentActivity: '',
+  description: '',
+  reportedToSeniorDate: new Date().toISOString().split('T')[0],
+  reportedToSeniorHour: nowHour(),
+  reportedToSeniorMinute: nowMinute(),
+  equipmentInvolved: 'No',
+  nokInformed: 'No',
+  gpAmbulanceCalled: '',
+  notes: '',
+  emotion: '',
+  // kept for API compat
+  incidentTime: '', immediateAction: '', injuries: false, injuryDetails: '',
+  medicalNeeded: false, medicalDetails: '', familyNotified: false,
+  contributingFactors: '', preventionActions: '', witnesses: '',
+}
+
+// ── Visual Body Map ────────────────────────────────────────────────
+const FRONT_ZONES = [
+  { part: 'Head',         x: '30%', y: '0%',   w: '40%', h: '12%' },
+  { part: 'Face',         x: '32%', y: '5%',   w: '36%', h: '9%'  },
+  { part: 'Neck',         x: '38%', y: '14%',  w: '24%', h: '5%'  },
+  { part: 'L. Shoulder',  x: '8%',  y: '18%',  w: '22%', h: '10%' },
+  { part: 'Chest',        x: '30%', y: '18%',  w: '40%', h: '12%' },
+  { part: 'R. Shoulder',  x: '70%', y: '18%',  w: '22%', h: '10%' },
+  { part: 'L. Upper Arm', x: '5%',  y: '28%',  w: '18%', h: '14%' },
+  { part: 'Upper Abdomen',x: '30%', y: '29%',  w: '40%', h: '10%' },
+  { part: 'R. Upper Arm', x: '77%', y: '28%',  w: '18%', h: '14%' },
+  { part: 'L. Forearm',   x: '3%',  y: '42%',  w: '18%', h: '13%' },
+  { part: 'Lower Abdomen',x: '30%', y: '39%',  w: '40%', h: '10%' },
+  { part: 'R. Forearm',   x: '79%', y: '42%',  w: '18%', h: '13%' },
+  { part: 'L. Hand',      x: '1%',  y: '55%',  w: '18%', h: '8%'  },
+  { part: 'Pelvis / Groin',x:'30%', y: '49%',  w: '40%', h: '9%'  },
+  { part: 'R. Hand',      x: '81%', y: '55%',  w: '18%', h: '8%'  },
+  { part: 'L. Thigh',     x: '28%', y: '58%',  w: '20%', h: '15%' },
+  { part: 'R. Thigh',     x: '52%', y: '58%',  w: '20%', h: '15%' },
+  { part: 'L. Knee',      x: '28%', y: '73%',  w: '20%', h: '7%'  },
+  { part: 'R. Knee',      x: '52%', y: '73%',  w: '20%', h: '7%'  },
+  { part: 'L. Shin',      x: '28%', y: '80%',  w: '20%', h: '13%' },
+  { part: 'R. Shin',      x: '52%', y: '80%',  w: '20%', h: '13%' },
+  { part: 'L. Foot',      x: '26%', y: '93%',  w: '22%', h: '7%'  },
+  { part: 'R. Foot',      x: '52%', y: '93%',  w: '22%', h: '7%'  },
+]
+const BACK_ZONES = [
+  { part: 'Back of Head',   x: '30%', y: '0%',   w: '40%', h: '12%' },
+  { part: 'Back of Neck',   x: '38%', y: '14%',  w: '24%', h: '5%'  },
+  { part: 'L. Shoulder',    x: '8%',  y: '18%',  w: '22%', h: '10%' },
+  { part: 'Upper Back',     x: '30%', y: '18%',  w: '40%', h: '12%' },
+  { part: 'R. Shoulder',    x: '70%', y: '18%',  w: '22%', h: '10%' },
+  { part: 'L. Upper Arm',   x: '5%',  y: '28%',  w: '18%', h: '14%' },
+  { part: 'Mid Back',       x: '30%', y: '29%',  w: '40%', h: '10%' },
+  { part: 'R. Upper Arm',   x: '77%', y: '28%',  w: '18%', h: '14%' },
+  { part: 'L. Forearm',     x: '3%',  y: '42%',  w: '18%', h: '13%' },
+  { part: 'Lower Back',     x: '30%', y: '39%',  w: '40%', h: '10%' },
+  { part: 'R. Forearm',     x: '79%', y: '42%',  w: '18%', h: '13%' },
+  { part: 'L. Hand',        x: '1%',  y: '55%',  w: '18%', h: '8%'  },
+  { part: 'Buttocks',       x: '30%', y: '49%',  w: '40%', h: '9%'  },
+  { part: 'R. Hand',        x: '81%', y: '55%',  w: '18%', h: '8%'  },
+  { part: 'L. Thigh',       x: '28%', y: '58%',  w: '20%', h: '15%' },
+  { part: 'R. Thigh',       x: '52%', y: '58%',  w: '20%', h: '15%' },
+  { part: 'Back of L. Knee',x: '28%', y: '73%',  w: '20%', h: '7%'  },
+  { part: 'Back of R. Knee',x: '52%', y: '73%',  w: '20%', h: '7%'  },
+  { part: 'L. Calf',        x: '28%', y: '80%',  w: '20%', h: '13%' },
+  { part: 'R. Calf',        x: '52%', y: '80%',  w: '20%', h: '13%' },
+  { part: 'L. Heel',        x: '26%', y: '93%',  w: '22%', h: '7%'  },
+  { part: 'R. Heel',        x: '52%', y: '93%',  w: '22%', h: '7%'  },
+]
+
+function BodySilhouette({ side }: { side: 'front' | 'back' }) {
+  return (
+    <svg viewBox="0 0 100 260" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="50" cy="22" rx="18" ry="20" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.5"/>
+      <rect x="43" y="40" width="14" height="10" rx="3" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.2"/>
+      <path d="M32 52 Q20 55 16 90 L18 90 Q24 68 34 65 L34 118 Q34 122 50 122 Q66 122 66 118 L66 65 Q76 68 82 90 L84 90 Q80 55 68 52 Z" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.5"/>
+      <path d="M16 90 L14 128 L22 132 L24 100 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      <path d="M84 90 L86 128 L78 132 L76 100 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      <ellipse cx="18" cy="135" rx="7" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      <ellipse cx="82" cy="135" rx="7" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      <path d="M34 120 Q30 125 30 140 L30 185 Q30 190 40 190 L42 190 L42 120 Z" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.3"/>
+      <path d="M66 120 Q70 125 70 140 L70 185 Q70 190 60 190 L58 190 L58 120 Z" fill="#5eead4" opacity="0.55" stroke="#0d9488" strokeWidth="1.3"/>
+      <path d="M30 185 L28 230 Q28 236 38 236 L44 236 L44 185 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      <path d="M70 185 L72 230 Q72 236 62 236 L56 236 L56 185 Z" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+      {side === 'front' ? (
+        <>
+          <ellipse cx="36" cy="238" rx="12" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+          <ellipse cx="64" cy="238" rx="12" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+        </>
+      ) : (
+        <>
+          <ellipse cx="36" cy="238" rx="10" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+          <ellipse cx="64" cy="238" rx="10" ry="5" fill="#5eead4" opacity="0.5" stroke="#0d9488" strokeWidth="1.2"/>
+        </>
+      )}
+    </svg>
+  )
+}
+
+function VisualBodyMap({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const selected = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+  const toggle = (part: string) => {
+    const next = selected.includes(part) ? selected.filter(p => p !== part) : [...selected, part]
+    onChange(next.join(', '))
+  }
+  const isSel = (p: string) => selected.includes(p)
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 text-center">
+        Click body to mark injury location(s)
+      </p>
+      <div className="grid grid-cols-2 gap-4">
+        {([['Front', FRONT_ZONES], ['Back', BACK_ZONES]] as const).map(([label, zones]) => (
+          <div key={label}>
+            <p className="text-xs font-semibold text-slate-400 text-center mb-2">{label}</p>
+            <div className="relative mx-auto" style={{ width: 110, height: 260 }}>
+              <div className="absolute inset-0"><BodySilhouette side={label === 'Front' ? 'front' : 'back'} /></div>
+              {zones.map(z => (
+                <button key={z.part} type="button" onClick={() => toggle(z.part)} title={z.part}
+                  className="absolute rounded transition-all hover:bg-red-400/30"
+                  style={{
+                    left: z.x, top: z.y, width: z.w, height: z.h,
+                    background: isSel(z.part) ? 'rgba(239,68,68,0.45)' : 'transparent',
+                    border: isSel(z.part) ? '1.5px solid #ef4444' : '1px solid transparent',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-200 flex flex-wrap gap-1.5">
+          {selected.map(part => (
+            <button key={part} type="button" onClick={() => toggle(part)}
+              className="bg-red-100 text-red-700 text-xs px-2.5 py-1 rounded-full hover:bg-red-200 border border-red-200 font-medium">
+              {part} ×
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Incidents() {
@@ -240,12 +399,26 @@ export default function Incidents() {
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!createForm.suId) { toast.error('Select a service user'); return }
-    if (!createForm.description.trim()) { toast.error('Description is required'); return }
+    if (!createForm.description.trim()) { toast.error('Please describe how the incident happened'); return }
     setCreating(true)
     try {
-      const payload = { ...createForm, homeId: selectedHome }
-      if (createForm.injuryLocations) {
-        payload.injuryDetails = `Locations: ${createForm.injuryLocations}${createForm.injuryDetails ? ' — ' + createForm.injuryDetails : ''}`
+      const payload = {
+        ...createForm,
+        homeId: selectedHome,
+        incidentTime: `${createForm.incidentHour}:${createForm.incidentMinute}`,
+        witnesses: [createForm.witnessedBy, createForm.staffInvolved === 'Yes' ? createForm.staffInvolvedList : ''].filter(Boolean).join('; '),
+        injuries: createForm.serviceUserInjured === 'Yes',
+        injuryDetails: createForm.injuryLocations
+          ? `Locations: ${createForm.injuryLocations}`
+          : '',
+        medicalNeeded: createForm.gpAmbulanceCalled !== '' && createForm.gpAmbulanceCalled !== 'No',
+        medicalDetails: createForm.gpAmbulanceCalled,
+        familyNotified: createForm.nokInformed === 'Yes',
+        immediateAction: [
+          createForm.residentActivity ? `Resident was: ${createForm.residentActivity}` : '',
+          createForm.notes || '',
+        ].filter(Boolean).join('\n'),
+        contributingFactors: createForm.equipmentInvolved === 'Yes' ? 'Equipment/machinery involved' : '',
       }
       await api.post('/incidents', payload)
       setCreateOpen(false)
@@ -698,85 +871,200 @@ export default function Incidents() {
       </Modal>
 
       {/* Create incident modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Log New Incident" size="lg">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Incident" size="lg">
         <form onSubmit={handleCreateIncident} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+
+          {/* Service User */}
+          <div>
+            <label className="label">Service User</label>
+            <select className="input w-full" value={createForm.suId} onChange={e => setCreateForm(f => ({ ...f, suId: e.target.value }))} required>
+              <option value="">Please Select</option>
+              {sus.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+            </select>
+          </div>
+
+          {/* Date + Time */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="label">Service User *</label>
-              <select className="input w-full" value={createForm.suId} onChange={e => setCreateForm(f => ({ ...f, suId: e.target.value }))} required>
-                <option value="">Select resident...</option>
-                {sus.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-              </select>
-            </div>
             <div>
-              <label className="label">Incident Date *</label>
+              <label className="label">Date</label>
               <input type="date" className="input w-full" value={createForm.incidentDate} onChange={e => setCreateForm(f => ({ ...f, incidentDate: e.target.value }))} required />
             </div>
             <div>
-              <label className="label">Time of Incident</label>
-              <input type="time" className="input w-full" value={createForm.incidentTime} onChange={e => setCreateForm(f => ({ ...f, incidentTime: e.target.value }))} />
+              <label className="label">Time</label>
+              <div className="flex gap-2">
+                <select className="input flex-1" value={createForm.incidentHour} onChange={e => setCreateForm(f => ({ ...f, incidentHour: e.target.value }))}>
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <select className="input flex-1" value={createForm.incidentMinute} onChange={e => setCreateForm(f => ({ ...f, incidentMinute: e.target.value }))}>
+                  {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
             </div>
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="label">Type</label>
+            <select className="input w-full" value={createForm.incidentType} onChange={e => setCreateForm(f => ({ ...f, incidentType: e.target.value }))}>
+              <option value="">Please Select</option>
+              {INCIDENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+            </select>
+          </div>
+
+          {/* Incident Lasted */}
+          <div>
+            <label className="label">Incident Lasted (mins)</label>
+            <div className="flex gap-2">
+              <input className="input flex-1" placeholder="Unknown" value={createForm.incidentDurationUnknown ? 'Unknown' : createForm.incidentDuration}
+                disabled={createForm.incidentDurationUnknown}
+                onChange={e => setCreateForm(f => ({ ...f, incidentDuration: e.target.value }))} />
+              <button type="button"
+                className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${createForm.incidentDurationUnknown ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-500'}`}
+                onClick={() => setCreateForm(f => ({ ...f, incidentDurationUnknown: !f.incidentDurationUnknown, incidentDuration: '' }))}>
+                Unknown
+              </button>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="label">Location</label>
+            <select className="input w-full" value={createForm.location} onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))}>
+              <option value="">Please Select</option>
+              {['Bedroom', 'Bathroom', 'Kitchen', 'Living Room', 'Garden / Outdoors', 'Communal Area', 'Community / Outside', 'Other'].map(l =>
+                <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+
+          {/* Were other staff involved? */}
+          <div>
+            <label className="label">Were other staff involved?</label>
+            <select className="input w-full" value={createForm.staffInvolved} onChange={e => setCreateForm(f => ({ ...f, staffInvolved: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          {createForm.staffInvolved === 'Yes' && (
             <div>
-              <label className="label">Incident Type *</label>
-              <select className="input w-full" value={createForm.incidentType} onChange={e => setCreateForm(f => ({ ...f, incidentType: e.target.value }))}>
-                {INCIDENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+              <textarea className="input w-full text-sm text-emerald-700 placeholder-emerald-400" rows={3}
+                placeholder="Please list other staff who were involved"
+                value={createForm.staffInvolvedList}
+                onChange={e => setCreateForm(f => ({ ...f, staffInvolvedList: e.target.value }))} />
+            </div>
+          )}
+
+          {/* Location Details */}
+          <div>
+            <label className="label">Location Details</label>
+            <input className="input w-full" value={createForm.locationDetails} onChange={e => setCreateForm(f => ({ ...f, locationDetails: e.target.value }))} />
+          </div>
+
+          {/* Body Map */}
+          <VisualBodyMap value={createForm.injuryLocations} onChange={v => setCreateForm(f => ({ ...f, injuryLocations: v }))} />
+
+          {/* Service User Injured / Staff Injured */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Service User Injured?</label>
+              <select className="input w-full" value={createForm.serviceUserInjured} onChange={e => setCreateForm(f => ({ ...f, serviceUserInjured: e.target.value }))}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
               </select>
             </div>
             <div>
-              <label className="label">Location</label>
-              <input className="input w-full" placeholder="e.g. Bedroom, Bathroom" value={createForm.location} onChange={e => setCreateForm(f => ({ ...f, location: e.target.value }))} />
+              <label className="label">Staff Member Injured?</label>
+              <select className="input w-full" value={createForm.staffInjured} onChange={e => setCreateForm(f => ({ ...f, staffInjured: e.target.value }))}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
             </div>
-            <div className="col-span-2">
-              <label className="label">Witnesses present</label>
-              <input className="input w-full" placeholder="Names of anyone who witnessed or was present" value={createForm.witnesses} onChange={e => setCreateForm(f => ({ ...f, witnesses: e.target.value }))} />
-            </div>
-            <div className="col-span-2">
-              <SpeechTextarea required label="Description / What happened *" rows={3} placeholder="Describe what happened in detail..." value={createForm.description} onChange={v => setCreateForm(f => ({ ...f, description: v }))} />
-            </div>
-            <div className="col-span-2">
-              <SpeechTextarea label="Immediate action taken" rows={2} placeholder="What was done immediately after the incident..." value={createForm.immediateAction} onChange={v => setCreateForm(f => ({ ...f, immediateAction: v }))} />
-            </div>
-            <div className="col-span-2">
-              <SpeechTextarea label="Contributing factors" rows={2} placeholder="e.g. environmental hazards, equipment failure, staffing, resident behaviour..." value={createForm.contributingFactors} onChange={v => setCreateForm(f => ({ ...f, contributingFactors: v }))} />
-            </div>
-            <div className="col-span-2">
-              <SpeechTextarea label="Actions to prevent recurrence" rows={2} placeholder="What will be done to prevent this happening again..." value={createForm.preventionActions} onChange={v => setCreateForm(f => ({ ...f, preventionActions: v }))} />
-            </div>
-            <div className="col-span-2 flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={createForm.injuries} onChange={e => setCreateForm(f => ({ ...f, injuries: e.target.checked }))} className="w-4 h-4 rounded accent-red-600" />
-                <span className="text-sm font-medium text-slate-700">Injuries sustained</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={createForm.medicalNeeded} onChange={e => setCreateForm(f => ({ ...f, medicalNeeded: e.target.checked }))} className="w-4 h-4 rounded accent-red-600" />
-                <span className="text-sm font-medium text-slate-700">Medical attention required</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={createForm.familyNotified} onChange={e => setCreateForm(f => ({ ...f, familyNotified: e.target.checked }))} className="w-4 h-4 rounded accent-purple-600" />
-                <span className="text-sm font-medium text-slate-700">Family / next of kin notified</span>
-              </label>
-            </div>
-            {createForm.injuries && (
-              <>
-                <div className="col-span-2">
-                  <BodyMap value={createForm.injuryLocations} onChange={v => setCreateForm(f => ({ ...f, injuryLocations: v }))} />
-                </div>
-                <div className="col-span-2">
-                  <label className="label">Additional injury details</label>
-                  <input className="input w-full" placeholder="Describe the injuries in more detail..." value={createForm.injuryDetails} onChange={e => setCreateForm(f => ({ ...f, injuryDetails: e.target.value }))} />
-                </div>
-              </>
-            )}
-            {createForm.medicalNeeded && (
-              <div className="col-span-2">
-                <label className="label">Medical details</label>
-                <input className="input w-full" placeholder="Who was contacted, what treatment was given..." value={createForm.medicalDetails} onChange={e => setCreateForm(f => ({ ...f, medicalDetails: e.target.value }))} />
-              </div>
-            )}
           </div>
-          <div className="flex justify-end gap-3 pt-2">
+
+          {/* Witnessed By */}
+          <div>
+            <label className="label">Witnessed By</label>
+            <select className="input w-full" value={createForm.witnessedBy} onChange={e => setCreateForm(f => ({ ...f, witnessedBy: e.target.value }))}>
+              <option value="Nobody">Nobody</option>
+              <option value="Staff">Staff</option>
+              <option value="Family / Carer">Family / Carer</option>
+              <option value="Service User">Service User</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Was resident able to provide information */}
+          <div>
+            <label className="label">Was resident able to provide information?</label>
+            <select className="input w-full" value={createForm.residentProvideInfo} onChange={e => setCreateForm(f => ({ ...f, residentProvideInfo: e.target.value }))}>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+
+          {/* What was resident doing */}
+          <div>
+            <SpeechTextarea label="What was resident doing at time of the incident?" rows={4}
+              placeholder="" value={createForm.residentActivity} onChange={v => setCreateForm(f => ({ ...f, residentActivity: v }))} />
+          </div>
+
+          {/* How did it happen */}
+          <div>
+            <SpeechTextarea required label="How did the incident happen?" rows={4}
+              placeholder="" value={createForm.description} onChange={v => setCreateForm(f => ({ ...f, description: v }))} />
+          </div>
+
+          {/* Date reported to senior staff */}
+          <div>
+            <label className="label">Date when incident reported to senior staff</label>
+            <div className="flex gap-2">
+              <input type="date" className="input flex-1" value={createForm.reportedToSeniorDate} onChange={e => setCreateForm(f => ({ ...f, reportedToSeniorDate: e.target.value }))} />
+              <select className="input w-20" value={createForm.reportedToSeniorHour} onChange={e => setCreateForm(f => ({ ...f, reportedToSeniorHour: e.target.value }))}>
+                {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+              <select className="input w-20" value={createForm.reportedToSeniorMinute} onChange={e => setCreateForm(f => ({ ...f, reportedToSeniorMinute: e.target.value }))}>
+                {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Equipment / NOK / GP */}
+          <div>
+            <label className="label">Any equipment/machinery involved?</label>
+            <select className="input w-full" value={createForm.equipmentInvolved} onChange={e => setCreateForm(f => ({ ...f, equipmentInvolved: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Have relatives/NOK been informed?</label>
+            <select className="input w-full" value={createForm.nokInformed} onChange={e => setCreateForm(f => ({ ...f, nokInformed: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Any GP/ambulance called?</label>
+            <select className="input w-full" value={createForm.gpAmbulanceCalled} onChange={e => setCreateForm(f => ({ ...f, gpAmbulanceCalled: e.target.value }))}>
+              <option value="">Please Select</option>
+              <option value="No">No</option>
+              <option value="GP Called">GP Called</option>
+              <option value="Ambulance Called">Ambulance Called</option>
+              <option value="Both GP and Ambulance">Both GP and Ambulance</option>
+            </select>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="label">Notes</label>
+            <textarea className="input w-full" rows={4} value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} />
+          </div>
+
+          {/* Emotion */}
+          <EmotionPicker value={createForm.emotion} onChange={v => setCreateForm(f => ({ ...f, emotion: v }))} />
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={creating}>Log Incident</Button>
+            <Button type="submit" loading={creating}>Save</Button>
           </div>
         </form>
       </Modal>
