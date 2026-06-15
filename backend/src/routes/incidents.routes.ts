@@ -157,25 +157,9 @@ router.post('/:id/ai-analysis', param('id').isUUID(), validateRequest,
       if (!rows.length) throw new AppError('Incident not found', 404);
       const inc = rows[0] as any;
 
-      const prompt = `You are a care home quality and safety analyst. Analyse this incident report and provide a structured professional report with the following sections:
+      const prompt = `CRITICAL INSTRUCTION: Your response must be ONLY a JSON object. Do not include any text before or after the JSON. Do not use markdown. Do not use code blocks. Start your response with { and end with }.
 
-**1. Root Cause Analysis**
-What were the underlying causes of this incident?
-
-**2. Contributing Factors**
-What circumstances or conditions contributed to this incident occurring?
-
-**3. Evaluation of Immediate Actions**
-Were the immediate actions taken appropriate and sufficient?
-
-**4. Recommended Follow-up Actions**
-What specific steps should be taken in the next 24-72 hours?
-
-**5. Prevention Strategies**
-How can this type of incident be prevented in future?
-
-**6. Risk Level Assessment**
-Is this incident indicative of a wider systemic issue?
+You are a care quality manager writing a formal incident analysis for a CQC-registered care home. Based only on the incident details below, produce a concise factual analysis. Return ONLY a valid JSON object — no markdown, no explanation, no preamble.
 
 Incident details:
 - Type: ${inc.incident_type || 'unknown'}
@@ -183,15 +167,33 @@ Incident details:
 - Date: ${inc.record_date || 'unknown'}
 - Description: ${inc.description || 'none provided'}
 - Location: ${inc.location || 'not recorded'}
-- Injuries sustained: ${inc.injuries ? `Yes - ${inc.injury_details || 'details not provided'}` : 'No'}
-- Medical attention: ${inc.medical_needed ? `Yes - ${inc.medical_details || 'details not provided'}` : 'No'}
+- Injuries: ${inc.injuries ? `Yes — ${inc.injury_details || 'not specified'}` : 'None reported'}
+- Medical attention: ${inc.medical_needed ? `Yes — ${inc.medical_details || 'not specified'}` : 'Not required'}
 - Immediate action taken: ${inc.immediate_action || 'none recorded'}
 - Witnesses: ${inc.witnesses || 'none recorded'}
 - Family notified: ${inc.family_notified ? 'Yes' : 'No'}
 
-Provide a clear, concise, professional analysis.`;
+Return this exact JSON structure (no extra keys):
+{
+  "riskRating": "Low" | "Medium" | "High",
+  "summary": "One sentence factual summary of what happened and outcome.",
+  "rootCause": "One or two sentences identifying the direct cause.",
+  "contributingFactors": ["factor 1", "factor 2", "factor 3"],
+  "immediateActionsReview": "One sentence — were the immediate actions adequate?",
+  "followUpActions": ["action 1", "action 2", "action 3"],
+  "preventionStrategies": ["strategy 1", "strategy 2"],
+  "systemicRisk": "One sentence — is this indicative of a wider issue?"
+}`;
 
-      const analysis = await callGroq(prompt, 1200);
+      const raw = await callGroq(prompt, 800);
+      console.log('[incidents/ai-analysis] groq raw:', raw.substring(0, 200));
+      let analysisData: any = null;
+      try {
+        const cleaned = raw.replace(/```(?:json)?\s*/gi, '').replace(/```\s*/g, '').trim();
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) analysisData = JSON.parse(match[0]);
+      } catch { /* fall through to plain text */ }
+      const analysis = analysisData ? JSON.stringify(analysisData) : raw;
       res.json({ success: true, data: { analysis } } as ApiResponse);
     } catch (err) { next(err); }
   }

@@ -62,7 +62,13 @@ interface AnalysisData {
 
 function IncidentAnalysisCard({ raw, onDismiss }: { raw: string; onDismiss: () => void }) {
   let data: AnalysisData | null = null
-  try { data = JSON.parse(raw) } catch { /* raw text fallback */ }
+  try { data = JSON.parse(raw) } catch {
+    try {
+      const cleaned = raw.replace(/```(?:json)?\s*/gi, '').replace(/```\s*/g, '').trim()
+      const m = cleaned.match(/\{[\s\S]*\}/)
+      if (m) data = JSON.parse(m[0])
+    } catch { /* plain text fallback */ }
+  }
 
   const ratingColor = data?.riskRating === 'High'
     ? 'bg-red-900/40 text-red-300 border-red-700/50'
