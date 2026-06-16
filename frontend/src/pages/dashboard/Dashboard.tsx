@@ -109,15 +109,15 @@ export default function Dashboard() {
     : tasksOverdue
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-10 max-w-7xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6 lg:mb-10">
         <div>
           <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">
             {format(new Date(), 'EEEE, d MMMM yyyy')}
           </p>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-xl lg:text-2xl font-bold text-white">
             Welcome back, <span style={{ color: '#e8b130' }}>{user?.firstName}</span>
           </h1>
         </div>
@@ -160,7 +160,7 @@ export default function Dashboard() {
           <div ref={bdRef} className="relative">
             <button
               onClick={() => setShowBirthdays(s => !s)}
-              className="w-full flex flex-col items-center justify-center rounded-2xl p-8 text-center transition-all duration-200 min-h-[200px]"
+              className="w-full flex flex-col items-center justify-center rounded-2xl p-4 lg:p-8 text-center transition-all duration-200 min-h-[140px] lg:min-h-[200px]"
               style={{ background: '#111111', border: `1px solid ${showBirthdays ? '#f8717140' : 'rgba(255,255,255,0.06)'}` }}
               onMouseEnter={e => { e.currentTarget.style.background = '#161616'; e.currentTarget.style.borderColor = '#f8717140' }}
               onMouseLeave={e => { if (!showBirthdays) { e.currentTarget.style.background = '#111111'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)' } }}
@@ -168,7 +168,7 @@ export default function Dashboard() {
               <p className="text-sm font-semibold leading-snug mb-6" style={{ color: '#f87171' }}>
                 Birthdays in the next 7 days
               </p>
-              <span className="text-7xl font-black leading-none" style={{ color: '#f87171' }}>
+              <span className="text-5xl lg:text-7xl font-black leading-none" style={{ color: '#f87171' }}>
                 {birthdays.length}
               </span>
             </button>
@@ -264,7 +264,7 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="flex flex-col items-center justify-center rounded-2xl p-8 text-center transition-all duration-200 min-h-[200px]"
+      className="flex flex-col items-center justify-center rounded-2xl p-4 lg:p-8 text-center transition-all duration-200 min-h-[140px] lg:min-h-[200px]"
       style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
       onMouseEnter={e => {
         e.currentTarget.style.background = '#161616'
@@ -277,7 +277,7 @@ function StatCard({
     >
       {/* Label */}
       <p
-        className="text-sm font-semibold leading-snug mb-6"
+        className="text-sm font-semibold leading-snug mb-3 lg:mb-6"
         style={{ color }}
       >
         {label}
@@ -294,12 +294,12 @@ function StatCard({
           className="flex items-center justify-center rounded-xl px-6 py-3"
           style={{ background: color + '22', border: `2px solid ${color}` }}
         >
-          <span className="text-6xl font-black leading-none" style={{ color }}>
+          <span className="text-4xl lg:text-6xl font-black leading-none" style={{ color }}>
             {value}
           </span>
         </div>
       ) : (
-        <span className="text-7xl font-black leading-none" style={{ color }}>
+        <span className="text-5xl lg:text-7xl font-black leading-none" style={{ color }}>
           {value}
         </span>
       )}

@@ -18,7 +18,7 @@ function tok(req: Request, field: string): string {
 // GET /api/messages?type=inbox|sent
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const staffId = tok(req, 'staffId');
+    const staffId = req.staff.staffId || tok(req, 'staffId');
     const type = (req.query.type as string) || 'inbox';
     const filterCol = type === 'sent' ? 'm.sender_id' : 'm.recipient_id';
     const rows = await query(`

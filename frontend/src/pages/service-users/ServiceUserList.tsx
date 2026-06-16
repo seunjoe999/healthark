@@ -51,10 +51,10 @@ export default function ServiceUserList() {
   const getAge = (dob: string) => dob ? differenceInYears(new Date(), new Date(dob)) : null
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="font-display text-2xl text-slate-900">Residents</h1>
+          <h1 className="font-display text-xl lg:text-2xl text-slate-900">Residents</h1>
           <p className="text-slate-400 text-sm mt-0.5">{filtered.length} resident{filtered.length !== 1 ? 's' : ''} {statusFilter ? `· ${statusFilter}` : ''}</p>
         </div>
         {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
@@ -65,17 +65,19 @@ export default function ServiceUserList() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {homes.length > 1 && (
-          <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-          </select>
-        )}
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input className="input pl-9 w-full" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex flex-wrap gap-3">
+          {homes.length > 1 && (
+            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input className="input pl-9 w-full" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
         </div>
-        <div className="flex gap-1 bg-white rounded-xl border border-slate-200 p-1">
+        <div className="flex flex-wrap gap-1 bg-white rounded-xl border border-slate-200 p-1">
           {STATUS_OPTS.map(s => (
             <button key={s.value} onClick={() => setStatusFilter(s.value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${statusFilter === s.value ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>

@@ -21,7 +21,8 @@ function fromToken(req: Request, field: string): string {
 // GET /api/notifications
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const staffId = fromToken(req, 'staffId');
+    const staffId = req.staff.staffId;
+    if (!staffId) { res.json({ success: true, data: [], unread: 0 } as ApiResponse); return; }
     const rows = await query(
       `SELECT * FROM notifications WHERE recipient_id = $1 ORDER BY created_at DESC LIMIT 50`,
       [staffId]
@@ -34,7 +35,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // PUT /api/notifications/read-all  — must be before /:id/read to avoid UUID param shadowing
 router.put('/read-all', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const staffId = fromToken(req, 'staffId');
+    const staffId = req.staff.staffId;
+    if (!staffId) { res.json({ success: true } as ApiResponse); return; }
     await query('UPDATE notifications SET is_read=true, read_at=NOW() WHERE recipient_id=$1', [staffId]);
     res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }

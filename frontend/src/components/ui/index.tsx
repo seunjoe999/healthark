@@ -213,17 +213,17 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-end sm:items-center justify-center p-0 sm:p-4">
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-        <div className={clsx('relative rounded-2xl shadow-modal w-full animate-slide-up', sizes[size])}
+        <div className={clsx('relative rounded-t-2xl sm:rounded-2xl shadow-modal w-full mx-0 sm:mx-4 max-h-[92vh] flex flex-col animate-slide-up', sizes[size])}
           style={{ background: '#111', border: '1px solid rgba(232,177,48,0.2)' }}>
-          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <h2 className="text-base font-semibold text-white">{title}</h2>
             <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-6">{children}</div>
+          <div className="p-5 overflow-y-auto flex-1">{children}</div>
         </div>
       </div>
     </div>

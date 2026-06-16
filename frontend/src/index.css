@@ -30,6 +30,7 @@
     line-height: 1.6;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
+    touch-action: manipulation;
   }
 
   input, select, textarea, button { font-family: inherit; }
@@ -352,6 +353,38 @@ select:focus {
 select option {
   background-color: #1a1a1a !important;
   color: #f5f0e8 !important;
+}
+
+/* ── Touch target minimums ────────────────────────────────────────────────── */
+button, [role="button"], a {
+  min-height: 36px;
+}
+@media (max-width: 768px) {
+  button, [role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* ── Mobile-first responsive overrides ──────────────────────────── */
+@media (max-width: 768px) {
+  /* Prevent tables from breaking layout — enable momentum scroll */
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+
+  /* Make all modal/dialog content scrollable on mobile */
+  .modal-body { max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Ensure page padding is comfortable on mobile */
+  .page-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+
+/* ── Page content padding utility ────────────────────────────────── */
+.page-content {
+  padding: 1rem;
+}
+@media (min-width: 1024px) {
+  .page-content {
+    padding: 1.5rem 2rem;
+  }
 }
 
 /* ── Print styles ────────────────────────────────────────────────────────── */

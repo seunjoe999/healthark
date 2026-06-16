@@ -146,7 +146,7 @@ export default function MAR() {
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0a0a0a' }}>
 
       {/* ── Top control bar (RoundSys-style) ─────────────────────────── */}
-      <div className="no-print border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
+      <div className="no-print border-b border-white/10 px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
         {/* Title */}
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <Pill className="w-4 h-4 text-purple-600" /> MAR
@@ -270,7 +270,7 @@ export default function MAR() {
           </div>
 
           {/* ── Tabs ───────────────────────────────────────────────── */}
-          <div className="no-print border-b border-white/10 px-4 flex gap-0" style={{ background: '#111' }}>
+          <div className="no-print border-b border-white/10 px-4 flex gap-0 overflow-x-auto" style={{ background: '#111', WebkitOverflowScrolling: 'touch' }}>
             {[
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
@@ -286,6 +286,11 @@ export default function MAR() {
 
           {/* ── Content ────────────────────────────────────────────── */}
           <div className="flex-1 min-h-0 overflow-auto">
+            {tab === 'mar' && (
+              <p className="sm:hidden text-xs text-slate-500 text-center py-1 px-4 bg-black/20 border-b border-white/5">
+                Swipe left/right to view all dates
+              </p>
+            )}
             {loading ? (
               <div className="flex items-center justify-center h-48"><Spinner /></div>
             ) : tab === 'mar' ? (

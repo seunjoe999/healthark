@@ -19,8 +19,9 @@ function tok(req: Request, field: string): string {
 // GET /api/noticeboard
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const homeId = tok(req, 'homeId');
-    const staffId = tok(req, 'staffId');
+    const homeId = (req.query.homeId as string) || req.staff.homeId || tok(req, 'homeId');
+    const staffId = req.staff.staffId || tok(req, 'staffId');
+    if (!homeId) { res.json({ success: true, data: [] } as ApiResponse); return; }
     const { category } = req.query as Record<string, string>;
     let sql = `
       SELECT n.*, s.first_name || ' ' || s.last_name AS posted_by_name,
@@ -41,8 +42,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', [body('title').notEmpty().trim()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const homeId = tok(req, 'homeId');
-      const staffId = tok(req, 'staffId');
+      const homeId = req.body.homeId || req.staff.homeId || tok(req, 'homeId');
+      const staffId = req.staff.staffId || tok(req, 'staffId');
       const { title, body: content, category, isPinned, expiresAt, targetRole } = req.body;
       const rows = await query(
         `INSERT INTO noticeboard (home_id, created_by, title, body, category, is_pinned, expires_at, target_role)
@@ -58,7 +59,7 @@ router.post('/', [body('title').notEmpty().trim()], validateRequest,
 router.patch('/:id/read', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const staffId = tok(req, 'staffId');
+      const staffId = req.staff.staffId || tok(req, 'staffId');
       await query(
         `INSERT INTO noticeboard_reads (notice_id, staff_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
         [req.params.id, staffId]
@@ -72,14 +73,16 @@ router.patch('/:id/read', param('id').isUUID(), validateRequest,
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const homeId = tok(req, 'homeId');
-      const staffId = tok(req, 'staffId');
-      const role = tok(req, 'role');
-      const rows = await query('SELECT * FROM noticeboard WHERE id=$1 AND home_id=$2', [req.params.id, homeId]);
+      const staffId = req.staff.staffId || tok(req, 'staffId');
+      const role = req.staff.role || tok(req, 'role');
+      // Fetch the notice without filtering by homeId so group_admin (homeId=null) can also delete
+      const rows = await query('SELECT * FROM noticeboard WHERE id=$1', [req.params.id]);
       if (!rows.length) throw new AppError('Not found', 404);
       const notice = rows[0] as any;
-      if (notice.created_by !== staffId && !['home_manager','group_admin'].includes(role)) {
-        throw new AppError('Forbidden', 403);
+      // Allow: managers (home_manager/group_admin) can delete any notice
+      // Allow: the creator of the notice can delete it
+      if (notice.created_by !== staffId && !['home_manager', 'group_admin'].includes(role as string)) {
+        throw new AppError('You do not have permission to delete this notice', 403);
       }
       await query('DELETE FROM noticeboard WHERE id=$1', [req.params.id]);
       res.json({ success: true } as ApiResponse);

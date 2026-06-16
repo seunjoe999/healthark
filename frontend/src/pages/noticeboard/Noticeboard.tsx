@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
+import toast from 'react-hot-toast'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -60,7 +61,11 @@ export default function Noticeboard() {
     try {
       await api.delete(`/noticeboard/${id}`)
       setNotices(n => n.filter(x => x.id !== id))
-    } catch {}
+      toast.success('Notice deleted')
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Failed to delete notice'
+      toast.error(msg)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -153,7 +158,7 @@ export default function Noticeboard() {
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     {notice.is_read && <span className="text-xs text-emerald-400 flex items-center gap-0.5"><Check className="w-3 h-3" />Read</span>}
-                    {(canPost || notice.created_by === user?.id) && (
+                    {(isRole('home_manager', 'group_admin') || notice.created_by === user?.id) && (
                       <button onClick={e => { e.stopPropagation(); handleDelete(notice.id) }}
                         className="text-slate-600 hover:text-rose-400 transition-colors p-1">
                         <Trash2 className="w-3.5 h-3.5" />

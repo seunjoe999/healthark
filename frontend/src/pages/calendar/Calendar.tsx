@@ -78,13 +78,12 @@ export default function CalendarPage() {
   }
 
   const deleteEvent = async (id: string) => {
-    if (!confirm('Delete this event?')) return
     try {
       await api.delete(`/calendar/${id}`)
       setEvents(prev => prev.filter(e => e.id !== id))
       setSelectedEvent(null)
       toast.success('Event deleted')
-    } catch { toast.error('Failed') }
+    } catch { toast.error('Failed to delete event') }
   }
 
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) })
@@ -202,7 +201,7 @@ export default function CalendarPage() {
 
       {selectedEvent && (
         <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)}
-          onDeleted={() => { setSelectedEvent(null); deleteEvent(selectedEvent.id) }}
+          onDeleted={() => { if (!confirm('Delete this event?')) return; const id = selectedEvent.id; setSelectedEvent(null); deleteEvent(id) }}
           onSaved={async () => { setSelectedEvent(null); await load(); toast.success('Notes saved') }} />
       )}
     </div>

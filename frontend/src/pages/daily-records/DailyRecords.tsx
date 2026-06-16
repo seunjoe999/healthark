@@ -155,7 +155,7 @@ export default function DailyRecords() {
       ) : (
       <>
       {/* Top control bar */}
-      <div className="border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
+      <div className="border-b border-white/10 px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <ClipboardList className="w-4 h-4 text-purple-600" /> Daily Records
         </span>
@@ -194,7 +194,7 @@ export default function DailyRecords() {
           </button>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto justify-end">
           <PrintButton />
           {selectedSu && isToday && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddOpen(true)}>Add record</Button>}
         </div>
@@ -345,7 +345,7 @@ function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; home
 
   return (
     <Modal open={true} onClose={onClose} title="Add daily record" size="lg">
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="space-y-4 pr-1">
         <Select label="Record type" value={type} onChange={e => setType(e.target.value)}
           options={RECORD_TYPES.map(r => ({ value: r.value, label: `${r.icon} ${r.label}` }))} />
         {renderForm()}

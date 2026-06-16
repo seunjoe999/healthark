@@ -645,12 +645,12 @@ export default function Incidents() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <AlertTriangle className="w-6 h-6 text-orange-500" />
+          <h1 className="text-xl lg:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <AlertTriangle className="w-6 h-6 text-orange-500 flex-shrink-0" />
             Incident Reports
             <span className="ml-2 text-sm font-semibold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">
               {incidents.length}
@@ -660,7 +660,7 @@ export default function Incidents() {
             All recorded incidents for {homes.find(h => h.id === selectedHome)?.name || 'the home'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <PrintButton />
           {homes.length > 1 && (
             <select
@@ -687,7 +687,7 @@ export default function Incidents() {
 
       {/* Filter bar */}
       <form onSubmit={handleSearch} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6">
-        <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
           {/* Search */}
           <div className="flex-1 min-w-[180px]">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
@@ -985,7 +985,7 @@ export default function Incidents() {
 
       {/* Create incident modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Incident" size="lg">
-        <form onSubmit={handleCreateIncident} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+        <form onSubmit={handleCreateIncident} className="space-y-4 pr-1">
 
           {/* Service User */}
           <div>

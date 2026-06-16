@@ -110,7 +110,7 @@ export default function StaffModule() {
   return (
     <div className="flex flex-col h-full">
       {/* Top control bar */}
-      <div className="border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2" style={{ background: '#111' }}>
+      <div className="border-b border-white/10 px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-4 gap-y-2" style={{ background: '#111' }}>
         {homes.length > 1 && (
           <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
             value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelected(null) }}>
@@ -133,7 +133,7 @@ export default function StaffModule() {
           </select>
         </div>
 
-        <div className="ml-auto">
+        <div className="sm:ml-auto">
           <Link to="/staff/new">
             <button className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
               + Add staff member
