@@ -8,6 +8,14 @@
   }
 }
 
+/* ── iOS / PWA safe-area utilities ──────────────────────────────── */
+@supports (padding: max(0px)) {
+  .pb-safe { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .pt-safe { padding-top:    max(0px, env(safe-area-inset-top)); }
+  .pl-safe { padding-left:   max(0px, env(safe-area-inset-left)); }
+  .pr-safe { padding-right:  max(0px, env(safe-area-inset-right)); }
+}
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
@@ -20,6 +28,8 @@
     margin: 0;
     font-size: 15px;
     line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
   }
 
   input, select, textarea, button { font-family: inherit; }

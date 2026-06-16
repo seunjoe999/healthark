@@ -155,7 +155,7 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
 function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   return (
     <div className="flex flex-col h-full" style={{ background: '#000000' }}>
-      <div className="px-5 pt-6 pb-4">
+      <div className="px-5 pb-4" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
             <img src="/logo.jpeg" alt="Comprehensive Care Service" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
@@ -250,14 +250,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-64 flex flex-col z-10 shadow-2xl">
-            <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
+          <div className="relative w-72 flex flex-col z-10 shadow-2xl">
+            <button onClick={() => setMobileOpen(false)} style={{ top: 'max(16px, env(safe-area-inset-top))' }} className="absolute right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
             <Sidebar {...sidebarProps} />
           </div>
         </div>
       )}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="no-print lg:hidden px-4 py-3 flex items-center gap-3" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)' }}>
+        <header className="no-print lg:hidden px-4 py-3 flex items-center gap-3 pt-safe" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)', paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
           <button onClick={() => setMobileOpen(true)} style={{ color: '#e8b130' }} className="p-1"><Menu className="w-5 h-5" /></button>
           <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
           <span className="text-base flex-1 truncate font-bold" style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}>{pageTitle}</span>
@@ -266,7 +266,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </button>
           <NotificationsBell />
         </header>
-        <main className="flex-1 overflow-y-auto" style={{ background: '#0a0a0a' }}>{children}</main>
+        <main className="flex-1 overflow-y-auto pb-safe" style={{ background: '#0a0a0a' }}>{children}</main>
       </div>
     </div>
   )
