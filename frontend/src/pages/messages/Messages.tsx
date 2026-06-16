@@ -239,7 +239,7 @@ export default function Messages() {
 
       <ComposeModal open={composeOpen} onClose={() => { setComposeOpen(false); setReplyDefaults(null) }}
         staffList={staffList} defaults={replyDefaults}
-        onSaved={async () => { setComposeOpen(false); setReplyDefaults(null); await load(); toast.success('Message sent') }} />
+        onSaved={async () => { setComposeOpen(false); setReplyDefaults(null); setView('sent'); toast.success('Message sent') }} />
     </div>
   )
 }

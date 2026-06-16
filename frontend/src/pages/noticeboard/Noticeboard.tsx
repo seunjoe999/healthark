@@ -62,9 +62,13 @@ export default function Noticeboard() {
       await api.delete(`/noticeboard/${id}`)
       setNotices(n => n.filter(x => x.id !== id))
       toast.success('Notice deleted')
+      // Re-fetch to confirm deletion persisted to the database
+      load()
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Failed to delete notice'
       toast.error(msg)
+      // Reload to restore the notice if the delete failed
+      load()
     }
   }
 
