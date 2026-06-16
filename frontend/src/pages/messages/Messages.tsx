@@ -89,15 +89,21 @@ export default function Messages() {
     setComposeOpen(true)
   }
 
+  const hasDetail = !!(selected || selectedAlert)
+  const clearDetail = () => { setSelected(null); setSelectedAlert(null) }
+
   return (
-    <div className="flex h-full">
-      {/* Left — message list */}
-      <div className="w-80 flex-shrink-0 flex flex-col" style={{ background: '#111', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="flex h-full overflow-hidden">
+      {/* Left — message list (full screen on mobile when no detail open) */}
+      <div
+        className={`flex-shrink-0 flex flex-col lg:w-80 ${hasDetail ? 'hidden lg:flex' : 'flex w-full'}`}
+        style={{ background: '#111', borderRight: '1px solid rgba(255,255,255,0.08)' }}
+      >
         <div className="p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-white flex items-center gap-2"><MessageSquare className="w-4 h-4 text-amber-400" /> Messages</h2>
             <button onClick={() => { setReplyDefaults(null); setComposeOpen(true) }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
               style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#111' }}>
               <Plus className="w-3.5 h-3.5" /> New
             </button>
@@ -118,12 +124,9 @@ export default function Messages() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {loading ? <Spinner /> : view === 'alerts' ? (
+          {loading ? <div className="flex justify-center py-12"><Spinner /></div> : view === 'alerts' ? (
             alerts.length === 0 ? (
-              <div className="text-center p-8">
-                <Bell className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No alerts</p>
-              </div>
+              <div className="text-center p-8"><Bell className="w-8 h-8 text-slate-600 mx-auto mb-2" /><p className="text-sm text-slate-500">No alerts</p></div>
             ) : alerts.map((n: any) => {
               const Icon = NOTIF_ICON[n.type] || Bell
               const col = NOTIF_COLOR[n.type] || 'text-slate-400'
@@ -144,10 +147,7 @@ export default function Messages() {
               )
             })
           ) : messages.length === 0 ? (
-            <div className="text-center p-8">
-              <Inbox className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <p className="text-sm text-slate-500">No messages</p>
-            </div>
+            <div className="text-center p-8"><Inbox className="w-8 h-8 text-slate-600 mx-auto mb-2" /><p className="text-sm text-slate-500">No messages</p></div>
           ) : messages.map((msg: any) => (
             <button key={msg.id} onClick={() => { setSelected(msg); setSelectedAlert(null); if (!msg.is_read && view === 'inbox') markRead(msg.id) }}
               className="w-full text-left px-4 py-3 transition-colors"
@@ -167,10 +167,21 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* Right — detail panel */}
-      <div className="flex-1 overflow-y-auto p-6" style={{ background: '#0a0a0a' }}>
+      {/* Right — detail panel (full screen on mobile when open) */}
+      <div
+        className={`flex-col overflow-y-auto lg:flex lg:flex-1 ${hasDetail ? 'flex flex-1' : 'hidden'}`}
+        style={{ background: '#0a0a0a' }}
+      >
+        {/* Mobile back button */}
+        <button onClick={clearDetail}
+          className="lg:hidden flex items-center gap-2 px-4 py-3 text-amber-400 font-semibold text-sm border-b border-white/8"
+          style={{ background: '#111' }}>
+          ← Back to messages
+        </button>
+
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
         {selectedAlert ? (
-          <div className="max-w-2xl mx-auto rounded-xl p-6" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="max-w-2xl mx-auto rounded-xl p-5 lg:p-6" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
             {(() => {
               const Icon = NOTIF_ICON[selectedAlert.type] || Bell
               const col = NOTIF_COLOR[selectedAlert.type] || 'text-slate-400'
@@ -185,28 +196,26 @@ export default function Messages() {
                   </div>
                   {selectedAlert.body && <p className="text-slate-300 text-sm leading-relaxed">{selectedAlert.body}</p>}
                   {selectedAlert.link && selectedAlert.link !== '/messages' && (
-                    <a href={selectedAlert.link} className="inline-flex items-center gap-1 mt-4 text-sm text-amber-400 hover:text-amber-300 underline">
-                      View related record →
-                    </a>
+                    <a href={selectedAlert.link} className="inline-flex items-center gap-1 mt-4 text-sm text-amber-400 hover:text-amber-300 underline">View related record →</a>
                   )}
                 </>
               )
             })()}
           </div>
         ) : !selected ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full min-h-[40vh]">
             <div className="text-center">
               <MessageSquare className="w-12 h-12 text-slate-700 mx-auto mb-3" />
               <p className="text-slate-500 font-medium">Select a message or alert</p>
             </div>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto rounded-xl p-6" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="max-w-2xl mx-auto rounded-xl p-5 lg:p-6" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="pb-4 mb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <h2 className="text-base font-bold text-white mb-2">{selected.subject || '(No subject)'}</h2>
-              <div className="flex items-center justify-between text-sm text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-sm text-slate-500">
                 <span>From: <span className="font-medium text-slate-300">{selected.sender_name || 'System'}</span></span>
-                <span>{selected.created_at ? format(new Date(selected.created_at), 'd MMMM yyyy, HH:mm') : ''}</span>
+                <span>{selected.created_at ? format(new Date(selected.created_at), 'd MMM yyyy, HH:mm') : ''}</span>
               </div>
               {selected.recipient_name && <p className="text-sm text-slate-500 mt-1">To: <span className="font-medium text-slate-300">{selected.recipient_name}</span></p>}
             </div>
@@ -225,6 +234,7 @@ export default function Messages() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <ComposeModal open={composeOpen} onClose={() => { setComposeOpen(false); setReplyDefaults(null) }}
