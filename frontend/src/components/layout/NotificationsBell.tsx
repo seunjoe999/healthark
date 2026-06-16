@@ -34,11 +34,12 @@ export default function NotificationsBell() {
   }, [])
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    const close = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('touchstart', close)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close) }
   }, [])
 
   const load = async () => {
@@ -77,7 +78,7 @@ export default function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-80 rounded-2xl shadow-modal z-50 overflow-hidden"
+        <div className="absolute right-0 top-full mt-2 w-[min(320px,calc(100vw-1rem))] rounded-2xl shadow-modal z-50 overflow-hidden"
           style={{ background: '#1e2d4a', border: '1px solid rgba(255,255,255,0.1)' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
