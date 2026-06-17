@@ -41,13 +41,14 @@ export default function Messages() {
         const msgRes = await api.get(`/messages?type=${view}`)
         setMessages(msgRes.data.data || [])
       }
-    } catch (e) {}
+    } catch (_e) {}
   }
 
-  const load = async () => {
+  const load = async (typeOverride?: 'inbox' | 'sent' | 'alerts') => {
+    const activeType = typeOverride ?? view
     setLoading(true)
     try {
-      if (view === 'alerts') {
+      if (activeType === 'alerts') {
         const [notifRes, staffRes] = await Promise.all([
           api.get('/notifications'),
           staffApi.list(),
@@ -56,7 +57,7 @@ export default function Messages() {
         setStaffList(staffRes.data.data || [])
       } else {
         const [msgRes, staffRes] = await Promise.all([
-          api.get(`/messages?type=${view}`),
+          api.get(`/messages?type=${activeType}`),
           staffApi.list(),
         ])
         setMessages(msgRes.data.data || [])
@@ -239,7 +240,17 @@ export default function Messages() {
 
       <ComposeModal open={composeOpen} onClose={() => { setComposeOpen(false); setReplyDefaults(null) }}
         staffList={staffList} defaults={replyDefaults}
-        onSaved={async () => { setComposeOpen(false); setReplyDefaults(null); setView('sent'); toast.success('Message sent') }} />
+        onSaved={async () => {
+          setComposeOpen(false)
+          setReplyDefaults(null)
+          setView('sent')
+          toast.success('Message sent')
+          // Explicitly fetch sent messages — bypasses stale-closure risk where
+          // the useEffect([view]) might still see the old view value if view
+          // hasn't changed (e.g. user was already on Sent tab), or if the
+          // effect fires after a delay that races with stale state.
+          await load('sent')
+        }} />
     </div>
   )
 }
