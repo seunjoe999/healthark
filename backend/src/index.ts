@@ -1,3 +1,5 @@
+// MUST BE THE VERY FIRST LINE
+require('dotenv').config(); 
 import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
