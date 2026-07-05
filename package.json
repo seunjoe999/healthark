@@ -6,10 +6,8 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "npm run build --prefix frontend && npm run build --prefix backend",
-    "start": "node backend/dist/index.js",
-    "lint": "eslint src --ext .ts,.tsx"
+    "build": "cd frontend && rm -rf dist && npm install --include=dev && npm run build && cd ../backend && rm -rf dist && npm install --include=dev && npm run build",
+    "start": "cd backend && node dist/index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
