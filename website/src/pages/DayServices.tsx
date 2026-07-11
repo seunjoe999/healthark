@@ -228,22 +228,27 @@ export default function DayServices() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-white text-center">
+      <section className="relative pt-24 pb-16 px-4 text-center" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
         <div className="max-w-2xl mx-auto">
           <p className="text-4xl mb-4">🌈</p>
-          <h2 className="text-2xl font-black text-gray-900 mb-4">
+          <h2 className="text-2xl font-black text-white mb-4">
             Pathways to Independence
           </h2>
-          <p className="text-brand-orange font-semibold italic mb-6">
+          <p className="text-white/80 font-semibold italic mb-6">
             Where Every Day is a Step Towards a Brighter Future.
           </p>
-          <p className="text-gray-500 mb-8">
+          <p className="text-white/70 mb-8">
             Interested in our day service? Get in touch with our team to discuss how
             Pathways to Independence can support your loved one.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/contact-us" className="btn-red px-8 py-3 text-base">Contact Us</Link>
-            <Link to="/make-a-referral" className="btn-gold px-8 py-3 text-base">Make a Referral</Link>
+            <Link to="/contact-us" className="btn-gold px-8 py-3 text-base">Contact Us</Link>
+            <Link to="/make-a-referral" className="px-8 py-3 text-base rounded-xl font-bold border-2 border-white text-white hover:bg-white hover:text-brand-purple transition-colors">Make a Referral</Link>
           </div>
         </div>
       </section>

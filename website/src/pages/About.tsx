@@ -274,7 +274,12 @@ export default function About() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
+      <section className="relative pt-24 pb-14 px-4" style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-black text-white mb-4">Find Out How We Can Help</h2>
           <p className="text-white/80 mb-8 max-w-xl mx-auto">

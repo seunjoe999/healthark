@@ -210,7 +210,12 @@ export default function Services() {
       ))}
 
       {/* ── COMPLIMENTARY THERAPEUTIC SUPPORT ────────────────────────── */}
-      <section className="py-20 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
+      <section className="relative pt-24 pb-20 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-brand-gold text-sm font-bold uppercase tracking-widest mb-3">Key Differentiator — Included at No Additional Cost</p>
           <h2 className="text-4xl md:text-5xl font-black text-white mb-2">Complimentary Therapeutic Support</h2>
@@ -346,18 +351,23 @@ export default function Services() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-white text-center">
+      <section className="relative pt-24 pb-16 px-4 text-center" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-black text-gray-900 mb-4">
+          <h2 className="text-3xl font-black text-white mb-4">
             Ready to find out how we can help?
           </h2>
-          <p className="text-gray-700 font-bold mb-8 text-lg">
+          <p className="text-white/90 font-bold mb-8 text-lg">
             Get in touch today to find out how Comprehensive Care can support you with
             personalised care that puts your needs first.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/contact-us" className="btn-purple px-8 py-3 text-base">Contact Us Today</Link>
-            <Link to="/day-services" className="btn-gold px-8 py-3 text-base">Explore Day Services →</Link>
+            <Link to="/contact-us" className="btn-gold px-8 py-3 text-base">Contact Us Today</Link>
+            <Link to="/day-services" className="px-8 py-3 text-base rounded-xl font-bold border-2 border-white text-white hover:bg-white hover:text-brand-purple transition-colors">Explore Day Services →</Link>
           </div>
         </div>
       </section>

@@ -159,7 +159,12 @@ export default function Jobs() {
       </section>
 
       {/* ── TEAM TESTIMONIALS ────────────────────────────────────────── */}
-      <section className="py-16 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
+      <section className="relative pt-24 pb-16 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
         <div className="max-w-4xl mx-auto text-center">
           <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
           <h2 className="text-3xl font-black text-white mb-10">Hear From Our Team</h2>
