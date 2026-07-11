@@ -1,175 +1,30 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
-/* ─── Data ─────────────────────────────────────────────────────────── */
-
-const SERVICES = [
-  { img: '/service-supported-living.jpg',     title: 'Supported Living',         color: '#7c42b4',
-    desc: 'Comprehensive supported living with 24-hour care, personal care, medication management, and life skills development.' },
-  { img: '/service-mental-health.jpg',         title: 'Complex Mental Health',     color: '#d4845a',
-    desc: 'Intensive, person-centred support for individuals with schizophrenia, bipolar disorder, personality disorders, and dual diagnosis.' },
-  { img: '/service-learning-disabilities.jpg', title: 'Learning Disabilities',     color: '#00b8b8',
-    desc: 'Specialist support promoting independence, inclusion, and personal development for adults with learning disabilities.' },
-  { img: '/service-autism.jpg',                title: 'Autism Support',            color: '#4ab47c',
-    desc: 'Structured, sensory-aware environments and tailored routines that help individuals with autism thrive.' },
-  { img: '/service-drug-alcohol.jpg',          title: 'Drug & Alcohol Recovery',   color: '#cc2222',
-    desc: 'Structured therapeutic support to help individuals achieve and maintain sobriety and reintegrate into their communities.' },
-  { img: '/service-domiciliary.jpg',           title: 'Domiciliary Care',          color: '#5a7ab4',
-    desc: 'Flexible, high-quality home care assisting with personal care, household tasks, medication, and social activities.' },
-  { img: '/service-end-of-life.jpg',           title: 'End of Life Care',          color: '#b47c42',
-    desc: 'Compassionate, dignified palliative care respecting the wishes of individuals and supporting families through this sensitive time.' },
-  { img: '/service-live-in-care.jpg',          title: 'Live In Care',              color: '#7c42b4',
-    desc: 'Round-the-clock support from a dedicated live-in carer offering companionship, personal care, and daily assistance.' },
-  { img: '/service-respite.jpg',               title: 'Respite Care',              color: '#4ab47c',
-    desc: 'Give family carers a much-needed break while loved ones continue receiving high-quality, person-centred care.' },
-  { img: '/service-physical-disabilities.jpg', title: 'Physical Disabilities',     color: '#d4845a',
-    desc: 'Support with personal care, mobility, rehabilitation activities, and community engagement, always promoting dignity and choice.' },
-  { img: '/service-brain-injury.jpg',          title: 'Acquired Brain Injury',     color: '#cc2222',
-    desc: 'Specialist rehabilitation support for stroke and TBI recovery, working closely with clinical teams to maximise independence.' },
-  { img: '/service-elderly-care.jpg',          title: 'Elderly Care',              color: '#00b8b8',
-    desc: 'Compassionate care for older adults keeping them safe, comfortable, and connected with specialist dementia support.' },
-]
-
 const VALUES = [
-  {
-    title: 'Warm',     icon: '🤝', color: '#d4845a', img: '/care-values-warm.jpg',
-    desc: 'We promote warm, supportive relationships between service users and carers that foster attachment and stability.',
-  },
-  {
-    title: 'Bespoke',  icon: '✨', color: '#7c42b4', img: '/care-values-bespoke.jpg',
-    desc: 'Our service users receive care personalised to their individual needs through a person-centred approach.',
-  },
-  {
-    title: 'Compassionate', icon: '❤️', color: '#cc2222', img: '/care-values-compassionate.jpg',
-    desc: 'Compassion is the foundation of how we provide care — built on empathy, respect, and dignity.',
-  },
+  { title: 'Warm',          color: '#d4845a', img: '/care-values-warm.jpg',
+    desc: 'We promote warm, supportive relationships between service users and carers that foster attachment and stability.' },
+  { title: 'Bespoke',       color: '#7c42b4', img: '/care-values-bespoke.jpg',
+    desc: 'Our service users receive care personalised to their individual needs through a person-centred approach.' },
+  { title: 'Compassionate', color: '#cc2222', img: '/care-values-compassionate.jpg',
+    desc: 'Compassion is the foundation of how we provide care — built on empathy, respect, and dignity.' },
 ]
 
-const WHY_CHOOSE = [
-  { title: 'Person-Centred Care',             img: '/care-values-bespoke.jpg', desc: 'Every care plan is tailored to the individual — their preferences, goals, and needs are always at the centre.' },
-  { title: 'Experienced, Compassionate Staff', img: '/care-team.jpg',           desc: 'Our team is rigorously trained, DBS-checked, and genuinely passionate about improving the lives of the people they support.' },
-  { title: 'Community Inclusion & Independence', img: '/care-community.jpg',    desc: 'We actively support individuals to engage with their communities, build independence, and live fulfilling lives.' },
+const SERVICES_PREVIEW = [
+  { img: '/service-mental-health.jpg',         title: 'Complex Mental Health',    color: '#d4845a' },
+  { img: '/service-supported-living.jpg',      title: 'Supported Living',          color: '#7c42b4' },
+  { img: '/service-learning-disabilities.jpg', title: 'Learning Disabilities',     color: '#00b8b8' },
+  { img: '/service-autism.jpg',                title: 'Autism Support',            color: '#4ab47c' },
+  { img: '/service-drug-alcohol.jpg',          title: 'Drug & Alcohol Recovery',   color: '#cc2222' },
+  { img: '/service-elderly-care.jpg',          title: 'Elderly Care',              color: '#b47c42' },
 ]
-
-const THERAPIES = ['CBT Therapy','Mindfulness','DBT','Behaviour Therapy','Group Therapy','One-to-One Support']
-
-/* — About page data — */
-const AIMS = [
-  'To provide a consistent and exceptional quality of care tailored to the individual needs of our service users.',
-  'To provide support that promotes independent choice, control and creates a significant impact in the lives of our service users.',
-  'To encourage staff development by offering new opportunities for growth.',
-  'To create a stable, secure, and non-judgmental environment where individuals feel safe to express and explore their feelings.',
-  'To work in partnership with individuals, their families, and other agencies to strengthen relationships and provide good quality care.',
-]
-const ACCREDITATIONS = [
-  'Care Quality Commission registered (CQC)',
-  'SSIP Registered',
-  'ICO Registered',
-  'Skills for Life Registered',
-  'Currently in the process of registering with ISO 9001 standards and UKHCA',
-  'Approved Provider for the Complex Mental Health Framework',
-]
-const ABOUT_VALUES = [
-  { title: 'Privacy',           icon: '🔒', desc: 'The right of individuals to be left alone and free from intrusion into their affairs, taken into account in formulation of Care Plans.' },
-  { title: 'Dignity',           icon: '🌟', desc: 'All individuals, whatever their circumstances, have the right to be treated with dignity and respect.' },
-  { title: 'Anti-Discrimination', icon: '🤝', desc: 'We actively challenge discrimination based on age, disability, gender, marital status, sexual orientation, culture, religion, or nationality.' },
-  { title: 'Communication',     icon: '💬', desc: 'Clients have the right to be heard and fully informed on all aspects of their care, using methods appropriate to their abilities.' },
-  { title: 'Independence',      icon: '🦋', desc: 'We encourage service users to make their own choices and remain as independent as possible while receiving support.' },
-  { title: 'Person-Centred',    icon: '❤️', desc: 'Every care plan is built around the individual — their values, preferences, desires, and long-term goals.' },
-]
-
-/* — Provider areas / conditions — */
-const PROVIDER_AREAS = [
-  'Complex Mental Health','Learning Disabilities','Autism Spectrum Disorders','Drug and Alcohol Misuse',
-  'Physical Complex Health','ADHD','Acquired Brain Injury','Physical Disabilities',
-  'Court of Protection DOLs','Elderly Care','End of Life Care','Respite Care',
-  'Supported Living','Domiciliary Care','Live In Care','Private & Local Authority Client',
-]
-const CONDITIONS = [
-  'Motor Neurone Disease','Cerebral Palsy','Dyspraxia','Dementia',"Down's Syndrome",
-  'Peg Feed Care','Tracheostomy Care','Palliative Care','Ventilation & Breathing Support',
-  'Bowel Management','Catheter Care',"Huntingdon's Chorea",'Multiple Sclerosis',"Parkinson's Disease",
-]
-
-/* — Specialism page data — */
-const ACTIVITIES = [
-  { icon: '🎨', label: 'Arts & Crafts',             desc: 'Painting, drawing, creative projects' },
-  { icon: '🎶', label: 'Music & Singing',            desc: 'Instruments, karaoke, and rhythm sessions' },
-  { icon: '🥗', label: 'Cooking & Healthy Eating',   desc: 'Learn to prepare simple, tasty meals' },
-  { icon: '🏃', label: 'Light Exercise & Dance',      desc: 'Movement for fun and wellbeing' },
-  { icon: '🎯', label: 'Games & Puzzles',             desc: 'Board games, quizzes, and group challenges' },
-  { icon: '🌱', label: 'Gardening Club',              desc: 'Planting, watering, and outdoor activities' },
-  { icon: '🛒', label: 'Life Skills Practice',        desc: 'Budgeting, shopping, and travel training' },
-  { icon: '💬', label: 'Social Skills Groups',        desc: 'Building confidence and communication' },
-  { icon: '🖥',  label: 'IT & Media Skills',          desc: 'Using computers, tablets, and creative tech' },
-  { icon: '🛋',  label: 'Sensory Room Sessions',      desc: 'Relax and self-regulate in our calming space' },
-  { icon: '🎬', label: 'Film & Media Afternoons',     desc: 'Enjoy movies and discussions' },
-  { icon: '🎨', label: 'Seasonal & Cultural Projects',desc: 'Celebrate events and festivals' },
-]
-const TIMETABLE = [
-  { time: '9:30 AM',  activity: 'Welcome & Tea/Coffee' },
-  { time: '10:00 AM', activity: 'Morning Activities (arts, music, life skills)' },
-  { time: '12:30 PM', activity: 'Lunch & Social Time' },
-  { time: '1:30 PM',  activity: 'Afternoon Activities (sensory room, exercise, film club)' },
-  { time: '4:00 PM',  activity: 'Home Time' },
-]
-
-/* — How We Work data — */
-const HELP_CARDS = [
-  { label: 'Medication Reminders',  color: '#d4845a',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg> },
-  { label: 'Staying Active',         color: '#7c42b4',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M9 14c0 0-2-1-3-3s1-4 3-4"/><path d="M15 14c0 0 2-1 3-3s-1-4-3-4"/></svg> },
-  { label: 'Meal Prep & Groceries',  color: '#00b8b8',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
-  { label: 'Transportation',          color: '#4ab47c',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> },
-  { label: 'Personal Care',           color: '#cc2222',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-  { label: 'Social Support',          color: '#b47c42',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-  { label: 'Appointment Management', color: '#5a7ab4',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-  { label: 'Household Tasks',         color: '#9b6cc8',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
-]
-const STEPS = [
-  { num: '01', title: 'Initial Enquiry',   desc: 'Contact us via phone, email or our referral form. Our friendly team will discuss your needs and how we can help.' },
-  { num: '02', title: 'Needs Assessment',  desc: "We carry out a comprehensive assessment to understand the individual's specific care requirements, preferences, and goals." },
-  { num: '03', title: 'Care Plan Created', desc: 'A personalised care plan is developed in partnership with the individual, their family, and other healthcare professionals.' },
-  { num: '04', title: 'Care Begins',       desc: 'Our trained staff begin delivering care according to the plan, with regular reviews to ensure it continues to meet needs.' },
-]
-
-/* — Carers data — */
-const BENEFITS = [
-  { icon: '💼', title: 'Competitive Pay',    desc: 'Fair wages with regular reviews and overtime rates' },
-  { icon: '📚', title: 'Ongoing Training',   desc: 'Fully funded training and career development pathways' },
-  { icon: '🕐', title: 'Flexible Hours',     desc: 'Full-time, part-time, and bank shifts available' },
-  { icon: '🤝', title: 'Supportive Culture', desc: 'A team that supports you as much as the people we care for' },
-  { icon: '🌱', title: 'Career Growth',      desc: 'Clear progression pathways from carer to senior and management roles' },
-  { icon: '🏅', title: 'Recognition',        desc: 'Staff recognition programmes and rewards for outstanding care' },
-]
-const TRAINING_TAGS = [
-  'Moving & Handling','Medication Management','Safeguarding Adults','First Aid',
-  'Mental Health Awareness','Infection Control','Dementia Care','Autism Awareness',
-  'Food Hygiene','Fire Safety','Communication Skills','Person-Centred Care',
-]
-
-/* ─── Component ─────────────────────────────────────────────────────── */
 
 export default function Home() {
-  const [form, setForm] = useState({ careFor: '', firstName: '', lastName: '', email: '', phone: '' })
-  const [submitted, setSubmitted] = useState(false)
-
   return (
     <div>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          HOME — hero matching comprehensivecare.onrender.com
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section
-        id="home"
         className="relative overflow-hidden flex items-center justify-center text-center"
         style={{
           backgroundImage: 'linear-gradient(rgba(126,87,194,0.82), rgba(179,136,255,0.75)), url(/hero-bg.jpg)',
@@ -179,7 +34,6 @@ export default function Home() {
           padding: '120px 1rem',
         }}
       >
-        {/* Decorative blurred circles (same as reference) */}
         <div className="absolute top-0 left-0 w-72 h-72 rounded-full pointer-events-none"
           style={{ background: 'rgba(255,255,255,0.08)', filter: 'blur(60px)', transform: 'translate(-30%,-30%)' }} />
         <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full pointer-events-none"
@@ -208,14 +62,13 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.28, ease: 'easeOut' }}
             className="flex flex-wrap justify-center gap-4 mb-12"
           >
-            <a href="#join-us" className="btn-gold px-8 py-3 text-base font-bold">Make a Referral</a>
-            <a href="#our-services"
+            <Link to="/make-a-referral" className="btn-gold px-8 py-3 text-base font-bold">Make a Referral</Link>
+            <Link to="/our-services"
               className="px-8 py-3 text-base font-bold rounded-xl border-2 border-white text-white hover:bg-white hover:text-brand-purple transition-colors">
               Explore Services
-            </a>
+            </Link>
           </motion.div>
 
-          {/* Accreditation logos */}
           <div className="flex flex-wrap justify-center items-center gap-6">
             <img src="/cqc-good.jpg" alt="CQC Good" className="h-12 object-contain brightness-0 invert opacity-90" />
             <img src="/ico-logo.png"  alt="ICO"      className="h-11 object-contain brightness-0 invert opacity-90" />
@@ -223,7 +76,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Wave bottom */}
         <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
           <svg viewBox="0 0 1440 60" preserveAspectRatio="none" className="w-full h-[60px]">
             <path d="M0,20 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="white" />
@@ -231,7 +83,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* What You Can Expect */}
+      {/* ── WHAT YOU CAN EXPECT ──────────────────────────────────────── */}
       <section className="py-16 bg-peach-hero px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
@@ -249,10 +101,7 @@ export default function Home() {
                   <img src={v.img} alt={v.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 flex items-end p-4"
                     style={{ background: `linear-gradient(to top, ${v.color}cc, transparent)` }}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{v.icon}</span>
-                      <h3 className="text-2xl font-black text-white">{v.title}</h3>
-                    </div>
+                    <h3 className="text-2xl font-black text-white">{v.title}</h3>
                   </div>
                 </div>
                 <div className="p-5">
@@ -264,7 +113,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Building Better Lives — VIDEO */}
+      {/* ── BUILDING BETTER LIVES — VIDEO ────────────────────────────── */}
       <section className="py-20 px-4"
         style={{ background: 'linear-gradient(135deg, #5a2d8a 0%, #7c42b4 50%, #9b5fd4 100%)' }}>
         <div className="max-w-6xl mx-auto">
@@ -285,8 +134,8 @@ export default function Home() {
                 care that truly reflects each person's unique story — not a one-size-fits-all template.
               </p>
               <div className="flex flex-wrap gap-3">
-                <a href="#about" className="btn-gold">Learn About Us</a>
-                <a href="#join-us" className="btn-outline">Make a Referral</a>
+                <Link to="/about" className="btn-gold">Learn About Us</Link>
+                <Link to="/make-a-referral" className="btn-outline">Make a Referral</Link>
               </div>
             </div>
             <div className="flex justify-center">
@@ -300,671 +149,69 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          ABOUT
-      ═══════════════════════════════════════════════════════════════ */}
-      <section id="about" className="scroll-mt-20">
-        {/* About hero — peach with cloud wave */}
-        <div className="bg-peach-hero cloud-wave relative py-16 pb-24 px-4 text-center">
-          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
-            <h2 className="italic-heading text-4xl md:text-5xl mb-4">About Us</h2>
-            <p className="text-gray-600 text-base leading-relaxed">
-              Dedicated to exceptional, person-centred care across Greater Manchester and beyond.
-            </p>
-          </div>
-        </div>
-
-        <div className="py-16 bg-white px-4">
-          <div className="max-w-6xl mx-auto">
-
-            {/* Who We Are — text left, photo right */}
-            <div className="grid lg:grid-cols-2 gap-14 items-center mb-16">
-              <div>
-                <p className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3">Who We Are</p>
-                <h3 className="text-3xl font-black text-gray-900 mb-6 leading-tight">
-                  Built on Trust,<br />Driven by Compassion
-                </h3>
-                <p className="text-gray-600 leading-relaxed mb-5">
-                  Comprehensive Care was founded on a simple belief: everyone deserves support that fits their life — not the other way around. We work alongside people with complex mental health needs, learning disabilities, autism, and physical care requirements, building care around what each individual person actually wants and needs.
-                </p>
-                <p className="text-gray-600 leading-relaxed mb-8">
-                  Every support plan starts with a real conversation — with the person, their family, and the professionals around them. Our in-house therapist also offers free CBT, mindfulness, DBT, and behaviour therapy, because we know that lasting wellbeing means addressing both body and mind.
-                </p>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { num: '10+', label: 'Years Experience' },
-                    { num: 'CQC', label: 'Rated Good' },
-                    { num: '24/7', label: 'Support Available' },
-                  ].map(s => (
-                    <div key={s.label} className="text-center p-4 rounded-xl bg-brand-purple/5 border border-brand-purple/10">
-                      <div className="text-xl font-black text-brand-purple">{s.num}</div>
-                      <div className="text-xs text-gray-500 font-medium mt-1">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="photo-card rounded-2xl overflow-hidden h-[420px]">
-                <img src="/about-team.jpg" alt="Our Care Team" className="w-full h-full object-cover" />
-              </div>
-            </div>
-
-            {/* Our Mission — purple panel, no image */}
-            <div className="mb-16 rounded-2xl overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #5a2d8a 0%, #7c42b4 100%)' }}>
-              <div className="grid lg:grid-cols-5">
-                <div className="lg:col-span-2 px-10 py-12 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-white/10">
-                  <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">Our Mission</p>
-                  <h3 className="text-2xl font-black text-white leading-snug mb-4">
-                    Empowering people to live the lives they choose.
-                  </h3>
-                  <div className="w-10 h-1 bg-brand-gold rounded-full" />
-                </div>
-                <div className="lg:col-span-3 px-10 py-12 flex flex-col justify-center gap-4">
-                  <p className="text-white/85 text-base leading-relaxed">
-                    We help individuals with disabilities and complex care needs live independently in their communities. Every service we provide — from supported living to domiciliary care — is shaped around what the person themselves wants for their life, not what's easiest to deliver.
-                  </p>
-                  <p className="text-white/85 text-base leading-relaxed">
-                    We work in genuine partnership with families, commissioners, and healthcare teams to make sure the care we provide is consistent, transparent, and actually making a difference. When something isn't working, we say so — and we fix it.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Aims & Objectives */}
-            <div className="mb-16">
-              <h3 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Aims &amp; Objectives</h3>
-              <p className="text-center text-gray-500 max-w-2xl mx-auto mb-10 mt-6 text-sm">
-                These commitments guide everything we do — from individual care plans to how we run our organisation.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {AIMS.map((a, i) => (
-                  <div key={i} className="flex gap-4 p-5 rounded-xl border border-brand-purple/15 bg-white shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-8 h-8 rounded-lg bg-brand-purple text-white font-black text-xs flex items-center justify-center flex-shrink-0">
-                      {String(i + 1).padStart(2, '0')}
-                    </div>
-                    <p className="text-gray-600 text-sm leading-relaxed">{a}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Our Values — SVG icons, horizontal card layout */}
-            <div className="bg-peach-hero rounded-2xl py-12 px-8 mb-16">
-              <h3 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Values</h3>
-              <p className="text-center text-gray-500 max-w-xl mx-auto mb-10 mt-6 text-sm">
-                The principles that shape every interaction, every care plan, and every decision we make.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {[
-                  { title: 'Privacy', color: '#7c42b4', desc: 'The right of individuals to be left alone and free from intrusion — always taken into account when we create and review care plans.',
-                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
-                  { title: 'Dignity', color: '#cc2222', desc: 'Whatever their circumstances, every person we support has the right to be treated with dignity and full respect at all times.',
-                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
-                  { title: 'Anti-Discrimination', color: '#00b8b8', desc: 'We actively challenge discrimination based on age, disability, gender, culture, religion, or any other characteristic.',
-                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-                  { title: 'Communication', color: '#d4845a', desc: 'People have the right to be heard and fully informed. We communicate in ways that work for each individual.',
-                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
-                  { title: 'Independence', color: '#4ab47c', desc: 'We encourage people to make their own choices and stay as independent as possible, with support only where they want it.',
-                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> },
-                  { title: 'Person-Centred', color: '#b47c42', desc: 'Every care plan is built around the individual — their values, preferences, and long-term goals always come first.',
-                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
-                ].map(v => (
-                  <div key={v.title} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4 items-start hover:shadow-md transition-shadow">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${v.color}18`, color: v.color }}>
-                      {v.icon}
-                    </div>
-                    <div>
-                      <h4 className="font-black text-sm text-gray-900 mb-1">{v.title}</h4>
-                      <p className="text-gray-500 text-xs leading-relaxed">{v.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Accreditations */}
-            <div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Accreditations</h3>
-              <div className="grid sm:grid-cols-2 gap-4 mt-10">
-                {ACCREDITATIONS.map((a, i) => (
-                  <div key={i} className="flex items-center gap-3 p-4 rounded-xl bg-brand-purple/5 border border-brand-purple/15">
-                    <span className="w-6 h-6 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center flex-shrink-0">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
-                      </svg>
-                    </span>
-                    <p className="text-gray-700 text-sm font-medium">{a}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap justify-center gap-8 mt-10">
-                <img src="/cqc-good.jpg" alt="CQC Good" className="h-16 object-contain" />
-                <img src="/ico-logo.png"  alt="ICO"      className="h-14 object-contain" />
-                <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-14 object-contain" />
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          OUR SERVICES
-      ═══════════════════════════════════════════════════════════════ */}
-      <section id="our-services" className="scroll-mt-20">
-        {/* Services hero — purple with cloud wave */}
-        <div className="bg-purple-hero cloud-wave relative py-16 pb-24 px-4 text-center">
-          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
-            <h2 className="italic-heading text-4xl md:text-5xl mb-4">Our Services</h2>
-            <p className="text-gray-600 text-base leading-relaxed">
-              Comprehensive Care is a provider of supported living and domiciliary care services, true to our name in being comprehensive in nature.
-            </p>
-          </div>
-        </div>
-
-        {/* Supported Living banner — 3 photo cards on purple */}
-        <div className="py-14 px-4" style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 100%)' }}>
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-black text-white text-center mb-2">Supported Living</h2>
-            <div className="w-12 h-0.5 bg-yellow-400 mx-auto mb-10" />
-            <div className="grid grid-cols-3 gap-6">
-              {['/service-supported-living.jpg', '/service-learning-disabilities.jpg', '/service-autism.jpg'].map((src, i) => (
-                <div key={i} className="photo-card rounded-2xl overflow-hidden" style={{ height: '220px' }}>
-                  <img src={src} alt="Supported Living" className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* All Services grid */}
-        <div className="py-16 bg-white px-4">
-          <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SERVICES.map(s => (
-              <div key={s.title} className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100">
-                <div className="h-44 overflow-hidden">
-                  <img src={s.img} alt={s.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                </div>
-                <div className="p-5">
-                  <h3 className="font-black text-lg text-gray-900 mb-2">{s.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Specialist Support */}
-      <section className="py-16 bg-peach-light px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-6">
-            Specialist Support Designed Around Your Individual Needs
-          </h2>
-          <p className="text-gray-600 text-base leading-relaxed max-w-3xl mx-auto">
-            At Comprehensive Care, we understand that no two people are alike. That's why every care
-            package we create starts with a detailed assessment of the individual — their medical
-            background, personal preferences, cultural needs, and aspirations for the future.
-          </p>
-        </div>
-      </section>
-
-      {/* Areas We Cover */}
-      <section className="py-14 bg-white px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-black text-gray-900 text-center mb-4 heading-underline">Areas We Cover as a Provider</h2>
-          <p className="text-center text-gray-500 mb-10 mt-6 max-w-2xl mx-auto">
-            Our staff are trained to manage complex care situations and provide personalised one-on-one experiences.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {PROVIDER_AREAS.map(a => (
-              <div key={a} className="bg-white rounded-xl p-3.5 shadow-sm border border-gray-100 flex items-center gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-brand-purple flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">{a}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Health Conditions */}
-      <section className="py-14 bg-peach-hero px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-3xl font-black text-gray-900 text-center mb-4 heading-underline">Health Conditions We Support</h2>
-          <p className="text-center text-gray-500 mb-10 mt-6">
-            Our team is equipped to assist clients with a wide range of health conditions, including:
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            {CONDITIONS.map(c => (
-              <span key={c} className="px-4 py-2 bg-brand-purple/8 text-brand-purple border border-brand-purple/20 rounded-full text-sm font-semibold">{c}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose */}
+      {/* ── SERVICES PREVIEW ─────────────────────────────────────────── */}
       <section className="py-16 bg-white px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-4">Why Choose Comprehensive Care?</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto">
-              We are committed to raising the bar in care delivery — with a team, an ethos, and an approach that puts every individual first.
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-4">Our Services</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto mt-6">
+              We provide compassionate, person-centred care tailored to the unique needs of every individual —
+              whether support is required at home, within supported living, or through specialist care services.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {WHY_CHOOSE.map(item => (
-              <div key={item.title} className="bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100 hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 mx-auto mb-5 rounded-full overflow-hidden border-4 border-brand-gold shadow">
-                  <img src={item.img} alt={item.title} className="w-full h-full object-cover" />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SERVICES_PREVIEW.map(s => (
+              <div key={s.title} className="rounded-2xl overflow-hidden shadow-md border border-gray-100 group">
+                <div className="h-44 overflow-hidden relative">
+                  <img src={s.img} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${s.color}bb, transparent)` }} />
+                  <h3 className="absolute bottom-3 left-4 text-white font-black text-base">{s.title}</h3>
                 </div>
-                <h3 className="text-lg font-black text-gray-900 mb-3">{item.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
+          <div className="text-center mt-10">
+            <Link to="/our-services" className="btn-purple px-8 py-3 text-base">View All Services →</Link>
+          </div>
         </div>
       </section>
 
-      {/* More Than Care */}
-      <section className="py-20 px-4"
-        style={{ background: 'linear-gradient(135deg, #5a2d8a 0%, #7c42b4 50%, #9b5fd4 100%)' }}>
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+      {/* ── THERAPEUTIC SERVICES HIGHLIGHT ───────────────────────────── */}
+      <section className="py-16 bg-peach-hero px-4">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">More Than Care</h2>
-            <div className="inline-flex items-center gap-2 bg-green-500 text-white text-sm font-bold px-4 py-1.5 rounded-full mb-6 shadow">
-              <span>✓</span><span>Included Free of Charge</span>
-            </div>
-            <p className="text-white/90 text-base leading-relaxed mb-7">
-              Alongside our care services, our in-house therapist provides a range of therapeutic services at absolutely no extra cost — helping individuals achieve holistic wellbeing.
+            <p className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3">Included Free of Charge</p>
+            <h2 className="text-3xl font-black text-gray-900 mb-5 leading-tight">
+              More Than Care —<br/>Therapy Included
+            </h2>
+            <p className="text-gray-600 leading-relaxed mb-6">
+              Alongside our care services, our experienced in-house therapist delivers evidence-based therapeutic support
+              tailored to each person's individual needs. This integrated approach helps improve emotional wellbeing,
+              build resilience, promote independence, and support long-term positive outcomes.
             </p>
-            <ul className="space-y-3">
-              {THERAPIES.map(therapy => (
-                <li key={therapy} className="flex items-center gap-3 text-white/90 text-sm">
-                  <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">✓</span>
-                  {therapy}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex justify-center">
-            <div className="photo-card w-full max-w-md aspect-[4/3] overflow-hidden rounded-2xl">
-              <img src="/care-therapy.jpg" alt="Therapeutic Services" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          OUR SPECIALISM
-      ═══════════════════════════════════════════════════════════════ */}
-      <section id="our-specialism" className="scroll-mt-20">
-
-        {/* Specialism hero — orange with cloud wave + GET STARTED */}
-        <div className="bg-orange-hero cloud-wave relative py-16 pb-24 px-4 text-center">
-          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
-            <h2 className="italic-heading text-4xl md:text-5xl mb-4">Our Specialism</h2>
-            <p className="text-gray-600 text-base leading-relaxed mb-6">Amazing, skilled care professionals are ready to help right when you need it.</p>
-            <a href="#join-us" className="btn-purple px-8 py-3 text-base">GET STARTED</a>
-          </div>
-        </div>
-
-        {/* Specialism image */}
-        <div className="px-4 py-10 bg-white">
-          <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-72 md:h-96 photo-card">
-            <img src="/specialism-hero.jpg" alt="Our Specialism" className="w-full h-full object-cover opacity-80" />
-          </div>
-        </div>
-
-        {/* Pathways to Independence */}
-        <div className="py-14 bg-peach-light px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-10">
-              <div className="inline-block bg-brand-orange text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-3">Day Service</div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-4">Pathways to Independence</h2>
-              <p className="text-xl text-brand-red font-serif italic mt-6 mb-4">
-                A Fun, Safe &amp; Supportive Day Service for Adults with Learning Disabilities, Autism &amp; Mental Health Needs
-              </p>
-              <div className="inline-flex items-center gap-2 bg-white rounded-full px-5 py-2 border border-brand-gold shadow-sm text-sm font-semibold text-gray-700">
-                🕘 Opening Hours: Monday–Friday, 9:30 AM – 4:00 PM
-              </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden h-56 mb-6 photo-card">
-              <img src="/specialism-activities.jpg" alt="Pathways to Independence" className="w-full h-full object-cover" />
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-md p-6 md:p-8">
-              <p className="text-gray-600 leading-relaxed">
-                This service aims to provide a safe, supportive, and stimulating environment where individuals can develop skills, build confidence, and enjoy meaningful activities that support independence and wellbeing. At Pathways to Independence, we believe everyone deserves a space to learn, grow, and enjoy life to the fullest.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Activities */}
-        <div className="py-14 bg-white px-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-black text-gray-900 text-center heading-underline mb-10">Daily Activities Include</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-10">
-              {ACTIVITIES.map(a => (
-                <div key={a.label + a.desc} className="service-card p-4 text-center">
-                  <span className="text-3xl block mb-2">{a.icon}</span>
-                  <h4 className="font-bold text-sm text-gray-800 mb-1">{a.label}</h4>
-                  <p className="text-xs text-gray-500">{a.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Timetable */}
-        <div className="py-14 bg-peach-hero px-4">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 mb-6">Key Features</h2>
-              <div className="grid gap-5">
-                {[
-                  { icon: '🎯', title: 'Choice & Flexibility', desc: 'Individuals choose activities based on interests and sensory needs.' },
-                  { icon: '🧘', title: 'Sensory Considerations', desc: 'Quiet spaces, visual timetables, and alternative low-stimulation activities always available.' },
-                  { icon: '📋', title: 'Individual Support Plans', desc: 'Activities adapted for different ability levels.' },
-                  { icon: '🌈', title: 'Focus Areas', desc: 'Independence, communication, social connection, wellbeing, and creativity.' },
-                ].map(f => (
-                  <div key={f.title} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4">
-                    <span className="text-2xl">{f.icon}</span>
-                    <div>
-                      <h3 className="font-black text-gray-900 mb-1 text-sm">{f.title}</h3>
-                      <p className="text-gray-500 text-xs">{f.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 mb-6">Daily Timetable</h2>
-              <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-brand-gold/30">
-                {TIMETABLE.map((t, i) => (
-                  <div key={i} className={`flex gap-4 px-5 py-4 ${i % 2 === 0 ? 'bg-white' : 'bg-brand-purple/5'}`}>
-                    <span className="text-brand-purple font-bold text-sm w-24 flex-shrink-0">{t.time}</span>
-                    <span className="text-gray-700 text-sm">{t.activity}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          HOW WE WORK
-      ═══════════════════════════════════════════════════════════════ */}
-      <section id="how-we-work" className="scroll-mt-20">
-
-        {/* How We Work hero — peach with cloud wave */}
-        <div className="bg-peach-hero cloud-wave relative py-16 pb-24 px-4 text-center">
-          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
-            <h2 className="italic-heading text-4xl md:text-5xl mb-4">How We Work</h2>
-            <p className="text-gray-600 text-base leading-relaxed">
-              At Comprehensive Care, we select the best, most-skilled carers in advance, so they're ready to provide the care you want, right when you need it.
-            </p>
-          </div>
-        </div>
-
-        {/* We Can Help */}
-        <div className="py-14 bg-peach-hero px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-6">Comprehensive Care Can Help</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                At Comprehensive Care, we select the best, most-skilled carers in advance, so they're ready to provide the care you want, right when you need it.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {HELP_CARDS.map(c => (
-                <div key={c.label} className="service-card p-5 text-center">
-                  <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center"
-                    style={{ background: `${c.color}18`, color: c.color }}>
-                    <span className="w-6 h-6">{c.icon}</span>
-                  </div>
-                  <p className="font-bold text-sm text-brand-red">{c.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Quote */}
-        <div className="py-14 bg-white px-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="gold-card p-10 text-center">
-              <p className="italic-heading text-2xl md:text-3xl leading-relaxed">
-                "Amazing, skilled care professionals are ready to help right when you need it."
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Process Steps */}
-        <div className="py-14 bg-peach-light px-4">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-black text-gray-900 text-center mb-10 heading-underline">Our Process</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-              {STEPS.map(s => (
-                <div key={s.num} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="w-12 h-12 rounded-full bg-brand-purple text-white font-black text-lg flex items-center justify-center mb-4">{s.num}</div>
-                  <h3 className="font-black text-gray-900 mb-2">{s.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Assessment Form */}
-        <div className="bg-white">
-          <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 min-h-[500px]">
-            <div className="px-8 py-14">
-              <h2 className="text-2xl font-black text-gray-900 mb-6">Request a Free Care Assessment</h2>
-              {submitted ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Request Received!</h3>
-                  <p className="text-gray-500">Our team will be in touch within 24 hours.</p>
-                  <button onClick={() => setSubmitted(false)} className="btn-purple mt-6">Submit Another</button>
-                </div>
-              ) : (
-                <form onSubmit={e => { e.preventDefault(); setSubmitted(true) }} className="space-y-4">
-                  <div>
-                    <label className="form-label">Who needs the care? *</label>
-                    <select required className="form-input" value={form.careFor}
-                      onChange={e => setForm({ ...form, careFor: e.target.value })}>
-                      <option value="">– please select –</option>
-                      <option>Myself</option>
-                      <option>My parent</option>
-                      <option>My partner</option>
-                      <option>My child</option>
-                      <option>Someone else</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="form-label">First Name *</label>
-                      <input required type="text" placeholder="Name" className="form-input"
-                        value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="form-label">Last Name *</label>
-                      <input required type="text" placeholder="Surname" className="form-input"
-                        value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="form-label">Your Email *</label>
-                      <input required type="email" className="form-input"
-                        value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="form-label">Your Phone *</label>
-                      <input required type="tel" className="form-input"
-                        value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    By using this form you agree to the storage and handling of your data by Comprehensive Care in accordance with our Privacy Policy.
-                  </p>
-                  <button type="submit" className="btn-purple w-full py-3 text-center text-sm">
-                    Request Free Assessment →
-                  </button>
-                </form>
-              )}
-            </div>
-            <div className="flex items-center justify-center px-10 py-14 text-white"
-              style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
-              <div>
-                <h2 className="text-3xl md:text-4xl font-black mb-5">Get a free, no obligation care assessment</h2>
-                <p className="text-white/75 text-base leading-relaxed mb-6">
-                  Request a member of our team to visit you and carry out a full assessment of your care needs.
-                </p>
-                <ul className="space-y-3">
-                  {['No obligation, completely free','Conducted by an experienced care professional','Tailored recommendations for your specific situation','Discuss funding options and next steps'].map(item => (
-                    <li key={item} className="flex items-center gap-2.5 text-sm text-white/85">
-                      <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-3 h-3 fill-white" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      </span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8 pt-6 border-t border-white/15 space-y-2 text-sm text-white/70">
-                  <p>📞 0161 667 6030 / 0161 843 0277</p>
-                  <p>📧 info@comprehensivecare.org.uk</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          OUR CARERS
-      ═══════════════════════════════════════════════════════════════ */}
-      <section id="our-carers" className="scroll-mt-20">
-
-        {/* Hero banner */}
-        <div className="py-14 px-4 bg-peach-hero">
-          <div className="max-w-4xl mx-auto text-center">
-            <span className="inline-block bg-brand-purple text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-3">Our Carers</span>
-            <div className="gold-card px-8 py-8 mx-auto max-w-2xl">
-              <h2 className="italic-heading text-4xl md:text-5xl mb-4">Our Carers</h2>
-              <p className="text-gray-600 text-base leading-relaxed">At Comprehensive Care we select our staff very carefully and only take on the best.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white px-4 py-10">
-          <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-64 md:h-80 photo-card">
-            <img src="/carers-team.jpg" alt="Our Care Team" className="w-full h-full object-cover" />
-          </div>
-        </div>
-
-        <div className="py-14 bg-peach-hero px-4">
-          <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
-            <div>
-              <h2 className="text-3xl font-black text-gray-900 mb-6">Why Comprehensive Care?</h2>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                At Comprehensive Care we select our staff very carefully and only take on the best. We have an established reputation and attract and retain the best staff by offering highly competitive pay rates, a choice of working hours, and ongoing personal support and training.
-              </p>
-              <p className="text-gray-600 leading-relaxed mb-6">
-                We invest heavily in our team's development because we believe that well-supported, well-trained carers deliver the best care. Every member of our team undergoes rigorous vetting, enhanced DBS checks, and comprehensive induction training before working with any of our service users.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a href="#join-us" className="btn-purple">View Vacancies</a>
-                <a href="#join-us" className="btn-gold">Make A Referral</a>
-              </div>
-            </div>
-            <div className="photo-card overflow-hidden rounded-2xl h-80">
-              <img src="/carers-hero.jpg" alt="Comprehensive Care team" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </div>
-
-        {/* Benefits */}
-        <div className="py-14 bg-peach-hero px-4">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-black text-gray-900 text-center mb-10 heading-underline">Employee Benefits</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10">
-              {BENEFITS.map(b => (
-                <div key={b.title} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex gap-4">
-                  <span className="text-2xl">{b.icon}</span>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1">{b.title}</h3>
-                    <p className="text-gray-500 text-sm">{b.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Training */}
-        <div className="py-14 bg-white px-4">
-          <div className="max-w-5xl mx-auto text-center">
-            <h2 className="text-3xl font-black text-gray-900 mb-6 heading-underline">Training &amp; Development</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto mb-10 mt-6">
-              All Comprehensive Care staff receive comprehensive training to ensure they deliver the highest standard of care.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {TRAINING_TAGS.map(t => (
+            <div className="flex flex-wrap gap-3 mb-8">
+              {['CBT Therapy', 'DBT', 'Mindfulness', 'Behaviour Therapy', 'Group Therapy', 'One-to-One Support'].map(t => (
                 <span key={t} className="px-4 py-2 bg-brand-purple/8 text-brand-purple border border-brand-purple/20 rounded-full text-sm font-semibold">{t}</span>
               ))}
             </div>
+            <Link to="/our-specialism" className="btn-purple">Learn About Our Specialism →</Link>
+          </div>
+          <div className="photo-card rounded-2xl overflow-hidden h-72">
+            <img src="/care-therapy.jpg" alt="Therapeutic Support" className="w-full h-full object-cover" />
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          JOIN US
-      ═══════════════════════════════════════════════════════════════ */}
-      <section id="join-us" className="py-20 px-4 scroll-mt-20"
-        style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
-        <div className="max-w-5xl mx-auto text-center">
-          <span className="inline-block bg-white/20 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-4">Join Us</span>
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-4">Ready to Make a Difference?</h2>
-          <p className="text-white/75 mb-10 max-w-xl mx-auto">
-            Make a referral for someone in need of care, or join our team of dedicated care professionals across Greater Manchester.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <div className="bg-white/10 rounded-2xl p-8 border border-white/20 text-left">
-              <div className="text-4xl mb-4">📋</div>
-              <h3 className="text-xl font-black text-white mb-3">Make A Referral</h3>
-              <p className="text-white/70 text-sm mb-6">Refer someone who needs our care services. We'll carry out a free assessment and create a tailored care plan.</p>
-              <Link to="/make-a-referral" className="btn-gold inline-block">Make A Referral →</Link>
-            </div>
-            <div className="bg-white/10 rounded-2xl p-8 border border-white/20 text-left">
-              <div className="text-4xl mb-4">💼</div>
-              <h3 className="text-xl font-black text-white mb-3">Join Our Team</h3>
-              <p className="text-white/70 text-sm mb-6">We're always looking for compassionate, skilled care professionals to join our growing team.</p>
-              <Link to="/jobs" className="btn-gold inline-block">View Vacancies →</Link>
-            </div>
-          </div>
-          <div className="mt-10 pt-8 border-t border-white/15 text-sm text-white/60 space-y-1">
-            <p>📞 0161 667 6030 / 0161 843 0277</p>
-            <p>📧 referrals@comprehensivecare.org.uk</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── BROCHURE ─── */}
+      {/* ── BROCHURE DOWNLOAD ────────────────────────────────────────── */}
       <section className="py-16 bg-white px-4">
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
               <h2 className="text-3xl font-black text-gray-900 mb-4">
-                To learn more about our award-winning care services, simply download our brochure.
+                Download our brochure to learn more about our award-winning care services.
               </h2>
               <p className="text-gray-500 mb-6">
-                Comprehensive Care is a CQC-registered provider specialising in a wide range of complex care services.
+                Comprehensive Care is a CQC-registered provider specialising in a wide range of complex care services across Greater Manchester and beyond.
               </p>
               <a href="/brochure.pdf" download className="btn-gold inline-flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -980,7 +227,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── ACCREDITATIONS ─── */}
+      {/* ── ACCREDITATIONS ───────────────────────────────────────────── */}
       <section className="py-14 bg-peach-light px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl font-black text-gray-900 mb-8 heading-underline">Our Accreditations &amp; Partners</h2>
