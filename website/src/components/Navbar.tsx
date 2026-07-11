@@ -10,6 +10,7 @@ const navAfter = [
   { label: 'OUR SPECIALISM',  href: '/our-specialism' },
   { label: 'HOW WE WORK',    href: '/how-we-work' },
   { label: 'JOIN US',        href: '/join-us' },
+  { label: 'FEEDBACK',       href: '/feedback' },
   { label: 'MAKE A REFERRAL', href: '/make-a-referral' },
 ]
 

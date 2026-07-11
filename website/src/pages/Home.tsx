@@ -27,7 +27,7 @@ export default function Home() {
       <section
         className="relative flex items-center justify-center text-center"
         style={{
-          backgroundImage: 'linear-gradient(rgba(210, 95, 135, 0.48), rgba(235, 145, 175, 0.44)), url(/hero-bg.jpg)',
+          backgroundImage: 'url(/hero-bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           minHeight: '600px',
@@ -35,16 +35,11 @@ export default function Home() {
           overflow: 'clip',
         }}
       >
-        <div className="absolute top-0 left-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.10)', filter: 'blur(60px)', transform: 'translate(-30%,-30%)' }} />
-        <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.08)', filter: 'blur(60px)', transform: 'translate(30%,30%)' }} />
-
         <div className="relative z-10 max-w-3xl mx-auto px-4">
           <motion.p
             initial={{ x: -300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="text-gray-900 text-base font-black uppercase tracking-widest mb-4 font-serif"
+            className="text-white text-base font-black uppercase tracking-widest mb-4 font-serif drop-shadow-md"
           >
             Your Care Our Priority
           </motion.p>
@@ -52,23 +47,10 @@ export default function Home() {
           <motion.h1
             initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.15 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight mb-6 font-serif"
+            className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6 font-serif drop-shadow-md"
           >
             Your Provider of Choice for Supported Living &amp; Domiciliary Care
           </motion.h1>
-
-          <motion.div
-            initial={{ x: -300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.3 }}
-            className="space-y-3 mb-10"
-          >
-            <p className="text-gray-900 text-lg font-bold leading-relaxed max-w-2xl mx-auto">
-              Comprehensive Care is a CQC-registered provider, specialising in a wide range of Complex &amp; Enduring Mental Health, Learning Disability Support, Autism, ADHD &amp; Addiction Recovery &amp; Relapse Prevention Services.
-            </p>
-            <p className="text-gray-800 text-base font-semibold leading-relaxed max-w-2xl mx-auto">
-              Our approach is centred around Outcome focussed, Person Centred Care and Positive Behaviours Support with emphasis on Community inclusion, promoting independence, dignity, and quality of life for all those we support.
-            </p>
-          </motion.div>
 
           <motion.div
             initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
@@ -77,7 +59,7 @@ export default function Home() {
           >
             <Link to="/make-a-referral" className="btn-red px-8 py-3 text-base font-bold">Make a Referral</Link>
             <Link to="/our-services"
-              className="px-8 py-3 text-base font-bold rounded-xl border-2 border-gray-900 text-gray-900 bg-white/60 hover:bg-white hover:text-brand-purple transition-colors">
+              className="px-8 py-3 text-base font-bold rounded-xl border-2 border-white text-white hover:bg-white hover:text-brand-purple transition-colors">
               Explore Our Services
             </Link>
           </motion.div>
@@ -91,8 +73,20 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── INTRO PARAGRAPHS (below hero) ────────────────────────────── */}
+      <section className="py-10 bg-white px-4">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
+          <p className="text-gray-900 text-lg font-bold leading-relaxed">
+            Comprehensive Care is a CQC-registered provider, specialising in a wide range of Complex &amp; Enduring Mental Health, Learning Disability Support, Autism, ADHD &amp; Addiction Recovery &amp; Relapse Prevention Services.
+          </p>
+          <p className="text-gray-700 text-base font-semibold leading-relaxed">
+            Our approach is centred around Outcome focussed, Person Centred Care and Positive Behaviours Support with emphasis on Community inclusion, promoting independence, dignity, and quality of life for all those we support.
+          </p>
+        </div>
+      </section>
+
       {/* ── CQC RATING BADGE ─────────────────────────────────────────── */}
-      <section className="py-10 bg-white px-4 border-b border-gray-100">
+      <section className="py-10 bg-white px-4 border-t border-b border-gray-100">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-8 text-center sm:text-left">
           <div className="flex items-center gap-4 flex-shrink-0">
             <img src="/cqc-good.jpg" alt="CQC Rated Good" className="h-24 object-contain" />
