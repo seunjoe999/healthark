@@ -203,9 +203,9 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
               <h2 className="text-3xl font-black text-gray-900 mb-4">
-                Download our brochure to learn more about our award-winning care services.
+                To learn more about our award-winning care services, simply download our brochure.
               </h2>
-              <p className="text-gray-500 mb-6">
+              <p className="text-gray-900 mb-6">
                 Comprehensive Care is a CQC-registered provider specialising in a wide range of complex care services across Greater Manchester and beyond.
               </p>
               <a href="/brochure.pdf" download className="btn-gold inline-flex items-center gap-2">

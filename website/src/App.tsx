@@ -12,6 +12,7 @@ import MakeAReferral from './pages/MakeAReferral'
 import Jobs from './pages/Jobs'
 import Feedback from './pages/Feedback'
 import Contact from './pages/Contact'
+import DayServices from './pages/DayServices'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/contact-us" element={<Contact />} />
+          <Route path="/day-services" element={<DayServices />} />
         </Routes>
       </main>
       <Footer />

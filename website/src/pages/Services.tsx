@@ -1,188 +1,305 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
-const PROVIDER_AREAS = [
-  'Complex Mental Health','Learning Disabilities','Autism Spectrum Disorders','Drug and Alcohol Misuse',
-  'Physical Complex Health','ADHD','Acquired Brain Injury','Physical Disabilities',
-  'Court of Protection DOLs','Elderly Care','End of Life Care','Respite Care',
-  'Supported Living','Domiciliary Care','Live In Care','Private & Local Authority Client',
-]
-
-const CONDITIONS = [
-  'Motor Neurone Disease','Cerebral Palsy','Dyspraxia','Dementia',"Down's Syndrome",
-  'Peg Feed Care','Tracheostomy Care','Palliative Care','Ventilation & Breathing Support',
-  'Bowel Management','Catheter Care',"Huntingdon's Chorea",'Multiple Sclerosis',"Parkinson's Disease",
-]
-
-const SERVICES_DETAIL = [
+const SERVICES = [
   {
+    id: 'supported-living',
     title: 'Supported Living Services',
+    tagline: 'Empowering individuals to live independently with the right support.',
     img: '/service-supported-living.jpg',
-    desc: 'We provide comprehensive supported living services tailored to individual needs, helping people live as independently as possible. Our support includes 24-hour care, personal care, medication management, and life skills development.',
+    intro: 'Our Supported Living service provides flexible, person-centred support to help individuals with learning disabilities, mental health needs, autism, and other complex conditions to live as independently as possible within their own tenancies. We work in partnership with each individual, their families, and other professionals to ensure support plans reflect personal goals while maintaining choice and control over their lives.',
+    bullets: [
+      'Personal care and daily living support',
+      'Medication management',
+      'Meal planning and preparation',
+      'Household tasks',
+      'Budgeting and tenancy support',
+      'Community access and social inclusion',
+      'Education, employment and volunteering support',
+      'Health and wellbeing promotion',
+      'Emotional support and confidence building',
+    ],
   },
   {
-    title: 'Domiciliary Care Services',
+    id: 'domiciliary-care',
+    title: 'Domiciliary Care',
+    tagline: 'Professional care delivered in the comfort of your own home.',
     img: '/service-domiciliary.jpg',
-    desc: 'Flexible, high-quality support in clients\' own homes. We assist with personal care, household tasks, medication, and social activities while promoting independence and dignity.',
+    intro: 'Our Domiciliary Care service enables individuals to remain in familiar surroundings while receiving flexible, high-quality support tailored to their lifestyle. Whether you require occasional visits or regular daily care, our compassionate carers provide practical assistance that promotes independence and peace of mind.',
+    bullets: [
+      'Personal care',
+      'Medication support',
+      'Meal preparation',
+      'Companionship',
+      'Domestic assistance',
+      'Shopping and errands',
+      'Mobility support',
+      'Appointment escorting',
+      'Overnight care',
+      'Welfare checks',
+    ],
   },
   {
-    title: 'Respite Care',
-    img: '/service-respite.jpg',
-    desc: 'Our respite care service gives family carers a much-needed break while ensuring their loved ones continue to receive high-quality, person-centred care in a safe and supportive environment.',
-  },
-  {
-    title: 'Complex Mental Health',
-    img: '/service-mental-health.jpg',
-    desc: 'Intensive, person-centred support for individuals with complex and enduring mental health conditions, including schizophrenia, bipolar disorder, personality disorders, and dual diagnosis.',
-  },
-  {
-    title: 'Learning Disabilities',
-    img: '/service-learning-disabilities.jpg',
-    desc: 'Specialist support for adults with learning disabilities, promoting independence, inclusion, and personal development. Our person-centred approach ensures each individual reaches their full potential.',
-  },
-  {
-    title: 'Autism Support',
-    img: '/service-autism.jpg',
-    desc: 'Structured, sensory-aware environments and tailored routines that help individuals with autism thrive and build confidence in everyday life.',
-  },
-  {
-    title: 'Drug & Alcohol Recovery',
-    img: '/service-drug-alcohol.jpg',
-    desc: 'Structured aftercare for people leaving detox or rehabilitation. Our programme combines recovery coaching, relapse prevention, emotional support and practical reintegration.',
-  },
-  {
-    title: 'End of Life Care',
-    img: '/service-end-of-life.jpg',
-    desc: 'Compassionate, dignified palliative care that respects the wishes and values of individuals. Our team supports clients and their families through this sensitive time with empathy and professionalism.',
-  },
-  {
-    title: 'Live In Care',
-    img: '/service-live-in-care.jpg',
-    desc: 'Round-the-clock support from a dedicated carer who lives with the client, offering companionship, personal care, and assistance with daily activities while maintaining home comforts.',
-  },
-  {
-    title: 'Acquired Brain Injury',
-    img: '/service-brain-injury.jpg',
-    desc: 'Specialist rehabilitation support for individuals recovering from strokes, traumatic brain injuries, or other neurological conditions. We work closely with clinical teams to maximise independence.',
-  },
-  {
-    title: 'Physical Disabilities',
-    img: '/service-physical-disabilities.jpg',
-    desc: 'Support with personal care, mobility, rehabilitation activities, and community engagement for individuals with physical disabilities, always promoting dignity and choice.',
-  },
-  {
-    title: 'Elderly Care',
+    id: 'elder-care',
+    title: 'Elder Care',
+    tagline: 'Supporting older adults to live independently with dignity and confidence.',
     img: '/service-elderly-care.jpg',
-    desc: 'Compassionate, dignified care for older adults, supporting them to remain safe, comfortable, and connected. Our team offers companionship, personal care, and specialist dementia support.',
+    intro: 'Growing older should never mean giving up independence. Our Elder Care service provides compassionate support that enables older people to remain safe, comfortable, and connected within their own homes. We focus on promoting wellbeing, reducing loneliness, and helping individuals maintain their daily routines while providing reassurance to families.',
+    bullets: [
+      'Personal care',
+      'Medication reminders',
+      'Mobility assistance',
+      'Companionship',
+      'Meal preparation',
+      'Household support',
+      'Dementia-friendly routines',
+      'Social and community engagement',
+    ],
   },
+  {
+    id: 'live-in-care',
+    title: 'Live-in Care',
+    tagline: 'Round-the-clock support within the comfort of your own home.',
+    img: '/service-live-in-care.jpg',
+    intro: 'Our Live-in Care service provides dedicated one-to-one support from a professional carer who lives within the home, allowing individuals to remain in familiar surroundings while receiving continuous care. This service offers an excellent alternative to residential care, providing reassurance, consistency, and personalised support every day.',
+    bullets: [
+      'Continuous one-to-one personal care',
+      'Medication management throughout the day',
+      'Meal planning and preparation',
+      'Companionship and emotional support',
+      'Household management',
+      'Mobility and personal care assistance',
+      'Community engagement and social activities',
+      'Family liaison and regular updates',
+    ],
+  },
+  {
+    id: 'respite-care',
+    title: 'Respite Care',
+    tagline: 'Giving family carers time to rest with complete peace of mind.',
+    img: '/service-respite.jpg',
+    intro: 'Caring for a loved one can be rewarding, but everyone needs time to recharge. Our Respite Care service provides temporary support, ensuring continuity of care while giving family members and regular carers the opportunity to take a well-deserved break. Whether support is needed for a few hours, several days, or longer, our experienced team is here to help.',
+    bullets: [
+      'Flexible short-term or longer respite periods',
+      'Seamless continuity of existing care routines',
+      'Personal care and daily living support',
+      'Medication management',
+      'Companionship and emotional wellbeing',
+      'Community access and activities',
+      'Family updates and regular communication',
+    ],
+  },
+  {
+    id: 'end-of-life',
+    title: 'End of Life Care',
+    tagline: 'Providing comfort, dignity, and compassionate support when it matters most.',
+    img: '/service-end-of-life.jpg',
+    intro: 'Our End of Life Care service focuses on ensuring individuals receive respectful, person-centred care during the final stages of life. We work closely with families, healthcare professionals, and palliative care teams to deliver compassionate support that reflects each person\'s wishes, values, and beliefs. Our priority is to provide comfort, preserve dignity, and offer emotional support for both individuals and their loved ones during this important time.',
+    bullets: [
+      'Person-centred palliative care planning',
+      'Comfort and pain management support',
+      'Emotional and psychological support',
+      'Family liaison and bereavement support',
+      'Coordination with NHS and hospice teams',
+      'Spiritual and cultural wishes respected',
+      'Dignity and respect maintained at all times',
+    ],
+  },
+]
+
+const WHY_CHOOSE = [
+  'Person-centred, tailored care',
+  'Highly trained and compassionate care professionals',
+  'Flexible support that adapts as needs change',
+  'A focus on independence, dignity, and wellbeing',
+  'Strong partnerships with families and healthcare professionals',
+  'Holistic care that supports both physical and emotional wellbeing',
+  'Reliable, responsive, and high-quality services you can trust',
 ]
 
 export default function Services() {
-  const navigate = useNavigate()
   return (
     <div>
 
-      {/* ── HEADER + SERVICE CARDS — full purple background ─────────── */}
+      {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section
-        className="min-h-screen px-4 pt-12 pb-20"
+        className="relative overflow-hidden py-20 px-4"
         style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 45%, #5a2d8a 100%)' }}
       >
-        {/* Page title */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-3">Our Services</h1>
-          <div className="w-16 h-0.5 bg-brand-gold mx-auto mb-4" />
-          <p className="text-white/75 text-base font-medium italic">Warm, Bespoke and Compassionate Care</p>
+        <div className="absolute top-0 left-0 w-80 h-80 rounded-full pointer-events-none opacity-20"
+          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
+        <div className="absolute bottom-10 right-0 w-64 h-64 rounded-full pointer-events-none opacity-15"
+          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)', transform: 'translate(20%, 20%)' }} />
+
+        <div className="relative z-10 max-w-2xl mx-auto text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-brand-gold/60 px-8 py-10 shadow-2xl">
+            <h1 className="text-4xl md:text-5xl font-black italic text-brand-red font-serif mb-4">
+              Our Services
+            </h1>
+            <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-5" />
+            <p className="text-white/90 text-base md:text-lg leading-relaxed">
+              Comprehensive Care is a provider of supported living and domiciliary care services,
+              true to our name in being comprehensive in nature.
+            </p>
+          </div>
         </div>
 
-        {/* Service cards grid */}
-        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-7">
-          {SERVICES_DETAIL.map(s => (
-            <div
-              key={s.title}
-              className="rounded-2xl overflow-hidden border-2 border-white/25 shadow-xl"
-              style={{ background: 'rgba(255,255,255,0.08)' }}
-            >
-              {/* Photo with frame */}
-              <div className="relative p-2">
-                <div className="rounded-xl overflow-hidden border-2 border-white/40 h-48">
-                  <img
-                    src={s.img}
-                    alt={s.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                  {/* Name overlay at bottom of photo */}
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <div className="px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.45)' }}>
-                      <h3 className="text-white font-black text-base leading-tight">{s.title}</h3>
-                    </div>
-                  </div>
+        {/* Cloud wave */}
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,30 C200,70 400,10 600,40 C800,70 1000,20 1200,50 C1350,70 1440,35 1440,35 L1440,70 L0,70 Z" fill="white" />
+          </svg>
+        </div>
+      </section>
+
+      {/* ── "YES, IT'S PERSONAL" INTRO ────────────────────────────────── */}
+      <section
+        className="py-14 px-4"
+        style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 45%, #5a2d8a 100%)' }}
+      >
+        <div className="max-w-xl mx-auto text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-brand-gold/60 px-8 py-10 shadow-2xl">
+            <h2 className="text-3xl md:text-4xl font-black italic text-brand-red font-serif mb-4">
+              Yes, it's personal.
+            </h2>
+            <p className="text-white/90 text-base leading-relaxed mb-6">
+              We understand what you are going through. The reason we started Comprehensive Care
+              is to provide the best care possible to individuals and deliver it with passion.
+            </p>
+            <Link to="/contact-us" className="btn-gold">Get Started</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SERVICE SECTIONS ─────────────────────────────────────────── */}
+      {SERVICES.map((s, i) => (
+        <section
+          key={s.id}
+          id={s.id}
+          className={`py-16 px-4 ${i % 2 === 0 ? 'bg-white' : 'bg-peach-light'}`}
+        >
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+
+              {/* Photo */}
+              <div className={i % 2 !== 0 ? 'lg:order-2' : ''}>
+                <div className="photo-card rounded-2xl overflow-hidden h-72 md:h-80">
+                  <img src={s.img} alt={s.title} className="w-full h-full object-cover" />
                 </div>
               </div>
 
-              {/* Button */}
-              <div className="px-4 pb-4">
-                <button
-                  onClick={() => navigate('/contact-us')}
-                  className="btn-red w-full text-sm py-2 font-bold tracking-wide">
-                  FIND OUT MORE
-                </button>
+              {/* Content */}
+              <div className={i % 2 !== 0 ? 'lg:order-1' : ''}>
+                <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
+                <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">{s.title}</h2>
+                <p className="text-brand-purple font-semibold italic mb-4 text-sm">{s.tagline}</p>
+                <p className="text-gray-600 leading-relaxed mb-5 text-sm">{s.intro}</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Our support includes:</p>
+                <ul className="space-y-2">
+                  {s.bullets.map(b => (
+                    <li key={b} className="flex items-start gap-2.5 text-sm text-gray-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0 mt-1.5" />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
               </div>
+
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── AREAS WE COVER ───────────────────────────────────────────── */}
-      <section className="py-14 bg-peach-light px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-black text-gray-900 text-center mb-4 heading-underline">Areas We Cover as a Provider</h2>
-          <p className="text-center text-gray-500 mb-10 mt-6 max-w-2xl mx-auto">
-            Our staff are trained to manage complex care situations and provide personalised one-on-one experiences.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {PROVIDER_AREAS.map(a => (
-              <div key={a} className="bg-white rounded-xl p-3.5 shadow-sm border border-gray-100 flex items-center gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-brand-purple flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">{a}</span>
-              </div>
-            ))}
           </div>
-        </div>
-      </section>
+        </section>
+      ))}
 
-      {/* ── HEALTH CONDITIONS ────────────────────────────────────────── */}
-      <section className="py-14 bg-white px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-3xl font-black text-gray-900 text-center mb-4 heading-underline">Health Conditions We Support</h2>
-          <p className="text-center text-gray-500 mb-10 mt-6">
-            Our team is equipped to assist clients with a wide range of health conditions, including:
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            {CONDITIONS.map(c => (
-              <span key={c} className="px-4 py-2 bg-brand-purple/8 text-brand-purple border border-brand-purple/20 rounded-full text-sm font-semibold">
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── THERAPEUTIC SERVICES ─────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
+      {/* ── COMPLIMENTARY THERAPEUTIC SUPPORT ────────────────────────── */}
+      <section className="py-20 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-black text-white mb-6">Additional Therapeutic Services</h2>
-          <p className="text-white/80 text-base leading-relaxed mb-8">
-            We also offer a range of additional therapeutic services at <strong className="text-white">no extra cost</strong> through
-            our in-house therapist — including CBT, Mindfulness, DBT, and Behaviour Therapy. This holistic approach
-            ensures individuals receive well-rounded care that supports both physical and mental health needs.
+          <p className="text-brand-gold text-xs font-bold uppercase tracking-widest mb-3">Key Differentiator — Included at No Additional Cost</p>
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-2">Complimentary Therapeutic Support</h2>
+          <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-6" />
+          <p className="text-white/85 text-base leading-relaxed mb-4 max-w-3xl mx-auto">
+            As part of our commitment to delivering truly holistic care, every eligible individual has access
+            to our in-house therapeutic services at <strong className="text-white">no extra cost</strong>.
+          </p>
+          <p className="text-white/80 text-base leading-relaxed mb-8 max-w-3xl mx-auto">
+            Our qualified therapist provides evidence-based interventions that support emotional wellbeing,
+            resilience, and personal development alongside day-to-day care.
           </p>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {['CBT Therapy', 'Mindfulness', 'DBT', 'Behaviour Therapy', 'Group Therapy', 'One-to-One Support'].map(t => (
-              <span key={t} className="px-4 py-2 bg-white/15 text-white rounded-full text-sm font-semibold border border-white/25">
+            {[
+              'Cognitive Behavioural Therapy (CBT)',
+              'Dialectical Behaviour Therapy (DBT)',
+              'Mindfulness',
+              'Behaviour Therapy',
+              'Personalised therapeutic interventions',
+            ].map(t => (
+              <span key={t} className="px-4 py-2 bg-white/15 text-white rounded-full text-sm font-semibold border border-white/30">
                 {t}
               </span>
             ))}
           </div>
-          <Link to="/make-a-referral" className="btn-gold">Make A Referral</Link>
+          <p className="text-white/75 text-sm italic max-w-2xl mx-auto">
+            This unique service reflects our commitment to supporting both physical and mental wellbeing
+            through integrated, person-centred care.
+          </p>
+        </div>
+      </section>
+
+      {/* ── WHY CHOOSE COMPREHENSIVE CARE ────────────────────────────── */}
+      <section className="py-16 px-4 bg-peach-light">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
+              <h2 className="text-3xl font-black text-gray-900 mb-5 leading-tight">
+                Why Choose<br />Comprehensive Care?
+              </h2>
+              <p className="text-gray-600 leading-relaxed mb-4 text-sm">
+                At Comprehensive Care we select our staff very carefully and only take on the best.
+                We have an established reputation and attract and retain the best staff by offering
+                highly competitive pay rates, a choice of working hours and ongoing personal
+                support and training.
+              </p>
+              <p className="text-gray-600 leading-relaxed mb-6 text-sm">
+                Whether you're looking for support for yourself or a loved one, our dedicated team
+                is here to help every step of the way.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {WHY_CHOOSE.map(w => (
+                  <li key={w} className="flex items-start gap-3 text-sm text-gray-700">
+                    <svg className="w-4 h-4 text-brand-purple flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {w}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/contact-us" className="btn-red">Get in Touch</Link>
+                <Link to="/make-a-referral" className="btn-gold">Make a Referral</Link>
+              </div>
+            </div>
+            <div>
+              <div className="photo-card rounded-2xl overflow-hidden h-80">
+                <img src="/service-domiciliary.jpg" alt="Why Choose Comprehensive Care" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────── */}
+      <section className="py-16 px-4 bg-white text-center">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl font-black text-gray-900 mb-4">
+            Ready to find out how we can help?
+          </h2>
+          <p className="text-gray-500 mb-8">
+            Get in touch today to find out how Comprehensive Care can support you with
+            personalised care that puts your needs first.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link to="/contact-us" className="btn-purple px-8 py-3 text-base">Contact Us Today</Link>
+            <Link to="/day-services" className="btn-gold px-8 py-3 text-base">Explore Day Services →</Link>
+          </div>
         </div>
       </section>
 

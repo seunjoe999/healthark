@@ -4,10 +4,14 @@ import { Link, useLocation } from 'react-router-dom'
 const navLinks = [
   { label: 'HOME',           href: '/' },
   { label: 'ABOUT',          href: '/about' },
-  { label: 'OUR SERVICES',   href: '/our-services' },
   { label: 'OUR SPECIALISM', href: '/our-specialism' },
   { label: 'HOW WE WORK',    href: '/how-we-work' },
   { label: 'OUR CARERS',     href: '/our-carers' },
+]
+
+const servicesLinks = [
+  { label: 'Our Services',  href: '/our-services' },
+  { label: 'Day Services',  href: '/day-services' },
 ]
 
 const joinLinks = [
@@ -17,19 +21,25 @@ const joinLinks = [
 
 export default function Navbar() {
   const [joinOpen, setJoinOpen] = useState(false)
+  const [servicesOpen, setServicesOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
+  const servicesRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
 
   useEffect(() => {
     setMobileOpen(false)
     setJoinOpen(false)
+    setServicesOpen(false)
   }, [location.pathname])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
         setJoinOpen(false)
+      }
+      if (servicesRef.current && !servicesRef.current.contains(e.target as Node)) {
+        setServicesOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -41,6 +51,7 @@ export default function Navbar() {
     return location.pathname === href
   }
   const joinActive = joinLinks.some(l => location.pathname === l.href)
+  const servicesActive = servicesLinks.some(l => location.pathname === l.href)
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
@@ -67,6 +78,36 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {/* OUR SERVICES dropdown */}
+            <div className="relative" ref={servicesRef}>
+              <button
+                onClick={() => setServicesOpen(!servicesOpen)}
+                className={`px-3 py-1.5 text-[12px] font-bold flex items-center gap-1 rounded-full transition-all duration-200 ${
+                  servicesActive
+                    ? 'bg-brand-purple text-white shadow-sm'
+                    : 'text-gray-600 bg-gray-100 hover:bg-brand-purple/10 hover:text-brand-purple'
+                }`}
+              >
+                OUR SERVICES
+                <svg className="w-3 h-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {servicesOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white shadow-xl rounded-lg py-2 min-w-[180px] border border-gray-100 z-50">
+                  {servicesLinks.map(l => (
+                    <Link
+                      key={l.href}
+                      to={l.href}
+                      className="block px-5 py-2.5 text-sm text-gray-700 hover:bg-brand-purple/8 hover:text-brand-purple font-medium transition-colors"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* JOIN US dropdown */}
             <div className="relative" ref={dropRef}>
@@ -151,6 +192,20 @@ export default function Navbar() {
                 }`}
               >
                 {link.label}
+              </Link>
+            ))}
+            <div className="px-4 pt-1 pb-0.5">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider py-2">Our Services</p>
+            </div>
+            {servicesLinks.map(l => (
+              <Link
+                key={l.href}
+                to={l.href}
+                className={`block px-6 py-2.5 text-sm font-semibold transition-colors ${
+                  isActive(l.href) ? 'text-white bg-brand-purple' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {l.label}
               </Link>
             ))}
             <div className="px-4 pt-1 pb-0.5">
