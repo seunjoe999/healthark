@@ -27,45 +27,57 @@ export default function Home() {
       <section
         className="relative overflow-hidden flex items-center justify-center text-center"
         style={{
-          backgroundImage: 'linear-gradient(rgba(126,87,194,0.82), rgba(179,136,255,0.75)), url(/hero-bg.jpg)',
+          backgroundImage: 'linear-gradient(rgba(210, 95, 135, 0.85), rgba(235, 145, 175, 0.82)), url(/hero-bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          minHeight: '560px',
+          minHeight: '600px',
           padding: '120px 1rem',
         }}
       >
         <div className="absolute top-0 left-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.08)', filter: 'blur(60px)', transform: 'translate(-30%,-30%)' }} />
+          style={{ background: 'rgba(255,255,255,0.10)', filter: 'blur(60px)', transform: 'translate(-30%,-30%)' }} />
         <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', transform: 'translate(30%,30%)' }} />
+          style={{ background: 'rgba(255,255,255,0.08)', filter: 'blur(60px)', transform: 'translate(30%,30%)' }} />
 
         <div className="relative z-10 max-w-3xl mx-auto px-4">
+          <motion.p
+            initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-white/90 text-sm font-bold uppercase tracking-widest mb-4"
+          >
+            Your Care Our Priority
+          </motion.p>
+
           <motion.h1
             initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="text-4xl md:text-5xl lg:text-[3rem] font-black text-white leading-tight mb-6"
+            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.1 }}
+            className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight mb-6"
           >
-            Compassionate, Person-Centred Care That Puts You First
+            Your Provider of Choice for Supported Living &amp; Domiciliary Care
           </motion.h1>
-
-          <motion.p
-            initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-            className="text-white/85 text-lg leading-relaxed mb-10 max-w-2xl mx-auto"
-          >
-            Supporting individuals with complex mental health, learning disabilities, autism and physical care
-            needs through professional, compassionate care across the UK.
-          </motion.p>
 
           <motion.div
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.28, ease: 'easeOut' }}
+            transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+            className="space-y-3 mb-10"
+          >
+            <p className="text-white/90 text-base leading-relaxed max-w-2xl mx-auto">
+              Comprehensive Care is a CQC-registered provider, specialising in a wide range of Complex &amp; Enduring Mental Health, Learning Disability Support, Autism, ADHD &amp; Addiction Recovery &amp; Relapse Prevention Services.
+            </p>
+            <p className="text-white/80 text-sm leading-relaxed max-w-2xl mx-auto">
+              Our approach is centred around Outcome focussed, Person Centred Care and Positive Behaviours Support with emphasis on Community inclusion, promoting independence, dignity, and quality of life for all those we support.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.32, ease: 'easeOut' }}
             className="flex flex-wrap justify-center gap-4 mb-12"
           >
-            <Link to="/make-a-referral" className="btn-gold px-8 py-3 text-base font-bold">Make a Referral</Link>
+            <Link to="/make-a-referral" className="btn-red px-8 py-3 text-base font-bold">Make a Referral</Link>
             <Link to="/our-services"
               className="px-8 py-3 text-base font-bold rounded-xl border-2 border-white text-white hover:bg-white hover:text-brand-purple transition-colors">
-              Explore Services
+              Explore Our Services
             </Link>
           </motion.div>
 
@@ -75,6 +87,21 @@ export default function Home() {
           <svg viewBox="0 0 1440 60" preserveAspectRatio="none" className="w-full h-[60px]">
             <path d="M0,20 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="white" />
           </svg>
+        </div>
+      </section>
+
+      {/* ── CQC RATING BADGE ─────────────────────────────────────────── */}
+      <section className="py-10 bg-white px-4 border-b border-gray-100">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 text-center sm:text-left">
+          <img src="/cqc-good.jpg" alt="CQC Rated Good" className="h-20 object-contain flex-shrink-0" />
+          <div>
+            <p className="text-2xl font-black text-gray-900">
+              We are rated <span className="text-green-600">Good</span> by CQC
+            </p>
+            <p className="text-gray-500 text-sm mt-1">
+              Care Quality Commission — Independent Regulator of Health &amp; Social Care in England
+            </p>
+          </div>
         </div>
       </section>
 
@@ -104,6 +131,33 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SERVICES PREVIEW ─────────────────────────────────────────── */}
+      <section className="py-16 bg-white px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-4">Our Services</h2>
+            <p className="text-gray-700 font-bold max-w-2xl mx-auto mt-6 leading-relaxed">
+              We provide compassionate, person-centred care tailored to the unique needs of every individual —
+              whether support is required at home, within supported living, or through specialist care services.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SERVICES_PREVIEW.map(s => (
+              <div key={s.title} className="rounded-2xl overflow-hidden shadow-md border border-gray-100 group">
+                <div className="h-44 overflow-hidden relative">
+                  <img src={s.img} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${s.color}bb, transparent)` }} />
+                  <h3 className="absolute bottom-3 left-4 text-white font-black text-base">{s.title}</h3>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link to="/our-services" className="btn-purple px-8 py-3 text-base">View All Services →</Link>
           </div>
         </div>
       </section>
@@ -144,39 +198,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── SERVICES PREVIEW ─────────────────────────────────────────── */}
-      <section className="py-16 bg-white px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-4">Our Services</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto mt-6">
-              We provide compassionate, person-centred care tailored to the unique needs of every individual —
-              whether support is required at home, within supported living, or through specialist care services.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SERVICES_PREVIEW.map(s => (
-              <div key={s.title} className="rounded-2xl overflow-hidden shadow-md border border-gray-100 group">
-                <div className="h-44 overflow-hidden relative">
-                  <img src={s.img} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${s.color}bb, transparent)` }} />
-                  <h3 className="absolute bottom-3 left-4 text-white font-black text-base">{s.title}</h3>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-10">
-            <Link to="/our-services" className="btn-purple px-8 py-3 text-base">View All Services →</Link>
-          </div>
-        </div>
-      </section>
-
       {/* ── THERAPEUTIC SERVICES HIGHLIGHT ───────────────────────────── */}
       <section className="py-16 bg-peach-hero px-4">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <p className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3">Included Free of Charge</p>
-            <h2 className="text-3xl font-black text-gray-900 mb-5 leading-tight">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-5 leading-tight">
               More Than Care —<br/>Therapy Included
             </h2>
             <p className="text-gray-600 leading-relaxed mb-6">
@@ -186,7 +213,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
               {['CBT Therapy', 'DBT', 'Mindfulness', 'Behaviour Therapy', 'Group Therapy', 'One-to-One Support'].map(t => (
-                <span key={t} className="px-4 py-2 bg-brand-purple/8 text-brand-purple border border-brand-purple/20 rounded-full text-sm font-semibold">{t}</span>
+                <span key={t} className="px-4 py-2 bg-white text-brand-purple border border-brand-purple/20 rounded-full text-sm font-semibold shadow-sm">{t}</span>
               ))}
             </div>
             <Link to="/our-specialism" className="btn-purple">Learn About Our Specialism →</Link>

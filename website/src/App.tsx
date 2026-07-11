@@ -29,6 +29,7 @@ export default function App() {
           <Route path="/our-carers" element={<Carers />} />
           <Route path="/make-a-referral" element={<MakeAReferral />} />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/join-us" element={<Jobs />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/contact-us" element={<Contact />} />
           <Route path="/day-services" element={<DayServices />} />

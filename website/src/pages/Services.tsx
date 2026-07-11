@@ -286,6 +286,37 @@ export default function Services() {
         </div>
       </section>
 
+      {/* ── AREAS WE COVER ───────────────────────────────────────────── */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Areas We Cover</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm leading-relaxed">
+              As a registered care agency, Comprehensive Care Ltd delivers high-quality support services
+              across Greater Manchester and the surrounding areas.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              'Manchester', 'Salford', 'Oldham', 'Rochdale', 'Tameside',
+              'Stockport', 'Trafford', 'Wigan', 'Bolton', 'Bury',
+            ].map(area => (
+              <div key={area} className="flex items-center gap-2 bg-peach-light rounded-xl px-4 py-3 border border-peach-hero">
+                <svg className="w-4 h-4 text-brand-purple flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span className="text-sm font-semibold text-gray-700">{area}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-6 italic">
+            Don't see your area? Contact us — we may be able to support you. Our coverage continues to expand.
+          </p>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <section className="py-16 px-4 bg-white text-center">
         <div className="max-w-2xl mx-auto">
