@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const PROVIDER_AREAS = [
   'Complex Mental Health','Learning Disabilities','Autism Spectrum Disorders','Drug and Alcohol Misuse',
@@ -77,6 +77,7 @@ const SERVICES_DETAIL = [
 ]
 
 export default function Services() {
+  const navigate = useNavigate()
   return (
     <div>
 
@@ -119,7 +120,9 @@ export default function Services() {
 
               {/* Button */}
               <div className="px-4 pb-4">
-                <button className="btn-red w-full text-sm py-2 font-bold tracking-wide">
+                <button
+                  onClick={() => navigate('/contact-us')}
+                  className="btn-red w-full text-sm py-2 font-bold tracking-wide">
                   FIND OUT MORE
                 </button>
               </div>
