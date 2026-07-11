@@ -64,6 +64,41 @@ const SERVICES_DETAIL = [
     color: '#4ab47c',
     desc: 'Our respite care service gives family carers a much-needed break while ensuring their loved ones continue to receive high-quality, person-centred care in a safe and supportive environment.',
   },
+  {
+    title: 'Learning Disabilities',
+    img: '/service-learning-disabilities.jpg',
+    icon: '📚',
+    color: '#00b8b8',
+    desc: 'We provide specialist support for adults with learning disabilities, promoting independence, inclusion, and personal development. Our person-centred approach ensures each individual reaches their full potential and participates meaningfully in their community.',
+  },
+  {
+    title: 'Autism Support',
+    img: '/service-autism.jpg',
+    icon: '🧩',
+    color: '#4ab47c',
+    desc: 'Our autism support service is delivered by specialists trained in autism-specific approaches. We provide structured, sensory-aware environments and tailored routines that help individuals with autism thrive and build confidence in everyday life.',
+  },
+  {
+    title: 'Physical Disabilities',
+    img: '/service-physical-disabilities.jpg',
+    icon: '♿',
+    color: '#d4845a',
+    desc: 'We support individuals with physical disabilities to live fulfilling, independent lives. Our carers assist with personal care, mobility, rehabilitation activities, and community engagement, always promoting dignity and choice.',
+  },
+  {
+    title: 'Acquired Brain Injury',
+    img: '/service-brain-injury.jpg',
+    icon: '🧬',
+    color: '#cc2222',
+    desc: 'Our acquired brain injury service provides specialist rehabilitation support for individuals recovering from strokes, traumatic brain injuries, or other neurological conditions. We work closely with clinical teams to support recovery and maximise independence.',
+  },
+  {
+    title: 'Elderly Care',
+    img: '/service-elderly-care.jpg',
+    icon: '👴',
+    color: '#00b8b8',
+    desc: 'We provide compassionate, dignified care for older adults, supporting them to remain safe, comfortable, and connected in their own homes or supported living settings. Our team offers companionship, personal care, and specialist dementia support.',
+  },
 ]
 
 function PhotoPlaceholder({ label, color }: { label: string; color: string }) {
