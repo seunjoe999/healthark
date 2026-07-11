@@ -156,9 +156,9 @@ export default function HowWeWork() {
             )}
           </div>
 
-          {/* Info panel */}
+          {/* Info panel — warm orange/amber to match peach hero */}
           <div className="flex items-center justify-center px-10 py-14 text-white"
-            style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
+            style={{ background: 'linear-gradient(135deg, #d4845a, #c07040)' }}>
             <div>
               <h2 className="text-3xl md:text-4xl font-black mb-5">
                 Get a free, no obligation care assessment

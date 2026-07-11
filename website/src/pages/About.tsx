@@ -112,6 +112,20 @@ export default function About() {
           </div>
         </div>
       </section>
+
+      {/* BOTTOM CTA — warm orange/amber to match peach hero */}
+      <section className="py-14 px-4" style={{ background: 'linear-gradient(135deg, #d4845a, #c07040)' }}>
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-black text-white mb-4">Find Out How We Can Help</h2>
+          <p className="text-white/80 mb-8 max-w-xl mx-auto">
+            Whether you need support for yourself or a loved one, our friendly team is here to help. Get in touch today for a free, no-obligation conversation about your care needs.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <a href="/make-a-referral" className="btn-gold px-8 py-3 text-base">Make A Referral</a>
+            <a href="/how-we-work" className="px-8 py-3 text-base rounded-xl font-bold border-2 border-white text-white hover:bg-white hover:text-brand-orange transition-colors">How We Work</a>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
