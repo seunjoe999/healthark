@@ -90,7 +90,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto flex flex-col items-center text-center gap-6">
           <div className="flex items-center justify-center gap-8 flex-wrap">
             <img src="/cqc-rated-good-new.jpg" alt="CQC Inspected and Rated Good" className="h-28 object-contain" />
-            <img src="/cqc-logo-new.jpg" alt="Care Quality Commission" className="h-20 object-contain" />
+            <img src="/cqc-logo-new.png" alt="Care Quality Commission" className="h-20 object-contain" />
           </div>
           <div>
             <p className="text-3xl font-black text-gray-900">
