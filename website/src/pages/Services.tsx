@@ -132,11 +132,11 @@ export default function Services() {
 
         <div className="relative z-10 max-w-2xl mx-auto text-center">
           <div className="bg-white rounded-2xl px-8 py-10 shadow-2xl">
-            <h1 className="text-4xl md:text-5xl font-black italic text-brand-red font-serif mb-4">
+            <h1 className="text-5xl md:text-6xl font-black italic text-brand-red font-serif mb-4">
               Our Services
             </h1>
             <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-5" />
-            <p className="text-gray-700 font-bold text-base md:text-lg leading-relaxed">
+            <p className="text-gray-700 font-bold text-lg md:text-xl leading-relaxed">
               Comprehensive Care is a provider of supported living and domiciliary care services,
               true to our name in being comprehensive in nature.
             </p>
@@ -158,10 +158,10 @@ export default function Services() {
       >
         <div className="max-w-xl mx-auto text-center">
           <div className="bg-white rounded-2xl px-8 py-10 shadow-2xl">
-            <h2 className="text-3xl md:text-4xl font-black italic text-brand-red font-serif mb-4">
+            <h2 className="text-4xl md:text-5xl font-black italic text-brand-red font-serif mb-4">
               Yes, it's personal.
             </h2>
-            <p className="text-gray-700 font-bold text-base leading-relaxed mb-6">
+            <p className="text-gray-700 font-bold text-lg leading-relaxed mb-6">
               We understand what you are going through. The reason we started Comprehensive Care
               is to provide the best care possible to individuals and deliver it with passion.
             </p>
@@ -190,14 +190,14 @@ export default function Services() {
               {/* Content */}
               <div className={i % 2 !== 0 ? 'lg:order-1' : ''}>
                 <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
-                <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">{s.title}</h2>
-                <p className="text-brand-purple font-bold italic mb-4 text-sm">{s.tagline}</p>
-                <p className="text-gray-700 font-bold leading-relaxed mb-5 text-sm">{s.intro}</p>
-                <p className="text-xs font-black text-gray-600 uppercase tracking-widest mb-3">Our support includes:</p>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{s.title}</h2>
+                <p className="text-brand-purple font-bold italic mb-4 text-base">{s.tagline}</p>
+                <p className="text-gray-700 font-bold leading-relaxed mb-5 text-base">{s.intro}</p>
+                <p className="text-sm font-black text-gray-600 uppercase tracking-widest mb-3">Our support includes:</p>
                 <ul className="space-y-2">
                   {s.bullets.map(b => (
-                    <li key={b} className="flex items-start gap-2.5 text-sm text-gray-800 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0 mt-1.5" />
+                    <li key={b} className="flex items-start gap-2.5 text-base text-gray-800 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-brand-purple flex-shrink-0 mt-1.5" />
                       {b}
                     </li>
                   ))}
@@ -212,14 +212,14 @@ export default function Services() {
       {/* ── COMPLIMENTARY THERAPEUTIC SUPPORT ────────────────────────── */}
       <section className="py-20 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a, #7c42b4)' }}>
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-brand-gold text-xs font-bold uppercase tracking-widest mb-3">Key Differentiator — Included at No Additional Cost</p>
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-2">Complimentary Therapeutic Support</h2>
+          <p className="text-brand-gold text-sm font-bold uppercase tracking-widest mb-3">Key Differentiator — Included at No Additional Cost</p>
+          <h2 className="text-4xl md:text-5xl font-black text-white mb-2">Complimentary Therapeutic Support</h2>
           <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-6" />
-          <p className="text-white font-bold text-base leading-relaxed mb-4 max-w-3xl mx-auto">
+          <p className="text-white font-bold text-lg leading-relaxed mb-4 max-w-3xl mx-auto">
             As part of our commitment to delivering truly holistic care, every eligible individual has access
             to our in-house therapeutic services at <strong className="text-brand-gold">no extra cost</strong>.
           </p>
-          <p className="text-white font-bold text-base leading-relaxed mb-8 max-w-3xl mx-auto">
+          <p className="text-white font-bold text-lg leading-relaxed mb-8 max-w-3xl mx-auto">
             Our qualified therapist provides evidence-based interventions that support emotional wellbeing,
             resilience, and personal development alongside day-to-day care.
           </p>
@@ -231,12 +231,12 @@ export default function Services() {
               'Behaviour Therapy',
               'Personalised therapeutic interventions',
             ].map(t => (
-              <span key={t} className="px-4 py-2 bg-white/15 text-white rounded-full text-sm font-semibold border border-white/30">
+              <span key={t} className="px-5 py-2.5 bg-white/15 text-white rounded-full text-base font-semibold border border-white/30">
                 {t}
               </span>
             ))}
           </div>
-          <p className="text-white font-bold text-sm italic max-w-2xl mx-auto">
+          <p className="text-white font-bold text-base italic max-w-2xl mx-auto">
             This unique service reflects our commitment to supporting both physical and mental wellbeing
             through integrated, person-centred care.
           </p>
@@ -249,22 +249,22 @@ export default function Services() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
-              <h2 className="text-3xl font-black text-gray-900 mb-5 leading-tight">
+              <h2 className="text-4xl font-black text-gray-900 mb-5 leading-tight">
                 Why Choose<br />Comprehensive Care?
               </h2>
-              <p className="text-gray-700 font-bold leading-relaxed mb-4 text-sm">
+              <p className="text-gray-700 font-bold leading-relaxed mb-4 text-base">
                 At Comprehensive Care we select our staff very carefully and only take on the best.
                 We have an established reputation and attract and retain the best staff by offering
                 highly competitive pay rates, a choice of working hours and ongoing personal
                 support and training.
               </p>
-              <p className="text-gray-700 font-bold leading-relaxed mb-6 text-sm">
+              <p className="text-gray-700 font-bold leading-relaxed mb-6 text-base">
                 Whether you're looking for support for yourself or a loved one, our dedicated team
                 is here to help every step of the way.
               </p>
               <ul className="space-y-3 mb-8">
                 {WHY_CHOOSE.map(w => (
-                  <li key={w} className="flex items-start gap-3 text-sm text-gray-800 font-bold">
+                  <li key={w} className="flex items-start gap-3 text-base text-gray-800 font-bold">
                     <svg className="w-4 h-4 text-brand-purple flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
@@ -286,15 +286,43 @@ export default function Services() {
         </div>
       </section>
 
-      {/* ── AREAS WE COVER ───────────────────────────────────────────── */}
+      {/* ── AREAS WE COVER AS AN AGENCY ─────────────────────────────── */}
       <section className="py-16 px-4 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
-            <h2 className="text-3xl font-black text-gray-900 mb-3">Areas We Cover</h2>
-            <p className="text-gray-700 font-bold max-w-2xl mx-auto text-sm leading-relaxed">
-              As a registered care agency, Comprehensive Care Ltd delivers high-quality support services
-              across Greater Manchester and the surrounding areas.
+            <h2 className="text-4xl font-black text-gray-900 mb-3">Areas We Cover as an Agency</h2>
+            <p className="text-gray-700 font-bold max-w-2xl mx-auto text-base leading-relaxed">
+              As a registered care agency, Comprehensive Care Ltd provides staffing and support services
+              to a wide range of care settings across Greater Manchester and surrounding regions.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
+            {[
+              'Nursing Homes',
+              'Residential Homes',
+              'Care Homes',
+              'Hospices',
+              'Hospitals',
+              'Mental Health Services',
+              'Learning Disabilities services',
+              'Supported Living',
+              'Domiciliary Care',
+              'Private & Local Authority Client',
+            ].map(facility => (
+              <div key={facility} className="flex items-start gap-3 bg-peach-light rounded-xl px-4 py-4 border border-peach-hero">
+                <svg className="w-5 h-5 text-brand-purple flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-base font-bold text-gray-700">{facility}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mb-4">
+            <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
+            <h3 className="text-3xl font-black text-gray-900 mb-3">Geographic Areas We Cover</h3>
+            <p className="text-gray-700 font-bold max-w-2xl mx-auto text-base leading-relaxed">
+              We deliver high-quality support services across Greater Manchester and the surrounding areas.
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -302,16 +330,16 @@ export default function Services() {
               'Manchester', 'Salford', 'Oldham', 'Rochdale', 'Tameside',
               'Stockport', 'Trafford', 'Wigan', 'Bolton', 'Bury',
             ].map(area => (
-              <div key={area} className="flex items-center gap-2 bg-peach-light rounded-xl px-4 py-3 border border-peach-hero">
-                <svg className="w-4 h-4 text-brand-purple flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div key={area} className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-brand-purple/20 shadow-sm">
+                <svg className="w-5 h-5 text-brand-purple flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
-                <span className="text-sm font-semibold text-gray-700">{area}</span>
+                <span className="text-base font-bold text-gray-700">{area}</span>
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-gray-400 mt-6 italic">
+          <p className="text-center text-sm text-gray-400 mt-6 italic">
             Don't see your area? Contact us — we may be able to support you. Our coverage continues to expand.
           </p>
         </div>
@@ -320,10 +348,10 @@ export default function Services() {
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <section className="py-16 px-4 bg-white text-center">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-black text-gray-900 mb-4">
+          <h2 className="text-3xl font-black text-gray-900 mb-4">
             Ready to find out how we can help?
           </h2>
-          <p className="text-gray-700 font-bold mb-8">
+          <p className="text-gray-700 font-bold mb-8 text-lg">
             Get in touch today to find out how Comprehensive Care can support you with
             personalised care that puts your needs first.
           </p>

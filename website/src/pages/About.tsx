@@ -256,10 +256,19 @@ export default function About() {
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap justify-center gap-8 mt-10">
-            <img src="/cqc-good.jpg" alt="CQC Good" className="h-16 object-contain" />
-            <img src="/ico-logo.png"  alt="ICO"      className="h-14 object-contain" />
-            <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-14 object-contain" />
+          <div className="flex flex-wrap justify-center items-center gap-10 mt-10">
+            {[
+              { src: '/cqc-good.jpg',              alt: 'CQC Rated Good' },
+              { src: '/cqc-new.jpg',               alt: 'CQC Registered Provider' },
+              { src: '/ico-logo.png',              alt: 'ICO' },
+              { src: '/pqs-logo.png',              alt: 'PQS SSIP' },
+              { src: '/logo-cyber-essentials.png', alt: 'Cyber Essentials' },
+              { src: '/logo-ssip.png',             alt: 'SSIP Member' },
+              { src: '/logo-ukas.png',             alt: 'UKAS' },
+              { src: '/logo-skills-for-care.png',  alt: 'Skills for Care' },
+            ].map(a => (
+              <img key={a.alt} src={a.src} alt={a.alt} className="h-24 object-contain" />
+            ))}
           </div>
         </div>
       </section>
