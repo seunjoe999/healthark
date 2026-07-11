@@ -18,6 +18,7 @@ const joinLinks = [
 export default function Navbar() {
   const [joinOpen, setJoinOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [activeSection, setActiveSection] = useState('home')
   const dropRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
 
@@ -36,11 +37,32 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    if (location.pathname !== '/') return
+    const sectionIds = ['home', 'about', 'our-services', 'our-specialism', 'how-we-work', 'our-carers', 'join-us']
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id)
+          }
+        })
+      },
+      { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+    )
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
+  }, [location.pathname])
+
   const isActive = (href: string) => {
-    if (href === '/#home') return location.pathname === '/' && !location.hash
-    return location.hash === href.replace('/', '')
+    if (location.pathname !== '/') return false
+    const sectionId = href.replace('/#', '')
+    return activeSection === sectionId
   }
-  const joinActive = joinLinks.some(l => location.pathname === l.href)
+  const joinActive = activeSection === 'join-us' || joinLinks.some(l => location.pathname === l.href)
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
