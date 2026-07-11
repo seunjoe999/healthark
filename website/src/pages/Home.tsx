@@ -117,14 +117,22 @@ const TIMETABLE = [
 
 /* — How We Work data — */
 const HELP_CARDS = [
-  { icon: '💊', label: 'Medication Reminders',   color: '#d4845a' },
-  { icon: '🏃', label: 'Staying Active',           color: '#7c42b4' },
-  { icon: '🥗', label: 'Meal Prep & Groceries',   color: '#00b8b8' },
-  { icon: '🚗', label: 'Transportation',           color: '#4ab47c' },
-  { icon: '🏠', label: 'Personal Care',            color: '#cc2222' },
-  { icon: '💬', label: 'Social Support',           color: '#b47c42' },
-  { icon: '📋', label: 'Appointment Management',  color: '#5a7ab4' },
-  { icon: '🛁', label: 'Household Tasks',          color: '#9b6cc8' },
+  { label: 'Medication Reminders',  color: '#d4845a',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg> },
+  { label: 'Staying Active',         color: '#7c42b4',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M9 14c0 0-2-1-3-3s1-4 3-4"/><path d="M15 14c0 0 2-1 3-3s-1-4-3-4"/></svg> },
+  { label: 'Meal Prep & Groceries',  color: '#00b8b8',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+  { label: 'Transportation',          color: '#4ab47c',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> },
+  { label: 'Personal Care',           color: '#cc2222',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+  { label: 'Social Support',          color: '#b47c42',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+  { label: 'Appointment Management', color: '#5a7ab4',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+  { label: 'Household Tasks',         color: '#9b6cc8',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
 ]
 const STEPS = [
   { num: '01', title: 'Initial Enquiry',   desc: 'Contact us via phone, email or our referral form. Our friendly team will discuss your needs and how we can help.' },
@@ -307,80 +315,137 @@ export default function Home() {
         </div>
 
         <div className="py-16 bg-white px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="rounded-2xl overflow-hidden h-72 md:h-96 photo-card mb-14">
-            <img src="/about-team.jpg" alt="Comprehensive Care Team" className="w-full h-full object-cover" />
-          </div>
+          <div className="max-w-6xl mx-auto">
 
-          {/* Aims */}
-          <div className="grid lg:grid-cols-2 gap-14 items-start mb-14">
-            <div>
-              <h3 className="text-2xl font-black text-gray-900 mb-6 heading-underline">Our Aims &amp; Objectives</h3>
-              <ul className="space-y-4 mt-8">
-                {AIMS.map((a, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="w-6 h-6 rounded-full bg-brand-purple/10 text-brand-purple flex items-center justify-center flex-shrink-0 font-bold text-sm mt-0.5">{i + 1}</span>
-                    <p className="text-gray-600 text-sm leading-relaxed">{a}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="photo-card overflow-hidden rounded-2xl">
-              <img src="/values-pic.png" alt="Our Values" className="w-full object-cover" />
-            </div>
-          </div>
-
-          {/* Mission */}
-          <div className="py-14 bg-peach-light rounded-2xl px-8 mb-14">
-            <h3 className="text-2xl font-black text-gray-900 mb-8 heading-underline text-center">Our Mission</h3>
-            <div className="grid lg:grid-cols-2 gap-10 items-center mt-8">
-              <div className="bg-white rounded-2xl shadow-md p-8 text-left border-l-4 border-brand-purple">
-                <p className="text-gray-600 leading-relaxed text-base">
-                  Our mission is to empower individuals with disabilities and complex care needs to live independently within their community, providing opportunities for them to lead fulfilling lives. We provide supported living and domiciliary care services designed to meet the specific needs of each person. We also offer additional therapeutic services through an in-house therapist, providing free intensive CBT therapy, mindfulness, DBT, and behaviour therapy. This holistic approach ensures individuals receive comprehensive care addressing both physical and mental health needs.
+            {/* Who We Are — text left, photo right */}
+            <div className="grid lg:grid-cols-2 gap-14 items-center mb-16">
+              <div>
+                <p className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3">Who We Are</p>
+                <h3 className="text-3xl font-black text-gray-900 mb-6 leading-tight">
+                  Built on Trust,<br />Driven by Compassion
+                </h3>
+                <p className="text-gray-600 leading-relaxed mb-5">
+                  Comprehensive Care was founded on a simple belief: everyone deserves support that fits their life — not the other way around. We work alongside people with complex mental health needs, learning disabilities, autism, and physical care requirements, building care around what each individual person actually wants and needs.
                 </p>
-              </div>
-              <div className="photo-card rounded-2xl overflow-hidden h-64">
-                <img src="/about-mission.jpg" alt="Our Mission" className="w-full h-full object-cover" />
-              </div>
-            </div>
-          </div>
-
-          {/* Accreditations */}
-          <div className="mb-14">
-            <h3 className="text-2xl font-black text-gray-900 mb-8 heading-underline text-center">Our Accreditations</h3>
-            <div className="grid sm:grid-cols-2 gap-4 mt-10">
-              {ACCREDITATIONS.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 p-4 rounded-xl bg-brand-purple/5 border border-brand-purple/15">
-                  <span className="w-6 h-6 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
-                    </svg>
-                  </span>
-                  <p className="text-gray-700 text-sm font-medium">{a}</p>
+                <p className="text-gray-600 leading-relaxed mb-8">
+                  Every support plan starts with a real conversation — with the person, their family, and the professionals around them. Our in-house therapist also offers free CBT, mindfulness, DBT, and behaviour therapy, because we know that lasting wellbeing means addressing both body and mind.
+                </p>
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { num: '10+', label: 'Years Experience' },
+                    { num: 'CQC', label: 'Rated Good' },
+                    { num: '24/7', label: 'Support Available' },
+                  ].map(s => (
+                    <div key={s.label} className="text-center p-4 rounded-xl bg-brand-purple/5 border border-brand-purple/10">
+                      <div className="text-xl font-black text-brand-purple">{s.num}</div>
+                      <div className="text-xs text-gray-500 font-medium mt-1">{s.label}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div className="photo-card rounded-2xl overflow-hidden h-[420px]">
+                <img src="/about-team.jpg" alt="Our Care Team" className="w-full h-full object-cover" />
+              </div>
             </div>
-            <div className="flex flex-wrap justify-center gap-8 mt-10">
-              <img src="/cqc-good.jpg" alt="CQC Good" className="h-16 object-contain" />
-              <img src="/ico-logo.png"  alt="ICO"      className="h-14 object-contain" />
-              <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-14 object-contain" />
-            </div>
-          </div>
 
-          {/* Values */}
-          <div className="bg-peach-hero rounded-2xl py-12 px-8">
-            <h3 className="text-2xl font-black text-gray-900 mb-10 heading-underline text-center">Our Values</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-              {ABOUT_VALUES.map(v => (
-                <div key={v.title} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
-                  <div className="w-16 h-16 rounded-full bg-brand-purple/10 flex items-center justify-center text-3xl mx-auto mb-4">{v.icon}</div>
-                  <h4 className="font-black text-lg text-gray-900 mb-2">{v.title}</h4>
-                  <p className="text-gray-500 text-sm leading-relaxed">{v.desc}</p>
+            {/* Our Mission — purple panel, no image */}
+            <div className="mb-16 rounded-2xl overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #5a2d8a 0%, #7c42b4 100%)' }}>
+              <div className="grid lg:grid-cols-5">
+                <div className="lg:col-span-2 px-10 py-12 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-white/10">
+                  <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">Our Mission</p>
+                  <h3 className="text-2xl font-black text-white leading-snug mb-4">
+                    Empowering people to live the lives they choose.
+                  </h3>
+                  <div className="w-10 h-1 bg-brand-gold rounded-full" />
                 </div>
-              ))}
+                <div className="lg:col-span-3 px-10 py-12 flex flex-col justify-center gap-4">
+                  <p className="text-white/85 text-base leading-relaxed">
+                    We help individuals with disabilities and complex care needs live independently in their communities. Every service we provide — from supported living to domiciliary care — is shaped around what the person themselves wants for their life, not what's easiest to deliver.
+                  </p>
+                  <p className="text-white/85 text-base leading-relaxed">
+                    We work in genuine partnership with families, commissioners, and healthcare teams to make sure the care we provide is consistent, transparent, and actually making a difference. When something isn't working, we say so — and we fix it.
+                  </p>
+                </div>
+              </div>
             </div>
+
+            {/* Aims & Objectives */}
+            <div className="mb-16">
+              <h3 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Aims &amp; Objectives</h3>
+              <p className="text-center text-gray-500 max-w-2xl mx-auto mb-10 mt-6 text-sm">
+                These commitments guide everything we do — from individual care plans to how we run our organisation.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {AIMS.map((a, i) => (
+                  <div key={i} className="flex gap-4 p-5 rounded-xl border border-brand-purple/15 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-8 h-8 rounded-lg bg-brand-purple text-white font-black text-xs flex items-center justify-center flex-shrink-0">
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed">{a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Our Values — SVG icons, horizontal card layout */}
+            <div className="bg-peach-hero rounded-2xl py-12 px-8 mb-16">
+              <h3 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Values</h3>
+              <p className="text-center text-gray-500 max-w-xl mx-auto mb-10 mt-6 text-sm">
+                The principles that shape every interaction, every care plan, and every decision we make.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[
+                  { title: 'Privacy', color: '#7c42b4', desc: 'The right of individuals to be left alone and free from intrusion — always taken into account when we create and review care plans.',
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+                  { title: 'Dignity', color: '#cc2222', desc: 'Whatever their circumstances, every person we support has the right to be treated with dignity and full respect at all times.',
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+                  { title: 'Anti-Discrimination', color: '#00b8b8', desc: 'We actively challenge discrimination based on age, disability, gender, culture, religion, or any other characteristic.',
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+                  { title: 'Communication', color: '#d4845a', desc: 'People have the right to be heard and fully informed. We communicate in ways that work for each individual.',
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+                  { title: 'Independence', color: '#4ab47c', desc: 'We encourage people to make their own choices and stay as independent as possible, with support only where they want it.',
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> },
+                  { title: 'Person-Centred', color: '#b47c42', desc: 'Every care plan is built around the individual — their values, preferences, and long-term goals always come first.',
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
+                ].map(v => (
+                  <div key={v.title} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4 items-start hover:shadow-md transition-shadow">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${v.color}18`, color: v.color }}>
+                      {v.icon}
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-gray-900 mb-1">{v.title}</h4>
+                      <p className="text-gray-500 text-xs leading-relaxed">{v.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Accreditations */}
+            <div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Accreditations</h3>
+              <div className="grid sm:grid-cols-2 gap-4 mt-10">
+                {ACCREDITATIONS.map((a, i) => (
+                  <div key={i} className="flex items-center gap-3 p-4 rounded-xl bg-brand-purple/5 border border-brand-purple/15">
+                    <span className="w-6 h-6 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </span>
+                    <p className="text-gray-700 text-sm font-medium">{a}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap justify-center gap-8 mt-10">
+                <img src="/cqc-good.jpg" alt="CQC Good" className="h-16 object-contain" />
+                <img src="/ico-logo.png"  alt="ICO"      className="h-14 object-contain" />
+                <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-14 object-contain" />
+              </div>
+            </div>
+
           </div>
-        </div>
         </div>
       </section>
 
@@ -645,12 +710,6 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white px-4 py-10">
-          <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-64 md:h-80 photo-card">
-            <img src="/howwework-hero.jpg" alt="How We Work" className="w-full h-full object-cover" />
-          </div>
-        </div>
-
         {/* We Can Help */}
         <div className="py-14 bg-peach-hero px-4">
           <div className="max-w-6xl mx-auto">
@@ -663,8 +722,10 @@ export default function Home() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {HELP_CARDS.map(c => (
                 <div key={c.label} className="service-card p-5 text-center">
-                  <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl"
-                    style={{ background: `${c.color}18` }}>{c.icon}</div>
+                  <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center"
+                    style={{ background: `${c.color}18`, color: c.color }}>
+                    <span className="w-6 h-6">{c.icon}</span>
+                  </div>
                   <p className="font-bold text-sm text-brand-red">{c.label}</p>
                 </div>
               ))}
