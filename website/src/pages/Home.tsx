@@ -21,18 +21,21 @@ const VALUES = [
     title: 'Warm',
     icon: '🤝',
     color: '#d4845a',
+    img: '/care-values-warm.jpg',
     desc: 'We promote the development of warm, supportive relationships between service users and carers that foster attachment and a sense of stability. A key aspect of this involves ensuring carers receive training and support to enhance their skills and maintain a consistent approach.',
   },
   {
     title: 'Bespoke',
     icon: '✨',
     color: '#7c42b4',
+    img: '/care-values-bespoke.jpg',
     desc: 'Our service users receive care that is personalized to their individual needs through a person-centred approach. We deliver care in the way they prefer, working closely with them to ensure an exceptional care experience.',
   },
   {
     title: 'Compassionate',
     icon: '❤️',
     color: '#cc2222',
+    img: '/care-values-compassionate.jpg',
     desc: 'Compassion is the foundation of how we provide care, built on relationships of empathy, respect, and dignity, which significantly influence how individuals experience their care.',
   },
 ]
@@ -40,14 +43,17 @@ const VALUES = [
 const WHY_CHOOSE = [
   {
     title: 'Person-Centred Care',
+    img: '/care-values-bespoke.jpg',
     desc: 'Every care plan is tailored to the individual — their preferences, goals, and needs are always at the centre of everything we do.',
   },
   {
     title: 'Experienced, Compassionate Staff',
+    img: '/care-team.jpg',
     desc: 'Our team is rigorously trained, DBS-checked, and genuinely passionate about improving the lives of the people they support.',
   },
   {
     title: 'Community Inclusion & Independence',
+    img: '/care-community.jpg',
     desc: 'We actively support individuals to engage with their communities, build independence, and live fulfilling, self-directed lives.',
   },
 ]
@@ -154,7 +160,7 @@ export default function Home() {
               >
                 <div className="h-52 relative">
                   <img
-                    src="/values-pic.png"
+                    src={v.img}
                     alt={v.title}
                     className="w-full h-full object-cover"
                   />
@@ -211,7 +217,7 @@ export default function Home() {
             <div className="flex justify-center">
               <div className="photo-card w-full max-w-md aspect-[4/3] overflow-hidden rounded-2xl">
                 <img
-                  src="/values-pic.png"
+                  src="/care-hero.jpg"
                   alt="Building Better Lives"
                   className="w-full h-full object-cover"
                 />
@@ -298,7 +304,7 @@ export default function Home() {
                 {/* Circular portrait image */}
                 <div className="w-24 h-24 mx-auto mb-5 rounded-full overflow-hidden border-4 border-brand-gold shadow">
                   <img
-                    src="/values-pic.png"
+                    src={item.img}
                     alt={item.title}
                     className="w-full h-full object-cover"
                   />
@@ -356,7 +362,7 @@ export default function Home() {
           <div className="flex justify-center">
             <div className="photo-card w-full max-w-md aspect-[4/3] overflow-hidden rounded-2xl">
               <img
-                src="/values.png"
+                src="/care-therapy.jpg"
                 alt="Therapeutic Services"
                 className="w-full h-full object-cover"
               />
