@@ -1,21 +1,42 @@
-import { useState } from 'react'
-import PageHero from '../components/PageHero'
+import { useState, useRef } from 'react'
+
+const WHY_REFER = [
+  'High-quality, person-centred care',
+  'Fast response to referrals',
+  'Experienced and compassionate care professionals',
+  'Flexible packages of care',
+  'Complex care expertise',
+  'Safe hospital discharge support',
+  'Regular care reviews',
+  'Dedicated care coordination',
+  '24-hour on-call support',
+  'Collaborative working with health and social care professionals',
+]
 
 export default function MakeAReferral() {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [fileName, setFileName] = useState('')
+  const [consent, setConsent] = useState(false)
   const [form, setForm] = useState({
-    careFor: '', firstName: '', lastName: '', email: '', phone: '',
-    serviceType: '', dob: '', address: '', details: '', referrerName: '',
-    referrerOrg: '', referrerEmail: '', referrerPhone: '',
+    referrerName: '', referrerOrg: '', referrerPhone: '', referrerEmail: '',
+    personName: '', dob: '', nhsNumber: '', address: '', personPhone: '',
+    nextOfKin: '', emergencyContact: '',
+    referralDetails: '',
   })
   const [submitted, setSubmitted] = useState(false)
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileName(e.target.files?.[0]?.name ?? '')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!consent) return
     try {
       await fetch('https://compcarehub.onrender.com/api/public/referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, fileName }),
       })
     } catch {}
     setSubmitted(true)
@@ -23,154 +44,229 @@ export default function MakeAReferral() {
 
   return (
     <div>
-      {/* HERO */}
-      <PageHero variant="peach" title="Make A Referral" subtitle="Refer someone to Comprehensive Care and we will get in touch to discuss how we can support their needs." />
 
+      {/* ── HERO ─────────────────────────────────────────────────────── */}
+      <section
+        className="relative overflow-hidden py-20 px-4"
+        style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 45%, #5a2d8a 100%)' }}
+      >
+        <div className="absolute top-0 left-0 w-80 h-80 rounded-full pointer-events-none opacity-20"
+          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
+        <div className="relative z-10 max-w-2xl mx-auto text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-brand-gold/60 px-8 py-10 shadow-2xl">
+            <h1 className="text-4xl md:text-5xl font-black italic text-brand-red font-serif mb-4">
+              Make a Referral
+            </h1>
+            <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-5" />
+            <p className="text-white/90 text-base leading-relaxed">
+              Compassionate Care Starts with the Right Referral. Make a referral today and let us
+              help deliver the exceptional care your client or loved one deserves.
+            </p>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,30 C200,70 400,10 600,40 C800,70 1000,20 1200,50 C1350,70 1440,35 1440,35 L1440,70 L0,70 Z" fill="white" />
+          </svg>
+        </div>
+      </section>
+
+      {/* ── FORM + SIDEBAR ───────────────────────────────────────────── */}
       <section className="py-0 bg-white">
-        <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 min-h-[600px]">
+        <div className="max-w-[1280px] mx-auto grid lg:grid-cols-[1fr_380px] min-h-[700px]">
 
-          {/* Form */}
+          {/* FORM */}
           <div className="px-6 md:px-12 py-14">
             {submitted ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-4xl mx-auto mb-6">✓</div>
                 <h2 className="text-2xl font-black text-gray-900 mb-2">Referral Submitted!</h2>
-                <p className="text-gray-500 mb-6">Thank you. Our team will review your referral and be in touch within 24 hours.</p>
+                <p className="text-gray-500 mb-6">Thank you. Our team will review your referral and be in touch promptly to discuss the next steps.</p>
                 <button onClick={() => setSubmitted(false)} className="btn-purple">Submit Another Referral</button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <h2 className="text-2xl font-black text-gray-900 mb-1">Referral Form</h2>
-                <p className="text-sm text-gray-500 mb-4">All fields marked * are required.</p>
-
+              <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
                 <div>
-                  <label className="form-label">Who needs the care? *</label>
-                  <select required className="form-input" value={form.careFor}
-                    onChange={e => setForm({ ...form, careFor: e.target.value })}>
-                    <option value="">– please select –</option>
-                    {['Myself','My parent','My partner','My child','A client (professional referral)','Someone else'].map(o => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
+                  <h2 className="text-2xl font-black text-gray-900 mb-1">Referral Form</h2>
+                  <p className="text-sm text-gray-500">All fields marked * are required.</p>
                 </div>
 
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider pt-2">Person Requiring Care</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">First Name *</label>
-                    <input required type="text" placeholder="Name" className="form-input"
-                      value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="form-label">Last Name *</label>
-                    <input required type="text" placeholder="Surname" className="form-input"
-                      value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Email *</label>
-                    <input required type="email" className="form-input"
-                      value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="form-label">Phone *</label>
-                    <input required type="tel" className="form-input"
-                      value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Date of Birth</label>
-                    <input type="date" className="form-input"
-                      value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="form-label">Service Required *</label>
-                    <select required className="form-input" value={form.serviceType}
-                      onChange={e => setForm({ ...form, serviceType: e.target.value })}>
-                      <option value="">– please select –</option>
-                      {['Supported Living','Complex Mental Health','Drug & Alcohol Recovery','Domiciliary Care',
-                        'End of Life Care','Live In Care','Respite Care','Pathways to Independence','Other'].map(o => (
-                        <option key={o}>{o}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                {/* REFERRER'S DETAILS */}
                 <div>
-                  <label className="form-label">Address</label>
-                  <input type="text" className="form-input" placeholder="Full address"
-                    value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
-                </div>
-                <div>
-                  <label className="form-label">Care Needs / Additional Details</label>
-                  <textarea rows={3} className="form-input resize-none"
-                    placeholder="Please describe the care needs and any relevant background information..."
-                    value={form.details} onChange={e => setForm({ ...form, details: e.target.value })} />
+                  <p className="text-xs font-black text-brand-purple uppercase tracking-widest mb-3 pt-2">Referrer's Details</p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="form-label">Full Name *</label>
+                      <input required type="text" className="form-input"
+                        value={form.referrerName} onChange={e => setForm({ ...form, referrerName: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="form-label">Organisation</label>
+                      <input type="text" className="form-input"
+                        value={form.referrerOrg} onChange={e => setForm({ ...form, referrerOrg: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label">Telephone Number *</label>
+                        <input required type="tel" className="form-input"
+                          value={form.referrerPhone} onChange={e => setForm({ ...form, referrerPhone: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="form-label">Email Address *</label>
+                        <input required type="email" className="form-input"
+                          value={form.referrerEmail} onChange={e => setForm({ ...form, referrerEmail: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider pt-2">Referrer Details (if professional referral)</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Your Name</label>
-                    <input type="text" className="form-input"
-                      value={form.referrerName} onChange={e => setForm({ ...form, referrerName: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="form-label">Organisation</label>
-                    <input type="text" className="form-input"
-                      value={form.referrerOrg} onChange={e => setForm({ ...form, referrerOrg: e.target.value })} />
+                {/* PERSON BEING REFERRED */}
+                <div>
+                  <p className="text-xs font-black text-brand-purple uppercase tracking-widest mb-3 pt-2">Person Being Referred</p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="form-label">Full Name *</label>
+                      <input required type="text" className="form-input"
+                        value={form.personName} onChange={e => setForm({ ...form, personName: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label">Date of Birth *</label>
+                        <input required type="date" className="form-input"
+                          value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="form-label">NHS Number (if available)</label>
+                        <input type="text" className="form-input" placeholder="e.g. 123 456 7890"
+                          value={form.nhsNumber} onChange={e => setForm({ ...form, nhsNumber: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="form-label">Address *</label>
+                      <input required type="text" className="form-input" placeholder="Full address including postcode"
+                        value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="form-label">Telephone Number</label>
+                      <input type="tel" className="form-input"
+                        value={form.personPhone} onChange={e => setForm({ ...form, personPhone: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label">Next of Kin</label>
+                        <input type="text" className="form-input" placeholder="Name & relationship"
+                          value={form.nextOfKin} onChange={e => setForm({ ...form, nextOfKin: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="form-label">Emergency Contact</label>
+                        <input type="text" className="form-input" placeholder="Name & phone number"
+                          value={form.emergencyContact} onChange={e => setForm({ ...form, emergencyContact: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Your Email</label>
-                    <input type="email" className="form-input"
-                      value={form.referrerEmail} onChange={e => setForm({ ...form, referrerEmail: e.target.value })} />
+
+                {/* REFERRAL DETAILS */}
+                <div>
+                  <p className="text-xs font-black text-brand-purple uppercase tracking-widest mb-3 pt-2">Referral Details</p>
+                  <textarea
+                    rows={6}
+                    required
+                    className="form-input resize-none"
+                    placeholder="Please provide details of the care needs, current situation, medical history, risk factors, and any other relevant information that will help us support this individual..."
+                    value={form.referralDetails}
+                    onChange={e => setForm({ ...form, referralDetails: e.target.value })}
+                  />
+                </div>
+
+                {/* FILE UPLOAD */}
+                <div>
+                  <p className="text-xs font-black text-brand-purple uppercase tracking-widest mb-3">Upload Supporting Documents</p>
+                  <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.png" onChange={handleFileChange} />
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => fileRef.current?.click()} className="btn-gold text-sm">
+                      Attach File
+                    </button>
+                    <span className="text-sm text-gray-500 truncate max-w-[220px]">
+                      {fileName || 'No file chosen'}
+                    </span>
                   </div>
-                  <div>
-                    <label className="form-label">Your Phone</label>
-                    <input type="tel" className="form-input"
-                      value={form.referrerPhone} onChange={e => setForm({ ...form, referrerPhone: e.target.value })} />
-                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Accepted formats: PDF, DOC, DOCX, JPG, PNG</p>
+                </div>
+
+                {/* CONSENT */}
+                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={e => setConsent(e.target.checked)}
+                      className="mt-0.5 flex-shrink-0 accent-brand-purple"
+                    />
+                    <span className="text-sm text-gray-700">
+                      I confirm that I have the appropriate consent to share this information with
+                      Comprehensive Care Ltd for the purpose of arranging care.
+                    </span>
+                  </label>
                 </div>
 
                 <p className="text-xs text-gray-400">
-                  By using this form you agree to the storage and handling of your data by Comprehensive Care LTD in accordance with our Privacy Policy.
+                  By submitting this form you agree to the storage and handling of your data by Comprehensive Care Ltd in accordance with our Privacy Policy.
                 </p>
-                <button type="submit" className="btn-purple w-full py-3 text-center">Submit Referral →</button>
+
+                <button
+                  type="submit"
+                  disabled={!consent}
+                  className={`w-full py-3 text-center rounded-full font-bold text-sm transition-all ${
+                    consent ? 'btn-purple' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Submit Referral →
+                </button>
               </form>
             )}
           </div>
 
-          {/* Info panel — purple/navy */}
-          <div className="flex items-center justify-center px-10 py-14 text-white"
-            style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
-            <div>
-              <h2 className="text-3xl font-black mb-5">Get a free, no obligation care assessment</h2>
-              <p className="text-white/75 leading-relaxed mb-6">
-                Request a member of our team to visit you and carry out a full assessment of your care needs. This will give us an opportunity to get to know you and understand how we can best support you or your loved one.
-              </p>
-              <div className="space-y-4 text-sm">
-                {['Completed within 48 hours of referral','Conducted by an experienced care coordinator',
-                  'Fully confidential and obligation-free','Available 7 days a week'].map(item => (
-                  <div key={item} className="flex gap-2.5 text-white/85">
-                    <svg className="w-4 h-4 text-brand-gold flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+          {/* SIDEBAR */}
+          <div className="flex flex-col text-white" style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
+            <div className="p-10 flex-1">
+              <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
+              <h2 className="text-2xl font-black mb-5">Why Refer to Comprehensive Care Ltd?</h2>
+              <p className="text-white/75 text-sm mb-5">When you refer someone to us, you can be confident they will receive:</p>
+              <ul className="space-y-3">
+                {WHY_REFER.map(w => (
+                  <li key={w} className="flex items-start gap-3 text-white/90 text-sm">
+                    <svg className="w-4 h-4 text-brand-gold flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
-                    {item}
-                  </div>
+                    {w}
+                  </li>
                 ))}
-              </div>
-              <div className="mt-8 pt-6 border-t border-white/15 space-y-2 text-sm text-white/70">
+              </ul>
+            </div>
+
+            <div className="p-10 border-t border-white/15">
+              <h3 className="font-black text-white mb-4">Need to Speak to Someone?</h3>
+              <p className="text-white/70 text-sm mb-4">
+                If you would like to discuss a referral before submitting it, our friendly team is available to help.
+              </p>
+              <div className="space-y-2 text-sm text-white/80">
                 <p>📞 0161 667 6030 / 0161 843 0277</p>
-                <p>📧 referrals@comprehensivecare.org.uk</p>
-                <p>🌐 www.comprehensivecare.org.uk</p>
+                <p>✉️ referrals@comprehensivecare.org.uk</p>
+              </div>
+              <div className="mt-4 text-sm text-white/70 space-y-0.5">
+                <p className="font-semibold text-white/90">📍 Office Address:</p>
+                <p>Comprehensive Care Ltd</p>
+                <p>Ivy Business Centre</p>
+                <p>Office 2-13, Crown Street</p>
+                <p>Failsworth, Manchester M35 9BG</p>
               </div>
             </div>
           </div>
+
         </div>
       </section>
+
     </div>
   )
 }
