@@ -156,21 +156,17 @@ body {
 
 /* ── Nav active highlight ─────────────────────────────────────────────────── */
 .nav-active {
-  background: linear-gradient(135deg, #7c42b4 0%, #9b68d0 100%);
-  color: #ffffff !important;
-  border-radius: 6px;
-  padding-left: 10px !important;
-  padding-right: 10px !important;
-  padding-top: 5px !important;
-  padding-bottom: 5px !important;
+  color: #cc2222 !important;
+  border-bottom: 2.5px solid #7c42b4;
+  padding-bottom: 2px;
 }
 .nav-link {
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s;
+  border-bottom: 2.5px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
 }
 .nav-link:hover:not(.nav-active) {
-  background: rgba(124, 66, 180, 0.08);
   color: #7c42b4;
+  border-bottom-color: rgba(124, 66, 180, 0.3);
 }
 
 /* ── Section heading underline ────────────────────────────────────────────── */
