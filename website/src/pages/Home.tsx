@@ -25,13 +25,14 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden flex items-center justify-center text-center"
+        className="relative flex items-center justify-center text-center"
         style={{
           backgroundImage: 'linear-gradient(rgba(210, 95, 135, 0.48), rgba(235, 145, 175, 0.44)), url(/hero-bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           minHeight: '600px',
           padding: '120px 1rem',
+          overflow: 'clip',
         }}
       >
         <div className="absolute top-0 left-0 w-72 h-72 rounded-full pointer-events-none"
@@ -41,24 +42,24 @@ export default function Home() {
 
         <div className="relative z-10 max-w-3xl mx-auto px-4">
           <motion.p
-            initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
+            initial={{ x: -300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="text-gray-900 text-base font-black uppercase tracking-widest mb-4 font-serif"
           >
             Your Care Our Priority
           </motion.p>
 
           <motion.h1
-            initial={{ x: -80, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.12 }}
+            initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.15 }}
             className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight mb-6 font-serif"
           >
             Your Provider of Choice for Supported Living &amp; Domiciliary Care
           </motion.h1>
 
           <motion.div
-            initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.22, ease: 'easeOut' }}
+            initial={{ x: -300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.3 }}
             className="space-y-3 mb-10"
           >
             <p className="text-gray-900 text-lg font-bold leading-relaxed max-w-2xl mx-auto">
@@ -70,8 +71,8 @@ export default function Home() {
           </motion.div>
 
           <motion.div
-            initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.36, ease: 'easeOut' }}
+            initial={{ x: 300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.45 }}
             className="flex flex-wrap justify-center gap-4 mb-12"
           >
             <Link to="/make-a-referral" className="btn-red px-8 py-3 text-base font-bold">Make a Referral</Link>
@@ -92,8 +93,11 @@ export default function Home() {
 
       {/* ── CQC RATING BADGE ─────────────────────────────────────────── */}
       <section className="py-10 bg-white px-4 border-b border-gray-100">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 text-center sm:text-left">
-          <img src="/cqc-good.jpg" alt="CQC Rated Good" className="h-24 object-contain flex-shrink-0" />
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-8 text-center sm:text-left">
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <img src="/cqc-good.jpg" alt="CQC Rated Good" className="h-24 object-contain" />
+            <img src="/cqc-new.jpg" alt="CQC Registered Provider" className="h-24 object-contain" />
+          </div>
           <div>
             <p className="text-3xl font-black text-gray-900">
               We are rated <span className="text-green-600">Good</span> by CQC
@@ -202,18 +206,18 @@ export default function Home() {
       <section className="py-16 bg-peach-hero px-4">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <p className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3">Included Free of Charge</p>
+            <p className="text-sm font-black text-brand-purple uppercase tracking-widest mb-3">Included Free of Charge</p>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-5 leading-tight">
               More Than Care —<br/>Therapy Included
             </h2>
-            <p className="text-gray-600 text-lg leading-relaxed mb-6">
+            <p className="text-gray-700 text-lg font-bold leading-relaxed mb-6">
               Alongside our care services, our experienced in-house therapist delivers evidence-based therapeutic support
               tailored to each person's individual needs. This integrated approach helps improve emotional wellbeing,
               build resilience, promote independence, and support long-term positive outcomes.
             </p>
             <div className="flex flex-wrap gap-3 mb-8">
               {['CBT Therapy', 'DBT', 'Mindfulness', 'Behaviour Therapy', 'Group Therapy', 'One-to-One Support'].map(t => (
-                <span key={t} className="px-4 py-2 bg-white text-brand-purple border border-brand-purple/20 rounded-full text-sm font-semibold shadow-sm">{t}</span>
+                <span key={t} className="px-4 py-2 bg-white text-brand-purple border border-brand-purple/20 rounded-full text-base font-bold shadow-sm">{t}</span>
               ))}
             </div>
             <Link to="/our-specialism" className="btn-purple">Learn About Our Specialism →</Link>
