@@ -6,7 +6,7 @@ const navLinks = [
   { label: 'ABOUT',          href: '/about' },
   { label: 'OUR SPECIALISM', href: '/our-specialism' },
   { label: 'HOW WE WORK',    href: '/how-we-work' },
-  { label: 'OUR CARERS',     href: '/our-carers' },
+  { label: 'CAREERS',        href: '/jobs' },
 ]
 
 const servicesLinks = [
@@ -15,8 +15,7 @@ const servicesLinks = [
 ]
 
 const joinLinks = [
-  { label: 'Make A Referral', href: '/make-a-referral' },
-  { label: 'Jobs',             href: '/jobs' },
+  { label: 'Referral', href: '/make-a-referral' },
 ]
 
 export default function Navbar() {

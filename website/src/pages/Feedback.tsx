@@ -112,19 +112,23 @@ export default function Feedback() {
       {/* LEAVE A REVIEW */}
       <section className="py-14 bg-white px-4">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-black text-gray-900 text-center mb-4 heading-underline">Leave Us a Review</h2>
-          <p className="text-center text-gray-500 mb-10 mt-6">
-            Your feedback means the world to us. If Comprehensive Care has made a difference to you or your family, please take a moment to share your experience.
-          </p>
+          <div className="text-center mb-10">
+            <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Your Feedback Makes a Difference</h2>
+            <p className="text-gray-600 max-w-xl mx-auto leading-relaxed">
+              Your review helps us continue providing high-quality, person-centred care and supports
+              others in choosing a trusted care provider.
+            </p>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-8 items-center">
             {/* QR Code */}
             <div className="text-center">
-              <div className="inline-block p-6 bg-peach-hero rounded-2xl border-2 border-brand-gold/30 shadow-sm">
-                <img src="/qr-code.png" alt="Comprehensive Care Google Review QR Code"
-                  className="w-48 h-48 mx-auto object-contain" />
-                <p className="text-sm font-bold text-gray-700 mt-3">Scan to Leave a Google Review</p>
-                <p className="text-xs text-gray-500 mt-1">Point your phone camera at the QR code</p>
+              <div className="inline-block p-8 bg-white rounded-2xl border-2 border-brand-gold shadow-lg">
+                <img src="/qr-google-review.png" alt="Comprehensive Care Google Review QR Code"
+                  className="w-56 h-56 mx-auto object-contain" />
+                <p className="text-base font-black text-gray-800 mt-4">Simply scan the QR code to leave your Google review.</p>
+                <p className="text-sm text-gray-500 mt-2 italic">Thank you for taking the time to share your experience.</p>
               </div>
             </div>
 
