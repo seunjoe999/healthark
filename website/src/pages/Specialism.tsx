@@ -48,7 +48,7 @@ export default function Specialism() {
       <section className="px-4 pb-14 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="photo-card overflow-hidden rounded-2xl h-72 md:h-96 bg-gray-200">
-            <img src="/values-pic.png" alt="Our Specialism" className="w-full h-full object-cover opacity-80" />
+            <img src="/specialism-hero.jpg" alt="Our Specialism" className="w-full h-full object-cover opacity-80" />
           </div>
         </div>
       </section>
@@ -69,6 +69,10 @@ export default function Specialism() {
             <div className="inline-flex items-center gap-2 bg-white rounded-full px-5 py-2 border border-brand-gold shadow-sm text-sm font-semibold text-gray-700">
               🕘 Opening Hours: Monday–Friday, 9:30 AM – 4:00 PM
             </div>
+          </div>
+
+          <div className="rounded-2xl overflow-hidden h-56 mb-6 photo-card">
+            <img src="/specialism-activities.jpg" alt="Pathways to Independence activities" className="w-full h-full object-cover" />
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-6 md:p-8 mb-8">

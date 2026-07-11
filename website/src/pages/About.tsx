@@ -37,6 +37,14 @@ export default function About() {
 
       <div className="py-8" />
 
+      <section className="pb-0 bg-white px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="rounded-2xl overflow-hidden h-72 md:h-96 photo-card">
+            <img src="/about-team.jpg" alt="Comprehensive Care Team" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      </section>
+
       {/* AIMS & OBJECTIVES */}
       <section className="py-14 bg-white px-4">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-start">
@@ -61,12 +69,17 @@ export default function About() {
 
       {/* MISSION */}
       <section className="py-14 bg-peach-light px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-black text-gray-900 mb-8 heading-underline">Our Mission</h2>
-          <div className="bg-white rounded-2xl shadow-md p-8 mt-8 text-left border-l-4 border-brand-purple">
-            <p className="text-gray-600 leading-relaxed text-base">
-              Our mission is to empower individuals with disabilities and complex care needs to live independently within their community, providing opportunities for them to lead fulfilling lives. To support this, we provide supported living and domiciliary care services designed to meet the specific needs of each person. We also offer additional therapeutic services through an in-house therapist, providing free intensive CBT therapy, mindfulness, DBT, and behaviour therapy, among other support services. This holistic approach ensures that individuals receive comprehensive care that addresses both physical and mental health needs. Our goal is to support them to lead valued and independent lives, stay connected to their local community and maintain their dignity regardless of their disability.
-            </p>
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-black text-gray-900 mb-8 heading-underline text-center">Our Mission</h2>
+          <div className="grid lg:grid-cols-2 gap-10 items-center mt-8">
+            <div className="bg-white rounded-2xl shadow-md p-8 text-left border-l-4 border-brand-purple">
+              <p className="text-gray-600 leading-relaxed text-base">
+                Our mission is to empower individuals with disabilities and complex care needs to live independently within their community, providing opportunities for them to lead fulfilling lives. To support this, we provide supported living and domiciliary care services designed to meet the specific needs of each person. We also offer additional therapeutic services through an in-house therapist, providing free intensive CBT therapy, mindfulness, DBT, and behaviour therapy, among other support services. This holistic approach ensures that individuals receive comprehensive care that addresses both physical and mental health needs. Our goal is to support them to lead valued and independent lives, stay connected to their local community and maintain their dignity regardless of their disability.
+              </p>
+            </div>
+            <div className="photo-card rounded-2xl overflow-hidden h-72 md:h-80">
+              <img src="/about-mission.jpg" alt="Our Mission" className="w-full h-full object-cover" />
+            </div>
           </div>
         </div>
       </section>

@@ -74,7 +74,11 @@ export default function Jobs() {
         cta={{ label: 'Apply Now', to: '#apply' }}
       />
 
-      <div className="py-8" />
+      <div className="bg-white px-4 py-10">
+        <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-64 photo-card">
+          <img src="/jobs-hero.jpg" alt="Join Our Team" className="w-full h-full object-cover object-top" />
+        </div>
+      </div>
 
       {/* BENEFITS */}
       <section className="py-14 bg-peach-hero px-4">
@@ -234,6 +238,9 @@ export default function Jobs() {
           <div className="flex items-center justify-center px-10 py-14 text-white"
             style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
             <div>
+              <div className="rounded-xl overflow-hidden h-40 mb-6">
+                <img src="/jobs-team.jpg" alt="Care team" className="w-full h-full object-cover" />
+              </div>
               <h2 className="text-3xl font-black mb-5">Start Your Care Career Today</h2>
               <p className="text-white/75 leading-relaxed mb-6">
                 Join a growing team of dedicated care professionals making a real difference in people's lives every day. We welcome applicants from all backgrounds — what matters most is compassion, reliability, and a genuine desire to help others.

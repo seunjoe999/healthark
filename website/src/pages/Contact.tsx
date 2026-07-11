@@ -27,7 +27,11 @@ export default function Contact() {
         subtitle="We'd love to hear from you. Get in touch with our friendly team to discuss care needs, referrals, or general enquiries."
       />
 
-      <div className="py-8" />
+      <div className="bg-white px-4 py-10">
+        <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-56 photo-card">
+          <img src="/contact-hero.jpg" alt="Contact Comprehensive Care" className="w-full h-full object-cover" />
+        </div>
+      </div>
 
       {/* QUICK CONTACT CARDS */}
       <section className="py-10 bg-white px-4">

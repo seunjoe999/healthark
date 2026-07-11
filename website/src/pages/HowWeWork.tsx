@@ -38,7 +38,13 @@ export default function HowWeWork() {
         subtitle="At Comprehensive Care, we select the best, most-skilled carers in advance, so they're ready to provide the care you want, right when you need it."
       />
 
-      <div className="py-8" />
+      <div className="py-0 bg-white">
+        <div className="max-w-6xl mx-auto px-4 pt-10">
+          <div className="rounded-2xl overflow-hidden h-64 md:h-80 photo-card">
+            <img src="/howwework-hero.jpg" alt="How We Work" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      </div>
 
       {/* CAN HELP SECTION */}
       <section className="py-14 bg-peach-hero px-4">

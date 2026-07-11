@@ -61,7 +61,11 @@ export default function Feedback() {
         subtitle="We are committed to delivering outstanding care. Your feedback helps us improve and lets others know they can trust us."
       />
 
-      <div className="py-8" />
+      <div className="bg-white px-4 py-10">
+        <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-56 photo-card">
+          <img src="/feedback-hero.jpg" alt="Client feedback" className="w-full h-full object-cover" />
+        </div>
+      </div>
 
       {/* RATINGS SUMMARY */}
       <section className="py-10 bg-white px-4">

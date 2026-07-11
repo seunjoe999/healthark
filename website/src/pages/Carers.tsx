@@ -19,7 +19,11 @@ export default function Carers() {
         subtitle="At Comprehensive Care we select our staff very carefully and only take on the best."
       />
 
-      <div className="py-8" />
+      <div className="bg-white px-4 py-10">
+        <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden h-64 md:h-80 photo-card">
+          <img src="/carers-team.jpg" alt="Our Care Team" className="w-full h-full object-cover" />
+        </div>
+      </div>
 
       {/* WHY COMP CARE */}
       <section className="py-14 bg-white px-4">
@@ -39,7 +43,7 @@ export default function Carers() {
           </div>
 
           <div className="photo-card overflow-hidden rounded-2xl h-80">
-            <img src="/values-pic.png" alt="Comprehensive Care team" className="w-full h-full object-cover" />
+            <img src="/carers-hero.jpg" alt="Comprehensive Care team" className="w-full h-full object-cover" />
           </div>
         </div>
       </section>
