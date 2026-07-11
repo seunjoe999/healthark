@@ -25,7 +25,7 @@ export default function SocialSidebar() {
         </svg>
       </a>
       <a
-        href="https://wa.me/441616676030"
+        href="https://wa.me/447508535012"
         target="_blank"
         rel="noopener noreferrer"
         title="WhatsApp"

@@ -154,20 +154,6 @@ body {
   margin-bottom: 0.35rem;
 }
 
-/* ── Nav active highlight ─────────────────────────────────────────────────── */
-.nav-link {
-  border-bottom: 2.5px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
-}
-.nav-link:hover:not(.nav-active) {
-  color: #7c42b4;
-  border-bottom-color: rgba(124, 66, 180, 0.3);
-}
-.nav-active {
-  color: #cc2222 !important;
-  border-bottom: 2.5px solid #7c42b4 !important;
-  padding-bottom: 2px;
-}
 
 /* ── Section heading underline ────────────────────────────────────────────── */
 .heading-underline {

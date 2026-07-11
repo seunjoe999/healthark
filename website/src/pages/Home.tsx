@@ -27,7 +27,7 @@ export default function Home() {
       <section
         className="relative flex items-center justify-center text-center"
         style={{
-          backgroundImage: 'url(/hero-bg.jpg)',
+          backgroundImage: 'linear-gradient(rgba(248, 200, 184, 0.60), rgba(248, 200, 184, 0.55)), url(/hero-bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           minHeight: '600px',
@@ -134,28 +134,41 @@ export default function Home() {
       </section>
 
       {/* ── SERVICES PREVIEW ─────────────────────────────────────────── */}
-      <section className="py-16 bg-white px-4">
-        <div className="max-w-6xl mx-auto">
+      <section className="relative py-20 px-4" style={{ background: 'linear-gradient(135deg, #5a2d8a 0%, #7c42b4 50%, #9b5fd4 100%)' }}>
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,30 C200,70 400,10 600,40 C800,70 1000,20 1200,50 C1350,70 1440,35 1440,35 L1440,70 L0,70 Z" fill="white" />
+          </svg>
+        </div>
+        <div className="max-w-6xl mx-auto pt-14 pb-10">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 heading-underline mb-4">Our Services</h2>
-            <p className="text-gray-700 font-bold max-w-2xl mx-auto mt-6 leading-relaxed text-lg">
+            <h2 className="text-4xl md:text-5xl font-black text-white heading-underline mb-4">Our Services</h2>
+            <p className="text-white/80 font-bold max-w-2xl mx-auto mt-6 leading-relaxed text-lg">
               We provide compassionate, person-centred care tailored to the unique needs of every individual —
               whether support is required at home, within supported living, or through specialist care services.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {SERVICES_PREVIEW.map(s => (
-              <div key={s.title} className="rounded-2xl overflow-hidden shadow-md border border-gray-100 group">
-                <div className="h-44 overflow-hidden relative">
+              <div key={s.title} className="rounded-2xl overflow-hidden shadow-lg group">
+                <div className="h-52 overflow-hidden relative">
                   <img src={s.img} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${s.color}bb, transparent)` }} />
-                  <h3 className="absolute bottom-3 left-4 text-white font-black text-base">{s.title}</h3>
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' }} />
+                  <h3 className="absolute bottom-3 left-4 right-4 text-white font-black text-lg leading-tight">{s.title}</h3>
+                </div>
+                <div className="bg-white px-4 py-4 flex justify-center">
+                  <Link to="/our-services" className="btn-red text-sm px-6 py-2">FIND OUT MORE</Link>
                 </div>
               </div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <Link to="/our-services" className="btn-purple px-8 py-3 text-base">View All Services →</Link>
+          <div className="text-center mt-12">
+            <Link to="/our-services" className="btn-gold px-8 py-3 text-base">View All Services →</Link>
           </div>
         </div>
       </section>
@@ -339,7 +352,6 @@ export default function Home() {
           <div className="flex flex-wrap justify-center items-center gap-10 mt-8">
             {[
               { src: '/cqc-good.jpg',               label: 'CQC Inspected & Rated Good' },
-              { src: '/cqc-new.jpg',                label: 'CQC Registered Provider' },
               { src: '/ico-logo.png',               label: "Information Commissioner's Office" },
               { src: '/pqs-logo.png',               label: 'PQS SSIP Health & Safety' },
               { src: '/logo-cyber-essentials.png',  label: 'Cyber Essentials Certified' },
