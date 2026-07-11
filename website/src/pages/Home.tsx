@@ -158,48 +158,64 @@ export default function Home() {
     <div>
 
       {/* ═══════════════════════════════════════════════════════════════
-          HOME
+          HOME — hero matching comprehensivecare.onrender.com
       ═══════════════════════════════════════════════════════════════ */}
-      <section id="home" className="bg-peach-hero relative overflow-hidden pt-12 pb-28 px-4 min-h-[560px] flex items-center">
-        <div className="absolute top-10 right-10 w-80 h-80 rounded-full opacity-30 pointer-events-none"
-          style={{ background: 'radial-gradient(circle,#f4b8a5,transparent)' }} />
-        <div className="absolute bottom-10 left-10 w-56 h-56 rounded-full opacity-25 pointer-events-none"
-          style={{ background: 'radial-gradient(circle,#e896a8,transparent)' }} />
+      <section
+        id="home"
+        className="relative overflow-hidden flex items-center justify-center text-center"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(126,87,194,0.82), rgba(179,136,255,0.75)), url(/hero-bg.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          minHeight: '560px',
+          padding: '120px 1rem',
+        }}
+      >
+        {/* Decorative blurred circles (same as reference) */}
+        <div className="absolute top-0 left-0 w-72 h-72 rounded-full pointer-events-none"
+          style={{ background: 'rgba(255,255,255,0.08)', filter: 'blur(60px)', transform: 'translate(-30%,-30%)' }} />
+        <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full pointer-events-none"
+          style={{ background: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', transform: 'translate(30%,30%)' }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center">
-          <div>
-            <motion.h1
-              initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-              className="text-3xl md:text-4xl lg:text-[2.65rem] font-black text-gray-900 leading-tight mb-4"
-            >
-              Provider of Choice for Supported Living and Domiciliary Care Services
-            </motion.h1>
-            <p className="italic-heading text-xl mb-5">Compassionate, Person-Centred Care That Puts You First</p>
-            <p className="text-gray-600 text-base leading-relaxed mb-8">
-              Supporting individuals with complex mental health, learning disabilities, autism, physical care
-              needs through professional and compassionate care across the UK.
-            </p>
-            <div className="flex flex-wrap gap-3 mb-8">
-              <a href="#join-us" className="btn-red">Make a Referral</a>
-              <a href="#our-services" className="btn-purple">Explore Services</a>
-            </div>
-            <div className="flex flex-wrap items-center gap-5">
-              <img src="/cqc-good.jpg" alt="CQC Good" className="h-12 object-contain" />
-              <img src="/ico-logo.png"  alt="ICO"      className="h-12 object-contain" />
-              <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-12 object-contain" />
-            </div>
-          </div>
+        <div className="relative z-10 max-w-3xl mx-auto px-4">
+          <motion.h1
+            initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="text-4xl md:text-5xl lg:text-[3rem] font-black text-white leading-tight mb-6"
+          >
+            Compassionate, Person-Centred Care That Puts You First
+          </motion.h1>
 
-          <div className="flex justify-center">
-            <div className="photo-card w-full max-w-lg bg-gray-100 aspect-video">
-              <video className="w-full h-full object-cover" controls poster="/brochure-cover.jpg">
-                <source src="/intro-video.mp4" type="video/mp4" />
-              </video>
-            </div>
+          <motion.p
+            initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
+            className="text-white/85 text-lg leading-relaxed mb-10 max-w-2xl mx-auto"
+          >
+            Supporting individuals with complex mental health, learning disabilities, autism and physical care
+            needs through professional, compassionate care across the UK.
+          </motion.p>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.28, ease: 'easeOut' }}
+            className="flex flex-wrap justify-center gap-4 mb-12"
+          >
+            <a href="#join-us" className="btn-gold px-8 py-3 text-base font-bold">Make a Referral</a>
+            <a href="#our-services"
+              className="px-8 py-3 text-base font-bold rounded-xl border-2 border-white text-white hover:bg-white hover:text-brand-purple transition-colors">
+              Explore Services
+            </a>
+          </motion.div>
+
+          {/* Accreditation logos */}
+          <div className="flex flex-wrap justify-center items-center gap-6">
+            <img src="/cqc-good.jpg" alt="CQC Good" className="h-12 object-contain brightness-0 invert opacity-90" />
+            <img src="/ico-logo.png"  alt="ICO"      className="h-11 object-contain brightness-0 invert opacity-90" />
+            <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-11 object-contain brightness-0 invert opacity-90" />
           </div>
         </div>
 
+        {/* Wave bottom */}
         <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
           <svg viewBox="0 0 1440 60" preserveAspectRatio="none" className="w-full h-[60px]">
             <path d="M0,20 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="white" />
