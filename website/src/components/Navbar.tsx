@@ -2,17 +2,17 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const navLinks = [
-  { label: 'HOME', path: '/' },
-  { label: 'ABOUT', path: '/about' },
-  { label: 'OUR SERVICES', path: '/our-services' },
-  { label: 'OUR SPECIALISM', path: '/our-specialism' },
-  { label: 'HOW WE WORK', path: '/how-we-work' },
-  { label: 'OUR CARERS', path: '/our-carers' },
+  { label: 'HOME',           href: '/#home' },
+  { label: 'ABOUT',          href: '/#about' },
+  { label: 'OUR SERVICES',   href: '/#our-services' },
+  { label: 'OUR SPECIALISM', href: '/#our-specialism' },
+  { label: 'HOW WE WORK',    href: '/#how-we-work' },
+  { label: 'OUR CARERS',     href: '/#our-carers' },
 ]
 
 const joinLinks = [
-  { label: 'Make A Referral', path: '/make-a-referral' },
-  { label: 'Jobs', path: '/jobs' },
+  { label: 'Make A Referral', href: '/make-a-referral' },
+  { label: 'Jobs',             href: '/jobs' },
 ]
 
 export default function Navbar() {
@@ -36,8 +36,11 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const isActive = (path: string) => location.pathname === path
-  const joinActive = joinLinks.some(l => l.path === location.pathname)
+  const isActive = (href: string) => {
+    if (href === '/#home') return location.pathname === '/' && !location.hash
+    return location.hash === href.replace('/', '')
+  }
+  const joinActive = joinLinks.some(l => location.pathname === l.href)
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
@@ -52,15 +55,15 @@ export default function Navbar() {
           {/* Desktop nav */}
           <div className="hidden xl:flex items-center gap-0 flex-1 justify-center flex-wrap">
             {navLinks.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
+              <a
+                key={link.href}
+                href={link.href}
                 className={`px-2.5 py-1 text-[12.5px] font-semibold whitespace-nowrap nav-link ${
-                  isActive(link.path) ? 'nav-active' : 'text-gray-600'
+                  isActive(link.href) ? 'nav-active' : 'text-gray-600'
                 }`}
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
 
             {/* JOIN US dropdown */}
@@ -79,13 +82,13 @@ export default function Navbar() {
               {joinOpen && (
                 <div className="absolute top-full left-0 mt-1 bg-white shadow-xl rounded-lg py-2 min-w-[180px] border border-gray-100 z-50">
                   {joinLinks.map(l => (
-                    <Link
-                      key={l.path}
-                      to={l.path}
+                    <a
+                      key={l.href}
+                      href={l.href}
                       className="block px-5 py-2.5 text-sm text-gray-700 hover:bg-peach-light hover:text-brand-purple font-medium transition-colors"
                     >
                       {l.label}
-                    </Link>
+                    </a>
                   ))}
                 </div>
               )}
@@ -117,27 +120,27 @@ export default function Navbar() {
         {mobileOpen && (
           <div className="xl:hidden border-t border-gray-100 pb-4">
             {navLinks.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
+              <a
+                key={link.href}
+                href={link.href}
                 className={`block px-4 py-3 text-sm font-semibold transition-colors ${
-                  isActive(link.path) ? 'text-btn-red bg-peach-light' : 'text-gray-700 hover:bg-gray-50'
+                  isActive(link.href) ? 'text-btn-red bg-peach-light' : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
             <div className="px-4 pt-1 pb-0.5">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider py-2">Join Us</p>
             </div>
             {joinLinks.map(l => (
-              <Link
-                key={l.path}
-                to={l.path}
+              <a
+                key={l.href}
+                href={l.href}
                 className="block px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 {l.label}
-              </Link>
+              </a>
             ))}
             <div className="px-4 pt-3">
               <Link to="/contact-us" className="btn-red block text-center text-sm">
