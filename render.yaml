@@ -1,4 +1,15 @@
 services:
+  - type: static
+    name: compcare-website
+    rootDir: website
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
   - type: web
     name: compcarehub
     env: node
