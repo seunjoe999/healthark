@@ -2,18 +2,18 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 const SERVICES = [
-  { icon: '🏠', title: 'Supported Living',         path: '/our-services', color: '#7c42b4' },
-  { icon: '🧠', title: 'Complex Mental Health',     path: '/our-services', color: '#d4845a' },
-  { icon: '🎓', title: 'Learning Disabilities',     path: '/our-services', color: '#00b8b8' },
-  { icon: '♾️', title: 'Autism Support',            path: '/our-services', color: '#4ab47c' },
-  { icon: '💊', title: 'Drug & Alcohol Recovery',   path: '/our-services', color: '#cc2222' },
-  { icon: '🏡', title: 'Domiciliary Care',          path: '/our-services', color: '#5a7ab4' },
-  { icon: '🕊️', title: 'End of Life Care',          path: '/our-services', color: '#b47c42' },
-  { icon: '🛏️', title: 'Live In Care',              path: '/our-services', color: '#7c42b4' },
-  { icon: '🌿', title: 'Respite Care',              path: '/our-services', color: '#4ab47c' },
-  { icon: '♿', title: 'Physical Disabilities',     path: '/our-services', color: '#d4845a' },
-  { icon: '🧬', title: 'Acquired Brain Injury',     path: '/our-services', color: '#cc2222' },
-  { icon: '👴', title: 'Elderly Care',              path: '/our-services', color: '#00b8b8' },
+  { img: '/service-supported-living.jpg',     title: 'Supported Living',         path: '/our-services', color: '#7c42b4' },
+  { img: '/service-mental-health.jpg',         title: 'Complex Mental Health',     path: '/our-services', color: '#d4845a' },
+  { img: '/service-learning-disabilities.jpg', title: 'Learning Disabilities',     path: '/our-services', color: '#00b8b8' },
+  { img: '/service-autism.jpg',                title: 'Autism Support',            path: '/our-services', color: '#4ab47c' },
+  { img: '/service-drug-alcohol.jpg',          title: 'Drug & Alcohol Recovery',   path: '/our-services', color: '#cc2222' },
+  { img: '/service-domiciliary.jpg',           title: 'Domiciliary Care',          path: '/our-services', color: '#5a7ab4' },
+  { img: '/service-end-of-life.jpg',           title: 'End of Life Care',          path: '/our-services', color: '#b47c42' },
+  { img: '/service-live-in-care.jpg',          title: 'Live In Care',              path: '/our-services', color: '#7c42b4' },
+  { img: '/service-respite.jpg',               title: 'Respite Care',              path: '/our-services', color: '#4ab47c' },
+  { img: '/service-physical-disabilities.jpg', title: 'Physical Disabilities',     path: '/our-services', color: '#d4845a' },
+  { img: '/service-brain-injury.jpg',          title: 'Acquired Brain Injury',     path: '/our-services', color: '#cc2222' },
+  { img: '/service-elderly-care.jpg',          title: 'Elderly Care',              path: '/our-services', color: '#00b8b8' },
 ]
 
 const VALUES = [
@@ -257,25 +257,32 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {SERVICES.map(s => (
               <Link
                 key={s.title}
                 to={s.path}
-                className="service-card p-6 text-center group"
+                className="group rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all bg-white"
               >
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto mb-3"
-                  style={{ background: `${s.color}18` }}
-                >
-                  {s.icon}
+                {/* Image top half */}
+                <div className="h-36 overflow-hidden relative">
+                  <img
+                    src={s.img}
+                    alt={s.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div
+                    className="absolute inset-0 opacity-30"
+                    style={{ background: `linear-gradient(to bottom, transparent, ${s.color})` }}
+                  />
                 </div>
-                <h3 className="font-bold text-sm text-gray-800 group-hover:text-brand-purple transition-colors leading-snug">
-                  {s.title}
-                </h3>
-                <p className="text-xs text-brand-teal mt-2 font-semibold group-hover:underline">
-                  Read More →
-                </p>
+                {/* Text bottom half */}
+                <div className="p-4 text-center">
+                  <h3 className="font-bold text-sm text-gray-800 group-hover:text-brand-purple transition-colors leading-snug mb-1">
+                    {s.title}
+                  </h3>
+                  <p className="text-xs text-brand-teal font-semibold group-hover:underline">Read More →</p>
+                </div>
               </Link>
             ))}
           </div>
