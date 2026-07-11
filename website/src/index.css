@@ -154,18 +154,23 @@ body {
   margin-bottom: 0.35rem;
 }
 
-/* ── Nav active underline ─────────────────────────────────────────────────── */
+/* ── Nav active highlight ─────────────────────────────────────────────────── */
 .nav-active {
-  border-bottom: 2px solid #e84444;
-  color: #111827;
+  background: linear-gradient(135deg, #7c42b4 0%, #9b68d0 100%);
+  color: #ffffff !important;
+  border-radius: 6px;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
 }
 .nav-link {
-  border-bottom: 2px solid transparent;
-  transition: border-color 0.2s, color 0.2s;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
 }
-.nav-link:hover {
-  border-bottom-color: #e8a080;
-  color: #111827;
+.nav-link:hover:not(.nav-active) {
+  background: rgba(124, 66, 180, 0.08);
+  color: #7c42b4;
 }
 
 /* ── Section heading underline ────────────────────────────────────────────── */
