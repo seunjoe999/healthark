@@ -86,23 +86,19 @@ export default function Home() {
       </section>
 
       {/* ── CQC RATING BADGE ─────────────────────────────────────────── */}
-      <section className="py-10 bg-white px-4 border-t border-b border-gray-100">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center gap-8 text-center md:text-left">
-          <img src="/logo.jpg" alt="Comprehensive Care" className="h-28 object-contain flex-shrink-0" />
-          <div className="w-px h-16 bg-gray-200 hidden md:block flex-shrink-0" />
-          <div className="flex flex-col sm:flex-row items-center gap-5">
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <img src="/cqc-good.jpg" alt="CQC Rated Good" className="h-20 object-contain" />
-              <img src="/cqc-new.jpg" alt="CQC Registered Provider" className="h-20 object-contain" />
-            </div>
-            <div className="sm:text-left">
-              <p className="text-3xl font-black text-gray-900">
-                We are rated <span className="text-green-600">Good</span> by CQC
-              </p>
-              <p className="text-gray-500 text-base mt-1">
-                Care Quality Commission — Independent Regulator of Health &amp; Social Care in England
-              </p>
-            </div>
+      <section className="py-12 bg-white px-4 border-t border-b border-gray-100">
+        <div className="max-w-3xl mx-auto flex flex-col items-center text-center gap-6">
+          <div className="flex items-center justify-center gap-8 flex-wrap">
+            <img src="/cqc-rated-good-new.jpg" alt="CQC Inspected and Rated Good" className="h-28 object-contain" />
+            <img src="/cqc-logo-new.jpg" alt="Care Quality Commission" className="h-20 object-contain" />
+          </div>
+          <div>
+            <p className="text-3xl font-black text-gray-900">
+              We are rated <span className="text-green-600">Good</span> by CQC
+            </p>
+            <p className="text-gray-500 text-base mt-2">
+              Care Quality Commission — Independent Regulator of Health &amp; Social Care in England
+            </p>
           </div>
         </div>
       </section>
