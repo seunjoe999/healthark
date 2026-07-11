@@ -131,12 +131,12 @@ export default function Services() {
           style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)', transform: 'translate(20%, 20%)' }} />
 
         <div className="relative z-10 max-w-2xl mx-auto text-center">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-brand-gold/60 px-8 py-10 shadow-2xl">
+          <div className="bg-white rounded-2xl px-8 py-10 shadow-2xl">
             <h1 className="text-4xl md:text-5xl font-black italic text-brand-red font-serif mb-4">
               Our Services
             </h1>
             <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-5" />
-            <p className="text-white/90 text-base md:text-lg leading-relaxed">
+            <p className="text-gray-700 font-bold text-base md:text-lg leading-relaxed">
               Comprehensive Care is a provider of supported living and domiciliary care services,
               true to our name in being comprehensive in nature.
             </p>
@@ -157,11 +157,11 @@ export default function Services() {
         style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 45%, #5a2d8a 100%)' }}
       >
         <div className="max-w-xl mx-auto text-center">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-brand-gold/60 px-8 py-10 shadow-2xl">
+          <div className="bg-white rounded-2xl px-8 py-10 shadow-2xl">
             <h2 className="text-3xl md:text-4xl font-black italic text-brand-red font-serif mb-4">
               Yes, it's personal.
             </h2>
-            <p className="text-white/90 text-base leading-relaxed mb-6">
+            <p className="text-gray-700 font-bold text-base leading-relaxed mb-6">
               We understand what you are going through. The reason we started Comprehensive Care
               is to provide the best care possible to individuals and deliver it with passion.
             </p>
@@ -191,12 +191,12 @@ export default function Services() {
               <div className={i % 2 !== 0 ? 'lg:order-1' : ''}>
                 <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
                 <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">{s.title}</h2>
-                <p className="text-brand-purple font-semibold italic mb-4 text-sm">{s.tagline}</p>
-                <p className="text-gray-600 leading-relaxed mb-5 text-sm">{s.intro}</p>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Our support includes:</p>
+                <p className="text-brand-purple font-bold italic mb-4 text-sm">{s.tagline}</p>
+                <p className="text-gray-700 font-bold leading-relaxed mb-5 text-sm">{s.intro}</p>
+                <p className="text-xs font-black text-gray-600 uppercase tracking-widest mb-3">Our support includes:</p>
                 <ul className="space-y-2">
                   {s.bullets.map(b => (
-                    <li key={b} className="flex items-start gap-2.5 text-sm text-gray-700">
+                    <li key={b} className="flex items-start gap-2.5 text-sm text-gray-800 font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0 mt-1.5" />
                       {b}
                     </li>
@@ -215,11 +215,11 @@ export default function Services() {
           <p className="text-brand-gold text-xs font-bold uppercase tracking-widest mb-3">Key Differentiator — Included at No Additional Cost</p>
           <h2 className="text-3xl md:text-4xl font-black text-white mb-2">Complimentary Therapeutic Support</h2>
           <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-6" />
-          <p className="text-white/85 text-base leading-relaxed mb-4 max-w-3xl mx-auto">
+          <p className="text-white font-bold text-base leading-relaxed mb-4 max-w-3xl mx-auto">
             As part of our commitment to delivering truly holistic care, every eligible individual has access
-            to our in-house therapeutic services at <strong className="text-white">no extra cost</strong>.
+            to our in-house therapeutic services at <strong className="text-brand-gold">no extra cost</strong>.
           </p>
-          <p className="text-white/80 text-base leading-relaxed mb-8 max-w-3xl mx-auto">
+          <p className="text-white font-bold text-base leading-relaxed mb-8 max-w-3xl mx-auto">
             Our qualified therapist provides evidence-based interventions that support emotional wellbeing,
             resilience, and personal development alongside day-to-day care.
           </p>
@@ -236,7 +236,7 @@ export default function Services() {
               </span>
             ))}
           </div>
-          <p className="text-white/75 text-sm italic max-w-2xl mx-auto">
+          <p className="text-white font-bold text-sm italic max-w-2xl mx-auto">
             This unique service reflects our commitment to supporting both physical and mental wellbeing
             through integrated, person-centred care.
           </p>
@@ -252,19 +252,19 @@ export default function Services() {
               <h2 className="text-3xl font-black text-gray-900 mb-5 leading-tight">
                 Why Choose<br />Comprehensive Care?
               </h2>
-              <p className="text-gray-600 leading-relaxed mb-4 text-sm">
+              <p className="text-gray-700 font-bold leading-relaxed mb-4 text-sm">
                 At Comprehensive Care we select our staff very carefully and only take on the best.
                 We have an established reputation and attract and retain the best staff by offering
                 highly competitive pay rates, a choice of working hours and ongoing personal
                 support and training.
               </p>
-              <p className="text-gray-600 leading-relaxed mb-6 text-sm">
+              <p className="text-gray-700 font-bold leading-relaxed mb-6 text-sm">
                 Whether you're looking for support for yourself or a loved one, our dedicated team
                 is here to help every step of the way.
               </p>
               <ul className="space-y-3 mb-8">
                 {WHY_CHOOSE.map(w => (
-                  <li key={w} className="flex items-start gap-3 text-sm text-gray-700">
+                  <li key={w} className="flex items-start gap-3 text-sm text-gray-800 font-bold">
                     <svg className="w-4 h-4 text-brand-purple flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
@@ -292,7 +292,7 @@ export default function Services() {
           <div className="text-center mb-10">
             <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
             <h2 className="text-3xl font-black text-gray-900 mb-3">Areas We Cover</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto text-sm leading-relaxed">
+            <p className="text-gray-700 font-bold max-w-2xl mx-auto text-sm leading-relaxed">
               As a registered care agency, Comprehensive Care Ltd delivers high-quality support services
               across Greater Manchester and the surrounding areas.
             </p>
@@ -323,7 +323,7 @@ export default function Services() {
           <h2 className="text-2xl font-black text-gray-900 mb-4">
             Ready to find out how we can help?
           </h2>
-          <p className="text-gray-500 mb-8">
+          <p className="text-gray-700 font-bold mb-8">
             Get in touch today to find out how Comprehensive Care can support you with
             personalised care that puts your needs first.
           </p>
