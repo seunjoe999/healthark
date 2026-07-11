@@ -69,11 +69,6 @@ export default function Home() {
             </Link>
           </motion.div>
 
-          <div className="flex flex-wrap justify-center items-center gap-6">
-            <img src="/cqc-good.jpg" alt="CQC Good" className="h-12 object-contain brightness-0 invert opacity-90" />
-            <img src="/ico-logo.png"  alt="ICO"      className="h-11 object-contain brightness-0 invert opacity-90" />
-            <img src="/pqs-logo.png"  alt="PQS SSIP" className="h-11 object-contain brightness-0 invert opacity-90" />
-          </div>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
