@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PageHero from '../components/PageHero'
 
 export default function MakeAReferral() {
   const [form, setForm] = useState({
@@ -23,14 +24,7 @@ export default function MakeAReferral() {
   return (
     <div>
       {/* HERO */}
-      <section className="bg-peach-hero py-16 px-4 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-4xl font-black text-gray-900 mb-3">Make A Referral</h1>
-          <p className="text-gray-600">
-            Refer someone to Comprehensive Care and we will get in touch to discuss how we can support their needs.
-          </p>
-        </div>
-      </section>
+      <PageHero variant="peach" title="Make A Referral" subtitle="Refer someone to Comprehensive Care and we will get in touch to discuss how we can support their needs." />
 
       <section className="py-0 bg-white">
         <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 min-h-[600px]">
@@ -149,9 +143,9 @@ export default function MakeAReferral() {
             )}
           </div>
 
-          {/* Info panel — warm orange/amber to match peach hero */}
+          {/* Info panel — purple/navy */}
           <div className="flex items-center justify-center px-10 py-14 text-white"
-            style={{ background: 'linear-gradient(135deg, #d4845a, #c07040)' }}>
+            style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
             <div>
               <h2 className="text-3xl font-black mb-5">Get a free, no obligation care assessment</h2>
               <p className="text-white/75 leading-relaxed mb-6">

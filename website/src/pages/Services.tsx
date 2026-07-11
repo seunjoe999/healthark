@@ -141,9 +141,11 @@ export default function Services() {
           </h2>
           <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-10" />
           <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-3 rounded-2xl overflow-hidden h-72">
-              <img src="/supported-living-banner.jpg" alt="Supported Living" className="w-full h-full object-cover" />
-            </div>
+            {['/service-supported-living.jpg', '/service-learning-disabilities.jpg', '/service-autism.jpg'].map((src, i) => (
+              <div key={i} className="photo-card rounded-2xl overflow-hidden" style={{ height: '220px' }}>
+                <img src={src} alt="Supported Living" className="w-full h-full object-cover" />
+              </div>
+            ))}
           </div>
           <div className="mt-8 text-center">
             <p className="text-white/80 text-sm max-w-2xl mx-auto">

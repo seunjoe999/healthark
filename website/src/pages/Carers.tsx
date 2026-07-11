@@ -87,8 +87,8 @@ export default function Carers() {
         </div>
       </section>
 
-      {/* CTA — warm orange/amber to match peach hero */}
-      <section className="py-14 px-4" style={{ background: 'linear-gradient(135deg, #d4845a, #c07040)' }}>
+      {/* CTA — purple/navy */}
+      <section className="py-14 px-4" style={{ background: 'linear-gradient(135deg, #7c42b4, #5a2d8a)' }}>
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-black text-white mb-4">Ready to Make a Difference?</h2>
           <p className="text-white/75 mb-8 max-w-xl mx-auto">
