@@ -295,17 +295,18 @@ export default function Home() {
       {/* ═══════════════════════════════════════════════════════════════
           ABOUT
       ═══════════════════════════════════════════════════════════════ */}
-      <section id="about" className="py-16 bg-white px-4 scroll-mt-20">
-        <div className="max-w-6xl mx-auto text-center mb-12">
-          <span className="inline-block bg-brand-purple text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-3">About Us</span>
-          <h2 className="text-3xl md:text-4xl font-black text-gray-900 heading-underline mb-4">
-            Comprehensive Care — Who We Are
-          </h2>
-          <p className="text-gray-500 max-w-2xl mx-auto mt-6">
-            Dedicated to exceptional, person-centred care across Greater Manchester and beyond.
-          </p>
+      <section id="about" className="scroll-mt-20">
+        {/* About hero — peach with cloud wave */}
+        <div className="bg-peach-hero cloud-wave relative py-16 pb-24 px-4 text-center">
+          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
+            <h2 className="italic-heading text-4xl md:text-5xl mb-4">About Us</h2>
+            <p className="text-gray-600 text-base leading-relaxed">
+              Dedicated to exceptional, person-centred care across Greater Manchester and beyond.
+            </p>
+          </div>
         </div>
 
+        <div className="py-16 bg-white px-4">
         <div className="max-w-6xl mx-auto">
           <div className="rounded-2xl overflow-hidden h-72 md:h-96 photo-card mb-14">
             <img src="/about-team.jpg" alt="Comprehensive Care Team" className="w-full h-full object-cover" />
@@ -380,34 +381,53 @@ export default function Home() {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
           OUR SERVICES
       ═══════════════════════════════════════════════════════════════ */}
-      <section id="our-services" className="py-16 px-4 scroll-mt-20"
-        style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 100%)' }}>
-        <div className="max-w-6xl mx-auto text-center mb-12">
-          <span className="inline-block bg-white/20 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-3">Our Services</span>
-          <h2 className="text-3xl md:text-4xl font-black text-white heading-underline mb-4">
-            Comprehensive Care Services
-          </h2>
-          <p className="text-white/80 max-w-2xl mx-auto mt-6">
-            We create bespoke services tailored to meet the specific needs of our service users, ensuring all areas of care are addressed.
-          </p>
+      <section id="our-services" className="scroll-mt-20">
+        {/* Services hero — purple with cloud wave */}
+        <div className="bg-purple-hero cloud-wave relative py-16 pb-24 px-4 text-center">
+          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
+            <h2 className="italic-heading text-4xl md:text-5xl mb-4">Our Services</h2>
+            <p className="text-gray-600 text-base leading-relaxed">
+              Comprehensive Care is a provider of supported living and domiciliary care services, true to our name in being comprehensive in nature.
+            </p>
+          </div>
         </div>
-        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {SERVICES.map(s => (
-            <div key={s.title} className="bg-white rounded-2xl overflow-hidden shadow-md">
-              <div className="h-44 overflow-hidden">
-                <img src={s.img} alt={s.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-              </div>
-              <div className="p-5">
-                <h3 className="font-black text-lg text-gray-900 mb-2">{s.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
-              </div>
+
+        {/* Supported Living banner — 3 photo cards on purple */}
+        <div className="py-14 px-4" style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 100%)' }}>
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl font-black text-white text-center mb-2">Supported Living</h2>
+            <div className="w-12 h-0.5 bg-yellow-400 mx-auto mb-10" />
+            <div className="grid grid-cols-3 gap-6">
+              {['/service-supported-living.jpg', '/service-learning-disabilities.jpg', '/service-autism.jpg'].map((src, i) => (
+                <div key={i} className="photo-card rounded-2xl overflow-hidden" style={{ height: '220px' }}>
+                  <img src={src} alt="Supported Living" className="w-full h-full object-cover" />
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* All Services grid */}
+        <div className="py-16 bg-white px-4">
+          <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SERVICES.map(s => (
+              <div key={s.title} className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100">
+                <div className="h-44 overflow-hidden">
+                  <img src={s.img} alt={s.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                </div>
+                <div className="p-5">
+                  <h3 className="font-black text-lg text-gray-900 mb-2">{s.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -515,14 +535,12 @@ export default function Home() {
       ═══════════════════════════════════════════════════════════════ */}
       <section id="our-specialism" className="scroll-mt-20">
 
-        {/* Hero banner */}
-        <div className="py-14 px-4 bg-orange-hero relative overflow-hidden">
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <span className="inline-block bg-brand-orange text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-3">Our Specialism</span>
-            <div className="gold-card px-8 py-8 mx-auto max-w-2xl">
-              <h2 className="italic-heading text-4xl md:text-5xl mb-4">Our Specialism</h2>
-              <p className="text-gray-600 text-base leading-relaxed">Amazing, skilled care professionals are ready to help right when you need it.</p>
-            </div>
+        {/* Specialism hero — orange with cloud wave + GET STARTED */}
+        <div className="bg-orange-hero cloud-wave relative py-16 pb-24 px-4 text-center">
+          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
+            <h2 className="italic-heading text-4xl md:text-5xl mb-4">Our Specialism</h2>
+            <p className="text-gray-600 text-base leading-relaxed mb-6">Amazing, skilled care professionals are ready to help right when you need it.</p>
+            <a href="#join-us" className="btn-purple px-8 py-3 text-base">GET STARTED</a>
           </div>
         </div>
 
@@ -617,16 +635,13 @@ export default function Home() {
       ═══════════════════════════════════════════════════════════════ */}
       <section id="how-we-work" className="scroll-mt-20">
 
-        {/* Hero banner */}
-        <div className="py-14 px-4 bg-peach-hero relative overflow-hidden">
-          <div className="max-w-4xl mx-auto text-center">
-            <span className="inline-block bg-brand-orange text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider mb-3">How We Work</span>
-            <div className="gold-card px-8 py-8 mx-auto max-w-2xl">
-              <h2 className="italic-heading text-4xl md:text-5xl mb-4">How We Work</h2>
-              <p className="text-gray-600 text-base leading-relaxed">
-                At Comprehensive Care, we select the best, most-skilled carers in advance, so they're ready to provide the care you want, right when you need it.
-              </p>
-            </div>
+        {/* How We Work hero — peach with cloud wave */}
+        <div className="bg-peach-hero cloud-wave relative py-16 pb-24 px-4 text-center">
+          <div className="gold-card px-8 py-10 mx-auto max-w-2xl">
+            <h2 className="italic-heading text-4xl md:text-5xl mb-4">How We Work</h2>
+            <p className="text-gray-600 text-base leading-relaxed">
+              At Comprehensive Care, we select the best, most-skilled carers in advance, so they're ready to provide the care you want, right when you need it.
+            </p>
           </div>
         </div>
 
@@ -792,7 +807,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="py-14 bg-white px-4">
+        <div className="py-14 bg-peach-hero px-4">
           <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
             <div>
               <h2 className="text-3xl font-black text-gray-900 mb-6">Why Comprehensive Care?</h2>
