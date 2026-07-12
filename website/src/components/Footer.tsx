@@ -20,13 +20,23 @@ const downloads = [
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300">
-      {/* Partner / accreditation logos strip */}
-      <div className="bg-white py-6 px-4">
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-center gap-8">
-          <img src="/cqc-good.jpg"  alt="CQC Inspected and Rated Good" className="h-16 object-contain" />
-          <img src="/ico-logo.png"  alt="ICO Registered"               className="h-14 object-contain" />
-          <img src="/pqs-logo.png"  alt="PQS SSIP Health & Safety"     className="h-14 object-contain" />
+    <footer className="text-gray-300" style={{background:'linear-gradient(135deg,#2d1b5e 0%,#1a0f3c 100%)'}}>
+      {/* Downloads & Resources strip */}
+      <div className="py-8 px-4" style={{background:'rgba(255,255,255,0.06)',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+        <div className="max-w-5xl mx-auto text-center">
+          <h2 className="text-white text-xl font-bold mb-1">Downloads &amp; Resources</h2>
+          <p className="text-purple-200 text-sm mb-6">Click to download our key documents</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            {downloads.map(d => (
+              <a key={d.label} href={d.file} download
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-5 py-3 rounded-full transition-all">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                {d.label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -61,7 +71,7 @@ export default function Footer() {
 
         {/* Quick links */}
         <div>
-          <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-5 border-b border-gray-700 pb-2">Quick Links</h3>
+          <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-5 border-b border-white/20 pb-2">Quick Links</h3>
           <ul className="space-y-2.5">
             {quickLinks.map(l => (
               <li key={l.path}>
@@ -75,7 +85,7 @@ export default function Footer() {
 
         {/* Services */}
         <div>
-          <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-5 border-b border-gray-700 pb-2">Our Services</h3>
+          <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-5 border-b border-white/20 pb-2">Our Services</h3>
           <ul className="space-y-2.5">
             {services.map(s => (
               <li key={s}>
@@ -85,31 +95,18 @@ export default function Footer() {
               </li>
             ))}
           </ul>
-          <h3 className="text-white font-bold text-sm uppercase tracking-wider mt-6 mb-4 border-b border-gray-700 pb-2">Downloads</h3>
-          <ul className="space-y-2.5">
-            {downloads.map(d => (
-              <li key={d.label}>
-                <a href={d.file} download className="text-sm text-[#c8a045] hover:text-white transition-colors flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                  </svg>
-                  {d.label}
-                </a>
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/* Contact info */}
         <div>
-          <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-5 border-b border-gray-700 pb-2">Contact Us</h3>
+          <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-5 border-b border-white/20 pb-2">Contact Us</h3>
           <div className="space-y-3 text-sm text-gray-400">
             <div className="flex gap-2">
               <svg className="w-4 h-4 text-[#c8a045] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
-              <span>Office 3-13 Ivy Business Centre, Crown Street, Failsworth, Manchester, M35 9BG</span>
+              <span>Office 2-13 Ivy Business Centre, Crown Street, Failsworth, Manchester, M35 9BG</span>
             </div>
             <div className="flex gap-2">
               <svg className="w-4 h-4 text-[#c8a045] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +137,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-gray-800 py-6 px-4">
+      <div className="border-t border-white/10 py-6 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-gray-500">
           <p>&copy; {new Date().getFullYear()} Comprehensive Care LTD. Registered in England &amp; Wales · Company No. 10502859</p>
           <div className="flex gap-4">
