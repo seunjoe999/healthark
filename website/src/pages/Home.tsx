@@ -320,8 +320,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── DOWNLOADS & RESOURCES ────────────────────────────────────── */}
+      {/* ── BROCHURE DOWNLOAD (with cover image) ─────────────────────── */}
       <section className="py-16 bg-white px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="w-10 h-1 rounded bg-brand-gold mb-4" />
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">
+                To learn more about our award-winning care services, simply download our brochure.
+              </h2>
+              <p className="text-gray-700 text-base font-semibold leading-relaxed mb-6">
+                Comprehensive Care is a CQC-registered provider specialising in a wide range of complex care services across Greater Manchester and beyond.
+              </p>
+              <a href="/brochure.pdf" download className="btn-gold inline-flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download Brochure
+              </a>
+            </div>
+            <div className="photo-card aspect-[3/4] max-w-xs mx-auto">
+              <img src="/brochure-cover.jpg" alt="Comprehensive Care Brochure" className="w-full h-full object-cover" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── DOWNLOADS & RESOURCES ────────────────────────────────────── */}
+      <section className="py-16 bg-gray-50 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
@@ -381,10 +407,14 @@ export default function Home() {
           <h2 className="text-3xl font-black text-gray-900 mb-10 heading-underline">Our Accreditations &amp; Partners</h2>
           <div className="flex flex-wrap justify-center items-center gap-10 mt-8">
             {[
-              { src: '/cqc-good.jpg',            label: 'CQC Inspected & Rated Good' },
-              { src: '/ico-logo.png',            label: "Information Commissioner's Office" },
-              { src: '/pqs-logo.png',            label: 'PQS SSIP Health & Safety' },
-              { src: '/logo-skills-for-care.png', label: 'Skills for Care Member' },
+              { src: '/cqc-good.jpg',               label: 'CQC Inspected & Rated Good' },
+              { src: '/cqc-new.jpg',                label: 'CQC Registered Provider' },
+              { src: '/ico-logo.png',               label: "Information Commissioner's Office" },
+              { src: '/pqs-logo.png',               label: 'PQS SSIP Health & Safety' },
+              { src: '/logo-cyber-essentials.png',  label: 'Cyber Essentials Certified' },
+              { src: '/logo-ssip.png',              label: 'SSIP Registered Member' },
+              { src: '/logo-ukas.png',              label: 'UKAS Accredited' },
+              { src: '/logo-skills-for-care.png',   label: 'Skills for Care Member' },
             ].map(a => (
               <div key={a.label} className="flex flex-col items-center gap-3 w-36 text-center">
                 <img src={a.src} alt={a.label} className="h-24 object-contain mx-auto" />

@@ -92,7 +92,7 @@ const SERVICES = [
     id: 'end-of-life',
     title: 'End of Life Care',
     tagline: 'Providing comfort, dignity, and compassionate support when it matters most.',
-    img: '/service-end-of-life.jpg',
+    img: '/eol.png',
     intro: 'Our End of Life Care service focuses on ensuring individuals receive respectful, person-centred care during the final stages of life. We work closely with families, healthcare professionals, and palliative care teams to deliver compassionate support that reflects each person\'s wishes, values, and beliefs. Our priority is to provide comfort, preserve dignity, and offer emotional support for both individuals and their loved ones during this important time.',
     bullets: [
       'Person-centred palliative care planning',
