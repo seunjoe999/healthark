@@ -174,6 +174,7 @@ export default function Services() {
 
       {/* ── SERVICE SECTIONS ─────────────────────────────────────────── */}
       {SERVICES.map((s, i) => (
+        <>
         <section
           key={s.id}
           id={s.id}
@@ -216,6 +217,61 @@ export default function Services() {
             </div>
           </div>
         </section>
+
+        {/* Supported Living sub-options — shown only after the first service */}
+        {s.id === 'supported-living' && (
+          <section key="supported-living-options" className="py-16 px-4 bg-peach-light">
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-12">
+                <div className="w-10 h-1 rounded bg-brand-gold mx-auto mb-4" />
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">Our Supported Living Options</h2>
+                <p className="text-gray-700 font-bold max-w-2xl mx-auto text-base leading-relaxed">
+                  Our accommodations are modern, comfortable, and designed to empower service users to take control of their lives, make informed choices, and build greater independence.
+                </p>
+              </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                {[
+                  {
+                    title: 'Independent Living',
+                    icon: '🏠',
+                    color: '#7c42b4',
+                    desc: 'Service users can choose to live independently in their own flat or house, receiving as much or as little support as required. This can be arranged within one of our existing properties or through a new property sourced via our trusted housing partners tailored to their specific needs and preferences.',
+                  },
+                  {
+                    title: 'Shared Living',
+                    icon: '🤝',
+                    color: '#cc2222',
+                    desc: 'For individuals not yet ready to live alone, we facilitate shared living arrangements with others who have similar goals of independence. Service users have their own private space while enjoying the benefits of shared communal areas, peer support, and reduced household costs.',
+                  },
+                  {
+                    title: 'Apartment Living',
+                    icon: '🏢',
+                    color: '#00b8b8',
+                    desc: 'This option offers the best of both worlds — privacy and the opportunity to socialise. Each service user has a modern apartment and access to shared communal spaces, giving them the freedom to choose when and how they engage with others. Developed in collaboration with our housing partners and a popular choice among individuals seeking balanced independence.',
+                  },
+                  {
+                    title: 'Stepping-Stone Accommodation',
+                    icon: '🌱',
+                    color: '#4ab47c',
+                    desc: 'Ideal for those transitioning to long-term solutions, this option provides a stable, supportive environment while individuals build the skills and confidence needed for more independent living. Our team works closely with each person to plan their future and prepare for the next step in their journey.',
+                  },
+                ].map(opt => (
+                  <div key={opt.title} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex gap-5 items-start">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl"
+                      style={{ background: `${opt.color}15` }}>
+                      {opt.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-gray-900 mb-2" style={{ color: opt.color }}>{opt.title}</h3>
+                      <p className="text-gray-600 text-base leading-relaxed">{opt.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+        </>
       ))}
 
       {/* ── COMPLIMENTARY THERAPEUTIC SUPPORT ────────────────────────── */}

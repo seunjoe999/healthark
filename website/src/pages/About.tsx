@@ -63,6 +63,23 @@ export default function About() {
         </div>
       </section>
 
+      {/* ── OUR MISSION ──────────────────────────────────────────────── */}
+      <section className="py-16 bg-peach-light px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-sm font-bold text-brand-purple uppercase tracking-widest mb-3">Our Mission</p>
+          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
+            Why We Exist
+          </h2>
+          <div className="w-14 h-0.5 bg-brand-gold mx-auto mb-8" />
+          <p className="text-gray-700 text-lg font-bold leading-relaxed mb-6">
+            Our mission is to provide exceptional, person-centred care and support services that empower individuals to live fulfilling, independent, and dignified lives. We are committed to delivering compassionate, high-quality care that respects the unique needs, preferences, and aspirations of every individual we support.
+          </p>
+          <p className="text-gray-700 text-base leading-relaxed max-w-3xl mx-auto">
+            Through our dedicated team of professionals, we strive to create safe, nurturing environments where individuals can thrive, build meaningful relationships, and actively participate in their communities. We believe that everyone deserves the opportunity to live life to the fullest, and we are here to make that possible — one person at a time.
+          </p>
+        </div>
+      </section>
+
       {/* ── OUR VALUES ───────────────────────────────────────────────── */}
       <section className="py-16 px-4" style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 100%)' }}>
         <div className="max-w-6xl mx-auto">

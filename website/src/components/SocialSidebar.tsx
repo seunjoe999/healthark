@@ -2,7 +2,7 @@ export default function SocialSidebar() {
   return (
     <div className="social-sidebar hidden lg:flex">
       <a
-        href="https://www.facebook.com/comprehensivecareltd"
+        href="https://web.facebook.com/p/Comprehensive-Care-61578761319402/?_rdc=1&_rdr#"
         target="_blank"
         rel="noopener noreferrer"
         title="Facebook"

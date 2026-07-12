@@ -125,7 +125,7 @@ export default function Navbar() {
 
             {/* Social icons */}
             <div className="hidden lg:flex items-center gap-1.5">
-              <a href="https://facebook.com" target="_blank" rel="noreferrer"
+              <a href="https://web.facebook.com/p/Comprehensive-Care-61578761319402/?_rdc=1&_rdr#" target="_blank" rel="noreferrer"
                 className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
                 style={{ background: '#1877F2' }}>
                 <svg className="w-4 h-4" fill="white" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
