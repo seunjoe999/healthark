@@ -222,47 +222,6 @@ export default function About() {
         </div>
       </section>
 
-      {/* ── OUR MISSION ──────────────────────────────────────────────── */}
-      <section className="py-16 bg-white px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #5a2d8a 0%, #7c42b4 100%)' }}>
-            <div className="grid lg:grid-cols-5">
-              <div className="lg:col-span-2 px-10 py-12 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-white/10">
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-3">Our Mission</p>
-                <h3 className="text-2xl font-black text-white leading-snug mb-4">
-                  Empowering people to live the lives they choose.
-                </h3>
-                <div className="w-10 h-1 bg-brand-gold rounded-full mb-6" />
-                <div className="space-y-2">
-                  {['Cognitive Behavioural Therapy (CBT)', 'Dialectical Behaviour Therapy (DBT)', 'Mindfulness', 'Behaviour Therapy', 'Tailored therapeutic interventions'].map(t => (
-                    <div key={t} className="flex items-center gap-2 text-white/80 text-sm">
-                      <span className="w-4 h-4 rounded-full bg-brand-gold/30 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-2.5 h-2.5 fill-white" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      </span>
-                      {t}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="lg:col-span-3 px-10 py-12 flex flex-col justify-center gap-4">
-                <p className="text-white/85 text-base leading-relaxed">
-                  Our mission is to empower individuals with disabilities, complex care needs, and long-term health conditions to live as independently as possible within their own communities.
-                </p>
-                <p className="text-white/85 text-base leading-relaxed">
-                  Through our Supported Living, Domiciliary Care, Live-in Care, and Specialist Care services, we deliver personalised support that promotes independence, choice, dignity, and inclusion.
-                </p>
-                <p className="text-white/85 text-base leading-relaxed">
-                  As part of our holistic approach, we also provide complimentary in-house therapeutic support at no additional cost — helping individuals improve their emotional wellbeing, build resilience, and achieve positive outcomes alongside their physical care.
-                </p>
-                <p className="text-white/85 text-base leading-relaxed font-medium">
-                  Our commitment is simple: to help every individual lead a valued, fulfilling, and independent life while remaining connected to their family, friends, and local community.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── OUR AIMS & OBJECTIVES ────────────────────────────────────── */}
       <section className="py-14 bg-peach-hero px-4">
         <div className="max-w-6xl mx-auto">
