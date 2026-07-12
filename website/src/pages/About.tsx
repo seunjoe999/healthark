@@ -58,7 +58,7 @@ export default function About() {
             </div>
           </div>
           <div className="photo-card rounded-2xl overflow-hidden h-[420px]">
-            <img src="/about-team.jpg" alt="Our Care Team" className="w-full h-full object-cover" />
+            <img src="/about-team.jpg" alt="Our Care Team" className="w-full h-full object-cover object-top" />
           </div>
         </div>
       </section>
