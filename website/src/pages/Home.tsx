@@ -27,7 +27,7 @@ export default function Home() {
       <section
         className="relative flex items-center justify-center text-center"
         style={{
-          backgroundImage: 'linear-gradient(rgba(220, 150, 130, 0.72), rgba(215, 140, 120, 0.68)), url(/hero-bg.jpg)',
+          backgroundImage: 'linear-gradient(rgba(245, 195, 175, 0.42), rgba(235, 180, 158, 0.38)), url(/hero-bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           minHeight: '600px',
@@ -174,56 +174,67 @@ export default function Home() {
       </section>
 
       {/* ── OUR MODEL OF SUPPORT ─────────────────────────────────────── */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 heading-underline mb-4">Our Model of Support</h2>
-            <p className="text-gray-700 font-bold text-lg max-w-3xl mx-auto leading-relaxed mt-6">
-              Our approach is centred on empowering individuals to live fulfilling, meaningful, and independent lives.
-              Every person is unique, which is why we deliver personalised support that builds on individual strengths,
-              respects personal choices, and promotes positive outcomes.
-            </p>
-            <p className="text-gray-600 font-semibold text-base max-w-3xl mx-auto leading-relaxed mt-3">
-              Our model of support is founded on evidence-based practice, compassion, and partnership, ensuring that
-              every individual receives the right support to achieve their goals.
+      <section className="relative py-20 px-4" style={{ background: 'linear-gradient(160deg, #4a1f7a 0%, #7c42b4 55%, #9b5fd4 100%)' }}>
+        {/* Top wave */}
+        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
+        {/* Bottom wave */}
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
+            <path d="M0,30 C200,70 400,10 600,40 C800,70 1000,20 1200,50 C1350,70 1440,35 1440,35 L1440,70 L0,70 Z" fill="white" />
+          </svg>
+        </div>
+        <div className="max-w-6xl mx-auto pt-14 pb-10">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Our Model of Support</h2>
+            <div className="w-16 h-1 bg-brand-gold rounded mx-auto mb-6" />
+            <p className="text-white/85 text-lg max-w-3xl mx-auto leading-relaxed">
+              Our approach is centred on empowering individuals to live fulfilling, meaningful, and independent lives —
+              built on evidence-based practice, compassion, and genuine partnership.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-7">
             {[
               {
-                color: '#7c42b4',
                 icon: '🌱',
+                accent: '#c8a045',
                 title: 'Positive Behaviour Support (PBS)',
                 body: 'We use Positive Behaviour Support (PBS) to understand the reasons behind behaviours of concern and develop proactive, person-centred strategies that improve quality of life. By focusing on prevention, skill development, and positive outcomes, we help individuals achieve greater independence while reducing restrictive practices.',
               },
               {
-                color: '#d4845a',
                 icon: '🤝',
+                accent: '#f4a56a',
                 title: 'Community Inclusion',
                 body: 'Being part of the community is essential for wellbeing and independence. We actively support individuals to build meaningful relationships, access education, employment and volunteering opportunities, develop life skills, and participate in social, recreational, and community activities that reflect their interests and aspirations.',
               },
               {
-                color: '#00b8b8',
                 icon: '⭐',
+                accent: '#5dd6d6',
                 title: 'Activities & Skills Development',
                 body: 'We encourage individuals to develop confidence and independence through meaningful activities tailored to their abilities and goals. From daily living skills and education to hobbies, fitness, and leisure pursuits, we provide opportunities that promote personal growth, wellbeing, and a fulfilling lifestyle.',
               },
               {
-                color: '#cc2222',
                 icon: '💛',
+                accent: '#ff8a8a',
                 title: 'Person-Centred Care',
-                body: 'Everything we do is built around the individual. We work collaboratively with the people we support, their families, and professionals to create personalised care plans that reflect each person\'s preferences, strengths, values, and ambitions. Our goal is to empower individuals to make informed choices and live life on their own terms.',
+                body: "Everything we do is built around the individual. We work collaboratively with the people we support, their families, and professionals to create personalised care plans that reflect each person's preferences, strengths, values, and ambitions — empowering individuals to make informed choices and live life on their own terms.",
               },
             ].map(p => (
-              <div key={p.title} className="rounded-2xl border-2 p-7 shadow-sm" style={{ borderColor: p.color + '33', background: p.color + '08' }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
-                    style={{ background: p.color + '22' }}>
+              <div key={p.title} className="rounded-2xl p-7 bg-white/10 border border-white/20 hover:bg-white/15 transition-colors">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-13 h-13 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.18)' }}>
                     {p.icon}
                   </div>
-                  <h3 className="text-xl font-black text-gray-900">{p.title}</h3>
+                  <div>
+                    <div className="h-0.5 w-8 rounded mb-2" style={{ background: p.accent }} />
+                    <h3 className="text-lg font-black text-white leading-tight">{p.title}</h3>
+                  </div>
                 </div>
-                <p className="text-gray-700 text-base font-bold leading-relaxed">{p.body}</p>
+                <p className="text-white/80 text-base leading-relaxed">{p.body}</p>
               </div>
             ))}
           </div>

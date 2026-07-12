@@ -34,14 +34,14 @@ export default function About() {
       <section className="py-16 bg-white px-4">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
           <div>
-            <p className="text-xs font-bold text-brand-purple uppercase tracking-widest mb-3">Who We Are</p>
-            <h2 className="text-3xl font-black text-gray-900 mb-6 leading-tight">
+            <p className="text-sm font-bold text-brand-purple uppercase tracking-widest mb-3">Who We Are</p>
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
               Built on Trust,<br />Driven by Compassion
             </h2>
-            <p className="text-gray-600 leading-relaxed mb-5">
+            <p className="text-gray-700 text-base leading-relaxed mb-5">
               Comprehensive Care was founded on a simple belief: everyone deserves support that fits their life — not the other way around. We work alongside people with complex mental health needs, learning disabilities, autism, and physical care requirements, building care around what each individual person actually wants and needs.
             </p>
-            <p className="text-gray-600 leading-relaxed mb-8">
+            <p className="text-gray-700 text-base leading-relaxed mb-8">
               Every support plan starts with a real conversation — with the person, their family, and the professionals around them. Our in-house therapist also offers free CBT, mindfulness, DBT, and behaviour therapy, because we know that lasting wellbeing means addressing both body and mind.
             </p>
             <div className="grid grid-cols-3 gap-4">
@@ -51,8 +51,8 @@ export default function About() {
                 { num: '24/7', label: 'Support Available' },
               ].map(s => (
                 <div key={s.label} className="text-center p-4 rounded-xl bg-brand-purple/5 border border-brand-purple/10">
-                  <div className="text-xl font-black text-brand-purple">{s.num}</div>
-                  <div className="text-xs text-gray-500 font-medium mt-1">{s.label}</div>
+                  <div className="text-2xl font-black text-brand-purple">{s.num}</div>
+                  <div className="text-sm text-gray-500 font-medium mt-1">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -67,10 +67,10 @@ export default function About() {
       <section className="py-16 px-4" style={{ background: 'linear-gradient(160deg, #9b68d0 0%, #7c42b4 100%)' }}>
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-black text-white mb-3">Our Values</h2>
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-3">Our Values</h2>
             <div className="w-14 h-0.5 bg-brand-gold mx-auto mb-5" />
-            <p className="text-white/80 text-lg font-semibold italic mb-3">Warm. Bespoke. Compassionate.</p>
-            <p className="text-white/70 max-w-3xl mx-auto text-sm leading-relaxed">
+            <p className="text-white/90 text-xl font-semibold italic mb-3">Warm. Bespoke. Compassionate.</p>
+            <p className="text-white/75 max-w-3xl mx-auto text-base leading-relaxed">
               Everything we do is guided by three core values that shape the way we care for every individual. We believe outstanding care is built on trust, respect, and meaningful relationships — ensuring every person receives support that is as unique as they are.
             </p>
           </div>
@@ -86,10 +86,10 @@ export default function About() {
                   <span className="text-2xl">❤️</span>
                   <h3 className="text-xl font-black text-white">Warm Care</h3>
                 </div>
-                <p className="text-white/70 text-xs font-semibold italic mb-3">
+                <p className="text-white/75 text-sm font-semibold italic mb-3">
                   Building trusted relationships that make people feel safe, valued, and supported.
                 </p>
-                <p className="text-white/80 text-sm leading-relaxed">
+                <p className="text-white/85 text-base leading-relaxed">
                   We believe that genuine, supportive relationships are at the heart of exceptional care. Our carers create a welcoming and reassuring environment where individuals feel respected, listened to, and understood. Our team receives ongoing training to provide consistent, nurturing support while promoting independence, dignity, and emotional wellbeing.
                 </p>
               </div>
@@ -105,10 +105,10 @@ export default function About() {
                   <span className="text-2xl">⭐</span>
                   <h3 className="text-xl font-black text-white">Bespoke Care</h3>
                 </div>
-                <p className="text-white/70 text-xs font-semibold italic mb-3">
+                <p className="text-white/75 text-sm font-semibold italic mb-3">
                   Care designed around the individual — not the individual around the care.
                 </p>
-                <p className="text-white/80 text-sm leading-relaxed">
+                <p className="text-white/85 text-base leading-relaxed">
                   No two people are the same, which is why every care plan is tailored to reflect each person's needs, preferences, goals, and aspirations. Working closely with individuals, families, and healthcare professionals, we develop personalised support that evolves as needs change — empowering people to make choices and maintain independence.
                 </p>
               </div>
@@ -124,10 +124,10 @@ export default function About() {
                   <span className="text-2xl">🤝</span>
                   <h3 className="text-xl font-black text-white">Compassionate Care</h3>
                 </div>
-                <p className="text-white/70 text-xs font-semibold italic mb-3">
+                <p className="text-white/75 text-sm font-semibold italic mb-3">
                   Providing care with empathy, dignity, and respect.
                 </p>
-                <p className="text-white/80 text-sm leading-relaxed">
+                <p className="text-white/85 text-base leading-relaxed">
                   Compassion is at the heart of everything we do. Quality care is about more than meeting physical needs — it's about understanding the whole person. Our dedicated team takes time to listen, build trust, and provide emotional as well as practical support. Research shows that compassionate care improves wellbeing, reduces anxiety, and leads to better health outcomes.
                 </p>
               </div>
@@ -181,16 +181,16 @@ export default function About() {
       <section className="py-14 bg-peach-hero px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-black text-gray-900 mb-3 heading-underline">Our Aims &amp; Objectives</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto mt-6 text-sm">
+            <h2 className="text-4xl font-black text-gray-900 mb-3 heading-underline">Our Aims &amp; Objectives</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto mt-6 text-base">
               We are committed to delivering care that makes a meaningful and lasting difference.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {AIMS.map((a, i) => (
               <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow text-center">
-                <div className="text-3xl mb-3">{a.icon}</div>
-                <p className="text-gray-600 text-sm leading-relaxed">{a.text}</p>
+                <div className="text-4xl mb-3">{a.icon}</div>
+                <p className="text-gray-700 text-sm leading-relaxed">{a.text}</p>
               </div>
             ))}
           </div>
@@ -200,8 +200,8 @@ export default function About() {
       {/* ── OUR VALUES (SVG icons strip) ─────────────────────────────── */}
       <section className="py-14 bg-white px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl font-black text-gray-900 mb-2 heading-underline text-center">Our Core Principles</h2>
-          <p className="text-center text-gray-500 max-w-xl mx-auto mb-10 mt-6 text-sm">
+          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-2 heading-underline text-center">Our Core Principles</h2>
+          <p className="text-center text-gray-500 max-w-xl mx-auto mb-10 mt-6 text-base">
             The principles that shape every interaction, every care plan, and every decision we make.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -231,8 +231,8 @@ export default function About() {
                   {v.icon}
                 </div>
                 <div>
-                  <h4 className="font-black text-sm text-gray-900 mb-1">{v.title}</h4>
-                  <p className="text-gray-500 text-xs leading-relaxed">{v.desc}</p>
+                  <h4 className="font-black text-base text-gray-900 mb-1">{v.title}</h4>
+                  <p className="text-gray-500 text-sm leading-relaxed">{v.desc}</p>
                 </div>
               </div>
             ))}
@@ -259,7 +259,7 @@ export default function About() {
           <div className="flex flex-wrap justify-center items-center gap-10 mt-10">
             {[
               { src: '/cqc-good.jpg',              alt: 'CQC Rated Good' },
-              { src: '/cqc-new.jpg',               alt: 'CQC Registered Provider' },
+              { src: '/cqc-logo-2.png',             alt: 'CQC Registered Provider' },
               { src: '/ico-logo.png',              alt: 'ICO' },
               { src: '/pqs-logo.png',              alt: 'PQS SSIP' },
               { src: '/logo-cyber-essentials.png', alt: 'Cyber Essentials' },
