@@ -16,6 +16,7 @@ const downloads = [
   { label: 'Staff Handbook', file: '/staff-handbook.pdf' },
   { label: 'Carbon Reduction Plan', file: '/carbon-reduction-plan.pdf' },
   { label: 'Application Pack', file: '/brochure.pdf' },
+  { label: 'Timesheet', file: '/timesheet.pdf' },
 ]
 
 export default function Footer() {

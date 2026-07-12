@@ -426,6 +426,13 @@ export default function Home() {
                 file: '/staff-handbook.pdf',
                 label: 'Download Handbook',
               },
+              {
+                title: 'Timesheet',
+                desc: 'Download our official staff timesheet for recording hours and shift details.',
+                icon: '🕐',
+                file: '/timesheet.pdf',
+                label: 'Download Timesheet',
+              },
             ].map(d => (
               <a
                 key={d.title}
