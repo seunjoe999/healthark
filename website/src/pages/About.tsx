@@ -64,19 +64,88 @@ export default function About() {
       </section>
 
       {/* ── OUR MISSION ──────────────────────────────────────────────── */}
-      <section className="py-16 bg-peach-light px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-sm font-bold text-brand-purple uppercase tracking-widest mb-3">Our Mission</p>
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">
-            Why We Exist
-          </h2>
-          <div className="w-14 h-0.5 bg-brand-gold mx-auto mb-8" />
-          <p className="text-gray-700 text-lg font-bold leading-relaxed mb-6">
-            Our mission is to provide exceptional, person-centred care and support services that empower individuals to live fulfilling, independent, and dignified lives. We are committed to delivering compassionate, high-quality care that respects the unique needs, preferences, and aspirations of every individual we support.
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0520 0%, #1a0840 50%, #2d1260 100%)' }}>
+        {/* Top wave — white matches Who We Are above */}
+        <div className="overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="w-full h-[80px]">
+            <path d="M0,30 C240,80 480,0 720,40 C960,80 1200,10 1440,45 L1440,0 L0,0 Z" fill="white" />
+          </svg>
+        </div>
+
+        {/* Radial glow orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] rounded-full opacity-25"
+            style={{ background: 'radial-gradient(circle, #7c42b4 0%, transparent 65%)' }} />
+          <div className="absolute bottom-1/3 right-1/4 w-72 h-72 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #c8a045 0%, transparent 65%)' }} />
+          <div className="absolute top-1/2 right-1/3 w-56 h-56 rounded-full opacity-10"
+            style={{ background: 'radial-gradient(circle, #9b5fd4 0%, transparent 65%)' }} />
+        </div>
+
+        {/* Ghost MISSION watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+          <span style={{ fontSize: 'clamp(100px, 18vw, 220px)', fontWeight: 900, color: 'transparent', WebkitTextStroke: '1.5px rgba(255,255,255,0.04)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+            MISSION
+          </span>
+        </div>
+
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-20 pt-6">
+
+          {/* Label */}
+          <p className="text-center text-xs font-bold uppercase tracking-[0.35em] mb-8" style={{ color: '#c8a045' }}>
+            Our Mission
           </p>
-          <p className="text-gray-700 text-base leading-relaxed max-w-3xl mx-auto">
-            Through our dedicated team of professionals, we strive to create safe, nurturing environments where individuals can thrive, build meaningful relationships, and actively participate in their communities. We believe that everyone deserves the opportunity to live life to the fullest, and we are here to make that possible — one person at a time.
+
+          {/* Pull quote with decorative marks */}
+          <div className="relative max-w-4xl mx-auto mb-12 px-4 md:px-12">
+            <svg className="absolute -top-2 left-0 md:-left-4 w-12 h-12 opacity-70 flex-shrink-0" viewBox="0 0 50 40" fill="#c8a045">
+              <path d="M0 40V22C0 9 7.5 2 22.5 0L25 5C14 7 9.5 12.5 9 19H22V40H0zm27.5 0V22C27.5 9 35 2 50 0l2.5 5C41.5 7 37 12.5 36.5 19H49.5V40H27.5z"/>
+            </svg>
+            <p className="text-white text-xl md:text-2xl font-bold italic leading-relaxed text-center">
+              Our mission is to provide exceptional, person-centred care and support services that empower individuals to live fulfilling, independent, and dignified lives — delivering compassionate, high-quality care that respects the unique needs, preferences, and aspirations of every individual we support.
+            </p>
+            <svg className="absolute -bottom-2 right-0 md:-right-4 w-12 h-12 opacity-70 rotate-180" viewBox="0 0 50 40" fill="#c8a045">
+              <path d="M0 40V22C0 9 7.5 2 22.5 0L25 5C14 7 9.5 12.5 9 19H22V40H0zm27.5 0V22C27.5 9 35 2 50 0l2.5 5C41.5 7 37 12.5 36.5 19H49.5V40H27.5z"/>
+            </svg>
+          </div>
+
+          {/* Ornamental divider */}
+          <div className="flex items-center justify-center gap-4 mb-10">
+            <div className="h-px w-20 opacity-30" style={{ background: 'linear-gradient(to right, transparent, #c8a045)' }} />
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <rect x="7" y="0" width="4" height="18" rx="2" fill="#c8a045" opacity="0.7"/>
+              <rect x="0" y="7" width="18" height="4" rx="2" fill="#c8a045" opacity="0.7"/>
+            </svg>
+            <div className="h-px w-20 opacity-30" style={{ background: 'linear-gradient(to left, transparent, #c8a045)' }} />
+          </div>
+
+          {/* Secondary paragraph */}
+          <p className="text-white/55 text-base leading-relaxed max-w-3xl mx-auto text-center mb-14">
+            Through our dedicated team of professionals, we create safe, nurturing environments where individuals can thrive, build meaningful relationships, and actively participate in their communities. Everyone deserves the opportunity to live life to the fullest — one person at a time.
           </p>
+
+          {/* Three mission pillars */}
+          <div className="grid md:grid-cols-3 gap-5 max-w-3xl mx-auto">
+            {[
+              { icon: '🌟', label: 'Person-Centred', desc: 'Every decision starts and ends with the individual.' },
+              { icon: '🕊️', label: 'Dignified', desc: 'Respect, choice, and independence at all times.' },
+              { icon: '🌱', label: 'Empowering', desc: 'Supporting people to reach their full potential.' },
+            ].map(p => (
+              <div key={p.label} className="text-center p-6 rounded-2xl border"
+                style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                <div className="text-3xl mb-3">{p.icon}</div>
+                <h4 className="font-black text-white text-base mb-2">{p.label}</h4>
+                <p className="text-white/50 text-sm leading-relaxed">{p.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom wave — purple matches Our Values below */}
+        <div className="overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="w-full h-[80px]">
+            <path d="M0,45 C240,0 480,70 720,30 C960,0 1200,60 1440,25 L1440,80 L0,80 Z" fill="#9b68d0" />
+          </svg>
         </div>
       </section>
 
