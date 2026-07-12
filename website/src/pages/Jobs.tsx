@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import emailjs from '@emailjs/browser'
+import { EMAILJS_SERVICE_ID, EMAILJS_PUBLIC_KEY, TEMPLATE_JOB } from '../emailjs.config'
 
 const BENEFITS = [
   { icon: '💰', label: 'Competitive Pay',       desc: 'Above-average rates with regular pay reviews' },
@@ -45,12 +47,21 @@ export default function Jobs() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await fetch('https://compcarehub.onrender.com/api/public/job-application', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-    } catch {}
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_JOB,
+        {
+          first_name:  form.firstName,
+          last_name:   form.lastName,
+          email:       form.email,
+          phone:       form.phone,
+          description: form.description,
+        },
+        EMAILJS_PUBLIC_KEY,
+      )
+    } catch (err) {
+      console.error('EmailJS error:', err)
+    }
     setSubmitted(true)
   }
 

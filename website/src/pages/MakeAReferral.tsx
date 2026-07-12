@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react'
+import emailjs from '@emailjs/browser'
+import { EMAILJS_SERVICE_ID, EMAILJS_PUBLIC_KEY, TEMPLATE_REFERRAL } from '../emailjs.config'
 
 const WHY_REFER = [
   'High-quality, person-centred care',
@@ -33,12 +35,29 @@ export default function MakeAReferral() {
     e.preventDefault()
     if (!consent) return
     try {
-      await fetch('https://compcarehub.onrender.com/api/public/referral', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, fileName }),
-      })
-    } catch {}
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_REFERRAL,
+        {
+          referrer_name:    form.referrerName,
+          referrer_org:     form.referrerOrg,
+          referrer_phone:   form.referrerPhone,
+          referrer_email:   form.referrerEmail,
+          person_name:      form.personName,
+          dob:              form.dob,
+          nhs_number:       form.nhsNumber,
+          address:          form.address,
+          person_phone:     form.personPhone,
+          next_of_kin:      form.nextOfKin,
+          emergency_contact: form.emergencyContact,
+          referral_details: form.referralDetails,
+          file_name:        fileName || 'None',
+        },
+        EMAILJS_PUBLIC_KEY,
+      )
+    } catch (err) {
+      console.error('EmailJS error:', err)
+    }
     setSubmitted(true)
   }
 
