@@ -185,13 +185,13 @@ export default function Services() {
               {/* Photo */}
               <div className={i % 2 !== 0 ? 'lg:order-2' : ''}>
                 <div
-                  className={`photo-card rounded-2xl overflow-hidden ${s.imgBg ? 'h-80 md:h-96' : 'h-72 md:h-80'}`}
+                  className={`photo-card rounded-2xl overflow-hidden flex items-center justify-center ${s.imgBg ? 'h-[420px]' : 'h-72 md:h-80'}`}
                   style={s.imgBg ? { background: s.imgBg } : undefined}
                 >
                   <img
                     src={s.img}
                     alt={s.title}
-                    className={`w-full h-full ${s.imgClass ?? 'object-cover'}`}
+                    className={s.imgClass ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'}
                   />
                 </div>
               </div>

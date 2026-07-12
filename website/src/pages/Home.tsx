@@ -314,7 +314,7 @@ export default function Home() {
             </p>
             <Link to="/our-specialism" className="btn-purple">Learn About Our Specialism →</Link>
           </div>
-          <div className="photo-card rounded-2xl overflow-hidden h-96 lg:mt-16">
+          <div className="photo-card rounded-2xl overflow-hidden lg:mt-8" style={{ aspectRatio: '3/4', maxHeight: '520px' }}>
             <img src="/care-therapy.jpg" alt="Therapeutic Support" className="w-full h-full object-cover object-top" />
           </div>
         </div>
@@ -408,7 +408,7 @@ export default function Home() {
           <div className="flex flex-wrap justify-center items-center gap-10 mt-8">
             {[
               { src: '/cqc-good.jpg',               label: 'CQC Inspected & Rated Good' },
-              { src: '/cqc-new.jpg',                label: 'CQC Registered Provider' },
+              { src: '/cqc-logo-2.png',             label: 'CQC Registered Provider' },
               { src: '/ico-logo.png',               label: "Information Commissioner's Office" },
               { src: '/pqs-logo.png',               label: 'PQS SSIP Health & Safety' },
               { src: '/logo-cyber-essentials.png',  label: 'Cyber Essentials Certified' },
