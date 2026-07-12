@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 const VALUES = [
   { title: 'Warm',          color: '#d4845a', img: '/care-values-warm.jpg',
     desc: 'We promote warm, supportive relationships between service users and carers that foster attachment and stability.' },
-  { title: 'Bespoke',       color: '#7c42b4', img: '/care-values-bespoke.jpg',
+  { title: 'Bespoke',       color: '#7c42b4', img: '/care-values-bespoke.jpg', imgPos: 'object-top',
     desc: 'Our service users receive care personalised to their individual needs through a person-centred approach.' },
   { title: 'Compassionate', color: '#cc2222', img: '/care-values-compassionate.jpg',
     desc: 'Compassion is the foundation of how we provide care — built on empathy, respect, and dignity.' },
@@ -118,7 +118,7 @@ export default function Home() {
             {VALUES.map(v => (
               <div key={v.title} className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
                 <div className="h-52 relative">
-                  <img src={v.img} alt={v.title} className="w-full h-full object-cover" />
+                  <img src={v.img} alt={v.title} className={`w-full h-full object-cover ${v.imgPos ?? ''}`} />
                   <div className="absolute inset-0 flex items-end p-4"
                     style={{ background: `linear-gradient(to top, ${v.color}cc, transparent)` }}>
                     <h3 className="text-2xl font-black text-white">{v.title}</h3>
