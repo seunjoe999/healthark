@@ -174,29 +174,57 @@ export default function Home() {
       </section>
 
       {/* ── OUR MODEL OF SUPPORT ─────────────────────────────────────── */}
-      <section className="relative py-20 px-4" style={{ background: 'linear-gradient(160deg, #4a1f7a 0%, #7c42b4 55%, #9b5fd4 100%)' }}>
-        {/* Top wave */}
-        <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none">
-          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
-            <path d="M0,40 C200,0 400,60 600,30 C800,0 1000,55 1200,20 C1350,0 1440,30 1440,30 L1440,0 L0,0 Z" fill="white" />
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0520 0%, #1a0840 50%, #2d1260 100%)' }}>
+        {/* Top wave — white matches section above */}
+        <div className="overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="w-full h-[80px]">
+            <path d="M0,30 C240,80 480,0 720,40 C960,80 1200,10 1440,45 L1440,0 L0,0 Z" fill="white" />
           </svg>
         </div>
-        {/* Bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none">
-          <svg viewBox="0 0 1440 70" preserveAspectRatio="none" className="w-full h-[70px]">
-            <path d="M0,30 C200,70 400,10 600,40 C800,70 1000,20 1200,50 C1350,70 1440,35 1440,35 L1440,70 L0,70 Z" fill="white" />
-          </svg>
+
+        {/* Radial glow orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #7c42b4 0%, transparent 65%)' }} />
+          <div className="absolute bottom-1/3 left-1/4 w-80 h-80 rounded-full opacity-15"
+            style={{ background: 'radial-gradient(circle, #c8a045 0%, transparent 65%)' }} />
+          <div className="absolute top-2/3 right-1/2 w-56 h-56 rounded-full opacity-10"
+            style={{ background: 'radial-gradient(circle, #5dd6d6 0%, transparent 65%)' }} />
         </div>
-        <div className="max-w-6xl mx-auto pt-14 pb-10">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Our Model of Support</h2>
-            <div className="w-16 h-1 bg-brand-gold rounded mx-auto mb-6" />
-            <p className="text-white/85 text-lg max-w-3xl mx-auto leading-relaxed">
-              Our approach is centred on empowering individuals to live fulfilling, meaningful, and independent lives —
-              built on evidence-based practice, compassion, and genuine partnership.
-            </p>
+
+        {/* Ghost watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+          <span style={{ fontSize: 'clamp(60px, 12vw, 160px)', fontWeight: 900, color: 'transparent', WebkitTextStroke: '1.5px rgba(255,255,255,0.04)', letterSpacing: '-0.03em', lineHeight: 1, whiteSpace: 'nowrap' }}>
+            SUPPORT
+          </span>
+        </div>
+
+        <div className="relative z-10 max-w-6xl mx-auto px-4 pb-20 pt-6">
+          {/* Label */}
+          <p className="text-center text-xs font-bold uppercase tracking-[0.35em] mb-6" style={{ color: '#c8a045' }}>
+            Our Approach
+          </p>
+
+          {/* Heading */}
+          <h2 className="text-4xl md:text-5xl font-black text-white text-center mb-4">Our Model of Support</h2>
+
+          {/* Ornamental divider */}
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="h-px w-20 opacity-30" style={{ background: 'linear-gradient(to right, transparent, #c8a045)' }} />
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <rect x="7" y="0" width="4" height="18" rx="2" fill="#c8a045" opacity="0.7"/>
+              <rect x="0" y="7" width="18" height="4" rx="2" fill="#c8a045" opacity="0.7"/>
+            </svg>
+            <div className="h-px w-20 opacity-30" style={{ background: 'linear-gradient(to left, transparent, #c8a045)' }} />
           </div>
-          <div className="grid md:grid-cols-2 gap-7">
+
+          <p className="text-white/55 text-base leading-relaxed max-w-3xl mx-auto text-center mb-14">
+            Our approach is centred on empowering individuals to live fulfilling, meaningful, and independent lives —
+            built on evidence-based practice, compassion, and genuine partnership.
+          </p>
+
+          {/* Cards */}
+          <div className="grid md:grid-cols-2 gap-6">
             {[
               {
                 icon: '🌱',
@@ -223,21 +251,29 @@ export default function Home() {
                 body: "Everything we do is built around the individual. We work collaboratively with the people we support, their families, and professionals to create personalised care plans that reflect each person's preferences, strengths, values, and ambitions — empowering individuals to make informed choices and live life on their own terms.",
               },
             ].map(p => (
-              <div key={p.title} className="rounded-2xl p-7 bg-white/10 border border-white/20 hover:bg-white/15 transition-colors">
+              <div key={p.title} className="rounded-2xl p-7 border hover:scale-[1.01] transition-transform"
+                style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }}>
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-13 h-13 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.18)' }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                    style={{ background: `${p.accent}22` }}>
                     {p.icon}
                   </div>
                   <div>
-                    <div className="h-0.5 w-8 rounded mb-2" style={{ background: p.accent }} />
+                    <div className="h-0.5 w-10 rounded mb-2" style={{ background: p.accent }} />
                     <h3 className="text-lg font-black text-white leading-tight">{p.title}</h3>
                   </div>
                 </div>
-                <p className="text-white/80 text-base leading-relaxed">{p.body}</p>
+                <p className="text-white/65 text-base leading-relaxed">{p.body}</p>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Bottom wave — white matches section below */}
+        <div className="overflow-hidden leading-none">
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="w-full h-[80px]">
+            <path d="M0,45 C240,0 480,70 720,30 C960,0 1200,60 1440,25 L1440,80 L0,80 Z" fill="white" />
+          </svg>
         </div>
       </section>
 

@@ -67,7 +67,7 @@ export default function Jobs() {
 
         <div className="relative z-10 max-w-2xl mx-auto text-center">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-brand-gold/60 px-8 py-10 shadow-2xl">
-            <h1 className="text-4xl md:text-5xl font-black italic text-brand-red font-serif mb-4">
+            <h1 className="text-4xl md:text-5xl font-black italic text-white font-serif mb-4">
               Join Our Team
             </h1>
             <div className="w-12 h-0.5 bg-brand-gold mx-auto mb-5" />
