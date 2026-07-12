@@ -314,8 +314,8 @@ export default function Home() {
             </p>
             <Link to="/our-specialism" className="btn-purple">Learn About Our Specialism →</Link>
           </div>
-          <div className="photo-card rounded-2xl overflow-hidden h-80 lg:mt-16">
-            <img src="/care-therapy.jpg" alt="Therapeutic Support" className="w-full h-full object-cover" />
+          <div className="photo-card rounded-2xl overflow-hidden h-96 lg:mt-16">
+            <img src="/care-therapy.jpg" alt="Therapeutic Support" className="w-full h-full object-cover object-top" />
           </div>
         </div>
       </section>

@@ -93,6 +93,8 @@ const SERVICES = [
     title: 'End of Life Care',
     tagline: 'Providing comfort, dignity, and compassionate support when it matters most.',
     img: '/eol.png',
+    imgClass: 'object-contain',
+    imgBg: '#d6e8f0',
     intro: 'Our End of Life Care service focuses on ensuring individuals receive respectful, person-centred care during the final stages of life. We work closely with families, healthcare professionals, and palliative care teams to deliver compassionate support that reflects each person\'s wishes, values, and beliefs. Our priority is to provide comfort, preserve dignity, and offer emotional support for both individuals and their loved ones during this important time.',
     bullets: [
       'Person-centred palliative care planning',
@@ -182,8 +184,15 @@ export default function Services() {
 
               {/* Photo */}
               <div className={i % 2 !== 0 ? 'lg:order-2' : ''}>
-                <div className="photo-card rounded-2xl overflow-hidden h-72 md:h-80">
-                  <img src={s.img} alt={s.title} className="w-full h-full object-cover" />
+                <div
+                  className={`photo-card rounded-2xl overflow-hidden ${s.imgBg ? 'h-80 md:h-96' : 'h-72 md:h-80'}`}
+                  style={s.imgBg ? { background: s.imgBg } : undefined}
+                >
+                  <img
+                    src={s.img}
+                    alt={s.title}
+                    className={`w-full h-full ${s.imgClass ?? 'object-cover'}`}
+                  />
                 </div>
               </div>
 
