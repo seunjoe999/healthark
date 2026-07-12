@@ -11,7 +11,7 @@ const VALUES = [
 ]
 
 const SERVICES_PREVIEW = [
-  { img: '/service-mental-health.jpg',         title: 'Complex Mental Health',    color: '#d4845a' },
+  { img: '/service-mental-health.webp',        title: 'Complex Mental Health',    color: '#d4845a' },
   { img: '/service-supported-living.jpg',      title: 'Supported Living',          color: '#7c42b4' },
   { img: '/service-learning-disabilities.jpg', title: 'Learning Disabilities',     color: '#00b8b8' },
   { img: '/service-autism.jpg',                title: 'Autism Support',            color: '#4ab47c' },
