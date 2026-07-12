@@ -184,7 +184,7 @@ export default function About() {
             {/* Bespoke */}
             <div className="bg-white/10 border border-white/20 rounded-2xl overflow-hidden">
               <div className="h-52 overflow-hidden">
-                <img src="/care-values-bespoke.jpg" alt="Bespoke Care" className="w-full h-full object-cover" />
+                <img src="/care-values-bespoke.jpg" alt="Bespoke Care" className="w-full h-full object-cover object-top" />
               </div>
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-3">
