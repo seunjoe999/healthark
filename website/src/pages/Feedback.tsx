@@ -158,7 +158,7 @@ export default function Feedback() {
               </a>
 
               <a
-                href="mailto:info@comprehensivecare.org.uk?subject=Feedback for Comprehensive Care"
+                href="mailto:reviews@comprehensivecare.org.uk?subject=Feedback for Comprehensive Care"
                 className="flex items-center gap-4 p-5 rounded-2xl border border-gray-200 hover:border-brand-purple hover:shadow-md transition-all group"
               >
                 <div className="w-12 h-12 rounded-xl bg-brand-purple/10 flex items-center justify-center flex-shrink-0">
@@ -168,7 +168,7 @@ export default function Feedback() {
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-gray-900">Email Us Your Feedback</p>
-                  <p className="text-sm text-gray-500">info@comprehensivecare.org.uk</p>
+                  <p className="text-sm text-gray-500">reviews@comprehensivecare.org.uk</p>
                 </div>
                 <svg className="w-5 h-5 text-gray-400 group-hover:text-brand-purple transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
