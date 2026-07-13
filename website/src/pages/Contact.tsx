@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+const WEB3FORMS_KEY = 'cca02aa7-8e86-4bc3-aa57-0db69fa5a8eb'
+
 const HOW_WE_HELP = [
   'Complex Care Services', 'Domiciliary Care', 'Live-in Care',
   'Personal Care', 'Hospital Discharge Support', 'Care Assessments',
@@ -32,12 +34,24 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await fetch('https://compcarehub.onrender.com/api/public/contact', {
+      await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          access_key:     WEB3FORMS_KEY,
+          subject:        `New Enquiry from ${form.fullName}`,
+          name:           form.fullName,
+          email:          form.email,
+          phone:          form.phone,
+          organisation:   form.organisation,
+          reason:         form.reason,
+          contact_method: form.contactMethod,
+          message:        form.message,
+        }),
       })
-    } catch {}
+    } catch (err) {
+      console.error('Web3Forms error:', err)
+    }
     setSubmitted(true)
   }
 
