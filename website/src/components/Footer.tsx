@@ -132,7 +132,11 @@ export default function Footer() {
               <svg className="w-4 h-4 text-[#c8a045] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              <span>Mon–Fri: 9:00 AM – 5:00 PM</span>
+              <div>
+                <span className="block">Mon–Fri: 9:00 AM – 5:00 PM</span>
+                <span className="block text-xs text-gray-500 mt-1">Weekends &amp; Bank Holidays: Closed</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Enquiries received outside office hours will be responded to on the next working day.</span>
+              </div>
             </div>
           </div>
         </div>
