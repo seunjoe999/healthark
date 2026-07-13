@@ -427,6 +427,13 @@ export default function Home() {
                 label: 'Download Handbook',
               },
               {
+                title: 'Health & Safety Handbook',
+                desc: 'Our health and safety policies and procedures for all staff members.',
+                icon: '🦺',
+                file: '/health-safety-handbook.doc',
+                label: 'Download H&S Handbook',
+              },
+              {
                 title: 'Timesheet',
                 desc: 'Download our official staff timesheet for recording hours and shift details.',
                 icon: '🕐',

@@ -15,6 +15,7 @@ const quickLinks = [
 const downloads = [
   { label: 'Company Brochure', file: '/brochure.pdf' },
   { label: 'Staff Handbook', file: '/staff-handbook.pdf' },
+  { label: 'Health & Safety Handbook', file: '/health-safety-handbook.doc' },
   { label: 'Carbon Reduction Plan', file: '/carbon-reduction-plan.pdf' },
   { label: 'Application Pack', file: '/application-pack.zip' },
   { label: 'Timesheet', file: '/timesheet.pdf' },
