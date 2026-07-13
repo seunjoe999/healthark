@@ -473,7 +473,7 @@ export default function Home() {
       <section className="py-16 bg-peach-light px-4">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-3xl font-black text-gray-900 mb-10 heading-underline">Our Accreditations &amp; Partners</h2>
-          <div className="flex flex-wrap justify-center items-center gap-10 mt-8">
+          <div className="flex flex-wrap justify-center items-center gap-12 mt-8">
             {[
               { src: '/cqc-good.jpg',               label: 'CQC Inspected & Rated Good' },
               { src: '/cqc-logo-2.png',             label: 'CQC Registered Provider' },
@@ -484,8 +484,10 @@ export default function Home() {
               { src: '/logo-ukas.png',              label: 'UKAS Accredited' },
               { src: '/logo-skills-for-care.png',   label: 'Skills for Care Member' },
             ].map(a => (
-              <div key={a.label} className="flex flex-col items-center gap-3 w-36 text-center">
-                <img src={a.src} alt={a.label} className="h-24 object-contain mx-auto" />
+              <div key={a.label} className="flex flex-col items-center gap-3 w-44 text-center">
+                <div className="h-32 w-full flex items-center justify-center">
+                  <img src={a.src} alt={a.label} className="max-h-32 max-w-full object-contain" />
+                </div>
                 <p className="text-sm text-gray-600 font-semibold leading-snug">{a.label}</p>
               </div>
             ))}
