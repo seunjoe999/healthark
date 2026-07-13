@@ -7,15 +7,16 @@ const quickLinks = [
   { label: 'Our Services', path: '/our-services' },
   { label: 'Our Specialism', path: '/our-specialism' },
   { label: 'How We Work', path: '/how-we-work' },
-  { label: 'Our Carers', path: '/our-carers' },
+  { label: 'Join Us', path: '/join-us' },
   { label: 'Make A Referral', path: '/make-a-referral' },
+  { label: 'Feedback', path: '/feedback' },
   { label: 'Contact Us', path: '/contact-us' },
 ]
 const downloads = [
   { label: 'Company Brochure', file: '/brochure.pdf' },
   { label: 'Staff Handbook', file: '/staff-handbook.pdf' },
   { label: 'Carbon Reduction Plan', file: '/carbon-reduction-plan.pdf' },
-  { label: 'Application Pack', file: '/brochure.pdf' },
+  { label: 'Application Pack', file: '/application-pack.zip' },
   { label: 'Timesheet', file: '/timesheet.pdf' },
 ]
 

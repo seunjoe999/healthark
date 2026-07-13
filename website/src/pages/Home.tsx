@@ -433,6 +433,13 @@ export default function Home() {
                 file: '/timesheet.pdf',
                 label: 'Download Timesheet',
               },
+              {
+                title: 'Application Pack',
+                desc: 'Everything you need to apply for a role at Comprehensive Care Ltd.',
+                icon: '📝',
+                file: '/application-pack.zip',
+                label: 'Download Pack',
+              },
             ].map(d => (
               <a
                 key={d.title}

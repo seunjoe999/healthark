@@ -107,7 +107,8 @@ export default function Contact() {
               <h3 className="font-black text-gray-900 mb-3">Office Opening Hours</h3>
               <div className="text-sm text-gray-700 space-y-1">
                 <p>🕒 Monday – Friday: 9:00am – 5:00pm</p>
-                <p className="text-gray-500 text-xs">For existing clients, our out-of-hours support service is available for urgent matters.</p>
+                <p className="text-gray-500 text-xs mt-1">Closed on weekends and bank holidays. Enquiries received during these times will be responded to on the next working day.</p>
+                <p className="text-gray-500 text-xs mt-1">For existing clients, our out-of-hours support service is available for urgent matters.</p>
               </div>
             </div>
 
