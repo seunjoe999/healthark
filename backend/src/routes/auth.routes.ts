@@ -177,6 +177,48 @@ router.get('/setup-status', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/auth/db-check — diagnostic: count staff and admins (no auth required, temp endpoint)
+router.get('/db-check', async (_req, res, next) => {
+  try {
+    const orgs = await query('SELECT COUNT(*) as count FROM organisations');
+    const staffTotal = await query('SELECT COUNT(*) as count FROM staff');
+    const admins = await query("SELECT COUNT(*) as count FROM staff WHERE role IN ('group_admin','home_manager') AND is_active = true");
+    res.json({ success: true, data: {
+      organisations: Number(orgs[0]?.count || 0),
+      staffTotal: Number(staffTotal[0]?.count || 0),
+      activeAdmins: Number(admins[0]?.count || 0),
+    }});
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/recover-admin — creates a group_admin ONLY if zero active admins exist
+router.post('/recover-admin',
+  [body('email').isEmail().normalizeEmail(), body('password').isLength({ min: 8 }), body('firstName').notEmpty(), body('lastName').notEmpty()],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const admins = await query("SELECT id FROM staff WHERE role IN ('group_admin','home_manager') AND is_active = true LIMIT 1");
+      if (admins.length > 0) {
+        res.status(403).json({ success: false, error: 'Admin accounts already exist. This endpoint is disabled.' });
+        return;
+      }
+      const { email, password, firstName, lastName } = req.body;
+      const org = await query<any>('SELECT id FROM organisations LIMIT 1');
+      if (!org.length) { res.status(400).json({ success: false, error: 'No organisation found.' }); return; }
+      const home = await query<any>('SELECT id FROM homes WHERE organisation_id=$1 LIMIT 1', [org[0].id]);
+      if (!home.length) { res.status(400).json({ success: false, error: 'No home found.' }); return; }
+      const hash = await bcrypt.hash(password, 12);
+      await query(
+        `INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, last_name, role, status, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,'group_admin','active',true)
+         ON CONFLICT (email) DO UPDATE SET password_hash=$4, status='active', is_active=true, role='group_admin'`,
+        [org[0].id, home[0].id, email, hash, firstName, lastName]
+      );
+      res.json({ success: true, message: 'Admin account created. You can now log in.' });
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/auth/setup — create first organisation, home, and admin (only works on empty DB)
 router.post('/setup',
   [
