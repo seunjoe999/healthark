@@ -21,28 +21,29 @@ const signRefresh = (payload: object) =>
 
 // POST /api/auth/login
 router.post('/login',
-  [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
+  [body('email').isEmail(), body('password').notEmpty()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password } = req.body;
-      // Base query — only columns guaranteed to exist in all schema versions
+      const email = (req.body.email as string).toLowerCase().trim();
+      const { password } = req.body;
+      console.log('[login] attempt for email:', email);
+      // Minimal safe query — only 100% guaranteed columns
       const rows = await query<any>(
-        `SELECT id, email, password_hash, first_name, last_name, role,
-                home_id, status, is_active
-         FROM staff WHERE email = $1`,
+        `SELECT id, email, password_hash, role, status, is_active FROM staff WHERE LOWER(email) = $1`,
         [email]
       );
-      // Fetch optional columns separately so missing columns don't break login
+      console.log('[login] rows found:', rows.length);
+      // Fetch extra columns separately
       let extraCols: any = {};
       try {
         const extra = await query<any>(
-          `SELECT organisation_id, photo_url, feature_flags FROM staff WHERE email = $1`, [email]
+          `SELECT first_name, last_name, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE LOWER(email) = $1`, [email]
         );
         if (extra.length) extraCols = extra[0];
-      } catch { /* columns may not exist yet */ }
+      } catch (e: any) { console.log('[login] extra cols error:', e.message); }
       if (!rows.length) throw new AppError('Invalid email or password', 401);
-      const staff = rows[0];
+      const staff = { ...rows[0], ...extraCols };
       if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
         throw new AppError('Account is inactive. Contact your administrator.', 401);
       // Guard against null/missing password_hash (e.g. externally-created accounts)
