@@ -73,12 +73,12 @@ function StatCounter({ target, suffix, label }: { target: number; suffix: string
 const IMG = {
   logo:      '/cc-logo.jpg',
   hero:      '/hero-care.jpg',
-  // card photos: hero photo reused for Resident Care; matched outdoor/warm for the others
-  card1:     '/hero-care.jpg',
+  // card photos
+  card1:     'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80&auto=format&fit=crop',
   card2:     'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80&auto=format&fit=crop',
   card3:     'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=600&q=80&auto=format&fit=crop',
   // feature section photos
-  feat1:     'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=700&q=80&auto=format&fit=crop',
+  feat1:     'https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=700&q=80&auto=format&fit=crop',
   feat2:     'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=700&q=80&auto=format&fit=crop',
   feat3:     'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=700&q=80&auto=format&fit=crop',
   ctaBg:     'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1400&q=75&auto=format&fit=crop',
