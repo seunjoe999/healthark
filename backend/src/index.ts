@@ -1461,6 +1461,16 @@ async function bootstrap() {
     END $$
   `).catch((err: any) => logger.warn('Enum update skipped: ' + err?.message));
 
+  // Add 'pending' to staff_status enum — used by the self-registration flow
+  await pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'pending'
+        AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'staff_status')) THEN
+        ALTER TYPE staff_status ADD VALUE 'pending';
+      END IF;
+    END $$
+  `).catch((err: any) => logger.warn('staff_status pending enum skipped: ' + err?.message));
+
   await ensureColumns();
   await seedRolePermissions();
 

@@ -44,8 +44,10 @@ router.post('/login',
       }
       if (!rows.length) throw new AppError('Invalid email or password', 401);
       const staff = rows[0];
-      if (!staff.is_active || staff.status === 'terminated')
+      if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
         throw new AppError('Account is inactive. Contact your administrator.', 401);
+      // Guard against null/missing password_hash (e.g. externally-created accounts)
+      if (!staff.password_hash) throw new AppError('Invalid email or password', 401);
       const valid = await bcrypt.compare(password, staff.password_hash);
       if (!valid) throw new AppError('Invalid email or password', 401);
 
