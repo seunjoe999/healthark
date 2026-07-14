@@ -230,7 +230,7 @@ async function ensureColumns() {
   const stmts = [
     // ── New tables ─────────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS staff_training (
-       id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        staff_id       UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        course_name    VARCHAR(255) NOT NULL,
        completed_date DATE,
@@ -244,7 +244,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_st_staff  ON staff_training(staff_id)`,
     `CREATE INDEX IF NOT EXISTS idx_st_expiry ON staff_training(expiry_date)`,
     `CREATE TABLE IF NOT EXISTS mar_records (
-       id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id         UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id           UUID REFERENCES service_users(id) ON DELETE CASCADE,
        medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE,
@@ -261,7 +261,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_mar_su   ON mar_records(su_id)`,
     `CREATE INDEX IF NOT EXISTS idx_mar_date ON mar_records(record_date)`,
     `CREATE TABLE IF NOT EXISTS safeguarding_concerns (
-       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id       UUID NOT NULL REFERENCES homes(id),
        su_id         UUID NOT NULL REFERENCES service_users(id),
        overview      TEXT,
@@ -293,7 +293,7 @@ async function ensureColumns() {
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'maintenance_status') THEN CREATE TYPE maintenance_status AS ENUM ('open','in_progress','resolved','closed'); END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'maintenance_category') THEN CREATE TYPE maintenance_category AS ENUM ('electrical','plumbing','heating','equipment','decoration','security','garden','cleaning','furniture','it','other'); END IF; END $$`,
     `CREATE TABLE IF NOT EXISTS maintenance_logs (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        title VARCHAR(255) NOT NULL,
        description TEXT,
@@ -314,7 +314,7 @@ async function ensureColumns() {
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'dbs_type') THEN CREATE TYPE dbs_type AS ENUM ('basic','standard','enhanced','enhanced_barred'); END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'doc_status') THEN CREATE TYPE doc_status AS ENUM ('valid','expiring_soon','expired','pending'); END IF; END $$`,
     `CREATE TABLE IF NOT EXISTS staff_dbs (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        dbs_number VARCHAR(50),
@@ -330,7 +330,7 @@ async function ensureColumns() {
        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE TABLE IF NOT EXISTS staff_references (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        referee_name VARCHAR(255) NOT NULL,
@@ -346,7 +346,7 @@ async function ensureColumns() {
        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE TABLE IF NOT EXISTS staff_right_to_work (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        document_type VARCHAR(100) NOT NULL,
@@ -358,7 +358,7 @@ async function ensureColumns() {
        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE TABLE IF NOT EXISTS timesheets (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        week_start DATE NOT NULL,
@@ -377,7 +377,7 @@ async function ensureColumns() {
        UNIQUE(staff_id, week_start)
      )`,
     `CREATE TABLE IF NOT EXISTS timesheet_entries (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        timesheet_id UUID NOT NULL REFERENCES timesheets(id) ON DELETE CASCADE,
        clockin_id UUID,
        work_date DATE NOT NULL,
@@ -390,7 +390,7 @@ async function ensureColumns() {
        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE TABLE IF NOT EXISTS audit_trail (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID REFERENCES homes(id) ON DELETE SET NULL,
        staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
        staff_name VARCHAR(255),
@@ -407,7 +407,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_audit_home ON audit_trail(home_id)`,
     `CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_trail(created_at DESC)`,
     `CREATE TABLE IF NOT EXISTS care_outcomes (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        care_plan_id UUID REFERENCES care_plans(id) ON DELETE SET NULL,
@@ -424,7 +424,7 @@ async function ensureColumns() {
        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE TABLE IF NOT EXISTS outcome_reviews (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        outcome_id UUID NOT NULL REFERENCES care_outcomes(id) ON DELETE CASCADE,
        reviewed_by UUID REFERENCES staff(id) ON DELETE SET NULL,
        status outcome_status NOT NULL,
@@ -435,7 +435,7 @@ async function ensureColumns() {
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bath_type') THEN CREATE TYPE bath_type AS ENUM ('bath','shower','bed_bath','strip_wash','hair_wash','foot_soak'); END IF; END $$`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bath_assistance') THEN CREATE TYPE bath_assistance AS ENUM ('independent','prompting','minimal','moderate','full'); END IF; END $$`,
     `CREATE TABLE IF NOT EXISTS bath_charts (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        bath_date DATE NOT NULL,
@@ -456,7 +456,7 @@ async function ensureColumns() {
     // ── Extended service_user profile columns ─────────────────────────────────
     // ── Noticeboard ───────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS noticeboard (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        created_by UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        title VARCHAR(255) NOT NULL,
@@ -477,7 +477,7 @@ async function ensureColumns() {
      )`,
     // ── Observations (vitals / temperature) ───────────────────────────────────
     `CREATE TABLE IF NOT EXISTS observations (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -500,7 +500,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_obs_home ON observations(home_id, observed_at DESC)`,
     // ── Seizure log ───────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS seizure_logs (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -520,7 +520,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_seizure_home ON seizure_logs(home_id, seizure_at DESC)`,
     // ── Bowel chart ───────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS bowel_charts (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -538,7 +538,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_bowel_home ON bowel_charts(home_id, recorded_at DESC)`,
     // ── Resident Diary ────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS resident_diary (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -557,7 +557,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_diary_home ON resident_diary(home_id, diary_date DESC)`,
     // ── Professional Visits ───────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS professional_visits (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        recorded_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -577,7 +577,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_pv_home ON professional_visits(home_id, visit_date DESC)`,
     // ── Medicine Risk Assessments ─────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS medicine_risk_assessments (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        assessed_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -604,7 +604,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_mr_home ON medicine_risk_assessments(home_id, assessed_at DESC)`,
     // ── Staff Performance Matrix ───────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS staff_performance (
-       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        assessed_by UUID NOT NULL REFERENCES staff(id) ON DELETE SET NULL,
@@ -694,7 +694,7 @@ async function ensureColumns() {
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel='staff_all' AND enumtypid='audit_type'::regtype) THEN ALTER TYPE audit_type ADD VALUE 'staff_all'; END IF; END $$`,
     // Notifications table
     `CREATE TABLE IF NOT EXISTS notifications (
-       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        recipient_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        home_id      UUID REFERENCES homes(id) ON DELETE CASCADE,
        title        VARCHAR(255) NOT NULL,
@@ -708,7 +708,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_notif_recipient ON notifications(recipient_id, created_at DESC)`,
     // Staff messages (internal messaging between staff)
     `CREATE TABLE IF NOT EXISTS staff_messages (
-       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        sender_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        recipient_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        home_id      UUID REFERENCES homes(id) ON DELETE CASCADE,
@@ -767,7 +767,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_cpr_plan ON care_plan_reads(plan_id, read_at DESC)`,
     // Social activities
     `CREATE TABLE IF NOT EXISTS social_activities (
-       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        staff_id     UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -784,7 +784,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_sa_home ON social_activities(home_id, activity_date DESC)`,
     // Recruitment candidates
     `CREATE TABLE IF NOT EXISTS recruitment_candidates (
-       id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id         UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        first_name      VARCHAR(100) NOT NULL,
        last_name       VARCHAR(100) NOT NULL,
@@ -811,7 +811,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_recruit_pipeline ON recruitment_candidates(home_id, pipeline_stage)`,
     // Handover resident notes
     `CREATE TABLE IF NOT EXISTS handover_resident_notes (
-       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        shift_date  DATE NOT NULL,
@@ -859,7 +859,7 @@ async function ensureColumns() {
        updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE TABLE IF NOT EXISTS sensitive_notes (
-       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id     UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        created_by  UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -869,7 +869,7 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_sensitive_su ON sensitive_notes(su_id, created_at DESC)`,
     `CREATE TABLE IF NOT EXISTS capacity_assessments (
-       id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id                 UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id               UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        assessed_by           UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -883,7 +883,7 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_capacity_su ON capacity_assessments(su_id, created_at DESC)`,
     `CREATE TABLE IF NOT EXISTS professional_involvement (
-       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        role_title   VARCHAR(255) NOT NULL,
        full_name    VARCHAR(255) NOT NULL,
@@ -895,7 +895,7 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_professional_su ON professional_involvement(su_id)`,
     `CREATE TABLE IF NOT EXISTS meeting_notes (
-       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        event_id      UUID NOT NULL UNIQUE REFERENCES calendar_events(id) ON DELETE CASCADE,
        created_by    UUID REFERENCES staff(id) ON DELETE SET NULL,
        notes         TEXT,
@@ -915,7 +915,7 @@ async function ensureColumns() {
      )`,
     // ── Invoicing, CQC notifications, Supervision, Appraisals ─────────────────
     `CREATE TABLE IF NOT EXISTS invoices (
-       id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id           UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id             UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        month_date        DATE NOT NULL,
@@ -932,7 +932,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_invoices_home_su ON invoices(home_id, su_id)`,
     `CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status)`,
     `CREATE TABLE IF NOT EXISTS cqc_notifications (
-       id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id           UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id             UUID REFERENCES service_users(id) ON DELETE CASCADE,
        notification_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -945,7 +945,7 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_cqc_home ON cqc_notifications(home_id, notification_date DESC)`,
     `CREATE TABLE IF NOT EXISTS supervisions (
-       id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id               UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        staff_id              UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        supervisor_id         UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
@@ -961,7 +961,7 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_supervisions_staff ON supervisions(staff_id, supervision_date DESC)`,
     `CREATE TABLE IF NOT EXISTS appraisals (
-       id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id            UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        staff_id           UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
        appraiser_id       UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
@@ -977,7 +977,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_appraisals_staff ON appraisals(staff_id, appraisal_date DESC)`,
     // ── Physical health support plans ─────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS physical_health_plans (
-       id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id          UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        su_id            UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        created_by       UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -1097,7 +1097,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_stm_staff ON staff_training_modules(staff_id)`,
     // Clock-in home postcodes
     `CREATE TABLE IF NOT EXISTS home_postcodes (
-       id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id    UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        postcode   VARCHAR(20) NOT NULL,
        label      VARCHAR(100),
@@ -1116,7 +1116,7 @@ async function ensureColumns() {
     `ALTER TABLE service_users ALTER COLUMN weight_kg DROP NOT NULL`,
     // Shift swap requests table
     `CREATE TABLE IF NOT EXISTS shift_swap_requests (
-       id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id             UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        shift_id            UUID NOT NULL REFERENCES staff_shifts(id) ON DELETE CASCADE,
        requesting_staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
@@ -1161,7 +1161,7 @@ async function ensureColumns() {
      )`,
     // Consent forms per service user
     `CREATE TABLE IF NOT EXISTS su_consents (
-       id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id                  UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id                UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        consent_type           VARCHAR(100) NOT NULL,
@@ -1221,7 +1221,7 @@ async function ensureColumns() {
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ DEFAULT NOW()`,
     // ── Confidential Information ──────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS confidential_info (
-       id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id       UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        subject_type  VARCHAR(20) NOT NULL CHECK (subject_type IN ('service_user','staff')),
        subject_id    UUID NOT NULL,
@@ -1325,7 +1325,7 @@ async function ensureColumns() {
     `UPDATE calendar_events SET event_date = start_time::date WHERE event_date IS NULL AND start_time IS NOT NULL`,
     // ── staff_shifts / shift_templates — create tables if they don't exist yet ─────────────────
     `CREATE TABLE IF NOT EXISTS staff_shifts (
-       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        staff_id     UUID REFERENCES staff(id) ON DELETE SET NULL,
        su_id        UUID REFERENCES service_users(id) ON DELETE SET NULL,
@@ -1346,7 +1346,7 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_shifts_home_date ON staff_shifts(home_id, shift_date)`,
     `CREATE INDEX IF NOT EXISTS idx_shifts_staff ON staff_shifts(staff_id, shift_date)`,
     `CREATE TABLE IF NOT EXISTS shift_templates (
-       id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        label        VARCHAR(255),
        staff_id     UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -1385,7 +1385,7 @@ async function ensureColumns() {
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES staff(id) ON DELETE SET NULL`,
     // ── must_scores — table used in reviews.routes.ts but missing from all migrations ──────────
     `CREATE TABLE IF NOT EXISTS must_scores (
-       id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        su_id                UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
        home_id              UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
        assessed_by          UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -1411,6 +1411,7 @@ async function ensureColumns() {
   }
   logger.info('Schema verified');
 }
+
 
 const ROLE_PERMISSION_DEFAULTS: Record<string, Record<string, boolean>> = {
   care_staff:     { edit_service_users: false, edit_care_plans: false, view_sensitive_info: false, edit_staff: false, manage_rota: false, approve_leave: false, manage_tasks: false, view_reports: false, access_all_residents: false },
@@ -1471,8 +1472,8 @@ async function bootstrap() {
     END $$
   `).catch((err: any) => logger.warn('staff_status pending enum skipped: ' + err?.message));
 
-  await ensureColumns();
-  await seedRolePermissions();
+  try { await ensureColumns(); } catch (err: any) { logger.warn('ensureColumns error: ' + err?.message); }
+  try { await seedRolePermissions(); } catch (err: any) { logger.warn('seedRolePermissions error: ' + err?.message); }
 
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);

@@ -35,12 +35,21 @@ router.post('/login',
           [email]
         );
       } catch {
-        rows = await query<any>(
-          `SELECT id, email, password_hash, first_name, last_name, role,
-                  home_id, organisation_id, status, is_active, photo_url
-           FROM staff WHERE email = $1`,
-          [email]
-        );
+        try {
+          rows = await query<any>(
+            `SELECT id, email, password_hash, first_name, last_name, role,
+                    home_id, organisation_id, status, is_active, photo_url
+             FROM staff WHERE email = $1`,
+            [email]
+          );
+        } catch {
+          rows = await query<any>(
+            `SELECT id, email, password_hash, first_name, last_name, role,
+                    home_id, status, is_active, photo_url
+             FROM staff WHERE email = $1`,
+            [email]
+          );
+        }
       }
       if (!rows.length) throw new AppError('Invalid email or password', 401);
       const staff = rows[0];
