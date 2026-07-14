@@ -26,31 +26,21 @@ router.post('/login',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, password } = req.body;
-      let rows: any[];
+      // Base query — only columns guaranteed to exist in all schema versions
+      const rows = await query<any>(
+        `SELECT id, email, password_hash, first_name, last_name, role,
+                home_id, status, is_active
+         FROM staff WHERE email = $1`,
+        [email]
+      );
+      // Fetch optional columns separately so missing columns don't break login
+      let extraCols: any = {};
       try {
-        rows = await query<any>(
-          `SELECT id, email, password_hash, first_name, last_name, role,
-                  home_id, organisation_id, status, is_active, photo_url, feature_flags
-           FROM staff WHERE email = $1`,
-          [email]
+        const extra = await query<any>(
+          `SELECT organisation_id, photo_url, feature_flags FROM staff WHERE email = $1`, [email]
         );
-      } catch {
-        try {
-          rows = await query<any>(
-            `SELECT id, email, password_hash, first_name, last_name, role,
-                    home_id, organisation_id, status, is_active, photo_url
-             FROM staff WHERE email = $1`,
-            [email]
-          );
-        } catch {
-          rows = await query<any>(
-            `SELECT id, email, password_hash, first_name, last_name, role,
-                    home_id, status, is_active, photo_url
-             FROM staff WHERE email = $1`,
-            [email]
-          );
-        }
-      }
+        if (extra.length) extraCols = extra[0];
+      } catch { /* columns may not exist yet */ }
       if (!rows.length) throw new AppError('Invalid email or password', 401);
       const staff = rows[0];
       if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
@@ -61,7 +51,7 @@ router.post('/login',
       if (!valid) throw new AppError('Invalid email or password', 401);
 
       const payload = {
-        staffId: staff.id, organisationId: staff.organisation_id,
+        staffId: staff.id, organisationId: extraCols.organisation_id ?? null,
         homeId: staff.home_id, role: staff.role, email: staff.email,
       };
       const accessToken = signAccess(payload);
@@ -90,7 +80,7 @@ router.post('/login',
           if (rf.length) loginRoleFlags = rf[0].feature_flags || {};
         } catch {}
       }
-      const loginMergedFlags = { ...loginRoleFlags, ...(staff.feature_flags || {}) };
+      const loginMergedFlags = { ...loginRoleFlags, ...(extraCols.feature_flags || {}) };
       res.json({
         success: true,
         data: {
@@ -99,7 +89,8 @@ router.post('/login',
             id: staff.id, email: staff.email,
             firstName: staff.first_name, lastName: staff.last_name,
             role: staff.role, homeId: staff.home_id,
-            organisationId: staff.organisation_id, photoUrl: staff.photo_url,
+            organisationId: extraCols.organisation_id ?? null,
+            photoUrl: extraCols.photo_url ?? null,
             featureFlags: loginMergedFlags,
           },
         },
