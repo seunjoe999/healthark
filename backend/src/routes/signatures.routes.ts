@@ -18,7 +18,7 @@ function fromToken(req: Request, field: string): string {
 async function ensureTable() {
   await query(`
     CREATE TABLE IF NOT EXISTS handover_signatures (
-      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       home_id UUID NOT NULL REFERENCES homes(id),
       shift_date DATE NOT NULL,
       shift_type VARCHAR(10) NOT NULL,

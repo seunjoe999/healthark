@@ -21,7 +21,7 @@ function fromToken(req: Request, field: string): string {
   try {
     await query(`
       CREATE TABLE IF NOT EXISTS medication_stock (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         home_id UUID REFERENCES homes(id),
         su_id UUID REFERENCES service_users(id),
         medication_name VARCHAR(255),
@@ -58,7 +58,7 @@ function fromToken(req: Request, field: string): string {
     }
     await query(`
       CREATE TABLE IF NOT EXISTS medication_stock_log (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         stock_id UUID NOT NULL REFERENCES medication_stock(id) ON DELETE CASCADE,
         adjusted_by UUID REFERENCES staff(id),
         adjustment_type VARCHAR(50),

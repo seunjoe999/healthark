@@ -13,7 +13,7 @@ const STATEMENTS = [
 
   // ── quality_records (may already exist from 006 run) ─────────────
   `CREATE TABLE IF NOT EXISTS quality_records (
-    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     home_id          UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
     su_id            UUID REFERENCES service_users(id) ON DELETE SET NULL,
     related_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -36,7 +36,7 @@ const STATEMENTS = [
 
   // ── staff_training_modules ────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS staff_training_modules (
-    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     staff_id     UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
     module_id    VARCHAR(100) NOT NULL,
     module_name  VARCHAR(255),
@@ -60,7 +60,7 @@ const STATEMENTS = [
 
   // ── staff_service_user_assignments ─────────────────────────────────
   `CREATE TABLE IF NOT EXISTS staff_service_user_assignments (
-    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     home_id    UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
     staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
     su_id      UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
