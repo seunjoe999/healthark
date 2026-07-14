@@ -226,6 +226,977 @@ app.use(notFound);
 app.use(errorHandler);
 
 // â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+/**
+ * createCoreTables — runs before ensureColumns().
+ * Creates every foundational table that other tables reference.
+ * Uses CREATE TABLE IF NOT EXISTS so it is safe on a populated DB.
+ * Each statement is wrapped in its own try/catch so one failure
+ * never blocks the rest.
+ */
+async function createCoreTables() {
+  const stmts: Array<{ label: string; sql: string }> = [
+    // ── Extensions ────────────────────────────────────────────────────────────
+    { label: 'extension pgcrypto', sql: `CREATE EXTENSION IF NOT EXISTS pgcrypto` },
+    { label: 'extension uuid-ossp', sql: `CREATE EXTENSION IF NOT EXISTS “uuid-ossp”` },
+    { label: 'extension pg_trgm', sql: `CREATE EXTENSION IF NOT EXISTS pg_trgm` },
+
+    // ── Enums (guard with DO $$ so we never error on “already exists”) ────────
+    { label: 'enum staff_role', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='staff_role') THEN CREATE TYPE staff_role AS ENUM ('care_staff','senior_carer','home_manager','group_admin','auditor','team_leader','admin','deputy_manager'); END IF; END $$` },
+    { label: 'enum staff_status', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='staff_status') THEN CREATE TYPE staff_status AS ENUM ('active','on_leave','suspended','resigned','terminated','pending'); END IF; END $$` },
+    { label: 'enum su_status', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='su_status') THEN CREATE TYPE su_status AS ENUM ('live','pre_admission','archive','on_hold','hospital'); END IF; END $$` },
+    { label: 'enum emergency_rating', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='emergency_rating') THEN CREATE TYPE emergency_rating AS ENUM ('low','medium','high'); END IF; END $$` },
+    { label: 'enum gender_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='gender_type') THEN CREATE TYPE gender_type AS ENUM ('male','female','non_binary','prefer_not_to_say','other'); END IF; END $$` },
+    { label: 'enum leave_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='leave_type') THEN CREATE TYPE leave_type AS ENUM ('annual','sick','unauthorised','maternity','paternity','compassionate','other'); END IF; END $$` },
+    { label: 'enum leave_status', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='leave_status') THEN CREATE TYPE leave_status AS ENUM ('pending','approved','declined','cancelled'); END IF; END $$` },
+    { label: 'enum review_frequency', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='review_frequency') THEN CREATE TYPE review_frequency AS ENUM ('weekly','fortnightly','monthly','eight_weekly','yearly'); END IF; END $$` },
+    { label: 'enum risk_level', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='risk_level') THEN CREATE TYPE risk_level AS ENUM ('low','medium','high','critical'); END IF; END $$` },
+    { label: 'enum outcome_status', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='outcome_status') THEN CREATE TYPE outcome_status AS ENUM ('yes','partially','no','ongoing'); END IF; END $$` },
+    { label: 'enum care_plan_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='care_plan_type') THEN CREATE TYPE care_plan_type AS ENUM ('physical','communication','oral_care','medical','food_and_fluids','one_page_profile','finance','visitation','vulnerability','personal_hygiene','hydration_skin','social_activities','community_access','distress_behaviour','crisis','alcohol_use','home_safety','emotional_breakdown','positive_behaviour','oral_care_assessment','autism','pen_assessment','personal_evacuation','end_of_life','adhd','custom','monthly_progress'); END IF; END $$` },
+    { label: 'enum assessment_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='assessment_type') THEN CREATE TYPE assessment_type AS ENUM ('clinical_supervision','employment_risk','interview','medication_competency','new_staff','competency','pip','pregnancy_risk','return_to_work','shadow_shift','spot_check','appraisal','staff_competency','one_to_one','training_compliance','supervision','team_leader_review','custom'); END IF; END $$` },
+    { label: 'enum audit_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='audit_type') THEN CREATE TYPE audit_type AS ENUM ('medication','infection_control','fire_safety','documentation','falls_prevention','safeguarding','nutrition_hydration','activity','care_plan','incident_analysis','pressure_sore','one_to_one','equipment','premises','mandatory_safety','mar_chart','free_template','staff_all'); END IF; END $$` },
+    { label: 'enum alert_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='alert_type') THEN CREATE TYPE alert_type AS ENUM ('task_missed','care_plan_overdue','risk_assessment_overdue','medication_gap','fluid_below_threshold','weight_alert','vital_sign_flag','training_expiring','training_expired','incident_not_reviewed','unsigned_policy','stock_low','dnar_missing','document_expiring','care_plan_review_due'); END IF; END $$` },
+    { label: 'enum alert_severity', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='alert_severity') THEN CREATE TYPE alert_severity AS ENUM ('info','warning','critical'); END IF; END $$` },
+    { label: 'enum maintenance_priority', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='maintenance_priority') THEN CREATE TYPE maintenance_priority AS ENUM ('low','medium','high','urgent'); END IF; END $$` },
+    { label: 'enum maintenance_status', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='maintenance_status') THEN CREATE TYPE maintenance_status AS ENUM ('open','in_progress','resolved','closed'); END IF; END $$` },
+    { label: 'enum maintenance_category', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='maintenance_category') THEN CREATE TYPE maintenance_category AS ENUM ('electrical','plumbing','heating','equipment','decoration','security','garden','cleaning','furniture','it','other'); END IF; END $$` },
+    { label: 'enum dbs_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='dbs_type') THEN CREATE TYPE dbs_type AS ENUM ('basic','standard','enhanced','enhanced_barred'); END IF; END $$` },
+    { label: 'enum doc_status', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='doc_status') THEN CREATE TYPE doc_status AS ENUM ('valid','expiring_soon','expired','pending'); END IF; END $$` },
+    { label: 'enum bath_type', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='bath_type') THEN CREATE TYPE bath_type AS ENUM ('bath','shower','bed_bath','strip_wash','hair_wash','foot_soak'); END IF; END $$` },
+    { label: 'enum bath_assistance', sql: `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='bath_assistance') THEN CREATE TYPE bath_assistance AS ENUM ('independent','prompting','minimal','moderate','full'); END IF; END $$` },
+
+    // ── Root tables (no foreign-key dependencies) ─────────────────────────────
+    { label: 'table organisations', sql: `CREATE TABLE IF NOT EXISTS organisations (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name          VARCHAR(255) NOT NULL,
+      reg_number    VARCHAR(100),
+      cqc_provider  VARCHAR(100),
+      address1      VARCHAR(255),
+      address2      VARCHAR(255),
+      address3      VARCHAR(255),
+      postcode      VARCHAR(10),
+      phone         VARCHAR(20),
+      email         VARCHAR(255),
+      logo_url      VARCHAR(500),
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table homes', sql: `CREATE TABLE IF NOT EXISTS homes (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+      name            VARCHAR(255) NOT NULL,
+      cqc_location_id VARCHAR(100),
+      address1        VARCHAR(255) NOT NULL DEFAULT '',
+      address2        VARCHAR(255),
+      address3        VARCHAR(255),
+      postcode        VARCHAR(10) NOT NULL DEFAULT '',
+      latitude        DECIMAL(10,8),
+      longitude       DECIMAL(11,8),
+      phone           VARCHAR(20),
+      email           VARCHAR(255),
+      manager_name    VARCHAR(255),
+      geofence_radius INTEGER NOT NULL DEFAULT 200,
+      qr_token        VARCHAR(255) UNIQUE DEFAULT encode(gen_random_bytes(32),'hex'),
+      is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx homes_org', sql: `CREATE INDEX IF NOT EXISTS idx_homes_org ON homes(organisation_id)` },
+
+    { label: 'table staff', sql: `CREATE TABLE IF NOT EXISTS staff (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+      home_id         UUID REFERENCES homes(id) ON DELETE SET NULL,
+      email           VARCHAR(255) UNIQUE NOT NULL,
+      password_hash   VARCHAR(255) NOT NULL DEFAULT '',
+      first_name      VARCHAR(100) NOT NULL DEFAULT '',
+      last_name       VARCHAR(100) NOT NULL DEFAULT '',
+      preferred_name  VARCHAR(100),
+      role            VARCHAR(50) NOT NULL DEFAULT 'care_staff',
+      status          VARCHAR(50) NOT NULL DEFAULT 'active',
+      photo_url       VARCHAR(500),
+      phone           VARCHAR(20),
+      address1        VARCHAR(255),
+      address2        VARCHAR(255),
+      address3        VARCHAR(255),
+      postcode        VARCHAR(10),
+      date_of_birth   DATE,
+      gender          VARCHAR(50),
+      nationality     VARCHAR(100),
+      marital_status  VARCHAR(50),
+      ni_number       VARCHAR(20),
+      start_date      DATE,
+      leave_date      DATE,
+      leave_hours_total    DECIMAL(6,2) NOT NULL DEFAULT 210,
+      leave_hours_used     DECIMAL(6,2) NOT NULL DEFAULT 0,
+      leave_hours_remaining DECIMAL(6,2) NOT NULL DEFAULT 210,
+      emergency_name  VARCHAR(255),
+      emergency_phone VARCHAR(20),
+      emergency_notes TEXT,
+      access_any_network BOOLEAN NOT NULL DEFAULT TRUE,
+      is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+      last_login      TIMESTAMPTZ,
+      refresh_token   TEXT,
+      reset_token     VARCHAR(255),
+      reset_token_expiry TIMESTAMPTZ,
+      feature_flags   JSONB NOT NULL DEFAULT '{}',
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx staff_email', sql: `CREATE INDEX IF NOT EXISTS idx_staff_email ON staff(email)` },
+    { label: 'idx staff_home', sql: `CREATE INDEX IF NOT EXISTS idx_staff_home ON staff(home_id)` },
+
+    { label: 'table service_users', sql: `CREATE TABLE IF NOT EXISTS service_users (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id         UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      first_name      VARCHAR(100) NOT NULL,
+      last_name       VARCHAR(100) NOT NULL,
+      preferred_name  VARCHAR(100),
+      date_of_birth   DATE NOT NULL DEFAULT CURRENT_DATE,
+      gender          VARCHAR(50),
+      pronouns        VARCHAR(50),
+      photo_url       VARCHAR(500),
+      status          VARCHAR(50) NOT NULL DEFAULT 'pre_admission',
+      emergency_rating VARCHAR(20) NOT NULL DEFAULT 'low',
+      nhs_number      VARCHAR(20),
+      ni_number       VARCHAR(20),
+      qr_token        VARCHAR(255) UNIQUE DEFAULT encode(gen_random_bytes(16),'hex'),
+      dnar            BOOLEAN,
+      dnar_form_url   VARCHAR(500),
+      dnar_location   TEXT,
+      admission_date  DATE,
+      local_authority VARCHAR(255),
+      service_name    VARCHAR(255),
+      acp_url         VARCHAR(500),
+      acp_date        DATE,
+      funeral_noted   BOOLEAN NOT NULL DEFAULT FALSE,
+      funeral_details TEXT,
+      address1        VARCHAR(255),
+      address2        VARCHAR(255),
+      address3        VARCHAR(255),
+      postcode        VARCHAR(10),
+      email           VARCHAR(255),
+      phone           VARCHAR(20),
+      key_safe_code   VARCHAR(100),
+      religion        VARCHAR(100),
+      ethnicity       VARCHAR(100),
+      marital_status  VARCHAR(50),
+      comms_prefs     TEXT,
+      life_history    TEXT,
+      hobbies         TEXT,
+      daily_routine   TEXT,
+      height_cm       DECIMAL(5,1),
+      weight_kg       DECIMAL(5,2),
+      bmi             DECIMAL(4,1),
+      medical_history TEXT,
+      med_allergies   TEXT,
+      requires_oxygen BOOLEAN NOT NULL DEFAULT FALSE,
+      has_catheter    BOOLEAN NOT NULL DEFAULT FALSE,
+      has_peg         BOOLEAN NOT NULL DEFAULT FALSE,
+      food_allergies  TEXT,
+      nil_by_mouth    BOOLEAN NOT NULL DEFAULT FALSE,
+      special_diet    TEXT,
+      fluid_consistency VARCHAR(100),
+      min_fluid_ml    INTEGER DEFAULT 1500,
+      diet_instructions TEXT,
+      capacity_doc_url  VARCHAR(500),
+      best_interest_url VARCHAR(500),
+      has_lpa           BOOLEAN NOT NULL DEFAULT FALSE,
+      lpa_type          VARCHAR(100),
+      lpa_attorney      VARCHAR(255),
+      has_cop_order     BOOLEAN NOT NULL DEFAULT FALSE,
+      cop_details       TEXT,
+      need_to_know    TEXT,
+      my_instructions TEXT,
+      room_number     VARCHAR(20),
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx su_home', sql: `CREATE INDEX IF NOT EXISTS idx_su_home ON service_users(home_id)` },
+    { label: 'idx su_status', sql: `CREATE INDEX IF NOT EXISTS idx_su_status ON service_users(status)` },
+
+    // ── Tables that other tables reference ────────────────────────────────────
+    { label: 'table care_plans', sql: `CREATE TABLE IF NOT EXISTS care_plans (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id            UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id          UUID NOT NULL REFERENCES homes(id),
+      plan_type        VARCHAR(100) NOT NULL DEFAULT 'custom',
+      custom_name      VARCHAR(255),
+      aims_outcomes    TEXT,
+      what_i_can_do    TEXT,
+      how_to_support   TEXT,
+      outcome_achieved VARCHAR(50),
+      outcome_date     DATE,
+      review_frequency VARCHAR(50) NOT NULL DEFAULT 'monthly',
+      last_review_date DATE,
+      next_review_date DATE,
+      reviewed_by      UUID REFERENCES staff(id),
+      is_active        BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by       UUID REFERENCES staff(id),
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx care_plans_su', sql: `CREATE INDEX IF NOT EXISTS idx_care_plans_su ON care_plans(su_id)` },
+
+    { label: 'table risk_assessments', sql: `CREATE TABLE IF NOT EXISTS risk_assessments (
+      id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id             UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id           UUID NOT NULL REFERENCES homes(id),
+      assessment_name   VARCHAR(255) NOT NULL DEFAULT 'Assessment',
+      description       TEXT,
+      risk_level        VARCHAR(20) NOT NULL DEFAULT 'low',
+      current_risk_level VARCHAR(20) NOT NULL DEFAULT 'low',
+      who_is_at_risk    TEXT,
+      is_historical     BOOLEAN NOT NULL DEFAULT FALSE,
+      what_could_happen TEXT,
+      triggers          TEXT,
+      protective_factors TEXT,
+      management_plan   TEXT,
+      review_frequency  VARCHAR(50) NOT NULL DEFAULT 'monthly',
+      last_review_date  DATE,
+      next_review_date  DATE,
+      reviewed_by       UUID REFERENCES staff(id),
+      is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by        UUID REFERENCES staff(id),
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx risks_su', sql: `CREATE INDEX IF NOT EXISTS idx_risks_su ON risk_assessments(su_id)` },
+
+    { label: 'table daily_records', sql: `CREATE TABLE IF NOT EXISTS daily_records (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id      UUID NOT NULL REFERENCES homes(id),
+      staff_id     UUID NOT NULL REFERENCES staff(id),
+      record_type  VARCHAR(50) NOT NULL,
+      record_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+      recorded_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      shift        VARCHAR(20),
+      notes        TEXT,
+      flagged      BOOLEAN NOT NULL DEFAULT FALSE,
+      flag_reason  TEXT,
+      ai_reviewed  BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx dr_su', sql: `CREATE INDEX IF NOT EXISTS idx_dr_su ON daily_records(su_id)` },
+    { label: 'idx dr_home', sql: `CREATE INDEX IF NOT EXISTS idx_dr_home ON daily_records(home_id)` },
+    { label: 'idx dr_date', sql: `CREATE INDEX IF NOT EXISTS idx_dr_date ON daily_records(record_date)` },
+
+    { label: 'table calendar_events', sql: `CREATE TABLE IF NOT EXISTS calendar_events (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      created_by   UUID NOT NULL REFERENCES staff(id),
+      title        VARCHAR(255) NOT NULL,
+      event_type   VARCHAR(50),
+      start_time   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      end_time     TIMESTAMPTZ,
+      location     TEXT,
+      description  TEXT,
+      agenda       TEXT,
+      attendees    UUID[],
+      notes        TEXT,
+      action_plans TEXT,
+      concerns     TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table su_medications', sql: `CREATE TABLE IF NOT EXISTS su_medications (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id           UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      medication_name VARCHAR(255) NOT NULL,
+      dose            VARCHAR(100),
+      route           VARCHAR(50),
+      frequency       VARCHAR(100),
+      prescriber      VARCHAR(255),
+      start_date      DATE,
+      end_date        DATE,
+      is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+      is_prn          BOOLEAN NOT NULL DEFAULT FALSE,
+      notes           TEXT,
+      created_by      UUID REFERENCES staff(id),
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx su_meds_su', sql: `CREATE INDEX IF NOT EXISTS idx_su_meds_su ON su_medications(su_id)` },
+
+    { label: 'table records_incidents', sql: `CREATE TABLE IF NOT EXISTS records_incidents (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id  UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      incident_type    VARCHAR(50),
+      location         TEXT,
+      incident_time    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      description      TEXT NOT NULL DEFAULT '',
+      injuries         BOOLEAN NOT NULL DEFAULT FALSE,
+      injury_details   TEXT,
+      body_map_data    JSONB,
+      medical_needed   BOOLEAN NOT NULL DEFAULT FALSE,
+      medical_details  TEXT,
+      witnesses        TEXT,
+      immediate_action TEXT NOT NULL DEFAULT '',
+      reported_to      UUID REFERENCES staff(id),
+      reported_at      TIMESTAMPTZ,
+      safeguarding_ref BOOLEAN NOT NULL DEFAULT FALSE,
+      manager_reviewed BOOLEAN NOT NULL DEFAULT FALSE,
+      manager_reviewed_at TIMESTAMPTZ,
+      ai_analysis      TEXT,
+      ai_analysed_at   TIMESTAMPTZ
+    )` },
+    { label: 'idx incidents_record', sql: `CREATE INDEX IF NOT EXISTS idx_incidents_record ON records_incidents(daily_record_id)` },
+
+    { label: 'table records_behaviour', sql: `CREATE TABLE IF NOT EXISTS records_behaviour (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      mood            VARCHAR(30),
+      behaviour_noted TEXT,
+      triggers_noted  TEXT,
+      action_taken    TEXT,
+      escalated       BOOLEAN NOT NULL DEFAULT FALSE
+    )` },
+
+    { label: 'table records_prn_medication', sql: `CREATE TABLE IF NOT EXISTS records_prn_medication (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      medication_name VARCHAR(255) NOT NULL,
+      dose            VARCHAR(100),
+      reason          TEXT NOT NULL DEFAULT '',
+      administered_by UUID NOT NULL REFERENCES staff(id),
+      witnessed_by    UUID REFERENCES staff(id),
+      outcome_notes   TEXT,
+      reviewed_at     TIMESTAMPTZ
+    )` },
+
+    { label: 'table business_alerts', sql: `CREATE TABLE IF NOT EXISTS business_alerts (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      alert_type   VARCHAR(100) NOT NULL,
+      severity     VARCHAR(20) NOT NULL DEFAULT 'warning',
+      title        VARCHAR(255) NOT NULL,
+      description  TEXT NOT NULL DEFAULT '',
+      su_id        UUID REFERENCES service_users(id),
+      staff_id     UUID REFERENCES staff(id),
+      record_id    UUID,
+      record_type  VARCHAR(50),
+      is_resolved  BOOLEAN NOT NULL DEFAULT FALSE,
+      resolved_by  UUID REFERENCES staff(id),
+      resolved_at  TIMESTAMPTZ,
+      resolution_notes TEXT,
+      notified_admin  BOOLEAN NOT NULL DEFAULT FALSE,
+      data         JSONB,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx alerts_home', sql: `CREATE INDEX IF NOT EXISTS idx_alerts_home ON business_alerts(home_id)` },
+
+    { label: 'table policies', sql: `CREATE TABLE IF NOT EXISTS policies (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+      home_id         UUID REFERENCES homes(id),
+      title           VARCHAR(255) NOT NULL,
+      version         VARCHAR(20) NOT NULL DEFAULT '1.0',
+      document_url    VARCHAR(500) NOT NULL DEFAULT '',
+      effective_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+      review_date     DATE,
+      uploaded_by     UUID NOT NULL REFERENCES staff(id),
+      requires_sign   BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table policy_sign_offs', sql: `CREATE TABLE IF NOT EXISTS policy_sign_offs (
+      id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      policy_id UUID NOT NULL REFERENCES policies(id) ON DELETE CASCADE,
+      staff_id  UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      signed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(policy_id, staff_id)
+    )` },
+
+    { label: 'table audit_reports', sql: `CREATE TABLE IF NOT EXISTS audit_reports (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      audit_type      VARCHAR(100) NOT NULL,
+      custom_name     VARCHAR(255),
+      period_from     DATE NOT NULL DEFAULT CURRENT_DATE,
+      period_to       DATE NOT NULL DEFAULT CURRENT_DATE,
+      generated_by    UUID REFERENCES staff(id),
+      is_ai_generated BOOLEAN NOT NULL DEFAULT TRUE,
+      total_checks    INTEGER,
+      checks_passed   INTEGER,
+      checks_failed   INTEGER,
+      findings        TEXT,
+      recommendations TEXT,
+      raw_report      TEXT,
+      attachments     JSONB NOT NULL DEFAULT '[]',
+      status          VARCHAR(20) NOT NULL DEFAULT 'completed',
+      generated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx audits_home', sql: `CREATE INDEX IF NOT EXISTS idx_audits_home ON audit_reports(home_id)` },
+
+    { label: 'table ppe_inventory', sql: `CREATE TABLE IF NOT EXISTS ppe_inventory (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      item_name    VARCHAR(255) NOT NULL,
+      item_variant VARCHAR(100),
+      current_stock INTEGER NOT NULL DEFAULT 0,
+      min_stock    INTEGER NOT NULL DEFAULT 10,
+      unit         VARCHAR(30) NOT NULL DEFAULT 'units',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table quality_records', sql: `CREATE TABLE IF NOT EXISTS quality_records (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id       UUID NOT NULL REFERENCES homes(id),
+      record_type   VARCHAR(20) NOT NULL DEFAULT 'feedback',
+      subject_type  VARCHAR(10),
+      subject_su    UUID REFERENCES service_users(id),
+      subject_staff UUID REFERENCES staff(id),
+      raised_by     VARCHAR(255),
+      raised_by_role VARCHAR(100),
+      description   TEXT NOT NULL DEFAULT '',
+      action_taken  TEXT,
+      outcome       TEXT,
+      resolved      BOOLEAN NOT NULL DEFAULT FALSE,
+      resolved_at   TIMESTAMPTZ,
+      created_by    UUID REFERENCES staff(id),
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx qa_home', sql: `CREATE INDEX IF NOT EXISTS idx_qa_home ON quality_records(home_id)` },
+
+    { label: 'table su_reviews', sql: `CREATE TABLE IF NOT EXISTS su_reviews (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id      UUID NOT NULL REFERENCES homes(id),
+      review_type  VARCHAR(20) NOT NULL DEFAULT 'review',
+      review_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+      conducted_by UUID NOT NULL REFERENCES staff(id),
+      attendees    TEXT,
+      summary      TEXT NOT NULL DEFAULT '',
+      outcomes     TEXT,
+      action_plans TEXT,
+      next_review_date DATE,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table assessments', sql: `CREATE TABLE IF NOT EXISTS assessments (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      conducted_by    UUID NOT NULL REFERENCES staff(id),
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      assessment_type VARCHAR(100) NOT NULL,
+      custom_name     VARCHAR(255),
+      assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      outcome         TEXT,
+      recommendations TEXT,
+      next_due_date   DATE,
+      document_url    VARCHAR(500),
+      attachments     JSONB NOT NULL DEFAULT '[]',
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx assessments_staff', sql: `CREATE INDEX IF NOT EXISTS idx_assessments_staff ON assessments(staff_id)` },
+
+    { label: 'table staff_home_access', sql: `CREATE TABLE IF NOT EXISTS staff_home_access (
+      id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id            UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      home_id             UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      can_view_care_plans BOOLEAN NOT NULL DEFAULT TRUE,
+      can_edit_care_plans BOOLEAN NOT NULL DEFAULT FALSE,
+      can_view_sensitive  BOOLEAN NOT NULL DEFAULT FALSE,
+      can_run_reports     BOOLEAN NOT NULL DEFAULT FALSE,
+      can_manage_staff    BOOLEAN NOT NULL DEFAULT FALSE,
+      can_approve_leave   BOOLEAN NOT NULL DEFAULT FALSE,
+      can_view_phones     BOOLEAN NOT NULL DEFAULT TRUE,
+      can_view_keysafe    BOOLEAN NOT NULL DEFAULT FALSE,
+      can_view_financials BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(staff_id, home_id)
+    )` },
+
+    { label: 'table staff_onboarding', sql: `CREATE TABLE IF NOT EXISTS staff_onboarding (
+      id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id                  UUID NOT NULL UNIQUE REFERENCES staff(id) ON DELETE CASCADE,
+      application_received      BOOLEAN NOT NULL DEFAULT FALSE,
+      application_date          DATE,
+      interview_completed       BOOLEAN NOT NULL DEFAULT FALSE,
+      interview_date            DATE,
+      interview_notes           TEXT,
+      dbs_submitted_date        DATE,
+      dbs_cleared               BOOLEAN NOT NULL DEFAULT FALSE,
+      dbs_cleared_date          DATE,
+      dbs_certificate_url       VARCHAR(500),
+      references_received       INTEGER NOT NULL DEFAULT 0,
+      references_date           DATE,
+      references_evidence_url   VARCHAR(500),
+      care_cert_completed       BOOLEAN NOT NULL DEFAULT FALSE,
+      care_cert_date            DATE,
+      induction_completed       BOOLEAN NOT NULL DEFAULT FALSE,
+      induction_date            DATE,
+      med_training_completed    BOOLEAN NOT NULL DEFAULT FALSE,
+      med_training_date         DATE,
+      right_to_work_verified    BOOLEAN NOT NULL DEFAULT FALSE,
+      right_to_work_doc_url     VARCHAR(500),
+      system_training_completed BOOLEAN NOT NULL DEFAULT FALSE,
+      system_training_date      DATE,
+      created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table staff_leave', sql: `CREATE TABLE IF NOT EXISTS staff_leave (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      leave_type      VARCHAR(50) NOT NULL,
+      start_date      DATE NOT NULL,
+      end_date        DATE NOT NULL,
+      hours_requested DECIMAL(6,2),
+      status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+      reason          TEXT,
+      approved_by     UUID REFERENCES staff(id),
+      approved_at     TIMESTAMPTZ,
+      decline_reason  TEXT,
+      notes           TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx leave_staff', sql: `CREATE INDEX IF NOT EXISTS idx_leave_staff ON staff_leave(staff_id)` },
+
+    { label: 'table staff_absences', sql: `CREATE TABLE IF NOT EXISTS staff_absences (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id         UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      home_id          UUID NOT NULL REFERENCES homes(id),
+      absence_type     VARCHAR(50) NOT NULL,
+      notified_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      absence_start    TIMESTAMPTZ NOT NULL,
+      absence_end      TIMESTAMPTZ,
+      return_completed BOOLEAN NOT NULL DEFAULT FALSE,
+      return_date      DATE,
+      return_notes     TEXT,
+      bradford_score   INTEGER,
+      created_by       UUID REFERENCES staff(id),
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table staff_clock_events', sql: `CREATE TABLE IF NOT EXISTS staff_clock_events (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id         UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      home_id          UUID NOT NULL REFERENCES homes(id),
+      event_type       VARCHAR(10) NOT NULL,
+      event_time       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      latitude         DECIMAL(10,8),
+      longitude        DECIMAL(11,8),
+      distance_metres  INTEGER,
+      geofence_passed  BOOLEAN NOT NULL DEFAULT FALSE,
+      qr_scan_used     BOOLEAN NOT NULL DEFAULT FALSE,
+      shift_scheduled  TIMESTAMPTZ,
+      punctuality      VARCHAR(10),
+      minutes_variance INTEGER,
+      device_info      JSONB,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx clock_staff', sql: `CREATE INDEX IF NOT EXISTS idx_clock_staff ON staff_clock_events(staff_id)` },
+
+    { label: 'table staff_cautions', sql: `CREATE TABLE IF NOT EXISTS staff_cautions (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id     UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      issued_by    UUID NOT NULL REFERENCES staff(id),
+      caution_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      overview     TEXT NOT NULL DEFAULT '',
+      strengths    TEXT,
+      weaknesses   TEXT,
+      action_points TEXT,
+      document_url VARCHAR(500),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table staff_sensitive_notes', sql: `CREATE TABLE IF NOT EXISTS staff_sensitive_notes (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      created_by UUID NOT NULL REFERENCES staff(id),
+      note       TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table staff_supervisions', sql: `CREATE TABLE IF NOT EXISTS staff_supervisions (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id         UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      home_id          UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      supervisor_id    UUID REFERENCES staff(id) ON DELETE SET NULL,
+      supervision_date DATE NOT NULL,
+      supervision_type VARCHAR(100) DEFAULT 'monthly',
+      topics_discussed TEXT,
+      actions_agreed   TEXT,
+      next_date        DATE,
+      staff_signature  BOOLEAN NOT NULL DEFAULT FALSE,
+      supervisor_signature BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx supervision_staff', sql: `CREATE INDEX IF NOT EXISTS idx_supervision_staff ON staff_supervisions(staff_id)` },
+
+    { label: 'table su_contacts', sql: `CREATE TABLE IF NOT EXISTS su_contacts (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id          UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      full_name      VARCHAR(255) NOT NULL,
+      relationship   VARCHAR(100),
+      contact_tag    VARCHAR(20),
+      phone_primary  VARCHAR(20),
+      phone_secondary VARCHAR(20),
+      email          VARCHAR(255),
+      address1       VARCHAR(255),
+      address2       VARCHAR(255),
+      postcode       VARCHAR(10),
+      is_primary     BOOLEAN NOT NULL DEFAULT FALSE,
+      notes          TEXT,
+      display_order  INTEGER NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table su_professionals', sql: `CREATE TABLE IF NOT EXISTS su_professionals (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      role_title   VARCHAR(255) NOT NULL,
+      name         VARCHAR(255) NOT NULL,
+      organisation VARCHAR(255),
+      phone        VARCHAR(20),
+      email        VARCHAR(255),
+      notes        TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table su_messages', sql: `CREATE TABLE IF NOT EXISTS su_messages (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id            UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id          UUID NOT NULL REFERENCES homes(id),
+      sender_id        UUID NOT NULL REFERENCES staff(id),
+      message          TEXT NOT NULL,
+      message_type     VARCHAR(20) NOT NULL DEFAULT 'text',
+      attachment_url   VARCHAR(500),
+      attachment_caption TEXT,
+      read_by          UUID[],
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table care_plan_updates', sql: `CREATE TABLE IF NOT EXISTS care_plan_updates (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      care_plan_id UUID NOT NULL REFERENCES care_plans(id) ON DELETE CASCADE,
+      update_notes TEXT NOT NULL,
+      updated_by   UUID NOT NULL REFERENCES staff(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table risk_assessment_updates', sql: `CREATE TABLE IF NOT EXISTS risk_assessment_updates (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      risk_id        UUID NOT NULL REFERENCES risk_assessments(id) ON DELETE CASCADE,
+      update_notes   TEXT NOT NULL,
+      new_risk_level VARCHAR(20),
+      updated_by     UUID NOT NULL REFERENCES staff(id),
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table records_food_drink', sql: `CREATE TABLE IF NOT EXISTS records_food_drink (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      entry_type      VARCHAR(5) NOT NULL,
+      meal_type       VARCHAR(30),
+      description     TEXT NOT NULL DEFAULT '',
+      amount_eaten    VARCHAR(30),
+      volume_ml       INTEGER,
+      assisted        BOOLEAN NOT NULL DEFAULT FALSE,
+      refused         BOOLEAN NOT NULL DEFAULT FALSE,
+      notes           TEXT
+    )` },
+
+    { label: 'table su_daily_fluid_totals', sql: `CREATE TABLE IF NOT EXISTS su_daily_fluid_totals (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id          UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id        UUID NOT NULL REFERENCES homes(id),
+      record_date    DATE NOT NULL DEFAULT CURRENT_DATE,
+      total_ml       INTEGER NOT NULL DEFAULT 0,
+      below_threshold BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(su_id, record_date)
+    )` },
+
+    { label: 'table records_vitals', sql: `CREATE TABLE IF NOT EXISTS records_vitals (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      vital_type      VARCHAR(20) NOT NULL,
+      systolic        INTEGER,
+      diastolic       INTEGER,
+      pulse           INTEGER,
+      bp_position     VARCHAR(20),
+      temp_celsius    DECIMAL(4,1),
+      temp_method     VARCHAR(20),
+      spo2_percent    INTEGER,
+      supplemental_o2 BOOLEAN DEFAULT FALSE,
+      o2_litres_min   DECIMAL(4,1),
+      weight_kg       DECIMAL(5,2),
+      height_cm       DECIMAL(5,1),
+      bmi             DECIMAL(4,1),
+      must_score      INTEGER,
+      prev_weight_kg  DECIMAL(5,2),
+      weight_change_pct DECIMAL(5,2),
+      outside_range   BOOLEAN NOT NULL DEFAULT FALSE,
+      action_taken    TEXT
+    )` },
+
+    { label: 'table records_personal_care', sql: `CREATE TABLE IF NOT EXISTS records_personal_care (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      care_types      TEXT[],
+      assistance_level VARCHAR(20),
+      continence_care BOOLEAN NOT NULL DEFAULT FALSE,
+      continence_notes TEXT,
+      skin_condition  TEXT,
+      notes           TEXT
+    )` },
+
+    { label: 'table records_bowel', sql: `CREATE TABLE IF NOT EXISTS records_bowel (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      bristol_type    INTEGER,
+      frequency_today INTEGER,
+      colour          VARCHAR(30),
+      consistency_notes TEXT,
+      laxative_given  BOOLEAN NOT NULL DEFAULT FALSE,
+      days_since_last INTEGER
+    )` },
+
+    { label: 'table records_repositioning', sql: `CREATE TABLE IF NOT EXISTS records_repositioning (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      position        VARCHAR(20),
+      skin_checked    BOOLEAN NOT NULL DEFAULT FALSE,
+      skin_concerns   TEXT,
+      next_due_at     TIMESTAMPTZ,
+      notes           TEXT
+    )` },
+
+    { label: 'table records_oral_care', sql: `CREATE TABLE IF NOT EXISTS records_oral_care (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      care_types      TEXT[],
+      mouth_condition VARCHAR(30),
+      has_dentures    BOOLEAN,
+      denture_type    VARCHAR(20),
+      notes           TEXT
+    )` },
+
+    { label: 'table records_communication', sql: `CREATE TABLE IF NOT EXISTS records_communication (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      mode_used       VARCHAR(30),
+      topic           TEXT,
+      response_level  VARCHAR(20),
+      notes           TEXT
+    )` },
+
+    { label: 'table records_one_to_one', sql: `CREATE TABLE IF NOT EXISTS records_one_to_one (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      topics          TEXT,
+      duration_mins   INTEGER,
+      engagement      VARCHAR(20),
+      follow_up       BOOLEAN NOT NULL DEFAULT FALSE,
+      follow_up_notes TEXT,
+      notes           TEXT
+    )` },
+
+    { label: 'table records_social_activity', sql: `CREATE TABLE IF NOT EXISTS records_social_activity (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      activity_name   VARCHAR(255),
+      engagement      VARCHAR(30),
+      enjoyed         VARCHAR(10),
+      notes           TEXT
+    )` },
+
+    { label: 'table records_visits', sql: `CREATE TABLE IF NOT EXISTS records_visits (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      visit_type      VARCHAR(20),
+      visitor_name    VARCHAR(255),
+      relationship    VARCHAR(100),
+      location        VARCHAR(255),
+      time_arrived    TIMESTAMPTZ,
+      time_left       TIMESTAMPTZ,
+      su_response     VARCHAR(30),
+      notes           TEXT
+    )` },
+
+    { label: 'table records_med_stock', sql: `CREATE TABLE IF NOT EXISTS records_med_stock (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      medication_name VARCHAR(255) NOT NULL,
+      opening_balance INTEGER NOT NULL,
+      given_today     INTEGER NOT NULL DEFAULT 0,
+      closing_balance INTEGER NOT NULL,
+      expected_balance INTEGER NOT NULL,
+      discrepancy     BOOLEAN NOT NULL DEFAULT FALSE,
+      discrepancy_notes TEXT,
+      counted_by      UUID NOT NULL REFERENCES staff(id),
+      witnessed_by    UUID REFERENCES staff(id)
+    )` },
+
+    { label: 'table records_handover', sql: `CREATE TABLE IF NOT EXISTS records_handover (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      shift_summary   TEXT NOT NULL DEFAULT '',
+      priority_flags  TEXT[],
+      outstanding_actions TEXT,
+      signed_off      BOOLEAN NOT NULL DEFAULT FALSE,
+      signed_off_at   TIMESTAMPTZ
+    )` },
+
+    { label: 'table records_followup', sql: `CREATE TABLE IF NOT EXISTS records_followup (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      su_id           UUID NOT NULL REFERENCES service_users(id),
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      task_description TEXT NOT NULL DEFAULT '',
+      assigned_to     UUID REFERENCES staff(id),
+      due_date        DATE,
+      completed       BOOLEAN NOT NULL DEFAULT FALSE,
+      completed_by    UUID REFERENCES staff(id),
+      completed_at    TIMESTAMPTZ,
+      notes           TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table records_welfare_check', sql: `CREATE TABLE IF NOT EXISTS records_welfare_check (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      check_type      VARCHAR(20),
+      su_status       VARCHAR(30),
+      environment_ok  BOOLEAN NOT NULL DEFAULT TRUE,
+      environment_notes TEXT,
+      action_taken    TEXT
+    )` },
+
+    { label: 'table records_must', sql: `CREATE TABLE IF NOT EXISTS records_must (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id           UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      staff_id        UUID NOT NULL REFERENCES staff(id),
+      record_date     DATE NOT NULL DEFAULT CURRENT_DATE,
+      current_weight  DECIMAL(5,2) NOT NULL DEFAULT 0,
+      current_height  DECIMAL(5,1) NOT NULL DEFAULT 0,
+      bmi             DECIMAL(4,1) NOT NULL DEFAULT 0,
+      bmi_score       INTEGER NOT NULL,
+      weight_loss_pct DECIMAL(5,2),
+      weight_score    INTEGER NOT NULL DEFAULT 0,
+      acutely_ill     BOOLEAN NOT NULL DEFAULT FALSE,
+      acute_score     INTEGER NOT NULL DEFAULT 0,
+      must_score      INTEGER NOT NULL DEFAULT 0,
+      must_category   VARCHAR(10) NOT NULL DEFAULT 'low',
+      prev_weight     DECIMAL(5,2),
+      action_plan     TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table task_templates', sql: `CREATE TABLE IF NOT EXISTS task_templates (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      title        TEXT NOT NULL DEFAULT '',
+      category     TEXT NOT NULL DEFAULT 'general',
+      description  TEXT,
+      frequency    TEXT NOT NULL DEFAULT 'daily',
+      due_time     TEXT,
+      assigned_role TEXT,
+      priority     TEXT NOT NULL DEFAULT 'normal',
+      su_id        UUID,
+      is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table task_completions', sql: `CREATE TABLE IF NOT EXISTS task_completions (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      template_id  UUID NOT NULL REFERENCES task_templates(id) ON DELETE CASCADE,
+      home_id      UUID NOT NULL REFERENCES homes(id),
+      su_id        UUID REFERENCES service_users(id),
+      due_date     DATE NOT NULL DEFAULT CURRENT_DATE,
+      due_time     TIME,
+      completed    BOOLEAN NOT NULL DEFAULT FALSE,
+      completed_by UUID REFERENCES staff(id),
+      completed_at TIMESTAMPTZ,
+      notes        TEXT,
+      missed       BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table ppe_transactions', sql: `CREATE TABLE IF NOT EXISTS ppe_transactions (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      item_id          UUID NOT NULL REFERENCES ppe_inventory(id) ON DELETE CASCADE,
+      home_id          UUID NOT NULL REFERENCES homes(id),
+      transaction_type VARCHAR(10) NOT NULL,
+      quantity         INTEGER NOT NULL,
+      staff_id         UUID REFERENCES staff(id),
+      notes            TEXT,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table calendar_event_sign_offs', sql: `CREATE TABLE IF NOT EXISTS calendar_event_sign_offs (
+      id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id  UUID NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+      staff_id  UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      signed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(event_id, staff_id)
+    )` },
+
+    { label: 'table medication_stock', sql: `CREATE TABLE IF NOT EXISTS medication_stock (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id           UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+      home_id         UUID NOT NULL REFERENCES homes(id),
+      medication_name VARCHAR(255) NOT NULL,
+      current_stock   INTEGER NOT NULL DEFAULT 0,
+      unit            VARCHAR(50) NOT NULL DEFAULT 'tablets',
+      reorder_level   INTEGER NOT NULL DEFAULT 5,
+      last_updated_by UUID REFERENCES staff(id),
+      notes           TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx medstock_su', sql: `CREATE INDEX IF NOT EXISTS idx_medstock_su ON medication_stock(su_id)` },
+
+    { label: 'table documents', sql: `CREATE TABLE IF NOT EXISTS documents (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id       UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+      uploaded_by   UUID REFERENCES staff(id),
+      title         VARCHAR(255) NOT NULL,
+      category      VARCHAR(100) NOT NULL DEFAULT 'general',
+      file_url      TEXT NOT NULL,
+      file_name     VARCHAR(255),
+      file_size     INTEGER,
+      mime_type     VARCHAR(100),
+      notes         TEXT,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx documents_home', sql: `CREATE INDEX IF NOT EXISTS idx_documents_home ON documents(home_id)` },
+
+    { label: 'table signatures', sql: `CREATE TABLE IF NOT EXISTS signatures (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      staff_id     UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      resource_type VARCHAR(50) NOT NULL,
+      resource_id  UUID NOT NULL,
+      signature_data TEXT NOT NULL,
+      signed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    // ── Default organisation seed (upsert so it is idempotent) ───────────────
+    { label: 'seed default org', sql: `INSERT INTO organisations (id, name, reg_number, email)
+      VALUES ('00000000-0000-0000-0000-000000000001','CompCare Hub Organisation','REG-001','admin@comprehensivecare.org.uk')
+      ON CONFLICT (id) DO NOTHING` },
+  ];
+
+  for (const { label, sql } of stmts) {
+    try {
+      await pool.query(sql);
+    } catch (err: any) {
+      logger.warn(`createCoreTables [${label}] skipped: ${err?.message?.split('\n')[0]}`);
+    }
+  }
+  logger.info('Core tables bootstrap complete');
+}
+
 async function ensureColumns() {
   const stmts = [
     // ── New tables ─────────────────────────────────────────────────────────────
@@ -1472,6 +2443,7 @@ async function bootstrap() {
     END $$
   `).catch((err: any) => logger.warn('staff_status pending enum skipped: ' + err?.message));
 
+  try { await createCoreTables(); } catch (err: any) { logger.warn('createCoreTables error: ' + err?.message); }
   try { await ensureColumns(); } catch (err: any) { logger.warn('ensureColumns error: ' + err?.message); }
   try { await seedRolePermissions(); } catch (err: any) { logger.warn('seedRolePermissions error: ' + err?.message); }
 
