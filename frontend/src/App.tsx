@@ -76,6 +76,7 @@ import NotificationsManager from './pages/notifications/NotificationsManager'
 import AssessmentForm from './pages/assessments/AssessmentForm'
 import AssessmentView from './pages/assessments/AssessmentView'
 import Confidential from './pages/confidential/Confidential'
+import FamilyView from './pages/family/FamilyView'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -95,6 +96,7 @@ function AppRoutes() {
       <Route path="/setup" element={<Setup />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/" element={<LandingPage />} />
+      <Route path="/family/:token" element={<FamilyView />} />
       <Route path="/clockin/home/:token" element={<ClockIn />} />
       <Route path="/clockin/:token" element={<ClockIn />} />
       <Route path="/clockin-admin" element={<ProtectedRoute><ClockInAdmin /></ProtectedRoute>} />
