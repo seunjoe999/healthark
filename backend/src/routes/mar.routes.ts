@@ -75,7 +75,7 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
         { field: 'route', val: route },
-        { field: 'prescribed_by', val: prescribedBy },
+        { field: 'prescriber', val: prescribedBy },
         { field: 'start_date', val: nd(startDate) },
         { field: 'end_date', val: nd(endDate) },
         { field: 'instructions', val: instructions },
@@ -115,7 +115,8 @@ router.get('/records/:suId', param('suId').isUUID(), validateRequest,
     try {
       const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
       const rows = await query(
-        `SELECT mr.*, m.medication_name, m.dose, m.frequency, m.route, m.instructions, m.is_prn,
+        `SELECT mr.*, m.medication_name, m.dose, m.frequency, m.route,
+                COALESCE(m.instructions, m.notes) AS instructions, m.is_prn,
                 s.first_name || ' ' || s.last_name as given_by_name
          FROM mar_records mr
          JOIN su_medications m ON m.id = mr.medication_id

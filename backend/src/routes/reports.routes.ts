@@ -179,12 +179,14 @@ router.get('/mar-report', async (req: Request, res: Response, next: NextFunction
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { from, to } = req.query as Record<string, string>;
     const rows = await query(
-      `SELECT mr.id, mr.su_id, mr.home_id, mr.medication_name, mr.dose, mr.route,
-              mr.record_date, mr.given, mr.given_at, mr.refused, mr.refused_reason,
-              mr.omitted, mr.omit_reason, mr.notes, mr.scheduled_time,
+      `SELECT mr.id, mr.su_id, mr.home_id,
+              m.medication_name, m.dose, m.route,
+              mr.record_date, mr.given, mr.refused, mr.refused_reason,
+              mr.notes, mr.scheduled_time, mr.mar_code,
               su.first_name || ' ' || su.last_name as su_name,
               s.first_name || ' ' || s.last_name as given_by_name
        FROM mar_records mr
+       LEFT JOIN su_medications m ON m.id = mr.medication_id
        JOIN service_users su ON su.id = mr.su_id
        LEFT JOIN staff s ON s.id = mr.given_by
        WHERE mr.home_id = $1 AND mr.record_date BETWEEN $2 AND $3

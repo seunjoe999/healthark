@@ -21,8 +21,8 @@ router.use(authenticate);
 router.get('/', validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const homeId = req.query.homeId as string;
-      const status = (req.query.status as string) || 'pending';
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+      const status = (req.query.status as string) || 'all';
       const rows = await query(
         `SELECT cqc.*, su.first_name, su.last_name, s.first_name || ' ' || s.last_name as notified_by_name
          FROM cqc_notifications cqc

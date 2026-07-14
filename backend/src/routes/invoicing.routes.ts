@@ -21,7 +21,7 @@ router.use(authenticate);
 router.get('/', requireRole('home_manager', 'group_admin'), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const homeId = req.query.homeId as string;
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const status = (req.query.status as string) || 'all';
       const whereClause = status === 'all' ? 'WHERE i.home_id = $1' : 'WHERE i.home_id = $1 AND i.status = $2';
       const params = status === 'all' ? [homeId] : [homeId, status];
