@@ -13,25 +13,28 @@ interface WaitingEntry {
   contact_phone: string;
   contact_email: string;
   care_needs: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'waiting' | 'offered' | 'admitted' | 'withdrawn' | 'declined';
-  date_added: string;
+  priority: 'urgent' | 'high' | 'standard' | 'low';
+  status: 'enquiry' | 'assessment_booked' | 'assessment_complete' | 'offer_made' | 'accepted' | 'declined' | 'withdrawn';
+  enquiry_date: string;
   notes: string;
-  nhs_number: string;
 }
 
 interface Stats { total: number; waiting: number; high_priority: number; avg_wait_days: number; }
 
-const PRIORITIES = ['high', 'medium', 'low'];
-const STATUSES = ['waiting', 'offered', 'admitted', 'withdrawn', 'declined'];
+const PRIORITIES = ['urgent', 'high', 'standard', 'low'];
+const STATUSES = ['enquiry', 'assessment_booked', 'assessment_complete', 'offer_made', 'accepted', 'declined', 'withdrawn'];
+const STATUS_LABELS: Record<string, string> = {
+  enquiry: 'Enquiry', assessment_booked: 'Assessment Booked', assessment_complete: 'Assessment Done',
+  offer_made: 'Offer Made', accepted: 'Accepted', declined: 'Declined', withdrawn: 'Withdrawn',
+};
 
 export default function WaitingList() {
   const [entries, setEntries] = useState<WaitingEntry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, waiting: 0, high_priority: 0, avg_wait_days: 0 });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('waiting');
-  const [form, setForm] = useState({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'medium', nhs_number: '', notes: '' });
+  const [filterStatus, setFilterStatus] = useState('');
+  const [form, setForm] = useState({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '' });
 
   const fetchData = async () => {
     try {
@@ -63,12 +66,12 @@ export default function WaitingList() {
         contactPhone: form.contact_phone || undefined,
         contactEmail: form.contact_email || undefined,
         careNeeds: form.care_needs || undefined,
-        priority: form.priority === 'medium' ? 'standard' : form.priority,
+        priority: form.priority,
         notes: form.notes || undefined,
       });
       toast.success('Added to waiting list');
       setShowForm(false);
-      setForm({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'medium', nhs_number: '', notes: '' });
+      setForm({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '' });
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
@@ -88,7 +91,7 @@ export default function WaitingList() {
   };
 
   const priorityBadge = (p: string) => {
-    const cls = p === 'high' ? 'bg-red-500/20 text-red-400' : p === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400';
+    const cls = p === 'urgent' ? 'bg-rose-500/20 text-rose-400' : p === 'high' ? 'bg-red-500/20 text-red-400' : p === 'standard' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400';
     return <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${cls}`}>{p}</span>;
   };
 
@@ -136,8 +139,8 @@ export default function WaitingList() {
           style={{ background: filterStatus === '' ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>All</button>
         {STATUSES.map(s => (
           <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm capitalize ${filterStatus === s ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: filterStatus === s ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>{s}</button>
+            className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === s ? 'text-white' : 'text-gray-400'}`}
+            style={{ background: filterStatus === s ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>{STATUS_LABELS[s]}</button>
         ))}
       </div>
 
@@ -150,7 +153,6 @@ export default function WaitingList() {
             {[
               { label: 'Full Name', key: 'full_name', type: 'text', required: true },
               { label: 'Date of Birth', key: 'date_of_birth', type: 'date', required: false },
-              { label: 'NHS Number', key: 'nhs_number', type: 'text', required: false },
               { label: 'Contact Name', key: 'contact_name', type: 'text', required: false },
               { label: 'Contact Phone', key: 'contact_phone', type: 'tel', required: false },
               { label: 'Contact Email', key: 'contact_email', type: 'email', required: false },
@@ -196,27 +198,27 @@ export default function WaitingList() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-white font-medium">{e.full_name}</span>
                     {priorityBadge(e.priority)}
-                    <span className="text-xs text-gray-500 capitalize">{e.status}</span>
+                    <span className="text-xs text-gray-500">{STATUS_LABELS[e.status] || e.status}</span>
                   </div>
-                  {e.date_of_birth && <div className="text-xs text-gray-400 mt-1">DOB: {format(new Date(e.date_of_birth), 'dd MMM yyyy')}</div>}
+                  {e.date_of_birth && <div className="text-xs text-gray-400 mt-1">DOB: {format(new Date(e.date_of_birth + 'T12:00:00'), 'dd MMM yyyy')}</div>}
                   {e.care_needs && <div className="text-xs text-gray-500 mt-1">{e.care_needs}</div>}
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                     {e.contact_name && <span>{e.contact_name}</span>}
                     {e.contact_phone && <span className="flex items-center gap-1"><Phone size={10} />{e.contact_phone}</span>}
-                    <span className="flex items-center gap-1"><Clock size={10} />{format(new Date(e.date_added), 'dd MMM yyyy')}</span>
+                    {e.enquiry_date && <span className="flex items-center gap-1"><Clock size={10} />{format(new Date(e.enquiry_date + 'T12:00:00'), 'dd MMM yyyy')}</span>}
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  {e.status === 'waiting' && (
+                  {e.status === 'enquiry' && (
                     <>
-                      <button onClick={() => updateStatus(e.id, 'offered')} title="Mark as offered"
+                      <button onClick={() => updateStatus(e.id, 'assessment_booked')} title="Book assessment"
                         className="p-1.5 rounded-lg text-yellow-400 hover:bg-yellow-400/10"><CheckCircle size={14} /></button>
                       <button onClick={() => updateStatus(e.id, 'withdrawn')} title="Mark as withdrawn"
                         className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10"><XCircle size={14} /></button>
                     </>
                   )}
-                  {e.status === 'offered' && (
-                    <button onClick={() => updateStatus(e.id, 'admitted')} title="Mark as admitted"
+                  {e.status === 'assessment_complete' && (
+                    <button onClick={() => updateStatus(e.id, 'offer_made')} title="Make offer"
                       className="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10"><CheckCircle size={14} /></button>
                   )}
                 </div>

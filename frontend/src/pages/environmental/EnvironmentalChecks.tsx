@@ -13,9 +13,9 @@ interface EnvCheck {
   location: string;
   reading_value: string;
   unit: string;
-  status: 'pass' | 'fail' | 'warning';
+  result: 'pass' | 'fail' | 'action_required';
   notes: string;
-  checked_by_name: string;
+  recorded_by_name: string;
 }
 
 interface Summary { total: number; passed: number; failed: number; warnings: number; }
@@ -40,7 +40,7 @@ export default function EnvironmentalChecks() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('7');
-  const [form, setForm] = useState({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', status: 'pass', notes: '' });
+  const [form, setForm] = useState({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', result: 'pass', notes: '' });
 
   const fetchData = async () => {
     try {
@@ -70,12 +70,12 @@ export default function EnvironmentalChecks() {
         location: form.location,
         readingValue: form.reading_value,
         unit: form.unit,
-        result: form.status,
+        result: form.result,
         notes: form.notes,
       });
       toast.success('Check recorded');
       setShowForm(false);
-      setForm({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', status: 'pass', notes: '' });
+      setForm({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', result: 'pass', notes: '' });
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
@@ -87,6 +87,7 @@ export default function EnvironmentalChecks() {
   };
 
   const statusColor = (s: string) => s === 'pass' ? 'text-green-400' : s === 'fail' ? 'text-red-400' : 'text-yellow-400';
+  const resultLabel = (s: string) => s === 'action_required' ? 'Action Required' : s.charAt(0).toUpperCase() + s.slice(1);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -165,10 +166,10 @@ export default function EnvironmentalChecks() {
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Status</label>
-              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
+              <select value={form.result} onChange={e => setForm(p => ({ ...p, result: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <option value="pass">Pass</option>
-                <option value="warning">Warning</option>
+                <option value="action_required">Action Required</option>
                 <option value="fail">Fail</option>
               </select>
             </div>
@@ -195,19 +196,20 @@ export default function EnvironmentalChecks() {
           {checks.map(c => (
             <motion.div key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex items-center gap-4 p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="flex-shrink-0">{statusIcon(c.status)}</div>
+              <div className="flex-shrink-0">{statusIcon(c.result)}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-white text-sm font-medium">{c.check_type}</span>
+                  <span className="text-white text-sm font-medium">{CHECK_TYPES.find(t => t.value === c.check_type)?.label || c.check_type}</span>
                   <span className="text-gray-500 text-xs">— {c.location}</span>
+                  <span className={`text-xs font-semibold ${statusColor(c.result)}`}>{resultLabel(c.result)}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-xs text-gray-400">{format(new Date(c.check_date), 'dd MMM yyyy HH:mm')}</span>
-                  <span className={`text-xs font-medium ${statusColor(c.status)}`}>{c.reading_value} {c.unit}</span>
+                  <span className="text-xs text-gray-400">{format(new Date(c.check_date + 'T12:00:00'), 'dd MMM yyyy')}</span>
+                  <span className={`text-xs font-medium ${statusColor(c.result)}`}>{c.reading_value} {c.unit}</span>
                   {c.notes && <span className="text-xs text-gray-500 truncate">{c.notes}</span>}
                 </div>
               </div>
-              <div className="text-xs text-gray-500 flex-shrink-0">{c.checked_by_name}</div>
+              <div className="text-xs text-gray-500 flex-shrink-0">{c.recorded_by_name}</div>
             </motion.div>
           ))}
         </div>
