@@ -8,19 +8,23 @@ import api from '../../api';
 interface Absence {
   id: number;
   staff_name: string;
-  start_date: string;
-  end_date: string | null;
+  absence_start: string;
+  absence_end: string | null;
   reason: string;
   absence_type: string;
-  is_fit_for_work: boolean;
-  return_date: string | null;
+  return_to_work_completed: boolean;
+  return_to_work_date: string | null;
   notes: string;
+  days_so_far: number;
 }
 
 interface Bradford { staff_id: number; staff_name: string; bradford_score: number; spells: number; total_days: number; }
 interface Stats { total_absences: number; active_absences: number; total_days: number; avg_days: number; }
 
-const ABSENCE_TYPES = ['Sickness', 'Unauthorised', 'Authorised', 'Holiday', 'Compassionate', 'Maternity/Paternity', 'Other'];
+const ABSENCE_TYPES = ['Sickness', 'Unauthorised', 'Emergency', 'Bereavement', 'Other'];
+const ABSENCE_TYPE_MAP: Record<string, string> = {
+  Sickness: 'sick', Unauthorised: 'unauthorised', Emergency: 'emergency', Bereavement: 'bereavement', Other: 'other',
+};
 const REASONS = ['Illness', 'Injury', 'Mental Health', 'Family Emergency', 'Bereavement', 'Medical Appointment', 'Unknown', 'Other'];
 
 export default function StaffAbsence() {
@@ -64,7 +68,7 @@ export default function StaffAbsence() {
         staffId: form.staff_id,
         absenceStart: form.start_date,
         absenceEnd: form.end_date || undefined,
-        absenceType: form.absence_type.toLowerCase().replace(/[^a-z]/g, '_').replace(/\//g, '_'),
+        absenceType: ABSENCE_TYPE_MAP[form.absence_type] || 'other',
         reason: form.reason,
       });
       toast.success('Absence recorded');
@@ -191,11 +195,12 @@ export default function StaffAbsence() {
                   <span className="text-white font-medium text-sm">{a.staff_name}</span>
                   <span className="ml-2 px-2 py-0.5 rounded text-xs" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>{a.absence_type}</span>
                 </div>
-                {!a.end_date && <span className="text-xs text-orange-400">Ongoing</span>}
+                {!a.absence_end && <span className="text-xs text-orange-400">Ongoing</span>}
               </div>
               <div className="mt-1 flex gap-4 text-xs text-gray-400">
-                <span>{format(new Date(a.start_date), 'dd MMM yyyy')} {a.end_date ? `→ ${format(new Date(a.end_date), 'dd MMM yyyy')}` : '→ present'}</span>
-                <span>{a.reason}</span>
+                <span>{format(new Date(a.absence_start), 'dd MMM yyyy')} {a.absence_end ? `→ ${format(new Date(a.absence_end), 'dd MMM yyyy')}` : '→ present'}</span>
+                {a.days_so_far != null && <span>{a.days_so_far} day{a.days_so_far !== 1 ? 's' : ''}</span>}
+                {a.reason && <span>{a.reason}</span>}
               </div>
               {a.notes && <p className="mt-1 text-xs text-gray-500">{a.notes}</p>}
             </div>
