@@ -18,8 +18,12 @@ try {
   if (t) (window as any).__HA_TOKEN__ = t
 } catch {}
 
+// Detect if running inside Capacitor native shell
+const isNative = !!(window as any).Capacitor?.isNativePlatform?.()
+const API_BASE = isNative ? 'https://compcarehub.co.uk/api' : '/api'
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 })

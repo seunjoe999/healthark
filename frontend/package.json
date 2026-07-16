@@ -6,9 +6,22 @@
     "dev": "vite",
     "build": "node --max-old-space-size=8192 node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "build:android": "npm run build && npx cap sync android",
+    "open:android": "npx cap open android",
+    "cap:sync": "npx cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@remotion/cli": "^4.0.473",
     "@remotion/player": "^4.0.473",
     "axios": "^1.7.2",

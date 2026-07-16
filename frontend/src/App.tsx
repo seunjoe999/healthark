@@ -8,6 +8,7 @@ import InstallPrompt from './components/pwa/InstallPrompt'
 import Login from './pages/auth/Login'
 import LandingPage from './pages/public/LandingPage'
 import Setup from './pages/auth/Setup'
+import { useCapacitorSetup } from './hooks/useCapacitorSetup'
 
 const Dashboard = React.lazy(() => import('./pages/dashboard/Dashboard'))
 const ServiceUserList = React.lazy(() => import('./pages/service-users/ServiceUserList'))
@@ -91,6 +92,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  useCapacitorSetup()
   return (
     <React.Suspense fallback={
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0d1526' }}>
