@@ -3,13 +3,15 @@ import { Pool, PoolConfig } from 'pg';
 let config: PoolConfig;
 
 if (process.env.DATABASE_URL) {
-  // Render / Railway / cloud hosting — provides a single connection string
+  // Render free-tier PostgreSQL allows ~25 connections total.
+  // Keep pool small so rolling deploys (two instances briefly overlapping) don't hit the limit.
   config = {
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    max: 5,
+    min: 1,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
   };
 } else {
   const dbPassword = process.env.DB_PASSWORD;
