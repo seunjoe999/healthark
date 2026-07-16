@@ -268,6 +268,134 @@ function OfflineBanner() {
   return null
 }
 
+// Bottom nav tab definitions
+const bottomNavTabs = [
+  { label: 'Home',      to: '/dashboard',    icon: LayoutDashboard },
+  { label: 'Residents', to: '/service-users', icon: Users },
+  { label: 'Records',   to: '/daily-records', icon: ClipboardList },
+  { label: 'MAR',       to: '/mar',           icon: Pill },
+]
+
+interface MobileBottomNavProps {
+  menuOpen: boolean
+  onMenuToggle: () => void
+}
+
+function MobileBottomNav({ menuOpen, onMenuToggle }: MobileBottomNavProps) {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const handleTabClick = (to: string) => {
+    navigate(to)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const isTabActive = (to: string) => {
+    if (to === '/dashboard') return location.pathname === '/dashboard'
+    return location.pathname.startsWith(to)
+  }
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch"
+      style={{
+        background: 'rgba(13, 21, 38, 0.97)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        paddingBottom: 'env(safe-area-inset-bottom, 12px)',
+      }}
+    >
+      {bottomNavTabs.map(tab => {
+        const active = isTabActive(tab.to)
+        const Icon = tab.icon
+        return (
+          <button
+            key={tab.to}
+            onClick={() => handleTabClick(tab.to)}
+            style={{
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
+              color: active ? '#e8b130' : 'rgba(255,255,255,0.4)',
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingTop: '8px',
+              paddingBottom: '6px',
+              minHeight: '60px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              position: 'relative',
+              gap: '3px',
+            }}
+            className="active:scale-95 transition-transform duration-75"
+          >
+            {/* Active indicator pill */}
+            <span
+              style={{
+                position: 'absolute',
+                top: '4px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '24px',
+                height: '3px',
+                borderRadius: '99px',
+                background: active ? '#e8b130' : 'transparent',
+                transition: 'background 0.2s',
+              }}
+            />
+            <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+            <span style={{ fontSize: '10px', fontWeight: 500, lineHeight: 1 }}>{tab.label}</span>
+          </button>
+        )
+      })}
+
+      {/* More tab — toggles sidebar drawer */}
+      <button
+        onClick={onMenuToggle}
+        style={{
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'manipulation',
+          color: menuOpen ? '#e8b130' : 'rgba(255,255,255,0.4)',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingTop: '8px',
+          paddingBottom: '6px',
+          minHeight: '60px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          position: 'relative',
+          gap: '3px',
+        }}
+        className="active:scale-95 transition-transform duration-75"
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: '4px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '24px',
+            height: '3px',
+            borderRadius: '99px',
+            background: menuOpen ? '#e8b130' : 'transparent',
+            transition: 'background 0.2s',
+          }}
+        />
+        {menuOpen ? <X size={22} strokeWidth={2.2} /> : <Menu size={22} strokeWidth={1.8} />}
+        <span style={{ fontSize: '10px', fontWeight: 500, lineHeight: 1 }}>More</span>
+      </button>
+    </nav>
+  )
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isRole } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -281,31 +409,129 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
+      {/* Desktop sidebar — hidden on mobile */}
       <aside className="no-print hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
         <Sidebar {...sidebarProps} />
       </aside>
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-72 flex flex-col z-10 shadow-2xl">
-            <button onClick={() => setMobileOpen(false)} style={{ top: 'max(16px, env(safe-area-inset-top))' }} className="absolute right-4 text-white/50 hover:text-white z-20 p-1"><X className="w-5 h-5" /></button>
-            <Sidebar {...sidebarProps} />
-          </div>
+
+      {/* Mobile sidebar drawer */}
+      <div
+        className="lg:hidden fixed inset-0 z-50 flex pointer-events-none"
+        style={{ visibility: mobileOpen ? 'visible' : 'hidden' }}
+      >
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-280"
+          style={{ opacity: mobileOpen ? 1 : 0, pointerEvents: mobileOpen ? 'auto' : 'none' }}
+          onClick={() => setMobileOpen(false)}
+        />
+        {/* Drawer panel */}
+        <div
+          className="relative w-72 flex flex-col z-10 shadow-2xl pointer-events-auto"
+          style={{
+            transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+          }}
+        >
+          <button
+            onClick={() => setMobileOpen(false)}
+            style={{ top: 'max(16px, env(safe-area-inset-top))', WebkitTapHighlightColor: 'transparent' }}
+            className="absolute right-4 text-white/50 hover:text-white z-20 p-1"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <Sidebar {...sidebarProps} />
         </div>
-      )}
+      </div>
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="no-print lg:hidden px-4 py-3 flex items-center gap-3 pt-safe" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.2)', paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-          <button onClick={() => setMobileOpen(true)} style={{ color: '#e8b130' }} className="p-1"><Menu className="w-5 h-5" /></button>
-          <img src="/logo.jpeg" alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'white', padding: '2px' }} />
-          <span className="text-base flex-1 truncate font-bold" style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}>{pageTitle}</span>
-          <button onClick={() => navigate('/search')} className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Search">
+        {/* Mobile top header — fixed, 56px tall */}
+        <header
+          className="no-print md:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 gap-3"
+          style={{
+            height: '56px',
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            background: 'rgba(13, 21, 38, 0.97)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: '1px solid rgba(232,177,48,0.2)',
+          }}
+        >
+          {/* Logo + name */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <img
+              src="/logo.jpeg"
+              alt=""
+              className="w-7 h-7 rounded-lg object-contain flex-shrink-0"
+              style={{ background: 'white', padding: '2px' }}
+            />
+            <span
+              className="text-sm font-bold truncate"
+              style={{ color: '#e8b130', fontFamily: 'Georgia, serif' }}
+            >
+              CompCare Hub
+            </span>
+          </div>
+
+          {/* Search button */}
+          <button
+            onClick={() => navigate('/search')}
+            className="p-1.5 text-slate-400 hover:text-white transition-colors flex-shrink-0"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+            aria-label="Search"
+          >
             <Search className="w-5 h-5" />
           </button>
-          <NotificationsBell />
+
+          {/* Notifications bell */}
+          <div className="flex-shrink-0">
+            <NotificationsBell />
+          </div>
+
+          {/* User avatar initials */}
+          <button
+            onClick={() => navigate(user?.id ? `/staff/${user.id}/edit` : '#')}
+            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-slate-900 active:scale-95 transition-transform"
+            style={{
+              background: 'linear-gradient(135deg, #e8b130, #d4961a)',
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
+            }}
+            aria-label="My profile"
+          >
+            {user?.firstName?.[0] ?? '?'}
+          </button>
         </header>
+
+        {/* Desktop header is hidden on mobile; desktop uses sidebar only — no top header needed on lg+ */}
+
         <OfflineBanner />
-        <main className="flex-1 overflow-y-auto pb-safe" style={{ background: '#0a0a0a' }}>{children}</main>
+
+        {/* Main content — padded top for fixed mobile header, padded bottom for bottom nav */}
+        <main
+          className="flex-1 overflow-y-auto pb-safe"
+          style={{
+            background: '#0a0a0a',
+            // Mobile: top padding for 56px fixed header, bottom padding for 60px nav + safe area
+            // Desktop (md+): no extra padding needed (sidebar is static)
+          }}
+        >
+          {/* Invisible spacer for mobile fixed header */}
+          <div
+            className="md:hidden"
+            style={{ height: 'calc(56px + env(safe-area-inset-top, 0px))' }}
+          />
+          {children}
+          {/* Invisible spacer for mobile bottom nav */}
+          <div
+            className="md:hidden"
+            style={{ height: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+          />
+        </main>
       </div>
+
+      {/* Mobile bottom navigation bar */}
+      <MobileBottomNav menuOpen={mobileOpen} onMenuToggle={() => setMobileOpen(prev => !prev)} />
     </div>
   )
 }
