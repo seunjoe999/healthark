@@ -78,6 +78,21 @@ const AssessmentView = React.lazy(() => import('./pages/assessments/AssessmentVi
 const Confidential = React.lazy(() => import('./pages/confidential/Confidential'))
 const FamilyView = React.lazy(() => import('./pages/family/FamilyView'))
 const AIAssistant = React.lazy(() => import('./pages/ai/AIAssistant'))
+const FluidBalance = React.lazy(() => import('./pages/fluid-balance/FluidBalance'))
+const WeightTracker = React.lazy(() => import('./pages/weight-tracker/WeightTracker'))
+const WoundCare = React.lazy(() => import('./pages/wound-care/WoundCare'))
+const PEEP = React.lazy(() => import('./pages/peep/PEEP'))
+const HospitalAdmissions = React.lazy(() => import('./pages/hospital-admissions/HospitalAdmissions'))
+const EnvironmentalChecks = React.lazy(() => import('./pages/environmental/EnvironmentalChecks'))
+const TrainingMatrix = React.lazy(() => import('./pages/training/TrainingMatrix'))
+const StaffAbsence = React.lazy(() => import('./pages/staff-absence/StaffAbsence'))
+const BedOccupancy = React.lazy(() => import('./pages/bed-occupancy/BedOccupancy'))
+const WaitingList = React.lazy(() => import('./pages/waiting-list/WaitingList'))
+const VisitorLog = React.lazy(() => import('./pages/visitor-log/VisitorLog'))
+const Contractors = React.lazy(() => import('./pages/contractors/Contractors'))
+const LessonsLearned = React.lazy(() => import('./pages/lessons-learned/LessonsLearned'))
+const CQCInspection = React.lazy(() => import('./pages/cqc-inspection/CQCInspection'))
+const ExternalContacts = React.lazy(() => import('./pages/contacts/ExternalContacts'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -175,6 +190,21 @@ function AppRoutes() {
         <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
         <Route path="/confidential" element={<ProtectedRoute><Confidential /></ProtectedRoute>} />
         <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+        <Route path="/fluid-balance" element={<ProtectedRoute><FluidBalance /></ProtectedRoute>} />
+        <Route path="/weight-tracker" element={<ProtectedRoute><WeightTracker /></ProtectedRoute>} />
+        <Route path="/wound-care" element={<ProtectedRoute><WoundCare /></ProtectedRoute>} />
+        <Route path="/peep" element={<ProtectedRoute><PEEP /></ProtectedRoute>} />
+        <Route path="/hospital-admissions" element={<ProtectedRoute><HospitalAdmissions /></ProtectedRoute>} />
+        <Route path="/environmental-checks" element={<ProtectedRoute><EnvironmentalChecks /></ProtectedRoute>} />
+        <Route path="/training-matrix" element={<ProtectedRoute><TrainingMatrix /></ProtectedRoute>} />
+        <Route path="/staff-absence" element={<ProtectedRoute><StaffAbsence /></ProtectedRoute>} />
+        <Route path="/bed-occupancy" element={<ProtectedRoute><BedOccupancy /></ProtectedRoute>} />
+        <Route path="/waiting-list" element={<ProtectedRoute><WaitingList /></ProtectedRoute>} />
+        <Route path="/visitor-log" element={<ProtectedRoute><VisitorLog /></ProtectedRoute>} />
+        <Route path="/contractors" element={<ProtectedRoute><Contractors /></ProtectedRoute>} />
+        <Route path="/lessons-learned" element={<ProtectedRoute><LessonsLearned /></ProtectedRoute>} />
+        <Route path="/cqc-inspection" element={<ProtectedRoute><CQCInspection /></ProtectedRoute>} />
+        <Route path="/external-contacts" element={<ProtectedRoute><ExternalContacts /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </React.Suspense>

@@ -109,6 +109,41 @@ const navSections = [
     ]
   },
   {
+    label: 'CLINICAL MONITORING', highlight: true,
+    items: [
+      { label: 'Fluid Balance',       to: '/fluid-balance',      icon: Droplets,      roles: [], featureKey: 'fluid_balance' },
+      { label: 'Weight Tracker',      to: '/weight-tracker',     icon: Activity,      roles: [], featureKey: 'weight_tracker' },
+      { label: 'Wound Care',          to: '/wound-care',         icon: Stethoscope,   roles: [], featureKey: 'wound_care' },
+      { label: 'PEEP Plans',          to: '/peep',               icon: Zap,           roles: [], featureKey: 'peep' },
+      { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
+    ]
+  },
+  {
+    label: 'CAPACITY & OPERATIONS', highlight: true,
+    items: [
+      { label: 'Bed Occupancy',       to: '/bed-occupancy',      icon: LayoutDashboard, roles: [], featureKey: 'bed_occupancy' },
+      { label: 'Waiting List',        to: '/waiting-list',       icon: Users,           roles: [], featureKey: 'waiting_list' },
+      { label: 'Visitor Log',         to: '/visitor-log',        icon: Users2,          roles: [], featureKey: 'visitor_log' },
+      { label: 'Contractor Register', to: '/contractors',        icon: Wrench,          roles: [], featureKey: 'contractors' },
+      { label: 'External Contacts',   to: '/external-contacts',  icon: Users,           roles: [], featureKey: 'external_contacts' },
+      { label: 'Environmental Checks',to: '/environmental-checks',icon: Thermometer,    roles: [], featureKey: 'environmental' },
+    ]
+  },
+  {
+    label: 'HR & DEVELOPMENT', highlight: true,
+    items: [
+      { label: 'Staff Absence',      to: '/staff-absence',      icon: UserSquare,    roles: [], featureKey: 'staff_absence' },
+      { label: 'Training Matrix',    to: '/training-matrix',    icon: GraduationCap, roles: [], featureKey: 'training_matrix' },
+    ]
+  },
+  {
+    label: 'GOVERNANCE', highlight: true,
+    items: [
+      { label: 'Lessons Learned',    to: '/lessons-learned',    icon: BookOpen,      roles: [], featureKey: 'lessons_learned' },
+      { label: 'CQC Mock Inspection',to: '/cqc-inspection',     icon: Shield,        roles: [], featureKey: 'cqc_inspection' },
+    ]
+  },
+  {
     label: 'POLICIES',
     items: [
       { label: 'Policies', to: '/policies', icon: BookOpen, roles: [], featureKey: 'policies' },

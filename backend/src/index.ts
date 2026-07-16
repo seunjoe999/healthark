@@ -195,6 +195,36 @@ app.use('/api/recruitment', recruitmentRoutes);
 app.use('/api/consents', consentsRoutes);
 app.use('/api/confidential', confidentialRoutes);
 
+// ── Phase 3 routes ────────────────────────────────────────────────────────
+import fluidBalanceRoutes from './routes/fluidBalance.routes';
+import weightTrackerRoutes from './routes/weightTracker.routes';
+import woundCareRoutes from './routes/woundCare.routes';
+import peepRoutes from './routes/peep.routes';
+import hospitalAdmissionsRoutes from './routes/hospitalAdmissions.routes';
+import environmentalRoutes from './routes/environmental.routes';
+import bedOccupancyRoutes from './routes/bedOccupancy.routes';
+import waitingListRoutes from './routes/waitingList.routes';
+import visitorLogRoutes from './routes/visitorLog.routes';
+import contractorsRoutes from './routes/contractors.routes';
+import lessonsLearnedRoutes from './routes/lessonsLearned.routes';
+import staffAbsenceRoutes from './routes/staffAbsence.routes';
+import trainingMatrixRoutes from './routes/trainingMatrix.routes';
+import externalContactsRoutes from './routes/externalContacts.routes';
+app.use('/api/fluid-balance', fluidBalanceRoutes);
+app.use('/api/weight-tracker', weightTrackerRoutes);
+app.use('/api/wound-care', woundCareRoutes);
+app.use('/api/peep', peepRoutes);
+app.use('/api/hospital-admissions', hospitalAdmissionsRoutes);
+app.use('/api/environmental', environmentalRoutes);
+app.use('/api/bed-occupancy', bedOccupancyRoutes);
+app.use('/api/waiting-list', waitingListRoutes);
+app.use('/api/visitor-log', visitorLogRoutes);
+app.use('/api/contractors', contractorsRoutes);
+app.use('/api/lessons-learned', lessonsLearnedRoutes);
+app.use('/api/staff-absence', staffAbsenceRoutes);
+app.use('/api/training-matrix', trainingMatrixRoutes);
+app.use('/api/external-contacts', externalContactsRoutes);
+
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
 const frontendDist = path.join(__dirname, '../../frontend/dist');
