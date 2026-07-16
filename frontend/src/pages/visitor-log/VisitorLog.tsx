@@ -6,17 +6,15 @@ import toast from 'react-hot-toast';
 import api from '../../api';
 
 interface Visit {
-  id: number;
+  id: string;
   visitor_name: string;
   resident_name: string | null;
   purpose: string;
   sign_in_time: string;
   sign_out_time: string | null;
-  vehicle_reg: string;
-  phone: string;
-  temperature_check: boolean;
-  id_checked: boolean;
-  notes: string;
+  vehicle_reg: string | null;
+  visitor_phone: string | null;
+  notes: string | null;
 }
 
 interface CurrentlyIn { visitor_name: string; sign_in_time: string; purpose: string; resident_name: string | null; }
@@ -27,7 +25,7 @@ export default function VisitorLog() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [form, setForm] = useState({ visitor_name: '', resident_visited: '', purpose: 'Family Visit', phone: '', vehicle_reg: '', temperature_check: true, id_checked: false, notes: '' });
+  const [form, setForm] = useState({ visitor_name: '', resident_visited: '', purpose: 'social_visit', phone: '', vehicle_reg: '', notes: '' });
   const [residents, setResidents] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
 
   const fetchData = async () => {
@@ -59,12 +57,12 @@ export default function VisitorLog() {
       });
       toast.success('Visitor signed in');
       setShowForm(false);
-      setForm({ visitor_name: '', resident_visited: '', purpose: 'Family Visit', phone: '', vehicle_reg: '', temperature_check: true, id_checked: false, notes: '' });
+      setForm({ visitor_name: '', resident_visited: '', purpose: 'social_visit', phone: '', vehicle_reg: '', notes: '' });
       fetchData();
     } catch { toast.error('Failed to sign in visitor'); }
   };
 
-  const handleSignOut = async (id: number) => {
+  const handleSignOut = async (id: string) => {
     try {
       await api.put(`/visitor-log/${id}/signout`);
       toast.success('Visitor signed out');
@@ -72,7 +70,13 @@ export default function VisitorLog() {
     } catch { toast.error('Failed to sign out'); }
   };
 
-  const PURPOSES = ['Family Visit', 'Healthcare Professional', 'Contractor', 'Delivery', 'Social Worker', 'Advocate', 'Other'];
+  const PURPOSES = [
+    { value: 'social_visit', label: 'Social / Family Visit' },
+    { value: 'professional', label: 'Healthcare Professional' },
+    { value: 'contractor', label: 'Contractor' },
+    { value: 'delivery', label: 'Delivery' },
+    { value: 'other', label: 'Other' },
+  ];
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -138,7 +142,7 @@ export default function VisitorLog() {
               <label className="text-xs text-gray-400 mb-1 block">Purpose</label>
               <select value={form.purpose} onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                {PURPOSES.map(pu => <option key={pu} value={pu}>{pu}</option>)}
+                {PURPOSES.map(pu => <option key={pu.value} value={pu.value}>{pu.label}</option>)}
               </select>
             </div>
             <div>
@@ -151,15 +155,10 @@ export default function VisitorLog() {
               <input value={form.vehicle_reg} onChange={e => setForm(p => ({ ...p, vehicle_reg: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
             </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.temperature_check} onChange={e => setForm(p => ({ ...p, temperature_check: e.target.checked }))} />
-                <span className="text-xs text-gray-400">Temperature Checked</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.id_checked} onChange={e => setForm(p => ({ ...p, id_checked: e.target.checked }))} />
-                <span className="text-xs text-gray-400">ID Verified</span>
-              </label>
+            <div className="md:col-span-2">
+              <label className="text-xs text-gray-400 mb-1 block">Notes</label>
+              <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Sign In</button>
@@ -194,7 +193,7 @@ export default function VisitorLog() {
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                     <span className="flex items-center gap-1"><Clock size={10} />In: {format(new Date(v.sign_in_time), 'HH:mm')}</span>
                     {v.sign_out_time && <span>Out: {format(new Date(v.sign_out_time), 'HH:mm')}</span>}
-                    {v.phone && <span>{v.phone}</span>}
+                    {v.visitor_phone && <span>{v.visitor_phone}</span>}
                     {v.vehicle_reg && <span>{v.vehicle_reg}</span>}
                   </div>
                 </div>
