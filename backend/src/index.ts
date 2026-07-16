@@ -178,6 +178,8 @@ import socialActivitiesRoutes from './routes/socialActivities.routes';
 import recruitmentRoutes from './routes/recruitment.routes';
 import consentsRoutes from './routes/consents.routes';
 import confidentialRoutes from './routes/confidential.routes';
+import aiRoutes from './routes/ai.routes';
+app.use('/api/ai', aiRoutes);
 app.use('/api/noticeboard', noticeboardRoutes);
 app.use('/api/observations', observationsRoutes);
 app.use('/api/seizures', seizuresRoutes);

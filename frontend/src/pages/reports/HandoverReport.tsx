@@ -4,7 +4,8 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Select } from '../../components/ui'
-import { FileText, Printer, Save, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { FileText, Printer, Save, Check, ChevronDown, ChevronUp, Brain, ExternalLink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import SignaturePad from '../../components/SignaturePad'
 import SpeechInput from '../../components/SpeechInput'
 
@@ -269,14 +270,25 @@ export default function HandoverReport() {
     finally { setSavingId(null) }
   }
 
+  const navigate = useNavigate()
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6 no-print">
-        <h1 className="font-display text-2xl text-white flex items-center gap-2">
-          <FileText className="w-6 h-6 text-amber-400" /> Handover Report
-        </h1>
-        <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE d MMMM yyyy')}</p>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="font-display text-2xl text-white flex items-center gap-2">
+              <FileText className="w-6 h-6 text-amber-400" /> Handover Report
+            </h1>
+            <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE d MMMM yyyy')}</p>
+          </div>
+          <button onClick={() => navigate('/ai-assistant')}
+            className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', color: '#a5b4fc' }}>
+            <Brain className="w-4 h-4" /> AI Handover Summary <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+          </button>
+        </div>
       </div>
 
       {/* Controls */}

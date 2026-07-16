@@ -11,7 +11,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock
+  FileSignature, Search, Lock, Brain
 } from 'lucide-react'
 
 const navSections = [
@@ -72,6 +72,12 @@ const navSections = [
       { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: [], featureKey: 'audit_trail' },
       { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: [], featureKey: 'reports' },
       { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: [], featureKey: 'cqc_notifications' },
+    ]
+  },
+  {
+    label: 'AI FEATURES', highlight: true,
+    items: [
+      { label: 'AI Assistant', to: '/ai-assistant', icon: Brain, roles: [], featureKey: 'ai_assistant' },
     ]
   },
   {
