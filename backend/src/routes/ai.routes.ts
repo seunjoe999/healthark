@@ -6,6 +6,8 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import https from 'https';
+import { URLSearchParams } from 'url';
 
 // ── Groq AI caller (same pattern as aiAudit.routes.ts) ───────────────────────
 async function callAI(prompt: string, maxTokens = 900): Promise<string> {
@@ -74,6 +76,63 @@ function handleAIError(err: any, res: Response, next: NextFunction) {
     } as ApiResponse);
   }
   return next(err);
+}
+
+// ── Twilio SMS helper ──────────────────────────────────────────────────────────
+/**
+ * Format a UK phone number to E.164 (+44...).
+ * Accepts: 07xxx, +447xxx, 447xxx
+ * Returns null if the number is missing or clearly invalid.
+ */
+function formatUKPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('44') && digits.length >= 11) return `+${digits}`;
+  if (digits.startsWith('0') && digits.length >= 10) return `+44${digits.slice(1)}`;
+  if (digits.length >= 10) return `+44${digits}`;
+  return null;
+}
+
+/**
+ * Send an SMS via Twilio REST API using Node's built-in https module.
+ * Throws on network errors; resolves with the Twilio response body on success.
+ */
+function sendTwilioSms(to: string, body: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const sid = process.env.TWILIO_ACCOUNT_SID!;
+    const token = process.env.TWILIO_AUTH_TOKEN!;
+    const from = process.env.TWILIO_FROM_NUMBER!;
+
+    const payload = new URLSearchParams({ To: to, From: from, Body: body }).toString();
+    const auth = Buffer.from(`${sid}:${token}`).toString('base64');
+
+    const options: https.RequestOptions = {
+      hostname: 'api.twilio.com',
+      path: `/2010-04-01/Accounts/${sid}/Messages.json`,
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Twilio responded with HTTP ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
 }
 
 const router = Router();
@@ -866,7 +925,7 @@ router.post(
       const staff = staffRows[0] as any;
       const effectiveHomeId = homeId || staff.home_id;
 
-      // Insert notification
+      // Insert in-app notification (always)
       await query(
         `INSERT INTO notifications (recipient_id, home_id, title, body, type)
          VALUES ($1, $2, $3, $4, $5)`,
@@ -879,9 +938,46 @@ router.post(
         ],
       );
 
+      // ── Optional SMS via Twilio ────────────────────────────────────────────
+      let smsSent = false;
+
+      if (process.env.TWILIO_ACCOUNT_SID) {
+        try {
+          const phone = formatUKPhone(staff.phone);
+          if (!phone) {
+            console.warn(`[SMS] No valid phone number for staff ${staff.name} (id: ${staffId}) — skipping SMS`);
+          } else {
+            // Fetch home name for the SMS body
+            let homeName = 'the care home';
+            if (effectiveHomeId) {
+              try {
+                const homeRows = await query(
+                  `SELECT name FROM homes WHERE id = $1`,
+                  [effectiveHomeId],
+                );
+                if (homeRows.length) homeName = (homeRows[0] as any).name;
+              } catch {
+                // non-fatal — use default
+              }
+            }
+
+            const smsBody =
+              `Hi ${staff.name}, you have been requested to cover a ${shiftType} shift on ${shiftDate}` +
+              ` at ${homeName}. Please confirm with your manager. - CompCare Hub`;
+
+            await sendTwilioSms(phone, smsBody);
+            smsSent = true;
+            console.log(`[SMS] Sent cover request SMS to ${staff.name} (${phone})`);
+          }
+        } catch (smsErr: any) {
+          console.error(`[SMS] Failed to send SMS to ${staff.name}:`, smsErr?.message);
+          // Non-fatal — in-app notification was already saved
+        }
+      }
+
       res.json({
         success: true,
-        data: { message: 'Notification sent', staffName: staff.name },
+        data: { message: 'Notification sent', staffName: staff.name, smsSent },
       } as ApiResponse);
     } catch (err: any) {
       return handleAIError(err, res, next);

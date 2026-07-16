@@ -111,6 +111,78 @@ async function rolloverPendingTasks() {
   } catch (err) { logger.error('Task rollover failed:', err); }
 }
 
+// Daily at 08:00: check for staff training expiring within 30 days
+async function checkExpiringTraining() {
+  try {
+    const { query } = await import('../config/database');
+    const rows = await query<any>(
+      `SELECT st.staff_id, st.training_name, st.expiry_date,
+              s.first_name || ' ' || s.last_name as staff_name,
+              s.home_id,
+              mgr.id as manager_id
+       FROM staff_training st
+       JOIN staff s ON s.id = st.staff_id AND s.is_active = true
+       JOIN staff mgr ON mgr.home_id = s.home_id
+           AND mgr.role IN ('home_manager','group_admin') AND mgr.is_active = true
+       WHERE st.expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
+         AND st.is_active = true
+       LIMIT 100`
+    );
+    for (const row of rows) {
+      const expiryFormatted = new Date(row.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      await query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+         VALUES ($1,$2,$3,$4,'warning','/training')
+         ON CONFLICT DO NOTHING`,
+        [
+          row.manager_id,
+          row.home_id,
+          `Training expiring soon — ${row.staff_name}`,
+          `${row.training_name} expires on ${expiryFormatted}. Please arrange renewal.`,
+        ]
+      );
+    }
+    logger.info(`Training expiry check complete — ${rows.length} records checked`);
+  } catch (err) {
+    logger.error('Training expiry check failed:', err);
+  }
+}
+
+// Daily at 07:00: check for medication stock at or below minimum threshold
+async function checkLowMedicationStock() {
+  try {
+    const { query } = await import('../config/database');
+    const rows = await query<any>(
+      `SELECT ms.id, ms.medication_name, ms.current_quantity, ms.minimum_quantity,
+              ms.unit, ms.home_id,
+              mgr.id as manager_id
+       FROM medication_stock ms
+       JOIN staff mgr ON mgr.home_id = ms.home_id
+           AND mgr.role IN ('home_manager','group_admin') AND mgr.is_active = true
+       WHERE ms.current_quantity <= ms.minimum_quantity
+         AND ms.is_active = true
+       LIMIT 100`
+    );
+    for (const row of rows) {
+      await query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+         VALUES ($1,$2,$3,$4,'warning','/medication-stock')
+         ON CONFLICT DO NOTHING`,
+        [
+          row.manager_id,
+          row.home_id,
+          `Low medication stock — ${row.medication_name}`,
+          `Current stock: ${row.current_quantity} ${row.unit}. Minimum threshold: ${row.minimum_quantity} ${row.unit}. Please reorder.`,
+        ]
+      );
+    }
+    logger.info(`Medication stock check complete — ${rows.length} low-stock items found`);
+  } catch (err: any) {
+    // Silently handle missing table or column errors
+    logger.warn('Medication stock check skipped (table or column may not exist):', err?.message);
+  }
+}
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
@@ -126,11 +198,17 @@ export function startScheduler(): void {
     await alertsService.checkCarePlanReviews();
   });
 
+  // Every morning at 7am: low medication stock alerts
+  cron.schedule('0 7 * * *', checkLowMedicationStock);
+
   // Every morning at 8am: training expiry checks
   cron.schedule('0 8 * * *', async () => {
     logger.info('Scheduler: checking training expiry');
     await alertsService.checkTrainingExpiry();
   });
+
+  // Every morning at 8am: expiring training notifications
+  cron.schedule('0 8 * * *', checkExpiringTraining);
 
   // Every morning at 9am: unreviewed incidents
   cron.schedule('0 9 * * *', async () => {

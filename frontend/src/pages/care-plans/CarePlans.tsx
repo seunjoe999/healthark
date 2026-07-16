@@ -811,7 +811,19 @@ export default function CarePlans() {
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      {/* Print-only header — hidden on screen, visible when printing */}
+      <div className="print-only">
+        <div className="print-logo">CompCare Hub</div>
+        <div className="print-title">Support Plans</div>
+        {selectedSu && (
+          <div className="print-meta">
+            Resident: {getName(selectedSu)} &nbsp;·&nbsp;
+            Printed: {format(new Date(), 'd MMMM yyyy, HH:mm')}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 no-print">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
             <FileText className="w-6 h-6" style={{ color: '#e8b130' }} /> SUPPORT PLANS
@@ -826,7 +838,7 @@ export default function CarePlans() {
       </div>
 
       {/* SU + Home selectors */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-end no-print">
         {homes.length > 1 && (
           <div className="flex-1 min-w-[180px]">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Care Home</label>

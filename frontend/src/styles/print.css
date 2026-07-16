@@ -1,0 +1,208 @@
+/* ============================================================
+   CompCare Hub — Global Print / PDF Export Stylesheet
+   Imported in main.tsx. All rules scoped to @media print.
+   ============================================================ */
+
+@media print {
+  /* ── Reset: white page, black text ── */
+  *,
+  *::before,
+  *::after {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html,
+  body {
+    width: 100%;
+    font-size: 11pt;
+    line-height: 1.4;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* ── Page margins ── */
+  @page {
+    margin: 1.5cm 1.5cm 2cm 1.5cm;
+    size: A4 portrait;
+  }
+
+  /* ── Hide UI chrome ── */
+  #sidebar,
+  .sidebar,
+  [data-sidebar],
+  nav,
+  header,
+  .topbar,
+  .top-bar,
+  [data-topbar],
+  .no-print,
+  button:not(.print-keep),
+  [role="dialog"],
+  [data-radix-portal],
+  .modal,
+  .modal-overlay,
+  .toast,
+  [data-sonner-toaster],
+  [class*="Toastify"],
+  [class*="react-hot-toast"],
+  [class*="toaster"],
+  footer {
+    display: none !important;
+  }
+
+  /* ── Show print-only elements ── */
+  .print-only {
+    display: block !important;
+  }
+
+  /* ── Page breaks ── */
+  .print-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ── Print header (normally hidden, visible in print) ── */
+  .print-only {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #000;
+  }
+
+  .print-only .print-logo {
+    font-size: 14pt;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .print-only .print-title {
+    font-size: 16pt;
+    font-weight: 700;
+    margin: 0.25rem 0;
+  }
+
+  .print-only .print-meta {
+    font-size: 9pt;
+    color: #555 !important;
+    margin-top: 0.25rem;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+
+  th,
+  td {
+    border: 1px solid #000 !important;
+    padding: 4pt 6pt;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 700;
+    background: #f0f0f0 !important;
+  }
+
+  /* ── Links ── */
+  a {
+    text-decoration: none !important;
+    color: black !important;
+  }
+
+  /* ── Remove rounded corners and shadows ── */
+  .rounded,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl,
+  [class*="rounded"] {
+    border-radius: 0 !important;
+  }
+
+  /* ── Make borders visible ── */
+  .border,
+  [class*="border-"] {
+    border-color: #000 !important;
+  }
+
+  /* ── Print content area ── */
+  .print-content {
+    display: block !important;
+  }
+
+  /* ── Typography ── */
+  h1 { font-size: 16pt; font-weight: 700; margin: 0 0 0.25rem; }
+  h2 { font-size: 14pt; font-weight: 700; margin: 0.5rem 0 0.25rem; }
+  h3 { font-size: 12pt; font-weight: 700; margin: 0.4rem 0 0.2rem; }
+  h4 { font-size: 11pt; font-weight: 600; margin: 0.3rem 0 0.15rem; }
+  p  { margin: 0.2rem 0 0.4rem; }
+
+  /* ── Card-like sections ── */
+  .print-section {
+    border: 1px solid #ccc !important;
+    padding: 8pt 10pt;
+    margin-bottom: 8pt;
+    page-break-inside: avoid;
+  }
+
+  /* ── Footer via CSS: home name + date ── */
+  @page {
+    @bottom-center {
+      content: "CompCare Hub  |  Printed: " attr(data-print-date);
+      font-size: 8pt;
+      color: #555;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 8pt;
+      color: #555;
+    }
+  }
+
+  /* ── Ensure main layout wrapper doesn't clip ── */
+  #root,
+  main,
+  [class*="layout"],
+  [class*="page-wrapper"],
+  .max-w-5xl,
+  .max-w-7xl {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ── Textarea / input values ── */
+  textarea,
+  input[type="text"],
+  input[type="date"] {
+    border: 1px solid #999 !important;
+    padding: 2pt 4pt;
+    resize: none;
+  }
+
+  /* ── Images ── */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+
+/* ── Screen: hide print-only elements ── */
+.print-only {
+  display: none;
+}

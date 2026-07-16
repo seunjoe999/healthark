@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Card, SectionHeading, Modal, Input, PrintButton } from '../../components/ui'
-import { BookOpen, CheckCircle, Lock, Play, Award, ChevronRight, X, RotateCcw } from 'lucide-react'
+import { BookOpen, CheckCircle, Lock, Play, Award, ChevronRight, X, RotateCcw, AlertTriangle } from 'lucide-react'
+import { differenceInDays } from 'date-fns'
 import api from '../../api'
 import toast from 'react-hot-toast'
 
@@ -97,6 +98,7 @@ export default function Training() {
   const [activeSection, setActiveSection] = useState(0)
   const [loading, setLoading] = useState(false)
   const [externalCourses, setExternalCourses] = useState<any[]>([])
+  const [courseFilter, setCourseFilter] = useState<'all' | 'expiring'>('all')
 
   useEffect(() => {
     api.get('/staff-hr/training-modules').then(res => {
@@ -219,34 +221,90 @@ export default function Training() {
       {/* External / manually-added training records */}
       {externalCourses.length > 0 && (
         <div className="mt-8">
-          <h2 className="font-display text-lg text-slate-900 font-semibold mb-3 flex items-center gap-2">
-            <Award className="w-5 h-5 text-purple-500" /> External Training &amp; Courses
-          </h2>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h2 className="font-display text-lg text-slate-900 font-semibold flex items-center gap-2">
+              <Award className="w-5 h-5 text-purple-500" /> External Training &amp; Courses
+            </h2>
+            {/* Filter tabs */}
+            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+              <button
+                onClick={() => setCourseFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${courseFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                All
+              </button>
+              <button
+                onClick={() => setCourseFilter('expiring')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${courseFilter === 'expiring' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                <AlertTriangle className="w-3 h-3" /> Expiring Soon
+                {(() => {
+                  const count = externalCourses.filter(c => {
+                    if (!c.expiry_date) return false
+                    const days = differenceInDays(new Date(c.expiry_date), new Date())
+                    return days < 0 || days <= 30
+                  }).length
+                  return count > 0 ? <span className="ml-1 bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 text-xs">{count}</span> : null
+                })()}
+              </button>
+            </div>
+          </div>
           <div className="space-y-2">
-            {externalCourses.map((c: any) => (
-              <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-card px-5 py-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 text-sm">{c.course_name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Completed: {c.completed_date ? new Date(c.completed_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                    {c.duration_hours ? ` · ${c.duration_hours}h` : ''}
-                  </p>
-                </div>
-                {c.expiry_date && (
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-slate-500">Expires</p>
-                    <p className={`text-xs font-semibold ${new Date(c.expiry_date) < new Date() ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {new Date(c.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
+            {externalCourses
+              .filter(c => {
+                if (courseFilter === 'expiring') {
+                  if (!c.expiry_date) return false
+                  const days = differenceInDays(new Date(c.expiry_date), new Date())
+                  return days < 0 || days <= 30
+                }
+                return true
+              })
+              .map((c: any) => {
+                const daysUntilExpiry = c.expiry_date ? differenceInDays(new Date(c.expiry_date), new Date()) : null
+                const isExpired = daysUntilExpiry !== null && daysUntilExpiry < 0
+                const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30
+                return (
+                  <div key={c.id} className={`bg-white rounded-2xl border shadow-card px-5 py-4 flex items-center gap-4 ${isExpired ? 'border-rose-200' : isExpiringSoon ? 'border-amber-200' : 'border-slate-100'}`}>
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-slate-900 text-sm">{c.course_name}</p>
+                        {isExpired && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                            EXPIRED
+                          </span>
+                        )}
+                        {isExpiringSoon && !isExpired && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                            <AlertTriangle className="w-3 h-3" /> Expires soon
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Completed: {c.completed_date ? new Date(c.completed_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        {c.duration_hours ? ` · ${c.duration_hours}h` : ''}
+                      </p>
+                    </div>
+                    {c.expiry_date && (
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs text-slate-500">Expires</p>
+                        <p className={`text-xs font-semibold ${isExpired ? 'text-rose-600' : isExpiringSoon ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {new Date(c.expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                    )}
+                    {c.certificate_url && (
+                      <a href={c.certificate_url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-purple-600 hover:underline flex-shrink-0">Certificate</a>
+                    )}
                   </div>
-                )}
-                {c.certificate_url && (
-                  <a href={c.certificate_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-purple-600 hover:underline flex-shrink-0">Certificate</a>
-                )}
-              </div>
-            ))}
+                )
+              })}
+            {courseFilter === 'expiring' && externalCourses.filter(c => {
+              if (!c.expiry_date) return false
+              const days = differenceInDays(new Date(c.expiry_date), new Date())
+              return days < 0 || days <= 30
+            }).length === 0 && (
+              <div className="text-center py-8 text-slate-400 text-sm">No expiring or expired training records.</div>
+            )}
           </div>
         </div>
       )}

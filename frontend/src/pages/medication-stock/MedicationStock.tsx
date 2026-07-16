@@ -298,7 +298,12 @@ function StockCard({
       <div className="flex flex-wrap gap-1.5 min-h-[20px]">
         {isExpired && <span className="badge badge-critical">Expired</span>}
         {isSoon && !isExpired && <span className="badge badge-warning">Expiring soon</span>}
-        {isLow && <span className="badge badge-warning flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Low stock</span>}
+        {isLow && (
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171' }}>
+            <AlertTriangle className="w-3 h-3" />LOW STOCK
+          </span>
+        )}
       </div>
 
       {/* Name & details */}
@@ -414,6 +419,14 @@ export default function MedicationStock() {
   }
 
   const alerts = items.filter(i => i.low_stock || i.expired || i.expiring_soon)
+  const lowStockItems = items.filter(i => i.low_stock)
+
+  // Sort: low-stock items bubble to the top, then expired, then expiring soon, then normal
+  const sortedItems = [...items].sort((a, b) => {
+    const score = (i: StockItem) =>
+      i.low_stock && i.expired ? 0 : i.low_stock ? 1 : i.expired ? 2 : i.expiring_soon ? 3 : 4
+    return score(a) - score(b)
+  })
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
@@ -435,6 +448,16 @@ export default function MedicationStock() {
         </div>
       </div>
 
+      {/* Low stock red banner */}
+      {lowStockItems.length > 0 && (
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)' }}>
+          <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+          <p className="text-sm font-semibold text-rose-400">
+            ⚠ {lowStockItems.length} medication{lowStockItems.length !== 1 ? 's are' : ' is'} at or below minimum stock levels
+          </p>
+        </div>
+      )}
+
       {/* Filter by resident */}
       <div className="flex items-center gap-3 flex-wrap">
         <label className="text-sm text-slate-400 font-medium whitespace-nowrap">Filter by resident:</label>
@@ -444,7 +467,7 @@ export default function MedicationStock() {
         </select>
       </div>
 
-      {/* Alert banner */}
+      {/* Alert banner (expired / expiring soon / low stock details) */}
       {alerts.length > 0 && (
         <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
           <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -457,8 +480,8 @@ export default function MedicationStock() {
               {alerts.filter(i => i.expiring_soon && !i.expired).length > 0 && (
                 <li>{alerts.filter(i => i.expiring_soon && !i.expired).length} medication{alerts.filter(i => i.expiring_soon && !i.expired).length !== 1 ? 's are' : ' is'} expiring within 14 days</li>
               )}
-              {alerts.filter(i => i.low_stock).length > 0 && (
-                <li>{alerts.filter(i => i.low_stock).length} medication{alerts.filter(i => i.low_stock).length !== 1 ? 's are' : ' is'} below reorder threshold</li>
+              {lowStockItems.length > 0 && (
+                <li>{lowStockItems.length} medication{lowStockItems.length !== 1 ? 's are' : ' is'} below reorder threshold</li>
               )}
             </ul>
           </div>
@@ -476,7 +499,7 @@ export default function MedicationStock() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {items.map(item => (
+          {sortedItems.map(item => (
             <StockCard
               key={item.id}
               item={item}

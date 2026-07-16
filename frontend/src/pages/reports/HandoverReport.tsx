@@ -283,11 +283,18 @@ export default function HandoverReport() {
             </h1>
             <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE d MMMM yyyy')}</p>
           </div>
-          <button onClick={() => navigate('/ai-assistant')}
-            className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', color: '#a5b4fc' }}>
-            <Brain className="w-4 h-4" /> AI Handover Summary <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-          </button>
+          <div className="no-print flex items-center gap-2">
+            <button onClick={() => navigate('/ai-assistant')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', color: '#a5b4fc' }}>
+              <Brain className="w-4 h-4" /> AI Handover Summary <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+            </button>
+            <button onClick={() => window.print()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+              style={{ background: 'rgba(232,177,48,0.12)', border: '1px solid rgba(232,177,48,0.35)', color: '#e8b130' }}>
+              <Printer className="w-4 h-4" /> Print / Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -419,28 +426,31 @@ export default function HandoverReport() {
         )}
       </div>
 
-      {/* Print-only version */}
-      <div id="handover-print" className="hidden print:block bg-white p-8">
-        <h2 className="font-bold text-2xl text-slate-900 mb-1">{homeName} Handover</h2>
-        <p className="text-slate-600 mb-6">{format(new Date(), 'd MMMM yyyy')} · {SHIFT_LABELS[shift]} shift · {SHIFT_TIMES[shift]} · {user?.firstName} {user?.lastName}</p>
+      {/* Print-only header — hidden on screen, shown when printing */}
+      <div className="print-only">
+        <div className="print-logo">CompCare Hub</div>
+        <div className="print-title">{homeName} Handover Report</div>
+        <div className="print-meta">
+          {SHIFT_LABELS[shift]} Shift &nbsp;·&nbsp; {SHIFT_TIMES[shift]} &nbsp;·&nbsp;
+          {format(new Date(), 'd MMMM yyyy')} &nbsp;·&nbsp;
+          Printed by: {user?.firstName} {user?.lastName}
+        </div>
+      </div>
+
+      {/* Print-only resident notes — visible in print */}
+      <div className="print-only print-content" style={{ marginTop: '1rem' }}>
         {(filterSuId ? sus.filter(s => s.id === filterSuId) : sus).map(su => {
           const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
           return (
-            <div key={su.id} className="mb-8 border-b border-slate-200 pb-6">
-              <h3 className="font-bold text-slate-900 mb-2">{name}</h3>
-              <p className="text-sm text-slate-700 whitespace-pre-line">{residentNotes[su.id] || '—'}</p>
+            <div key={su.id} className="print-section print-avoid-break" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ margin: '0 0 0.3rem', fontSize: '12pt', fontWeight: 700 }}>{name}</h3>
+              <p style={{ fontSize: '10pt', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                {residentNotes[su.id] || '— No handover notes recorded for this resident —'}
+              </p>
             </div>
           )
         })}
       </div>
-
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          #handover-print { display: block !important; }
-          @page { margin: 1.5cm; }
-        }
-      `}</style>
     </div>
   )
 }
