@@ -38,7 +38,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
               room_number, status, admission_date, funding_type,
               care_level
        FROM service_users
-       WHERE home_id = $1 AND status = 'active'
+       WHERE home_id = $1 AND status = 'live'
        ORDER BY room_number NULLS LAST, last_name`,
       [homeId]
     );
@@ -122,7 +122,7 @@ router.get('/rooms', async (req: Request, res: Response, next: NextFunction) => 
       `SELECT id, first_name || ' ' || last_name AS name,
               room_number, care_level, admission_date, funding_type
        FROM service_users
-       WHERE home_id = $1 AND status = 'active'`,
+       WHERE home_id = $1 AND status = 'live'`,
       [homeId]
     );
 

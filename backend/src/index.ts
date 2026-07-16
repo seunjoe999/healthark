@@ -2451,6 +2451,157 @@ async function seedRolePermissions() {
   }
 }
 
+async function createNewFeatureTables() {
+  const stmts = [
+    // Fluid Balance
+    `CREATE TABLE IF NOT EXISTS fluid_balance (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, su_id UUID NOT NULL, recorded_by UUID NOT NULL,
+      record_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      record_time TIME NOT NULL DEFAULT CURRENT_TIME,
+      type TEXT NOT NULL CHECK (type IN ('input','output')),
+      category TEXT NOT NULL, amount_ml INTEGER NOT NULL, notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Weight Records
+    `CREATE TABLE IF NOT EXISTS weight_records (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, su_id UUID NOT NULL, recorded_by UUID NOT NULL,
+      record_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      weight_kg NUMERIC(5,2) NOT NULL, height_cm NUMERIC(5,1), bmi NUMERIC(4,1), notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Wound Assessments
+    `CREATE TABLE IF NOT EXISTS wound_assessments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, su_id UUID NOT NULL, assessed_by UUID NOT NULL,
+      assessment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      wound_location TEXT NOT NULL,
+      wound_type TEXT NOT NULL CHECK (wound_type IN ('pressure_ulcer','surgical','leg_ulcer','diabetic','traumatic','other')),
+      stage TEXT CHECK (stage IN ('1','2','3','4','unstageable','deep_tissue','none')),
+      size_length_cm NUMERIC(5,1), size_width_cm NUMERIC(5,1), size_depth_cm NUMERIC(5,1),
+      wound_bed TEXT, exudate_amount TEXT CHECK (exudate_amount IN ('none','low','moderate','high')),
+      exudate_type TEXT, surrounding_skin TEXT, dressing_used TEXT, dressing_frequency TEXT,
+      pain_score INTEGER CHECK (pain_score BETWEEN 0 AND 10),
+      healing_status TEXT CHECK (healing_status IN ('improving','static','deteriorating','healed')),
+      notes TEXT, next_review_date DATE,
+      status TEXT DEFAULT 'active' CHECK (status IN ('active','healed','closed')),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // PEEP Plans
+    `CREATE TABLE IF NOT EXISTS peep_plans (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, su_id UUID NOT NULL, created_by UUID NOT NULL, review_date DATE,
+      mobility_level TEXT NOT NULL CHECK (mobility_level IN ('independent','assisted_1','assisted_2','hoist','bedbound','wheelchair')),
+      can_self_evacuate BOOLEAN DEFAULT false, evacuation_method TEXT NOT NULL,
+      equipment_needed TEXT, number_of_staff_required INTEGER DEFAULT 1,
+      assembly_point TEXT, special_considerations TEXT,
+      known_to_fire_service BOOLEAN DEFAULT false,
+      reviewed_by UUID, reviewed_at TIMESTAMPTZ,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Hospital Admissions
+    `CREATE TABLE IF NOT EXISTS hospital_admissions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, su_id UUID NOT NULL, logged_by UUID NOT NULL,
+      hospital_name TEXT NOT NULL, ward TEXT, admission_date DATE NOT NULL,
+      admission_reason TEXT NOT NULL,
+      admission_type TEXT NOT NULL CHECK (admission_type IN ('emergency','planned','day_case')),
+      discharge_date DATE,
+      discharge_destination TEXT CHECK (discharge_destination IN ('home','care_home','other_hospital','deceased') OR discharge_destination IS NULL),
+      outcome_notes TEXT, follow_up_required BOOLEAN DEFAULT false, follow_up_notes TEXT,
+      status TEXT DEFAULT 'admitted' CHECK (status IN ('admitted','discharged')),
+      created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Environmental Checks
+    `CREATE TABLE IF NOT EXISTS environmental_checks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, recorded_by UUID NOT NULL,
+      check_date DATE NOT NULL DEFAULT CURRENT_DATE, check_time TIME,
+      check_type TEXT NOT NULL CHECK (check_type IN (
+        'fridge_temp','freezer_temp','room_temp','water_temp',
+        'legionella_flush','fire_alarm_test','emergency_lighting',
+        'hoist_check','window_restrictor','other'
+      )),
+      location TEXT NOT NULL, reading_value TEXT, unit TEXT,
+      result TEXT NOT NULL CHECK (result IN ('pass','fail','action_required')),
+      action_taken TEXT, notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Waiting List
+    `CREATE TABLE IF NOT EXISTS waiting_list (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, full_name TEXT NOT NULL, date_of_birth DATE,
+      contact_name TEXT, contact_phone TEXT, contact_email TEXT, care_needs TEXT,
+      funding_type TEXT CHECK (funding_type IN ('local_authority','self_funded','nhs','unknown')),
+      priority TEXT DEFAULT 'standard' CHECK (priority IN ('urgent','high','standard','low')),
+      enquiry_date DATE NOT NULL DEFAULT CURRENT_DATE, expected_admission_date DATE,
+      preferred_room TEXT,
+      status TEXT DEFAULT 'enquiry' CHECK (status IN ('enquiry','assessment_booked','assessment_complete','offer_made','accepted','declined','withdrawn')),
+      notes TEXT, assigned_to UUID, created_by UUID NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Visitor Log
+    `CREATE TABLE IF NOT EXISTS visitor_log (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, su_id UUID, visitor_name TEXT NOT NULL,
+      visitor_relationship TEXT, visitor_phone TEXT,
+      sign_in_time TIMESTAMPTZ NOT NULL DEFAULT NOW(), sign_out_time TIMESTAMPTZ,
+      purpose TEXT DEFAULT 'social_visit' CHECK (purpose IN ('social_visit','professional','contractor','delivery','other')),
+      vehicle_reg TEXT, notes TEXT, signed_in_by UUID NOT NULL, signed_out_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Contractors
+    `CREATE TABLE IF NOT EXISTS contractors (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, company_name TEXT NOT NULL,
+      contact_name TEXT, contact_phone TEXT, contact_email TEXT,
+      service_type TEXT NOT NULL, insurance_expiry DATE,
+      dbs_required BOOLEAN DEFAULT false, dbs_expiry DATE,
+      gas_safe_number TEXT, electrician_number TEXT,
+      contract_start DATE, contract_end DATE,
+      last_visit_date DATE, next_scheduled_visit DATE, notes TEXT,
+      status TEXT DEFAULT 'active' CHECK (status IN ('active','inactive','expired')),
+      added_by UUID NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Lessons Learned
+    `CREATE TABLE IF NOT EXISTS lessons_learned (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, created_by UUID NOT NULL,
+      source_type TEXT NOT NULL CHECK (source_type IN ('incident','complaint','near_miss','audit','inspection','staff_feedback','other')),
+      source_reference TEXT, date_of_event DATE NOT NULL,
+      title TEXT NOT NULL, what_happened TEXT NOT NULL, root_cause TEXT,
+      lesson TEXT NOT NULL, action_taken TEXT NOT NULL, action_owner TEXT,
+      action_due_date DATE, action_completed BOOLEAN DEFAULT false,
+      action_completed_date DATE, shared_with_team BOOLEAN DEFAULT false,
+      shared_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // External Contacts
+    `CREATE TABLE IF NOT EXISTS external_contacts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      home_id UUID NOT NULL, name VARCHAR(200) NOT NULL,
+      organisation VARCHAR(200), role VARCHAR(100) NOT NULL,
+      category VARCHAR(50) NOT NULL DEFAULT 'professional',
+      phone VARCHAR(50), email VARCHAR(200), address TEXT, notes TEXT,
+      is_active BOOLEAN DEFAULT true, created_by UUID,
+      created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // Add missing columns to staff_absences (created by createCoreTables with old schema)
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS reason TEXT`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS logged_by UUID`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS return_to_work_date DATE`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS return_to_work_completed BOOLEAN DEFAULT false`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS return_to_work_notes TEXT`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS fit_note_provided BOOLEAN DEFAULT false`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS fit_note_end_date DATE`,
+    `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+  ];
+  for (const sql of stmts) {
+    await pool.query(sql).catch((e: any) => logger.warn('createNewFeatureTables: ' + e.message));
+  }
+  logger.info('New feature tables ready');
+}
+
 async function bootstrap() {
   try {
     await pool.query('SELECT 1');
@@ -2481,6 +2632,7 @@ async function bootstrap() {
   `).catch((err: any) => logger.warn('staff_status pending enum skipped: ' + err?.message));
 
   try { await createCoreTables(); } catch (err: any) { logger.warn('createCoreTables error: ' + err?.message); }
+  try { await createNewFeatureTables(); } catch (err: any) { logger.warn('createNewFeatureTables error: ' + err?.message); }
   try { await ensureColumns(); } catch (err: any) { logger.warn('ensureColumns error: ' + err?.message); }
   try { await seedRolePermissions(); } catch (err: any) { logger.warn('seedRolePermissions error: ' + err?.message); }
   try { await seedNewFeatures(); } catch (err: any) { logger.warn('seedNewFeatures error: ' + err?.message); }

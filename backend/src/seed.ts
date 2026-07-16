@@ -11,7 +11,7 @@ export async function seedNewFeatures() {
       'SELECT id, first_name, last_name FROM staff WHERE home_id = $1 LIMIT 3', [homeId]
     );
     const residents = await query<{ id: string; first_name: string; last_name: string }>(
-      "SELECT id, first_name, last_name FROM service_users WHERE home_id = $1 AND status = 'active' LIMIT 3", [homeId]
+      "SELECT id, first_name, last_name FROM service_users WHERE home_id = $1 AND status = 'live' LIMIT 3", [homeId]
     );
     const staffId = staff[0]?.id || null;
     const residentId = residents[0]?.id || null;

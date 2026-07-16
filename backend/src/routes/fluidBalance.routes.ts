@@ -16,7 +16,7 @@ const CREATE_TABLE = `
     su_id UUID NOT NULL,
     recorded_by UUID NOT NULL,
     record_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    record_time TIME NOT NULL,
+    record_time TIME NOT NULL DEFAULT CURRENT_TIME,
     type TEXT NOT NULL CHECK (type IN ('input','output')),
     category TEXT NOT NULL,
     amount_ml INTEGER NOT NULL,
@@ -40,7 +40,7 @@ function tok(req: Request, field: string): string {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await ensureTable();
-    const homeId = tok(req, 'homeId');
+    const homeId = (req.query.homeId as string) || tok(req, 'homeId');
     const { suId, date } = req.query as Record<string, string>;
     const targetDate = date || new Date().toISOString().slice(0, 10);
 
