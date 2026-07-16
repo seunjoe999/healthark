@@ -44,7 +44,7 @@ ensureTable().catch(console.error);
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const { date, checkType } = req.query;
+    const { date, checkType, days } = req.query;
 
     let sql = `
       SELECT
@@ -58,6 +58,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     if (date) { params.push(date); sql += ` AND ec.check_date = $${params.length}`; }
     if (checkType) { params.push(checkType); sql += ` AND ec.check_type = $${params.length}`; }
+    if (days && !date) {
+      params.push(Number(days));
+      sql += ` AND ec.check_date >= CURRENT_DATE - ($${params.length} || ' days')::INTERVAL`;
+    }
 
     sql += ' ORDER BY ec.check_date DESC, ec.created_at DESC';
 
