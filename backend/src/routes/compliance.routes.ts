@@ -27,8 +27,7 @@ function score(compliant: number, total: number): number {
   return Math.round((compliant / total) * 100);
 }
 
-// GET /api/compliance/dashboard?homeId=
-router.get('/dashboard', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
+async function dashboardHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId) {
@@ -223,7 +222,13 @@ router.get('/dashboard', requireRole('home_manager', 'group_admin', 'senior_care
 
     res.json({ success: true, data: result } as ApiResponse);
   } catch (err) { next(err); }
-});
+}
+
+// GET /api/compliance?homeId= — root alias (used by frontend dashboard widget)
+router.get('/', requireRole('home_manager', 'group_admin', 'senior_carer'), dashboardHandler);
+
+// GET /api/compliance/dashboard?homeId=
+router.get('/dashboard', requireRole('home_manager', 'group_admin', 'senior_carer'), dashboardHandler);
 
 // POST /api/compliance/ai-improvement — AI plan to raise overall compliance score
 router.post('/ai-improvement', async (req: Request, res: Response, next: NextFunction) => {

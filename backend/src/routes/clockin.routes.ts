@@ -495,6 +495,25 @@ router.get('/generate/:suId', authenticate, param('suId').isUUID(), validateRequ
 );
 
 
+// GET /api/clockin/sessions?homeId=&date=YYYY-MM-DD — clock-in/out sessions for a date
+router.get('/sessions', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const rows = await query<any>(
+      `SELECT ce.id, ce.staff_id, ce.event_type, ce.event_time, ce.geofence_passed,
+              ce.distance_metres, ce.punctuality,
+              s.first_name || ' ' || s.last_name as staff_name, s.role
+       FROM staff_clock_events ce
+       JOIN staff s ON s.id = ce.staff_id
+       WHERE ce.home_id = $1 AND ce.event_time::date = $2
+       ORDER BY ce.event_time ASC`,
+      [homeId, date]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 router.post('/generate-qr', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { homeId } = req.body;

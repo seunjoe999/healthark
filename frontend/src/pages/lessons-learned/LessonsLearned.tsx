@@ -4,6 +4,7 @@ import { BookOpen, Plus, TrendingUp, CheckSquare, AlertCircle, RefreshCw } from 
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Lesson {
   id: string;
@@ -33,6 +34,7 @@ interface Stats { total: number; open: number; in_progress: number; closed: numb
 const INCIDENT_TYPES = ['Fall', 'Medication Error', 'Safeguarding', 'Complaint', 'Near Miss', 'Infection', 'Equipment Failure', 'Staffing', 'Clinical', 'Environmental', 'Other'];
 
 export default function LessonsLearned() {
+  const { user } = useAuth();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, open: 0, in_progress: 0, closed: 0 });
   const [loading, setLoading] = useState(true);
@@ -43,9 +45,10 @@ export default function LessonsLearned() {
 
   const fetchData = async () => {
     try {
+      const params = user?.homeId ? { homeId: user.homeId } : {};
       const [lRes, sRes] = await Promise.all([
-        api.get('/lessons-learned'),
-        api.get('/lessons-learned/stats'),
+        api.get('/lessons-learned', { params }),
+        api.get('/lessons-learned/stats', { params }),
       ]);
       setLessons(lRes.data.data || []);
       const sd = sRes.data.data || {};

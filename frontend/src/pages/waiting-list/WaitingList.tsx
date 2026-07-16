@@ -4,6 +4,7 @@ import { List, Plus, Phone, Clock, CheckCircle, XCircle, RefreshCw } from 'lucid
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface WaitingEntry {
   id: number;
@@ -29,6 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function WaitingList() {
+  const { user } = useAuth();
   const [entries, setEntries] = useState<WaitingEntry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, waiting: 0, high_priority: 0, avg_wait_days: 0 });
   const [loading, setLoading] = useState(true);
@@ -38,9 +40,10 @@ export default function WaitingList() {
 
   const fetchData = async () => {
     try {
+      const hParams = user?.homeId ? { homeId: user.homeId } : {};
       const [listRes, statsRes] = await Promise.all([
-        api.get('/waiting-list', { params: filterStatus ? { status: filterStatus } : {} }),
-        api.get('/waiting-list/stats'),
+        api.get('/waiting-list', { params: filterStatus ? { status: filterStatus, ...hParams } : { ...hParams } }),
+        api.get('/waiting-list/stats', { params: hParams }),
       ]);
       setEntries(listRes.data.data || []);
       const sd = statsRes.data.data || {};

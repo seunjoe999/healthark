@@ -109,6 +109,29 @@ router.delete('/medications/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// GET /api/mar/records/today?homeId=<uuid> — dashboard summary for today
+router.get('/records/today', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.query.homeId as string;
+    if (!homeId) {
+      res.status(400).json({ success: false, error: 'homeId query parameter is required' });
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    // Count total scheduled doses and given doses for today across the home
+    const rows = await query<any>(
+      `SELECT
+         COUNT(*) AS due,
+         COUNT(CASE WHEN mr.given = true THEN 1 END) AS given
+       FROM mar_records mr
+       WHERE mr.home_id = $1 AND mr.record_date = $2`,
+      [homeId, today]
+    );
+    const row = rows[0] || { due: 0, given: 0 };
+    res.json({ success: true, data: { due: Number(row.due), given: Number(row.given) } });
+  } catch (err) { next(err); }
+});
+
 // GET /api/mar/records/:suId?date=2026-05-11
 router.get('/records/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

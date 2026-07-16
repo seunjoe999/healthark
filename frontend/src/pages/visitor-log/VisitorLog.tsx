@@ -4,6 +4,7 @@ import { Users, Plus, LogOut, Clock, Eye, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Visit {
   id: string;
@@ -20,6 +21,7 @@ interface Visit {
 interface CurrentlyIn { visitor_name: string; sign_in_time: string; purpose: string; resident_name: string | null; }
 
 export default function VisitorLog() {
+  const { user } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [currentlyIn, setCurrentlyIn] = useState<CurrentlyIn[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,10 +32,11 @@ export default function VisitorLog() {
 
   const fetchData = async () => {
     try {
+      const hId = user?.homeId || '';
       const [visitsRes, currentRes, resRes] = await Promise.all([
-        api.get('/visitor-log', { params: { date } }),
-        api.get('/visitor-log/currently-in'),
-        api.get('/service-users', { params: { status: 'live' } }),
+        api.get('/visitor-log', { params: { date, homeId: hId } }),
+        api.get('/visitor-log/currently-in', { params: { homeId: hId } }),
+        api.get('/service-users', { params: { status: 'live', homeId: hId } }),
       ]);
       setVisits(visitsRes.data.data || []);
       setCurrentlyIn(currentRes.data.data || []);

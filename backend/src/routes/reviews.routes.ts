@@ -27,7 +27,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     let sql = `SELECT r.*, s.first_name || ' ' || s.last_name as created_by_name,
                       su.first_name as su_first_name, su.last_name as su_last_name
                FROM su_reviews r
-               LEFT JOIN staff s ON s.id = r.created_by
+               LEFT JOIN staff s ON s.id = r.conducted_by
                LEFT JOIN service_users su ON su.id = r.su_id
                WHERE su.home_id = $1`;
     const params: unknown[] = [homeId];
@@ -46,7 +46,7 @@ router.get('/su/:suId', param('suId').isUUID(), validateRequest,
     try {
       const rows = await query(
         `SELECT r.*, s.first_name || ' ' || s.last_name as created_by_name
-         FROM su_reviews r LEFT JOIN staff s ON s.id = r.created_by
+         FROM su_reviews r LEFT JOIN staff s ON s.id = r.conducted_by
          WHERE r.su_id = $1 ORDER BY r.review_date DESC`,
         [req.params.suId]
       );
@@ -68,7 +68,7 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
         homeId = suRows[0]?.home_id || '';
       }
       const rows = await query(
-        `INSERT INTO su_reviews (su_id, home_id, created_by, review_type, review_date, summary,
+        `INSERT INTO su_reviews (su_id, home_id, conducted_by, review_type, review_date, summary,
           resident_feedback, family_feedback, outcomes, next_review_date, attendees, monthly_progress)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
         [suId, homeId, staffId, reviewType || 'care_review', reviewDate, summary,

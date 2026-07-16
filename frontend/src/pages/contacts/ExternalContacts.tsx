@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Phone, Plus, Mail, Building2, Search, RefreshCw, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Contact {
   id: number;
@@ -20,6 +21,7 @@ const CATEGORIES = ['professional', 'healthcare', 'emergency', 'authority', 'sup
 const EMPTY_FORM = { name: '', organisation: '', role: '', category: 'professional', phone: '', email: '', address: '', notes: '' };
 
 export default function ExternalContacts() {
+  const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -31,6 +33,7 @@ export default function ExternalContacts() {
   const fetchData = async () => {
     try {
       const params: Record<string, string> = {};
+      if (user?.homeId) params.homeId = user.homeId;
       if (search) params.search = search;
       if (filterCategory) params.category = filterCategory;
       const res = await api.get('/external-contacts', { params });

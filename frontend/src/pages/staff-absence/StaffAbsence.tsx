@@ -4,6 +4,7 @@ import { UserX, Plus, TrendingUp, Calendar, AlertCircle, RefreshCw } from 'lucid
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Absence {
   id: number;
@@ -28,6 +29,7 @@ const ABSENCE_TYPE_MAP: Record<string, string> = {
 const REASONS = ['Illness', 'Injury', 'Mental Health', 'Family Emergency', 'Bereavement', 'Medical Appointment', 'Unknown', 'Other'];
 
 export default function StaffAbsence() {
+  const { user } = useAuth();
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [bradford, setBradford] = useState<Bradford[]>([]);
   const [stats, setStats] = useState<Stats>({ total_absences: 0, active_absences: 0, total_days: 0, avg_days: 0 });
@@ -39,11 +41,12 @@ export default function StaffAbsence() {
 
   const fetchData = async () => {
     try {
+      const hParams = user?.homeId ? { homeId: user.homeId } : {};
       const [absRes, bfRes, statsRes, staffRes] = await Promise.all([
-        api.get('/staff-absence'),
-        api.get('/staff-absence/bradford'),
-        api.get('/staff-absence/stats'),
-        api.get('/staff', { params: { status: 'active' } }),
+        api.get('/staff-absence', { params: hParams }),
+        api.get('/staff-absence/bradford', { params: hParams }),
+        api.get('/staff-absence/stats', { params: hParams }),
+        api.get('/staff', { params: { status: 'active', ...hParams } }),
       ]);
       setAbsences(absRes.data.data || []);
       setBradford(bfRes.data.data || []);

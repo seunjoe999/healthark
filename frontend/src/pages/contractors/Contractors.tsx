@@ -4,6 +4,7 @@ import { Wrench, Plus, AlertTriangle, CheckCircle, Phone, Mail, RefreshCw, Edit2
 import { format, parseISO, isPast } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Contractor {
   id: string;
@@ -25,6 +26,7 @@ const SERVICE_TYPES = ['Plumbing', 'Electrical', 'Gas/Heating', 'Cleaning', 'Cat
 const EMPTY_FORM = { company_name: '', contact_name: '', contact_phone: '', contact_email: '', service_type: 'Plumbing', insurance_expiry: '', dbs_expiry: '', contract_start: '', contract_end: '', notes: '' };
 
 export default function Contractors() {
+  const { user } = useAuth();
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [expiring, setExpiring] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,8 @@ export default function Contractors() {
 
   const fetchData = async () => {
     try {
-      const [cRes, eRes] = await Promise.all([api.get('/contractors'), api.get('/contractors/expiring')]);
+      const params = user?.homeId ? { homeId: user.homeId } : {};
+      const [cRes, eRes] = await Promise.all([api.get('/contractors', { params }), api.get('/contractors/expiring', { params })]);
       setContractors(cRes.data.data || cRes.data || []);
       setExpiring(eRes.data.data || eRes.data || []);
     } catch { toast.error('Failed to load contractors'); }

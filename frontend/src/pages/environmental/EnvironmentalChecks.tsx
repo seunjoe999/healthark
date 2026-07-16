@@ -44,9 +44,10 @@ export default function EnvironmentalChecks() {
 
   const fetchData = async () => {
     try {
+      const hParams = user?.homeId ? { homeId: user.homeId } : {};
       const [checksRes, summaryRes] = await Promise.all([
-        api.get('/environmental', { params: { days: filter } }),
-        api.get('/environmental/summary'),
+        api.get('/environmental', { params: { days: filter, ...hParams } }),
+        api.get('/environmental/summary', { params: hParams }),
       ]);
       setChecks(checksRes.data.data || []);
       const sd = summaryRes.data.data || {};
