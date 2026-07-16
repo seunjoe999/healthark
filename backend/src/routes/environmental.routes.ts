@@ -38,7 +38,10 @@ async function ensureTable() {
   `, []);
 }
 
-ensureTable().catch(console.error);
+router.use(async (_req, _res, next) => {
+  try { await ensureTable(); } catch (_) {}
+  next();
+});
 
 // GET /api/environmental
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {

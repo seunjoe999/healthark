@@ -38,8 +38,10 @@ const CREATE_TABLE = `
     updated_at TIMESTAMPTZ DEFAULT NOW()
   )`;
 
-// Ensure table exists on module load
-query(CREATE_TABLE, []).catch(console.error);
+router.use(async (_req, _res, next) => {
+  try { await query(CREATE_TABLE, []); } catch (_) {}
+  next();
+});
 
 // GET /api/peep?homeId=&suId=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {

@@ -34,7 +34,10 @@ const init = async () => {
     )
   `);
 };
-init().catch((e) => console.error('Table init error:', e.message));
+router.use(async (_req, _res, next) => {
+  try { await init(); } catch (_) {}
+  next();
+});
 
 // GET all contacts
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
