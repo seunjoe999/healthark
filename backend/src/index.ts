@@ -210,6 +210,7 @@ import lessonsLearnedRoutes from './routes/lessonsLearned.routes';
 import staffAbsenceRoutes from './routes/staffAbsence.routes';
 import trainingMatrixRoutes from './routes/trainingMatrix.routes';
 import externalContactsRoutes from './routes/externalContacts.routes';
+import seedRoutes from './routes/seed.routes';
 app.use('/api/fluid-balance', fluidBalanceRoutes);
 app.use('/api/weight-tracker', weightTrackerRoutes);
 app.use('/api/wound-care', woundCareRoutes);
@@ -224,6 +225,7 @@ app.use('/api/lessons-learned', lessonsLearnedRoutes);
 app.use('/api/staff-absence', staffAbsenceRoutes);
 app.use('/api/training-matrix', trainingMatrixRoutes);
 app.use('/api/external-contacts', externalContactsRoutes);
+app.use('/api/seed', seedRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
