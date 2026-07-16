@@ -1,5 +1,5 @@
 import { query } from './config/database';
-import logger from './utils/logger';
+import { logger } from './config/logger';
 
 export async function seedNewFeatures() {
   try {
