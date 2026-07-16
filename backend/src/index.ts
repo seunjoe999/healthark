@@ -32,6 +32,7 @@ import documentsRoutes from './routes/documents.routes';
 import messagesRoutes from './routes/messages.routes';
 import calendarRoutes from './routes/calendar.routes';
 import publicRoutes from './routes/public.routes';
+import { seedNewFeatures } from './seed';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
@@ -2482,6 +2483,7 @@ async function bootstrap() {
   try { await createCoreTables(); } catch (err: any) { logger.warn('createCoreTables error: ' + err?.message); }
   try { await ensureColumns(); } catch (err: any) { logger.warn('ensureColumns error: ' + err?.message); }
   try { await seedRolePermissions(); } catch (err: any) { logger.warn('seedRolePermissions error: ' + err?.message); }
+  try { await seedNewFeatures(); } catch (err: any) { logger.warn('seedNewFeatures error: ' + err?.message); }
 
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
