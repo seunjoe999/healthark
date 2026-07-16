@@ -30,11 +30,11 @@ export default function ExternalContacts() {
 
   const fetchData = async () => {
     try {
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      if (filterCategory) params.set('category', filterCategory);
-      const res = await api.get(`/external-contacts?${params}`);
-      setContacts(res.data);
+      const params: Record<string, string> = {};
+      if (search) params.search = search;
+      if (filterCategory) params.category = filterCategory;
+      const res = await api.get('/external-contacts', { params });
+      setContacts(res.data.data || res.data || []);
     } catch { toast.error('Failed to load contacts'); }
     finally { setLoading(false); }
   };

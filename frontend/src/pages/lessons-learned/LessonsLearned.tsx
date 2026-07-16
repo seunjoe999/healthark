@@ -6,19 +6,26 @@ import toast from 'react-hot-toast';
 import api from '../../api';
 
 interface Lesson {
-  id: number;
+  id: string;
   title: string;
-  incident_type: string;
-  date_of_incident: string;
-  description: string;
+  source_type: string;
+  date_of_event: string;
+  what_happened: string;
   root_cause: string;
-  lesson_learned: string;
+  lesson: string;
   action_taken: string;
   action_owner: string;
-  status: 'open' | 'in_progress' | 'closed';
-  priority: 'high' | 'medium' | 'low';
+  action_completed: boolean;
   created_at: string;
   created_by_name: string;
+  // computed from action_completed for display
+  status?: 'open' | 'in_progress' | 'closed';
+  priority?: string;
+  // keep these for form binding compat
+  incident_type?: string;
+  date_of_incident?: string;
+  description?: string;
+  lesson_learned?: string;
 }
 
 interface Stats { total: number; open: number; in_progress: number; closed: number; }
@@ -31,17 +38,23 @@ export default function LessonsLearned() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', incident_type: 'Fall', date_of_incident: '', description: '', root_cause: '', lesson_learned: '', action_taken: '', action_owner: '', priority: 'medium' });
 
   const fetchData = async () => {
     try {
       const [lRes, sRes] = await Promise.all([
-        api.get(`/lessons-learned${filterStatus ? `?status=${filterStatus}` : ''}`),
+        api.get('/lessons-learned'),
         api.get('/lessons-learned/stats'),
       ]);
-      setLessons(lRes.data);
-      setStats(sRes.data);
+      setLessons(lRes.data.data || []);
+      const sd = sRes.data.data || {};
+      setStats({
+        total: Number(sd.total ?? 0),
+        open: Number(sd.actions_pending ?? 0),
+        in_progress: 0,
+        closed: Number(sd.total ?? 0) - Number(sd.actions_pending ?? 0),
+      });
     } catch { toast.error('Failed to load lessons'); }
     finally { setLoading(false); }
   };
@@ -51,16 +64,27 @@ export default function LessonsLearned() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/lessons-learned', form);
+      await api.post('/lessons-learned', {
+        title: form.title,
+        sourceType: 'incident',
+        dateOfEvent: form.date_of_incident,
+        whatHappened: form.description,
+        rootCause: form.root_cause || undefined,
+        lesson: form.lesson_learned,
+        actionTaken: form.action_taken,
+        actionOwner: form.action_owner || undefined,
+      });
       toast.success('Lesson recorded');
       setShowForm(false);
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
 
-  const updateStatus = async (id: number, status: string) => {
+  const updateStatus = async (id: string | number, status: string) => {
     try {
-      await api.put(`/lessons-learned/${id}`, { status });
+      await api.put(`/lessons-learned/${id}`, {
+        actionCompleted: status === 'closed',
+      });
       toast.success('Status updated');
       fetchData();
     } catch { toast.error('Failed to update'); }
@@ -188,23 +212,22 @@ export default function LessonsLearned() {
         <div className="space-y-3">
           {lessons.map(l => (
             <div key={l.id} className="rounded-xl overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="p-4 cursor-pointer" onClick={() => setExpanded(expanded === l.id ? null : l.id)}>
+              <div className="p-4 cursor-pointer" onClick={() => setExpanded(expanded === String(l.id) ? null : String(l.id))}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white font-medium text-sm">{l.title}</span>
-                      {priorityBadge(l.priority)}
-                      {statusBadge(l.status)}
+                      {statusBadge(l.action_completed ? 'closed' : 'open')}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                      <span>{l.incident_type}</span>
-                      <span>{format(new Date(l.date_of_incident), 'dd MMM yyyy')}</span>
+                      <span>{l.source_type?.replace(/_/g, ' ')}</span>
+                      <span>{l.date_of_event ? format(new Date(l.date_of_event), 'dd MMM yyyy') : ''}</span>
                       <span>{l.created_by_name}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {l.status !== 'closed' && (
-                      <button onClick={e => { e.stopPropagation(); updateStatus(l.id, l.status === 'open' ? 'in_progress' : 'closed'); }}
+                    {!l.action_completed && (
+                      <button onClick={e => { e.stopPropagation(); updateStatus(l.id, 'closed'); }}
                         className="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10">
                         <CheckSquare size={14} />
                       </button>
@@ -212,11 +235,11 @@ export default function LessonsLearned() {
                   </div>
                 </div>
               </div>
-              {expanded === l.id && (
+              {expanded === String(l.id) && (
                 <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                  {l.description && <div className="pt-3"><div className="text-xs text-gray-500 mb-1">What Happened</div><p className="text-sm text-gray-300">{l.description}</p></div>}
+                  {l.what_happened && <div className="pt-3"><div className="text-xs text-gray-500 mb-1">What Happened</div><p className="text-sm text-gray-300">{l.what_happened}</p></div>}
                   {l.root_cause && <div><div className="text-xs text-gray-500 mb-1">Root Cause</div><p className="text-sm text-gray-300">{l.root_cause}</p></div>}
-                  {l.lesson_learned && <div><div className="text-xs text-gray-500 mb-1">Lesson Learned</div><p className="text-sm text-gray-300">{l.lesson_learned}</p></div>}
+                  {l.lesson && <div><div className="text-xs text-gray-500 mb-1">Lesson Learned</div><p className="text-sm text-gray-300">{l.lesson}</p></div>}
                   {l.action_taken && <div><div className="text-xs text-gray-500 mb-1">Action Taken</div><p className="text-sm text-gray-300">{l.action_taken}</p></div>}
                   {l.action_owner && <div className="text-xs text-gray-400">Owner: {l.action_owner}</div>}
                 </div>

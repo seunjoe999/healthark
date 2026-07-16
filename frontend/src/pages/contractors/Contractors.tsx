@@ -37,8 +37,8 @@ export default function Contractors() {
   const fetchData = async () => {
     try {
       const [cRes, eRes] = await Promise.all([api.get('/contractors'), api.get('/contractors/expiring')]);
-      setContractors(cRes.data);
-      setExpiring(eRes.data);
+      setContractors(cRes.data.data || cRes.data || []);
+      setExpiring(eRes.data.data || eRes.data || []);
     } catch { toast.error('Failed to load contractors'); }
     finally { setLoading(false); }
   };

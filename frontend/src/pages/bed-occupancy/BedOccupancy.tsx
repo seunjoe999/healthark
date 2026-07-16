@@ -32,8 +32,8 @@ export default function BedOccupancy() {
         api.get('/bed-occupancy'),
         api.get('/bed-occupancy/rooms'),
       ]);
-      setData(occRes.data);
-      setRooms(roomsRes.data);
+      setData(occRes.data.data || occRes.data || null);
+      setRooms(roomsRes.data.data || roomsRes.data || []);
     } catch { toast.error('Failed to load occupancy data'); }
     finally { setLoading(false); }
   };

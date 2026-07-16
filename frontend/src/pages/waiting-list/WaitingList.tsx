@@ -36,11 +36,17 @@ export default function WaitingList() {
   const fetchData = async () => {
     try {
       const [listRes, statsRes] = await Promise.all([
-        api.get(`/waiting-list?status=${filterStatus}`),
+        api.get('/waiting-list', { params: filterStatus ? { status: filterStatus } : {} }),
         api.get('/waiting-list/stats'),
       ]);
-      setEntries(listRes.data);
-      setStats(statsRes.data);
+      setEntries(listRes.data.data || []);
+      const sd = statsRes.data.data || {};
+      setStats({
+        total: Number(sd.total ?? 0),
+        waiting: Number(sd.byStatus?.enquiry ?? 0) + Number(sd.byStatus?.assessment_booked ?? 0),
+        high_priority: Number(sd.byPriority?.high ?? 0) + Number(sd.byPriority?.urgent ?? 0),
+        avg_wait_days: 0,
+      });
     } catch { toast.error('Failed to load waiting list'); }
     finally { setLoading(false); }
   };
@@ -50,7 +56,16 @@ export default function WaitingList() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/waiting-list', form);
+      await api.post('/waiting-list', {
+        fullName: form.full_name,
+        dateOfBirth: form.date_of_birth || undefined,
+        contactName: form.contact_name || undefined,
+        contactPhone: form.contact_phone || undefined,
+        contactEmail: form.contact_email || undefined,
+        careNeeds: form.care_needs || undefined,
+        priority: form.priority === 'medium' ? 'standard' : form.priority,
+        notes: form.notes || undefined,
+      });
       toast.success('Added to waiting list');
       setShowForm(false);
       setForm({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'medium', nhs_number: '', notes: '' });
@@ -64,6 +79,12 @@ export default function WaitingList() {
       toast.success('Status updated');
       fetchData();
     } catch { toast.error('Failed to update'); }
+  };
+
+  // Map backend status values to display-friendly ones
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = { enquiry: 'waiting', assessment_booked: 'offered', accepted: 'admitted', declined: 'declined', withdrawn: 'withdrawn' };
+    return map[s] || s;
   };
 
   const priorityBadge = (p: string) => {

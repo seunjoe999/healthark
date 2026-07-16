@@ -28,18 +28,18 @@ export default function VisitorLog() {
   const [showForm, setShowForm] = useState(false);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [form, setForm] = useState({ visitor_name: '', resident_visited: '', purpose: 'Family Visit', phone: '', vehicle_reg: '', temperature_check: true, id_checked: false, notes: '' });
-  const [residents, setResidents] = useState<{ id: number; full_name: string }[]>([]);
+  const [residents, setResidents] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
 
   const fetchData = async () => {
     try {
       const [visitsRes, currentRes, resRes] = await Promise.all([
-        api.get(`/visitor-log?date=${date}`),
+        api.get('/visitor-log', { params: { date } }),
         api.get('/visitor-log/currently-in'),
-        api.get('/service-users?status=active'),
+        api.get('/service-users', { params: { status: 'live' } }),
       ]);
-      setVisits(visitsRes.data);
-      setCurrentlyIn(currentRes.data);
-      setResidents(resRes.data);
+      setVisits(visitsRes.data.data || []);
+      setCurrentlyIn(currentRes.data.data || []);
+      setResidents(resRes.data.data || []);
     } catch { toast.error('Failed to load visitor log'); }
     finally { setLoading(false); }
   };
@@ -49,7 +49,14 @@ export default function VisitorLog() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/visitor-log', form);
+      await api.post('/visitor-log', {
+        visitorName: form.visitor_name,
+        suId: form.resident_visited || undefined,
+        purpose: 'social_visit',
+        visitorPhone: form.phone || undefined,
+        vehicleReg: form.vehicle_reg || undefined,
+        notes: form.notes || undefined,
+      });
       toast.success('Visitor signed in');
       setShowForm(false);
       setForm({ visitor_name: '', resident_visited: '', purpose: 'Family Visit', phone: '', vehicle_reg: '', temperature_check: true, id_checked: false, notes: '' });
@@ -124,7 +131,7 @@ export default function VisitorLog() {
               <select value={form.resident_visited} onChange={e => setForm(p => ({ ...p, resident_visited: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <option value="">Not visiting a resident</option>
-                {residents.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
+                {residents.map(r => <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>)}
               </select>
             </div>
             <div>

@@ -31,7 +31,7 @@ export default function StaffAbsence() {
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState<'absences' | 'bradford'>('absences');
   const [form, setForm] = useState({ staff_id: '', start_date: '', end_date: '', reason: 'Illness', absence_type: 'Sickness', notes: '' });
-  const [staffList, setStaffList] = useState<{ id: number; full_name: string }[]>([]);
+  const [staffList, setStaffList] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
 
   const fetchData = async () => {
     try {
@@ -39,12 +39,18 @@ export default function StaffAbsence() {
         api.get('/staff-absence'),
         api.get('/staff-absence/bradford'),
         api.get('/staff-absence/stats'),
-        api.get('/staff?status=active'),
+        api.get('/staff', { params: { status: 'active' } }),
       ]);
-      setAbsences(absRes.data);
-      setBradford(bfRes.data);
-      setStats(statsRes.data);
-      setStaffList(staffRes.data);
+      setAbsences(absRes.data.data || []);
+      setBradford(bfRes.data.data || []);
+      const sd = statsRes.data.data || {};
+      setStats({
+        total_absences: Number(sd.currently_absent ?? 0),
+        active_absences: Number(sd.currently_absent ?? 0),
+        total_days: Number(sd.days_lost_this_month ?? 0),
+        avg_days: 0,
+      });
+      setStaffList(staffRes.data.data || []);
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
   };
@@ -54,7 +60,13 @@ export default function StaffAbsence() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/staff-absence', form);
+      await api.post('/staff-absence', {
+        staffId: form.staff_id,
+        absenceStart: form.start_date,
+        absenceEnd: form.end_date || undefined,
+        absenceType: form.absence_type.toLowerCase().replace(/[^a-z]/g, '_').replace(/\//g, '_'),
+        reason: form.reason,
+      });
       toast.success('Absence recorded');
       setShowForm(false);
       fetchData();
@@ -127,7 +139,7 @@ export default function StaffAbsence() {
               <select value={form.staff_id} onChange={e => setForm(p => ({ ...p, staff_id: e.target.value }))} required
                 className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <option value="">Select staff...</option>
-                {staffList.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+                {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
               </select>
             </div>
             <div>

@@ -20,7 +20,18 @@ interface EnvCheck {
 
 interface Summary { total: number; passed: number; failed: number; warnings: number; }
 
-const CHECK_TYPES = ['Temperature', 'Fridge Temperature', 'Freezer Temperature', 'Water Temperature (Hot)', 'Water Temperature (Cold)', 'Humidity', 'Legionella Flushing', 'Fire Door Check', 'Emergency Lighting', 'Cleanliness Audit'];
+const CHECK_TYPES = [
+  { value: 'fridge_temp', label: 'Fridge Temperature' },
+  { value: 'freezer_temp', label: 'Freezer Temperature' },
+  { value: 'room_temp', label: 'Room Temperature' },
+  { value: 'water_temp', label: 'Water Temperature' },
+  { value: 'legionella_flush', label: 'Legionella Flushing' },
+  { value: 'fire_alarm_test', label: 'Fire Alarm Test' },
+  { value: 'emergency_lighting', label: 'Emergency Lighting' },
+  { value: 'hoist_check', label: 'Hoist Check' },
+  { value: 'window_restrictor', label: 'Window Restrictor' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function EnvironmentalChecks() {
   const { user } = useAuth();
@@ -29,16 +40,22 @@ export default function EnvironmentalChecks() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('7');
-  const [form, setForm] = useState({ check_type: 'Temperature', location: '', reading_value: '', unit: '°C', status: 'pass', notes: '' });
+  const [form, setForm] = useState({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', status: 'pass', notes: '' });
 
   const fetchData = async () => {
     try {
       const [checksRes, summaryRes] = await Promise.all([
-        api.get(`/environmental?days=${filter}`),
+        api.get('/environmental', { params: { days: filter } }),
         api.get('/environmental/summary'),
       ]);
-      setChecks(checksRes.data);
-      setSummary(summaryRes.data);
+      setChecks(checksRes.data.data || []);
+      const sd = summaryRes.data.data || {};
+      setSummary({
+        total: Number(sd.checks_today ?? 0),
+        passed: Number(sd.checks_today ?? 0) - Number(sd.fails_this_week ?? 0),
+        failed: Number(sd.fails_this_week ?? 0),
+        warnings: 0,
+      });
     } catch { toast.error('Failed to load checks'); }
     finally { setLoading(false); }
   };
@@ -48,10 +65,17 @@ export default function EnvironmentalChecks() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/environmental', form);
+      await api.post('/environmental', {
+        checkType: form.check_type,
+        location: form.location,
+        readingValue: form.reading_value,
+        unit: form.unit,
+        result: form.status,
+        notes: form.notes,
+      });
       toast.success('Check recorded');
       setShowForm(false);
-      setForm({ check_type: 'Temperature', location: '', reading_value: '', unit: '°C', status: 'pass', notes: '' });
+      setForm({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', status: 'pass', notes: '' });
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
@@ -122,7 +146,7 @@ export default function EnvironmentalChecks() {
               <label className="text-xs text-gray-400 mb-1 block">Check Type</label>
               <select value={form.check_type} onChange={e => setForm(p => ({ ...p, check_type: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                {CHECK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {CHECK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
