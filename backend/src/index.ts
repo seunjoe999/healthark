@@ -54,6 +54,8 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://compcarehub.co.uk',
+  'https://www.compcarehub.co.uk',
   'https://app.comprehensivecare.org.uk',
   'https://comprehensivecare.org.uk',
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),

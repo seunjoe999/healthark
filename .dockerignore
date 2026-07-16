@@ -1,0 +1,16 @@
+**/node_modules
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+**/dist
+frontend/dist
+backend/dist
+**/coverage
+**/.DS_Store
+*.log
+*.zip
+*.png
+*.jpg
+*.jpeg
+!frontend/public/**
