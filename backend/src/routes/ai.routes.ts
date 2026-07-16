@@ -680,4 +680,214 @@ INSTRUCTIONS:
   },
 );
 
+// ── 6. POST /api/ai/find-replacement ─────────────────────────────────────────
+router.post(
+  '/find-replacement',
+  [
+    body('homeId').optional({ checkFalsy: true }).isUUID(),
+    body('shiftDate').notEmpty().withMessage('shiftDate is required'),
+    body('shiftType').isIn(['early', 'late', 'night']).withMessage('shiftType must be early, late, or night'),
+    body('absentStaffId').isUUID().withMessage('absentStaffId must be a valid UUID'),
+    body('reason').notEmpty().withMessage('reason is required'),
+  ],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      if (!homeId) throw new AppError('homeId is required', 400);
+
+      const { shiftDate, shiftType, absentStaffId, reason } = req.body;
+
+      // 1. Look up absent staff member
+      const absentRows = await query(
+        `SELECT first_name || ' ' || last_name AS name, role
+         FROM staff WHERE id = $1`,
+        [absentStaffId],
+      );
+      if (!absentRows.length) throw new AppError('Absent staff member not found', 404);
+      const absent = absentRows[0] as any;
+
+      // 2. Query off-duty staff for that home
+      const candidateRows = await query(
+        `SELECT id, first_name || ' ' || last_name AS name, role, phone, email
+         FROM staff
+         WHERE home_id = $1
+           AND id != $2
+           AND status = 'active'
+         ORDER BY last_name`,
+        [homeId, absentStaffId],
+      );
+
+      if (!candidateRows.length) {
+        return res.json({
+          success: true,
+          data: {
+            absent: { name: absent.name, role: absent.role },
+            replacements: [],
+            aiSummary: 'No available staff found for this home.',
+          },
+        } as ApiResponse);
+      }
+
+      // 3. For each candidate: check shifts this week and training
+      const weekAgo = new Date(shiftDate);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+      const enriched = await Promise.all(
+        (candidateRows as any[]).map(async (staff) => {
+          let shiftsThisWeek = 0;
+          let hasTraining = true;
+
+          await Promise.allSettled([
+            query(
+              `SELECT COUNT(*) AS cnt
+               FROM clockin_events
+               WHERE staff_id = $1
+                 AND DATE(clock_in_time) >= $2
+                 AND DATE(clock_in_time) <= $3`,
+              [staff.id, weekAgoStr, shiftDate],
+            ).then(r => { shiftsThisWeek = parseInt((r[0] as any)?.cnt || '0'); }),
+
+            query(
+              `SELECT COUNT(*) AS cnt
+               FROM staff_training
+               WHERE staff_id = $1
+                 AND (expiry_date IS NULL OR expiry_date >= CURRENT_DATE)`,
+              [staff.id],
+            ).then(r => { hasTraining = parseInt((r[0] as any)?.cnt || '0') > 0; }),
+          ]);
+
+          return {
+            staffId: staff.id,
+            name: staff.name,
+            role: staff.role,
+            phone: staff.phone || null,
+            shiftsThisWeek,
+            overtimeRisk: shiftsThisWeek > 5 ? 'high' : shiftsThisWeek >= 4 ? 'medium' : 'low',
+            hasTraining,
+            aiReason: '',
+            recommended: false,
+          };
+        }),
+      );
+
+      // Sort by fewest shifts (fallback order)
+      enriched.sort((a, b) => a.shiftsThisWeek - b.shiftsThisWeek);
+
+      // 4. Call AI to rank and explain
+      let aiSummary = '';
+      try {
+        const staffCtx = enriched
+          .slice(0, 10)
+          .map(
+            (s, i) =>
+              `${i + 1}. ${s.name} (${(s.role || '').replace(/_/g, ' ')}) — ${s.shiftsThisWeek} shifts this week, overtime risk: ${s.overtimeRisk}, training current: ${s.hasTraining}`,
+          )
+          .join('\n');
+
+        const prompt = `You are a UK care home manager finding emergency cover for an absent staff member.
+
+ABSENT STAFF: ${absent.name} (${(absent.role || '').replace(/_/g, ' ')})
+SHIFT: ${shiftType} shift on ${shiftDate}
+REASON FOR ABSENCE: ${reason}
+
+AVAILABLE OFF-DUTY STAFF:
+${staffCtx}
+
+Rank these staff members for cover suitability. For each, provide a brief one-sentence reason.
+Respond in this exact JSON format (no markdown, no preamble):
+{"summary":"Brief 1-2 sentence overall summary","rankings":[{"index":1,"reason":"one sentence","recommended":true},{"index":2,"reason":"one sentence","recommended":false}]}
+
+Index matches the staff list numbers above. Recommended=true for top 1-2 picks only. Consider overtime risk and training currency.`;
+
+        const raw = await callAI(prompt, 600);
+        const cleaned = raw.replace(/```(?:json)?\s*/gi, '').replace(/```\s*/g, '').trim();
+        const parsed = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] || cleaned);
+
+        aiSummary = String(parsed.summary || '');
+
+        if (Array.isArray(parsed.rankings)) {
+          for (const ranking of parsed.rankings) {
+            const idx = (ranking.index as number) - 1;
+            if (idx >= 0 && idx < enriched.length) {
+              enriched[idx].aiReason = String(ranking.reason || '');
+              enriched[idx].recommended = Boolean(ranking.recommended);
+            }
+          }
+        }
+      } catch (aiErr: any) {
+        console.error('Find replacement AI failed, using fallback:', aiErr?.message);
+        aiSummary = `${enriched.length} staff available for cover. Listed by fewest shifts this week to minimise overtime risk.`;
+        enriched.forEach((s, i) => {
+          s.aiReason = s.shiftsThisWeek > 5
+            ? `High overtime risk — has worked ${s.shiftsThisWeek} shifts this week.`
+            : `Has worked ${s.shiftsThisWeek} shifts this week — ${s.overtimeRisk} overtime risk.`;
+          s.recommended = i < 2 && s.overtimeRisk !== 'high';
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          absent: { name: absent.name, role: absent.role },
+          replacements: enriched,
+          aiSummary,
+        },
+      } as ApiResponse);
+    } catch (err: any) {
+      return handleAIError(err, res, next);
+    }
+  },
+);
+
+// ── 7. POST /api/ai/notify-replacement ───────────────────────────────────────
+router.post(
+  '/notify-replacement',
+  [
+    body('staffId').isUUID().withMessage('staffId must be a valid UUID'),
+    body('shiftDate').notEmpty().withMessage('shiftDate is required'),
+    body('shiftType').notEmpty().withMessage('shiftType is required'),
+    body('message').notEmpty().withMessage('message is required'),
+  ],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { staffId, shiftDate, shiftType, message } = req.body;
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+
+      // Look up staff phone/email
+      const staffRows = await query(
+        `SELECT first_name || ' ' || last_name AS name, phone, email, home_id
+         FROM staff WHERE id = $1`,
+        [staffId],
+      );
+      if (!staffRows.length) throw new AppError('Staff member not found', 404);
+      const staff = staffRows[0] as any;
+      const effectiveHomeId = homeId || staff.home_id;
+
+      // Insert notification
+      await query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          staffId,
+          effectiveHomeId,
+          'Shift Cover Request',
+          message || `You have been asked to cover the ${shiftType} shift on ${shiftDate}.`,
+          'shift_cover',
+        ],
+      );
+
+      res.json({
+        success: true,
+        data: { message: 'Notification sent', staffName: staff.name },
+      } as ApiResponse);
+    } catch (err: any) {
+      return handleAIError(err, res, next);
+    }
+  },
+);
+
 export default router;
+

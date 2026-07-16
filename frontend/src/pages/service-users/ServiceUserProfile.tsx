@@ -15,9 +15,10 @@ import { format, differenceInYears } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { QRModal } from './QRModal'
+import ResidentTimeline from './ResidentTimeline'
 import toast from 'react-hot-toast'
 
-type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background'
+type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'timeline'
 
 const SU_DOC_TYPES = [
   { value: 'passport', label: 'Copy of passport' },
@@ -144,6 +145,7 @@ export default function ServiceUserProfile() {
     { key: 'documents', label: `Documents (${documents.length})` },
     { key: 'comms', label: 'My Comms' },
     { key: 'background', label: 'Background' },
+    { key: 'timeline', label: 'Daily Timeline' },
   ]
 
   return (
@@ -477,6 +479,10 @@ export default function ServiceUserProfile() {
           </Card>
         </div>
       )}
+      {tab === 'timeline' && (
+        <ResidentTimeline suId={su.id} suName={`${su.firstName} ${su.lastName}`} />
+      )}
+
       {/* Print-only documents section — renders regardless of active tab */}
       <div className="hidden print:block mt-6">
         <h3 className="font-bold text-black text-sm uppercase mb-2">Documents</h3>

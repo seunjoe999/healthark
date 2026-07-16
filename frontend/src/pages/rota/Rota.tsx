@@ -8,6 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
+  Brain, UserX, AlertTriangle, CheckCircle, Phone,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -103,6 +104,7 @@ export default function Rota() {
   const [bulkOpen,    setBulkOpen]    = useState(false)
   const [detailShift, setDetailShift] = useState<any>(null)
   const [swapShift,   setSwapShift]   = useState<any>(null)
+  const [coverOpen,   setCoverOpen]   = useState(false)
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -193,6 +195,9 @@ export default function Rota() {
               </Button>
               <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}>
                 Bulk Operations
+              </Button>
+              <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
+                Report Absence + Find Cover
               </Button>
             </>
           )}
@@ -492,6 +497,16 @@ export default function Rota() {
           homeId={selectedHome}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
           onSaved={() => { setBulkOpen(false); loadAll(); toast.success('Bulk shifts created') }}
+        />
+      )}
+
+      {coverOpen && (
+        <FindCoverModal
+          open={coverOpen}
+          onClose={() => setCoverOpen(false)}
+          staffList={staffList}
+          homeId={selectedHome}
+          defaultDate={format(today, 'yyyy-MM-dd')}
         />
       )}
 
@@ -1177,6 +1192,272 @@ function BulkOperationsModal({ open, onClose, staffList, homeId, defaultDate, on
           </Button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+// ── Find Cover Modal ──────────────────────────────────────────────────────────
+
+interface Replacement {
+  staffId: string
+  name: string
+  role: string
+  phone: string | null
+  shiftsThisWeek: number
+  overtimeRisk: 'low' | 'medium' | 'high'
+  aiReason: string
+  recommended: boolean
+}
+
+interface FindReplacementResult {
+  absent: { name: string; role: string }
+  replacements: Replacement[]
+  aiSummary: string
+}
+
+function FindCoverModal({ open, onClose, staffList, homeId, defaultDate }: {
+  open: boolean; onClose: () => void
+  staffList: any[]; homeId: string; defaultDate: string
+}) {
+  const [form, setForm] = useState({
+    absentStaffId: '',
+    shiftDate: defaultDate,
+    shiftType: 'early' as 'early' | 'late' | 'night',
+    reason: '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<FindReplacementResult | null>(null)
+  const [notifyingId, setNotifyingId] = useState<string | null>(null)
+  const [notifiedIds, setNotifiedIds] = useState<Set<string>>(new Set())
+
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (open) {
+      setForm(f => ({ ...f, shiftDate: defaultDate, absentStaffId: '', reason: '' }))
+      setResult(null)
+      setNotifiedIds(new Set())
+    }
+  }, [open, defaultDate])
+
+  const findReplacement = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.absentStaffId) { toast.error('Select the absent staff member'); return }
+    if (!form.reason.trim()) { toast.error('Enter a reason for absence'); return }
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await api.post('/ai/find-replacement', { homeId, ...form })
+      setResult(res.data.data as FindReplacementResult)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to find replacements')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const notify = async (r: Replacement) => {
+    setNotifyingId(r.staffId)
+    try {
+      const message = `You are requested to cover the ${form.shiftType} shift on ${form.shiftDate}. Reason: ${form.reason}`
+      await api.post('/ai/notify-replacement', {
+        homeId,
+        staffId: r.staffId,
+        shiftDate: form.shiftDate,
+        shiftType: form.shiftType,
+        message,
+      })
+      setNotifiedIds(prev => new Set(prev).add(r.staffId))
+      toast.success(`Notification sent to ${r.name}`)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to send notification')
+    } finally {
+      setNotifyingId(null)
+    }
+  }
+
+  const overtimeBadge = (risk: Replacement['overtimeRisk']) => {
+    if (risk === 'high') return (
+      <span className="flex items-center gap-1 text-xs font-bold text-red-400 bg-red-900/40 border border-red-700/40 px-2 py-0.5 rounded-full">
+        <AlertTriangle className="w-3 h-3" /> High OT
+      </span>
+    )
+    if (risk === 'medium') return (
+      <span className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-900/40 border border-amber-700/40 px-2 py-0.5 rounded-full">
+        <AlertTriangle className="w-3 h-3" /> Med OT
+      </span>
+    )
+    return (
+      <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-900/40 border border-emerald-700/40 px-2 py-0.5 rounded-full">
+        <CheckCircle className="w-3 h-3" /> Low OT
+      </span>
+    )
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Report Absence + Find Cover" size="lg">
+      <div className="space-y-5">
+        {/* Form */}
+        <form onSubmit={findReplacement} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+                Absent Staff Member *
+              </label>
+              <select
+                required
+                className="input"
+                value={form.absentStaffId}
+                onChange={e => set('absentStaffId', e.target.value)}
+              >
+                <option value="">Select staff...</option>
+                {staffList.map(s => (
+                  <option key={s.id} value={s.id}>{getName(s)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+                Shift Date *
+              </label>
+              <input
+                type="date"
+                required
+                className="input"
+                value={form.shiftDate}
+                onChange={e => set('shiftDate', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Shift Type *
+            </label>
+            <div className="flex gap-2">
+              {(['early', 'late', 'night'] as const).map(st => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, shiftType: st }))}
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors capitalize ${
+                    form.shiftType === st
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Reason for Absence *
+            </label>
+            <textarea
+              required
+              className="input"
+              rows={2}
+              placeholder="e.g. Sick leave — flu symptoms reported this morning"
+              value={form.reason}
+              onChange={e => set('reason', e.target.value)}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            loading={loading}
+            icon={<Brain className="w-4 h-4" />}
+          >
+            Find AI Replacement
+          </Button>
+        </form>
+
+        {/* Results */}
+        {result && (
+          <div className="space-y-4">
+            <div className="bg-[#111] border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <UserX className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <p className="text-sm font-bold text-white">
+                  {result.absent.name}
+                  <span className="ml-2 text-xs font-normal text-slate-400 capitalize">
+                    {(result.absent.role || '').replace(/_/g, ' ')}
+                  </span>
+                </p>
+              </div>
+              <p className="text-sm text-slate-300 ml-6">{result.aiSummary}</p>
+            </div>
+
+            {result.replacements.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-4">No available staff found.</p>
+            ) : (
+              <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                {result.replacements.map((r) => (
+                  <div
+                    key={r.staffId}
+                    className={`bg-[#111] border rounded-xl p-4 transition-colors ${
+                      r.recommended
+                        ? 'border-emerald-600/50'
+                        : 'border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className="text-sm font-bold text-white">{r.name}</p>
+                          <span className="text-xs text-slate-400 capitalize">
+                            {(r.role || '').replace(/_/g, ' ')}
+                          </span>
+                          {r.recommended && (
+                            <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-900/40 border border-emerald-700/40 px-2 py-0.5 rounded-full">
+                              <CheckCircle className="w-3 h-3" /> Recommended
+                            </span>
+                          )}
+                          {overtimeBadge(r.overtimeRisk)}
+                        </div>
+                        <p className="text-xs text-slate-400 mb-1">
+                          {r.shiftsThisWeek} shift{r.shiftsThisWeek !== 1 ? 's' : ''} this week
+                          {r.phone && (
+                            <span className="ml-3 inline-flex items-center gap-1">
+                              <Phone className="w-3 h-3" /> {r.phone}
+                            </span>
+                          )}
+                        </p>
+                        {r.aiReason && (
+                          <p className="text-xs text-slate-300 italic">{r.aiReason}</p>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0">
+                        {notifiedIds.has(r.staffId) ? (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400 px-3 py-1.5 rounded-lg bg-emerald-900/30 border border-emerald-700/30">
+                            <CheckCircle className="w-3.5 h-3.5" /> Notified
+                          </span>
+                        ) : (
+                          <button
+                            disabled={notifyingId === r.staffId}
+                            onClick={() => notify(r)}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            {notifyingId === r.staffId ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Phone className="w-3.5 h-3.5" />
+                            )}
+                            Notify
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }

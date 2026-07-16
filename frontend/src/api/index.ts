@@ -1,4 +1,6 @@
 import axios from 'axios'
+import toast from 'react-hot-toast'
+import { savePendingRecord } from '../utils/offlineStore'
 
 export function getToken(): string | null {
   try {
@@ -83,7 +85,28 @@ export const alertsApi = {
 export const dailyRecordsApi = {
   list: (suId: string, date?: string, recordType?: string) =>
     api.get('/daily-records', { params: { suId, date, recordType } }),
-  create: (data: Record<string, unknown>) => api.post('/daily-records', data),
+  create: async (data: Record<string, unknown>) => {
+    if (!navigator.onLine) {
+      const { suId, homeId, recordType, ...rest } = data as {
+        suId: string
+        homeId?: string
+        recordType: string
+        [key: string]: unknown
+      }
+      await savePendingRecord({
+        id: crypto.randomUUID(),
+        suId,
+        homeId: homeId ?? '',
+        recordType,
+        data: rest as Record<string, any>,
+        savedAt: new Date().toISOString(),
+      })
+      toast('Saved offline — will sync when connected', { icon: '📶' })
+      // Return a fake response so callers (which call onSaved()) continue normally
+      return { data: { data: null }, status: 200, statusText: 'OK', headers: {}, config: {} as any }
+    }
+    return api.post('/daily-records', data)
+  },
   getDetail: (id: string) => api.get(`/daily-records/${id}/detail`),
   getFluidTotal: (suId: string, date?: string) =>
     api.get('/daily-records/fluid-total', { params: { suId, date } }),

@@ -2,6 +2,7 @@ import React, { useState, ReactNode } from 'react'
 import NotificationsBell from './NotificationsBell'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useOfflineSync } from '../../hooks/useOfflineSync'
 import clsx from 'clsx'
 import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
@@ -11,7 +12,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock, Brain
+  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw
 } from 'lucide-react'
 
 const navSections = [
@@ -237,6 +238,36 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   )
 }
 
+function OfflineBanner() {
+  const { isOnline, pendingCount, syncNow } = useOfflineSync()
+
+  if (!isOnline) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-white" style={{ background: '#b91c1c' }}>
+        <WifiOff className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>No connection — changes saved locally</span>
+      </div>
+    )
+  }
+
+  if (pendingCount > 0) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-amber-900" style={{ background: '#fef3c7', borderBottom: '1px solid #fbbf24' }}>
+        <RefreshCw className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>{pendingCount} record{pendingCount > 1 ? 's' : ''} pending sync</span>
+        <button
+          onClick={syncNow}
+          className="ml-2 px-2 py-0.5 rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors font-semibold"
+        >
+          Sync now
+        </button>
+      </div>
+    )
+  }
+
+  return null
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isRole } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -272,6 +303,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </button>
           <NotificationsBell />
         </header>
+        <OfflineBanner />
         <main className="flex-1 overflow-y-auto pb-safe" style={{ background: '#0a0a0a' }}>{children}</main>
       </div>
     </div>
