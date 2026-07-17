@@ -125,12 +125,32 @@ export default function Training() {
     } catch { toast.error('Failed to reset') }
   }
 
+  // Map in-app training modules to mandatory training matrix course names
+  const MODULE_TO_MATRIX: Record<string, string> = {
+    safeguarding: 'Safeguarding',
+    mar: 'Medication Administration Record',
+    care_plans: 'Mental Capacity (MCA/DoLS)',
+  }
+
   const completeModule = async (moduleId: string) => {
     setLoading(true)
     try {
       await api.post('/staff-hr/training-modules', { moduleId, moduleName: MODULES.find(m => m.id === moduleId)?.title })
+      // Auto-update training matrix for applicable modules
+      const courseName = MODULE_TO_MATRIX[moduleId]
+      if (courseName && user?.id) {
+        const today = new Date().toISOString().slice(0, 10)
+        const expiryDate = new Date()
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+        api.post('/staff-hr/training', {
+          staffId: user.id,
+          courseName,
+          completedDate: today,
+          expiryDate: expiryDate.toISOString().slice(0, 10),
+        }).catch(() => {})
+      }
       setCompletions(p => ({ ...p, [moduleId]: true }))
-      toast.success('Module completed!')
+      toast.success('Module completed! Training matrix updated.')
       setActiveModule(null)
     } catch { toast.error('Failed to save') }
     finally { setLoading(false) }

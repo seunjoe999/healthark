@@ -27,6 +27,81 @@ const catConfig: Record<string, { color: string; bg: string; border: string; ico
   reminder:    { color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  icon: <Clock className="w-4 h-4" /> },
 }
 
+function NoticeCard({ notice, onRead, onDelete, canDelete }: {
+  notice: any
+  onRead: (id: string) => void
+  onDelete: (id: string) => void
+  canDelete: boolean
+}) {
+  const cfg = catConfig[notice.category] || catConfig.general
+  const categoryLabel = CATEGORIES.find(c => c.value === notice.category)?.label || notice.category
+
+  return (
+    <div
+      onClick={() => !notice.is_read && onRead(notice.id)}
+      className={clsx(
+        'relative rounded-xl border transition-all cursor-pointer group',
+        notice.is_pinned
+          ? 'border-amber-500/50 bg-gradient-to-br from-amber-500/8 to-amber-600/4 shadow-lg shadow-amber-900/10'
+          : 'border-slate-700/60 bg-slate-800/50 hover:border-slate-600/80',
+        !notice.is_read && !notice.is_pinned && 'border-l-2 border-l-amber-400',
+      )}
+    >
+      {/* Unread indicator */}
+      {!notice.is_read && (
+        <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-amber-400/30" />
+      )}
+
+      <div className="p-5">
+        {/* Category + pinned row */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className={clsx('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border', cfg.color, cfg.bg, cfg.border)}>
+            {cfg.icon} {categoryLabel}
+          </span>
+          {notice.is_pinned && (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-400 font-bold">
+              <Pin className="w-3 h-3" /> Pinned
+            </span>
+          )}
+          {notice.is_read && (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-400 ml-auto">
+              <Check className="w-3 h-3" /> Read
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h3 className="font-bold text-white text-[15px] leading-snug mb-2">{notice.title}</h3>
+
+        {/* Body */}
+        {notice.body && (
+          <p className="text-sm text-slate-300 leading-relaxed line-clamp-3 mb-3">{notice.body}</p>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-700/40">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="font-medium text-slate-400">{notice.posted_by_name}</span>
+            <span>·</span>
+            <span>{formatDistanceToNow(new Date(notice.created_at), { addSuffix: true })}</span>
+            {notice.expires_at && (
+              <><span>·</span><span className="text-amber-500/80">Expires {format(new Date(notice.expires_at), 'd MMM')}</span></>
+            )}
+          </div>
+          {canDelete && (
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(notice.id) }}
+              className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-400 transition-all p-1 rounded"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Noticeboard() {
   const { isRole, user } = useAuth()
   const [notices, setNotices] = useState<any[]>([])
@@ -127,53 +202,26 @@ export default function Noticeboard() {
       {loading ? <Spinner /> : notices.length === 0 ? (
         <EmptyState title="No notices" description="Nothing posted yet on the noticeboard" />
       ) : (
-        <div className="space-y-3">
-          {[...pinned, ...rest].map(notice => {
-            const cfg = catConfig[notice.category] || catConfig.general
-            return (
-              <div key={notice.id}
-                className={clsx('card p-5 cursor-pointer transition-all', notice.is_pinned && 'border-amber-500/40', !notice.is_read && 'border-l-4 border-l-amber-400')}
-                onClick={() => !notice.is_read && markRead(notice.id)}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-2">
-                      {notice.is_pinned && (
-                        <span className="flex items-center gap-1 text-xs text-amber-400 font-bold">
-                          <Pin className="w-3 h-3" /> PINNED
-                        </span>
-                      )}
-                      <span className={clsx('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border', cfg.color, cfg.bg, cfg.border)}>
-                        {cfg.icon} {CATEGORIES.find(c => c.value === notice.category)?.label || notice.category}
-                      </span>
-                      {!notice.is_read && (
-                        <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                      )}
-                    </div>
-                    <h3 className="font-bold text-white text-base">{notice.title}</h3>
-                    {notice.body && <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">{notice.body}</p>}
-                    <div className="flex items-center gap-3 mt-3 text-xs text-slate-500">
-                      <span>{notice.posted_by_name}</span>
-                      <span>·</span>
-                      <span>{formatDistanceToNow(new Date(notice.created_at), { addSuffix: true })}</span>
-                      {notice.expires_at && (
-                        <><span>·</span><span className="text-amber-500">Expires {format(new Date(notice.expires_at), 'd MMM yyyy')}</span></>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    {notice.is_read && <span className="text-xs text-emerald-400 flex items-center gap-0.5"><Check className="w-3 h-3" />Read</span>}
-                    {(isRole('home_manager', 'group_admin') || notice.created_by === user?.id) && (
-                      <button onClick={e => { e.stopPropagation(); handleDelete(notice.id) }}
-                        className="text-slate-600 hover:text-rose-400 transition-colors p-1">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+        <>
+          {/* Pinned notices — displayed prominently */}
+          {pinned.length > 0 && (
+            <div className="mb-6">
+              <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                <Pin className="w-3.5 h-3.5" /> Pinned
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {pinned.map(notice => <NoticeCard key={notice.id} notice={notice} onRead={markRead} onDelete={handleDelete} canDelete={isRole('home_manager', 'group_admin') || notice.created_by === user?.id} />)}
               </div>
-            )
-          })}
-        </div>
+            </div>
+          )}
+          {/* Regular notices */}
+          {rest.length > 0 && (
+            <div className="space-y-3">
+              {pinned.length > 0 && <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">All notices</p>}
+              {rest.map(notice => <NoticeCard key={notice.id} notice={notice} onRead={markRead} onDelete={handleDelete} canDelete={isRole('home_manager', 'group_admin') || notice.created_by === user?.id} />)}
+            </div>
+          )}
+        </>
       )}
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Post Notice" size="lg">

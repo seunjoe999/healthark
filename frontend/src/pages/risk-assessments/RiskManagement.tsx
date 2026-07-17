@@ -390,99 +390,119 @@ export default function RiskManagement() {
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-4">
-                    {/* Read & Print bar */}
-                    <div className="flex items-center gap-2 pb-3 border-b border-slate-50">
+                  <div className="border-t border-slate-100">
+                    {/* Action bar */}
+                    <div className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 border-b border-slate-100">
                       <button
                         onClick={() => { markRead(ra.id); toast.success('Marked as read') }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${readIds.has(ra.id) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'}`}>
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${readIds.has(ra.id) ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}>
                         <BookOpen className="w-3.5 h-3.5" />
-                        {readIds.has(ra.id) ? '✓ Read' : 'Mark as read'}
+                        {readIds.has(ra.id) ? 'Read' : 'Mark read'}
                       </button>
                       <button
                         onClick={() => printAssessment(ra)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
                         <Printer className="w-3.5 h-3.5" />
-                        Print assessment
+                        Print
                       </button>
+                      {canManage && (
+                        <>
+                          <button
+                            onClick={() => { setUpdateNotesItem(ra); setUpdateRiskLevel(ra.risk_rating || ra.current_risk_level || 'medium') }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <History className="w-3.5 h-3.5" /> Record Update
+                          </button>
+                          <button
+                            onClick={() => openEdit(ra)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <Edit2 className="w-3.5 h-3.5" /> Edit
+                          </button>
+                          <button
+                            onClick={() => archive(ra.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-rose-500 border border-rose-200 hover:bg-rose-50 transition-colors ml-auto">
+                            <X className="w-3.5 h-3.5" /> Archive
+                          </button>
+                        </>
+                      )}
                     </div>
 
-                    {/* Single-column detail view */}
-                    <div className="space-y-4">
-                      <Field label="What is the risk" value={ra.description} />
-                      <Field label="Risk before intervention" value={ra.risk_before_intervention} />
-                      <Field label="Who is at risk" value={ra.who_is_at_risk} />
-                      <Field label="What could happen" value={ra.what_could_happen} />
-                      <Field label="Triggers" value={ra.triggers} />
-                      <Field label="Protective Factors" value={ra.protective_factors} />
-                    </div>
-
-                    {ra.management_plan && (
-                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#e8b130' }}>Risk Management Plan</p>
-                        <p className="text-sm text-slate-700 whitespace-pre-line">{ra.management_plan}</p>
+                    <div className="px-5 pb-5 pt-4 space-y-0">
+                      {/* Two-column overview */}
+                      <div className="grid sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100 mb-4">
+                        {[
+                          { label: 'What is the risk', value: ra.description },
+                          { label: 'Who is at risk', value: ra.who_is_at_risk },
+                          { label: 'What could happen', value: ra.what_could_happen },
+                          { label: 'Risk before intervention', value: ra.risk_before_intervention },
+                          { label: 'Triggers', value: ra.triggers },
+                          { label: 'Protective factors', value: ra.protective_factors },
+                        ].filter(f => f.value).map(f => (
+                          <div key={f.label} className="bg-white p-4">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{f.label}</p>
+                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">{f.value}</p>
+                          </div>
+                        ))}
                       </div>
-                    )}
 
-                    {/* Risk Rating */}
-                    {likelihood && (
-                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#e8b130' }}>Risk Rating — Likelihood</p>
-                        <p className="text-sm font-semibold text-slate-800">{likelihood.label}</p>
-                      </div>
-                    )}
+                      {/* Management plan — full width highlight */}
+                      {ra.management_plan && (
+                        <div className="rounded-xl border-l-4 border-amber-400 bg-amber-50 p-4 mb-4">
+                          <p className="text-xs font-bold uppercase tracking-wide text-amber-700 mb-2">Risk Management Plan</p>
+                          <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{ra.management_plan}</p>
+                        </div>
+                      )}
 
-                    <Field label="Risk occurring following control measures" value={ra.risk_after_controls} />
-                    <Field label="Risk Update Tracking" value={ra.risk_update_tracking} />
-
-                    {/* Summary */}
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#e8b130' }}>Summary — Risk Level</span>
-                      <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} />
-                    </div>
-
-                    {/* Sign-off status */}
-                    {ra.signed_off ? (
-                      <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <div className="text-xs text-emerald-800">
-                          <span className="font-semibold">Signed off</span>
-                          {ra.signed_off_by && <span> by {ra.signed_off_by}</span>}
-                          {ra.signed_off_date && <span> on {format(new Date(ra.signed_off_date), 'd MMM yyyy')}</span>}
+                      {/* Risk rating row */}
+                      <div className="flex flex-wrap gap-3 items-center mb-4">
+                        {likelihood && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                            <span className="text-xs text-slate-500">Likelihood</span>
+                            <span className="text-xs font-semibold text-slate-800">{likelihood.label}</span>
+                          </div>
+                        )}
+                        {ra.risk_after_controls && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 flex-1 min-w-0">
+                            <span className="text-xs text-slate-500 shrink-0">After controls</span>
+                            <span className="text-xs text-slate-700 truncate">{ra.risk_after_controls}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500">Overall level</span>
+                          <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} />
                         </div>
                       </div>
-                    ) : (
-                      canManage && (
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center justify-between">
-                          <span>This assessment has not been signed off yet.</span>
+
+                      {ra.risk_update_tracking && (
+                        <div className="rounded-lg bg-slate-50 border border-slate-100 p-3 mb-4">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Update tracking</p>
+                          <p className="text-sm text-slate-700 whitespace-pre-line">{ra.risk_update_tracking}</p>
+                        </div>
+                      )}
+
+                      {/* Sign-off */}
+                      {ra.signed_off ? (
+                        <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <p className="text-xs text-emerald-800">
+                            <span className="font-semibold">Signed off</span>
+                            {ra.signed_off_by && <span> by {ra.signed_off_by}</span>}
+                            {ra.signed_off_date && <span> on {format(new Date(ra.signed_off_date), 'd MMM yyyy')}</span>}
+                          </p>
+                        </div>
+                      ) : canManage ? (
+                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-dashed border-slate-300 mb-4">
+                          <p className="text-xs text-slate-500">Not yet signed off</p>
                           <button
                             onClick={() => { setSignOffItem(ra); setSignOffForm({ signedOffBy: '', signedOffDate: new Date().toISOString().split('T')[0] }) }}
-                            className="ml-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors text-xs">
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
                             <ShieldCheck className="w-3.5 h-3.5" /> Sign Off
                           </button>
                         </div>
-                      )
-                    )}
+                      ) : null}
 
-                    {/* Update history */}
-                    <UpdateHistory raId={ra.id} />
-
-                    {canManage && (
-                      <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-50">
-                        <Button size="sm" variant="outline" icon={<History className="w-3.5 h-3.5" />}
-                          onClick={() => { setUpdateNotesItem(ra); setUpdateRiskLevel(ra.risk_rating || ra.current_risk_level || 'medium') }}>
-                          Record Update
-                        </Button>
-                        <Button size="sm" variant="outline" icon={<Edit2 className="w-3.5 h-3.5" />}
-                          onClick={() => openEdit(ra)}>
-                          Edit Plan
-                        </Button>
-                        <Button size="sm" variant="danger" icon={<X className="w-3.5 h-3.5" />}
-                          onClick={() => archive(ra.id)}>
-                          Archive
-                        </Button>
-                      </div>
-                    )}
+                      {/* Update history */}
+                      <UpdateHistory raId={ra.id} />
+                    </div>
                   </div>
                 )}
               </div>

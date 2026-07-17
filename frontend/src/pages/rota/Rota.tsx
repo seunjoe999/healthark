@@ -97,6 +97,10 @@ export default function Rota() {
   const [filterStaff, setFilterStaff] = useState('')
   const [filterType,  setFilterType]  = useState('')
 
+  // swap requests
+  const [swapRequests, setSwapRequests] = useState<any[]>([])
+  const [swapActing, setSwapActing] = useState<string | null>(null)
+
   // modals
   const [createOpen,  setCreateOpen]  = useState(false)
   const [standbyOpen, setStandbyOpen] = useState(false)
@@ -132,11 +136,20 @@ export default function Rota() {
     } catch { } finally { setLoading(false) }
   }, [selectedHome, weekStart, dayDate, view])
 
+  const loadSwaps = useCallback(async () => {
+    if (!selectedHome) return
+    try {
+      const res = await api.get('/shifts/swaps', { params: { homeId: selectedHome } })
+      setSwapRequests(res.data.data || [])
+    } catch { }
+  }, [selectedHome])
+
   useEffect(() => {
     if (!selectedHome) return
     Promise.all([staffApi.list({ homeId: selectedHome }), suApi.list(selectedHome, { status: 'live' })])
       .then(([sRes, suRes]) => { setStaffList(sRes.data.data || []); setSuList(suRes.data.data || []) })
     loadAll()
+    loadSwaps()
   }, [selectedHome, weekStart, dayDate, view])
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -149,6 +162,22 @@ export default function Rota() {
       setDetailShift(null)
       toast.success('Shift removed')
     } catch { toast.error('Failed') }
+  }
+
+  const actOnSwap = async (swapId: string, action: 'agree' | 'decline' | 'approved' | 'rejected') => {
+    setSwapActing(swapId)
+    try {
+      if (action === 'agree' || action === 'decline') {
+        await api.put(`/shifts/swaps/${swapId}/agree`, { agreed: action === 'agree' })
+        toast.success(action === 'agree' ? 'Swap agreed — manager will be notified' : 'Swap declined')
+      } else {
+        await api.put(`/shifts/swaps/${swapId}`, { status: action })
+        toast.success(action === 'approved' ? 'Swap approved and applied' : 'Swap rejected')
+        loadAll()
+      }
+      loadSwaps()
+    } catch { toast.error('Failed') }
+    finally { setSwapActing(null) }
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -273,6 +302,64 @@ export default function Rota() {
           {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''} today
         </div>
       </div>
+
+      {/* ── Swap Requests Inbox ─────────────────────────────────────────── */}
+      {swapRequests.length > 0 && (
+        <div className="border-b border-amber-200 bg-amber-50/60 px-4 py-2.5">
+          <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <ArrowLeftRight className="w-3.5 h-3.5" /> Shift Swap Requests ({swapRequests.length})
+          </p>
+          <div className="space-y-1.5">
+            {swapRequests.map((swap: any) => (
+              <div key={swap.id} className="flex flex-wrap items-center gap-2 bg-white rounded-lg border border-amber-200 px-3 py-2 text-xs">
+                <span className="font-medium text-slate-700">
+                  {swap.requesting_name} wants to swap their {swap.shift_date ? format(parseISO(swap.shift_date), 'd MMM') : ''} {swap.start_time?.substring(0,5)}–{swap.end_time?.substring(0,5)} shift
+                  {swap.target_name ? <> with <span className="font-semibold">{swap.target_name}</span></> : ''}
+                </span>
+                {swap.notes && <span className="text-slate-400 italic">"{swap.notes}"</span>}
+                {/* Target staff sees agree/decline */}
+                {swap.is_my_inbox && (
+                  <div className="flex gap-1.5 ml-auto">
+                    <button
+                      disabled={swapActing === swap.id}
+                      onClick={() => actOnSwap(swap.id, 'agree')}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                      <Check className="w-3 h-3" /> Accept
+                    </button>
+                    <button
+                      disabled={swapActing === swap.id}
+                      onClick={() => actOnSwap(swap.id, 'decline')}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 font-semibold hover:bg-rose-200 transition-colors disabled:opacity-50">
+                      <X className="w-3 h-3" /> Decline
+                    </button>
+                  </div>
+                )}
+                {/* Manager sees approve/reject (after target has agreed) */}
+                {canManage && !swap.is_my_inbox && swap.status === 'pending_manager' && (
+                  <div className="flex gap-1.5 ml-auto items-center">
+                    <span className="text-emerald-600 font-semibold text-xs">Both agreed —</span>
+                    <button
+                      disabled={swapActing === swap.id}
+                      onClick={() => actOnSwap(swap.id, 'approved')}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                      <CheckCircle className="w-3 h-3" /> Approve
+                    </button>
+                    <button
+                      disabled={swapActing === swap.id}
+                      onClick={() => actOnSwap(swap.id, 'rejected')}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 font-semibold hover:bg-rose-200 transition-colors disabled:opacity-50">
+                      <X className="w-3 h-3" /> Reject
+                    </button>
+                  </div>
+                )}
+                {canManage && !swap.is_my_inbox && swap.status === 'pending' && (
+                  <span className="ml-auto text-slate-400 italic text-xs">Awaiting target staff response…</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Timeline ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto">

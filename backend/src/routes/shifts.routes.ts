@@ -200,10 +200,13 @@ router.delete('/leave/:id', async (req: Request, res: Response, next: NextFuncti
   } catch (err) { next(err); }
 });
 
-// GET /api/shifts/swaps?homeId=
+// GET /api/shifts/swaps?homeId= (also add target_agreed column if missing)
 router.get('/swaps', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const staffId = fromToken(req, 'staffId');
+    await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_agreed BOOLEAN DEFAULT NULL`).catch(() => {});
+    await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_notes TEXT`).catch(() => {});
     const rows = await query(
       `SELECT ssr.*,
               sh.shift_date, sh.start_time, sh.end_time, sh.shift_type,
@@ -213,11 +216,16 @@ router.get('/swaps', async (req: Request, res: Response, next: NextFunction) => 
        JOIN staff_shifts sh ON sh.id = ssr.shift_id
        JOIN staff rs ON rs.id = ssr.requesting_staff_id
        LEFT JOIN staff ts ON ts.id = ssr.target_staff_id
-       WHERE ssr.home_id = $1 AND ssr.status = 'pending'
+       WHERE ssr.home_id = $1 AND ssr.status IN ('pending','pending_manager')
        ORDER BY ssr.created_at DESC`,
       [homeId]
     );
-    res.json({ success: true, data: rows } as ApiResponse);
+    // Mark which rows are directed at the current user (their inbox)
+    const enriched = rows.map((r: any) => ({
+      ...r,
+      is_my_inbox: r.target_staff_id === staffId && r.target_agreed == null,
+    }));
+    res.json({ success: true, data: enriched } as ApiResponse);
   } catch (err) { next(err); }
 });
 
@@ -245,14 +253,58 @@ router.post('/swaps', async (req: Request, res: Response, next: NextFunction) =>
   } catch (err) { next(err); }
 });
 
-// PUT /api/shifts/swaps/:id — approve or reject
+// PUT /api/shifts/swaps/:id — manager approve or reject
 router.put('/swaps/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, responseNotes } = req.body;
+    // Ensure column exists
+    await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_agreed BOOLEAN DEFAULT NULL`).catch(() => {});
     const rows = await query(
       `UPDATE shift_swap_requests SET status=$1, response_notes=$2, updated_at=NOW() WHERE id=$3 RETURNING *`,
       [status, responseNotes || null, req.params.id]
     );
+    if (status === 'approved') {
+      // Do the actual shift swap in DB
+      const swap = rows[0];
+      if (swap) {
+        await query(
+          `UPDATE staff_shifts SET staff_id = $1 WHERE id = $2`,
+          [swap.target_staff_id, swap.shift_id]
+        ).catch(() => {});
+      }
+    }
+    res.json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/shifts/swaps/:id/agree — target staff agrees or declines
+router.put('/swaps/:id/agree', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const { agreed, notes } = req.body;
+    await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_agreed BOOLEAN DEFAULT NULL`).catch(() => {});
+    await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_notes TEXT`).catch(() => {});
+    // Only the target staff can agree/decline
+    const existing = await query<any>(`SELECT * FROM shift_swap_requests WHERE id=$1`, [req.params.id]);
+    if (!existing[0]) return res.status(404).json({ success: false, error: 'Swap not found' });
+    if (existing[0].target_staff_id && existing[0].target_staff_id !== staffId) {
+      return res.status(403).json({ success: false, error: 'Not authorised' });
+    }
+    const newStatus = agreed ? 'pending_manager' : 'declined';
+    const rows = await query(
+      `UPDATE shift_swap_requests SET target_agreed=$1, target_notes=$2, status=$3, updated_at=NOW() WHERE id=$4 RETURNING *`,
+      [agreed, notes || null, newStatus, req.params.id]
+    );
+    // If agreed, notify managers
+    if (agreed) {
+      const managers = await query<any>(`SELECT id FROM staff WHERE home_id=$1 AND role IN ('home_manager','deputy_manager') LIMIT 5`, [existing[0].home_id]);
+      for (const m of managers) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [m.id, existing[0].home_id, 'Shift swap agreed', 'Both staff members have agreed to a shift swap — please review and approve.']
+        ).catch(() => {});
+      }
+    }
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });

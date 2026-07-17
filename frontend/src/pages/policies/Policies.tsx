@@ -3,7 +3,8 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
-import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2, Eye, Users, Paperclip, Upload, FileText, Download } from 'lucide-react'
+import { BookOpen, Plus, CheckCircle, Clock, ExternalLink, Trash2, Eye, Users, Paperclip, Upload, FileText, Download, PenLine } from 'lucide-react'
+import SignaturePad from '../../components/SignaturePad'
 import toast from 'react-hot-toast'
 
 export default function Policies() {
@@ -13,6 +14,9 @@ export default function Policies() {
   const [addOpen, setAddOpen] = useState(false)
   const [viewPolicy, setViewPolicy] = useState<any>(null)
   const [signOffs, setSignOffs] = useState<any[]>([])
+  const [signatureModal, setSignatureModal] = useState<any>(null)
+  const [capturedSig, setCapturedSig] = useState<string | null>(null)
+  const [signing, setSigning] = useState(false)
   const [signOffsLoading, setSignOffsLoading] = useState(false)
   const [attachments, setAttachments] = useState<any[]>([])
   const [attachmentsLoading, setAttachmentsLoading] = useState(false)
@@ -70,16 +74,25 @@ export default function Policies() {
     } catch { toast.error('Failed to delete policy') }
   }
 
-  const signPolicy = async (id: string) => {
+  const signPolicy = async (id: string, signatureDataUrl?: string) => {
+    setSigning(true)
     try {
-      await api.post(`/policies/${id}/sign`)
+      await api.post(`/policies/${id}/sign`, signatureDataUrl ? { signatureUrl: signatureDataUrl } : {})
       toast.success('Policy signed off')
+      setSignatureModal(null)
+      setCapturedSig(null)
       await load()
       if (viewPolicy?.id === id) {
         const res = await api.get(`/policies/${id}/sign-offs`)
         setSignOffs(res.data.data || [])
       }
     } catch { toast.error('Failed to sign policy') }
+    finally { setSigning(false) }
+  }
+
+  const openSignModal = (policy: any) => {
+    setCapturedSig(null)
+    setSignatureModal(policy)
   }
 
   return (
@@ -121,7 +134,7 @@ export default function Policies() {
                 <div className="flex gap-2 flex-shrink-0 items-center">
                   <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => openDetail(p)}>View</Button>
                   {p.requires_sign && !p.signed_by_me && (
-                    <Button size="sm" icon={<CheckCircle className="w-3.5 h-3.5" />} onClick={() => signPolicy(p.id)}>Sign off</Button>
+                    <Button size="sm" icon={<PenLine className="w-3.5 h-3.5" />} onClick={() => openSignModal(p)}>Sign off</Button>
                   )}
                   {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                     <button onClick={() => deletePolicy(p.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
@@ -222,7 +235,7 @@ export default function Policies() {
 
             <div className="flex gap-3 pt-2 border-t border-slate-100">
               {viewPolicy.requires_sign && !viewPolicy.signed_by_me && (
-                <Button size="sm" icon={<CheckCircle className="w-3.5 h-3.5" />} onClick={() => signPolicy(viewPolicy.id)}>Sign off</Button>
+                <Button size="sm" icon={<PenLine className="w-3.5 h-3.5" />} onClick={() => openSignModal(viewPolicy)}>Sign off</Button>
               )}
               {viewPolicy.document_url && (
                 <a href={/^https?:\/\//i.test(viewPolicy.document_url) ? viewPolicy.document_url : `https://${viewPolicy.document_url}`} target="_blank" rel="noreferrer">
@@ -241,6 +254,39 @@ export default function Policies() {
       )}
 
       <AddPolicyModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={async () => { setAddOpen(false); await load(); toast.success('Policy added') }} />
+
+      {/* Signature sign-off modal */}
+      {signatureModal && (
+        <Modal open={!!signatureModal} onClose={() => { setSignatureModal(null); setCapturedSig(null) }} title={`Sign off: ${signatureModal.title}`}>
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+              <p className="font-semibold mb-1">By signing below you confirm:</p>
+              <ul className="list-disc list-inside text-blue-700 space-y-0.5 text-xs">
+                <li>You have read and understood this policy</li>
+                <li>You will comply with its requirements in your work</li>
+                <li>You understand the consequences of non-compliance</li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-700 mb-2">Draw your signature below:</p>
+              <SignaturePad
+                label=""
+                onSave={(dataUrl) => setCapturedSig(dataUrl)}
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={() => { setSignatureModal(null); setCapturedSig(null) }}>Cancel</Button>
+              <Button
+                icon={<CheckCircle className="w-4 h-4" />}
+                disabled={!capturedSig}
+                loading={signing}
+                onClick={() => signPolicy(signatureModal.id, capturedSig || undefined)}>
+                Confirm & Sign
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
