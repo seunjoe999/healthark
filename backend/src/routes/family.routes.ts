@@ -27,38 +27,77 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
     if (!rows.length) throw new AppError('Resident not found', 404);
     const su = rows[0];
 
-    const [records, medications, carePlans, riskAssessments] = await Promise.all([
+    // Date range: default 90 days, override via ?days= query param
+    const days = Math.min(parseInt(req.query.days as string) || 90, 365);
+    const allTime = req.query.all === 'true';
+
+    const dateFilter = allTime ? '' : `AND dr.record_date >= CURRENT_DATE - INTERVAL '${days} days'`;
+
+    const [records, medications, carePlans, riskAssessments, incidents, weightRecords, careReviews] = await Promise.all([
       query<any>(
-        `SELECT dr.record_type, dr.notes, dr.record_date, dr.shift,
+        `SELECT dr.id, dr.record_type, dr.notes, dr.record_date, dr.shift,
+                dr.wellbeing_score, dr.mood,
                 s.first_name || ' ' || s.last_name as staff_name
          FROM daily_records dr
          LEFT JOIN staff s ON s.id = dr.staff_id
-         WHERE dr.su_id = $1 AND dr.record_date >= CURRENT_DATE - INTERVAL '14 days'
-         ORDER BY dr.record_date DESC, dr.id DESC LIMIT 60`,
+         WHERE dr.su_id = $1 ${dateFilter}
+         ORDER BY dr.record_date DESC, dr.id DESC LIMIT 200`,
         [su.id]
       ),
       query<any>(
-        `SELECT medication_name, dose, frequency, route, instructions, is_prn, prescribed_by
-         FROM su_medications WHERE su_id = $1 AND is_active = true ORDER BY is_prn, medication_name`,
+        `SELECT medication_name, dose, frequency, route, instructions, is_prn,
+                prescribed_by, start_date, end_date, is_active
+         FROM su_medications WHERE su_id = $1
+         ORDER BY is_active DESC, is_prn, medication_name`,
         [su.id]
       ),
       query<any>(
-        `SELECT plan_type, custom_name, aims_outcomes, next_review_date, last_review_date
-         FROM care_plans WHERE su_id = $1 AND is_active IS NOT FALSE
-         ORDER BY plan_type`,
+        `SELECT plan_type, custom_name, aims_outcomes, what_matters, how_to_support,
+                next_review_date, last_review_date, is_active, updated_at
+         FROM care_plans WHERE su_id = $1
+         ORDER BY is_active DESC, plan_type`,
         [su.id]
       ),
       query<any>(
-        `SELECT assessment_name, risk_level, review_date, updated_at
-         FROM risk_assessments WHERE su_id = $1 AND is_active = true
-         ORDER BY risk_level DESC, assessment_name`,
+        `SELECT assessment_name, risk_level, description, management_plan,
+                review_date, updated_at, is_active
+         FROM risk_assessments WHERE su_id = $1
+         ORDER BY is_active DESC, risk_level DESC, assessment_name`,
         [su.id]
       ),
+      query<any>(
+        `SELECT i.id, i.incident_type, i.description, i.outcome, i.severity,
+                i.incident_date, i.location, i.follow_up_required,
+                s.first_name || ' ' || s.last_name as reported_by
+         FROM incidents i
+         LEFT JOIN staff s ON s.id = i.staff_id
+         WHERE i.su_id = $1
+         ORDER BY i.incident_date DESC LIMIT 50`,
+        [su.id]
+      ).catch(() => []),
+      query<any>(
+        `SELECT weight_kg, measured_at, notes,
+                s.first_name || ' ' || s.last_name as recorded_by
+         FROM weight_records wr
+         LEFT JOIN staff s ON s.id = wr.staff_id
+         WHERE wr.su_id = $1
+         ORDER BY wr.measured_at DESC LIMIT 24`,
+        [su.id]
+      ).catch(() => []),
+      query<any>(
+        `SELECT review_type, review_date, summary, outcome, next_review_date,
+                s.first_name || ' ' || s.last_name as reviewed_by
+         FROM care_reviews cr
+         LEFT JOIN staff s ON s.id = cr.staff_id
+         WHERE cr.su_id = $1
+         ORDER BY cr.review_date DESC LIMIT 20`,
+        [su.id]
+      ).catch(() => []),
     ]);
 
     res.json({
       success: true,
-      data: { resident: su, records, medications, carePlans, riskAssessments }
+      data: { resident: su, records, medications, carePlans, riskAssessments, incidents, weightRecords, careReviews }
     } as ApiResponse);
   } catch (err) { next(err); }
 });
