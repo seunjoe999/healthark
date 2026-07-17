@@ -448,6 +448,157 @@ function VisualBodyMap({ value, onChange }: { value: string; onChange: (v: strin
   )
 }
 
+// ── Inline SVG bar chart ─────────────────────────────────────────
+function BarChart({ data, colorClass = 'fill-orange-500', height = 80 }: {
+  data: { label: string; value: number }[]
+  colorClass?: string
+  height?: number
+}) {
+  const max = Math.max(...data.map(d => d.value), 1)
+  const w = 100 / data.length
+  return (
+    <svg viewBox={`0 0 ${data.length * 40} ${height + 24}`} className="w-full">
+      {data.map((d, i) => {
+        const barH = Math.round((d.value / max) * height)
+        const x = i * 40 + 4
+        return (
+          <g key={i}>
+            <rect x={x} y={height - barH} width={32} height={barH} className={colorClass} rx="3" />
+            <text x={x + 16} y={height + 14} textAnchor="middle" fontSize="9" fill="#94a3b8">{d.label}</text>
+            {d.value > 0 && (
+              <text x={x + 16} y={height - barH - 3} textAnchor="middle" fontSize="9" fill="#64748b" fontWeight="600">{d.value}</text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+function HorizontalBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = max > 0 ? (value / max) * 100 : 0
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-slate-600 w-32 flex-shrink-0 truncate">{label}</span>
+      <div className="flex-1 bg-slate-100 rounded-full h-3">
+        <div className="h-3 rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="text-xs font-bold text-slate-700 w-6 text-right">{value}</span>
+    </div>
+  )
+}
+
+function IncidentAnalyticsPanel({ incidents, analytics, startDate, endDate }: {
+  incidents: any[]
+  analytics: any
+  startDate: string
+  endDate: string
+}) {
+  if (incidents.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400">
+        <p className="text-lg font-semibold mb-1">No data for this period</p>
+        <p className="text-sm">Adjust the date range to see analytics.</p>
+      </div>
+    )
+  }
+
+  const sortedMonths = Object.keys(analytics.byMonth).sort()
+  const monthData = sortedMonths.map(m => ({
+    label: m.slice(5) + '/' + m.slice(2, 4), // MM/YY
+    value: analytics.byMonth[m]
+  }))
+
+  const typeEntries = Object.entries(analytics.byType as Record<string, number>)
+    .sort((a, b) => b[1] - a[1])
+  const maxType = Math.max(...typeEntries.map(e => e[1]), 1)
+
+  const residentEntries = Object.entries(analytics.byResident as Record<string, number>)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+  const maxRes = Math.max(...residentEntries.map(e => e[1]), 1)
+
+  const dowData = analytics.byDow.map((v: number, i: number) => ({ label: analytics.DOW[i], value: v }))
+
+  const sevColors: Record<string, string> = {
+    Critical: '#b91c1c', High: '#ea580c', Medium: '#d97706', Low: '#16a34a'
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Object.entries(analytics.bySev).map(([label, value]) => (
+          <div key={label} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p className="text-2xl font-black" style={{ color: sevColors[label] || '#64748b' }}>{value as number}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        {/* Incidents by month */}
+        {monthData.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">Incidents by Month</h3>
+            <BarChart data={monthData} colorClass="fill-orange-400" />
+          </div>
+        )}
+
+        {/* Day of week */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Incidents by Day of Week</h3>
+          <BarChart data={dowData} colorClass="fill-blue-400" />
+        </div>
+      </div>
+
+      {/* By type */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4">
+        <h3 className="text-sm font-bold text-slate-700 mb-3">Incident Types</h3>
+        <div className="space-y-2">
+          {typeEntries.map(([label, value]) => (
+            <HorizontalBar key={label} label={label} value={value} max={maxType} color="#f97316" />
+          ))}
+        </div>
+      </div>
+
+      {/* By resident */}
+      {residentEntries.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Residents with Most Incidents</h3>
+          <div className="space-y-2">
+            {residentEntries.map(([label, value]) => (
+              <HorizontalBar key={label} label={label} value={value} max={maxRes} color="#8b5cf6" />
+            ))}
+          </div>
+          {residentEntries.some(([, v]) => v >= 3) && (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-xs font-semibold text-amber-800">
+                ⚠ One or more residents have 3+ incidents — consider a care plan or risk assessment review.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CQC summary box */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+        <h3 className="text-sm font-bold text-slate-700 mb-2">CQC Evidence Summary</h3>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Period: <strong>{startDate}</strong> to <strong>{endDate}</strong> &nbsp;·&nbsp;
+          Total incidents: <strong>{incidents.length}</strong> &nbsp;·&nbsp;
+          Critical/High: <strong>{(analytics.bySev.Critical || 0) + (analytics.bySev.High || 0)}</strong> &nbsp;·&nbsp;
+          Most common type: <strong>{typeEntries[0]?.[0] || 'N/A'}</strong>
+        </p>
+        <p className="text-xs text-slate-500 mt-1.5">
+          Use this data when preparing for CQC inspections under the Safe and Well-Led key questions.
+          Print this page or export for inclusion in your quality assurance file.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function Incidents() {
   const { user, isRole } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
@@ -543,6 +694,8 @@ export default function Incidents() {
     loadIncidents(selectedHome)
   }, [selectedHome, startDate, endDate, filterType, search])
 
+  const [activeTab, setActiveTab] = useState<'list' | 'analytics'>('list')
+
   const stats = useMemo(() => {
     const counts = { critical: 0, high: 0, medium: 0, low: 0 }
     incidents.forEach(inc => {
@@ -551,6 +704,45 @@ export default function Incidents() {
     })
     return counts
   }, [incidents])
+
+  // Analytics derived data
+  const analytics = useMemo(() => {
+    // By type
+    const byType: Record<string, number> = {}
+    incidents.forEach(inc => {
+      const t = TYPE_LABELS[inc.incident_type] || inc.incident_type || 'Unknown'
+      byType[t] = (byType[t] || 0) + 1
+    })
+
+    // By month (last 6 months from current filter range)
+    const byMonth: Record<string, number> = {}
+    incidents.forEach(inc => {
+      if (!inc.incident_date) return
+      const m = inc.incident_date.toString().slice(0, 7) // YYYY-MM
+      byMonth[m] = (byMonth[m] || 0) + 1
+    })
+
+    // By day of week
+    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const byDow: number[] = [0, 0, 0, 0, 0, 0, 0]
+    incidents.forEach(inc => {
+      if (!inc.incident_date) return
+      const d = new Date(inc.incident_date).getDay()
+      byDow[d]++
+    })
+
+    // By severity
+    const bySev = { Critical: stats.critical, High: stats.high, Medium: stats.medium, Low: stats.low }
+
+    // Top resident
+    const byResident: Record<string, number> = {}
+    incidents.forEach(inc => {
+      const n = inc.resident_name || 'Unknown'
+      byResident[n] = (byResident[n] || 0) + 1
+    })
+
+    return { byType, byMonth, byDow, DOW, bySev, byResident }
+  }, [incidents, stats])
 
   const toggleExpand = (id: string) => setExpandedId(prev => prev === id ? null : id)
 
@@ -670,13 +862,31 @@ export default function Incidents() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total this period" value={incidents.length} color="border-slate-400" />
         <StatCard label="Critical" value={stats.critical} color="border-red-500" />
         <StatCard label="High severity" value={stats.high} color="border-orange-500" />
         <StatCard label="Medium" value={stats.medium} color="border-yellow-500" />
       </div>
 
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-5 w-fit">
+        {[{ id: 'list', label: 'Incident Log' }, { id: 'analytics', label: '📊 Analytics' }].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── ANALYTICS TAB ── */}
+      {activeTab === 'analytics' && (
+        <IncidentAnalyticsPanel incidents={incidents} analytics={analytics} startDate={startDate} endDate={endDate} />
+      )}
+
+      {activeTab === 'list' && <>
       {/* Filter bar */}
       <form onSubmit={handleSearch} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6">
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
@@ -974,6 +1184,8 @@ export default function Incidents() {
           </form>
         )}
       </Modal>
+
+      </> /* end activeTab === 'list' */}
 
       {/* Create incident modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Incident" size="lg">

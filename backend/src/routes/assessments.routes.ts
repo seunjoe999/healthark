@@ -1498,6 +1498,122 @@ function calcScore(template: Template, answers: Record<string, any>) {
   return { totalScore, maxScore, scorePct, riskLevel, burnoutTotal };
 }
 
+// ── Barthel & MUST tables ─────────────────────────────────────────
+const initBarthelTable = async () => {
+  await query(`
+    CREATE TABLE IF NOT EXISTS barthel_assessments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id UUID NOT NULL,
+      home_id UUID,
+      assessed_by UUID,
+      feeding INT DEFAULT 0,
+      bathing INT DEFAULT 0,
+      grooming INT DEFAULT 0,
+      dressing INT DEFAULT 0,
+      bowel_control INT DEFAULT 0,
+      bladder_control INT DEFAULT 0,
+      toilet_use INT DEFAULT 0,
+      transfers INT DEFAULT 0,
+      mobility INT DEFAULT 0,
+      stairs INT DEFAULT 0,
+      total_score INT DEFAULT 0,
+      interpretation TEXT,
+      notes TEXT,
+      assessed_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+};
+initBarthelTable().catch(() => {});
+
+const initMUSTTable = async () => {
+  await query(`
+    CREATE TABLE IF NOT EXISTS must_scores (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id UUID NOT NULL,
+      home_id UUID,
+      assessed_by UUID,
+      bmi_score INT DEFAULT 0,
+      bmi NUMERIC(5,1),
+      height_cm NUMERIC(6,1),
+      weight_kg NUMERIC(6,1),
+      weight_loss_score INT DEFAULT 0,
+      acute_disease_score INT DEFAULT 0,
+      total_score INT DEFAULT 0,
+      risk_level TEXT,
+      notes TEXT,
+      assessed_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+};
+initMUSTTable().catch(() => {});
+
+// ── Barthel routes ────────────────────────────────────────────────
+router.get('/barthel/:suId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rows = await query<any>(
+      `SELECT b.*, s.first_name || ' ' || s.last_name as assessed_by_name
+       FROM barthel_assessments b LEFT JOIN staff s ON s.id = b.assessed_by
+       WHERE b.su_id = $1 ORDER BY b.assessed_at DESC LIMIT 20`,
+      [req.params.suId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.post('/barthel', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { suId, homeId, feeding, bathing, grooming, dressing, bowel_control, bladder_control,
+            toilet_use, transfers, mobility, stairs, totalScore, interpretation, notes, assessedBy } = req.body;
+    const conductedBy = assessedBy || (req.staff as any)?.staffId;
+    const rows = await query<any>(
+      `INSERT INTO barthel_assessments
+        (su_id, home_id, assessed_by, feeding, bathing, grooming, dressing, bowel_control,
+         bladder_control, toilet_use, transfers, mobility, stairs, total_score, interpretation, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       RETURNING *`,
+      [suId, homeId || null, conductedBy || null,
+       feeding || 0, bathing || 0, grooming || 0, dressing || 0,
+       bowel_control || 0, bladder_control || 0, toilet_use || 0,
+       transfers || 0, mobility || 0, stairs || 0,
+       totalScore || 0, interpretation || null, notes || null]
+    );
+    res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// ── MUST routes ───────────────────────────────────────────────────
+router.get('/must/:suId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rows = await query<any>(
+      `SELECT m.*, s.first_name || ' ' || s.last_name as assessed_by_name
+       FROM must_scores m LEFT JOIN staff s ON s.id = m.assessed_by
+       WHERE m.su_id = $1 ORDER BY m.assessed_at DESC LIMIT 20`,
+      [req.params.suId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.post('/must', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { suId, homeId, bmiScore, bmi, heightCm, weightKg, weightLossScore,
+            acuteDiseaseScore, totalScore, riskLevel, notes, assessedBy } = req.body;
+    const conductedBy = assessedBy || (req.staff as any)?.staffId;
+    const rows = await query<any>(
+      `INSERT INTO must_scores
+        (su_id, home_id, assessed_by, bmi_score, bmi, height_cm, weight_kg,
+         weight_loss_score, acute_disease_score, total_score, risk_level, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING *`,
+      [suId, homeId || null, conductedBy || null,
+       bmiScore || 0, bmi || null, heightCm || null, weightKg || null,
+       weightLossScore || 0, acuteDiseaseScore || 0, totalScore || 0,
+       riskLevel || null, notes || null]
+    );
+    res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // ── Routes ───────────────────────────────────────────────────────
 
 // GET /api/assessments/templates

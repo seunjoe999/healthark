@@ -12,7 +12,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw
+  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale
 } from 'lucide-react'
 
 const navSections = [
@@ -116,6 +116,8 @@ const navSections = [
       { label: 'Wound Care',          to: '/wound-care',         icon: Stethoscope,   roles: [], featureKey: 'wound_care' },
       { label: 'PEEP Plans',          to: '/peep',               icon: Zap,           roles: [], featureKey: 'peep' },
       { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
+      { label: 'Barthel Index',       to: '/assessments/barthel', icon: FileCheck,     roles: [], featureKey: 'barthel' },
+      { label: 'MUST Score',          to: '/assessments/must',    icon: Scale,         roles: [], featureKey: 'must_score' },
     ]
   },
   {

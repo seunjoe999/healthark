@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { format, differenceInYears, parseISO } from 'date-fns'
 import {
   Heart, Phone, Calendar, FileText, Loader2, AlertTriangle,
-  Pill, ClipboardList, Shield, User, Activity, ChevronDown, ChevronUp,
+  Pill as PillIcon, ClipboardList, Shield, User, Activity, ChevronDown, ChevronUp,
   Eye, X, Scale, Star, Info, Syringe, BookOpen, TrendingUp, ChevronRight,
   MapPin, Clock
 } from 'lucide-react'
@@ -62,9 +62,9 @@ function Pill({ text, bg, textColor, border }: { text: string; bg: string; textC
   )
 }
 
-function Card({ children, className = '', style = {} }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+function Card({ children, className = '', style = {}, onClick }: { children: React.ReactNode; className?: string; style?: React.CSSProperties; onClick?: () => void }) {
   return (
-    <div className={`rounded-2xl bg-white shadow-sm border border-slate-200/70 ${className}`} style={style}>
+    <div className={`rounded-2xl bg-white shadow-sm border border-slate-200/70 ${className}`} style={style} onClick={onClick}>
       {children}
     </div>
   )
@@ -652,7 +652,7 @@ export default function FamilyView() {
         {activeTab === 'health' && (
           <>
             {/* Medications — active */}
-            <Section title="Current Medications" icon={<Pill className="w-4 h-4" />} badge={activeMeds.length}>
+            <Section title="Current Medications" icon={<PillIcon className="w-4 h-4" />} badge={activeMeds.length}>
               {activeMeds.length === 0 ? (
                 <p className="text-slate-400 text-sm text-center py-4 mt-4">No active medications recorded</p>
               ) : (

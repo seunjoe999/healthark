@@ -93,6 +93,8 @@ const Contractors = React.lazy(() => import('./pages/contractors/Contractors'))
 const LessonsLearned = React.lazy(() => import('./pages/lessons-learned/LessonsLearned'))
 const CQCInspection = React.lazy(() => import('./pages/cqc-inspection/CQCInspection'))
 const ExternalContacts = React.lazy(() => import('./pages/contacts/ExternalContacts'))
+const BarthelIndex = React.lazy(() => import('./pages/assessments/BarthelIndex'))
+const MUSTScore = React.lazy(() => import('./pages/assessments/MUSTScore'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -205,6 +207,8 @@ function AppRoutes() {
         <Route path="/lessons-learned" element={<ProtectedRoute><LessonsLearned /></ProtectedRoute>} />
         <Route path="/cqc-inspection" element={<ProtectedRoute><CQCInspection /></ProtectedRoute>} />
         <Route path="/external-contacts" element={<ProtectedRoute><ExternalContacts /></ProtectedRoute>} />
+        <Route path="/assessments/barthel" element={<ProtectedRoute><BarthelIndex /></ProtectedRoute>} />
+        <Route path="/assessments/must" element={<ProtectedRoute><MUSTScore /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </React.Suspense>

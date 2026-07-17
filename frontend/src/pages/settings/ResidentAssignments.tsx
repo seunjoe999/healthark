@@ -85,7 +85,7 @@ export default function ResidentAssignments() {
       if (!unassignedResidents.length) { toast.success('All residents already have staff assigned'); setAiLoading(false); return }
       const staffPool = staff.slice()
       let idx = 0
-      const newAssignments = []
+      const newAssignments: any[] = []
       for (const r of unassignedResidents) {
         const s = staffPool[idx % staffPool.length]
         idx++
