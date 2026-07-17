@@ -15,6 +15,13 @@ function fromToken(req: Request, field: string): string {
 }
 
 const init = async () => {
+  // Drop table if home_id column has wrong type (integer instead of UUID from old schema)
+  const cols = await query<{ data_type: string }>(
+    `SELECT data_type FROM information_schema.columns WHERE table_name='external_contacts' AND column_name='home_id'`
+  );
+  if (cols.length > 0 && cols[0].data_type !== 'uuid') {
+    await query(`DROP TABLE IF EXISTS external_contacts`);
+  }
   await query(`
     CREATE TABLE IF NOT EXISTS external_contacts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -33,7 +40,6 @@ const init = async () => {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  await query(`ALTER TABLE external_contacts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`);
 };
 router.use(async (_req, _res, next) => {
   try { await init(); } catch (_) {}
@@ -52,10 +58,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     sql += ' ORDER BY category, name';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
-  } catch (err: any) {
-    // Return actual DB error detail so we can diagnose the 500
-    res.status(500).json({ success: false, error: err?.message || 'Unknown error' } as any);
-  }
+  } catch (err) { next(err); }
 });
 
 // POST create
