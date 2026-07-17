@@ -96,6 +96,10 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.get('/api/version', (_req, res) => {
+  res.json({ commit: process.env.RENDER_GIT_COMMIT || 'local', ts: Date.now() });
+});
+
 // â”€â”€ ALL API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth', authRoutes);
 app.use('/api/homes', homesRoutes);
