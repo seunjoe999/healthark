@@ -94,7 +94,7 @@ const navSections = [
     ]
   },
   {
-    label: 'OPERATIONS',
+    label: 'OPERATIONS', highlight: true,
     items: [
       { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: [], featureKey: 'tasks' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
@@ -144,13 +144,13 @@ const navSections = [
     ]
   },
   {
-    label: 'POLICIES',
+    label: 'POLICIES', highlight: true,
     items: [
       { label: 'Policies', to: '/policies', icon: BookOpen, roles: [], featureKey: 'policies' },
     ]
   },
   {
-    label: 'SETTINGS',
+    label: 'SETTINGS', highlight: true,
     items: [
       { label: 'Settings', to: '/settings', icon: Settings, roles: ['group_admin'], featureKey: 'settings' },
     ]
@@ -167,7 +167,7 @@ const navSections = [
 const allNavItems = navSections.flatMap(s => s.items) as any[]
 
 interface SidebarProps {
-  user: { id?: string; firstName?: string; lastName?: string; role?: string; featureFlags?: Record<string, boolean> } | null
+  user: { id?: string; firstName?: string; lastName?: string; role?: string; featureFlags?: Record<string, boolean>; photoUrl?: string | null } | null
   logout: () => void
   isRole: (...roles: string[]) => boolean
   onNavClick: () => void
@@ -257,9 +257,13 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
       <div className="border-t border-white/8 p-4">
         <NavLink to={user?.id ? `/staff/${user.id}/edit` : '#'}
           className="flex items-center gap-3 mb-3 px-1 py-1.5 rounded-xl hover:bg-white/8 transition-all duration-150 group cursor-pointer">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
+          {user?.photoUrl ? (
+            <img src={user.photoUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-amber-500/30" />
+          ) : (
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate leading-tight">{user?.firstName} {user?.lastName}</p>
             <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5 group-hover:text-slate-400">{user?.role?.replace(/_/g, ' ')} · <span className="text-gold-400/70 group-hover:text-gold-400">edit profile</span></p>

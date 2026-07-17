@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Card, SectionHeading, Spinner } from '../../components/ui'
-import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle, Shield } from 'lucide-react'
+import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle, Shield, RefreshCw, Users, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 
@@ -87,6 +87,9 @@ export default function Settings() {
   const [changingPw, setChangingPw] = useState(false)
   const [pw, setPw] = useState({ current: '', new: '', confirm: '' })
   const [copied, setCopied] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [recentStaff, setRecentStaff] = useState<any[]>([])
+  const [showRecentStaff, setShowRecentStaff] = useState(false)
   const [form, setForm] = useState<any>({})
   const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }))
 
@@ -104,6 +107,10 @@ export default function Settings() {
         latitude: h.latitude || '',
         longitude: h.longitude || '',
         geofenceRadius: h.geofence_radius || 200,
+        careType: h.care_type || '',
+        cqcLocationId: h.cqc_location_id || '',
+        cqcRating: h.cqc_rating || '',
+        totalBeds: h.total_beds || 30,
       })
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
@@ -115,6 +122,33 @@ export default function Settings() {
       toast.success('Settings saved')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setSaving(false) }
+  }
+
+  const resetRegCode = async () => {
+    if (!home?.id) return
+    if (!window.confirm('Reset the registration code? The old code will stop working immediately.')) return
+    setResetting(true)
+    try {
+      const res = await api.post('/clockin/generate-qr', { homeId: home.id })
+      const newToken = res.data.data?.token
+      if (newToken) {
+        setHome((h: any) => ({ ...h, qr_token: newToken }))
+        toast.success('Registration code reset — share the new code with new staff')
+      }
+    } catch { toast.error('Failed to reset code') }
+    finally { setResetting(false) }
+  }
+
+  const loadRecentStaff = async () => {
+    if (!home?.id) return
+    try {
+      const res = await api.get('/staff', { params: { homeId: home.id } })
+      const all = res.data.data || []
+      const sorted = [...all].sort((a: any, b: any) =>
+        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      ).slice(0, 15)
+      setRecentStaff(sorted)
+    } catch { toast.error('Could not load staff list') }
   }
 
   const changePassword = async (e: React.FormEvent) => {
@@ -197,8 +231,39 @@ export default function Settings() {
             <Button size="sm" variant="outline" icon={copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />} onClick={copyRegCode}>
               {copied ? 'Copied!' : 'Copy'}
             </Button>
+            <Button size="sm" variant="outline" icon={<RefreshCw className={`w-3.5 h-3.5 ${resetting ? 'animate-spin' : ''}`} />} onClick={resetRegCode} loading={resetting}>
+              Reset
+            </Button>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Staff enter this code when creating their account on the login page. Their account will be pending until you activate it.</p>
+          <p className="text-xs text-slate-400 mt-2">Resetting generates a new code — the old one stops working immediately. Staff enter this code when creating their account.</p>
+
+          {/* Recently registered staff */}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <button
+              onClick={() => { setShowRecentStaff(s => !s); if (!showRecentStaff) loadRecentStaff() }}
+              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">
+              <Users className="w-4 h-4" />
+              Recently registered staff
+              {showRecentStaff ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {showRecentStaff && (
+              <div className="mt-3 space-y-1.5">
+                {recentStaff.length === 0 && <p className="text-xs text-slate-400">No staff found.</p>}
+                {recentStaff.map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 text-sm">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 flex-shrink-0">
+                      {s.first_name?.[0]}{s.last_name?.[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-800 truncate">{s.first_name} {s.last_name}</p>
+                      <p className="text-xs text-slate-400 capitalize">{s.role?.replace(/_/g, ' ')} · {s.is_active ? <span className="text-emerald-600">Active</span> : <span className="text-amber-600">Pending activation</span>}</p>
+                    </div>
+                    {s.created_at && <p className="text-xs text-slate-400 flex-shrink-0">{new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </Card>
 
         {/* Home settings */}
@@ -211,6 +276,32 @@ export default function Settings() {
             <Input label="Postcode" value={form.postcode || ''} onChange={e => set('postcode', e.target.value)} />
             <Input label="Phone" value={form.phone || ''} onChange={e => set('phone', e.target.value)} />
             <Input label="Email" type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} className="md:col-span-2" />
+            <div>
+              <label className="label">Care home type</label>
+              <select className="input" value={form.careType || ''} onChange={e => set('careType', e.target.value)}>
+                <option value="">Select type…</option>
+                <option value="residential">Residential</option>
+                <option value="nursing">Nursing</option>
+                <option value="dementia">Dementia</option>
+                <option value="learning_disabilities">Learning Disabilities</option>
+                <option value="mental_health">Mental Health</option>
+                <option value="supported_living">Supported Living</option>
+                <option value="extra_care">Extra Care</option>
+              </select>
+            </div>
+            <Input label="Total beds" type="number" value={form.totalBeds || ''} onChange={e => set('totalBeds', e.target.value)} />
+            <Input label="CQC location ID" value={form.cqcLocationId || ''} onChange={e => set('cqcLocationId', e.target.value)} />
+            <div>
+              <label className="label">CQC rating</label>
+              <select className="input" value={form.cqcRating || ''} onChange={e => set('cqcRating', e.target.value)}>
+                <option value="">Select rating…</option>
+                <option value="outstanding">Outstanding</option>
+                <option value="good">Good</option>
+                <option value="requires_improvement">Requires Improvement</option>
+                <option value="inadequate">Inadequate</option>
+                <option value="not_yet_inspected">Not Yet Inspected</option>
+              </select>
+            </div>
           </div>
 
           {/* Geo-lock settings */}

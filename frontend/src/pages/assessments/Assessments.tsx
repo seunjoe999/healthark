@@ -175,7 +175,7 @@ export default function Assessments() {
 
       {/* Template grid */}
       <div className="mb-8">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Start a new audit</h2>
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Start a new assessment</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {filteredTemplates.map(t => (
             <button key={t.key} onClick={() => openStart(t)}
@@ -201,7 +201,7 @@ export default function Assessments() {
         )}
       </div>
 
-      <Modal open={startModal} onClose={() => setStartModal(false)} title={`Start audit: ${selectedTemplate?.name}`}>
+      <Modal open={startModal} onClose={() => setStartModal(false)} title={`Start assessment: ${selectedTemplate?.name}`}>
         <div className="space-y-4">
           <Select
             label={tab === 'service_user' ? 'Select resident *' : 'Select staff member *'}
@@ -212,7 +212,7 @@ export default function Assessments() {
           />
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="outline" onClick={() => setStartModal(false)}>Cancel</Button>
-            <Button onClick={startAssessment} disabled={!subjectId}>Start audit</Button>
+            <Button onClick={startAssessment} disabled={!subjectId}>Start assessment</Button>
           </div>
         </div>
       </Modal>

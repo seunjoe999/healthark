@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Spinner } from '../../components/ui'
-import { UserCheck, X, Plus, Users, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { UserCheck, X, Plus, Users, Search, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Resident {
@@ -35,10 +35,12 @@ interface Assignment {
 
 const ROLE_LABELS: Record<string, string> = {
   care_staff: 'Care Staff',
+  senior_carer: 'Senior Carer',
   team_leader: 'Team Leader',
   admin: 'Admin',
   deputy_manager: 'Deputy Manager',
   home_manager: 'Manager',
+  auditor: 'Auditor',
   group_admin: 'Director',
 }
 
@@ -54,23 +56,53 @@ export default function ResidentAssignments() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
 
   useEffect(() => {
     if (!homeId) return
     setLoading(true)
     Promise.all([
-      api.get('/service-users', { params: { homeId, status: 'active' } }),
+      api.get('/service-users', { params: { homeId } }),
       api.get('/staff', { params: { homeId } }),
       api.get('/service-users/assignments/list', { params: { homeId } }),
     ]).then(([rRes, sRes, aRes]) => {
-      setResidents(rRes.data.data || [])
+      const allResidents = rRes.data.data || []
+      setResidents(allResidents.filter((r: Resident) => r.status === 'live' || r.status === 'active'))
       setStaff((sRes.data.data || []).filter((s: StaffMember) =>
-        ['care_staff', 'team_leader'].includes(s.role)
+        ['care_staff', 'team_leader', 'senior_carer'].includes(s.role)
       ))
       setAssignments(aRes.data.data || [])
     }).catch(() => toast.error('Failed to load assignments'))
       .finally(() => setLoading(false))
   }, [homeId])
+
+  const autoAssignAll = async () => {
+    if (!residents.length || !staff.length) { toast.error('No residents or staff to assign'); return }
+    setAiLoading(true)
+    try {
+      // Round-robin: distribute all unassigned residents across available staff
+      const unassignedResidents = residents.filter(r => assignedStaffForResident(r.id).length === 0)
+      if (!unassignedResidents.length) { toast.success('All residents already have staff assigned'); setAiLoading(false); return }
+      const staffPool = staff.slice()
+      let idx = 0
+      const newAssignments = []
+      for (const r of unassignedResidents) {
+        const s = staffPool[idx % staffPool.length]
+        idx++
+        try {
+          await api.post('/service-users/assignments', { homeId, suId: r.id, staffId: s.id })
+          newAssignments.push({
+            id: `${s.id}-${r.id}`, staff_id: s.id, su_id: r.id,
+            staff_name: `${s.first_name} ${s.last_name}`, staff_role: s.role,
+            su_name: `${r.first_name} ${r.last_name}`, su_status: r.status,
+          })
+        } catch {}
+      }
+      setAssignments(prev => [...prev, ...newAssignments])
+      toast.success(`Auto-assigned ${newAssignments.length} residents to staff`)
+    } catch { toast.error('Auto-assign failed') }
+    finally { setAiLoading(false) }
+  }
 
   const assignedStaffForResident = (suId: string) =>
     assignments.filter(a => a.su_id === suId)
@@ -121,12 +153,22 @@ export default function ResidentAssignments() {
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <UserCheck className="w-6 h-6 text-blue-600" />
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Resident Assignments</h1>
-          <p className="text-sm text-slate-500">Assign care staff to residents — staff only see residents they are assigned to</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <UserCheck className="w-6 h-6 text-blue-600" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Resident Assignments</h1>
+            <p className="text-sm text-slate-500">Assign care staff to residents — staff only see residents they are assigned to</p>
+          </div>
         </div>
+        <button
+          onClick={autoAssignAll}
+          disabled={aiLoading}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+          {aiLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          Auto-Assign All
+        </button>
       </div>
 
       <div className="relative">

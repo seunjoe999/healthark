@@ -227,14 +227,22 @@ router.get('/settings/home', async (req: Request, res: Response, next: NextFunct
 router.put('/settings/home', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = fromToken(req, 'homeId');
-    const { name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius } = req.body;
+    const { name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
+            careType, cqcLocationId, cqcRating, totalBeds } = req.body;
+    // Ensure optional columns exist
+    await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS care_type TEXT`).catch(() => {});
+    await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS cqc_rating TEXT`).catch(() => {});
+    await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS total_beds INTEGER DEFAULT 30`).catch(() => {});
     await query(
       `UPDATE homes SET name=COALESCE($1,name), address1=COALESCE($2,address1),
         postcode=COALESCE($3,postcode), phone=COALESCE($4,phone), email=COALESCE($5,email),
         manager_name=COALESCE($6,manager_name), latitude=COALESCE($7,latitude),
         longitude=COALESCE($8,longitude), geofence_radius=COALESCE($9,geofence_radius),
+        care_type=COALESCE($11,care_type), cqc_location_id=COALESCE($12,cqc_location_id),
+        cqc_rating=COALESCE($13,cqc_rating), total_beds=COALESCE($14,total_beds),
         updated_at=NOW() WHERE id=$10`,
-      [name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius, homeId]
+      [name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
+       homeId, careType || null, cqcLocationId || null, cqcRating || null, totalBeds ? Number(totalBeds) : null]
     );
     res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
   } catch (err) { next(err); }
