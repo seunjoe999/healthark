@@ -335,7 +335,10 @@ router.post(
       await Promise.all([
         query(
           `SELECT first_name || ' ' || last_name AS name,
-                  date_of_birth, allergies, medical_history, notes
+                  date_of_birth,
+                  COALESCE(med_allergies, food_allergies) AS allergies,
+                  medical_history,
+                  need_to_know AS notes
            FROM service_users WHERE id = $1`,
           [suId],
         ).then(r => { suRows = r; }),
@@ -517,7 +520,10 @@ router.get(
       await Promise.allSettled([
         query(
           `SELECT first_name || ' ' || last_name AS name, date_of_birth,
-                  risk_level, allergies, medical_history, dnr_status
+                  emergency_rating AS risk_level,
+                  COALESCE(med_allergies, food_allergies) AS allergies,
+                  medical_history,
+                  CASE WHEN dnar THEN 'DNAR in place' ELSE NULL END AS dnr_status
            FROM service_users WHERE id = $1`,
           [suId],
         ).then(r => { suRows = r; }),
