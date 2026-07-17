@@ -33,6 +33,7 @@ const init = async () => {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE external_contacts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`);
 };
 router.use(async (_req, _res, next) => {
   try { await init(); } catch (_) {}

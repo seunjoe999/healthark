@@ -205,7 +205,7 @@ export default function EnvironmentalChecks() {
                   <span className={`text-xs font-semibold ${statusColor(c.result)}`}>{resultLabel(c.result)}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-xs text-gray-400">{format(new Date(c.check_date + 'T12:00:00'), 'dd MMM yyyy')}</span>
+                  <span className="text-xs text-gray-400">{format(new Date(String(c.check_date).includes('T') ? c.check_date : c.check_date + 'T12:00:00'), 'dd MMM yyyy')}</span>
                   <span className={`text-xs font-medium ${statusColor(c.result)}`}>{c.reading_value} {c.unit}</span>
                   {c.notes && <span className="text-xs text-gray-500 truncate">{c.notes}</span>}
                 </div>

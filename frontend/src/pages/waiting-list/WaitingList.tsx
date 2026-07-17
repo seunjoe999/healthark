@@ -203,12 +203,12 @@ export default function WaitingList() {
                     {priorityBadge(e.priority)}
                     <span className="text-xs text-gray-500">{STATUS_LABELS[e.status] || e.status}</span>
                   </div>
-                  {e.date_of_birth && <div className="text-xs text-gray-400 mt-1">DOB: {format(new Date(e.date_of_birth + 'T12:00:00'), 'dd MMM yyyy')}</div>}
+                  {e.date_of_birth && <div className="text-xs text-gray-400 mt-1">DOB: {format(new Date(String(e.date_of_birth).includes('T') ? e.date_of_birth : e.date_of_birth + 'T12:00:00'), 'dd MMM yyyy')}</div>}
                   {e.care_needs && <div className="text-xs text-gray-500 mt-1">{e.care_needs}</div>}
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                     {e.contact_name && <span>{e.contact_name}</span>}
                     {e.contact_phone && <span className="flex items-center gap-1"><Phone size={10} />{e.contact_phone}</span>}
-                    {e.enquiry_date && <span className="flex items-center gap-1"><Clock size={10} />{format(new Date(e.enquiry_date + 'T12:00:00'), 'dd MMM yyyy')}</span>}
+                    {e.enquiry_date && <span className="flex items-center gap-1"><Clock size={10} />{format(new Date(String(e.enquiry_date).includes('T') ? e.enquiry_date : e.enquiry_date + 'T12:00:00'), 'dd MMM yyyy')}</span>}
                   </div>
                 </div>
                 <div className="flex gap-1">
