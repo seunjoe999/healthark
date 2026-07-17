@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Scale, Plus, Trash2, TrendingUp } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
+import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import { format, parseISO } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -138,6 +139,8 @@ function WeightChart({ records }: { records: WeightRecord[] }) {
 }
 
 export default function WeightTracker() {
+  const { user } = useAuth()
+  const homeId = user?.homeId || ''
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [records, setRecords] = useState<WeightRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -155,8 +158,9 @@ export default function WeightTracker() {
   const liveBmiInfo = bmiClass(liveBmi)
 
   useEffect(() => {
-    api.get('/service-users').then(r => setServiceUsers(r.data.data || [])).catch(() => {})
-  }, [])
+    if (!homeId) return
+    api.get('/service-users', { params: { homeId } }).then(r => setServiceUsers(r.data.data || [])).catch(() => {})
+  }, [homeId])
 
   async function load() {
     if (!selectedSU) { setRecords([]); return; }

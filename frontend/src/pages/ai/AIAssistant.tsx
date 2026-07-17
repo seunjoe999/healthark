@@ -271,7 +271,7 @@ function HandoverTab({ homeId }: { homeId: string }) {
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await api.post('/ai/handover-summary', { homeId, shiftType })
-      setResult(res.data)
+      setResult(res.data.data)
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to generate handover summary')
     } finally { setLoading(false) }
@@ -339,7 +339,7 @@ function MedicationTab({ suList }: { suList: ServiceUser[] }) {
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await api.post('/ai/medication-check', { suId: suId || undefined, medicationName, dose, route, instructions })
-      setResult(res.data)
+      setResult(res.data.data)
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to check medication interactions')
     } finally { setLoading(false) }
@@ -437,7 +437,7 @@ function IncidentTab({ suList }: { suList: ServiceUser[] }) {
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await api.post('/ai/draft-incident', { suId: suId || undefined, staffNote, incidentType, incidentDate })
-      setResult(res.data)
+      setResult(res.data.data)
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to draft incident report')
     } finally { setLoading(false) }
@@ -511,7 +511,7 @@ function RiskTab({ suList }: { suList: ServiceUser[] }) {
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await api.get(`/ai/resident-risk/${suId}`)
-      setResult(res.data)
+      setResult(res.data.data)
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to load risk analysis')
     } finally { setLoading(false) }
@@ -616,7 +616,7 @@ function FormatNoteTab() {
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await api.post('/ai/format-note', { rawText, noteType })
-      setResult(res.data)
+      setResult(res.data.data)
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to format note')
     } finally { setLoading(false) }

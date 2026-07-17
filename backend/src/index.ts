@@ -1647,6 +1647,8 @@ async function ensureColumns() {
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS sexuality VARCHAR(100)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS care_plan_live_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS room_number VARCHAR(20)`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS funding_type TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS care_level TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS geofence_radius INTEGER NOT NULL DEFAULT 200`,
