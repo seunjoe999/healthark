@@ -36,7 +36,6 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
     const [records, medications, carePlans, riskAssessments, incidents, weightRecords, careReviews] = await Promise.all([
       query<any>(
         `SELECT dr.id, dr.record_type, dr.notes, dr.record_date, dr.shift,
-                dr.wellbeing_score, dr.mood,
                 s.first_name || ' ' || s.last_name as staff_name
          FROM daily_records dr
          LEFT JOIN staff s ON s.id = dr.staff_id
@@ -52,7 +51,7 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
         [su.id]
       ),
       query<any>(
-        `SELECT plan_type, custom_name, aims_outcomes, what_matters, how_to_support,
+        `SELECT plan_type, custom_name, aims_outcomes, how_to_support,
                 next_review_date, last_review_date, is_active, updated_at
          FROM care_plans WHERE su_id = $1
          ORDER BY is_active DESC, plan_type`,

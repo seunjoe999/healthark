@@ -60,13 +60,20 @@ router.post('/:id/sign', param('id').isUUID(), validateRequest,
     try {
       const staffId = fromToken(req, 'staffId');
       const { signatureUrl } = req.body;
-      // Add signature_url column if missing
-      await query(`ALTER TABLE policy_sign_offs ADD COLUMN IF NOT EXISTS signature_url TEXT`).catch(() => {});
-      await query(
-        `INSERT INTO policy_sign_offs (policy_id, staff_id, signature_url)
-         VALUES ($1,$2,$3) ON CONFLICT (policy_id, staff_id) DO UPDATE SET signature_url = EXCLUDED.signature_url`,
-        [req.params.id, staffId, signatureUrl || null]
-      );
+      // Try insert with signature_url; fall back to basic insert if column doesn't exist
+      try {
+        await query(
+          `INSERT INTO policy_sign_offs (policy_id, staff_id, signature_url)
+           VALUES ($1,$2,$3) ON CONFLICT (policy_id, staff_id) DO UPDATE SET signature_url = EXCLUDED.signature_url`,
+          [req.params.id, staffId, signatureUrl || null]
+        );
+      } catch {
+        await query(
+          `INSERT INTO policy_sign_offs (policy_id, staff_id)
+           VALUES ($1,$2) ON CONFLICT (policy_id, staff_id) DO NOTHING`,
+          [req.params.id, staffId]
+        );
+      }
       res.json({ success: true, message: 'Policy signed' } as ApiResponse);
     } catch (err) { next(err); }
   }

@@ -131,18 +131,6 @@ function NoteModal({ note, onClose }: { note: any; onClose: () => void }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 mt-0.5"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5">
-          {note.mood && (
-            <div className="mb-3 flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Mood:</span>
-              <span className="text-sm text-slate-700 capitalize">{note.mood}</span>
-            </div>
-          )}
-          {note.wellbeing_score && (
-            <div className="mb-3 flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Wellbeing:</span>
-              <span className="text-sm font-bold" style={{ color: ACCENT }}>{note.wellbeing_score}/10</span>
-            </div>
-          )}
           <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-line">{note.notes || 'No details recorded.'}</p>
         </div>
         <div className="px-5 pb-5 flex justify-end">
@@ -638,13 +626,7 @@ export default function FamilyView() {
                                     style={{ color: cfg.color }}>
                                     {cfg.label}
                                   </span>
-                                  {r.wellbeing_score && (
-                                    <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white"
-                                      style={{ background: ACCENT }}>
-                                      {r.wellbeing_score}/10
-                                    </span>
-                                  )}
-                                </div>
+                                    </div>
                                 {r.notes && (
                                   <p className="text-sm text-slate-700 line-clamp-2 leading-snug">{r.notes}</p>
                                 )}
