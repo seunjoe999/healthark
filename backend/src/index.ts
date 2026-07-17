@@ -2660,6 +2660,23 @@ async function bootstrap() {
     logger.info('Backfill: null home_id accounts updated');
   } catch (err: any) { logger.warn('Backfill home_id error: ' + err?.message); }
 
+  // Backfill: assign sequential room numbers to live residents without one
+  try {
+    const { pool: dbPool } = await import('./config/database');
+    await dbPool.query(`
+      UPDATE service_users su
+      SET room_number = sub.rn::TEXT
+      FROM (
+        SELECT id,
+               ROW_NUMBER() OVER (PARTITION BY home_id ORDER BY admission_date NULLS LAST, created_at) AS rn
+        FROM service_users
+        WHERE status = 'live' AND (room_number IS NULL OR room_number = '')
+      ) sub
+      WHERE su.id = sub.id
+    `);
+    logger.info('Backfill: room numbers assigned to residents without one');
+  } catch (err: any) { logger.warn('Backfill room_number error: ' + err?.message); }
+
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });

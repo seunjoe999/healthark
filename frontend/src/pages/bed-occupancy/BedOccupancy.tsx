@@ -1,53 +1,105 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BedDouble, Users, RefreshCw, Home } from 'lucide-react';
+import { BedDouble, Users, RefreshCw, Home, X, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 interface OccupancyData {
-  total_beds: number;
-  occupied_beds: number;
-  available_beds: number;
-  occupancy_rate: number;
-  rooms: RoomData[];
+  totalBeds: number;
+  occupied: number;
+  vacant: number;
+  occupancyRate: number;
+  residents: any[];
+  vacantRooms: string[];
+  fundingBreakdown: Record<string, number>;
 }
 
 interface RoomData {
-  room_number: string;
-  resident_name: string | null;
-  status: 'occupied' | 'available' | 'reserved' | 'maintenance';
-  date_admitted: string | null;
+  roomNumber: string;
+  status: 'occupied' | 'vacant' | 'reserved' | 'maintenance';
+  resident: {
+    id: string;
+    name: string;
+    room_number: string | null;
+    care_level: string | null;
+    admission_date: string | null;
+    funding_type: string | null;
+  } | null;
 }
 
 export default function BedOccupancy() {
+  const { user } = useAuth();
+  const homeId = user?.homeId || '';
   const [data, setData] = useState<OccupancyData | null>(null);
   const [rooms, setRooms] = useState<RoomData[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [showBedsModal, setShowBedsModal] = useState(false);
+  const [totalBedsInput, setTotalBedsInput] = useState('');
+  const [roomStatus, setRoomStatus] = useState<'reserved' | 'maintenance' | 'vacant'>('reserved');
+  const [saving, setSaving] = useState(false);
 
   const fetchData = async () => {
+    if (!homeId) return;
     setLoading(true);
     try {
       const [occRes, roomsRes] = await Promise.all([
-        api.get('/bed-occupancy'),
-        api.get('/bed-occupancy/rooms'),
+        api.get('/bed-occupancy', { params: { homeId } }),
+        api.get('/bed-occupancy/rooms', { params: { homeId } }),
       ]);
-      setData(occRes.data.data || occRes.data || null);
-      setRooms(roomsRes.data.data || roomsRes.data || []);
+      setData(occRes.data.data || null);
+      setRooms(roomsRes.data.data || []);
     } catch { toast.error('Failed to load occupancy data'); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { if (homeId) fetchData(); }, [homeId]);
+
+  const handleSetTotalBeds = async () => {
+    const n = parseInt(totalBedsInput);
+    if (!n || n < 1 || n > 500) { toast.error('Enter a valid number (1–500)'); return; }
+    setSaving(true);
+    try {
+      await api.put('/bed-occupancy/config', { homeId, totalBeds: n });
+      toast.success('Total beds updated');
+      setShowBedsModal(false);
+      fetchData();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Failed to update beds');
+    } finally { setSaving(false); }
+  };
+
+  const handleRoomClick = (room: RoomData) => {
+    if (room.status === 'occupied') return;
+    setSelectedRoom(room);
+    setRoomStatus(room.status === 'maintenance' ? 'maintenance' : room.status === 'reserved' ? 'reserved' : 'reserved');
+    setShowRoomModal(true);
+  };
+
+  const handleUpdateRoom = async () => {
+    if (!selectedRoom) return;
+    setSaving(true);
+    try {
+      await api.put('/bed-occupancy/room', { homeId, roomNumber: selectedRoom.roomNumber, status: roomStatus });
+      toast.success(`${selectedRoom.roomNumber} set to ${roomStatus}`);
+      setShowRoomModal(false);
+      fetchData();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Failed to update room');
+    } finally { setSaving(false); }
+  };
 
   const statusColor = (status: string) => {
     if (status === 'occupied') return 'bg-red-500/20 border-red-500/40 text-red-300';
-    if (status === 'available') return 'bg-green-500/20 border-green-500/40 text-green-300';
+    if (status === 'vacant') return 'bg-green-500/20 border-green-500/40 text-green-300';
     if (status === 'reserved') return 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300';
     return 'bg-gray-500/20 border-gray-500/40 text-gray-400';
   };
 
-  const occupancyPercent = data ? Math.round(data.occupancy_rate) : 0;
+  const occupancyPercent = data ? Math.round(data.occupancyRate) : 0;
   const rateColor = occupancyPercent >= 90 ? 'text-red-400' : occupancyPercent >= 75 ? 'text-yellow-400' : 'text-green-400';
 
   return (
@@ -62,19 +114,27 @@ export default function BedOccupancy() {
             <p className="text-sm text-gray-400">Real-time room and bed availability</p>
           </div>
         </div>
-        <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
-          <RefreshCw size={16} />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setTotalBedsInput(String(data?.totalBeds || 30)); setShowBedsModal(true); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white"
+            style={{ background: '#e8b130' }}>
+            <Settings size={14} /> Set Beds
+          </button>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Key metrics */}
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Total Beds', value: data.total_beds, color: 'text-white', icon: BedDouble },
-            { label: 'Occupied', value: data.occupied_beds, color: 'text-red-400', icon: Users },
-            { label: 'Available', value: data.available_beds, color: 'text-green-400', icon: Home },
-            { label: 'Occupancy Rate', value: `${occupancyPercent}%`, color: rateColor, icon: BedDouble },
+            { label: 'Total Beds', value: data.totalBeds, color: 'text-white' },
+            { label: 'Occupied', value: data.occupied, color: 'text-red-400' },
+            { label: 'Available', value: data.vacant, color: 'text-green-400' },
+            { label: 'Occupancy Rate', value: `${occupancyPercent}%`, color: rateColor },
           ].map(m => (
             <div key={m.label} className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className={`text-2xl font-bold ${m.color}`}>{m.value}</div>
@@ -103,37 +163,51 @@ export default function BedOccupancy() {
       )}
 
       {/* View toggle */}
-      <div className="flex gap-2">
-        {(['grid', 'list'] as const).map(m => (
-          <button key={m} onClick={() => setViewMode(m)}
-            className={`px-4 py-2 rounded-lg text-sm capitalize ${viewMode === m ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: viewMode === m ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
-            {m} View
-          </button>
-        ))}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex gap-2">
+          {(['grid', 'list'] as const).map(m => (
+            <button key={m} onClick={() => setViewMode(m)}
+              className={`px-4 py-2 rounded-lg text-sm capitalize ${viewMode === m ? 'text-white' : 'text-gray-400'}`}
+              style={{ background: viewMode === m ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
+              {m} View
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500">Click a vacant room to mark as reserved or maintenance</p>
       </div>
 
       {/* Rooms */}
       {loading ? (
         <div className="text-center text-gray-400 py-12">Loading...</div>
+      ) : rooms.length === 0 ? (
+        <div className="text-center text-gray-500 py-12">No rooms found. Use "Set Beds" to configure total beds.</div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
           {rooms.map(r => (
-            <div key={r.room_number}
-              className={`p-3 rounded-xl border text-center cursor-default ${statusColor(r.status)}`}>
-              <div className="text-lg font-bold">{r.room_number}</div>
-              <div className="text-xs mt-1 truncate">{r.resident_name || r.status}</div>
+            <div key={r.roomNumber}
+              onClick={() => handleRoomClick(r)}
+              title={r.status === 'occupied' ? r.resident?.name || '' : `Click to update ${r.roomNumber}`}
+              className={`p-3 rounded-xl border text-center ${r.status !== 'occupied' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${statusColor(r.status)}`}>
+              <div className="text-lg font-bold">{r.roomNumber.replace('Room ', '')}</div>
+              <div className="text-xs mt-1 truncate">{r.resident?.name || r.status}</div>
             </div>
           ))}
         </div>
       ) : (
         <div className="space-y-2">
           {rooms.map(r => (
-            <div key={r.room_number} className="flex items-center gap-4 p-3 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <span className="text-white font-medium w-16">Room {r.room_number}</span>
+            <div key={r.roomNumber}
+              onClick={() => handleRoomClick(r)}
+              className={`flex items-center gap-4 p-3 rounded-xl ${r.status !== 'occupied' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <span className="text-white font-medium w-20">{r.roomNumber}</span>
               <span className={`px-2 py-0.5 rounded text-xs border capitalize ${statusColor(r.status)}`}>{r.status}</span>
-              <span className="text-gray-400 text-sm flex-1">{r.resident_name || '—'}</span>
-              {r.date_admitted && <span className="text-gray-500 text-xs">Admitted {r.date_admitted}</span>}
+              <span className="text-gray-400 text-sm flex-1">{r.resident?.name || '—'}</span>
+              {r.resident?.admission_date && (
+                <span className="text-gray-500 text-xs">
+                  Admitted {String(r.resident.admission_date).split('T')[0]}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -142,10 +216,78 @@ export default function BedOccupancy() {
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-gray-400">
         <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />Occupied</span>
-        <span><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />Available</span>
+        <span><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />Vacant</span>
         <span><span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1" />Reserved</span>
         <span><span className="inline-block w-2 h-2 rounded-full bg-gray-500 mr-1" />Maintenance</span>
       </div>
+
+      {/* Set Total Beds Modal */}
+      {showBedsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Set Total Beds</h2>
+              <button onClick={() => setShowBedsModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-400">Update the total number of beds in this care home.</p>
+            <input
+              type="number"
+              value={totalBedsInput}
+              onChange={e => setTotalBedsInput(e.target.value)}
+              placeholder="e.g. 30"
+              min="1" max="500"
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+            <button onClick={handleSetTotalBeds} disabled={saving}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+              style={{ background: '#e8b130' }}>
+              {saving ? 'Saving…' : 'Update Beds'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Room Status Modal */}
+      {showRoomModal && selectedRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Update {selectedRoom.roomNumber}</h2>
+              <button onClick={() => setShowRoomModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-400">Mark this room as reserved or under maintenance. Occupied rooms are managed through resident admissions.</p>
+            <div className="space-y-2">
+              {([
+                { value: 'reserved', label: '🔒 Reserved', desc: 'Held for upcoming admission' },
+                { value: 'maintenance', label: '🔧 Maintenance', desc: 'Under repair / not available' },
+                { value: 'vacant', label: '✅ Available', desc: 'Clear any override — room is vacant' },
+              ] as const).map(opt => (
+                <button key={opt.value}
+                  onClick={() => setRoomStatus(opt.value)}
+                  className={`w-full py-3 rounded-xl text-sm font-medium text-left px-4 border transition-all`}
+                  style={{
+                    background: roomStatus === opt.value
+                      ? opt.value === 'reserved' ? 'rgba(234,179,8,0.15)' : opt.value === 'maintenance' ? 'rgba(107,114,128,0.15)' : 'rgba(34,197,94,0.1)'
+                      : 'rgba(255,255,255,0.04)',
+                    borderColor: roomStatus === opt.value
+                      ? opt.value === 'reserved' ? 'rgba(234,179,8,0.4)' : opt.value === 'maintenance' ? 'rgba(107,114,128,0.4)' : 'rgba(34,197,94,0.3)'
+                      : 'rgba(255,255,255,0.08)',
+                    color: roomStatus === opt.value ? '#fff' : 'rgba(255,255,255,0.55)',
+                  }}>
+                  <div>{opt.label}</div>
+                  <div className="text-xs mt-0.5 opacity-60">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+            <button onClick={handleUpdateRoom} disabled={saving}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+              style={{ background: '#e8b130' }}>
+              {saving ? 'Saving…' : 'Update Room'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

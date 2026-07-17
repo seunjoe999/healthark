@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Activity,
   Stethoscope,
+  CalendarDays,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -55,7 +56,7 @@ interface FormatNoteResult {
   formatted: string
 }
 
-type TabId = 'handover' | 'medication' | 'incident' | 'risk' | 'format'
+type TabId = 'handover' | 'medication' | 'incident' | 'risk' | 'format' | 'schedule'
 
 interface Tab {
   id: TabId
@@ -72,6 +73,7 @@ const TABS: Tab[] = [
   { id: 'incident',   label: 'Incident Draft',     icon: FileText,      color: '#fb923c' },
   { id: 'risk',       label: 'Resident Risk',      icon: ShieldAlert,   color: '#f472b6' },
   { id: 'format',     label: 'Format Note',        icon: Stethoscope,   color: '#a78bfa' },
+  { id: 'schedule',   label: 'Auto Schedule',      icon: CalendarDays,  color: '#34d399' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -690,6 +692,144 @@ function FormatNoteTab() {
   )
 }
 
+// ─── Tab: Auto Schedule ───────────────────────────────────────────────────────
+
+interface ScheduleDay {
+  date: string
+  dayName: string
+  dayShift: string[]
+  nightShift: string[]
+  staffCount: number
+  notes: string
+}
+
+interface ScheduleResult {
+  weekStart: string
+  summary: string
+  warnings: string[]
+  days: ScheduleDay[]
+}
+
+function ScheduleTab({ homeId }: { homeId: string }) {
+  const [weekStart, setWeekStart] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+    d.setDate(diff)
+    return d.toISOString().split('T')[0]
+  })
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<ScheduleResult | null>(null)
+  const [error, setError] = useState('')
+
+  const run = async () => {
+    if (!homeId) { toast.error('Home ID not found — please log out and back in'); return }
+    setLoading(true); setError(''); setResult(null)
+    try {
+      const res = await api.post('/ai/shift-schedule', { homeId, weekStart, notes })
+      setResult(res.data.data)
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to generate schedule')
+    } finally { setLoading(false) }
+  }
+
+  const scheduleText = result
+    ? `SHIFT SCHEDULE — Week of ${result.weekStart}\n\n${result.summary}\n\n` +
+      (result.warnings?.length ? `⚠️ Warnings:\n${result.warnings.map(w => `• ${w}`).join('\n')}\n\n` : '') +
+      result.days.map(d =>
+        `${d.dayName} ${d.date}\n  Day shift:   ${d.dayShift.join(', ') || '—'}\n  Night shift: ${d.nightShift.join(', ') || '—'}${d.notes ? '\n  Note: ' + d.notes : ''}`
+      ).join('\n\n')
+    : ''
+
+  return (
+    <SectionCard color="#34d399">
+      <div>
+        <h2 className="text-lg font-bold text-white mb-1">Automatic Shift Schedule</h2>
+        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          AI generates a 7-day rota based on your active staff, resident count, and leave. Review and adjust before publishing.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <FieldLabel>Week Starting</FieldLabel>
+          <AIInput type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} />
+        </div>
+        <div>
+          <FieldLabel>Special Requirements (optional)</FieldLabel>
+          <AIInput
+            placeholder="e.g. 2 seniors needed Sat & Sun"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <RunButton loading={loading} onClick={run} color="#34d399">
+        Generate Schedule
+      </RunButton>
+
+      {error && <ErrorMsg message={error} />}
+
+      {result && (
+        <div className="space-y-4">
+          <ResultCard title="Summary" extra={<CopyButton text={scheduleText} />}>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>{result.summary}</p>
+            {result.warnings?.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {result.warnings.map((w, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm text-yellow-400">
+                    <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                    {w}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ResultCard>
+
+          <div className="space-y-2">
+            {result.days?.map(day => (
+              <div key={day.date} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <span className="text-sm font-bold text-white">{day.dayName}</span>
+                    <span className="text-xs text-gray-500 ml-2">{day.date}</span>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(52,211,153,0.1)', color: '#34d399' }}>
+                    {day.staffCount} staff
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-500 uppercase tracking-wide">Day 07:00–19:00</span>
+                    <ul className="mt-1 space-y-0.5">
+                      {day.dayShift?.length > 0
+                        ? day.dayShift.map((n, i) => <li key={i} style={{ color: 'rgba(255,255,255,0.75)' }}>{n}</li>)
+                        : <li className="text-gray-600">No staff assigned</li>}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 uppercase tracking-wide">Night 19:00–07:00</span>
+                    <ul className="mt-1 space-y-0.5">
+                      {day.nightShift?.length > 0
+                        ? day.nightShift.map((n, i) => <li key={i} style={{ color: 'rgba(255,255,255,0.75)' }}>{n}</li>)
+                        : <li className="text-gray-600">No staff assigned</li>}
+                    </ul>
+                  </div>
+                </div>
+                {day.notes && (
+                  <p className="mt-2 text-xs text-yellow-500">{day.notes}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AIAssistant() {
@@ -754,6 +894,7 @@ export default function AIAssistant() {
       {activeTab === 'incident'   && <IncidentTab suList={suList} />}
       {activeTab === 'risk'       && <RiskTab suList={suList} />}
       {activeTab === 'format'     && <FormatNoteTab />}
+      {activeTab === 'schedule'   && <ScheduleTab homeId={homeId} />}
 
     </div>
   )

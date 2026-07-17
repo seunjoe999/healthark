@@ -991,5 +991,170 @@ router.post(
   },
 );
 
+// ── 8. POST /api/ai/shift-schedule ────────────────────────────────────────────
+router.post(
+  '/shift-schedule',
+  [
+    body('homeId').optional({ checkFalsy: true }).isUUID(),
+    body('weekStart').optional({ checkFalsy: true }).isISO8601(),
+    body('notes').optional().isString(),
+  ],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      if (!homeId) throw new AppError('homeId is required', 400);
+
+      const weekStart: string =
+        req.body.weekStart || (() => {
+          const d = new Date();
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+          d.setDate(diff);
+          return d.toISOString().split('T')[0];
+        })();
+
+      const extraNotes: string = req.body.notes || '';
+
+      // Gather staff and residents in parallel
+      let staffRows: any[] = [];
+      let residentRows: any[] = [];
+      let existingShifts: any[] = [];
+      let leaveRows: any[] = [];
+
+      await Promise.allSettled([
+        query(
+          `SELECT id, first_name || ' ' || last_name AS name, role,
+                  contracted_hours, employment_type
+           FROM staff
+           WHERE home_id = $1 AND is_active = TRUE
+           ORDER BY role, last_name`,
+          [homeId],
+        ).then(r => { staffRows = r as any[]; }),
+
+        query(
+          `SELECT COUNT(*) AS count FROM service_users WHERE home_id = $1 AND status = 'live'`,
+          [homeId],
+        ).then(r => { residentRows = r as any[]; }),
+
+        query(
+          `SELECT s.staff_id, st.first_name || ' ' || st.last_name AS staff_name,
+                  s.shift_date, s.shift_type, s.start_time, s.end_time
+           FROM shifts s
+           JOIN staff st ON st.id = s.staff_id
+           WHERE st.home_id = $1
+             AND s.shift_date BETWEEN $2 AND ($2::date + INTERVAL '6 days')::date
+           ORDER BY s.shift_date, s.start_time`,
+          [homeId, weekStart],
+        ).then(r => { existingShifts = r as any[]; }),
+
+        query(
+          `SELECT sh.staff_id, st.first_name || ' ' || st.last_name AS staff_name,
+                  sh.start_date, sh.end_date, sh.leave_type
+           FROM staff_leave sh
+           JOIN staff st ON st.id = sh.staff_id
+           WHERE st.home_id = $1
+             AND sh.status = 'approved'
+             AND sh.start_date <= ($2::date + INTERVAL '6 days')::date
+             AND sh.end_date >= $2::date`,
+          [homeId, weekStart],
+        ).then(r => { leaveRows = r as any[]; }).catch(() => { leaveRows = []; }),
+      ]);
+
+      const residentCount = parseInt((residentRows[0] as any)?.count || '0');
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      // Build context for AI
+      const staffContext = staffRows.length
+        ? staffRows.map((s: any) => `  - ${s.name} (${s.role})${s.contracted_hours ? `, ${s.contracted_hours}h/wk` : ''}`).join('\n')
+        : '  No active staff found';
+
+      const leaveContext = leaveRows.length
+        ? '\n\nApproved leave this week:\n' + leaveRows.map((l: any) => `  - ${l.staff_name}: ${l.start_date} to ${l.end_date} (${l.leave_type})`).join('\n')
+        : '';
+
+      const existingContext = existingShifts.length
+        ? '\n\nAlready scheduled shifts:\n' + existingShifts.slice(0, 20).map((s: any) => `  - ${s.staff_name}: ${s.shift_date} ${s.shift_type || ''} ${s.start_time || ''}–${s.end_time || ''}`).join('\n')
+        : '';
+
+      const prompt = `You are a UK care home staffing coordinator. Generate a 7-day shift schedule for a care home.
+
+Week: ${weekStart} to ${weekEnd.toISOString().split('T')[0]}
+Residents requiring care: ${residentCount}
+Active staff (${staffRows.length} total):
+${staffContext}${leaveContext}${existingContext}
+${extraNotes ? '\nAdditional requirements: ' + extraNotes : ''}
+
+Standard shifts:
+- Day: 07:00–19:00 (12h)
+- Night: 19:00–07:00 (12h)
+
+UK care home minimum ratios: 1 carer per 6 residents during day, 1 per 10 at night. Ensure senior carer / home manager oversight each day shift. Rotate staff fairly. Respect contracted hours and avoid excessive overtime.
+
+Return a schedule as JSON (no markdown):
+{
+  "weekStart": "${weekStart}",
+  "summary": "2-3 sentence overview of the schedule",
+  "warnings": ["any staffing concern"],
+  "days": [
+    {
+      "date": "YYYY-MM-DD",
+      "dayName": "Monday",
+      "dayShift": ["Name (Role)"],
+      "nightShift": ["Name (Role)"],
+      "staffCount": 3,
+      "notes": "any specific note"
+    }
+  ]
+}
+
+Include all 7 days. Keep staff names exactly as provided.`;
+
+      let schedule: any;
+
+      try {
+        const raw = await callAI(prompt, 1200);
+        const cleaned = raw.replace(/```(?:json)?\s*/gi, '').replace(/```\s*/g, '').trim();
+        schedule = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] || cleaned);
+        if (!schedule.days || !Array.isArray(schedule.days)) throw new Error('Invalid schedule format');
+      } catch (aiErr: any) {
+        console.error('Shift schedule AI failed, using rule-based fallback:', aiErr?.message);
+
+        // Rule-based fallback: simple round-robin
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const names = staffRows.map((s: any) => `${s.name} (${s.role})`);
+        const dayShiftSize = Math.max(2, Math.ceil(residentCount / 6));
+        const nightShiftSize = Math.max(1, Math.ceil(residentCount / 10));
+
+        schedule = {
+          weekStart,
+          summary: `Auto-generated schedule for ${staffRows.length} staff covering ${residentCount} residents. Minimum ratios applied based on resident count.`,
+          warnings: staffRows.length < (dayShiftSize + nightShiftSize) ? [`Staff count (${staffRows.length}) may be insufficient for minimum ratios. Consider agency cover.`] : [],
+          days: days.map((dayName, i) => {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + i);
+            const offset = i * (dayShiftSize + nightShiftSize);
+            const dayStaff = names.slice(offset % Math.max(names.length, 1), (offset % Math.max(names.length, 1)) + dayShiftSize);
+            const nightStaff = names.slice((offset + dayShiftSize) % Math.max(names.length, 1), ((offset + dayShiftSize) % Math.max(names.length, 1)) + nightShiftSize);
+            return {
+              date: date.toISOString().split('T')[0],
+              dayName,
+              dayShift: dayStaff.length ? dayStaff : names.slice(0, dayShiftSize),
+              nightShift: nightStaff.length ? nightStaff : names.slice(0, nightShiftSize),
+              staffCount: dayShiftSize + nightShiftSize,
+              notes: i >= 5 ? 'Weekend — check for agency cover if needed' : '',
+            };
+          }),
+        };
+      }
+
+      res.json({ success: true, data: schedule } as ApiResponse);
+    } catch (err: any) {
+      return handleAIError(err, res, next);
+    }
+  },
+);
+
 export default router;
 
