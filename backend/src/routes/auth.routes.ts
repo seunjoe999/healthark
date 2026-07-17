@@ -51,15 +51,19 @@ router.post('/login',
       const valid = await bcrypt.compare(password, staff.password_hash);
       if (!valid) throw new AppError('Invalid email or password', 401);
 
-      // If group_admin has no home_id, resolve the first home in their org so feature pages work
+      // If any account has no home_id, resolve from their org's first home so all pages work
       let resolvedHomeId = staff.home_id;
-      if (!resolvedHomeId && staff.role === 'group_admin' && extraCols.organisation_id) {
+      if (!resolvedHomeId && extraCols.organisation_id) {
         try {
           const homeRows = await query<any>(
             `SELECT id FROM homes WHERE organisation_id = $1 ORDER BY created_at LIMIT 1`,
             [extraCols.organisation_id]
           );
-          if (homeRows.length) resolvedHomeId = homeRows[0].id;
+          if (homeRows.length) {
+            resolvedHomeId = homeRows[0].id;
+            // Persist so future logins don't need the fallback
+            await query(`UPDATE staff SET home_id = $1 WHERE id = $2 AND home_id IS NULL`, [resolvedHomeId, staff.id]);
+          }
         } catch {}
       }
 
@@ -215,7 +219,9 @@ router.post('/recover-admin',
       await query(
         `INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, last_name, role, status, is_active)
          VALUES ($1,$2,$3,$4,$5,$6,'group_admin','active',true)
-         ON CONFLICT (email) DO UPDATE SET password_hash=$4, status='active', is_active=true, role='group_admin'`,
+         ON CONFLICT (email) DO UPDATE SET password_hash=$4, status='active', is_active=true, role='group_admin',
+           home_id = COALESCE(staff.home_id, EXCLUDED.home_id),
+           organisation_id = COALESCE(staff.organisation_id, EXCLUDED.organisation_id)`,
         [org[0].id, home[0].id, email, hash, firstName, lastName]
       );
       res.json({ success: true, message: 'Admin account created. You can now log in.' });
@@ -304,13 +310,27 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
     }
     if (!rows.length) throw new AppError('Staff not found', 404);
     const s = rows[0];
+    // Resolve homeId — if null, fall back to org's first home and persist
+    let meHomeId = s.home_id;
+    if (!meHomeId && s.organisation_id) {
+      try {
+        const homeRows = await query<any>(
+          `SELECT id FROM homes WHERE organisation_id = $1 ORDER BY created_at LIMIT 1`,
+          [s.organisation_id]
+        );
+        if (homeRows.length) {
+          meHomeId = homeRows[0].id;
+          await query(`UPDATE staff SET home_id = $1 WHERE id = $2 AND home_id IS NULL`, [meHomeId, s.id]);
+        }
+      } catch {}
+    }
     // Merge role-level access rights with per-user overrides
     let roleFlags: Record<string, boolean> = {};
-    if (s.home_id) {
+    if (meHomeId) {
       try {
         const rf = await query<any>(
           'SELECT feature_flags FROM role_access_rights WHERE home_id=$1 AND role=$2',
-          [s.home_id, s.role]
+          [meHomeId, s.role]
         );
         if (rf.length) roleFlags = rf[0].feature_flags || {};
       } catch {}
@@ -319,7 +339,7 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
     res.json({ success: true, data: {
       id: s.id, email: s.email,
       firstName: s.first_name, lastName: s.last_name,
-      role: s.role, homeId: s.home_id,
+      role: s.role, homeId: meHomeId,
       organisationId: s.organisation_id, photoUrl: s.photo_url,
       featureFlags: mergedFlags,
     }} as ApiResponse);

@@ -2641,6 +2641,23 @@ async function bootstrap() {
   try { await seedRolePermissions(); } catch (err: any) { logger.warn('seedRolePermissions error: ' + err?.message); }
   try { await seedNewFeatures(); } catch (err: any) { logger.warn('seedNewFeatures error: ' + err?.message); }
 
+  // One-time backfill: assign home_id to any staff account that still has NULL
+  try {
+    const { pool: dbPool } = await import('./config/database');
+    await dbPool.query(`
+      UPDATE staff s
+      SET home_id = (
+        SELECT h.id FROM homes h
+        WHERE h.organisation_id = s.organisation_id
+        ORDER BY h.created_at
+        LIMIT 1
+      )
+      WHERE s.home_id IS NULL
+        AND s.organisation_id IS NOT NULL
+    `);
+    logger.info('Backfill: null home_id accounts updated');
+  } catch (err: any) { logger.warn('Backfill home_id error: ' + err?.message); }
+
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
