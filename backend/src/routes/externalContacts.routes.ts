@@ -45,14 +45,17 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { category, search } = req.query;
-    let sql = `SELECT * FROM external_contacts WHERE home_id = $1 AND is_active = true`;
+    let sql = `SELECT * FROM external_contacts WHERE home_id = $1 AND (is_active IS NULL OR is_active = true)`;
     const params: any[] = [homeId];
     if (category) { params.push(category); sql += ` AND category = $${params.length}`; }
     if (search) { params.push(`%${search}%`); sql += ` AND (name ILIKE $${params.length} OR organisation ILIKE $${params.length} OR role ILIKE $${params.length})`; }
     sql += ' ORDER BY category, name';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
-  } catch (err) { next(err); }
+  } catch (err: any) {
+    // Return actual DB error detail so we can diagnose the 500
+    res.status(500).json({ success: false, error: err?.message || 'Unknown error' } as any);
+  }
 });
 
 // POST create
