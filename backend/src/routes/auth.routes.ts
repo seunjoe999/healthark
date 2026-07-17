@@ -51,9 +51,21 @@ router.post('/login',
       const valid = await bcrypt.compare(password, staff.password_hash);
       if (!valid) throw new AppError('Invalid email or password', 401);
 
+      // If group_admin has no home_id, resolve the first home in their org so feature pages work
+      let resolvedHomeId = staff.home_id;
+      if (!resolvedHomeId && staff.role === 'group_admin' && extraCols.organisation_id) {
+        try {
+          const homeRows = await query<any>(
+            `SELECT id FROM homes WHERE organisation_id = $1 ORDER BY created_at LIMIT 1`,
+            [extraCols.organisation_id]
+          );
+          if (homeRows.length) resolvedHomeId = homeRows[0].id;
+        } catch {}
+      }
+
       const payload = {
         staffId: staff.id, organisationId: extraCols.organisation_id ?? null,
-        homeId: staff.home_id, role: staff.role, email: staff.email,
+        homeId: resolvedHomeId, role: staff.role, email: staff.email,
       };
       const accessToken = signAccess(payload);
       const refreshToken = signRefresh(payload);
@@ -72,11 +84,11 @@ router.post('/login',
 
       // Merge role-level access rights with per-user overrides (same as /me endpoint)
       let loginRoleFlags: Record<string, boolean> = {};
-      if (staff.home_id) {
+      if (resolvedHomeId) {
         try {
           const rf = await query<any>(
             'SELECT feature_flags FROM role_access_rights WHERE home_id=$1 AND role=$2',
-            [staff.home_id, staff.role]
+            [resolvedHomeId, staff.role]
           );
           if (rf.length) loginRoleFlags = rf[0].feature_flags || {};
         } catch {}
@@ -89,7 +101,7 @@ router.post('/login',
           staff: {
             id: staff.id, email: staff.email,
             firstName: staff.first_name, lastName: staff.last_name,
-            role: staff.role, homeId: staff.home_id,
+            role: staff.role, homeId: resolvedHomeId,
             organisationId: extraCols.organisation_id ?? null,
             photoUrl: extraCols.photo_url ?? null,
             featureFlags: loginMergedFlags,
