@@ -95,6 +95,9 @@ const CQCInspection = React.lazy(() => import('./pages/cqc-inspection/CQCInspect
 const ExternalContacts = React.lazy(() => import('./pages/contacts/ExternalContacts'))
 const BarthelIndex = React.lazy(() => import('./pages/assessments/BarthelIndex'))
 const MUSTScore = React.lazy(() => import('./pages/assessments/MUSTScore'))
+const NEWS2Score = React.lazy(() => import('./pages/clinical/NEWS2Score'))
+const WaterlowScore = React.lazy(() => import('./pages/clinical/WaterlowScore'))
+const EvidencePack = React.lazy(() => import('./pages/cqc/EvidencePack'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -209,6 +212,9 @@ function AppRoutes() {
         <Route path="/external-contacts" element={<ProtectedRoute><ExternalContacts /></ProtectedRoute>} />
         <Route path="/assessments/barthel" element={<ProtectedRoute><BarthelIndex /></ProtectedRoute>} />
         <Route path="/assessments/must" element={<ProtectedRoute><MUSTScore /></ProtectedRoute>} />
+        <Route path="/clinical/news2" element={<ProtectedRoute><NEWS2Score /></ProtectedRoute>} />
+        <Route path="/clinical/waterlow" element={<ProtectedRoute><WaterlowScore /></ProtectedRoute>} />
+        <Route path="/cqc/evidence-pack" element={<ProtectedRoute><EvidencePack /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </React.Suspense>

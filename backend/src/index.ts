@@ -232,6 +232,13 @@ app.use('/api/training-matrix', trainingMatrixRoutes);
 app.use('/api/external-contacts', externalContactsRoutes);
 app.use('/api/seed', seedRoutes);
 
+import news2Routes from './routes/news2.routes';
+import waterlowRoutes from './routes/waterlow.routes';
+import cqcRoutes from './routes/cqc.routes';
+app.use('/api/assessments/news2', news2Routes);
+app.use('/api/assessments', waterlowRoutes);
+app.use('/api/cqc', cqcRoutes);
+
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
 const frontendDist = path.join(__dirname, '../../frontend/dist');

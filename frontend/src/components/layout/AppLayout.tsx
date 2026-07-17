@@ -118,6 +118,8 @@ const navSections = [
       { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
       { label: 'Barthel Index',       to: '/assessments/barthel', icon: FileCheck,     roles: [], featureKey: 'barthel' },
       { label: 'MUST Score',          to: '/assessments/must',    icon: Scale,         roles: [], featureKey: 'must_score' },
+      { label: 'NEWS2 Score',         to: '/clinical/news2',      icon: Activity,      roles: [], featureKey: 'news2' },
+      { label: 'Waterlow / Turns',    to: '/clinical/waterlow',   icon: Shield,        roles: [], featureKey: 'waterlow' },
     ]
   },
   {
@@ -143,6 +145,7 @@ const navSections = [
     items: [
       { label: 'Lessons Learned',    to: '/lessons-learned',    icon: BookOpen,      roles: [], featureKey: 'lessons_learned' },
       { label: 'CQC Mock Inspection',to: '/cqc-inspection',     icon: Shield,        roles: [], featureKey: 'cqc_inspection' },
+      { label: 'CQC Evidence Pack',  to: '/cqc/evidence-pack',  icon: FileText,      roles: [], featureKey: 'evidence_pack' },
     ]
   },
   {
