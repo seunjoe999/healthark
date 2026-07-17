@@ -53,16 +53,16 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     // Build OR conditions for training name matching
     const conditions = MANDATORY_TRAINING.map(
-      (_, i) => `LOWER(COALESCE(t.course_name, t.training_name)) LIKE $${i + 2}`
+      (_, i) => `LOWER(t.course_name) LIKE $${i + 2}`
     ).join(' OR ');
 
     const params: any[] = [homeId, ...MANDATORY_TRAINING.map(t => `%${t.keyword}%`)];
 
     const trainingRows = await query(
       `SELECT t.staff_id,
-              COALESCE(t.course_name, t.training_name) AS training_name,
+              t.course_name AS training_name,
               t.expiry_date,
-              COALESCE(t.completed_date, t.completion_date) AS completion_date
+              t.completed_date AS completion_date
        FROM staff_training t
        JOIN staff s ON s.id = t.staff_id
        WHERE s.home_id = $1 AND (${conditions})
