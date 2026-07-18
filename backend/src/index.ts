@@ -2426,6 +2426,13 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_must_scores_su   ON must_scores(su_id, created_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_must_scores_home ON must_scores(home_id)`,
+    // ── must_scores — column aliases used by assessments.routes.ts ───────────────
+    `ALTER TABLE must_scores ADD COLUMN IF NOT EXISTS assessed_at TIMESTAMPTZ DEFAULT NOW()`,
+    `ALTER TABLE must_scores ADD COLUMN IF NOT EXISTS notes TEXT`,
+    // ── quality_records — columns used by quality.routes.ts ──────────────────────
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS su_id UUID REFERENCES service_users(id) ON DELETE SET NULL`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS summary VARCHAR(500)`,
+    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS detail TEXT`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {
