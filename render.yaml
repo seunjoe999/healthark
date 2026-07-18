@@ -15,7 +15,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: NODE_OPTIONS="--max-old-space-size=460" npm run build
+    buildCommand: cd backend && rm -rf dist && npm install --include=dev && npm run build
     startCommand: node backend/dist/index.js
     envVars:
       - key: NODE_ENV
