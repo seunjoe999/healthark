@@ -6,7 +6,8 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "cd frontend && rm -rf dist && npm install --include=dev && npm run build && cd ../backend && rm -rf dist && npm install --include=dev && npm run build",
+    "build": "cd backend && rm -rf dist && npm install --include=dev && npm run build",
+    "build:full": "cd frontend && rm -rf dist && npm install --include=dev && npm run build && cd ../backend && rm -rf dist && npm install --include=dev && npm run build",
     "start": "cd backend && node dist/index.js"
   },
   "dependencies": {
