@@ -235,9 +235,11 @@ app.use('/api/seed', seedRoutes);
 import news2Routes from './routes/news2.routes';
 import waterlowRoutes from './routes/waterlow.routes';
 import cqcRoutes from './routes/cqc.routes';
+import clinicalRoutes from './routes/clinical.routes';
 app.use('/api/assessments/news2', news2Routes);
 app.use('/api/assessments', waterlowRoutes);
 app.use('/api/cqc', cqcRoutes);
+app.use('/api/clinical', clinicalRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';

@@ -118,8 +118,16 @@ const navSections = [
       { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
       { label: 'Barthel Index',       to: '/assessments/barthel', icon: FileCheck,     roles: [], featureKey: 'barthel' },
       { label: 'MUST Score',          to: '/assessments/must',    icon: Scale,         roles: [], featureKey: 'must_score' },
-      { label: 'NEWS2 Score',         to: '/clinical/news2',      icon: Activity,      roles: [], featureKey: 'news2' },
-      { label: 'Waterlow / Turns',    to: '/clinical/waterlow',   icon: Shield,        roles: [], featureKey: 'waterlow' },
+      { label: 'NEWS2 Score',         to: '/clinical/news2',          icon: Activity,      roles: [], featureKey: 'news2' },
+      { label: 'Waterlow / Turns',    to: '/clinical/waterlow',       icon: Shield,        roles: [], featureKey: 'waterlow' },
+      { label: 'Abbey Pain Scale',    to: '/clinical/abbey-pain',     icon: Brain,         roles: [], featureKey: 'abbey_pain' },
+      { label: 'Body Map',            to: '/clinical/body-map',       icon: Stethoscope,   roles: [], featureKey: 'body_map' },
+      { label: 'ABC Behaviour',       to: '/clinical/abc-chart',      icon: AlertCircle,   roles: [], featureKey: 'abc_chart' },
+      { label: 'Blood Glucose',       to: '/clinical/blood-glucose',  icon: Droplets,      roles: [], featureKey: 'blood_glucose' },
+      { label: 'Oral Hygiene',        to: '/clinical/oral-hygiene',   icon: Thermometer,   roles: [], featureKey: 'oral_hygiene' },
+      { label: 'Catheter Care',       to: '/clinical/catheter-care',  icon: Zap,           roles: [], featureKey: 'catheter_care' },
+      { label: 'End of Life',         to: '/clinical/end-of-life',    icon: BookOpen,      roles: [], featureKey: 'end_of_life' },
+      { label: 'GP / Referrals',      to: '/clinical/gp-referrals',   icon: ClipboardList, roles: [], featureKey: 'gp_referrals' },
     ]
   },
   {

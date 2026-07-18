@@ -98,6 +98,14 @@ const MUSTScore = React.lazy(() => import('./pages/assessments/MUSTScore'))
 const NEWS2Score = React.lazy(() => import('./pages/clinical/NEWS2Score'))
 const WaterlowScore = React.lazy(() => import('./pages/clinical/WaterlowScore'))
 const EvidencePack = React.lazy(() => import('./pages/cqc/EvidencePack'))
+const AbbeyPainScale = React.lazy(() => import('./pages/clinical/AbbeyPainScale'))
+const ABCChart = React.lazy(() => import('./pages/clinical/ABCChart'))
+const BloodGlucose = React.lazy(() => import('./pages/clinical/BloodGlucose'))
+const BodyMap = React.lazy(() => import('./pages/clinical/BodyMap'))
+const OralHygiene = React.lazy(() => import('./pages/clinical/OralHygiene'))
+const CatheterCare = React.lazy(() => import('./pages/clinical/CatheterCare'))
+const EndOfLife = React.lazy(() => import('./pages/clinical/EndOfLife'))
+const GPReferral = React.lazy(() => import('./pages/clinical/GPReferral'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -215,6 +223,14 @@ function AppRoutes() {
         <Route path="/clinical/news2" element={<ProtectedRoute><NEWS2Score /></ProtectedRoute>} />
         <Route path="/clinical/waterlow" element={<ProtectedRoute><WaterlowScore /></ProtectedRoute>} />
         <Route path="/cqc/evidence-pack" element={<ProtectedRoute><EvidencePack /></ProtectedRoute>} />
+        <Route path="/clinical/abbey-pain" element={<ProtectedRoute><AbbeyPainScale /></ProtectedRoute>} />
+        <Route path="/clinical/abc-chart" element={<ProtectedRoute><ABCChart /></ProtectedRoute>} />
+        <Route path="/clinical/blood-glucose" element={<ProtectedRoute><BloodGlucose /></ProtectedRoute>} />
+        <Route path="/clinical/body-map" element={<ProtectedRoute><BodyMap /></ProtectedRoute>} />
+        <Route path="/clinical/oral-hygiene" element={<ProtectedRoute><OralHygiene /></ProtectedRoute>} />
+        <Route path="/clinical/catheter-care" element={<ProtectedRoute><CatheterCare /></ProtectedRoute>} />
+        <Route path="/clinical/end-of-life" element={<ProtectedRoute><EndOfLife /></ProtectedRoute>} />
+        <Route path="/clinical/gp-referrals" element={<ProtectedRoute><GPReferral /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </React.Suspense>
