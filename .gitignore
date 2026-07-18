@@ -1,3 +1,7 @@
+# Database backups
+*.sql
+*.dump
+
 # Environment variables — NEVER commit these
 .env
 .env.local
