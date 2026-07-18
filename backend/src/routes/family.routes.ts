@@ -44,12 +44,12 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
         [su.id]
       ),
       query<any>(
-        `SELECT medication_name, dose, frequency, route, instructions, is_prn,
-                prescribed_by, start_date, end_date, is_active
+        `SELECT medication_name, dose, frequency, route, notes AS instructions, is_prn,
+                prescriber AS prescribed_by, start_date, end_date, is_active
          FROM su_medications WHERE su_id = $1
          ORDER BY is_active DESC, is_prn, medication_name`,
         [su.id]
-      ),
+      ).catch(() => []),
       query<any>(
         `SELECT plan_type, custom_name, aims_outcomes, how_to_support,
                 next_review_date, last_review_date, is_active, updated_at
@@ -59,11 +59,11 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
       ),
       query<any>(
         `SELECT assessment_name, risk_level, description, management_plan,
-                review_date, updated_at, is_active
+                next_review_date AS review_date, updated_at, is_active
          FROM risk_assessments WHERE su_id = $1
          ORDER BY is_active DESC, risk_level DESC, assessment_name`,
         [su.id]
-      ),
+      ).catch(() => []),
       query<any>(
         `SELECT i.id, i.incident_type, i.description, i.outcome, i.severity,
                 i.incident_date, i.location, i.follow_up_required,
