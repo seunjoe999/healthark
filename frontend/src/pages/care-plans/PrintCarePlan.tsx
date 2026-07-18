@@ -50,7 +50,7 @@ export default function PrintCarePlan() {
           <p>{plan.last_review_date ? format(new Date(plan.last_review_date), 'd MMM yyyy') : 'Not yet reviewed'}</p>
         </div>
         <div className="border border-slate-200 p-3 rounded">
-          <p className="font-bold text-slate-500 uppercase text-xs mb-1">Next review due</p>
+          <p className="font-bold text-slate-500 uppercase text-xs mb-1">Next review date</p>
           <p>{plan.next_review_date ? format(new Date(plan.next_review_date), 'd MMM yyyy') : '—'}</p>
         </div>
       </div>

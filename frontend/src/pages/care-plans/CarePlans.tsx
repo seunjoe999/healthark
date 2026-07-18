@@ -76,7 +76,7 @@ const PLAN_TYPES = [
   { value: 'positive_behaviour', label: 'Positive Behaviour Support Plan' },
   { value: 'oral_care_assessment', label: 'Oral Care Assessment' },
   { value: 'autism', label: 'Autism Support Plan' },
-  { value: 'pen_assessment', label: 'PEN Assessment' },
+  { value: 'pen_assessment', label: 'Pain Assessment' },
   { value: 'personal_evacuation', label: 'Personal Evacuation Support Plan' },
   { value: 'end_of_life', label: 'End Of Life Support Plan' },
   { value: 'adhd', label: 'ADHD Support Plan' },
@@ -428,8 +428,8 @@ function ReviewStatus({ nextReviewDate }: { nextReviewDate: string }) {
   if (!nextReviewDate) return null
   const days = differenceInDays(new Date(nextReviewDate), new Date())
   if (days < 0) return <span className="flex items-center gap-1 text-xs text-red-600 font-medium"><AlertTriangle className="w-3 h-3" />Overdue by {Math.abs(days)} days</span>
-  if (days <= 7) return <span className="flex items-center gap-1 text-xs text-orange-600 font-medium"><Clock className="w-3 h-3" />Due in {days} days</span>
-  return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />Due {format(new Date(nextReviewDate), 'd MMM yyyy')}</span>
+  if (days <= 7) return <span className="flex items-center gap-1 text-xs text-orange-600 font-medium"><Clock className="w-3 h-3" />Next review in {days} days</span>
+  return <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />Next review date: {format(new Date(nextReviewDate), 'd MMM yyyy')}</span>
 }
 
 async function fetchSuFull(suId: string): Promise<any> {
@@ -437,17 +437,12 @@ async function fetchSuFull(suId: string): Promise<any> {
 }
 
 function doPrint(html: string) {
-  const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;visibility:hidden'
-  document.body.appendChild(iframe)
-  const doc = iframe.contentDocument || iframe.contentWindow?.document
-  if (!doc) { document.body.removeChild(iframe); return }
-  doc.open(); doc.write(html); doc.close()
-  iframe.contentWindow?.focus()
-  setTimeout(() => {
-    iframe.contentWindow?.print()
-    setTimeout(() => { try { document.body.removeChild(iframe) } catch {} }, 3000)
-  }, 700)
+  const w = window.open('', '_blank', 'width=1000,height=750')
+  if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => { w.print() }, 900)
 }
 
 function buildTemplatePrintHtml(plan: any, su?: any): string {
@@ -532,12 +527,64 @@ function buildTemplatePrintHtml(plan: any, su?: any): string {
     return header + MONTHLY_BODY_SECTIONS.map(s => sectionHtml(s.label, tv(s.key))).join('')
   }
 
+  if (p === 'medication_support') {
+    const td2 = plan.template_data || {}
+    const prnRows = [
+      { key: 'prnAssessment', label: 'Assessment Before Administration' },
+      { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
+      { key: 'prnAdminProcess', label: 'Administration Process' },
+      { key: 'prnRefusal', label: 'PRN Refusal' },
+      { key: 'prnMonitoring', label: 'Monitoring After Administration' },
+      { key: 'prnEvaluation', label: 'Evaluation' },
+      { key: 'prnDocumentation', label: 'Documentation' },
+      { key: 'prnEmergency', label: 'When to Seek Advice / Emergency' },
+      { key: 'prnSpecial', label: 'Special Considerations' },
+      { key: 'prnTraining', label: 'Staff Training Requirements' },
+    ]
+    const medPrnSecs = prnRows.filter(s => td2[s.key]).map(s => goldSec(s.label, td2[s.key])).join('')
+    return [
+      goldSec('My Aims & Objectives', plan.aims_outcomes || ''),
+      goldSec('What I Can Do', plan.what_i_can_do || ''),
+      goldSec('How To Support Me', plan.how_to_support || ''),
+      plainSec('Regular Medications', plan.regular_medications || ''),
+      plainSec('PRN Medications', plan.prn_medications || ''),
+      plainSec('Over-The-Counter Medications', plan.otc_medications || ''),
+      plainSec('PRN List', plan.prn_list || ''),
+      plainSec('Indication for Use', plan.indication_for_use || ''),
+      medPrnSecs,
+      plainSec('General PRN Protocol Notes', plan.prn_protocol || ''),
+    ].join('')
+  }
+
   // Default — standard 3 fields
   return [
     goldSec('My Aims & Objectives', plan.aims_outcomes || ''),
     goldSec('What I Can Do', plan.what_i_can_do || ''),
     goldSec('How To Support Me', plan.how_to_support || ''),
   ].join('')
+}
+
+function buildReviewHistoryHtml(plan: any): string {
+  if (!plan.updates || !plan.updates.length) return ''
+  const rows = plan.updates.map((u: any) =>
+    `<tr>
+      <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:10px;white-space:nowrap;color:#334155">${u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB') : '—'}</td>
+      <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:10px;color:#334155">${u.updated_by_name || '—'}</td>
+      <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:10px;color:#334155">${(u.update_notes || '').replace(/\n/g,'<br/>')}</td>
+    </tr>`
+  ).join('')
+  return `
+    <div class="section-title" style="margin-top:20px">Review History</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Date Reviewed</th>
+          <th style="text-align:left;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Reviewed By</th>
+          <th style="text-align:left;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Notes</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`
 }
 
 function buildPrintHtml(plan: any, su: any, reads: any[]): string {
@@ -678,6 +725,7 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
     ${buildTemplatePrintHtml(plan, su)}
     ${plainSec('Attachments / Notes', plan.attachments_notes)}
     ${consentHtml}
+    ${buildReviewHistoryHtml(plan)}
 
     <div class="signoff">
       <div class="signoff-title">Sign Off</div>
@@ -831,7 +879,8 @@ export default function CarePlans() {
           <p className="text-slate-500 text-sm mt-0.5">View and manage individual support plans</p>
         </div>
         {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-          <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}>
+          <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}
+            style={{ color: '#ffffff' }}>
             Who read plans
           </Button>
         )}
@@ -881,9 +930,15 @@ export default function CarePlans() {
           {plans.map((plan: any) => {
             const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
             const reads = planReads[plan.id] || []
+            const reviewDays = plan.next_review_date ? differenceInDays(new Date(plan.next_review_date), new Date()) : null
+            const cardBorderCls = reviewDays === null
+              ? 'border-slate-100 hover:border-slate-200'
+              : reviewDays < 0
+                ? 'border-red-500/60 hover:border-red-500/80 bg-red-500/5'
+                : 'border-green-500/50 hover:border-green-500/70 bg-green-500/5'
             return (
               <button key={plan.id} onClick={() => openPlan(plan)}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-left hover:shadow-md hover:border-slate-200 transition-all group">
+                className={`bg-white rounded-2xl border shadow-sm p-5 text-left hover:shadow-md transition-all group ${cardBorderCls}`}>
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-100 transition-colors">
                     <FileText className="w-5 h-5 text-slate-500" />
@@ -1131,6 +1186,32 @@ function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, on
             </div>
           </div>
         </div>
+
+        {/* Review History */}
+        {plan.updates && plan.updates.length > 0 && (
+          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 uppercase tracking-wide" style={{ color: '#e8b130' }}>
+              <History className="w-4 h-4" style={{ color: '#e8b130' }} /> Review History
+            </h4>
+            <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+              {plan.updates.map((u: any, i: number) => (
+                <div key={i} className="py-2.5 first:pt-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-semibold text-slate-700">
+                      {u.created_at ? format(new Date(u.created_at), 'd MMM yyyy') : '—'}
+                    </span>
+                    {u.updated_by_name && (
+                      <span className="text-xs text-slate-500">· {u.updated_by_name}</span>
+                    )}
+                  </div>
+                  {u.update_notes && (
+                    <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">{u.update_notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 pt-3 border-t border-slate-100 flex-wrap">
           <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={onPrint}>Print</Button>

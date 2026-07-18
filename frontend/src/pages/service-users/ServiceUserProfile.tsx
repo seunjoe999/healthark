@@ -9,16 +9,17 @@ import {
 import {
   ArrowLeft, Phone, Mail, MapPin, Heart, FileText, MessageSquare,
   Plus, Edit, User, AlertTriangle, Clipboard, Activity, Users,
-  Upload, Download, Trash2, Eye, File, FileImage, Lock, QrCode, Check
+  Upload, Download, Trash2, Eye, File, FileImage, Lock, QrCode, Check,
+  CheckCircle, Clock, ClipboardList
 } from 'lucide-react'
-import { format, differenceInYears } from 'date-fns'
+import { format, differenceInYears, differenceInDays } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { QRModal } from './QRModal'
 import ResidentTimeline from './ResidentTimeline'
 import toast from 'react-hot-toast'
 
-type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'timeline'
+type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'timeline' | 'reviews'
 
 const SU_DOC_TYPES = [
   { value: 'passport', label: 'Copy of passport' },
@@ -95,6 +96,8 @@ export default function ServiceUserProfile() {
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
+  const [carePlans, setCarePlans] = useState<any[]>([])
+  const [carePlansLoaded, setCarePlansLoaded] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -111,6 +114,14 @@ export default function ServiceUserProfile() {
     // Documents loaded separately — won't crash page if endpoint missing
     api.get(`/documents/su/${id}`).then(res => setDocuments(res.data.data || [])).catch(() => setDocuments([]))
   }, [id])
+
+  useEffect(() => {
+    if (tab === 'reviews' && !carePlansLoaded && id) {
+      api.get('/care-plans', { params: { suId: id } })
+        .then(res => { setCarePlans(res.data.data || []); setCarePlansLoaded(true) })
+        .catch(() => setCarePlansLoaded(true))
+    }
+  }, [tab, id, carePlansLoaded])
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !id) return
@@ -146,6 +157,7 @@ export default function ServiceUserProfile() {
     { key: 'comms', label: 'My Comms' },
     { key: 'background', label: 'Background' },
     { key: 'timeline', label: 'Daily Timeline' },
+    { key: 'reviews', label: 'Reviews' },
   ]
 
   return (
@@ -481,6 +493,67 @@ export default function ServiceUserProfile() {
       )}
       {tab === 'timeline' && (
         <ResidentTimeline suId={su.id} suName={`${su.firstName} ${su.lastName}`} />
+      )}
+
+      {tab === 'reviews' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="font-bold text-white text-lg flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" style={{ color: '#e8b130' }} /> Support Plan Reviews
+              </h2>
+              <p className="text-sm text-slate-400 mt-0.5">Review status for all support plans — {su.firstName} {su.lastName}</p>
+            </div>
+            <Link to="/care-plans">
+              <Button size="sm" variant="secondary">Open Support Plans</Button>
+            </Link>
+          </div>
+
+          {!carePlansLoaded ? (
+            <Spinner />
+          ) : carePlans.length === 0 ? (
+            <EmptyState title="No support plans" description="No support plans have been created for this service user yet" />
+          ) : (
+            <div className="space-y-2">
+              {carePlans.map((plan: any) => {
+                const days = plan.next_review_date ? differenceInDays(new Date(plan.next_review_date), new Date()) : null
+                const isOverdue = days !== null && days < 0
+                const label = plan.custom_name || (plan.plan_type || '').split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                const borderCls = isOverdue
+                  ? 'border-red-500/50 bg-red-500/8'
+                  : days !== null
+                    ? 'border-green-500/40 bg-green-500/8'
+                    : 'border-slate-200'
+                return (
+                  <div key={plan.id} className={`rounded-xl border p-4 flex items-center justify-between gap-4 ${borderCls}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-white text-sm">{label}</p>
+                      <div className="flex flex-wrap items-center gap-3 mt-1">
+                        {plan.last_review_date && (
+                          <span className="text-xs text-slate-400">Last reviewed: {format(new Date(plan.last_review_date), 'd MMM yyyy')}</span>
+                        )}
+                        {days === null ? (
+                          <span className="text-xs text-slate-400">No review date set</span>
+                        ) : isOverdue ? (
+                          <span className="text-xs text-red-400 font-medium flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Overdue by {Math.abs(days)} days
+                          </span>
+                        ) : (
+                          <span className="text-xs text-green-400 font-medium flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Next review: {format(new Date(plan.next_review_date), 'd MMM yyyy')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Link to="/care-plans">
+                      <Button size="sm" variant={isOverdue ? 'danger' : 'secondary'}>Review</Button>
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Print-only documents section — renders regardless of active tab */}
