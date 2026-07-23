@@ -119,7 +119,8 @@ router.put('/:id',
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await query('SELECT * FROM lessons_learned WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      const existing = await query('SELECT * FROM lessons_learned WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       if (!existing.length) throw new AppError('Not found', 404);
       const {
         title, sourceType, sourceReference, dateOfEvent, whatHappened, rootCause,
@@ -147,13 +148,13 @@ router.put('/:id',
           action_completed_date = CASE WHEN $11 = true THEN NOW() ELSE action_completed_date END,
           shared_with_team = COALESCE($12, shared_with_team),
           shared_at = CASE WHEN $12 = true AND shared_at IS NULL THEN NOW() ELSE shared_at END
-        WHERE id = $13
+        WHERE id = $13 AND home_id = $14
         RETURNING *`,
         [title || null, sourceType || null, sourceReference || null, dateOfEvent || null,
          whatHappened || null, rootCause || null, lesson || null, actionTaken || null,
          actionOwner || null, actionDueDate || null,
          actionCompleted ?? null, sharedWithTeam ?? null,
-         req.params.id]
+         req.params.id, homeId]
       );
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

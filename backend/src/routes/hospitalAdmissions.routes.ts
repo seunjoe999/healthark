@@ -132,6 +132,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 // PUT /api/hospital-admissions/:id
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const homeId = fromToken(req, 'homeId');
     const {
       dischargeDate, dischargeDestination, outcomeNotes,
       followUpRequired, followUpNotes, status,
@@ -157,9 +158,10 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
     sets.push(`updated_at = NOW()`);
     params.push(req.params.id);
+    params.push(homeId);
 
     const rows = await query(
-      `UPDATE hospital_admissions SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
+      `UPDATE hospital_admissions SET ${sets.join(', ')} WHERE id = $${params.length - 1} AND home_id = $${params.length} RETURNING *`,
       params
     );
 

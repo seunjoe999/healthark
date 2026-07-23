@@ -87,13 +87,14 @@ router.post('/', [
 router.patch('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const homeId = tok(req, 'homeId');
       const { outcome, instructionsLeft, followUpDate, followUpNotes, followUpDone } = req.body;
       await query(
         `UPDATE professional_visits
          SET outcome=$1, instructions_left=$2, follow_up_date=$3, follow_up_notes=$4,
              follow_up_done=COALESCE($5, follow_up_done)
-         WHERE id=$6`,
-        [outcome ?? null, instructionsLeft ?? null, followUpDate || null, followUpNotes ?? null, followUpDone ?? null, req.params.id]
+         WHERE id=$6 AND home_id=$7`,
+        [outcome ?? null, instructionsLeft ?? null, followUpDate || null, followUpNotes ?? null, followUpDone ?? null, req.params.id, homeId]
       );
       const rows = await query('SELECT * FROM professional_visits WHERE id=$1', [req.params.id]);
       res.json({ success: true, data: (rows as any[])[0] } as ApiResponse);
@@ -105,7 +106,8 @@ router.patch('/:id', param('id').isUUID(), validateRequest,
 router.patch('/:id/follow-up-done', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('UPDATE professional_visits SET follow_up_done=TRUE WHERE id=$1', [req.params.id]);
+      const homeId = tok(req, 'homeId');
+      await query('UPDATE professional_visits SET follow_up_done=TRUE WHERE id=$1 AND home_id=$2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -115,7 +117,8 @@ router.patch('/:id/follow-up-done', param('id').isUUID(), validateRequest,
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM professional_visits WHERE id=$1', [req.params.id]);
+      const homeId = tok(req, 'homeId');
+      await query('DELETE FROM professional_visits WHERE id=$1 AND home_id=$2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

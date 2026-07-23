@@ -76,12 +76,10 @@ router.patch('/:id',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
       const { status, priority, assignedTo, resolutionNotes, title, description, category, location } = req.body;
-      const existing = await query('SELECT * FROM maintenance_logs WHERE id = $1', [req.params.id]);
+      const existing = await query('SELECT * FROM maintenance_logs WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       if (!existing.length) throw new AppError('Not found', 404);
-
-      const resolvedAt = status === 'resolved' ? 'NOW()' : 'resolved_at';
-      const resolvedBy = status === 'resolved' ? `'${staffId}'` : 'resolved_by';
 
       await query(`
         UPDATE maintenance_logs SET
@@ -96,10 +94,10 @@ router.patch('/:id',
           resolved_by = CASE WHEN $5 = 'resolved' THEN $9::uuid ELSE resolved_by END,
           resolved_at = CASE WHEN $5 = 'resolved' THEN NOW() ELSE resolved_at END,
           updated_at = NOW()
-        WHERE id = $10`,
+        WHERE id = $10 AND home_id = $11`,
         [title || null, description || null, category || null, priority || null,
          status || null, location || null, assignedTo || null, resolutionNotes || null,
-         staffId, req.params.id]
+         staffId, req.params.id, homeId]
       );
       const updated = await query('SELECT * FROM maintenance_logs WHERE id = $1', [req.params.id]);
       res.json({ success: true, data: updated[0] } as ApiResponse);
@@ -111,7 +109,8 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM maintenance_logs WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM maintenance_logs WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -152,7 +151,8 @@ router.delete('/contacts/:id',
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM maintenance_contacts WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM maintenance_contacts WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

@@ -63,6 +63,7 @@ router.patch('/:id',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
       const { goal, description, targetDate, reviewDate, status, progressNotes, achievedDate } = req.body;
       await query(`
         UPDATE care_outcomes SET
@@ -75,9 +76,9 @@ router.patch('/:id',
           achieved_date = COALESCE($7, achieved_date),
           updated_by = $8,
           updated_at = NOW()
-        WHERE id = $9`,
+        WHERE id = $9 AND home_id = $10`,
         [goal || null, description || null, targetDate || null, reviewDate || null,
-         status || null, progressNotes || null, achievedDate || null, staffId, req.params.id]
+         status || null, progressNotes || null, achievedDate || null, staffId, req.params.id, homeId]
       );
       const updated = await query('SELECT * FROM care_outcomes WHERE id = $1', [req.params.id]);
       res.json({ success: true, data: updated[0] } as ApiResponse);
@@ -119,7 +120,8 @@ router.get('/:id/reviews', param('id').isUUID(), validateRequest,
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM care_outcomes WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM care_outcomes WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

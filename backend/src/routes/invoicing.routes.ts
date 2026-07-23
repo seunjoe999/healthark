@@ -126,8 +126,8 @@ router.post('/generate-monthly', validateRequest,
       const invoices = [];
       for (const user of users as any[]) {
         const hours = await dbQuery(
-          `SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))/3600) as total_hours 
-           FROM shifts WHERE su_id = $1 AND DATE_TRUNC('month', shift_date) = DATE_TRUNC('month', $2::timestamp)`,
+          `SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))/3600) as total_hours
+           FROM staff_shifts WHERE su_id = $1 AND DATE_TRUNC('month', shift_date) = DATE_TRUNC('month', $2::timestamp)`,
           [user.id, monthDate]
         );
         

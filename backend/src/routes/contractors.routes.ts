@@ -175,7 +175,8 @@ router.delete('/:id',
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM contractors WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM contractors WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

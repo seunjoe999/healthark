@@ -166,6 +166,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const reviewedBy = tok(req, 'staffId');
+      const homeId = tok(req, 'homeId');
       const {
         reviewDate, mobilityLevel, canSelfEvacuate, evacuationMethod,
         equipmentNeeded, numberOfStaffRequired, assemblyPoint,
@@ -187,7 +188,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
            reviewed_by = $11,
            reviewed_at = NOW(),
            updated_at = NOW()
-         WHERE id = $12
+         WHERE id = $12 AND home_id = $13
          RETURNING *`,
         [
           reviewDate || null, mobilityLevel || null,
@@ -196,7 +197,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           numberOfStaffRequired || null, assemblyPoint || null,
           specialConsiderations || null, knownToFireService != null ? knownToFireService : null,
           isActive != null ? isActive : null,
-          reviewedBy, req.params.id,
+          reviewedBy, req.params.id, homeId,
         ]
       );
       if (!rows.length) throw new AppError('PEEP plan not found', 404);
