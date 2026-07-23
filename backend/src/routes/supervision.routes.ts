@@ -23,7 +23,8 @@ router.use(authenticate);
 router.get('/', validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { homeId, staffId } = req.query;
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+      const staffId = req.query.staffId as string | undefined;
       let sql = 'SELECT sup.*, s.first_name || \' \' || s.last_name as staff_name, svr.first_name || \' \' || svr.last_name as supervisor_name FROM supervisions sup JOIN staff s ON s.id = sup.staff_id JOIN staff svr ON svr.id = sup.supervisor_id';
       const params: any[] = [];
       if (homeId) { sql += ` WHERE sup.home_id = $${params.length + 1}`; params.push(homeId); }
@@ -78,7 +79,8 @@ router.post('/', [
 router.get('/appraisal', validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { homeId, staffId } = req.query;
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+      const staffId = req.query.staffId as string | undefined;
       let sql = 'SELECT apr.*, s.first_name || \' \' || s.last_name as staff_name, apr_s.first_name || \' \' || apr_s.last_name as appraiser_name FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id';
       const params: any[] = [];
       if (homeId) { sql += ` WHERE apr.home_id = $${params.length + 1}`; params.push(homeId); }

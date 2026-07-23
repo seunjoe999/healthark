@@ -32,8 +32,8 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
       rows = await query(
         `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name
          FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
-         WHERE sl.staff_id = $1 ORDER BY sl.created_at DESC`,
-        [queryStaffId]
+         WHERE sl.staff_id = $1 AND sl.home_id = $2 ORDER BY sl.created_at DESC`,
+        [queryStaffId, homeId]
       );
     } else if (role === 'group_admin' || role === 'home_manager') {
       rows = await query(
@@ -194,7 +194,7 @@ router.get('/assessments/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const rows = await query(
         `SELECT sa.*, s.first_name || ' ' || s.last_name as conducted_by_name
-         FROM staff_assessments sa JOIN staff s ON s.id = sa.conducted_by
+         FROM assessments sa JOIN staff s ON s.id = sa.conducted_by
          WHERE sa.staff_id = $1 ORDER BY sa.assessment_date DESC`,
         [req.params.staffId]
       );
@@ -212,7 +212,7 @@ router.post('/assessments',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { staffId, assessmentType, customName, assessmentDate, outcome, recommendations, nextDueDate } = req.body;
       const rows = await query(
-        `INSERT INTO staff_assessments (staff_id, conducted_by, home_id, assessment_type, custom_name, assessment_date, outcome, recommendations, next_due_date)
+        `INSERT INTO assessments (staff_id, conducted_by, home_id, assessment_type, custom_name, assessment_date, outcome, recommendations, next_due_date)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [staffId, conductedBy, homeId, assessmentType, customName || null, assessmentDate, outcome || null, recommendations || null, nextDueDate || null]
       );

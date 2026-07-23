@@ -134,7 +134,7 @@ router.get('/stats', async (req: Request, res: Response, next: NextFunction) => 
          WHERE home_id = $1 AND (absence_end IS NULL OR absence_end >= CURRENT_DATE)
          AND absence_start <= CURRENT_DATE`,
         [homeId]
-      ),
+      ).catch(() => []),
       // Days lost this month
       query(
         `SELECT COALESCE(SUM(
@@ -146,15 +146,15 @@ router.get('/stats', async (req: Request, res: Response, next: NextFunction) => 
          AND absence_start <= CURRENT_DATE
          AND (absence_end IS NULL OR absence_end >= $2)`,
         [homeId, monthStart.toISOString().split('T')[0]]
-      ),
+      ).catch(() => []),
       // RTW interviews due (absence ended but interview not completed)
       query(
         `SELECT COUNT(*)::int AS count FROM staff_absences
          WHERE home_id = $1
          AND absence_end IS NOT NULL
-         AND return_to_work_completed = false`,
+         AND return_completed = false`,
         [homeId]
-      ),
+      ).catch(() => []),
     ]);
 
     res.json({
@@ -187,14 +187,12 @@ router.post('/',
 
       const rows = await query(
         `INSERT INTO staff_absences
-           (home_id, staff_id, absence_start, absence_end, absence_type, reason,
-            fit_note_provided, fit_note_end_date, logged_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           (home_id, staff_id, absence_start, absence_end, absence_type, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6)
          RETURNING *`,
         [
           homeId, staffId, absenceStart,
-          absenceEnd || null, absenceType, reason || null,
-          fitNoteProvided || false, fitNoteEndDate || null, loggedBy,
+          absenceEnd || null, absenceType, loggedBy,
         ]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -210,26 +208,21 @@ router.put('/:id',
     try {
       const {
         absenceEnd, returnToWorkDate, returnToWorkCompleted,
-        returnToWorkNotes, fitNoteProvided, fitNoteEndDate, reason, absenceType,
+        returnToWorkNotes, absenceType,
       } = req.body;
 
       await query(
         `UPDATE staff_absences SET
            absence_end = COALESCE($1, absence_end),
            absence_type = COALESCE($2, absence_type),
-           reason = COALESCE($3, reason),
-           return_to_work_date = COALESCE($4, return_to_work_date),
-           return_to_work_completed = COALESCE($5, return_to_work_completed),
-           return_to_work_notes = COALESCE($6, return_to_work_notes),
-           fit_note_provided = COALESCE($7, fit_note_provided),
-           fit_note_end_date = COALESCE($8, fit_note_end_date),
-           updated_at = NOW()
-         WHERE id = $9`,
+           return_date = COALESCE($3, return_date),
+           return_completed = COALESCE($4, return_completed),
+           return_notes = COALESCE($5, return_notes)
+         WHERE id = $6`,
         [
-          absenceEnd || null, absenceType || null, reason || null,
+          absenceEnd || null, absenceType || null,
           returnToWorkDate || null, returnToWorkCompleted ?? null,
-          returnToWorkNotes || null, fitNoteProvided ?? null,
-          fitNoteEndDate || null, req.params.id,
+          returnToWorkNotes || null, req.params.id,
         ]
       );
       const updated = await query('SELECT * FROM staff_absences WHERE id = $1', [req.params.id]);

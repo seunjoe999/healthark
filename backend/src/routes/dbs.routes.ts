@@ -169,9 +169,9 @@ router.get('/summary/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const [dbs, references, rtw] = await Promise.all([
-        query('SELECT * FROM staff_dbs WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC LIMIT 1', [req.params.staffId, homeId]),
-        query('SELECT * FROM staff_references WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC', [req.params.staffId, homeId]),
-        query('SELECT * FROM staff_right_to_work WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC', [req.params.staffId, homeId]),
+        query('SELECT * FROM staff_dbs WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC LIMIT 1', [req.params.staffId, homeId]).catch(() => []),
+        query('SELECT * FROM staff_references WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC', [req.params.staffId, homeId]).catch(() => []),
+        query('SELECT * FROM staff_right_to_work WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC', [req.params.staffId, homeId]).catch(() => []),
       ]);
       res.json({ success: true, data: { dbs: dbs[0] || null, references, rightToWork: rtw } } as ApiResponse);
     } catch (err) { next(err); }
