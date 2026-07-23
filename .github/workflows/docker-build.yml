@@ -41,13 +41,8 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd /opt/healthark
-            # Keep the deploy config (docker-compose.yml, nginx/) in sync with the repo
-            git pull --ff-only || true
-            # Pull the freshly built image and (re)start the stack.
-            # nginx (in the compose file) proxies to the app on port 3001 and
-            # serves 80/443, so we bring up the whole stack rather than a bare
-            # `docker run` (which used the wrong port and network).
-            docker compose pull app
-            docker compose up -d
+            docker pull ghcr.io/seunjoe999/healthark:latest
+            docker stop healthark_app || true
+            docker rm healthark_app || true
+            docker run -d --name healthark_app --restart always --network host --env-file /opt/healthark/.env ghcr.io/seunjoe999/healthark:latest
             docker image prune -f
