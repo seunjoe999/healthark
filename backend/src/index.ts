@@ -2496,6 +2496,26 @@ async function ensureColumns() {
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS su_id UUID REFERENCES service_users(id) ON DELETE SET NULL`,
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS summary VARCHAR(500)`,
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS detail TEXT`,
+    // ── tasks — one-off and generated daily tasks (tasks.routes.ts) ──────────────
+    `CREATE TABLE IF NOT EXISTS tasks (
+       id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id          UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id            UUID REFERENCES service_users(id) ON DELETE SET NULL,
+       created_by       UUID REFERENCES staff(id) ON DELETE SET NULL,
+       title            TEXT NOT NULL DEFAULT '',
+       category         TEXT NOT NULL DEFAULT 'general',
+       description      TEXT,
+       task_date        DATE NOT NULL DEFAULT CURRENT_DATE,
+       due_time         TEXT,
+       priority         TEXT NOT NULL DEFAULT 'normal',
+       assigned_role    TEXT,
+       status           TEXT NOT NULL DEFAULT 'pending',
+       completed_by     UUID REFERENCES staff(id) ON DELETE SET NULL,
+       completed_at     TIMESTAMPTZ,
+       completion_notes TEXT,
+       created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_tasks_home_date ON tasks(home_id, task_date DESC)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

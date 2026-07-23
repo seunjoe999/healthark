@@ -179,7 +179,8 @@ router.post('/professionals', [body('suId').isUUID(), body('roleTitle').notEmpty
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM quality_records WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM quality_records WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -188,7 +189,11 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
 router.delete('/professionals/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM professional_involvement WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query(
+        'DELETE FROM professional_involvement WHERE id = $1 AND su_id IN (SELECT id FROM service_users WHERE home_id = $2)',
+        [req.params.id, homeId]
+      );
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -197,7 +202,8 @@ router.delete('/professionals/:id', param('id').isUUID(), validateRequest,
 router.delete('/capacity/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM capacity_assessments WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM capacity_assessments WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -206,7 +212,8 @@ router.delete('/capacity/:id', param('id').isUUID(), validateRequest,
 router.delete('/sensitive-notes/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM sensitive_notes WHERE id = $1', [req.params.id]);
+      const homeId = fromToken(req, 'homeId');
+      await query('DELETE FROM sensitive_notes WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

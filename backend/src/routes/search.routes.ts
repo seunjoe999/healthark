@@ -26,14 +26,14 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
          WHERE home_id=$1 AND (LOWER(first_name)||' '||LOWER(last_name)) LIKE $2
          LIMIT 10`,
         [homeId, q]
-      ),
+      ).catch(() => []),
       query(
         `SELECT id, first_name, last_name, role, status, photo_url
          FROM staff
          WHERE home_id=$1 AND is_active=true AND (LOWER(first_name)||' '||LOWER(last_name)) LIKE $2
          LIMIT 10`,
         [homeId, q]
-      ),
+      ).catch(() => []),
       query(
         `SELECT cp.id, cp.plan_type, cp.custom_name, su.first_name||' '||su.last_name as su_name
          FROM care_plans cp JOIN service_users su ON su.id=cp.su_id
@@ -41,7 +41,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
            OR LOWER(su.first_name||' '||su.last_name) LIKE $2)
          AND cp.is_active=true LIMIT 10`,
         [homeId, q]
-      ),
+      ).catch(() => []),
     ]);
 
     res.json({ success: true, data: { residents, staff, carePlans } } as ApiResponse);

@@ -234,11 +234,9 @@ router.get('/safeguarding', async (req: Request, res: Response, next: NextFuncti
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { from, to } = req.query as Record<string, string>;
     const rows = await query(
-      `SELECT sg.*, su.first_name || ' ' || su.last_name as su_name,
-              s.first_name || ' ' || s.last_name as created_by_name
+      `SELECT sg.*, su.first_name || ' ' || su.last_name as su_name
        FROM safeguarding_concerns sg
        JOIN service_users su ON su.id = sg.su_id
-       LEFT JOIN staff s ON s.id = sg.created_by
        WHERE sg.home_id = $1
        ${from ? "AND sg.incident_date >= $2 AND sg.incident_date <= $3" : ""}
        ORDER BY sg.incident_date DESC`,
@@ -320,10 +318,10 @@ router.get('/monthly-reviews-history', async (req: Request, res: Response, next:
               s.first_name || ' ' || s.last_name AS reviewed_by_name,
               TO_CHAR(DATE_TRUNC('month', cr.review_date), 'Mon YYYY') AS review_month,
               DATE_TRUNC('month', cr.review_date) AS month_start
-       FROM care_reviews cr
+       FROM su_reviews cr
        JOIN service_users su ON su.id = cr.su_id
-       LEFT JOIN staff s ON s.id = cr.reviewed_by
-       WHERE su.home_id = $1
+       LEFT JOIN staff s ON s.id = cr.conducted_by
+       WHERE cr.home_id = $1
        ORDER BY cr.review_date DESC`,
       [homeId]
     );
@@ -350,8 +348,8 @@ router.get('/incident-analysis', async (req: Request, res: Response, next: NextF
     const toDate = to || new Date().toISOString().split('T')[0];
 
     const rows = await query(
-      `SELECT ri.incident_type, ri.description, ri.body_part, ri.witness_name,
-              ri.action_taken, ri.manager_reviewed, dr.record_date,
+      `SELECT ri.incident_type, ri.description, ri.body_map_data, ri.witnesses,
+              ri.immediate_action, ri.manager_reviewed, dr.record_date,
               su.first_name || ' ' || su.last_name as su_name
        FROM records_incidents ri
        JOIN daily_records dr ON dr.id = ri.daily_record_id
