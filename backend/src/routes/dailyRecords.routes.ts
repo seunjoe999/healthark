@@ -285,7 +285,7 @@ router.post('/', [
              injuries || false, (injuryDetails || '') + (injuredBodyPart ? ' - ' + injuredBodyPart : ''),
              medicalNeeded || medicalAttentionRequired || false, medicalDetails || null,
              witnesses || null, immediateAction || immediateActions || null,
-             (agenciesContacted || reportedTo || '') + (lessonsLearned ? ' | Lessons: ' + lessonsLearned : '') + (preventionMeasures ? ' | Prevention: ' + preventionMeasures : '') || null,
+             reportedTo || null,  // UUID column — text strings not accepted
              safeguardingRef || null,
              cqcNotified || false, cqcNotNotifiedReason || null,
              familyNotified || false, familyNotNotifiedReason || null]
@@ -422,9 +422,9 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         }
       }
 
-      // Update the parent record notes field
+      // Update the parent record notes field (daily_records has no updated_at column)
       const rows = await query(
-        `UPDATE daily_records SET notes=$1, updated_at=NOW() WHERE id=$2 RETURNING *`,
+        `UPDATE daily_records SET notes=$1 WHERE id=$2 RETURNING *`,
         [updateText, req.params.id]
       );
       if (!rows.length) throw new AppError('Record not found', 404);

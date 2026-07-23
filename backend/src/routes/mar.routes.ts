@@ -48,7 +48,7 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const effectiveHomeId = bodyHomeId || homeId;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescribed_by, start_date, end_date, instructions, is_prn, is_controlled, added_by,
+          prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by,
           pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code,
           location_access_code, medicine_warning)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
@@ -139,7 +139,7 @@ router.get('/records/:suId', param('suId').isUUID(), validateRequest,
       const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
       const rows = await query(
         `SELECT mr.*, m.medication_name, m.dose, m.frequency, m.route,
-                COALESCE(m.instructions, m.notes) AS instructions, m.is_prn,
+                m.notes AS instructions, m.is_prn,
                 s.first_name || ' ' || s.last_name as given_by_name
          FROM mar_records mr
          JOIN su_medications m ON m.id = mr.medication_id
@@ -316,10 +316,9 @@ router.delete('/records/:id', param('id').isUUID(), validateRequest,
 router.get('/stock/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // medication_stock has no medication_id FK — query directly by su_id
       const rows = await query(
-        `SELECT ms.*, m.medication_name, m.dose
-         FROM medication_stock ms JOIN su_medications m ON m.id = ms.medication_id
-         WHERE ms.su_id = $1`,
+        `SELECT * FROM medication_stock WHERE su_id = $1`,
         [req.params.suId]
       );
       res.json({ success: true, data: rows } as ApiResponse);
@@ -332,20 +331,25 @@ router.post('/stock/:medicationId/count', param('medicationId').isUUID(), valida
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
       const { suId, currentCount, notes } = req.body;
+      // medication_stock is keyed by (su_id, medication_name) — look up name first
+      const medRows = await query<any>('SELECT medication_name FROM su_medications WHERE id=$1', [req.params.medicationId]);
+      if (!medRows.length) { res.status(404).json({ success: false, error: 'Medication not found' }); return; }
+      const medName = medRows[0].medication_name;
       const existing = await query<any>(
-        'SELECT id FROM medication_stock WHERE su_id=$1 AND medication_id=$2',
-        [suId, req.params.medicationId]
+        'SELECT id FROM medication_stock WHERE su_id=$1 AND medication_name=$2',
+        [suId, medName]
       );
       if (existing.length) {
         await query(
-          `UPDATE medication_stock SET current_count=$1, last_counted_by=$2, last_counted_at=NOW(), notes=$3 WHERE su_id=$4 AND medication_id=$5`,
-          [currentCount, staffId, notes || null, suId, req.params.medicationId]
+          `UPDATE medication_stock SET current_stock=$1, last_updated_by=$2, updated_at=NOW(), notes=$3 WHERE su_id=$4 AND medication_name=$5`,
+          [currentCount, staffId, notes || null, suId, medName]
         );
       } else {
         await query(
-          `INSERT INTO medication_stock (su_id, medication_id, current_count, last_counted_by, last_counted_at, notes) VALUES ($1,$2,$3,$4,NOW(),$5)`,
-          [suId, req.params.medicationId, currentCount, staffId, notes || null]
+          `INSERT INTO medication_stock (su_id, home_id, medication_name, current_stock, last_updated_by, notes) VALUES ($1,$2,$3,$4,$5,$6)`,
+          [suId, homeId, medName, currentCount, staffId, notes || null]
         );
       }
       res.json({ success: true, message: 'Stock count updated' } as ApiResponse);

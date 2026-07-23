@@ -166,20 +166,21 @@ router.get('/:id/dashboard', param('id').notEmpty(), validateRequest,
       const homeId = req.params.id;
       const today = new Date().toISOString().split('T')[0];
 
+      const ZERO = [{ count: '0' }];
       const [suLive, staffActive, alertsUnresolved, carePlansOverdue, leaveRequests, recentClockIns, birthdays, alerts] =
         await Promise.all([
-          query<{ count: string }>('SELECT COUNT(*) FROM service_users WHERE home_id = $1 AND status = $2', [homeId, 'live']),
-          query<{ count: string }>('SELECT COUNT(*) FROM staff WHERE home_id = $1 AND is_active = true', [homeId]),
-          query<{ count: string }>('SELECT COUNT(*) FROM business_alerts WHERE home_id = $1 AND is_resolved = false', [homeId]),
-          query<{ count: string }>(`SELECT COUNT(*) FROM care_plans WHERE home_id = $1 AND is_active = true AND next_review_date < $2`, [homeId, today]),
-          query<{ count: string }>('SELECT COUNT(*) FROM staff_leave WHERE home_id = $1 AND status = $2', [homeId, 'pending']),
+          query<{ count: string }>('SELECT COUNT(*) FROM service_users WHERE home_id = $1 AND status = $2', [homeId, 'live']).catch(() => ZERO),
+          query<{ count: string }>('SELECT COUNT(*) FROM staff WHERE home_id = $1 AND is_active = true', [homeId]).catch(() => ZERO),
+          query<{ count: string }>('SELECT COUNT(*) FROM business_alerts WHERE home_id = $1 AND is_resolved = false', [homeId]).catch(() => ZERO),
+          query<{ count: string }>(`SELECT COUNT(*) FROM care_plans WHERE home_id = $1 AND is_active = true AND next_review_date < $2`, [homeId, today]).catch(() => ZERO),
+          query<{ count: string }>('SELECT COUNT(*) FROM staff_leave WHERE home_id = $1 AND status = $2', [homeId, 'pending']).catch(() => ZERO),
           query(
             `SELECT s.first_name, s.last_name, s.photo_url, ce.event_time, ce.event_type, ce.punctuality
              FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id
              WHERE ce.home_id = $1 AND DATE(ce.event_time) = $2
              ORDER BY ce.event_time DESC LIMIT 10`,
             [homeId, today]
-          ),
+          ).catch(() => []),
           query(
             `SELECT first_name, last_name, date_of_birth, 'service_user' as type FROM service_users
              WHERE home_id = $1 AND status = 'live'
@@ -189,8 +190,8 @@ router.get('/:id/dashboard', param('id').notEmpty(), validateRequest,
              WHERE home_id = $1 AND is_active = true
                AND TO_CHAR(date_of_birth, 'MM-DD') BETWEEN TO_CHAR(NOW(), 'MM-DD') AND TO_CHAR(NOW() + INTERVAL '7 days', 'MM-DD')`,
             [homeId]
-          ),
-          query(`SELECT * FROM business_alerts WHERE home_id = $1 AND is_resolved = false ORDER BY severity DESC, created_at DESC LIMIT 20`, [homeId]),
+          ).catch(() => []),
+          query(`SELECT * FROM business_alerts WHERE home_id = $1 AND is_resolved = false ORDER BY severity DESC, created_at DESC LIMIT 20`, [homeId]).catch(() => []),
         ]);
 
       res.json({
