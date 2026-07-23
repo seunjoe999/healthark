@@ -2,10 +2,14 @@ version: '3.8'
 
 services:
   app:
+    # Pull the CI-built image on the VPS (docker compose pull). The build block
+    # is kept so `docker compose build` still works for local development.
+    image: ghcr.io/seunjoe999/healthark:latest
     build:
       context: .
       dockerfile: Dockerfile
       target: production
+    container_name: healthark_app
     restart: unless-stopped
     env_file: .env
     environment:

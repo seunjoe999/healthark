@@ -24,14 +24,96 @@ const MIGRATION_FILES = [
   '017_risk_management.sql',
   '018_mar_pharmacy_gp_codes.sql',
   '019_invoicing_cqc_supervision.sql',
+  '020_medication_location_warning.sql',
 ];
 
 function splitStatements(sql: string): string[] {
-  // Split on semicolons at end of line, skip comments and blanks
-  return sql
-    .split(/;[ \t]*(\r?\n|$)/)
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--'));
+  // Robust SQL splitter:
+  //  - strips `-- ...` line comments and `/* ... */` block comments
+  //  - respects single/double-quoted string literals
+  //  - respects dollar-quoted bodies ($$ ... $$ and $tag$ ... $tag$)
+  //    so function/DO blocks with internal semicolons stay intact
+  //  - splits only on top-level `;`
+  const statements: string[] = [];
+  let current = '';
+  let i = 0;
+  const n = sql.length;
+
+  while (i < n) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+
+    // Line comment
+    if (ch === '-' && next === '-') {
+      const nl = sql.indexOf('\n', i);
+      i = nl === -1 ? n : nl; // keep the newline for the next iteration
+      continue;
+    }
+
+    // Block comment
+    if (ch === '/' && next === '*') {
+      const end = sql.indexOf('*/', i + 2);
+      i = end === -1 ? n : end + 2;
+      continue;
+    }
+
+    // Single-quoted string literal
+    if (ch === "'") {
+      current += ch;
+      i++;
+      while (i < n) {
+        current += sql[i];
+        if (sql[i] === "'") {
+          if (sql[i + 1] === "'") { current += sql[i + 1]; i += 2; continue; } // escaped quote
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+
+    // Double-quoted identifier
+    if (ch === '"') {
+      current += ch;
+      i++;
+      while (i < n) {
+        current += sql[i];
+        if (sql[i] === '"') { i++; break; }
+        i++;
+      }
+      continue;
+    }
+
+    // Dollar-quoted string ($$ ... $$ or $tag$ ... $tag$)
+    if (ch === '$') {
+      const tagMatch = /^\$[A-Za-z_0-9]*\$/.exec(sql.slice(i));
+      if (tagMatch) {
+        const tag = tagMatch[0];
+        const end = sql.indexOf(tag, i + tag.length);
+        const stop = end === -1 ? n : end + tag.length;
+        current += sql.slice(i, stop);
+        i = stop;
+        continue;
+      }
+    }
+
+    // Statement terminator
+    if (ch === ';') {
+      const trimmed = current.trim();
+      if (trimmed.length > 0) statements.push(trimmed);
+      current = '';
+      i++;
+      continue;
+    }
+
+    current += ch;
+    i++;
+  }
+
+  const tail = current.trim();
+  if (tail.length > 0) statements.push(tail);
+  return statements;
 }
 
 async function migrate() {

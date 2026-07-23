@@ -9,6 +9,11 @@ import { ApiResponse } from '../types';
 const router = Router();
 router.use(authenticate);
 
+// Matches a canonical UUID. Used to guard /:id handlers so that a non-UUID path
+// segment (e.g. a sub-route like "news2" that fell through) returns 404 instead
+// of a 500 from Postgres' "invalid input syntax for type uuid".
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ── DB init ───────────────────────────────────────────────────────
 const initTable = async () => {
   await query(`
@@ -1664,6 +1669,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // GET /api/assessments/:id
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
+    }
     const rows = await query(
       `SELECT a.*, s.first_name || ' ' || s.last_name as conducted_by_name
        FROM assessments a LEFT JOIN staff s ON s.id = a.conducted_by
@@ -1704,6 +1712,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 // PUT /api/assessments/:id
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (!UUID_RE.test(req.params.id)) {
+      return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
+    }
     const { answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, auditorName } = req.body;
     const existing = await query('SELECT * FROM assessments WHERE id = $1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);

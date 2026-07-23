@@ -281,7 +281,7 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
         `SELECT DISTINCT s.id, s.first_name || ' ' || s.last_name AS name, s.role
          FROM staff s
          WHERE s.organisation_id = $1 AND s.is_active = TRUE
-         ORDER BY s.first_name, s.last_name`, [orgId]
+         ORDER BY name`, [orgId]
       );
       try {
         shiftRows = await query(
@@ -303,7 +303,7 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
         `SELECT DISTINCT s.id, s.first_name || ' ' || s.last_name AS name, s.role
          FROM staff s
          WHERE s.home_id = $1 AND s.is_active = TRUE
-         ORDER BY s.first_name, s.last_name`, [homeId]
+         ORDER BY name`, [homeId]
       );
       try {
         shiftRows = await query(

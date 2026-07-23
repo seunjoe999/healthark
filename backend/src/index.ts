@@ -144,6 +144,13 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/quality', qualityRoutes);
+// Mount the more specific /api/assessments/news2 BEFORE the general
+// /api/assessments router. Express matches in registration order, so if the
+// general router (which has a `/:id` handler) is registered first, a request to
+// /api/assessments/news2 gets captured by `/:id` and "news2" is treated as a
+// UUID, causing a 500. Registering the specific path first avoids that.
+import news2Routes from './routes/news2.routes';
+app.use('/api/assessments/news2', news2Routes);
 app.use('/api/assessments', assessmentsRoutes);
 app.use('/api/invoicing', invoicingRoutes);
 app.use('/api/cqc-notifications', cqcNotificationsRoutes);
@@ -232,11 +239,10 @@ app.use('/api/training-matrix', trainingMatrixRoutes);
 app.use('/api/external-contacts', externalContactsRoutes);
 app.use('/api/seed', seedRoutes);
 
-import news2Routes from './routes/news2.routes';
 import waterlowRoutes from './routes/waterlow.routes';
 import cqcRoutes from './routes/cqc.routes';
 import clinicalRoutes from './routes/clinical.routes';
-app.use('/api/assessments/news2', news2Routes);
+// news2Routes is imported & mounted earlier (before the general /api/assessments router)
 app.use('/api/assessments', waterlowRoutes);
 app.use('/api/cqc', cqcRoutes);
 app.use('/api/clinical', clinicalRoutes);
@@ -288,7 +294,7 @@ async function createCoreTables() {
   const stmts: Array<{ label: string; sql: string }> = [
     // ── Extensions ────────────────────────────────────────────────────────────
     { label: 'extension pgcrypto', sql: `CREATE EXTENSION IF NOT EXISTS pgcrypto` },
-    { label: 'extension uuid-ossp', sql: `CREATE EXTENSION IF NOT EXISTS “uuid-ossp”` },
+    { label: 'extension uuid-ossp', sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"` },
     { label: 'extension pg_trgm', sql: `CREATE EXTENSION IF NOT EXISTS pg_trgm` },
 
     // ── Enums (guard with DO $$ so we never error on “already exists”) ────────
@@ -1729,6 +1735,11 @@ async function ensureColumns() {
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS scheduled_time  TIME`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS refused_reason  TEXT`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS notes           TEXT`,
+    // Legacy mar_records columns (medication_name/dose) are superseded by
+    // medication_id (joined to su_medications). Old schemas made them NOT NULL,
+    // which breaks logging a MAR entry since the route only sets medication_id.
+    `ALTER TABLE mar_records ALTER COLUMN medication_name DROP NOT NULL`,
+    `ALTER TABLE mar_records ALTER COLUMN dose DROP NOT NULL`,
     // ── staff_training — columns added to CREATE TABLE but may be missing from existing DB ──
     `ALTER TABLE staff_training ADD COLUMN IF NOT EXISTS completed_date  DATE`,
     `ALTER TABLE staff_training ADD COLUMN IF NOT EXISTS duration_hours  NUMERIC(5,2)`,
@@ -2344,6 +2355,13 @@ async function ensureColumns() {
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS contributing_factors TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS prevention_actions   TEXT`,
     // ── su_medications — pharmacy, GP, codes, location, warning ──────────────
+    // `instructions` is referenced by mar.routes.ts (INSERT into su_medications and
+    // COALESCE(m.instructions, m.notes) in the MAR chart query). Without it the
+    // MAR chart 500s once any record exists, and creating a medication fails.
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS instructions           TEXT`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS is_prn                 BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS prescribed_by          VARCHAR(255)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS added_by               UUID REFERENCES staff(id) ON DELETE SET NULL`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS pharmacy_name          VARCHAR(255)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS pharmacy_phone         VARCHAR(20)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS gp_name                VARCHAR(255)`,

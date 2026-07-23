@@ -87,7 +87,7 @@ export default function SupervisionAppraisal() {
     if (!user?.homeId) return
     setLoading(true)
     try {
-      const res = await api.get(`/appraisal?homeId=${user.homeId}`)
+      const res = await api.get(`/supervision/appraisal?homeId=${user.homeId}`)
       setAppraisals(res.data.data || [])
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to load appraisals')
@@ -102,7 +102,7 @@ export default function SupervisionAppraisal() {
   const handleDelete = async (id: string, type: 'supervision' | 'appraisal') => {
     if (!confirm('Delete this record?')) return
     try {
-      await api.delete(type === 'supervision' ? `/supervision/${id}` : `/appraisal/${id}`)
+      await api.delete(type === 'supervision' ? `/supervision/${id}` : `/supervision/appraisal/${id}`)
       toast.success('Record deleted')
       if (type === 'supervision') loadSupervisions()
       else loadAppraisals()

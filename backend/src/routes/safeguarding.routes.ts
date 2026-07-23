@@ -24,7 +24,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const rows = await query(
-      `SELECT sc.*, sc.description as overview,
+      `SELECT sc.*,
               su.first_name || ' ' || su.last_name as su_name,
               s.first_name || ' ' || s.last_name as created_by_name
        FROM safeguarding_concerns sc
@@ -69,12 +69,12 @@ router.post('/',
 
       const rows = await query(
         `INSERT INTO safeguarding_concerns (su_id, home_id, created_by, su_location,
-          incident_location, incident_date, incident_time, description, witnesses,
+          incident_location, incident_date, incident_time, overview, witnesses,
           medical_required, medical_details, injury_details, immediate_actions,
           decisions_breached, lessons_learnt, outside_agency, agency_details,
           management_recs, prevention_actions, reported_to, reported_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW())
-         RETURNING *, description as overview`,
+         RETURNING *`,
         [suId, homeId, staffId, suLocation || null, incidentLocation || null,
          incidentDate, incidentTime || null, overview, witnesses || null,
          medicalRequired || false, medicalDetails || null, injuryDetails || null,

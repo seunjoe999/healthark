@@ -49,7 +49,7 @@ router.post('/', [
     const rows = await query(
       `INSERT INTO recruitment_candidates (home_id, first_name, last_name, email, phone, position, applied_date, status, pipeline_stage, interview_date, notes, dbs_check, reference_check, training_done, dbs_cleared, references_done, fully_compliant, ready_to_start, start_date)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
-      [homeId, firstName, lastName, email || null, phone || null, position, appliedDate || null, status || 'applied', pipelineStage || status || 'applied', interviewDate || null, notes || null, dbsCheck || null, referenceCheck || null, trainingDone || false, dbsCleared || false, referencesDone || false, fullyCompliant || false, readyToStart || false, startDate || null]
+      [homeId, firstName, lastName, email || null, phone || null, position, appliedDate || new Date().toISOString().split('T')[0], status || 'applied', pipelineStage || status || 'applied', interviewDate || null, notes || null, dbsCheck || null, referenceCheck || null, trainingDone || false, dbsCleared || false, referencesDone || false, fullyCompliant || false, readyToStart || false, startDate || null]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }

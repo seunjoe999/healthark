@@ -40,11 +40,15 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff } = req.body;
+      // start_time is NOT NULL in the DB. If the client didn't pass an explicit
+      // startTime (e.g. an all-day / date-only event), derive it from eventDate
+      // so the insert doesn't violate the not-null constraint.
+      const startTs = startTime || (eventDate ? `${eventDate}T09:00:00` : new Date().toISOString());
       const rows = await query(
         `INSERT INTO calendar_events (home_id, created_by, title, event_type, event_date, start_time, end_time, description, location, su_id, all_staff)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [homeId, staffId, title, eventType || 'other', eventDate,
-         startTime || null, endTime || null, description || null,
+         startTs, endTime || null, description || null,
          location || null, suId || null, allStaff || false]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);

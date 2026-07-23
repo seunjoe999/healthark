@@ -12,3 +12,4 @@ backend/dist
 *.jpg
 *.jpeg
 !frontend/public/**
+!frontend/dist/**
