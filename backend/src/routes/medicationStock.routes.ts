@@ -28,7 +28,7 @@ function fromToken(req: Request, field: string): string {
         medication_id UUID REFERENCES su_medications(id) ON DELETE CASCADE,
         form VARCHAR(50),
         strength VARCHAR(100),
-        quantity_remaining DECIMAL(10,2) NOT NULL DEFAULT 0,
+        current_stock DECIMAL(10,2) NOT NULL DEFAULT 0,
         current_count DECIMAL(10,2),
         unit VARCHAR(50) DEFAULT 'tablets',
         expiry_date DATE,
@@ -91,7 +91,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       `SELECT ms.*,
               su.first_name || ' ' || su.last_name AS su_name,
               s.first_name || ' ' || s.last_name AS updated_by_name,
-              ms.quantity_remaining <= ms.reorder_threshold AS low_stock,
+              ms.current_stock <= ms.reorder_threshold AS low_stock,
               ms.expiry_date IS NOT NULL AND ms.expiry_date < CURRENT_DATE AS expired,
               ms.expiry_date IS NOT NULL AND ms.expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '14 days' AS expiring_soon
        FROM medication_stock ms
@@ -122,7 +122,7 @@ router.post('/',
 
       const rows = await query(
         `INSERT INTO medication_stock
-           (home_id, su_id, medication_name, form, strength, quantity_remaining,
+           (home_id, su_id, medication_name, form, strength, current_stock,
             unit, expiry_date, reorder_threshold, batch_number, supplier,
             last_updated_by, notes)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
@@ -157,7 +157,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
            medication_name = COALESCE($2, medication_name),
            form = COALESCE($3, form),
            strength = COALESCE($4, strength),
-           quantity_remaining = COALESCE($5, quantity_remaining),
+           current_stock = COALESCE($5, current_stock),
            unit = COALESCE($6, unit),
            expiry_date = COALESCE($7, expiry_date),
            reorder_threshold = COALESCE($8, reorder_threshold),
@@ -208,8 +208,8 @@ router.post('/:id/adjust',
       const change = parseFloat(quantityChange);
 
       // Fetch current quantity
-      const existing = await query<{ quantity_remaining: string }>(
-        'SELECT quantity_remaining FROM medication_stock WHERE id = $1',
+      const existing = await query<{ current_stock: string }>(
+        'SELECT current_stock FROM medication_stock WHERE id = $1',
         [req.params.id]
       );
 
@@ -218,12 +218,12 @@ router.post('/:id/adjust',
         return;
       }
 
-      const before = parseFloat(existing[0].quantity_remaining);
+      const before = parseFloat(existing[0].current_stock);
       const after = Math.max(0, before + change);
 
       // Update stock
       await query(
-        'UPDATE medication_stock SET quantity_remaining = $1, last_updated_by = $2, updated_at = NOW() WHERE id = $3',
+        'UPDATE medication_stock SET current_stock = $1, last_updated_by = $2, updated_at = NOW() WHERE id = $3',
         [after, staffId || null, req.params.id]
       );
 

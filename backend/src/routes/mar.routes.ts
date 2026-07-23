@@ -48,16 +48,11 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const effectiveHomeId = bodyHomeId || homeId;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by,
-          pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code,
-          location_access_code, medicine_warning)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
+          prescriber, start_date, end_date, notes, is_prn, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
         [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
-         instructions || null, isPrn || false, isControlled || false, staffId,
-         pharmacyName || null, pharmacyPhone || null, gpName || null, gpPhone || null,
-         medicationCode || null, atcCode || null,
-         locationAccessCode || null, medicineWarning || null]
+         instructions || null, isPrn || false, staffId]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -68,9 +63,7 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled,
-              pharmacyName, pharmacyPhone, gpName, gpPhone, medicationCode, atcCode,
-              locationAccessCode, medicineWarning } = req.body;
+      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn } = req.body;
       const updates = [
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
@@ -78,17 +71,8 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'prescriber', val: prescribedBy },
         { field: 'start_date', val: nd(startDate) },
         { field: 'end_date', val: nd(endDate) },
-        { field: 'instructions', val: instructions },
+        { field: 'notes', val: instructions },
         { field: 'is_prn', val: isPrn },
-        { field: 'is_controlled', val: isControlled },
-        { field: 'pharmacy_name', val: pharmacyName },
-        { field: 'pharmacy_phone', val: pharmacyPhone },
-        { field: 'gp_name', val: gpName },
-        { field: 'gp_phone', val: gpPhone },
-        { field: 'medication_code', val: medicationCode },
-        { field: 'atc_code', val: atcCode },
-        { field: 'location_access_code', val: locationAccessCode },
-        { field: 'medicine_warning', val: medicineWarning },
       ].filter(u => u.val !== undefined);
       if (!updates.length) { res.status(400).json({ success: false, error: 'No fields to update' }); return; }
       const setClauses = updates.map((u, i) => `${u.field}=$${i + 1}`).join(', ');
@@ -343,13 +327,13 @@ router.post('/stock/:medicationId/count', param('medicationId').isUUID(), valida
       );
       if (existing.length) {
         await query(
-          `UPDATE medication_stock SET current_stock=$1, last_updated_by=$2, updated_at=NOW(), notes=$3 WHERE su_id=$4 AND medication_name=$5`,
-          [currentCount, staffId, notes || null, suId, medName]
+          `UPDATE medication_stock SET current_stock=$1, last_updated_by=$2, updated_at=NOW() WHERE su_id=$3 AND medication_name=$4`,
+          [currentCount, staffId, suId, medName]
         );
       } else {
         await query(
-          `INSERT INTO medication_stock (su_id, home_id, medication_name, current_stock, last_updated_by, notes) VALUES ($1,$2,$3,$4,$5,$6)`,
-          [suId, homeId, medName, currentCount, staffId, notes || null]
+          `INSERT INTO medication_stock (su_id, home_id, medication_name, current_stock, last_updated_by) VALUES ($1,$2,$3,$4,$5)`,
+          [suId, homeId, medName, currentCount, staffId]
         );
       }
       res.json({ success: true, message: 'Stock count updated' } as ApiResponse);
