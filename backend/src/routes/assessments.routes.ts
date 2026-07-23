@@ -1672,10 +1672,16 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     if (!UUID_RE.test(req.params.id)) {
       return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
     }
-    const rows = await query(
-      `SELECT a.*, s.first_name || ' ' || s.last_name as conducted_by_name
-       FROM assessments a LEFT JOIN staff s ON s.id = a.conducted_by
-       WHERE a.id = $1`, [req.params.id]);
+    const homeId = (req.query.homeId as string) || req.staff?.homeId || '';
+    const rows = homeId
+      ? await query(
+          `SELECT a.*, s.first_name || ' ' || s.last_name as conducted_by_name
+           FROM assessments a LEFT JOIN staff s ON s.id = a.conducted_by
+           WHERE a.id = $1 AND a.home_id = $2`, [req.params.id, homeId])
+      : await query(
+          `SELECT a.*, s.first_name || ' ' || s.last_name as conducted_by_name
+           FROM assessments a LEFT JOIN staff s ON s.id = a.conducted_by
+           WHERE a.id = $1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }

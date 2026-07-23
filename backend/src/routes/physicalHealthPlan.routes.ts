@@ -36,12 +36,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const rows = await query(
         `SELECT p.*, su.first_name || ' ' || su.last_name AS su_name
          FROM physical_health_plans p
          JOIN service_users su ON su.id = p.su_id
-         WHERE p.id = $1`,
-        [req.params.id]
+         WHERE p.id = $1 AND p.home_id = $2`,
+        [req.params.id, homeId]
       );
       if (!rows.length) return next(new AppError('Not found', 404));
       res.json({ success: true, data: rows[0] } as ApiResponse);

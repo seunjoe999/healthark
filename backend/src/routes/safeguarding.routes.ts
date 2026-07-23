@@ -28,8 +28,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
               su.first_name || ' ' || su.last_name as su_name,
               s.first_name || ' ' || s.last_name as created_by_name
        FROM safeguarding_concerns sc
-       JOIN service_users su ON su.id = sc.su_id
-       JOIN staff s ON s.id = sc.created_by
+       LEFT JOIN service_users su ON su.id = sc.su_id
+       LEFT JOIN staff s ON s.id = sc.created_by
        WHERE sc.home_id = $1 ORDER BY sc.created_at DESC`,
       [homeId]
     );
@@ -40,14 +40,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const rows = await query(
         `SELECT sc.*, su.first_name || ' ' || su.last_name as su_name,
                 s.first_name || ' ' || s.last_name as created_by_name
          FROM safeguarding_concerns sc
-         JOIN service_users su ON su.id = sc.su_id
-         JOIN staff s ON s.id = sc.created_by
-         WHERE sc.id = $1`,
-        [req.params.id]
+         LEFT JOIN service_users su ON su.id = sc.su_id
+         LEFT JOIN staff s ON s.id = sc.created_by
+         WHERE sc.id = $1 AND sc.home_id = $2`,
+        [req.params.id, homeId]
       );
       if (!rows.length) throw new AppError('Safeguarding concern not found', 404);
       res.json({ success: true, data: rows[0] } as ApiResponse);
