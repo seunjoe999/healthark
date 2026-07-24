@@ -194,7 +194,7 @@ router.get('/assessments/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const rows = await query(
         `SELECT sa.*, s.first_name || ' ' || s.last_name as conducted_by_name
-         FROM assessments sa JOIN staff s ON s.id = sa.conducted_by
+         FROM assessments sa LEFT JOIN staff s ON s.id = sa.conducted_by
          WHERE sa.staff_id = $1 ORDER BY sa.assessment_date DESC`,
         [req.params.staffId]
       );
