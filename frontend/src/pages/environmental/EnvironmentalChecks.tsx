@@ -49,14 +49,12 @@ export default function EnvironmentalChecks() {
         api.get('/environmental', { params: { days: filter, ...hParams } }),
         api.get('/environmental/summary', { params: hParams }),
       ]);
-      setChecks(checksRes.data.data || []);
-      const sd = summaryRes.data.data || {};
-      setSummary({
-        total: Number(sd.checks_today ?? 0),
-        passed: Number(sd.checks_today ?? 0) - Number(sd.fails_this_week ?? 0),
-        failed: Number(sd.fails_this_week ?? 0),
-        warnings: 0,
-      });
+      const checksData = checksRes.data.data || [];
+      setChecks(checksData);
+      const failed = checksData.filter((c: any) => c.result === 'fail' || c.result === 'action_required').length;
+      const warnings = checksData.filter((c: any) => c.result === 'warning').length;
+      const passed = checksData.length - failed - warnings;
+      setSummary({ total: checksData.length, passed, failed, warnings });
     } catch { toast.error('Failed to load checks'); }
     finally { setLoading(false); }
   };
