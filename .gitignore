@@ -47,3 +47,4 @@ Thumbs.db
 # Uploads (store in S3, not git)
 uploads/
 tmp/
+.vercel
