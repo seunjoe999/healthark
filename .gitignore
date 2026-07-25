@@ -13,6 +13,9 @@
 node_modules/
 jspm_packages/
 
+# Claude Code worktrees (ephemeral agent checkouts)
+.claude/worktrees/
+
 # Build output — backend dist is rebuilt by Render, frontend dist is committed
 backend/dist/
 build/

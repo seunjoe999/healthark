@@ -51,7 +51,12 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('frontend/package.json'\\)\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if 'remotion' in k.lower\\(\\) or 'motion' in k.lower\\(\\)]\")",
       "Bash(python -c \"import json; d=json.load\\(open\\('package.json'\\)\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if 'remotion' in k.lower\\(\\) or 'motion' in k.lower\\(\\)]\")",
       "Bash(python -c \"import json; d=json.load\\(open\\('package.json'\\)\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\)]\")",
-      "Bash(C:/Program Files/PostgreSQL/18/bin/psql.exe *)"
+      "Bash(C:/Program Files/PostgreSQL/18/bin/psql.exe *)",
+      "Bash(echo \"EXIT:$?\")",
+      "WebFetch(domain:compcare-website-vlct.onrender.com)",
+      "WebFetch(domain:unsplash.com)",
+      "Skill(run)",
+      "Read(//mnt/c/Users/Admin/healthark/.claude/**)"
     ]
   }
 }
