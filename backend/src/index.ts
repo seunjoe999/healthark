@@ -2123,6 +2123,7 @@ async function ensureColumns() {
     // ── risk_assessments — extra risk scoring fields ───────────────────────────
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_before_intervention TEXT`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_score               INTEGER`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_rating               VARCHAR(50) DEFAULT 'low'`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_rating_option        VARCHAR(50)`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS evaluation_of_risk        TEXT`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_acceptable           VARCHAR(50)`,
