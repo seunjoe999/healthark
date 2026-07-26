@@ -84,35 +84,74 @@ const EMPTY_FORM = {
 }
 
 const MED_RISK_PRINT_CSS = `
-  body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:780px;margin:0 auto}
-  h1{font-size:1.3rem;margin-bottom:4px}
-  .meta{font-size:.8rem;color:#555;margin-bottom:20px}
-  .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-left:10px}
-  .badge-low{background:#dcfce7;color:#166534}
-  .badge-medium{background:#fef9c3;color:#854d0e}
-  .badge-high{background:#fee2e2;color:#991b1b}
-  .flags{margin-bottom:16px}
-  .flag{display:inline-block;padding:3px 10px;border-radius:50px;font-size:.7rem;font-weight:600;margin:0 6px 6px 0;border:1px solid #cbd5e1;color:#334155}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;background:#fff}
+  .hdr{background:#1e293b;color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:flex-start}
+  .hdr-company{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
+  .hdr-addr{font-size:10px;color:rgba(255,255,255,.65);line-height:1.8}
+  .hdr-badge{background:rgba(212,160,23,.3);color:#fbbf24;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:4px;margin-bottom:10px;display:inline-block}
+  .hdr-meta{font-size:10px;color:rgba(255,255,255,.65);line-height:2;text-align:right}
+  .hdr-meta strong{color:#fff}
+  .body-pad{padding:24px 28px}
+  .resident{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:20px}
+  .res-name{font-size:17px;font-weight:700;color:#1e293b}
+  .res-room{font-size:10px;color:#64748b;margin-top:2px}
+  .risk-pill{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 14px;border-radius:50px}
+  .risk-low{background:#dcfce7;color:#166534}
+  .risk-medium{background:#fef9c3;color:#854d0e}
+  .risk-high{background:#fee2e2;color:#991b1b}
+  .flags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+  .flag{display:inline-flex;align-items:center;padding:4px 12px;border-radius:50px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1px solid #e2e8f0;color:#94a3b8;background:#fff}
   .flag-on{background:#fffbeb;border-color:#fbbf24;color:#92400e}
-  section{margin-bottom:16px;page-break-inside:avoid}
-  section h3{font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px}
-  section p{font-size:.9rem;line-height:1.6;margin:0;white-space:pre-line}
-  .allergy{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:16px}
-  .allergy h3{color:#991b1b}
-  .allergy p{color:#991b1b;font-weight:600}
-  .signoff{border-top:1px solid #ccc;margin-top:20px;padding-top:14px}
-  .signoff img{height:44px;max-width:180px;display:block;margin-top:6px}
-  @media print{body{padding:0}}
+  .allergy{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .allergy-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#991b1b}
+  .allergy-val{font-size:13px;font-weight:700;color:#991b1b}
+  .cs{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid}
+  .cs-hd{padding:8px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:#f8fafc;color:#64748b;border-left:4px solid #94a3b8}
+  .cs-hd.gold{color:#b45309;border-left-color:#b45309;background:#fffbeb}
+  .cs-hd.purple{color:#6d28d9;border-left-color:#7c3aed;background:#f5f3ff}
+  .cs-bd{padding:12px 14px;font-size:11px;line-height:1.8;color:#334155;white-space:pre-line}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .signoff{border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-top:16px;page-break-inside:avoid;background:#f8fafc}
+  .signoff-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:10px}
+  .signoff img{height:40px;max-width:170px;display:block;margin-top:6px}
+  .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
+  .confid{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:3px 10px;border-radius:4px;font-weight:700;font-size:8px;letter-spacing:.05em}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:12mm;size:A4}}
 `
 
 function buildMedRiskPrintBody(r: any): string {
   const rl = r.risk_level || 'low'
+  const rlLabel = rl.charAt(0).toUpperCase() + rl.slice(1)
   const flag = (active: boolean, label: string) => `<span class="flag${active ? ' flag-on' : ''}">${label}</span>`
+  const cs = (label: string, value: string | null | undefined, variant?: 'gold' | 'purple') =>
+    value ? `<div class="cs"><div class="cs-hd${variant ? ' ' + variant : ''}">${label}</div><div class="cs-bd">${value}</div></div>` : ''
+
   return `
-    <h1>${r.su_name || 'Resident'} — Medication Risk Assessment
-      <span class="badge badge-${rl}">${rl} Risk</span>
-    </h1>
-    <p class="meta">${r.assessed_at ? `Assessed: <strong>${new Date(r.assessed_at).toLocaleDateString('en-GB')}</strong> &nbsp;|&nbsp; ` : ''}${r.review_date ? `Review due: <strong>${new Date(r.review_date).toLocaleDateString('en-GB')}</strong> &nbsp;|&nbsp; ` : ''}Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+  <div class="hdr">
+    <div>
+      <div class="hdr-company">Comprehensive Care Ltd</div>
+      <div class="hdr-addr">Ivy Business Centre, Office 3-13 Crown Street<br/>Failsworth, Manchester, M35 9BG</div>
+    </div>
+    <div style="text-align:right">
+      <div class="hdr-badge">Medication Risk Assessment</div>
+      <div class="hdr-meta">
+        ${r.assessed_at ? `Assessed: <strong>${new Date(r.assessed_at).toLocaleDateString('en-GB')}</strong><br/>` : ''}
+        ${r.review_date ? `Review due: <strong>${new Date(r.review_date).toLocaleDateString('en-GB')}</strong><br/>` : ''}
+        Printed: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-pad">
+    <div class="resident">
+      <div>
+        <div class="res-name">${r.su_name || 'Resident'}</div>
+        ${r.room_number ? `<div class="res-room">Room ${r.room_number}</div>` : ''}
+      </div>
+      <span class="risk-pill risk-${rl}">${rlLabel} Risk</span>
+    </div>
+
     <div class="flags">
       ${flag(!!r.controlled_meds, 'Controlled')}
       ${flag(!!r.self_medicate, 'Self-medicate')}
@@ -120,24 +159,35 @@ function buildMedRiskPrintBody(r: any): string {
       ${flag(!!r.prn_protocol, 'PRN')}
       ${flag(!!r.crushing_required, 'Crushing required')}
     </div>
-    ${r.known_allergies ? `<div class="allergy"><h3>Known allergies</h3><p>${r.known_allergies}</p></div>` : ''}
-    <section><h3>Administration route</h3><p>${r.administration_route || '—'}</p></section>
-    ${r.swallowing_risk && r.swallowing_risk !== 'none' ? `<section><h3>Swallowing risk</h3><p>${r.swallowing_risk}</p>${r.swallowing_notes ? `<p>${r.swallowing_notes}</p>` : ''}</section>` : ''}
-    ${r.storage_location ? `<section><h3>Storage location</h3><p>${r.storage_location}</p></section>` : ''}
-    ${r.controlled_meds && r.controlled_notes ? `<section><h3>Controlled medication notes</h3><p>${r.controlled_notes}</p></section>` : ''}
-    ${r.self_medicate_notes ? `<section><h3>Self-medicate notes</h3><p>${r.self_medicate_notes}</p></section>` : ''}
-    ${r.prn_protocol && r.prn_notes ? `<section><h3>PRN protocol notes</h3><p>${r.prn_notes}</p></section>` : ''}
-    ${r.crushing_required && r.crushing_notes ? `<section><h3>Crushing notes</h3><p>${r.crushing_notes}</p></section>` : ''}
-    ${r.covert_meds && r.covert_notes ? `<section><h3>Covert medication — MCA details</h3><p>${r.covert_notes}</p></section>` : ''}
-    ${r.risk_notes ? `<section><h3>Risk management plan</h3><p>${r.risk_notes}</p></section>` : ''}
-    ${r.triggers ? `<section><h3>Triggers</h3><p>${r.triggers}</p></section>` : ''}
-    ${r.protective_factors ? `<section><h3>Protective factors</h3><p>${r.protective_factors}</p></section>` : ''}
+
+    ${r.known_allergies ? `<div class="allergy"><div><div class="allergy-label">Known allergies</div><div class="allergy-val">${r.known_allergies}</div></div></div>` : ''}
+
+    <div class="grid2">
+      ${cs('Administration route', r.administration_route)}
+      ${cs('Storage location', r.storage_location)}
+    </div>
+    ${r.swallowing_risk && r.swallowing_risk !== 'none' ? cs('Swallowing risk', `${r.swallowing_risk}${r.swallowing_notes ? '\n' + r.swallowing_notes : ''}`) : ''}
+    ${r.controlled_meds ? cs('Controlled medication', r.controlled_notes || 'No additional notes.', 'purple') : ''}
+    ${r.self_medicate_notes ? cs('Self-medicate notes', r.self_medicate_notes) : ''}
+    ${r.prn_protocol && r.prn_notes ? cs('PRN protocol notes', r.prn_notes, 'gold') : ''}
+    ${r.crushing_required && r.crushing_notes ? cs('Crushing notes', r.crushing_notes) : ''}
+    ${r.covert_meds && r.covert_notes ? cs('Covert medication — MCA details', r.covert_notes) : ''}
+    ${r.risk_notes ? cs('Risk management plan', r.risk_notes, 'gold') : ''}
+    ${r.triggers ? cs('Triggers', r.triggers) : ''}
+    ${r.protective_factors ? cs('Protective factors', r.protective_factors) : ''}
+
     ${r.signed_off_by ? `
     <div class="signoff">
-      <h3 style="font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px">Signed off</h3>
-      <p style="font-size:.9rem;margin:0">${r.signed_off_by}${r.signed_off_date ? ` on ${new Date(r.signed_off_date).toLocaleDateString('en-GB')}` : ''}</p>
+      <div class="signoff-title">Assessment Sign-Off</div>
+      <div style="font-size:11px;color:#334155">${r.signed_off_by}${r.signed_off_date ? ` — ${new Date(r.signed_off_date).toLocaleDateString('en-GB')}` : ''}</div>
       ${r.staff_signature ? `<img src="${r.staff_signature}" alt="Signature" />` : ''}
     </div>` : ''}
+
+    <div class="footer">
+      <span class="confid">CONFIDENTIAL</span>
+      <span>Printed ${new Date().toLocaleDateString('en-GB')}</span>
+    </div>
+  </div>
   `
 }
 
