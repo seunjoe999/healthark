@@ -634,7 +634,7 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;background:#fff}
-    .cover{display:flex;flex-direction:column;min-height:100vh;page-break-after:always}
+    .cover{display:flex;flex-direction:column;min-height:273mm;page-break-after:always}
     .hdr{background:#1e293b;color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:flex-start}
     .hdr-company{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
     .hdr-addr{font-size:10px;color:rgba(255,255,255,.65);line-height:1.8}

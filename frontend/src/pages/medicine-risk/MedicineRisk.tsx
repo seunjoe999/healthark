@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { ShieldAlert, Plus, CheckCircle2, XCircle, AlertTriangle, Paperclip, Eye, Edit2, Upload, X, Check, Lock } from 'lucide-react'
+import { ShieldAlert, Plus, CheckCircle2, XCircle, AlertTriangle, Paperclip, Eye, Edit2, Upload, X, Check, Lock, Printer } from 'lucide-react'
 import { Button, Modal, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api, { getToken } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -72,7 +72,7 @@ const EMPTY_FORM = {
   covertMeds: false, covertNotes: '',
   mcaCompleted: false, mcaDate: '', mcaAssessor: '', mcaReason: '', mcaAuthorisedBy: '',
   prnProtocol: false, prnNotes: '',
-  controlledMeds: false, controlledNotes: '', controlledWitness: '', controlledWitnessSig: '',
+  controlledMeds: false, controlledNotes: '',
   crushingRequired: false, crushingNotes: '',
   administrationRoute: 'oral',
   knownAllergies: '', storageLocation: '',
@@ -81,6 +81,74 @@ const EMPTY_FORM = {
   reviewDate: '',
   documentUrl: '', documentName: '', attachmentNotes: '',
   signedOffBy: '', signedOffDate: '', staffSignature: '',
+}
+
+const MED_RISK_PRINT_CSS = `
+  body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:780px;margin:0 auto}
+  h1{font-size:1.3rem;margin-bottom:4px}
+  .meta{font-size:.8rem;color:#555;margin-bottom:20px}
+  .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-left:10px}
+  .badge-low{background:#dcfce7;color:#166534}
+  .badge-medium{background:#fef9c3;color:#854d0e}
+  .badge-high{background:#fee2e2;color:#991b1b}
+  .flags{margin-bottom:16px}
+  .flag{display:inline-block;padding:3px 10px;border-radius:50px;font-size:.7rem;font-weight:600;margin:0 6px 6px 0;border:1px solid #cbd5e1;color:#334155}
+  .flag-on{background:#fffbeb;border-color:#fbbf24;color:#92400e}
+  section{margin-bottom:16px;page-break-inside:avoid}
+  section h3{font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px}
+  section p{font-size:.9rem;line-height:1.6;margin:0;white-space:pre-line}
+  .allergy{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:16px}
+  .allergy h3{color:#991b1b}
+  .allergy p{color:#991b1b;font-weight:600}
+  .signoff{border-top:1px solid #ccc;margin-top:20px;padding-top:14px}
+  .signoff img{height:44px;max-width:180px;display:block;margin-top:6px}
+  @media print{body{padding:0}}
+`
+
+function buildMedRiskPrintBody(r: any): string {
+  const rl = r.risk_level || 'low'
+  const flag = (active: boolean, label: string) => `<span class="flag${active ? ' flag-on' : ''}">${label}</span>`
+  return `
+    <h1>${r.su_name || 'Resident'} — Medication Risk Assessment
+      <span class="badge badge-${rl}">${rl} Risk</span>
+    </h1>
+    <p class="meta">${r.assessed_at ? `Assessed: <strong>${new Date(r.assessed_at).toLocaleDateString('en-GB')}</strong> &nbsp;|&nbsp; ` : ''}${r.review_date ? `Review due: <strong>${new Date(r.review_date).toLocaleDateString('en-GB')}</strong> &nbsp;|&nbsp; ` : ''}Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+    <div class="flags">
+      ${flag(!!r.controlled_meds, 'Controlled')}
+      ${flag(!!r.self_medicate, 'Self-medicate')}
+      ${flag(!!r.covert_meds, 'Covert')}
+      ${flag(!!r.prn_protocol, 'PRN')}
+      ${flag(!!r.crushing_required, 'Crushing required')}
+    </div>
+    ${r.known_allergies ? `<div class="allergy"><h3>Known allergies</h3><p>${r.known_allergies}</p></div>` : ''}
+    <section><h3>Administration route</h3><p>${r.administration_route || '—'}</p></section>
+    ${r.swallowing_risk && r.swallowing_risk !== 'none' ? `<section><h3>Swallowing risk</h3><p>${r.swallowing_risk}</p>${r.swallowing_notes ? `<p>${r.swallowing_notes}</p>` : ''}</section>` : ''}
+    ${r.storage_location ? `<section><h3>Storage location</h3><p>${r.storage_location}</p></section>` : ''}
+    ${r.controlled_meds && r.controlled_notes ? `<section><h3>Controlled medication notes</h3><p>${r.controlled_notes}</p></section>` : ''}
+    ${r.self_medicate_notes ? `<section><h3>Self-medicate notes</h3><p>${r.self_medicate_notes}</p></section>` : ''}
+    ${r.prn_protocol && r.prn_notes ? `<section><h3>PRN protocol notes</h3><p>${r.prn_notes}</p></section>` : ''}
+    ${r.crushing_required && r.crushing_notes ? `<section><h3>Crushing notes</h3><p>${r.crushing_notes}</p></section>` : ''}
+    ${r.covert_meds && r.covert_notes ? `<section><h3>Covert medication — MCA details</h3><p>${r.covert_notes}</p></section>` : ''}
+    ${r.risk_notes ? `<section><h3>Risk management plan</h3><p>${r.risk_notes}</p></section>` : ''}
+    ${r.triggers ? `<section><h3>Triggers</h3><p>${r.triggers}</p></section>` : ''}
+    ${r.protective_factors ? `<section><h3>Protective factors</h3><p>${r.protective_factors}</p></section>` : ''}
+    ${r.signed_off_by ? `
+    <div class="signoff">
+      <h3 style="font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px">Signed off</h3>
+      <p style="font-size:.9rem;margin:0">${r.signed_off_by}${r.signed_off_date ? ` on ${new Date(r.signed_off_date).toLocaleDateString('en-GB')}` : ''}</p>
+      ${r.staff_signature ? `<img src="${r.staff_signature}" alt="Signature" />` : ''}
+    </div>` : ''}
+  `
+}
+
+function printMedRiskAssessment(r: any) {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${r.su_name || 'Resident'} — Medication Risk Assessment</title><style>${MED_RISK_PRINT_CSS}</style></head><body>${buildMedRiskPrintBody(r)}</body></html>`
+  const w = window.open('', '_blank')
+  if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  w.print()
 }
 
 export default function MedicineRisk() {
@@ -154,8 +222,6 @@ export default function MedicineRisk() {
       prnNotes: r.prn_notes || '',
       controlledMeds: r.controlled_meds || false,
       controlledNotes: r.controlled_notes || '',
-      controlledWitness: r.controlled_witness || '',
-      controlledWitnessSig: r.controlled_witness_sig || '',
       crushingRequired: r.crushing_required || false,
       crushingNotes: r.crushing_notes || '',
       administrationRoute: r.administration_route || 'oral',
@@ -193,7 +259,6 @@ export default function MedicineRisk() {
         covertMeds: form.covertMeds, covertNotes: covertNotesCombined,
         prnProtocol: form.prnProtocol, prnNotes: form.prnNotes,
         controlledMeds: form.controlledMeds, controlledNotes: form.controlledNotes,
-        controlledWitness: form.controlledWitness, controlledWitnessSig: form.controlledWitnessSig,
         crushingRequired: form.crushingRequired, crushingNotes: form.crushingNotes,
         administrationRoute: form.administrationRoute,
         knownAllergies: form.knownAllergies, storageLocation: form.storageLocation,
@@ -349,21 +414,15 @@ export default function MedicineRisk() {
               <textarea className="input" rows={2} value={form.crushingNotes} onChange={e => setF('crushingNotes', e.target.value)} /></div>
           )}
 
-          {/* Controlled medication — legal witness requirement */}
+          {/* Controlled medication — risk notes only; witness sign-off happens at administration in MAR */}
           {form.controlledMeds && (
             <div className="p-4 rounded-xl space-y-3" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.25)' }}>
               <p className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5" /> Controlled Medication — Witness Sign-Off (Legal Requirement)
+                <Lock className="w-3.5 h-3.5" /> Controlled Medication
               </p>
-              <p className="text-xs text-slate-400">Controlled drugs must be witnessed. Record the witness details and obtain their signature.</p>
+              <p className="text-xs text-slate-400">Witness sign-off for controlled drugs is recorded at the point of administration in the MAR chart, not here.</p>
               <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Controlled medication notes</label>
                 <textarea className="input" rows={2} value={form.controlledNotes} onChange={e => setF('controlledNotes', e.target.value)} placeholder="Details about the controlled medication..." /></div>
-              <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Witness name (full name) *</label>
-                <input className="input w-full" value={form.controlledWitness} onChange={e => setF('controlledWitness', e.target.value)} placeholder="Full name of witness..." /></div>
-              <div>
-                <label className="text-xs font-medium text-slate-400 block mb-1.5">Witness signature *</label>
-                <SignaturePad label="" onSave={d => setF('controlledWitnessSig', d)} savedSignature={form.controlledWitnessSig || null} />
-              </div>
             </div>
           )}
 
@@ -500,16 +559,9 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment }: {
 
             {r.controlled_meds && (
               <div className="p-3 rounded-xl space-y-2" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)' }}>
-                <p className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-3 h-3" /> Controlled Medication — Witness Details</p>
+                <p className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-3 h-3" /> Controlled Medication</p>
                 {r.controlled_notes && <p className="text-slate-300 text-sm whitespace-pre-line">{r.controlled_notes}</p>}
-                {r.controlled_witness && <p className="text-xs text-slate-400">Witness: <span className="text-white">{r.controlled_witness}</span></p>}
-                {r.controlled_witness_sig && (
-                  <div><p className="text-xs text-slate-500 mb-1">Witness signature</p>
-                    <div className="border border-purple-500/30 rounded-xl overflow-hidden bg-white w-64">
-                      <img src={r.controlled_witness_sig} alt="Witness signature" className="w-full h-16 object-contain" />
-                    </div>
-                  </div>
-                )}
+                <p className="text-xs text-slate-500 italic">Witness sign-off is recorded per administration in the MAR chart.</p>
               </div>
             )}
 
@@ -549,6 +601,7 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment }: {
 
             <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <Button variant="gold" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Assessment</Button>
+              <Button variant="ghost" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => printMedRiskAssessment(r)}>Print</Button>
               <Button variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={onNewAssessment}>New Assessment</Button>
             </div>
           </>
