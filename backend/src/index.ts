@@ -2547,6 +2547,7 @@ async function ensureColumns() {
     // ── medication_stock — columns used by medicationStock.routes.ts but missing
     //    when the table was first created by the older, sparser schema above ────
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS medication_id UUID REFERENCES su_medications(id) ON DELETE CASCADE`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS expiry_date DATE`,
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS form VARCHAR(50)`,
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS strength VARCHAR(100)`,
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS current_count DECIMAL(10,2)`,
