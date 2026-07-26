@@ -85,107 +85,203 @@ const EMPTY_FORM = {
 
 const MED_RISK_PRINT_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;background:#fff}
-  .hdr{background:#1e293b;color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:flex-start}
-  .hdr-company{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
-  .hdr-addr{font-size:10px;color:rgba(255,255,255,.65);line-height:1.8}
-  .hdr-badge{background:rgba(212,160,23,.3);color:#fbbf24;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:4px;margin-bottom:10px;display:inline-block}
-  .hdr-meta{font-size:10px;color:rgba(255,255,255,.65);line-height:2;text-align:right}
-  .hdr-meta strong{color:#fff}
-  .body-pad{padding:24px 28px}
-  .resident{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:20px}
-  .res-name{font-size:17px;font-weight:700;color:#1e293b}
-  .res-room{font-size:10px;color:#64748b;margin-top:2px}
-  .risk-pill{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 14px;border-radius:50px}
-  .risk-low{background:#dcfce7;color:#166534}
-  .risk-medium{background:#fef9c3;color:#854d0e}
-  .risk-high{background:#fee2e2;color:#991b1b}
-  .flags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
-  .flag{display:inline-flex;align-items:center;padding:4px 12px;border-radius:50px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1px solid #e2e8f0;color:#94a3b8;background:#fff}
-  .flag-on{background:#fffbeb;border-color:#fbbf24;color:#92400e}
-  .allergy{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
-  .allergy-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#991b1b}
-  .allergy-val{font-size:13px;font-weight:700;color:#991b1b}
-  .cs{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid}
-  .cs-hd{padding:8px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:#f8fafc;color:#64748b;border-left:4px solid #94a3b8}
-  .cs-hd.gold{color:#b45309;border-left-color:#b45309;background:#fffbeb}
-  .cs-hd.purple{color:#6d28d9;border-left-color:#7c3aed;background:#f5f3ff}
-  .cs-bd{padding:12px 14px;font-size:11px;line-height:1.8;color:#334155;white-space:pre-line}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .signoff{border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-top:16px;page-break-inside:avoid;background:#f8fafc}
-  .signoff-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:10px}
-  .signoff img{height:40px;max-width:170px;display:block;margin-top:6px}
-  .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
-  .confid{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:3px 10px;border-radius:4px;font-weight:700;font-size:8px;letter-spacing:.05em}
-  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:12mm;size:A4}}
+  body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
+  .page{max-width:190mm;margin:0 auto;padding:16mm 14mm 20mm}
+
+  /* Letterhead */
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1a1a1a;padding-bottom:10px;margin-bottom:4px}
+  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em}
+  .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
+  .doc-meta strong{color:#1a1a1a}
+
+  .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
+  .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
+
+  /* Resident identity block */
+  table.idtable{width:100%;border-collapse:collapse;margin-bottom:20px;font-family:Arial,sans-serif;font-size:10.5px}
+  table.idtable td{border:1px solid #999;padding:6px 10px;vertical-align:top}
+  table.idtable td.lbl{width:19%;background:#f2f2f0;font-weight:700;text-transform:uppercase;font-size:8.5px;letter-spacing:.05em;color:#333}
+  table.idtable td.val{width:31%;font-size:11px}
+
+  /* Section headings */
+  h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1a1a1a;border-bottom:1px solid #1a1a1a;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
+  h2.sec .num{display:inline-block;width:18px}
+  h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#1a1a1a;margin:12px 0 4px;page-break-after:avoid}
+  .body-text{font-size:11px;line-height:1.7;color:#222;white-space:pre-line;margin-bottom:8px}
+
+  /* Data / field tables */
+  table.fields{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10.5px;page-break-inside:avoid}
+  table.fields th{width:38%;text-align:left;background:#f2f2f0;border:1px solid #999;padding:6px 10px;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#333}
+  table.fields td{border:1px solid #999;padding:6px 10px;font-size:11px}
+  table.fields tr.on td{font-weight:700}
+
+  /* Risk summary */
+  .risk-box{border:1.5px solid #1a1a1a;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif}
+  .risk-box .rb-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#444}
+  .risk-box .rb-value{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+  .risk-box.high{border-width:2.5px}
+
+  .allergy-block{border:1px solid #1a1a1a;border-left:5px solid #1a1a1a;padding:9px 14px;margin-bottom:16px;font-family:Arial,sans-serif}
+  .allergy-block .al-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  .allergy-block .al-val{font-size:12.5px;font-weight:700}
+
+  /* Sign-off */
+  .signoff{margin-top:26px;page-break-inside:avoid}
+  table.sigtable{width:100%;border-collapse:collapse;margin-bottom:16px;font-family:Arial,sans-serif;font-size:10.5px}
+  table.sigtable th{width:30%;text-align:left;background:#f2f2f0;border:1px solid #999;padding:6px 10px;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#333}
+  table.sigtable td{border:1px solid #999;padding:6px 10px}
+  .sig-panel{display:flex;gap:24px;margin-top:6px}
+  .sig-cell{flex:1}
+  .sig-img-slot{height:52px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-end;padding-bottom:2px}
+  .sig-img-slot img{max-height:48px;max-width:200px}
+  .sig-caption{font-family:Arial,sans-serif;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;color:#555;margin-top:4px}
+
+  .footer{margin-top:28px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:8.5px;color:#555}
+  .footer .confid{font-weight:700;letter-spacing:.05em}
+
+  @media print{
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:0;size:A4}
+    .page{padding:14mm 14mm 16mm}
+  }
 `
 
 function buildMedRiskPrintBody(r: any): string {
   const rl = r.risk_level || 'low'
   const rlLabel = rl.charAt(0).toUpperCase() + rl.slice(1)
-  const flag = (active: boolean, label: string) => `<span class="flag${active ? ' flag-on' : ''}">${label}</span>`
-  const cs = (label: string, value: string | null | undefined, variant?: 'gold' | 'purple') =>
-    value ? `<div class="cs"><div class="cs-hd${variant ? ' ' + variant : ''}">${label}</div><div class="cs-bd">${value}</div></div>` : ''
+  const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
+  const yn = (v: boolean) => v ? 'Yes' : 'No'
+  const esc = (v: any) => v === null || v === undefined || v === '' ? '—' : String(v)
+
+  const routeLabel = (ADMIN_ROUTES.find(a => a.value === r.administration_route)?.label) || esc(r.administration_route)
+
+  // Build sections as an ordered list, then number them in a single final
+  // pass so the printed numbering always matches render order — regardless
+  // of which optional sections are present for this assessment.
+  const sections: { title: string; inner: string }[] = []
+
+  sections.push({
+    title: 'Risk Summary',
+    inner: `
+      <div class="risk-box${rl === 'high' ? ' high' : ''}">
+        <span class="rb-label">Overall Risk Level</span>
+        <span class="rb-value">${rlLabel}</span>
+      </div>
+      <table class="fields">
+        <tr><th>Date Assessed</th><td>${fmtDate(r.assessed_at)}</td></tr>
+        <tr><th>Next Review Due</th><td>${fmtDate(r.review_date)}</td></tr>
+      </table>
+    `,
+  })
+
+  const flagRow = (label: string, active: boolean) =>
+    `<tr class="${active ? 'on' : ''}"><th>${label}</th><td>${yn(!!active)}</td></tr>`
+  sections.push({
+    title: 'Medication Management Flags',
+    inner: `
+      <table class="fields">
+        ${flagRow('Controlled Medication', !!r.controlled_meds)}
+        ${flagRow('Self-Medicates', !!r.self_medicate)}
+        ${flagRow('Covert Medication (MCA authorised)', !!r.covert_meds)}
+        ${flagRow('PRN Protocol in Place', !!r.prn_protocol)}
+        ${flagRow('Crushing Required', !!r.crushing_required)}
+      </table>
+    `,
+  })
+
+  if (r.known_allergies) {
+    sections.push({
+      title: 'Known Allergies',
+      inner: `
+        <div class="allergy-block">
+          <div class="al-label">Known Allergies</div>
+          <div class="al-val">${esc(r.known_allergies)}</div>
+        </div>
+      `,
+    })
+  }
+
+  sections.push({
+    title: 'Administration &amp; Storage',
+    inner: `
+      <table class="fields">
+        <tr><th>Administration Route</th><td>${routeLabel}</td></tr>
+        <tr><th>Storage Location</th><td>${esc(r.storage_location)}</td></tr>
+      </table>
+    `,
+  })
+
+  const clinicalParts: string[] = []
+  if (r.controlled_meds) clinicalParts.push(`<h3 class="sub">Controlled Medication</h3><p class="body-text">${esc(r.controlled_notes || 'No additional notes recorded.')}</p>`)
+  if (r.self_medicate && r.self_medicate_notes) clinicalParts.push(`<h3 class="sub">Self-Medication Arrangements</h3><p class="body-text">${esc(r.self_medicate_notes)}</p>`)
+  if (r.prn_protocol && r.prn_notes) clinicalParts.push(`<h3 class="sub">PRN Protocol</h3><p class="body-text">${esc(r.prn_notes)}</p>`)
+  if (r.crushing_required && r.crushing_notes) clinicalParts.push(`<h3 class="sub">Crushing / Modified Administration</h3><p class="body-text">${esc(r.crushing_notes)}</p>`)
+  if (r.covert_meds && r.covert_notes) clinicalParts.push(`<h3 class="sub">Covert Medication — Mental Capacity Act Details</h3><p class="body-text">${esc(r.covert_notes)}</p>`)
+  if (clinicalParts.length) sections.push({ title: 'Clinical Notes', inner: clinicalParts.join('') })
+
+  const riskParts: string[] = []
+  if (r.risk_notes) riskParts.push(`<h3 class="sub">Management Plan</h3><p class="body-text">${esc(r.risk_notes)}</p>`)
+  if (r.triggers) riskParts.push(`<h3 class="sub">Known Triggers</h3><p class="body-text">${esc(r.triggers)}</p>`)
+  if (r.protective_factors) riskParts.push(`<h3 class="sub">Protective Factors</h3><p class="body-text">${esc(r.protective_factors)}</p>`)
+  if (riskParts.length) sections.push({ title: 'Risk Management Plan', inner: riskParts.join('') })
+
+  if (r.signed_off_by) {
+    sections.push({
+      title: 'Assessment Sign-Off',
+      inner: `
+        <div class="signoff">
+          <table class="sigtable">
+            <tr><th>Assessed / Signed Off By</th><td>${esc(r.signed_off_by)}</td></tr>
+            <tr><th>Date</th><td>${fmtDate(r.signed_off_date)}</td></tr>
+          </table>
+          <div class="sig-panel">
+            <div class="sig-cell">
+              <div class="sig-img-slot">${r.staff_signature ? `<img src="${r.staff_signature}" alt="Signature" />` : ''}</div>
+              <div class="sig-caption">Signature</div>
+            </div>
+            <div class="sig-cell">
+              <div class="sig-img-slot"></div>
+              <div class="sig-caption">Countersigned by (if applicable)</div>
+            </div>
+          </div>
+        </div>
+      `,
+    })
+  }
+
+  const sectionsHtml = sections.map((s, i) =>
+    `<h2 class="sec"><span class="num">${i + 1}.</span>${s.title}</h2>${s.inner}`
+  ).join('')
 
   return `
-  <div class="hdr">
-    <div>
-      <div class="hdr-company">Comprehensive Care Ltd</div>
-      <div class="hdr-addr">Ivy Business Centre, Office 3-13 Crown Street<br/>Failsworth, Manchester, M35 9BG</div>
-    </div>
-    <div style="text-align:right">
-      <div class="hdr-badge">Medication Risk Assessment</div>
-      <div class="hdr-meta">
-        ${r.assessed_at ? `Assessed: <strong>${new Date(r.assessed_at).toLocaleDateString('en-GB')}</strong><br/>` : ''}
-        ${r.review_date ? `Review due: <strong>${new Date(r.review_date).toLocaleDateString('en-GB')}</strong><br/>` : ''}
-        Printed: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-      </div>
-    </div>
-  </div>
-
-  <div class="body-pad">
-    <div class="resident">
+  <div class="page">
+    <div class="letterhead">
       <div>
-        <div class="res-name">${r.su_name || 'Resident'}</div>
-        ${r.room_number ? `<div class="res-room">Room ${r.room_number}</div>` : ''}
+        <div class="org-name">Comprehensive Care Ltd</div>
+        <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
       </div>
-      <span class="risk-pill risk-${rl}">${rlLabel} Risk</span>
+      <div class="doc-meta">
+        <div>Document ref: MRA-${r.id || '—'}</div>
+        <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+      </div>
     </div>
 
-    <div class="flags">
-      ${flag(!!r.controlled_meds, 'Controlled')}
-      ${flag(!!r.self_medicate, 'Self-medicate')}
-      ${flag(!!r.covert_meds, 'Covert')}
-      ${flag(!!r.prn_protocol, 'PRN')}
-      ${flag(!!r.crushing_required, 'Crushing required')}
-    </div>
+    <div class="doc-title">Medication Risk Assessment</div>
+    <div class="doc-subtitle">Individual resident record</div>
 
-    ${r.known_allergies ? `<div class="allergy"><div><div class="allergy-label">Known allergies</div><div class="allergy-val">${r.known_allergies}</div></div></div>` : ''}
+    <table class="idtable">
+      <tr>
+        <td class="lbl">Resident</td><td class="val">${esc(r.su_name)}</td>
+        <td class="lbl">Room</td><td class="val">${esc(r.room_number)}</td>
+      </tr>
+    </table>
 
-    <div class="grid2">
-      ${cs('Administration route', r.administration_route)}
-      ${cs('Storage location', r.storage_location)}
-    </div>
-    ${r.swallowing_risk && r.swallowing_risk !== 'none' ? cs('Swallowing risk', `${r.swallowing_risk}${r.swallowing_notes ? '\n' + r.swallowing_notes : ''}`) : ''}
-    ${r.controlled_meds ? cs('Controlled medication', r.controlled_notes || 'No additional notes.', 'purple') : ''}
-    ${r.self_medicate_notes ? cs('Self-medicate notes', r.self_medicate_notes) : ''}
-    ${r.prn_protocol && r.prn_notes ? cs('PRN protocol notes', r.prn_notes, 'gold') : ''}
-    ${r.crushing_required && r.crushing_notes ? cs('Crushing notes', r.crushing_notes) : ''}
-    ${r.covert_meds && r.covert_notes ? cs('Covert medication — MCA details', r.covert_notes) : ''}
-    ${r.risk_notes ? cs('Risk management plan', r.risk_notes, 'gold') : ''}
-    ${r.triggers ? cs('Triggers', r.triggers) : ''}
-    ${r.protective_factors ? cs('Protective factors', r.protective_factors) : ''}
-
-    ${r.signed_off_by ? `
-    <div class="signoff">
-      <div class="signoff-title">Assessment Sign-Off</div>
-      <div style="font-size:11px;color:#334155">${r.signed_off_by}${r.signed_off_date ? ` — ${new Date(r.signed_off_date).toLocaleDateString('en-GB')}` : ''}</div>
-      ${r.staff_signature ? `<img src="${r.staff_signature}" alt="Signature" />` : ''}
-    </div>` : ''}
+    ${sectionsHtml}
 
     <div class="footer">
-      <span class="confid">CONFIDENTIAL</span>
-      <span>Printed ${new Date().toLocaleDateString('en-GB')}</span>
+      <span class="confid">CONFIDENTIAL — Resident health record</span>
+      <span>Printed ${fmtDate(new Date().toISOString())}</span>
     </div>
   </div>
   `
