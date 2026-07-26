@@ -2544,6 +2544,17 @@ async function ensureColumns() {
        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_tasks_home_date ON tasks(home_id, task_date DESC)`,
+    // ── medication_stock — columns used by medicationStock.routes.ts but missing
+    //    when the table was first created by the older, sparser schema above ────
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS medication_id UUID REFERENCES su_medications(id) ON DELETE CASCADE`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS form VARCHAR(50)`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS strength VARCHAR(100)`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS current_count DECIMAL(10,2)`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS reorder_threshold DECIMAL(10,2) DEFAULT 7`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100)`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS supplier VARCHAR(255)`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS last_counted_by UUID REFERENCES staff(id)`,
+    `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS last_counted_at TIMESTAMPTZ`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

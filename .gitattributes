@@ -1,0 +1,6 @@
+# Force LF line endings for files that get executed as scripts on Linux,
+# regardless of local core.autocrlf settings (this repo is edited on Windows).
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
