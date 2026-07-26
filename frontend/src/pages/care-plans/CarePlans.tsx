@@ -445,90 +445,165 @@ function doPrint(html: string) {
   setTimeout(() => { w.print() }, 900)
 }
 
-function buildTemplatePrintHtml(plan: any, su?: any): string {
+const CARE_PLAN_PRINT_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
+
+  /* Letterhead */
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1a1a1a;padding-bottom:10px;margin-bottom:4px}
+  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em}
+  .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
+  .doc-meta strong{color:#1a1a1a}
+
+  .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
+  .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
+
+  /* Resident identity block */
+  .res-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:4px}
+  .res-photo{width:58px;height:72px;object-fit:cover;border:1px solid #999;flex-shrink:0}
+  .res-photo-fallback{width:58px;height:72px;border:1px solid #999;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#666;font-family:Arial,sans-serif;flex-shrink:0;background:#f2f2f0}
+  table.idtable{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10.5px}
+  table.idtable td{border:1px solid #999;padding:6px 10px;vertical-align:top}
+  table.idtable td.lbl{width:19%;background:#f2f2f0;font-weight:700;text-transform:uppercase;font-size:8.5px;letter-spacing:.05em;color:#333}
+  table.idtable td.val{width:31%;font-size:11px}
+
+  /* Plan meta strip */
+  .plan-meta-box{border:1.5px solid #1a1a1a;padding:9px 14px;margin-bottom:4px;font-family:Arial,sans-serif;display:flex;flex-wrap:wrap;gap:4px 22px}
+  .plan-meta-box span{font-size:9.5px;color:#333}
+  .plan-meta-box strong{color:#1a1a1a}
+
+  /* Section headings */
+  h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1a1a1a;border-bottom:1px solid #1a1a1a;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
+  h2.sec .num{display:inline-block;width:18px}
+  h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#1a1a1a;margin:12px 0 4px;page-break-after:avoid}
+  .body-text{font-size:11px;line-height:1.7;color:#222;white-space:pre-line;margin-bottom:8px}
+  .body-text.muted{color:#777;font-style:italic}
+
+  /* Data / field tables */
+  table.fields{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10.5px;page-break-inside:avoid}
+  table.fields th{width:38%;text-align:left;background:#f2f2f0;border:1px solid #999;padding:6px 10px;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#333}
+  table.fields td{border:1px solid #999;padding:6px 10px;font-size:11px}
+  table.fields tr.on td{font-weight:700}
+
+  table.data{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:avoid}
+  table.data th{text-align:left;background:#f2f2f0;border:1px solid #999;padding:6px 10px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#333}
+  table.data td{border:1px solid #999;padding:6px 10px;vertical-align:top;font-size:10.5px}
+
+  .allergy-block{border:1px solid #1a1a1a;border-left:5px solid #1a1a1a;padding:9px 14px;margin-bottom:16px;font-family:Arial,sans-serif}
+  .allergy-block .al-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  .allergy-block .al-val{font-size:12.5px;font-weight:700}
+
+  /* Sign-off */
+  .sig-panel{display:flex;gap:24px;margin-top:6px}
+  .sig-cell{flex:1;border:1px solid #999;padding:10px 12px}
+  .sig-role{font-family:Arial,sans-serif;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:8px}
+  .sig-img-slot{height:44px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-end;padding-bottom:2px}
+  .sig-img-slot img{max-height:40px;max-width:180px}
+  .sig-typed{font-family:'Brush Script MT',cursive;font-size:17px;color:#1a1a1a}
+  .sig-caption{font-family:Arial,sans-serif;font-size:8.5px;color:#555;margin-top:6px;display:flex;justify-content:space-between;gap:12px}
+  .sig-status{font-family:Arial,sans-serif;font-size:8.5px;margin-top:6px;font-weight:700}
+  .sig-status.pending{font-weight:400;font-style:italic;color:#777}
+
+  .footer{margin-top:22px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:8.5px;color:#555}
+  .footer .confid{font-weight:700;letter-spacing:.05em}
+
+  /* Pagination — cover page uses a fixed print-safe height (A4 height minus
+     @page margins), never 100vh, since 100vh resolves against the print
+     engine's viewport rather than the physical page. */
+  .cover{max-width:190mm;margin:0 auto;display:flex;flex-direction:column;min-height:273mm;page-break-after:always;padding:16mm 14mm 10mm}
+  .content-page{max-width:190mm;margin:0 auto;padding:10mm 14mm 16mm}
+
+  @media print{
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:0;size:A4}
+  }
+
+  /* "Print all" concatenates multiple plans — force a break after each one
+     so a short plan's content-page never runs into the next plan's cover. */
+  .plan-block{page-break-after:always}
+  .plan-block:last-child{page-break-after:avoid}
+`
+
+function buildTemplateSections(plan: any, su?: any): { title: string; inner: string }[] {
   const td = plan.template_data || {}
   const tv = (key: string) => (td[key] || '').toString().trim()
   const p = plan.plan_type
+  const esc = (v: any) => (v === null || v === undefined || v === '' ? '—' : String(v))
+  const bodyText = (v?: string | null) => (v && v.trim() ? `<p class="body-text">${v.replace(/\n/g, '<br/>')}</p>` : '')
+  const yesNoRow = (label: string, value: string) =>
+    value ? `<tr class="${value === 'Yes' ? 'on' : ''}"><th>${label}</th><td>${value}</td></tr>` : ''
+  const textRow = (label: string, value: string) =>
+    value ? `<tr><th>${label}</th><td>${value}</td></tr>` : ''
 
-  const goldSec = (label: string, value: string) =>
-    value ? `<div class="cs"><div class="cs-hd gold">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>` : ''
-
-  const plainSec = (label: string, value: string) =>
-    value ? `<div class="cs"><div class="cs-hd">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>` : ''
-
-  const yesNoRow = (label: string, key: string) => tv(key)
-    ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px;width:60%">${label}</td><td style="font-size:10px;font-weight:700;color:${tv(key)==='Yes'?'#065f46':'#991b1b'}">${tv(key)}</td></tr>`
-    : ''
+  const sections: { title: string; inner: string }[] = []
 
   if (p === 'oral_care') {
-    const aboutTeeth = [yesNoRow('I have all my own teeth', 'hasOwnTeeth'), yesNoRow('I have dentures', 'hasDentures')].filter(Boolean).join('')
+    const teethRows = [yesNoRow('I have all my own teeth', tv('hasOwnTeeth')), yesNoRow('I have dentures', tv('hasDentures'))].filter(Boolean).join('')
+    sections.push({
+      title: 'About My Teeth',
+      inner: `
+        <p class="body-text muted">Good oral hygiene helps reduce the risk of systemic illnesses such as heart disease, diabetes-related complications, and respiratory infections.</p>
+        ${teethRows ? `<table class="fields">${teethRows}</table>` : ''}
+      `,
+    })
     const prefRows = [
-      yesNoRow('I use mouth wash', 'usesMouthwash'),
-      yesNoRow('I use prescribed mouth wash', 'usesPrescribedMouthwash'),
-      tv('mouthwashPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My mouthwash preference</td><td style="font-size:10px">${tv('mouthwashPreference')}</td></tr>` : '',
-      yesNoRow('I use floss', 'usesFloss'),
-      tv('flossPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My floss preference</td><td style="font-size:10px">${tv('flossPreference')}</td></tr>` : '',
-      yesNoRow('I use denture tablets', 'usesDentureTablets'),
-      tv('dentureTabletPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My denture tablet preference</td><td style="font-size:10px">${tv('dentureTabletPreference')}</td></tr>` : '',
-      tv('toothbrushPreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My toothbrush preference</td><td style="font-size:10px">${tv('toothbrushPreference')}</td></tr>` : '',
-      tv('toothpastePreference') ? `<tr><td style="font-weight:600;color:#64748b;padding:3px 12px 3px 0;font-size:10px">My toothpaste preference</td><td style="font-size:10px">${tv('toothpastePreference')}</td></tr>` : '',
+      yesNoRow('I use mouth wash', tv('usesMouthwash')),
+      yesNoRow('I use prescribed mouth wash', tv('usesPrescribedMouthwash')),
+      textRow('My mouthwash preference', tv('mouthwashPreference')),
+      yesNoRow('I use floss', tv('usesFloss')),
+      textRow('My floss preference', tv('flossPreference')),
+      yesNoRow('I use denture tablets', tv('usesDentureTablets')),
+      textRow('My denture tablet preference', tv('dentureTabletPreference')),
+      textRow('My toothbrush preference', tv('toothbrushPreference')),
+      textRow('My toothpaste preference', tv('toothpastePreference')),
     ].filter(Boolean).join('')
-    return `
-      <div class="cs"><div class="cs-hd gold">About My Teeth</div>
-        <div class="cs-bd" style="font-size:10px;color:#78350f;margin-bottom:8px;font-style:italic">Good oral hygiene helps reduce the risk of systemic illnesses such as heart disease, diabetes-related complications, and respiratory infections.</div>
-        <div class="cs-bd"><table style="width:100%;border-collapse:collapse">${aboutTeeth}</table></div>
-      </div>
-      <div class="cs"><div class="cs-hd gold">My Preference</div>
-        <div class="cs-bd"><table style="width:100%;border-collapse:collapse">${prefRows}</table></div>
-      </div>
-      <div class="cs"><div class="cs-hd">Support</div>
-        <div class="cs-bd"><table style="width:100%;border-collapse:collapse">${yesNoRow('I require support with my oral hygiene', 'requiresSupport')}</table>
-        ${tv('supportDetails') ? `<p style="margin-top:6px;font-size:11px;color:#334155">${tv('supportDetails').replace(/\n/g,'<br/>')}</p>` : ''}
-        </div>
-      </div>`
+    if (prefRows) sections.push({ title: 'My Preference', inner: `<table class="fields">${prefRows}</table>` })
+    const supportRow = yesNoRow('I require support with my oral hygiene', tv('requiresSupport'))
+    sections.push({
+      title: 'Support',
+      inner: `
+        ${supportRow ? `<table class="fields">${supportRow}</table>` : ''}
+        ${tv('supportDetails') ? `<p class="body-text">${tv('supportDetails').replace(/\n/g, '<br/>')}</p>` : ''}
+      `,
+    })
+    return sections
   }
 
-  if (p === 'autism') {
-    const aims = plan.aims_outcomes ? goldSec('My Aims & Objectives', plan.aims_outcomes) : ''
-    return aims + AUTISM_SECTIONS.map(s => goldSec(s.label, tv(s.key))).join('')
-  }
-
-  if (p === 'adhd') {
-    const aims = plan.aims_outcomes ? goldSec('My Aims & Objectives', plan.aims_outcomes) : ''
-    return aims + ADHD_SECTIONS.map(s => goldSec(s.label, tv(s.key))).join('')
+  if (p === 'autism' || p === 'adhd') {
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
+    const list = p === 'autism' ? AUTISM_SECTIONS : ADHD_SECTIONS
+    list.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    return sections
   }
 
   if (p === 'monthly_progress') {
     const suDisplayName = su ? `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim() : (plan.su_name || '')
-    const fieldRow = (label: string, value: string) =>
-      `<tr>
-        <td style="font-size:11px;font-weight:700;color:#334155;padding:7px 16px 7px 0;width:220px;white-space:nowrap;vertical-align:top">${label}</td>
-        <td style="font-size:11px;color:#1e293b;padding:7px 0;border-bottom:1.5px solid #334155;min-width:250px">${value || ''}</td>
-      </tr>`
-    const sectionHtml = (label: string, value: string) =>
-      `<div style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;overflow:hidden;page-break-inside:avoid">
-        <div style="background:#1e293b;color:#fff;padding:6px 14px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">${label}</div>
-        <div style="padding:10px 14px;min-height:${value ? 'auto' : '44px'};font-size:11px;color:#334155;line-height:1.7">${value ? value.replace(/\n/g,'<br/>') : '<span style="color:#cbd5e1">—</span>'}</div>
-      </div>`
-    const header = `
-      <div style="border:2px solid #1e293b;border-radius:8px;margin-bottom:16px;overflow:hidden;page-break-inside:avoid">
-        <div style="background:#1e293b;color:#fff;text-align:center;padding:10px 20px">
-          <div style="font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase">Monthly Progress Report</div>
-        </div>
-        <div style="padding:14px 20px;background:#f8fafc">
-          <table style="border-collapse:collapse;width:100%">
-            ${fieldRow('Service User Name:', suDisplayName)}
-            ${fieldRow('Month:', tv('month'))}
-            ${fieldRow('Completed by (Name &amp; Role):', tv('completedBy'))}
-            ${fieldRow('Date Completed:', tv('dateCompleted'))}
-          </table>
-        </div>
-      </div>`
-    return header + MONTHLY_BODY_SECTIONS.map(s => sectionHtml(s.label, tv(s.key))).join('')
+    sections.push({
+      title: 'Report Details',
+      inner: `
+        <table class="fields">
+          <tr><th>Service User Name</th><td>${esc(suDisplayName)}</td></tr>
+          <tr><th>Month</th><td>${esc(tv('month'))}</td></tr>
+          <tr><th>Completed By</th><td>${esc(tv('completedBy'))}</td></tr>
+          <tr><th>Date Completed</th><td>${esc(tv('dateCompleted'))}</td></tr>
+        </table>
+      `,
+    })
+    const parts = MONTHLY_BODY_SECTIONS.filter(s => tv(s.key)).map(s => `<h3 class="sub">${s.label}</h3><p class="body-text">${tv(s.key).replace(/\n/g, '<br/>')}</p>`).join('')
+    if (parts) sections.push({ title: 'Monthly Progress Details', inner: parts })
+    return sections
   }
 
   if (p === 'medication_support') {
-    const td2 = plan.template_data || {}
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
+    if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'What I Can Do', inner: bodyText(plan.what_i_can_do) })
+    if (plan.how_to_support && plan.how_to_support.trim()) sections.push({ title: 'How To Support Me', inner: bodyText(plan.how_to_support) })
+    if (plan.regular_medications && plan.regular_medications.trim()) sections.push({ title: 'Regular Medications', inner: bodyText(plan.regular_medications) })
+    if (plan.prn_medications && plan.prn_medications.trim()) sections.push({ title: 'PRN Medications', inner: bodyText(plan.prn_medications) })
+    if (plan.otc_medications && plan.otc_medications.trim()) sections.push({ title: 'Over-The-Counter Medications', inner: bodyText(plan.otc_medications) })
+    if (plan.prn_list && plan.prn_list.trim()) sections.push({ title: 'PRN List', inner: bodyText(plan.prn_list) })
+    if (plan.indication_for_use && plan.indication_for_use.trim()) sections.push({ title: 'Indication for Use', inner: bodyText(plan.indication_for_use) })
     const prnRows = [
       { key: 'prnAssessment', label: 'Assessment Before Administration' },
       { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
@@ -541,199 +616,146 @@ function buildTemplatePrintHtml(plan: any, su?: any): string {
       { key: 'prnSpecial', label: 'Special Considerations' },
       { key: 'prnTraining', label: 'Staff Training Requirements' },
     ]
-    const medPrnSecs = prnRows.filter(s => td2[s.key]).map(s => goldSec(s.label, td2[s.key])).join('')
-    return [
-      goldSec('My Aims & Objectives', plan.aims_outcomes || ''),
-      goldSec('What I Can Do', plan.what_i_can_do || ''),
-      goldSec('How To Support Me', plan.how_to_support || ''),
-      plainSec('Regular Medications', plan.regular_medications || ''),
-      plainSec('PRN Medications', plan.prn_medications || ''),
-      plainSec('Over-The-Counter Medications', plan.otc_medications || ''),
-      plainSec('PRN List', plan.prn_list || ''),
-      plainSec('Indication for Use', plan.indication_for_use || ''),
-      medPrnSecs,
-      plainSec('General PRN Protocol Notes', plan.prn_protocol || ''),
-    ].join('')
+    const prnParts = prnRows.filter(s => td[s.key]).map(s => `<h3 class="sub">${s.label}</h3><p class="body-text">${String(td[s.key]).replace(/\n/g, '<br/>')}</p>`).join('')
+    if (prnParts) sections.push({ title: 'PRN Protocol Details', inner: prnParts })
+    if (plan.prn_protocol && plan.prn_protocol.trim()) sections.push({ title: 'General PRN Protocol Notes', inner: bodyText(plan.prn_protocol) })
+    return sections
   }
 
   // Default — standard 3 fields
-  return [
-    goldSec('My Aims & Objectives', plan.aims_outcomes || ''),
-    goldSec('What I Can Do', plan.what_i_can_do || ''),
-    goldSec('How To Support Me', plan.how_to_support || ''),
-  ].join('')
-}
-
-function buildReviewHistoryHtml(plan: any): string {
-  if (!plan.updates || !plan.updates.length) return ''
-  const rows = plan.updates.map((u: any) =>
-    `<tr>
-      <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:10px;white-space:nowrap;color:#334155">${u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB') : '—'}</td>
-      <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:10px;color:#334155">${u.updated_by_name || '—'}</td>
-      <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:10px;color:#334155">${(u.update_notes || '').replace(/\n/g,'<br/>')}</td>
-    </tr>`
-  ).join('')
-  return `
-    <div class="section-title" style="margin-top:20px">Review History</div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Date Reviewed</th>
-          <th style="text-align:left;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Reviewed By</th>
-          <th style="text-align:left;padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Notes</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`
+  if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
+  if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'What I Can Do', inner: bodyText(plan.what_i_can_do) })
+  if (plan.how_to_support && plan.how_to_support.trim()) sections.push({ title: 'How To Support Me', inner: bodyText(plan.how_to_support) })
+  return sections
 }
 
 function buildPrintHtml(plan: any, su: any, reads: any[]): string {
+  const esc = (v: any) => (v === null || v === undefined || v === '' ? '—' : String(v))
   const planLabel = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const name = su ? `${su.first_name || ''} ${su.last_name || ''}`.trim() : plan.su_name || ''
-  const dob = su?.date_of_birth ? new Date(su.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
+  const dobLong = su?.date_of_birth ? new Date(su.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
   const age = su?.date_of_birth ? Math.floor((Date.now() - new Date(su.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
   const address = [su?.address1, su?.address2, su?.address3, su?.postcode].filter(Boolean).join(', ') || '—'
   const reviewDate = plan.last_review_date ? new Date(plan.last_review_date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')
   const nextReview = plan.next_review_date ? new Date(plan.next_review_date).toLocaleDateString('en-GB') : '—'
   const lastRead = reads.length > 0 ? `Last read by ${reads[0].staff_name} on ${new Date(reads[0].read_at).toLocaleDateString('en-GB')}` : ''
+  const admissionDate = su?.admission_date ? new Date(su.admission_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+  const allergiesText = [su?.food_allergies, su?.allergies].filter(Boolean).join(', ')
 
   const photoHtml = su?.photo_url
-    ? `<img src="${su.photo_url.startsWith('http') ? su.photo_url : `https://app.comprehensivecare.org.uk${su.photo_url}`}" style="width:80px;height:100px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;display:block;flex-shrink:0" />`
-    : `<div style="width:80px;height:100px;border-radius:6px;background:#e2e8f0;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#64748b;flex-shrink:0">${(name[0]||'?').toUpperCase()}</div>`
+    ? `<img class="res-photo" src="${su.photo_url.startsWith('http') ? su.photo_url : `https://app.comprehensivecare.org.uk${su.photo_url}`}" alt="Resident photo" />`
+    : `<div class="res-photo-fallback">${(name[0] || '?').toUpperCase()}</div>`
 
-  const goldSec = (label: string, value?: string | null) =>
-    value?.trim()
-      ? `<div class="cs"><div class="cs-hd gold">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>`
-      : ''
+  const bodyText = (v?: string | null) => (v && v.trim() ? `<p class="body-text">${v.replace(/\n/g, '<br/>')}</p>` : '')
 
-  const plainSec = (label: string, value?: string | null) =>
-    value?.trim()
-      ? `<div class="cs"><div class="cs-hd">${label}</div><div class="cs-bd">${value.replace(/\n/g,'<br/>')}</div></div>`
-      : ''
+  // Build the numbered content sections as an ordered array, then number them
+  // in one final pass — this keeps printed numbering matching render order
+  // regardless of which optional sections are present for this plan.
+  const sections: { title: string; inner: string }[] = []
 
-  const sigBlock = (role: string, name: string | null, dataUrl: string | null, date: string | null, done: boolean) => `
-    <div>
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px">${role}</div>
-      ${dataUrl ? `<img src="${dataUrl}" style="height:44px;max-width:180px;display:block;margin-bottom:4px"/>` : ''}
-      <div style="border-bottom:1.5px solid #334155;min-height:30px;font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;padding-bottom:2px;margin-bottom:6px">${name || ''}</div>
-      <div style="display:flex;gap:16px;font-size:9px;color:#64748b">
-        <span>Name: <strong style="color:#1e293b">${name || '________________________________'}</strong></span>
-        <span>Date: <strong style="color:#1e293b">${date ? new Date(date).toLocaleDateString('en-GB') : '________________________________'}</strong></span>
-      </div>
-      <div style="margin-top:5px;font-size:9px;color:${done ? '#065f46' : '#94a3b8'};font-weight:600">${done ? '✓ Signed off' : 'Awaiting signature'}</div>
+  buildTemplateSections(plan, su).forEach(s => sections.push(s))
+
+  if (plan.attachments_notes && plan.attachments_notes.trim()) {
+    sections.push({ title: 'Attachments / Notes', inner: bodyText(plan.attachments_notes) })
+  }
+
+  if (plan.consent_notes && plan.consent_notes.trim()) {
+    sections.push({
+      title: 'Consent',
+      inner: `
+        <p class="body-text">${plan.consent_notes.replace(/\n/g, '<br/>')}</p>
+        ${plan.consent_given ? `<p class="body-text" style="font-weight:700">Consent given${plan.consent_date ? ' on ' + new Date(plan.consent_date).toLocaleDateString('en-GB') : ''}</p>` : ''}
+      `,
+    })
+  }
+
+  if (plan.updates && plan.updates.length) {
+    const rows = plan.updates.map((u: any) => `
+      <tr>
+        <td style="white-space:nowrap">${u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB') : '—'}</td>
+        <td>${esc(u.updated_by_name)}</td>
+        <td>${(u.update_notes || '').replace(/\n/g, '<br/>')}</td>
+      </tr>`).join('')
+    sections.push({
+      title: 'Review History',
+      inner: `
+        <table class="data">
+          <thead><tr><th>Date Reviewed</th><th>Reviewed By</th><th>Notes</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `,
+    })
+  }
+
+  const sigCell = (role: string, signName: string | null, dataUrl: string | null, date: string | null, done: boolean) => `
+    <div class="sig-cell">
+      <div class="sig-role">${role}</div>
+      <div class="sig-img-slot">${dataUrl ? `<img src="${dataUrl}" alt="Signature" />` : (signName ? `<span class="sig-typed">${esc(signName)}</span>` : '')}</div>
+      <div class="sig-caption"><span>Name: ${esc(signName)}</span><span>Date: ${date ? new Date(date).toLocaleDateString('en-GB') : '—'}</span></div>
+      <div class="sig-status${done ? '' : ' pending'}">${done ? 'Signed off' : 'Awaiting signature'}</div>
     </div>`
 
-  const consentHtml = plan.consent_notes ? `
-    <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:6px;padding:12px;margin-top:12px;page-break-inside:avoid">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#92400e;margin-bottom:6px">Consent</div>
-      <div style="font-size:11px;color:#78350f;line-height:1.6">${plan.consent_notes.replace(/\n/g,'<br/>')}</div>
-      ${plan.consent_given ? `<div style="font-size:10px;color:#065f46;margin-top:6px;font-weight:600">✓ Consent given${plan.consent_date ? ' on ' + new Date(plan.consent_date).toLocaleDateString('en-GB') : ''}</div>` : ''}
-    </div>` : ''
+  sections.push({
+    title: 'Sign Off',
+    inner: `
+      <div class="sig-panel">
+        ${sigCell('Service User / Family Representative', plan.su_signed_by, plan.su_signature_dataurl, plan.su_signed_date, !!plan.su_sign_off)}
+        ${sigCell('Staff Member', plan.staff_signed_by, plan.staff_signature_dataurl, plan.staff_signed_date, !!plan.staff_sign_off)}
+      </div>
+    `,
+  })
+
+  const sectionsHtml = sections.map((s, i) => `<h2 class="sec"><span class="num">${i + 1}.</span>${s.title}</h2>${s.inner}`).join('')
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${name} — ${planLabel}</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:11px;background:#fff}
-    .cover{display:flex;flex-direction:column;min-height:273mm;page-break-after:always}
-    .hdr{background:#1e293b;color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:flex-start}
-    .hdr-company{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
-    .hdr-addr{font-size:10px;color:rgba(255,255,255,.65);line-height:1.8}
-    .hdr-badge{background:rgba(212,160,23,.3);color:#fbbf24;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:4px;margin-bottom:10px;display:inline-block}
-    .hdr-meta{font-size:10px;color:rgba(255,255,255,.65);line-height:2;text-align:right}
-    .hdr-meta strong{color:#fff}
-    .cover-body{padding:32px 28px;flex:1}
-    .resident{display:flex;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:24px}
-    .res-photo{flex-shrink:0}
-    .res-name{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:14px;border-bottom:2px solid #e2e8f0;padding-bottom:10px}
-    .res-tbl{border-collapse:collapse;font-size:11px;width:100%}
-    .res-tbl td{padding:5px 14px 5px 0;vertical-align:top;border-bottom:1px solid #f1f5f9}
-    .res-tbl td:first-child{font-weight:600;color:#64748b;min-width:130px;white-space:nowrap}
-    .res-tbl tr:last-child td{border-bottom:none}
-    .plan-title-block{background:linear-gradient(135deg,#b45309,#92400e);color:#fff;padding:18px 24px;border-radius:8px;margin-top:16px}
-    .plan-title-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.7);margin-bottom:4px}
-    .plan-title-name{font-size:16px;font-weight:700}
-    .plan-meta{display:flex;gap:32px;margin-top:12px;font-size:10px;color:rgba(255,255,255,.8)}
-    .content-page{padding:20px 28px}
-    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin-bottom:14px;margin-top:24px}
-    .section-title:first-child{margin-top:0}
-    .cs{border:1px solid #e2e8f0;border-radius:6px;margin-bottom:12px;overflow:hidden;page-break-inside:avoid}
-    .cs-hd{padding:8px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:#f8fafc;color:#64748b;border-left:4px solid #94a3b8}
-    .cs-hd.gold{color:#b45309;border-left-color:#b45309;background:#fffbeb}
-    .cs-bd{padding:12px 14px;font-size:11px;line-height:1.8;color:#334155}
-    .signoff{border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin-top:20px;page-break-inside:avoid;background:#f8fafc}
-    .signoff-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #e2e8f0}
-    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px}
-    .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#94a3b8}
-    .confid{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:3px 10px;border-radius:4px;font-weight:700;font-size:8px;letter-spacing:.05em}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:12mm;size:A4}}
-  </style></head><body>
+  <style>${CARE_PLAN_PRINT_CSS}</style></head><body>
 
   <!-- PAGE 1: Personal Information -->
   <div class="cover">
-    <div class="hdr">
+    <div class="letterhead">
       <div>
-        <div class="hdr-company">Comprehensive Care Ltd</div>
-        <div class="hdr-addr">Ivy Business Centre, Office 3-13 Crown Street<br/>Failsworth, Manchester, M35 9BG</div>
+        <div class="org-name">Comprehensive Care Ltd</div>
+        <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
       </div>
-      <div style="text-align:right">
-        <div class="hdr-badge">Support Plan</div>
-        <div class="hdr-meta">
-          Author: <strong>${plan.created_by_name || '—'}</strong><br/>
-          ${plan.staff_signature_dataurl
-            ? `<img src="${plan.staff_signature_dataurl}" style="height:30px;max-width:120px;display:inline-block;vertical-align:middle;margin:2px 0"/><br/>`
-            : (plan.staff_signed_by ? `<span style="font-family:'Brush Script MT',cursive;font-size:16px;color:#fff">${plan.staff_signed_by}</span><br/>` : '')}
-          Review Date: <strong>${reviewDate}</strong><br/>
-          Next Review: <strong>${nextReview}</strong>
-        </div>
+      <div class="doc-meta">
+        <div>Document ref: SP-${plan.id || '—'}</div>
+        <div>Printed: <strong>${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></div>
       </div>
     </div>
 
-    <div class="cover-body">
-      <div class="resident">
-        <div class="res-photo">${photoHtml}</div>
-        <div style="flex:1">
-          <div class="res-name">${name}</div>
-          <table class="res-tbl">
-            <tr><td>Date of Birth</td><td>${dob}${age ? ` (${age} yrs)` : ''}</td><td style="padding-left:24px">NHS Number</td><td>${su?.nhs_number || '—'}</td></tr>
-            <tr><td>Gender</td><td>${su?.gender || '—'}</td><td style="padding-left:24px">Preferred Name</td><td>${su?.preferred_name || '—'}</td></tr>
-            <tr><td>Address</td><td colspan="3">${address}</td></tr>
-            <tr><td>Phone</td><td>${su?.phone || '—'}</td><td style="padding-left:24px">Email</td><td>${su?.email || '—'}</td></tr>
-            ${su?.nhs_number ? '' : ''}
-            ${su?.admission_date ? `<tr><td>Admission Date</td><td colspan="3">${new Date(su.admission_date).toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}</td></tr>` : ''}
-            ${su?.gp_name ? `<tr><td>GP</td><td colspan="3">${su.gp_name}${su.gp_phone ? ` · ${su.gp_phone}` : ''}</td></tr>` : ''}
-            ${su?.pharmacy_name ? `<tr><td>Pharmacy</td><td colspan="3">${su.pharmacy_name}${su.pharmacy_phone ? ` · ${su.pharmacy_phone}` : ''}</td></tr>` : ''}
-            ${su?.food_allergies || su?.allergies ? `<tr><td>Known Allergies</td><td colspan="3" style="color:#991b1b;font-weight:600">${[su.food_allergies, su.allergies].filter(Boolean).join(', ')}</td></tr>` : ''}
-          </table>
-        </div>
-      </div>
+    <div class="doc-title">${planLabel}</div>
+    <div class="doc-subtitle">Support Plan — Individual Resident Record</div>
 
-      <div class="plan-title-block">
-        <div class="plan-title-label">Support Plan</div>
-        <div class="plan-title-name">${planLabel}</div>
-        <div class="plan-meta">
-          <span>Review frequency: ${(plan.review_frequency || 'monthly').replace(/_/g, ' ')}</span>
-          <span>Last review: ${reviewDate}</span>
-          <span>Next review: ${nextReview}</span>
-          ${lastRead ? `<span>${lastRead}</span>` : ''}
-        </div>
+    <div class="res-head">
+      <div style="flex:1">
+        <table class="idtable">
+          <tr><td class="lbl">Resident</td><td class="val" colspan="3" style="font-weight:700;font-size:12.5px">${esc(name)}</td></tr>
+          <tr><td class="lbl">Date of Birth</td><td class="val">${dobLong}${age !== null ? ` (${age} yrs)` : ''}</td><td class="lbl">NHS Number</td><td class="val">${esc(su?.nhs_number)}</td></tr>
+          <tr><td class="lbl">Gender</td><td class="val">${esc(su?.gender)}</td><td class="lbl">Preferred Name</td><td class="val">${esc(su?.preferred_name)}</td></tr>
+          <tr><td class="lbl">Address</td><td class="val" colspan="3">${address}</td></tr>
+          <tr><td class="lbl">Phone</td><td class="val">${esc(su?.phone)}</td><td class="lbl">Email</td><td class="val">${esc(su?.email)}</td></tr>
+          ${admissionDate ? `<tr><td class="lbl">Admission Date</td><td class="val" colspan="3">${admissionDate}</td></tr>` : ''}
+          ${su?.gp_name ? `<tr><td class="lbl">GP</td><td class="val" colspan="3">${esc(su.gp_name)}${su.gp_phone ? ` · ${su.gp_phone}` : ''}</td></tr>` : ''}
+          ${su?.pharmacy_name ? `<tr><td class="lbl">Pharmacy</td><td class="val" colspan="3">${esc(su.pharmacy_name)}${su.pharmacy_phone ? ` · ${su.pharmacy_phone}` : ''}</td></tr>` : ''}
+        </table>
       </div>
+      ${photoHtml}
+    </div>
+
+    ${allergiesText ? `<div class="allergy-block"><div class="al-label">Known Allergies</div><div class="al-val">${allergiesText}</div></div>` : ''}
+
+    <div class="plan-meta-box">
+      <span>Author: <strong>${esc(plan.created_by_name)}</strong></span>
+      <span>Review frequency: <strong>${(plan.review_frequency || 'monthly').replace(/_/g, ' ')}</strong></span>
+      <span>Last review: <strong>${reviewDate}</strong></span>
+      <span>Next review: <strong>${nextReview}</strong></span>
+      ${lastRead ? `<span>${lastRead}</span>` : ''}
     </div>
   </div>
 
   <!-- PAGE 2+: Plan Content -->
   <div class="content-page">
-    ${buildTemplatePrintHtml(plan, su)}
-    ${plainSec('Attachments / Notes', plan.attachments_notes)}
-    ${consentHtml}
-    ${buildReviewHistoryHtml(plan)}
-
-    <div class="signoff">
-      <div class="signoff-title">Sign Off</div>
-      <div class="sig-grid">
-        ${sigBlock('Service User / Family Representative', plan.su_signed_by, plan.su_signature_dataurl, plan.su_signed_date, !!plan.su_sign_off)}
-        ${sigBlock('Staff Member', plan.staff_signed_by, plan.staff_signature_dataurl, plan.staff_signed_date, !!plan.staff_sign_off)}
-      </div>
-    </div>
+    ${sectionsHtml}
 
     <div class="footer">
       <span class="confid">CONFIDENTIAL</span>
@@ -839,9 +861,9 @@ export default function CarePlans() {
 
     const name = getName(suFull)
     const rows = plans.map(plan => buildPrintHtml(plan, suFull, allReads[plan.id] || []))
-    const html = `<!DOCTYPE html><html><head><title>${name} — All Support Plans</title>
-      <style>body{font-family:'Segoe UI',Arial,sans-serif;margin:0} .page{page-break-after:always} @media print{.page:last-child{page-break-after:avoid};print-color-adjust:exact}</style>
-      </head><body>${rows.map(h => `<div class="page">${h.replace(/<!DOCTYPE html>[\s\S]*?<body[^>]*>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}</div>`).join('')}</body></html>`
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${name} — All Support Plans</title>
+      <style>${CARE_PLAN_PRINT_CSS}</style>
+      </head><body>${rows.map(h => `<div class="plan-block">${h.replace(/<!DOCTYPE html>[\s\S]*?<body[^>]*>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}</div>`).join('')}</body></html>`
     doPrint(html)
   }
 

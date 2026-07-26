@@ -80,61 +80,182 @@ export default function RiskManagement() {
   const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
 
   const RA_PRINT_CSS = `
-    body{font-family:Arial,sans-serif;color:#111;padding:24px;max-width:780px;margin:0 auto}
-    h1{font-size:1.3rem;margin-bottom:4px}
-    .meta{font-size:.8rem;color:#555;margin-bottom:20px}
-    .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-left:10px}
-    .badge-low{background:#dcfce7;color:#166534}
-    .badge-medium{background:#fef9c3;color:#854d0e}
-    .badge-high{background:#ffedd5;color:#9a3412}
-    .badge-critical{background:#fee2e2;color:#991b1b}
-    section{margin-bottom:18px}
-    section h3{font-size:.75rem;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:5px}
-    section p{font-size:.9rem;line-height:1.6;margin:0}
-    .mgmt{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:18px}
-    .mgmt h3{color:#1d4ed8}
-    .page{page-break-after:always}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
+    .page{max-width:190mm;margin:0 auto;padding:16mm 14mm 20mm;page-break-after:always}
     .page:last-child{page-break-after:avoid}
-    @media print{body{padding:0}}
+
+    /* Letterhead */
+    .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1a1a1a;padding-bottom:10px;margin-bottom:4px}
+    .org-name{font-size:15px;font-weight:700;letter-spacing:.01em}
+    .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
+    .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
+    .doc-meta strong{color:#1a1a1a}
+
+    .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
+    .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
+
+    /* Resident identity block */
+    table.idtable{width:100%;border-collapse:collapse;margin-bottom:20px;font-family:Arial,sans-serif;font-size:10.5px}
+    table.idtable td{border:1px solid #999;padding:6px 10px;vertical-align:top}
+    table.idtable td.lbl{width:19%;background:#f2f2f0;font-weight:700;text-transform:uppercase;font-size:8.5px;letter-spacing:.05em;color:#333}
+    table.idtable td.val{width:31%;font-size:11px}
+
+    /* Section headings */
+    h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1a1a1a;border-bottom:1px solid #1a1a1a;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
+    h2.sec .num{display:inline-block;width:18px}
+    h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#1a1a1a;margin:12px 0 4px;page-break-after:avoid}
+    .body-text{font-size:11px;line-height:1.7;color:#222;white-space:pre-line;margin-bottom:8px}
+
+    /* Data / field tables */
+    table.fields{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10.5px;page-break-inside:avoid}
+    table.fields th{width:38%;text-align:left;background:#f2f2f0;border:1px solid #999;padding:6px 10px;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#333}
+    table.fields td{border:1px solid #999;padding:6px 10px;font-size:11px}
+
+    /* Risk summary */
+    .risk-box{border:1.5px solid #1a1a1a;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;page-break-inside:avoid}
+    .risk-box .rb-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#444}
+    .risk-box .rb-value{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+    .risk-box.high{border-width:2.5px}
+    .risk-box.critical{border-width:2.5px;border-style:double}
+
+    .footer{margin-top:28px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:8.5px;color:#555}
+    .footer .confid{font-weight:700;letter-spacing:.05em}
+
+    @media print{
+      body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      @page{margin:0;size:A4}
+      .page{padding:14mm 14mm 16mm}
+    }
   `
 
   const buildRaBody = (ra: any) => {
-    const riskLevel = ra.risk_rating || ra.current_risk_level
+    const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
+    const esc = (v: any) => v === null || v === undefined || v === '' ? '—' : String(v)
+    const nl = (v: string) => esc(v).replace(/\n/g, '<br/>')
+
+    const riskLevel = ra.risk_rating || ra.current_risk_level || 'low'
     const rl = RISK_LEVELS.find(r => r.value === riskLevel)
     const likelihood = LIKELIHOOD_OPTIONS.find(o => o.value === ra.risk_rating_option)
+
+    // Build sections as an ordered list, then number them in a single final
+    // pass so the printed numbering always matches render order — regardless
+    // of which optional sections are present for this assessment.
+    const sections: { title: string; inner: string }[] = []
+
+    sections.push({
+      title: 'Risk Summary',
+      inner: `
+        <div class="risk-box${riskLevel === 'high' ? ' high' : ''}${riskLevel === 'critical' ? ' critical' : ''}">
+          <span class="rb-label">Overall Risk Level</span>
+          <span class="rb-value">${esc(rl?.label || 'Unknown')}</span>
+        </div>
+        <table class="fields">
+          <tr><th>Last Assessed</th><td>${fmtDate(ra.last_assessed_date)}</td></tr>
+          <tr><th>Next Review Due</th><td>${fmtDate(ra.next_review_date)}</td></tr>
+        </table>
+      `,
+    })
+
+    if (ra.description) {
+      sections.push({ title: 'What is the Risk', inner: `<p class="body-text">${nl(ra.description)}</p>` })
+    }
+
+    if (ra.risk_before_intervention) {
+      sections.push({ title: 'Risk Before Intervention', inner: `<p class="body-text">${nl(ra.risk_before_intervention)}</p>` })
+    }
+
+    if (ra.who_is_at_risk) {
+      sections.push({ title: 'Who is at Risk', inner: `<p class="body-text">${nl(ra.who_is_at_risk)}</p>` })
+    }
+
+    if (ra.what_could_happen) {
+      sections.push({ title: 'What Could Happen', inner: `<p class="body-text">${nl(ra.what_could_happen)}</p>` })
+    }
+
+    if (ra.triggers) {
+      sections.push({ title: 'Triggers', inner: `<p class="body-text">${nl(ra.triggers)}</p>` })
+    }
+
+    if (ra.protective_factors) {
+      sections.push({ title: 'Protective Factors', inner: `<p class="body-text">${nl(ra.protective_factors)}</p>` })
+    }
+
+    if (ra.management_plan) {
+      sections.push({ title: 'Risk Management Plan', inner: `<p class="body-text">${nl(ra.management_plan)}</p>` })
+    }
+
+    if (likelihood) {
+      sections.push({ title: 'Risk Likelihood', inner: `<p class="body-text">${esc(likelihood.label)}</p>` })
+    }
+
+    if (ra.risk_after_controls) {
+      sections.push({ title: 'Risk Occurring Following Control Measures', inner: `<p class="body-text">${nl(ra.risk_after_controls)}</p>` })
+    }
+
+    if (ra.risk_update_tracking) {
+      sections.push({ title: 'Risk Update Tracking', inner: `<p class="body-text">${nl(ra.risk_update_tracking)}</p>` })
+    }
+
+    const sectionsHtml = sections.map((s, i) =>
+      `<h2 class="sec"><span class="num">${i + 1}.</span>${s.title}</h2>${s.inner}`
+    ).join('')
+
     return `
-      <h1>${ra.assessment_name}
-        <span class="badge badge-${riskLevel}">${rl?.label || 'Unknown'} Risk</span>
-      </h1>
-      <p class="meta">Resident: <strong>${ra.su_name || '—'}</strong> &nbsp;|&nbsp; Next review: <strong>${ra.next_review_date ? new Date(ra.next_review_date).toLocaleDateString('en-GB') : '—'}</strong>${ra.last_assessed_date ? ` &nbsp;|&nbsp; Last assessed: <strong>${new Date(ra.last_assessed_date).toLocaleDateString('en-GB')}</strong>` : ''} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
-      ${ra.description ? `<section><h3>What is the risk</h3><p>${ra.description.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.risk_before_intervention ? `<section><h3>Risk before intervention</h3><p>${ra.risk_before_intervention.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.who_is_at_risk ? `<section><h3>Who is at risk</h3><p>${ra.who_is_at_risk}</p></section>` : ''}
-      ${ra.what_could_happen ? `<section><h3>What could happen</h3><p>${ra.what_could_happen.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.triggers ? `<section><h3>Triggers</h3><p>${ra.triggers.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.protective_factors ? `<section><h3>Protective factors</h3><p>${ra.protective_factors.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.management_plan ? `<div class="mgmt"><h3>Risk management plan</h3><p>${ra.management_plan.replace(/\n/g,'<br/>')}</p></div>` : ''}
-      ${likelihood ? `<section><h3>Risk likelihood</h3><p>${likelihood.label}</p></section>` : ''}
-      ${ra.risk_after_controls ? `<section><h3>Risk occurring following control measures</h3><p>${ra.risk_after_controls.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      ${ra.risk_update_tracking ? `<section><h3>Risk update tracking</h3><p>${ra.risk_update_tracking.replace(/\n/g,'<br/>')}</p></section>` : ''}
-      <section><h3>Summary — Risk Level</h3><p><strong>${rl?.label || 'Unknown'}</strong></p></section>
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: RA-${ra.id || '—'}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Risk Assessment</div>
+      <div class="doc-subtitle">${esc(ra.assessment_name)}</div>
+
+      <table class="idtable">
+        <tr>
+          <td class="lbl">Resident</td><td class="val">${esc(ra.su_name)}</td>
+          <td class="lbl">Assessment</td><td class="val">${esc(ra.assessment_name)}</td>
+        </tr>
+      </table>
+
+      ${sectionsHtml}
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Resident health record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
     `
   }
 
   const printAssessment = (ra: any) => {
-    const html = `<!DOCTYPE html><html><head><title>${ra.assessment_name} — Risk Assessment</title><style>${RA_PRINT_CSS}</style></head><body>${buildRaBody(ra)}</body></html>`
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${ra.assessment_name} — Risk Assessment</title><style>${RA_PRINT_CSS}</style></head><body>${buildRaBody(ra)}</body></html>`
     const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print() }
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
   }
 
   const printAll = () => {
     if (!assessments.length) return
     const suName = selectedSu ? sus.find(s => s.id === selectedSu) : null
     const title = suName ? `${suName.first_name} ${suName.last_name} — All Risk Assessments` : 'All Risk Assessments'
-    const pages = assessments.map(ra => `<div class="page">${buildRaBody(ra)}</div>`).join('')
-    const html = `<!DOCTYPE html><html><head><title>${title}</title><style>${RA_PRINT_CSS}</style></head><body>${pages}</body></html>`
+    const pages = assessments.map(ra => buildRaBody(ra)).join('')
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${title}</title><style>${RA_PRINT_CSS}</style></head><body>${pages}</body></html>`
     const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print() }
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
   }
 
   useEffect(() => {
