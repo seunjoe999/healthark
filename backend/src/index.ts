@@ -265,7 +265,12 @@ if (fs.existsSync(frontendDist)) {
   app.use('/pwa-192.png', express.static(path.join(frontendDist, 'pwa-192.png')));
   app.use('/pwa-512.png', express.static(path.join(frontendDist, 'pwa-512.png')));
   app.use('/manifest.json', express.static(path.join(frontendDist, 'manifest.json')));
-  app.use(express.static(frontendDist));
+  // index:false so this middleware never auto-serves index.html for '/' —
+  // that path must always go through the wildcard handler below with its
+  // strict no-cache headers, otherwise Express's default static caching
+  // headers apply to '/' only, leaving regular (non-incognito) browsers
+  // stuck on a stale build until their cache happens to expire.
+  app.use(express.static(frontendDist, { index: false }));
   app.get(/^(?!\/api|\/uploads|\/assets).*/, (_req, res) => {
     res.setHeader('Surrogate-Control', 'no-store');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
