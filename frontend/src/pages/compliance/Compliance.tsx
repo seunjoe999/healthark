@@ -67,7 +67,7 @@ const AREA_ICONS: Record<string, React.ElementType> = {
 }
 
 const AREA_LINKS: Record<string, string> = {
-  training: '/training',
+  training: '/training-matrix',
   safeguarding: '/safeguarding',
   incidents: '/daily-records',
   carePlans: '/care-plans',

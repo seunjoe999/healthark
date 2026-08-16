@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { Button, Select, Spinner } from '../../components/ui'
+import { Button, Select, Spinner, Modal, Input } from '../../components/ui'
 import {
   Grid3X3, Printer, CheckCircle, AlertTriangle, XCircle, MinusCircle,
-  ChevronRight, ExternalLink,
+  ChevronRight, ExternalLink, Plus,
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import api from '../../api'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
+import toast from 'react-hot-toast'
 
 // ── Types ─────────────────────────────────────────────────────────
 interface StaffRow { id: string; name: string; role: string }
@@ -138,6 +139,9 @@ export default function TrainingMatrix() {
   const [data, setData] = useState<MatrixData | null>(null)
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
+  const [addForm, setAddForm] = useState({ staffId: '', courseName: '', completedDate: new Date().toISOString().split('T')[0], expiryDate: '' })
+  const [saving, setSaving] = useState(false)
   const [popover, setPopover] = useState<{
     staffId: string
     trainingType: string
@@ -158,6 +162,20 @@ export default function TrainingMatrix() {
       setData(res.data.data)
     } catch {}
     setLoading(false)
+  }
+
+  async function saveTrainingRecord(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addForm.staffId || !addForm.courseName || !addForm.completedDate) { toast.error('Staff, training name and completed date are required'); return }
+    setSaving(true)
+    try {
+      await api.post('/staff-hr/training', addForm)
+      toast.success('Training record added')
+      setAddOpen(false)
+      setAddForm({ staffId: '', courseName: '', completedDate: new Date().toISOString().split('T')[0], expiryDate: '' })
+      await load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to add training record') }
+    finally { setSaving(false) }
   }
 
   function handleCellClick(
@@ -226,6 +244,13 @@ export default function TrainingMatrix() {
           </div>
         </div>
         <div className="flex items-center gap-2 print:hidden">
+          <Button
+            size="sm"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={() => setAddOpen(true)}
+          >
+            Add training record
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -393,6 +418,25 @@ export default function TrainingMatrix() {
             }}
           />
         </div>
+      )}
+
+      {/* Manual training record modal */}
+      {addOpen && (
+        <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add training record">
+          <form onSubmit={saveTrainingRecord} className="space-y-4">
+            <Select label="Staff member *" value={addForm.staffId} onChange={e => setAddForm(p => ({ ...p, staffId: e.target.value }))}
+              options={[{ value: '', label: 'Select staff member...' }, ...data.staff.map(s => ({ value: s.id, label: `${s.name} (${formatRole(s.role)})` }))]} />
+            <Input label="Name of training *" required value={addForm.courseName} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))} placeholder="e.g. Manual Handling, Fire Safety..." />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Date training completed *" type="date" required value={addForm.completedDate} onChange={e => setAddForm(p => ({ ...p, completedDate: e.target.value }))} />
+              <Input label="Expiry date of training" type="date" value={addForm.expiryDate} onChange={e => setAddForm(p => ({ ...p, expiryDate: e.target.value }))} />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={saving}>Save</Button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Print styles */}
