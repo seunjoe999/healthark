@@ -1265,7 +1265,7 @@ function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
 
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
-  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '' }
+  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', applyTime: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '' }
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -1289,18 +1289,24 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <Input label="Medication name *" required value={form.medicationName} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Amlodipine, Paracetamol..." />
         <div className="grid grid-cols-2 gap-3">
+          <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="Apply time" type="time" value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
+            options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
+            placeholder="Select type" />
+          <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
-          <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
-        </div>
-        <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         <div>
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
         </div>
+        <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
         <div>
           <label className="label flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Access code</label>
           <textarea className="input" rows={2} value={form.locationAccessCode} onChange={e => set('locationAccessCode', e.target.value)} placeholder="Where is the medication stored? Any access instructions..." />
@@ -1348,6 +1354,8 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     dose: med.dose || '',
     frequency: med.frequency || '',
     route: med.route || '',
+    medicineType: med.medicine_type || '',
+    applyTime: med.apply_time || '',
     prescribedBy: med.prescribed_by || '',
     startDate: med.start_date ? med.start_date.split('T')[0] : '',
     instructions: med.instructions || '',
@@ -1375,18 +1383,24 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     <Modal open={true} onClose={onClose} title={`Edit — ${med.medication_name}`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-3">
+          <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="Apply time" type="time" value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
+            options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
+            placeholder="Select type" />
+          <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
-          <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
-        </div>
-        <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         <div>
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
         </div>
+        <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
         <div>
           <label className="label flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Access code</label>
           <textarea className="input" rows={2} value={form.locationAccessCode} onChange={e => set('locationAccessCode', e.target.value)} placeholder="Where is the medication stored? Any access instructions..." />

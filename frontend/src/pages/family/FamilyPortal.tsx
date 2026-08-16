@@ -45,7 +45,8 @@ export default function FamilyPortal() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="min-h-full bg-slate-50 p-6">
+    <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
@@ -125,6 +126,7 @@ export default function FamilyPortal() {
         </div>
       )}
 
+    </div>
     </div>
   )
 }

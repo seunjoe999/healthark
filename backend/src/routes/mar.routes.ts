@@ -43,16 +43,16 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const { suId, medicationName, dose, frequency, route, prescribedBy,
               startDate, endDate, instructions, isPrn, isControlled, pharmacyName, pharmacyPhone,
               gpName, gpPhone, medicationCode, atcCode,
-              locationAccessCode, medicineWarning } = req.body;
+              locationAccessCode, medicineWarning, medicineType, applyTime } = req.body;
       const bodyHomeId = req.body.homeId;
       const effectiveHomeId = bodyHomeId || homeId;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescriber, start_date, end_date, notes, is_prn, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+          prescriber, start_date, end_date, notes, is_prn, created_by, medicine_type, apply_time)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
         [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
-         instructions || null, isPrn || false, staffId]
+         instructions || null, isPrn || false, staffId, medicineType || null, applyTime || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -63,7 +63,7 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn } = req.body;
+      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, medicineType, applyTime } = req.body;
       const updates = [
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
@@ -73,6 +73,8 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'end_date', val: nd(endDate) },
         { field: 'notes', val: instructions },
         { field: 'is_prn', val: isPrn },
+        { field: 'medicine_type', val: medicineType },
+        { field: 'apply_time', val: applyTime },
       ].filter(u => u.val !== undefined);
       if (!updates.length) { res.status(400).json({ success: false, error: 'No fields to update' }); return; }
       const setClauses = updates.map((u, i) => `${u.field}=$${i + 1}`).join(', ');

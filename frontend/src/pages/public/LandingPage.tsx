@@ -362,7 +362,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 mb-6 sm:mb-8"
               style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-              <span className="text-white text-[10px] sm:text-xs font-bold tracking-wide">CQC Compliant · GDPR Secure · Built for UK Care Homes</span>
+              <span className="text-white text-[10px] sm:text-xs font-bold tracking-wide">GDPR Secure · Built for UK Care Homes</span>
             </motion.div>
 
             {/* Animated headline */}

@@ -553,6 +553,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           >
             {user?.firstName?.[0] ?? '?'}
           </button>
+
+          {/* Sign out */}
+          <button
+            onClick={logout}
+            className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors flex-shrink-0"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+            aria-label="Sign out"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </header>
 
         {/* Desktop header is hidden on mobile; desktop uses sidebar only — no top header needed on lg+ */}

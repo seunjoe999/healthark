@@ -190,7 +190,7 @@ export default function Audits() {
               <RefreshCw className="w-4 h-4" />
             </button>
             <Button icon={<Plus className="w-4 h-4" />} onClick={() => setGenerateOpen(true)}>
-              Start Assessment
+              Start Audit
             </Button>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function Audits() {
           <EmptyState
             title="No audits yet"
             description="Start your first audit to generate a compliance report."
-            action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setGenerateOpen(true)}>Start Assessment</Button>}
+            action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setGenerateOpen(true)}>Start Audit</Button>}
           />
         ) : audits.map((audit: any) => {
           const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
@@ -1095,7 +1095,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading }: {
   const [customName, setCustomName] = useState('')
 
   return (
-    <Modal open={open} onClose={onClose} title="Start Assessment" size="md">
+    <Modal open={open} onClose={onClose} title="Start Audit" size="md">
       <div className="space-y-5">
         <p className="text-sm text-slate-500">
           Select an audit type. The system will analyse your live care data and produce a detailed compliance report.
@@ -1118,7 +1118,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading }: {
         <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button loading={loading} icon={<Activity className="w-4 h-4" />} onClick={() => onGenerate(auditType, customName)}>
-            Start Assessment
+            Start Audit
           </Button>
         </div>
       </div>
