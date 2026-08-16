@@ -17,13 +17,54 @@ import {
 } from '../services/email.service';
 
 const router = Router();
-router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
   return (req.staff as any)?.[field] || '';
 }
+
+// POST /api/recruitment/apply — PUBLIC endpoint, no auth. Careers page job application form.
+// Candidates land straight in the internal Recruitment pipeline (pipeline_stage='applied').
+router.post('/apply', [
+  body('firstName').trim().notEmpty(),
+  body('lastName').trim().notEmpty(),
+  body('email').isEmail(),
+  body('position').trim().notEmpty(),
+], validateRequest, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { firstName, lastName, email, phone, position, coverNote, cvUrl } = req.body;
+    // No home selector on a public form — attach to the organisation's first/primary home.
+    const homeRows = await query<any>('SELECT id FROM homes ORDER BY created_at ASC LIMIT 1');
+    if (!homeRows.length) throw new AppError('No care home configured to receive applications', 500);
+    const homeId = homeRows[0].id;
+
+    const rows = await query(
+      `INSERT INTO recruitment_candidates (home_id, first_name, last_name, email, phone, position, status, pipeline_stage, notes, cv_url)
+       VALUES ($1,$2,$3,$4,$5,$6,'applied','applied',$7,$8) RETURNING id`,
+      [homeId, firstName, lastName, email, phone || null, position, coverNote || null, cvUrl || null]
+    );
+
+    // Notify managers/admins of the new application (non-fatal if it fails)
+    try {
+      const staffToNotify = await query<any>(
+        `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager', 'deputy_manager')
+         UNION SELECT id FROM staff WHERE role IN ('group_admin', 'admin')`,
+        [homeId]
+      );
+      for (const s of staffToNotify) {
+        await query(
+          `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message) VALUES ($1,$1,$2,$3,$4,$4)`,
+          [s.id, homeId, 'New Job Application', `${firstName} ${lastName} applied for ${position}. View them in Recruitment.`]
+        );
+      }
+    } catch { /* non-fatal */ }
+
+    res.status(201).json({ success: true, data: { id: rows[0].id } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.use(authenticate);
 
 // GET /api/recruitment?homeId=
 router.get('/', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {

@@ -14,8 +14,6 @@ const router = Router();
 
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
-router.use(authenticate);
-
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return d?.[field] || ''; }
@@ -26,6 +24,8 @@ const uploadDir = path.join(process.cwd(), 'uploads', 'photos');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const docsDir = path.join(process.cwd(), 'uploads', 'docs');
 if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+const cvsDir = path.join(process.cwd(), 'uploads', 'cvs');
+if (!fs.existsSync(cvsDir)) fs.mkdirSync(cvsDir, { recursive: true });
 
 const photoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
@@ -78,6 +78,43 @@ const docUpload = multer({
     else cb(new Error('File type not allowed'));
   },
 });
+
+const cvStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, cvsDir),
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${unique}${path.extname(file.originalname)}`);
+  },
+});
+const cvUpload = multer({
+  storage: cvStorage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowed = new Set(['.pdf', '.doc', '.docx']);
+    const allowedMimes = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+    if (allowed.has(ext) && allowedMimes.has(file.mimetype)) cb(null, true);
+    else cb(new Error('Only PDF or Word documents are allowed'));
+  },
+});
+
+// POST /api/upload/public-cv — PUBLIC endpoint, no auth. Used by the Careers page
+// application form to attach a CV/resume before the candidate record even exists.
+router.post('/public-cv', cvUpload.single('file'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) throw new AppError('No file uploaded', 400);
+      const fileUrl = `/uploads/cvs/${req.file.filename}`;
+      res.json({ success: true, data: { fileUrl, fileName: req.file.originalname } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.use(authenticate);
 
 // POST /api/upload/staff-photo/:staffId
 router.post('/staff-photo/:staffId', param('staffId').isUUID(), validateRequest,

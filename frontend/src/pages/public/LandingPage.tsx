@@ -241,7 +241,7 @@ export default function LandingPage() {
                       style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
                       {demoLoading
                         ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending...</>
-                        : <>Request My Free Walkthrough <ArrowRight size={15} /></>}
+                        : <>Book My Free Demo <ArrowRight size={15} /></>}
                     </button>
                   </form>
                 )}
@@ -281,10 +281,15 @@ export default function LandingPage() {
                 {l.label}
               </button>
             ))}
+            <Link to="/careers"
+              className="px-4 py-2 text-sm font-medium rounded-full transition-all"
+              style={{ color: scrolled ? '#3A4A3A' : 'rgba(255,255,255,0.85)' }}>
+              Careers
+            </Link>
             <button onClick={() => setDemoOpen(true)}
               className="ml-4 px-5 py-2.5 rounded-full text-white text-sm font-bold shadow-md transition-all hover:opacity-90"
               style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
-              Request Walkthrough
+              Book a Demo
             </button>
             <Link to="/login"
               className="ml-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all"
@@ -318,10 +323,13 @@ export default function LandingPage() {
                     className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors"
                     style={{ color: '#3A4A3A' }}>{l.label}</button>
                 ))}
+                <Link to="/careers" onClick={() => setMenuOpen(false)}
+                  className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors"
+                  style={{ color: '#3A4A3A' }}>Careers</Link>
                 <button onClick={() => { setDemoOpen(true); setMenuOpen(false); }}
                   className="mt-3 px-5 py-3.5 rounded-2xl text-white text-sm font-bold text-center"
                   style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
-                  Request Walkthrough
+                  Book a Demo
                 </button>
                 <Link to="/login" onClick={() => setMenuOpen(false)}
                   className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border mt-2"
@@ -357,13 +365,6 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full" style={{ paddingTop: 72 }}>
           <div className="max-w-xl sm:max-w-2xl py-16 sm:py-24">
 
-            {/* Trust badge */}
-            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 mb-6 sm:mb-8"
-              style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-              <span className="text-white text-[10px] sm:text-xs font-bold tracking-wide">Built for UK Care Homes</span>
-            </motion.div>
 
             {/* Animated headline */}
             <div className="mb-3 overflow-hidden">
@@ -809,7 +810,7 @@ export default function LandingPage() {
               <button onClick={() => setDemoOpen(true)}
                 className="w-full py-3 text-xs sm:text-sm font-bold text-white rounded-xl transition-opacity hover:opacity-90"
                 style={{ background: 'rgba(125,217,168,0.10)', border: '1px solid rgba(125,217,168,0.18)' }}>
-                Request Walkthrough
+                Book a Demo
               </button>
             </div>
           </div>

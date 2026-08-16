@@ -7,6 +7,7 @@ import AppLayout from './components/layout/AppLayout'
 import InstallPrompt from './components/pwa/InstallPrompt'
 import Login from './pages/auth/Login'
 import LandingPage from './pages/public/LandingPage'
+const Careers = React.lazy(() => import('./pages/public/Careers'))
 import Setup from './pages/auth/Setup'
 import { useCapacitorSetup } from './hooks/useCapacitorSetup'
 
@@ -132,6 +133,7 @@ function AppRoutes() {
         <Route path="/setup" element={<Setup />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/" element={<LandingPage />} />
+        <Route path="/careers" element={<Careers />} />
         <Route path="/family/:token" element={<FamilyView />} />
         <Route path="/clockin/home/:token" element={<ClockIn />} />
         <Route path="/clockin/:token" element={<ClockIn />} />

@@ -460,7 +460,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarProps: SidebarProps = { user, logout, isRole, onNavClick: () => setMobileOpen(false) }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
+    <div className="app-shell flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
       {/* Desktop sidebar — hidden on mobile */}
       <aside className="no-print hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
         <Sidebar {...sidebarProps} />
