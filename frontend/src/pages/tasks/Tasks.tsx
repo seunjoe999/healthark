@@ -9,10 +9,17 @@ import toast from 'react-hot-toast'
 
 const FREQUENCIES = [
   { value: 'once', label: 'Once only' },
-  { value: 'daily', label: 'Every day' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'rota_days', label: 'Rota days' },
   { value: 'weekdays', label: 'Weekdays only' },
   { value: 'weekends', label: 'Weekends only' },
-  { value: 'weekly', label: 'Weekly (Mondays)' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'fortnightly', label: 'Fortnightly' },
+  { value: 'every_3_weeks', label: 'Every 3 weeks' },
+  { value: 'every_28_days', label: 'Every 28 days' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly', label: 'Yearly' },
 ]
 
 const CATEGORIES = [{ value: 'housekeeping', label: 'Housekeeping' }, { value: 'medication', label: 'Medication check' }, { value: 'social_visit', label: 'Social visit' }, { value: 'personal_care', label: 'Personal care' }, { value: 'health_check', label: 'Health check' }, { value: 'general', label: 'General' }, { value: 'maintenance', label: 'Maintenance' }]
@@ -32,6 +39,8 @@ export default function Tasks() {
   const [pageTab, setPageTab] = useState<'tasks' | 'templates'>('tasks')
   const [sus, setSus] = useState<any[]>([])
   const [generatingDaily, setGeneratingDaily] = useState(false)
+  const [completingTask, setCompletingTask] = useState<any>(null)
+  const [completionNote, setCompletionNote] = useState('')
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -67,9 +76,9 @@ export default function Tasks() {
     } catch (e) { console.error(e) }
   }
 
-  const complete = async (taskId: string) => {
+  const complete = async (taskId: string, notes = '') => {
     try {
-      await api.put(`/tasks/${taskId}/complete`, { notes: '' })
+      await api.put(`/tasks/${taskId}/complete`, { notes })
       await load()
       toast.success('Task completed')
     } catch { toast.error('Failed') }
@@ -184,7 +193,7 @@ export default function Tasks() {
             <div className="space-y-3">
               {filtered.map((task: any) => (
                 <div key={task.id} className={`bg-white rounded-2xl border shadow-card p-4 flex items-start gap-4 ${task.status === 'completed' ? 'border-emerald-200 opacity-70' : 'border-slate-100'}`}>
-                  <button onClick={() => task.status !== 'completed' && complete(task.id)}
+                  <button onClick={() => task.status !== 'completed' && setCompletingTask(task)}
                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-purple-500'}`}>
                     {task.status === 'completed' && <Check className="w-3.5 h-3.5 text-white" />}
                   </button>
@@ -200,6 +209,7 @@ export default function Tasks() {
                       <span className="capitalize">{(task.category || '').replace('_', ' ')}</span>
                       {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium flex items-center gap-0.5"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
                     </div>
+                    {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-500 italic mt-0.5 block">Note: {task.completion_notes}</span>}
                   </div>
                   {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                     <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
@@ -261,6 +271,26 @@ export default function Tasks() {
       {editTemplateOpen && (
         <EditTemplateModal template={editTemplateOpen} onClose={() => setEditTemplateOpen(null)}
           onSaved={async () => { setEditTemplateOpen(null); await loadTemplates(); toast.success('Template updated') }} />
+      )}
+
+      {completingTask && (
+        <Modal open={!!completingTask} onClose={() => { setCompletingTask(null); setCompletionNote('') }} title="Complete task">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Mark <strong>{completingTask.title}</strong> as complete?</p>
+            <div>
+              <label className="label">Notes (optional)</label>
+              <textarea className="input" rows={3} value={completionNote} onChange={e => setCompletionNote(e.target.value)} placeholder="Any notes about completion..." autoFocus />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button type="button" variant="outline" onClick={() => { setCompletingTask(null); setCompletionNote('') }}>Cancel</Button>
+              <Button icon={<Check className="w-4 h-4" />} onClick={async () => {
+                await complete(completingTask.id, completionNote)
+                setCompletingTask(null)
+                setCompletionNote('')
+              }}>Complete task</Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

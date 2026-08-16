@@ -22,6 +22,10 @@ export default function Policies() {
   const [attachmentsLoading, setAttachmentsLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [sendSignoffOpen, setSendSignoffOpen] = useState(false)
+  const [allStaff, setAllStaff] = useState<any[]>([])
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([])
+  const [sendingSignoff, setSendingSignoff] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -132,6 +136,16 @@ export default function Policies() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0 items-center">
+                  {p.requires_sign && (
+                    <button
+                      onClick={() => openDetail(p)}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                      title="View who has signed this policy"
+                    >
+                      <Users className="w-3 h-3" />
+                      {p.signed_count ?? 0} signed
+                    </button>
+                  )}
                   <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => openDetail(p)}>View</Button>
                   {p.requires_sign && !p.signed_by_me && (
                     <Button size="sm" icon={<PenLine className="w-3.5 h-3.5" />} onClick={() => openSignModal(p)}>Sign off</Button>
@@ -177,9 +191,19 @@ export default function Policies() {
 
             {viewPolicy.requires_sign && (
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5" /> Sign-offs
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" /> Sign-offs
+                  </p>
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && viewPolicy?.requires_sign && (
+                    <button
+                      onClick={() => { setSendSignoffOpen(true); api.get('/staff').then(r => setAllStaff(r.data.data || [])) }}
+                      className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                    >
+                      <Users className="w-3.5 h-3.5" /> Send sign-off request
+                    </button>
+                  )}
+                </div>
                 {signOffsLoading ? (
                   <p className="text-xs text-slate-400">Loading...</p>
                 ) : signOffs.length === 0 ? (
@@ -254,6 +278,51 @@ export default function Policies() {
       )}
 
       <AddPolicyModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={async () => { setAddOpen(false); await load(); toast.success('Policy added') }} />
+
+      {/* Send sign-off request modal */}
+      {sendSignoffOpen && viewPolicy && (
+        <Modal open={sendSignoffOpen} onClose={() => { setSendSignoffOpen(false); setSelectedStaffIds([]) }} title={`Send Sign-off Request: ${viewPolicy.title}`} size="md">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">Select staff members to send a sign-off request to. They will receive an inbox notification.</p>
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left"><input type="checkbox" onChange={e => setSelectedStaffIds(e.target.checked ? allStaff.map(s => s.id) : [])} checked={selectedStaffIds.length === allStaff.length && allStaff.length > 0} /></th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Name</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {allStaff.map((s: any) => (
+                    <tr key={s.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id])}>
+                      <td className="px-3 py-2"><input type="checkbox" checked={selectedStaffIds.includes(s.id)} readOnly /></td>
+                      <td className="px-3 py-2 font-medium text-slate-900">{s.first_name} {s.last_name}</td>
+                      <td className="px-3 py-2 text-slate-500 text-xs capitalize">{(s.role || '').replace(/_/g, ' ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => { setSendSignoffOpen(false); setSelectedStaffIds([]) }}>Cancel</Button>
+              <Button loading={sendingSignoff} disabled={selectedStaffIds.length === 0}
+                onClick={async () => {
+                  setSendingSignoff(true)
+                  try {
+                    await api.post(`/policies/${viewPolicy.id}/send-signoff-requests`, { staffIds: selectedStaffIds })
+                    toast.success(`Sign-off requests sent to ${selectedStaffIds.length} staff member(s)`)
+                    setSendSignoffOpen(false)
+                    setSelectedStaffIds([])
+                  } catch { toast.error('Failed to send requests') }
+                  finally { setSendingSignoff(false) }
+                }}>
+                Send to {selectedStaffIds.length} staff
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Signature sign-off modal */}
       {signatureModal && (

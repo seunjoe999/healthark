@@ -25,7 +25,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const staffId = fromToken(req, 'staffId');
     const rows = await query(
       `SELECT p.*, s.first_name || ' ' || s.last_name as uploaded_by_name,
-              EXISTS(SELECT 1 FROM policy_sign_offs pso WHERE pso.policy_id = p.id AND pso.staff_id = $1) as signed_by_me
+              EXISTS(SELECT 1 FROM policy_sign_offs pso WHERE pso.policy_id = p.id AND pso.staff_id = $1) as signed_by_me,
+              (SELECT COUNT(*) FROM policy_sign_offs pso WHERE pso.policy_id = p.id) as signed_count
        FROM policies p LEFT JOIN staff s ON s.id = p.uploaded_by
        WHERE p.organisation_id = $2 ORDER BY p.created_at DESC`,
       [staffId, orgId]
@@ -107,6 +108,39 @@ router.get('/:id/attachments', param('id').isUUID(), validateRequest,
   }
 );
 
+
+router.post('/:id/send-signoff-requests',
+  requireRole('group_admin', 'home_manager'),
+  [param('id').isUUID(), body('staffIds').isArray({ min: 1 })],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const senderId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+      const policyId = req.params.id;
+      const { staffIds } = req.body as { staffIds: string[] };
+
+      const policyRows = await query('SELECT title FROM policies WHERE id = $1', [policyId]);
+      if (!policyRows.length) throw new AppError('Policy not found', 404);
+      const policyTitle = policyRows[0].title as string;
+
+      const subject = `Policy Sign-off Required: ${policyTitle}`;
+      const messageBody = `You are required to read and sign off the following policy: ${policyTitle}. Please go to Policies & Procedures to complete your sign-off.`;
+
+      let sent = 0;
+      for (const staffId of staffIds) {
+        await query(
+          `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message)
+           VALUES ($1, $2, $3, $4, $5, $5)`,
+          [senderId, staffId, homeId || null, subject, messageBody]
+        );
+        sent++;
+      }
+
+      res.json({ success: true, sent } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

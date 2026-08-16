@@ -72,7 +72,7 @@ function StatCounter({ target, suffix, label }: { target: number; suffix: string
 /* ── Images ─────────────────────────────────────────────────────────────────── */
 const IMG = {
   logo:      '/cc-logo.jpg',
-  hero:      '/hero-care.jpg',
+  hero:      '/hero-care.jpg', // TODO: replace with actual care home image
   // card photos
   card1:     'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80&auto=format&fit=crop',
   card2:     'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80&auto=format&fit=crop',
@@ -98,7 +98,7 @@ const STAFF_MODULES = ['Rota', 'Clock In', 'Timesheets', 'Training', 'DBS Tracke
 const COMPLIANCE_MODULES = ['CQC Notifications', 'Audit Trail', 'Policies', 'Quality Records', 'AI Audit Reports', 'Maintenance', 'PPE', 'Invoicing', 'Tasks', 'Calendar', 'Noticeboard', 'Reports'];
 
 /* ── Hero word animation ────────────────────────────────────────────────────── */
-const heroWords = ['Care', 'Home', 'Management', 'Your', 'Staff', 'Will'];
+const heroWords = ['The', 'Complete', 'Care', 'Management'];
 const wordVariants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.07, delayChildren: 0.4 } },
@@ -338,7 +338,7 @@ export default function LandingPage() {
       <header ref={heroRef} className="relative flex items-center overflow-hidden" style={{ minHeight: '100svh' }}>
         {/* Parallax photo */}
         <motion.div className="absolute inset-0" style={{ y: heroImgY, scale: 1.08 }}>
-          <img src={IMG.hero} alt="Care worker and resident enjoying time outdoors"
+          <img src={IMG.hero} alt="Care home residents and staff — professional care management environment"
             className="w-full h-full object-cover object-center" />
         </motion.div>
 
@@ -381,7 +381,7 @@ export default function LandingPage() {
               transition={{ duration: 0.7, delay: 0.9, ease: EASE }}>
               <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight"
                 style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#7DD9A8' }}>
-                Love
+                System
               </span>
             </motion.div>
 
@@ -389,7 +389,7 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 1.1 }}
               className="text-sm sm:text-base lg:text-lg leading-relaxed mt-5 mb-8 sm:mb-10 max-w-lg"
               style={{ color: 'rgba(255,255,255,0.70)' }}>
-              Replace paper records and disconnected systems with one complete platform — care notes, medication, staff rotas, CQC compliance and family updates, all in one place.
+              A purpose-built care management system for UK care homes — replacing paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
             </motion.p>
 
             {/* CTAs */}

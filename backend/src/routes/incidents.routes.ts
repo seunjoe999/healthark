@@ -225,6 +225,37 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
        injuries || false, injuryDetails || null, medicalNeeded || false, medicalDetails || null,
        witnesses || null, immediateAction || null, cqcNotified || false, familyNotified || false]
     );
+    // Notify relevant staff about the new incident (non-fatal)
+    try {
+      const suRows = await query<any>('SELECT first_name, last_name FROM service_users WHERE id = $1', [suId]);
+      const residentName = suRows.length ? `${suRows[0].first_name} ${suRows[0].last_name}` : 'a resident';
+
+      const homeRows = await query<any>('SELECT name FROM homes WHERE id = $1', [homeId]);
+      const homeName = homeRows.length ? homeRows[0].name : 'the home';
+
+      const staffToNotify = await query<any>(`
+        SELECT id FROM staff
+        WHERE home_id = $1 AND role IN ('home_manager', 'deputy_manager', 'team_leader')
+        UNION
+        SELECT id FROM staff WHERE role IN ('group_admin', 'admin')
+      `, [homeId]);
+
+      const subject = 'New Incident Report';
+      const body = `A new incident has been reported for ${residentName} at ${homeName}. Please review it in the Incidents section.`;
+
+      for (const staff of staffToNotify) {
+        if (staff.id !== staffId) {
+          await query(
+            `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message)
+             VALUES ($1, $2, $3, $4, $5, $5)`,
+            [staffId, staff.id, homeId, subject, body]
+          );
+        }
+      }
+    } catch (notifyErr) {
+      console.error('[incidents] Failed to send incident notifications:', notifyErr);
+    }
+
     res.status(201).json({ success: true, data: incRow[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
