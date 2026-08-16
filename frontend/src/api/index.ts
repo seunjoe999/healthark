@@ -82,6 +82,8 @@ export const staffApi = {
   update: (id: string, data: Record<string, unknown>) => api.put(`/staff/${id}`, data),
   clockIn: (id: string, data: Record<string, unknown>) => api.post(`/staff/${id}/clock`, data),
   clockHistory: (id: string) => api.get(`/staff/${id}/clock`),
+  setPin: (id: string, pin: string) => api.put(`/staff/${id}/pin`, { pin }),
+  removePin: (id: string) => api.delete(`/staff/${id}/pin`),
 }
 
 export const alertsApi = {

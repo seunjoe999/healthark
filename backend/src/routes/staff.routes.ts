@@ -433,6 +433,31 @@ router.put('/:id/password', requireRole('group_admin', 'home_manager'),
   }
 );
 
+// PUT /api/staff/:id/pin — generate/reset a staff member's quick-login PIN (managers only)
+router.put('/:id/pin', requireRole('group_admin', 'home_manager'),
+  [body('pin').isLength({ min: 4, max: 8 }).matches(/^[0-9]+$/).withMessage('PIN must be 4-8 digits')],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const hash = await authService.hashPassword(req.body.pin);
+      const rows = await query('UPDATE staff SET login_pin_hash=$1 WHERE id=$2 RETURNING id', [hash, req.params.id]);
+      if (!rows.length) throw new AppError('Staff not found', 404);
+      res.json({ success: true, message: 'PIN set' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/staff/:id/pin — remove a staff member's quick-login PIN (managers only)
+router.delete('/:id/pin', requireRole('group_admin', 'home_manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query('UPDATE staff SET login_pin_hash=NULL WHERE id=$1 RETURNING id', [req.params.id]);
+      if (!rows.length) throw new AppError('Staff not found', 404);
+      res.json({ success: true, message: 'PIN removed' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/staff/:id/clock - clock in or out
 // Haversine distance between two lat/lng points in metres
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
