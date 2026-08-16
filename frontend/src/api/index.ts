@@ -34,10 +34,32 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+// Retry transient failures (backend restarting mid-deploy, brief network blip)
+// a couple of times with a short delay, so a passing 502/"failed to fetch"
+// doesn't force the user to manually refresh the page.
+const MAX_RETRIES = 2
+function isTransient(err: any): boolean {
+  if (!err.response) return true // network error / "failed to fetch" / timeout
+  return [502, 503, 504].includes(err.response.status)
+}
+
 // NEVER redirect on 401 - let components handle their own auth errors
 api.interceptors.response.use(
   (res) => res,
-  (err) => Promise.reject(err)
+  async (err) => {
+    const config = err.config
+    if (config && isTransient(err) && config.method !== 'post' && config.method !== 'put' && config.method !== 'patch' && config.method !== 'delete') {
+      config.__retryCount = config.__retryCount || 0
+      if (config.__retryCount < MAX_RETRIES) {
+        config.__retryCount++
+        await sleep(600 * config.__retryCount)
+        return api(config)
+      }
+    }
+    return Promise.reject(err)
+  }
 )
 
 export default api
