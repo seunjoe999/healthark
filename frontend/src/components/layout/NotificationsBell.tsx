@@ -20,7 +20,7 @@ const TYPE_DOT: Record<string, string> = {
   info: 'bg-slate-400',
 }
 
-export default function NotificationsBell() {
+export default function NotificationsBell({ align = 'right' }: { align?: 'left' | 'right' }) {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
@@ -81,7 +81,7 @@ export default function NotificationsBell() {
         <div className="fixed inset-0 z-40 sm:hidden" onClick={() => setOpen(false)} />
       )}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl shadow-2xl z-50 overflow-hidden"
+        <div className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl shadow-2xl z-50 overflow-hidden`}
           style={{ background: '#151515', border: '1px solid rgba(232,177,48,0.25)' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(232,177,48,0.15)' }}>

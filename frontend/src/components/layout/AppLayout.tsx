@@ -218,7 +218,7 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
               <h1 style={{ fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2, color: '#e8b130' }}>Comprehensive<br />Care Service</h1>
             </div>
           </div>
-          <NotificationsBell />
+          <NotificationsBell align="left" />
         </div>
       </div>
 
