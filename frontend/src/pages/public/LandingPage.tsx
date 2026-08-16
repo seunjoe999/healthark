@@ -8,7 +8,7 @@ import {
   UserCheck, CalendarCheck, Sparkles,
   TrendingUp, Target, ChevronRight,
   Pill, ClipboardList, Brain, Building2,
-  Bell, Lock, Zap, LayoutDashboard,
+  Bell, Zap, LayoutDashboard,
   Play, X, Menu, Star, Globe, AlertTriangle,
   MapPin, Quote,
 } from 'lucide-react';
@@ -362,7 +362,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 mb-6 sm:mb-8"
               style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-              <span className="text-white text-[10px] sm:text-xs font-bold tracking-wide">GDPR Secure · Built for UK Care Homes</span>
+              <span className="text-white text-[10px] sm:text-xs font-bold tracking-wide">Built for UK Care Homes</span>
             </motion.div>
 
             {/* Animated headline */}
@@ -414,7 +414,7 @@ export default function LandingPage() {
             {/* Trust row */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 1.45 }}
               className="flex flex-wrap items-center gap-4 sm:gap-6">
-              {[{ icon: Shield, text: 'CQC Ready' }, { icon: Lock, text: 'GDPR Compliant' }, { icon: Users, text: '500+ Residents' }, { icon: CheckCircle, text: 'No Setup Fee' }].map(({ icon: Icon, text }) => (
+              {[{ icon: Shield, text: 'CQC Ready' }, { icon: Users, text: '500+ Residents' }, { icon: CheckCircle, text: 'No Setup Fee' }].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>
                   <Icon size={12} style={{ color: '#7DD9A8' }} />{text}
                 </div>
@@ -820,7 +820,7 @@ export default function LandingPage() {
               © {new Date().getFullYear()} Comprehensive Care. All rights reserved. Registered in England and Wales.
             </p>
             <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2 sm:gap-3">
-              {['CQC Aligned', 'GDPR Compliant', 'NHS-Aligned'].map(b => (
+              {['CQC Aligned', 'NHS-Aligned'].map(b => (
                 <span key={b} className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
                   style={{ background: 'rgba(125,217,168,0.07)', color: '#7DD9A8', border: '1px solid rgba(125,217,168,0.13)' }}>
                   {b}

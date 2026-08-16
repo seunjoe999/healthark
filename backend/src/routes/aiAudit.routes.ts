@@ -98,16 +98,16 @@ router.post('/generate',
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { auditType, customName, periodFrom, periodTo } = req.body;
+      const { auditType, customName, periodFrom, periodTo, reviewFrequency } = req.body;
 
       const from = periodFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const to = periodTo || new Date().toISOString().split('T')[0];
 
       // Create pending audit record
       const auditRows = await query(
-        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status)
-         VALUES ($1,$2,$3,$4,$5,$6,'generating') RETURNING *`,
-        [homeId, auditType, customName || null, from, to, staffId]
+        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, review_frequency)
+         VALUES ($1,$2,$3,$4,$5,$6,'generating',$7) RETURNING *`,
+        [homeId, auditType, customName || null, from, to, staffId, reviewFrequency || 'every_4_weeks']
       );
       const auditId = (auditRows[0] as any).id;
 

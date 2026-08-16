@@ -1790,6 +1790,7 @@ async function ensureColumns() {
     `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type VARCHAR(30)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS apply_time TIME`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS review_frequency VARCHAR(30) DEFAULT 'every_4_weeks'`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
     // ── mar_records — columns added to CREATE TABLE but may be missing from existing DB ─
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE`,
