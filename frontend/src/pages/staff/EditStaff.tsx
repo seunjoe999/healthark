@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { staffApi, homesApi, getToken } from '../../api'
+import { staffApi, homesApi, getToken, authApi } from '../../api'
 import api from '../../api'
+import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Card, SectionHeading, Spinner, Modal } from '../../components/ui'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { ArrowLeft, Save, Trash2, Upload, FileText, FileImage, Eye, Plus } from 'lucide-react'
@@ -136,6 +137,7 @@ function norm(s: any) {
 
 export default function EditStaff() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -145,7 +147,24 @@ export default function EditStaff() {
   const [newPassword, setNewPassword] = useState('')
   const [documents, setDocuments] = useState<any[]>([])
   const [uploadDocOpen, setUploadDocOpen] = useState(false)
+  const [pin, setPin] = useState('')
+  const [savingPin, setSavingPin] = useState(false)
+  const isOwnProfile = !!user?.id && user.id === id
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }))
+
+  const savePin = async () => {
+    if (pin.length < 4 || pin.length > 8 || !/^[0-9]+$/.test(pin)) { toast.error('PIN must be 4-8 digits'); return }
+    setSavingPin(true)
+    try { await authApi.setPin(pin); toast.success('PIN set — you can now sign in with it'); setPin('') }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to set PIN') }
+    finally { setSavingPin(false) }
+  }
+
+  const removePin = async () => {
+    if (!confirm('Remove your quick-login PIN?')) return
+    try { await authApi.removePin(); toast.success('PIN removed') }
+    catch { toast.error('Failed to remove PIN') }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -277,6 +296,18 @@ export default function EditStaff() {
           <SectionHeading title="Reset password" description="Leave blank to keep the current password" />
           <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 8 characters" hint="Only fill this in if you want to reset their password" />
         </Card>
+
+        {isOwnProfile && (
+          <Card>
+            <SectionHeading title="Quick-login PIN" description="Set a short PIN so you can sign in faster instead of typing your password" />
+            <div className="flex items-end gap-3">
+              <Input label="New PIN" type="password" inputMode="numeric" value={pin}
+                onChange={e => setPin(e.target.value.replace(/\D/g, ''))} placeholder="4-8 digits" maxLength={8} />
+              <Button type="button" onClick={savePin} loading={savingPin} disabled={!pin}>Set PIN</Button>
+              <Button type="button" variant="outline" onClick={removePin}>Remove PIN</Button>
+            </div>
+          </Card>
+        )}
 
         <Card>
           <div className="flex items-center justify-between mb-4">

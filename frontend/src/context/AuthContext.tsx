@@ -5,6 +5,7 @@ import { AuthUser } from '../types'
 interface AuthContextType {
   user: AuthUser | null
   login: (email: string, password: string) => Promise<void>
+  loginWithPin: (email: string, pin: string) => Promise<void>
   logout: () => void
   isRole: (...roles: string[]) => boolean
 }
@@ -199,6 +200,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(authUser)
   }
 
+  const loginWithPin = async (email: string, pin: string) => {
+    const res = await authApi.pinLogin(email, pin)
+    const { accessToken, staff } = res.data.data
+    const authUser = parseUser(staff as Record<string, unknown>)
+    saveSession(accessToken, authUser)
+    setUser(authUser)
+  }
+
   const logout = () => {
     try { authApi.logout() } catch {}
     clearSession()
@@ -208,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isRole = (...roles: string[]) => !!user && roles.includes(user.role)
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isRole }}>
+    <AuthContext.Provider value={{ user, login, loginWithPin, logout, isRole }}>
       {children}
     </AuthContext.Provider>
   )

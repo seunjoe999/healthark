@@ -44,6 +44,9 @@ export default api
 
 export const authApi = {
   login: (email: string, password: string) => api.post('/auth/login', { email, password }),
+  pinLogin: (email: string, pin: string) => api.post('/auth/pin-login', { email, pin }),
+  setPin: (pin: string) => api.post('/auth/set-pin', { pin }),
+  removePin: () => api.delete('/auth/pin'),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
   changePassword: (cur: string, next: string) => api.put('/auth/change-password', { currentPassword: cur, newPassword: next }),

@@ -116,6 +116,96 @@ router.post('/login',
   }
 );
 
+// POST /api/auth/pin-login — quick login using email + short PIN (set via /auth/set-pin)
+router.post('/pin-login',
+  [body('email').isEmail(), body('pin').isLength({ min: 4, max: 8 })],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const email = (req.body.email as string).toLowerCase().trim();
+      const { pin } = req.body;
+      const rows = await query<any>(
+        `SELECT id, email, login_pin_hash, role, status, is_active FROM staff WHERE LOWER(email) = $1`,
+        [email]
+      );
+      if (!rows.length) throw new AppError('Invalid email or PIN', 401);
+      const staff = rows[0];
+      if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
+        throw new AppError('Account is inactive. Contact your administrator.', 401);
+      if (!staff.login_pin_hash) throw new AppError('No PIN set for this account. Sign in with your password and set one in Settings.', 401);
+      const valid = await bcrypt.compare(pin, staff.login_pin_hash);
+      if (!valid) throw new AppError('Invalid email or PIN', 401);
+
+      let extraCols: any = {};
+      try {
+        const extra = await query<any>(
+          `SELECT first_name, last_name, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE LOWER(email) = $1`, [email]
+        );
+        if (extra.length) extraCols = extra[0];
+      } catch {}
+
+      const payload = {
+        staffId: staff.id, organisationId: extraCols.organisation_id ?? null,
+        homeId: extraCols.home_id, role: staff.role, email: staff.email,
+      };
+      const accessToken = signAccess(payload);
+      const refreshToken = signRefresh(payload);
+      try { await query('UPDATE staff SET refresh_token=$1, last_login=NOW() WHERE id=$2', [refreshToken, staff.id]); } catch {}
+      try {
+        await query(`INSERT INTO audit_log (staff_id, home_id, action, ip_address) VALUES ($1,$2,'pin_login',$3)`,
+          [staff.id, extraCols.home_id, req.ip]);
+      } catch {}
+
+      let loginRoleFlags: Record<string, boolean> = {};
+      if (extraCols.home_id) {
+        try {
+          const rf = await query<any>('SELECT feature_flags FROM role_access_rights WHERE home_id=$1 AND role=$2', [extraCols.home_id, staff.role]);
+          if (rf.length) loginRoleFlags = rf[0].feature_flags || {};
+        } catch {}
+      }
+
+      res.json({
+        success: true,
+        data: {
+          accessToken, refreshToken,
+          staff: {
+            id: staff.id, email: staff.email,
+            firstName: extraCols.first_name, lastName: extraCols.last_name,
+            role: staff.role, homeId: extraCols.home_id,
+            organisationId: extraCols.organisation_id ?? null,
+            photoUrl: extraCols.photo_url ?? null,
+            featureFlags: { ...loginRoleFlags, ...(extraCols.feature_flags || {}) },
+          },
+        },
+      } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/auth/set-pin — authenticated staff sets/updates their own quick-login PIN
+router.post('/set-pin', authenticate,
+  [body('pin').isLength({ min: 4, max: 8 }).matches(/^[0-9]+$/)],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = (req.staff as any)?.staffId;
+      if (!staffId) throw new AppError('Not authenticated', 401);
+      const hash = await bcrypt.hash(req.body.pin, 10);
+      await query('UPDATE staff SET login_pin_hash = $1 WHERE id = $2', [hash, staffId]);
+      res.json({ success: true, message: 'PIN set' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/auth/pin — remove PIN login for the current user
+router.delete('/pin', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = (req.staff as any)?.staffId;
+    await query('UPDATE staff SET login_pin_hash = NULL WHERE id = $1', [staffId]);
+    res.json({ success: true, message: 'PIN removed' } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // POST /api/auth/register — staff self-registration (creates pending account)
 router.post('/register',
   [
