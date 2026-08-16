@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Modal, Button } from './ui'
 import api from '../api'
-import { CheckCircle2 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { CheckCircle2, Settings } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { REMINDER_FREQUENCY_OPTIONS, getReminderFrequency, setReminderFrequency, markTaskPopupShown } from '../utils/taskReminder'
 
 interface Task {
   id: string
@@ -18,14 +20,18 @@ interface TaskPopupProps {
 }
 
 export default function TaskPopup({ open, onClose }: TaskPopupProps) {
+  const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(false)
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [hasLoaded, setHasLoaded] = useState(false)
+  const [showFreqSettings, setShowFreqSettings] = useState(false)
+  const [freq, setFreq] = useState(() => user?.id ? getReminderFrequency(user.id) : 'every_visit')
 
   useEffect(() => {
     if (open && !hasLoaded) {
       loadTasks()
+      if (user?.id) markTaskPopupShown(user.id)
     }
   }, [open])
 
@@ -61,6 +67,24 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
 
   return (
     <Modal open={open} onClose={onClose} title={`Today's Tasks${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`} size="md">
+      <div className="flex items-center justify-end -mt-2 mb-1">
+        <button type="button" onClick={() => setShowFreqSettings(v => !v)}
+          className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
+          <Settings className="w-3.5 h-3.5" /> Reminder frequency
+        </button>
+      </div>
+      {showFreqSettings && (
+        <div className="mb-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+          <select className="input text-xs" value={freq} onChange={e => {
+            const v = e.target.value as any
+            setFreq(v)
+            if (user?.id) setReminderFrequency(user.id, v)
+            toast.success('Reminder frequency updated')
+          }}>
+            {REMINDER_FREQUENCY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      )}
       <div className="space-y-3 max-h-72 overflow-y-auto">
         {loading ? (
           <p className="text-center text-slate-500 py-8">Loading tasks...</p>

@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui'
 import TaskPopup from '../../components/TaskPopup'
+import { shouldShowTaskPopup } from '../../utils/taskReminder'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
   CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare
@@ -20,10 +21,14 @@ export default function StaffDashboard() {
   const [myProfile, setMyProfile] = useState<any>(null)
   const [residents, setResidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [showTaskPopup, setShowTaskPopup] = useState(true)
+  const [showTaskPopup, setShowTaskPopup] = useState(false)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+
+  useEffect(() => {
+    if (user?.id) setShowTaskPopup(shouldShowTaskPopup(user.id))
+  }, [user?.id])
 
   useEffect(() => {
     if (!user) return

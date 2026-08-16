@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -24,6 +25,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const dueSoon = parseInt(req.query.dueSoon as string) || 0;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    let assignedSuIds: string[] | null = null;
+    if (!isPrivileged) {
+      const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [myStaffId]);
+      assignedSuIds = assignments.map((a: any) => a.su_id);
+      if (assignedSuIds.length === 0) { res.json({ success: true, data: [] } as ApiResponse); return; }
+    }
     let sql = `SELECT r.*, s.first_name || ' ' || s.last_name as created_by_name,
                       su.first_name as su_first_name, su.last_name as su_last_name
                FROM su_reviews r
@@ -31,6 +41,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                LEFT JOIN service_users su ON su.id = r.su_id
                WHERE su.home_id = $1`;
     const params: unknown[] = [homeId];
+    if (assignedSuIds) {
+      sql += ` AND r.su_id = ANY($2)`;
+      params.push(assignedSuIds);
+    }
     if (dueSoon > 0) {
       sql += ` AND r.next_review_date <= NOW() + interval '${dueSoon} days'`;
     }
@@ -44,6 +58,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/su/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.suId);
       const rows = await query(
         `SELECT r.*, s.first_name || ' ' || s.last_name as created_by_name
          FROM su_reviews r LEFT JOIN staff s ON s.id = r.conducted_by
@@ -75,6 +90,18 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
          residentFeedback || null, familyFeedback || null, outcomes || null,
          nd(nextReviewDate), attendees || null, monthlyProgress || null]
       );
+      // If a next review date is set, create a task so staff see it in their daily record task list
+      if (nd(nextReviewDate)) {
+        try {
+          const suRows = await query<any>('SELECT first_name, last_name FROM service_users WHERE id = $1', [suId]);
+          const suName = suRows.length ? `${suRows[0].first_name} ${suRows[0].last_name}` : 'resident';
+          await query(
+            `INSERT INTO tasks (home_id, su_id, created_by, title, category, description, task_date, priority)
+             VALUES ($1,$2,$3,$4,'general',$5,$6,'normal')`,
+            [homeId, suId, staffId, `Review due: ${suName}`, `Follow-up ${reviewType || 'care'} review is due today`, nd(nextReviewDate)]
+          );
+        } catch (taskErr) { /* non-fatal */ }
+      }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

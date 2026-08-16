@@ -363,24 +363,35 @@ export default function Policies() {
 function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({ title: '', version: '1.0', documentUrl: '', effectiveDate: new Date().toISOString().split('T')[0], reviewDate: '', requiresSign: true })
   const [loading, setLoading] = useState(false)
+  const [allStaff, setAllStaff] = useState<any[]>([])
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([])
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (open) api.get('/staff').then(r => setAllStaff(r.data.data || [])).catch(() => {})
+  }, [open])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const payload = { ...form }
+      const payload: any = { ...form }
       if (payload.documentUrl && !/^https?:\/\//i.test(payload.documentUrl)) {
         payload.documentUrl = `https://${payload.documentUrl}`
       }
-      await api.post('/policies', payload); onSaved()
+      const res = await api.post('/policies', payload)
+      const newPolicyId = res.data?.data?.id
+      if (newPolicyId && selectedStaffIds.length > 0) {
+        try { await api.post(`/policies/${newPolicyId}/send-signoff-requests`, { staffIds: selectedStaffIds }) } catch { /* non-fatal */ }
+      }
+      onSaved()
     }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add policy or procedure">
+    <Modal open={open} onClose={onClose} title="Add policy or procedure" size="md">
       <form onSubmit={save} className="space-y-4">
         <Input label="Policy title *" required value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Safeguarding Policy, Health & Safety..." />
         <div className="grid grid-cols-2 gap-3">
@@ -393,6 +404,39 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
           <input type="checkbox" id="req" checked={form.requiresSign} onChange={e => set('requiresSign', e.target.checked)} className="rounded" />
           <label htmlFor="req" className="text-sm text-slate-700">Requires staff sign-off</label>
         </div>
+
+        {form.requiresSign && (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="label mb-0">Who should see this policy? (optional)</label>
+              {allStaff.length > 0 && (
+                <button type="button" className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => setSelectedStaffIds(prev => prev.length === allStaff.length ? [] : allStaff.map((s: any) => s.id))}>
+                  {selectedStaffIds.length === allStaff.length ? 'Clear all' : 'Select all'}
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mb-2">Selected staff will get this policy in their inbox to sign off. Leave empty to notify everyone later from the policy detail view.</p>
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              {allStaff.length === 0 ? (
+                <p className="text-xs text-slate-400 p-3">Loading staff...</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-slate-100">
+                    {allStaff.map((s: any) => (
+                      <tr key={s.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id])}>
+                        <td className="px-3 py-1.5 w-8"><input type="checkbox" checked={selectedStaffIds.includes(s.id)} readOnly /></td>
+                        <td className="px-3 py-1.5 font-medium text-slate-900">{s.first_name} {s.last_name}</td>
+                        <td className="px-3 py-1.5 text-slate-500 text-xs capitalize">{(s.role || '').replace(/_/g, ' ')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add policy</Button>

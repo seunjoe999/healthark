@@ -15,6 +15,7 @@ const REVIEW_TYPES = [
   { value: 'incident_review', label: 'Post-incident review' },
   { value: 'resident_feedback', label: 'Resident feedback' },
   { value: 'family_feedback', label: 'Family feedback' },
+  { value: 'other', label: 'Other (custom)' },
 ]
 
 function parseAttendees(value: any): string {
@@ -288,14 +289,18 @@ function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: 
 }
 
 function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ reviewType: 'monthly_review', reviewDate: new Date().toISOString().split('T')[0], summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', monthlyProgress: '', nextReviewDate: '', attendees: '' })
+  const [form, setForm] = useState({ reviewType: 'monthly_review', customReviewType: '', reviewDate: new Date().toISOString().split('T')[0], summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', monthlyProgress: '', nextReviewDate: '', attendees: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/reviews/su', { suId, ...form }); onSaved() }
+    try {
+      const { customReviewType, ...rest } = form
+      const payload = { suId, ...rest, reviewType: form.reviewType === 'other' ? (customReviewType.trim() || 'other') : form.reviewType }
+      await api.post('/reviews/su', payload); onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -307,6 +312,9 @@ function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClo
           <Select label="Review type *" required value={form.reviewType} onChange={e => set('reviewType', e.target.value)} options={REVIEW_TYPES} />
           <Input label="Review date *" type="date" required value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         </div>
+        {form.reviewType === 'other' && (
+          <Input label="Custom review type name *" required value={form.customReviewType} onChange={e => set('customReviewType', e.target.value)} placeholder="e.g. Annual best interests review" />
+        )}
         <Input label="Attendees" value={form.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." />
         <SpeechTextarea required label="Summary *" rows={4} value={form.summary} onChange={v => set('summary', v)} placeholder="Summary of the review, key discussion points..." />
         <SpeechTextarea label="Resident's feedback / views" rows={3} value={form.residentFeedback} onChange={v => set('residentFeedback', v)} placeholder="What did the resident say about their care..." />
