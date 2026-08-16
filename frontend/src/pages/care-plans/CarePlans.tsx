@@ -1062,28 +1062,104 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
   const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const isMed = plan.plan_type === 'medication_support'
   const isTemplatedPlan = TEMPLATED_TYPES.has(plan.plan_type)
-  const suName = su ? `${su.first_name || ''} ${su.last_name || ''}`.trim() : plan.su_name || ''
-  const suAge = su?.date_of_birth ? Math.floor((Date.now() - new Date(su.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
-  const photoUrl = su?.photo_url ? (su.photo_url.startsWith('http') ? su.photo_url : su.photo_url) : null
+  const [fullSu, setFullSu] = useState<any>(su || null)
+  const [contacts, setContacts] = useState<any[]>([])
+
+  useEffect(() => {
+    if (su?.id) {
+      fetchSuFull(su.id).then(full => { if (full) setFullSu(full) })
+      api.get(`/service-users/${su.id}/contacts`).then(res => setContacts(res.data.data || [])).catch(() => {})
+    }
+  }, [su?.id])
+
+  const suName = fullSu ? `${fullSu.first_name || ''} ${fullSu.last_name || ''}`.trim() : plan.su_name || ''
+  const suAge = fullSu?.date_of_birth ? Math.floor((Date.now() - new Date(fullSu.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
+  const photoUrl = fullSu?.photo_url || null
+
+  const personalFields = fullSu ? [
+    { label: 'Address', value: [fullSu.address1, fullSu.address2, fullSu.postcode].filter(Boolean).join(', ') },
+    { label: 'Preferred Name', value: fullSu.preferred_name },
+    { label: 'Date of Birth', value: fullSu.date_of_birth ? `${format(new Date(fullSu.date_of_birth), 'd MMM yyyy')}${suAge !== null ? ` (${suAge} yrs)` : ''}` : null },
+    { label: 'Gender', value: fullSu.gender },
+    { label: 'NHS Number', value: fullSu.nhs_number },
+    { label: 'Admission Date', value: fullSu.admission_date ? format(new Date(fullSu.admission_date), 'd MMM yyyy') : null },
+    { label: 'Food Allergies', value: fullSu.food_allergies || 'None' },
+    { label: 'Medicine Allergies', value: fullSu.med_allergies || 'None known' },
+    { label: 'Status', value: fullSu.status },
+  ].filter(f => f.value) : []
 
   return (
     <Modal open={true} onClose={onClose} title={label} size="lg">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-        {/* Hospital-style patient banner */}
+        {/* Document-style header — matches the printed care plan letterhead */}
         {suName && (
-          <div className="flex items-center gap-4 p-4 rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, #1a5c3a, #0f3d26)' }}>
-            {photoUrl ? (
-              <img src={photoUrl} alt={suName} className="w-16 h-16 rounded-full object-cover border-2 border-white/40 flex-shrink-0" />
-            ) : (
-              <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold bg-white/15 border-2 border-white/40 flex-shrink-0">
-                {suName[0]?.toUpperCase() || '?'}
+          <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+            <div className="px-5 py-3 text-white font-bold text-base" style={{ background: 'linear-gradient(90deg, #14b8a6, #0d9488)' }}>
+              {suName}'s Care Plan
+            </div>
+            <div className="flex flex-wrap items-start justify-between gap-4 p-4 bg-white border-b border-slate-100">
+              <div>
+                <p className="font-bold text-slate-800 text-sm">Comprehensive Care Ltd</p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-0.5">Ivy Business Centre, Office 3-13 Crown Street,<br />Failsworth, Manchester, M35 9BG</p>
+              </div>
+              <div className="text-xs text-slate-500 space-y-1 text-right">
+                {plan.staff_signed_by && <p>Author: <span className="font-semibold text-slate-800">{plan.staff_signed_by}</span></p>}
+                {plan.last_review_date && <p>Latest Review Date: <span className="font-semibold text-slate-800">{format(new Date(plan.last_review_date), 'd MMM yyyy')}</span></p>}
+                {plan.next_review_date && <p>Next Review Date: <span className="font-semibold text-slate-800">{format(new Date(plan.next_review_date), 'd MMM yyyy')}</span></p>}
+              </div>
+            </div>
+
+            <div className="p-4 bg-white">
+              <div className="flex items-start gap-4">
+                {photoUrl ? (
+                  <img src={photoUrl} alt={suName} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold bg-teal-50 text-teal-700 flex-shrink-0">
+                    {suName[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold uppercase tracking-wide text-teal-700 mb-1.5">Service User: {suName}</p>
+                  {personalFields.length > 0 && (
+                    <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1">
+                      {personalFields.map(f => (
+                        <p key={f.label} className="text-xs text-slate-500">
+                          {f.label}: <span className="text-slate-800 font-medium">{f.value}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {contacts.length > 0 && (
+              <div className="border-t border-slate-100">
+                <p className="px-4 pt-3 text-xs font-bold uppercase tracking-wide text-teal-700">My Important Contacts</p>
+                <div className="overflow-x-auto p-4 pt-2">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-slate-400">
+                        <th className="pr-3 pb-1.5 font-semibold">Name</th>
+                        <th className="pr-3 pb-1.5 font-semibold">Role</th>
+                        <th className="pr-3 pb-1.5 font-semibold">Phone</th>
+                        <th className="pb-1.5 font-semibold">Emergency Contact?</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {contacts.map((c: any) => (
+                        <tr key={c.id}>
+                          <td className="pr-3 py-1.5 font-medium text-slate-800">{c.full_name}</td>
+                          <td className="pr-3 py-1.5 text-slate-600">{c.relationship || '—'}</td>
+                          <td className="pr-3 py-1.5 text-slate-600">{c.phone_primary || c.phone_secondary || c.phone_home || '—'}</td>
+                          <td className="py-1.5 text-slate-600">{c.is_primary ? 'Yes' : 'No'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-widest text-emerald-200 font-semibold">Support Plan</p>
-              <h2 className="text-xl font-bold truncate">{suName}{suAge !== null ? ` · ${suAge} yrs` : ''}</h2>
-              <p className="text-sm text-emerald-100 truncate">{label}</p>
-            </div>
           </div>
         )}
 
