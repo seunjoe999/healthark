@@ -24,16 +24,21 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
-    const rows = await query(
-      `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
+    const role = fromToken(req, 'role');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    let sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
               s.first_name || ' ' || s.last_name as completed_by_name
        FROM tasks t
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
-       WHERE t.home_id = $1 AND t.task_date = $2
-       ORDER BY t.due_time, t.priority DESC`,
-      [homeId, date]
-    );
+       WHERE t.home_id = $1 AND t.task_date = $2`;
+    const params: any[] = [homeId, date];
+    if (!isPrivileged) {
+      sql += ` AND (t.assigned_role IS NULL OR t.assigned_role = $3)`;
+      params.push(role);
+    }
+    sql += ' ORDER BY t.due_time, t.priority DESC';
+    const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });

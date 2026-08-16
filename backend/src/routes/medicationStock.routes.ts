@@ -5,6 +5,9 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { getAssignedSuIds } from '../utils/residentAccess';
+
+const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
 
 const router = Router();
 
@@ -79,12 +82,26 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const suId = req.query.suId as string | undefined;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
     const params: any[] = [homeId];
     let suFilter = '';
     if (suId) {
       params.push(suId);
       suFilter = `AND ms.su_id = $${params.length}`;
+    }
+
+    let assignedFilter = '';
+    if (!isPrivileged) {
+      const assignedSuIds = await getAssignedSuIds(myStaffId);
+      if (assignedSuIds.length === 0) {
+        res.json({ success: true, data: [] } as ApiResponse);
+        return;
+      }
+      params.push(assignedSuIds);
+      assignedFilter = `AND ms.su_id = ANY($${params.length})`;
     }
 
     const rows = await query(
@@ -97,7 +114,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        FROM medication_stock ms
        LEFT JOIN service_users su ON su.id = ms.su_id
        LEFT JOIN staff s ON s.id = ms.last_updated_by
-       WHERE ms.home_id = $1 ${suFilter}
+       WHERE ms.home_id = $1 ${suFilter} ${assignedFilter}
        ORDER BY ms.medication_name`,
       params
     );

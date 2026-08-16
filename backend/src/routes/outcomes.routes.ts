@@ -6,7 +6,9 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-import { assertResidentAccess } from '../utils/residentAccess';
+import { assertResidentAccess, getAssignedSuIds } from '../utils/residentAccess';
+
+const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
 
 const router = Router();
 router.use(authenticate);
@@ -22,6 +24,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const suId = req.query.suId as string;
     if (suId) await assertResidentAccess(req, suId);
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
     let sql = `
       SELECT o.*,
              su.first_name || ' ' || su.last_name AS su_name,
@@ -35,6 +40,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       WHERE o.home_id = $1`;
     const params: any[] = [homeId];
     if (suId) { sql += ` AND o.su_id = $${params.length + 1}::uuid`; params.push(suId); }
+    if (!isPrivileged) {
+      const assignedSuIds = await getAssignedSuIds(myStaffId);
+      if (assignedSuIds.length === 0) {
+        res.json({ success: true, data: [] } as ApiResponse);
+        return;
+      }
+      params.push(assignedSuIds);
+      sql += ` AND o.su_id = ANY($${params.length})`;
+    }
     sql += ' ORDER BY o.target_date ASC NULLS LAST, o.created_at DESC';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

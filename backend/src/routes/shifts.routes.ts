@@ -73,6 +73,30 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = req.query.date as string;
     const weekStart = req.query.weekStart as string;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+
+    const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader'];
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
+
+    // Non-privileged staff (care_staff, senior_carer) only see shifts on days they
+    // themselves are scheduled — i.e. who else is working alongside them — not the
+    // entire home's rota.
+    let restrictDates: string[] | null = null;
+    if (!isPrivileged) {
+      let myDatesSql = `SELECT DISTINCT shift_date FROM staff_shifts WHERE home_id = $1 AND staff_id = $2`;
+      const myDatesParams: unknown[] = [homeId, myStaffId];
+      if (date) { myDatesSql += ` AND shift_date = $3`; myDatesParams.push(date); }
+      else if (weekStart) {
+        myDatesSql += ` AND shift_date >= $3 AND shift_date < $3::date + interval '7 days'`;
+        myDatesParams.push(weekStart);
+      }
+      const myShifts = await query<any>(myDatesSql, myDatesParams);
+      restrictDates = myShifts.map((r: any) => r.shift_date);
+      if (restrictDates.length === 0) {
+        return res.json({ success: true, data: [] } as ApiResponse);
+      }
+    }
 
     let sql = `SELECT sh.*,
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
@@ -87,6 +111,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     else if (weekStart) {
       sql += ` AND sh.shift_date >= $${params.length+1} AND sh.shift_date < $${params.length+1}::date + interval '7 days'`;
       params.push(weekStart);
+    }
+    if (restrictDates) {
+      sql += ` AND sh.shift_date = ANY($${params.length+1})`;
+      params.push(restrictDates);
     }
     sql += ' ORDER BY sh.shift_date, sh.start_time';
 

@@ -20,7 +20,10 @@ function fromToken(req: Request, field: string): string {
 router.get('/dbs', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const staffId = req.query.staffId as string;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     let sql = `SELECT d.*, s.first_name || ' ' || s.last_name AS staff_name, s.photo_url
                FROM staff_dbs d JOIN staff s ON s.id = d.staff_id
                WHERE d.home_id = $1`;
@@ -97,7 +100,10 @@ router.patch('/dbs/:id', param('id').isUUID(), validateRequest,
 router.get('/references', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const staffId = req.query.staffId as string;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     let sql = `SELECT r.*, s.first_name || ' ' || s.last_name AS staff_name
                FROM staff_references r JOIN staff s ON s.id = r.staff_id
                WHERE r.home_id = $1`;
@@ -129,7 +135,10 @@ router.post('/references',
 router.get('/right-to-work', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const staffId = req.query.staffId as string;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     let sql = `SELECT r.*, s.first_name || ' ' || s.last_name AS staff_name
                FROM staff_right_to_work r JOIN staff s ON s.id = r.staff_id
                WHERE r.home_id = $1`;
@@ -168,6 +177,12 @@ router.get('/summary/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const [dbs, references, rtw] = await Promise.all([
         query('SELECT * FROM staff_dbs WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC LIMIT 1', [req.params.staffId, homeId]).catch(() => []),
         query('SELECT * FROM staff_references WHERE staff_id = $1 AND home_id = $2 ORDER BY created_at DESC', [req.params.staffId, homeId]).catch(() => []),
@@ -182,6 +197,11 @@ router.get('/summary/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{
 router.get('/compliance-overview', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const role = fromToken(req, 'role');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    if (!isPrivileged) {
+      throw new AppError('Forbidden', 403);
+    }
     const rows = await query(`
       SELECT
         s.id, s.first_name, s.last_name, s.photo_url, s.role,
