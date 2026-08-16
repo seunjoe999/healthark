@@ -12,6 +12,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+// Forces the service worker to check for a new deploy right at login, so an
+// installed PWA never keeps serving stale files across a login session — the
+// registration/skip-waiting/reload wiring already lives in main.tsx and picks
+// this up automatically once the update check finds something newer.
+function checkForAppUpdate() {
+  if (!('serviceWorker' in navigator)) return
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (!reg) return
+    reg.update().catch(() => {})
+    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+  }).catch(() => {})
+}
+
 function parseUser(staff: Record<string, unknown>): AuthUser {
   return {
     id: staff.id as string,
@@ -198,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authUser = parseUser(staff as Record<string, unknown>)
     saveSession(accessToken, authUser)
     setUser(authUser)
+    checkForAppUpdate()
   }
 
   const loginWithPin = async (email: string, pin: string) => {
@@ -206,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authUser = parseUser(staff as Record<string, unknown>)
     saveSession(accessToken, authUser)
     setUser(authUser)
+    checkForAppUpdate()
   }
 
   const logout = () => {
