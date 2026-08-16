@@ -49,7 +49,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, email, role, status,
                   home_id, photo_url, start_date, is_active, last_login, created_at,
-                  feature_flags
+                  feature_flags, (login_pin_hash IS NOT NULL) as has_pin
            FROM staff WHERE organisation_id = $1 ${where}
            ORDER BY last_name, first_name`,
           params

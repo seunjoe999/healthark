@@ -395,6 +395,7 @@ interface AdminUser {
   last_login: string | null
   created_at: string
   feature_flags?: Record<string, boolean>
+  has_pin?: boolean
 }
 
 const ALL_FEATURES = [
@@ -459,6 +460,9 @@ export default function AdminAccounts() {
   const [newPassword, setNewPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pinOpen, setPinOpen] = useState<AdminUser | null>(null)
+  const [newPin, setNewPin] = useState('')
+  const [savingPin, setSavingPin] = useState(false)
   const [created, setCreated] = useState<{ email: string; temporaryPassword: string } | null>(null)
   const [accessModal, setAccessModal] = useState<AdminUser | null>(null)
 
@@ -518,6 +522,29 @@ export default function AdminAccounts() {
     finally { setSaving(false) }
   }
 
+  const savePin = async () => {
+    if (!newPin || newPin.length < 4 || newPin.length > 8 || !/^[0-9]+$/.test(newPin)) { toast.error('PIN must be 4-8 digits'); return }
+    if (!pinOpen) return
+    setSavingPin(true)
+    try {
+      await api.put(`/staff/${pinOpen.id}/pin`, { pin: newPin })
+      toast.success('PIN set successfully')
+      setPinOpen(null)
+      setNewPin('')
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to set PIN') }
+    finally { setSavingPin(false) }
+  }
+
+  const removePin = async (admin: AdminUser) => {
+    if (!window.confirm(`Remove ${admin.first_name} ${admin.last_name}'s PIN?`)) return
+    try {
+      await api.delete(`/staff/${admin.id}/pin`)
+      toast.success('PIN removed')
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to remove PIN') }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       <RecruitmentSection homes={homes} />
@@ -569,6 +596,16 @@ export default function AdminAccounts() {
                   onClick={() => { setResetOpen(admin); setNewPassword(''); setShowPwd(false) }}>
                   Reset pwd
                 </Button>
+                <Button size="sm" variant="outline" icon={<RefreshCw className="w-3.5 h-3.5" />}
+                  onClick={() => { setPinOpen(admin); setNewPin('') }}>
+                  {admin.has_pin ? 'Reset PIN' : 'Create PIN'}
+                </Button>
+                {admin.has_pin && (
+                  <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
+                    onClick={() => removePin(admin)}>
+                    Remove PIN
+                  </Button>
+                )}
                 {admin.status === 'active' && (
                   <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
                     onClick={() => deactivate(admin)}>
@@ -615,7 +652,7 @@ export default function AdminAccounts() {
 
       {/* Reset password modal */}
       {resetOpen && (
-        <Modal open={true} onClose={() => setResetOpen(null)} title={`Reset password — ${resetOpen.first_name} ${resetOpen.last_name}`}>
+        <Modal open={true} onClose={() => setResetOpen(null)} title={`Reset password: ${resetOpen.first_name} ${resetOpen.last_name}`}>
           <div className="space-y-4">
             <div className="relative">
               <Input label="New password (min. 8 chars)" type={showPwd ? 'text' : 'password'}
@@ -628,6 +665,21 @@ export default function AdminAccounts() {
             <div className="flex gap-3 justify-end pt-2">
               <Button variant="outline" onClick={() => setResetOpen(null)}>Cancel</Button>
               <Button loading={saving} onClick={resetPassword}>Reset password</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Reset / create PIN modal */}
+      {pinOpen && (
+        <Modal open={true} onClose={() => setPinOpen(null)} title={`${pinOpen.has_pin ? 'Reset' : 'Create'} PIN: ${pinOpen.first_name} ${pinOpen.last_name}`}>
+          <div className="space-y-4">
+            <Input label="New PIN (4-8 digits)" type="password" inputMode="numeric"
+              value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} maxLength={8} />
+            <p className="text-xs text-slate-400">They can use this PIN to sign in quickly from the login page instead of typing their password.</p>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={() => setPinOpen(null)}>Cancel</Button>
+              <Button loading={savingPin} onClick={savePin}>{pinOpen.has_pin ? 'Reset PIN' : 'Create PIN'}</Button>
             </div>
           </div>
         </Modal>

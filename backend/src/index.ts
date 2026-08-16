@@ -692,6 +692,15 @@ async function createCoreTables() {
     )` },
     { label: 'idx audits_home', sql: `CREATE INDEX IF NOT EXISTS idx_audits_home ON audit_reports(home_id)` },
 
+    { label: 'table audit_signoffs', sql: `CREATE TABLE IF NOT EXISTS audit_signoffs (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      audit_id    UUID NOT NULL REFERENCES audit_reports(id) ON DELETE CASCADE,
+      staff_id    UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      signed_at   TIMESTAMPTZ,
+      UNIQUE(audit_id, staff_id)
+    )` },
+
     { label: 'table ppe_inventory', sql: `CREATE TABLE IF NOT EXISTS ppe_inventory (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       home_id      UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
@@ -1791,6 +1800,12 @@ async function ensureColumns() {
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type VARCHAR(30)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS apply_time TIME`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS review_frequency VARCHAR(30) DEFAULT 'every_4_weeks'`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS auditor_name VARCHAR(255)`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checklist_answers JSONB`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS action_plan_outcome TEXT`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS action_plan_completed_date DATE`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS signature_url TEXT`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS conducted_by_name VARCHAR(255)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
     // ── mar_records — columns added to CREATE TABLE but may be missing from existing DB ─
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE`,

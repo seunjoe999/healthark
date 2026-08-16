@@ -9,9 +9,10 @@ import {
   ClipboardList, Shield, Pill, Users, FileText,
   Flame, Zap, Heart, Home, RefreshCw, Trash2, TrendingUp,
   Calendar, User, Award, ChevronDown, ChevronUp, ChevronRight, Building2,
-  ListChecks, Circle, Clock, CheckSquare, Check, Paperclip, Upload, X, Download
+  ListChecks, Circle, Clock, CheckSquare, Check, Paperclip, Upload, X, Download, PenLine
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import SignaturePad from '../../components/SignaturePad'
 
 const AUDIT_TYPES = [
   { value: 'care_plan', label: 'Care Plan Audit', icon: <FileText className="w-4 h-4" />, color: 'bg-purple-100 text-purple-700', accent: '#9333ea' },
@@ -99,6 +100,12 @@ const REVIEW_FREQUENCIES = [
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'every_6_months', label: 'Every 6 months' },
   { value: 'yearly', label: 'Yearly' },
+]
+
+const CHECKLIST_QUESTIONS = [
+  'Are all high and low surfaces in good condition, free from dust, e.g. curtain tracks, shelving, skirting boards, windowsills, and window openers?',
+  'Are walls and ceilings in good condition, free from dust, dirt and cobwebs?',
+  'Are tiles and grouting in good condition, clean and free from mould, e.g. no holes or cracks?',
 ]
 
 function riskLevelFromScore(score: number | null): { label: string; bg: string } | null {
@@ -656,6 +663,9 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
         </div>
       )}
 
+      {/* Manual checklist, action plan outcome, signature & sign-offs */}
+      {!isGenerating && <AuditChecklist audit={audit} />}
+
       {/* Attachments */}
       {!isGenerating && <AuditAttachments auditId={audit.id} initialAttachments={audit.attachments || []} />}
 
@@ -676,6 +686,205 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
             </div>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+function AuditChecklist({ audit }: { audit: any }) {
+  const { isRole } = useAuth()
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+
+  const [auditorName, setAuditorName] = useState(audit.auditor_name || '')
+  const [answers, setAnswers] = useState<Record<number, 'yes' | 'no'>>(() => audit.checklist_answers || {})
+  const [outcome, setOutcome] = useState(audit.action_plan_outcome || '')
+  const [completedDate, setCompletedDate] = useState(audit.action_plan_completed_date ? audit.action_plan_completed_date.split('T')[0] : '')
+  const [signature, setSignature] = useState<string | null>(audit.signature_url || null)
+  const [saving, setSaving] = useState(false)
+
+  const [signOffs, setSignOffs] = useState<any[]>([])
+  const [signOffsLoading, setSignOffsLoading] = useState(true)
+  const [sendOpen, setSendOpen] = useState(false)
+  const [allStaff, setAllStaff] = useState<any[]>([])
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([])
+  const [sending, setSending] = useState(false)
+
+  const loadSignOffs = async () => {
+    setSignOffsLoading(true)
+    try {
+      const res = await api.get(`/audits/${audit.id}/signoffs`)
+      setSignOffs(res.data.data || [])
+    } catch { /* non-fatal */ }
+    finally { setSignOffsLoading(false) }
+  }
+
+  useEffect(() => { if (audit.id) loadSignOffs() }, [audit.id])
+
+  const answeredCount = Object.keys(answers).length
+  const yesCount = Object.values(answers).filter(v => v === 'yes').length
+  const totalScore = answeredCount > 0 ? Math.round((yesCount / answeredCount) * 100) : null
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await api.patch(`/audits/${audit.id}/checklist`, {
+        auditorName: auditorName || null,
+        checklistAnswers: answers,
+        actionPlanOutcome: outcome || null,
+        actionPlanCompletedDate: completedDate || null,
+        signatureUrl: signature || null,
+      })
+      toast.success('Checklist saved')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save checklist') }
+    finally { setSaving(false) }
+  }
+
+  const mySign = async () => {
+    try {
+      await api.post(`/audits/${audit.id}/sign`)
+      toast.success('Signed off')
+      loadSignOffs()
+    } catch { toast.error('Failed to sign off') }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-5 overflow-hidden">
+      <div className="flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+        <PenLine className="w-4 h-4 text-teal-600" />
+        <h2 className="font-semibold text-slate-800 text-sm uppercase tracking-wide">Checklist & Sign-off</h2>
+      </div>
+
+      <div className="p-6 space-y-5">
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Auditors Name</label>
+          <input className="input text-sm w-full" value={auditorName} onChange={e => setAuditorName(e.target.value)}
+            disabled={!canManage} placeholder="Enter auditor's name" />
+        </div>
+
+        <div className="space-y-3">
+          {CHECKLIST_QUESTIONS.map((q, i) => (
+            <div key={i} className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <p className="text-sm text-slate-700 flex-1">{q}</p>
+              <select className="input text-sm py-1.5 w-24 flex-shrink-0" value={answers[i] || ''}
+                disabled={!canManage}
+                onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value as 'yes' | 'no' }))}>
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+          ))}
+        </div>
+
+        {totalScore !== null && (
+          <div className="flex items-center justify-between p-3 rounded-xl bg-teal-50 border border-teal-100">
+            <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Total Score</span>
+            <span className="text-lg font-bold text-teal-700 font-display">{totalScore}%</span>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Outcome of Action Plan</label>
+          <textarea className="input text-sm w-full" rows={3} value={outcome} onChange={e => setOutcome(e.target.value)}
+            disabled={!canManage} placeholder="Describe the outcome of the action plan..." />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Date Action Plan Completed</label>
+          <input type="date" className="input text-sm" value={completedDate} onChange={e => setCompletedDate(e.target.value)} disabled={!canManage} />
+        </div>
+
+        <SignaturePad label="Manager Signature" savedSignature={signature} disabled={!canManage}
+          onSave={dataUrl => setSignature(dataUrl)} />
+
+        {canManage && (
+          <div className="flex justify-end">
+            <Button size="sm" loading={saving} onClick={save}>Save checklist</Button>
+          </div>
+        )}
+
+        <div className="border-t border-slate-100 pt-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" /> Signatures
+            </p>
+            {canManage && (
+              <button onClick={() => { setSendOpen(true); api.get('/staff').then(r => setAllStaff(r.data.data || [])) }}
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">
+                <Users className="w-3.5 h-3.5" /> Send Signoffs?
+              </button>
+            )}
+          </div>
+          {audit.conducted_by_name && (
+            <p className="text-xs text-slate-400 mb-2">Conducted By: <span className="text-slate-600 font-semibold">{audit.conducted_by_name}</span></p>
+          )}
+          {signOffsLoading ? (
+            <p className="text-xs text-slate-400">Loading...</p>
+          ) : signOffs.length === 0 ? (
+            <p className="text-xs text-slate-400">No sign-off requests sent yet</p>
+          ) : (
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {signOffs.map((so: any) => (
+                <div key={so.id} className="flex items-center gap-2 text-xs">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${so.signed_at ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <span className={so.signed_at ? 'text-slate-700' : 'text-slate-500'}>{so.staff_name}</span>
+                  {so.signed_at && <span className="text-slate-400 ml-auto">{format(new Date(so.signed_at), 'd MMM yyyy')}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-[10px] text-slate-400 mt-2">
+            <span className="text-emerald-600">●</span> Green entries represent signoffs completed. <span className="text-rose-500">●</span> Red entries represent signoffs pending.
+          </p>
+          <div className="mt-3">
+            <Button size="sm" variant="outline" icon={<Check className="w-3.5 h-3.5" />} onClick={mySign}>Sign off this audit</Button>
+          </div>
+        </div>
+      </div>
+
+      {sendOpen && (
+        <Modal open={sendOpen} onClose={() => { setSendOpen(false); setSelectedStaffIds([]) }} title="Send Sign-off Request" size="md">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">Select staff members to send a sign-off request to. They will receive an inbox notification.</p>
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left"><input type="checkbox" onChange={e => setSelectedStaffIds(e.target.checked ? allStaff.map(s => s.id) : [])} checked={selectedStaffIds.length === allStaff.length && allStaff.length > 0} /></th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Name</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {allStaff.map((s: any) => (
+                    <tr key={s.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id])}>
+                      <td className="px-3 py-2"><input type="checkbox" checked={selectedStaffIds.includes(s.id)} readOnly /></td>
+                      <td className="px-3 py-2 font-medium text-slate-900">{s.first_name} {s.last_name}</td>
+                      <td className="px-3 py-2 text-slate-500 text-xs capitalize">{(s.role || '').replace(/_/g, ' ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => { setSendOpen(false); setSelectedStaffIds([]) }}>Cancel</Button>
+              <Button loading={sending} disabled={selectedStaffIds.length === 0}
+                onClick={async () => {
+                  setSending(true)
+                  try {
+                    await api.post(`/audits/${audit.id}/signoffs`, { staffIds: selectedStaffIds })
+                    toast.success(`Sign-off requests sent to ${selectedStaffIds.length} staff member(s)`)
+                    setSendOpen(false)
+                    setSelectedStaffIds([])
+                    loadSignOffs()
+                  } catch { toast.error('Failed to send requests') }
+                  finally { setSending(false) }
+                }}>
+                Send request{selectedStaffIds.length > 0 ? ` (${selectedStaffIds.length})` : ''}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

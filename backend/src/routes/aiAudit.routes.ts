@@ -130,6 +130,116 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// PATCH /api/audits/:id/checklist — save manual checklist fields (auditor name, Yes/No
+// answers, outcome of action plan, date completed, drawn signature). Recomputes the
+// audit's score from the Yes/No answers so it shows consistently with AI-generated audits.
+router.patch('/:id/checklist', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const { auditorName, checklistAnswers, actionPlanOutcome, actionPlanCompletedDate, signatureUrl } = req.body;
+
+      let totalChecks: number | undefined;
+      let checksPassed: number | undefined;
+      let checksFailed: number | undefined;
+      if (checklistAnswers && typeof checklistAnswers === 'object') {
+        const values = Object.values(checklistAnswers) as string[];
+        totalChecks = values.length;
+        checksPassed = values.filter(v => v === 'yes').length;
+        checksFailed = totalChecks - checksPassed;
+      }
+
+      const staffRows = await query<any>('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
+      const conductedByName = staffRows.length ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : auditorName;
+
+      const rows = await query(
+        `UPDATE audit_reports SET
+           auditor_name = COALESCE($1, auditor_name),
+           checklist_answers = COALESCE($2::jsonb, checklist_answers),
+           action_plan_outcome = COALESCE($3, action_plan_outcome),
+           action_plan_completed_date = COALESCE($4, action_plan_completed_date),
+           signature_url = COALESCE($5, signature_url),
+           conducted_by_name = COALESCE($6, conducted_by_name),
+           total_checks = COALESCE($7, total_checks),
+           checks_passed = COALESCE($8, checks_passed),
+           checks_failed = COALESCE($9, checks_failed),
+           status = 'completed'
+         WHERE id = $10 RETURNING *`,
+        [auditorName || null, checklistAnswers ? JSON.stringify(checklistAnswers) : null,
+         actionPlanOutcome || null, actionPlanCompletedDate || null, signatureUrl || null,
+         conductedByName || null, totalChecks ?? null, checksPassed ?? null, checksFailed ?? null,
+         req.params.id]
+      );
+      if (!rows.length) throw new AppError('Audit not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/audits/:id/signoffs — list signoff status for an audit
+router.get('/:id/signoffs', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT aso.*, s.first_name || ' ' || s.last_name as staff_name, s.role
+         FROM audit_signoffs aso JOIN staff s ON s.id = aso.staff_id
+         WHERE aso.audit_id = $1 ORDER BY s.last_name, s.first_name`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/audits/:id/signoffs — request signoff from selected staff (manager+)
+router.post('/:id/signoffs', requireRole('group_admin', 'home_manager'),
+  param('id').isUUID(), body('staffIds').isArray({ min: 1 }), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const senderId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+      const { staffIds } = req.body;
+
+      const auditRows = await query<any>('SELECT custom_name, audit_type FROM audit_reports WHERE id = $1', [req.params.id]);
+      if (!auditRows.length) throw new AppError('Audit not found', 404);
+      const auditName = auditRows[0].custom_name || auditRows[0].audit_type?.replace(/_/g, ' ') || 'audit';
+
+      let sent = 0;
+      for (const staffId of staffIds) {
+        try {
+          await query(
+            `INSERT INTO audit_signoffs (audit_id, staff_id) VALUES ($1,$2)
+             ON CONFLICT (audit_id, staff_id) DO NOTHING`,
+            [req.params.id, staffId]
+          );
+          await query(
+            `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message) VALUES ($1,$2,$3,$4,$5,$5)`,
+            [senderId, staffId, homeId, 'Audit Sign-off Required',
+             `You are required to review and sign off the following audit: ${auditName}. Please go to Audits to complete your sign-off.`]
+          );
+          sent++;
+        } catch { /* skip individual failures, continue with rest */ }
+      }
+      res.json({ success: true, data: { sent } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/audits/:id/sign — current staff member signs off this audit
+router.post('/:id/sign', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const rows = await query(
+        `INSERT INTO audit_signoffs (audit_id, staff_id, signed_at) VALUES ($1,$2,NOW())
+         ON CONFLICT (audit_id, staff_id) DO UPDATE SET signed_at = NOW() RETURNING *`,
+        [req.params.id, staffId]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // DELETE /api/audits/:id — delete audit (manager+)
 router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
