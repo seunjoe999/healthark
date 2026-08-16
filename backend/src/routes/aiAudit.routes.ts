@@ -6,6 +6,16 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import auditTemplates from '../data/auditTemplates.json';
+
+type AuditTemplate = {
+  sourceFile: string; category: string; title: string; suggestedKey: string;
+  fields: { label: string; type: string }[];
+  questions: { text: string; type: string }[];
+  hasActionPlan: boolean; hasSignature: boolean; hasScore: boolean;
+};
+const AUDIT_TEMPLATES = auditTemplates as AuditTemplate[];
+const AUDIT_TEMPLATE_MAP = new Map(AUDIT_TEMPLATES.map(t => [t.suggestedKey, t]));
 
 function parseAIJson(raw: string): any {
   const cleaned = raw.replace(/```(?:json|javascript|js)?\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -89,6 +99,14 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/audits/templates — the real audit/assessment checklist templates
+// (extracted from the organisation's own audit forms), grouped by category.
+router.get('/templates', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: AUDIT_TEMPLATES } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // POST /api/audits/generate — trigger AI audit
 router.post('/generate',
   requireRole('home_manager', 'group_admin'),
@@ -143,7 +161,7 @@ router.patch('/:id/checklist', param('id').isUUID(), validateRequest,
       let checksPassed: number | undefined;
       let checksFailed: number | undefined;
       if (checklistAnswers && typeof checklistAnswers === 'object') {
-        const values = Object.values(checklistAnswers) as string[];
+        const values = (Object.values(checklistAnswers) as string[]).filter(v => v === 'yes' || v === 'no');
         totalChecks = values.length;
         checksPassed = values.filter(v => v === 'yes').length;
         checksFailed = totalChecks - checksPassed;
@@ -392,14 +410,59 @@ British English. Max 400 words total.`
       if (!recommendations) recommendations = '- Continue current monitoring — no immediate actions required.'
     }
 
+    // ── Real checklist template match — ask the AI to pre-answer the actual
+    // audit form's questions from the live data gathered above, so the auditor
+    // reviews/corrects rather than starting from a blank form. ─────────────────
+    let checklistAnswers: Record<number, string> | null = null
+    let checklistTotal = 0
+    let checklistPassed = 0
+    const template = AUDIT_TEMPLATE_MAP.get(auditType)
+    if (template && template.questions.length) {
+      try {
+        const qList = template.questions.map((q, i) => `${i}. (${q.type}) ${q.text}`).join('\n')
+        const checklistPrompt = `You are completing a real UK care home audit form titled "${template.title}" using the live data below. For EACH numbered question, answer strictly from the data provided.
+
+DATA:
+${ctx}
+
+QUESTIONS:
+${qList}
+
+Reply with ONLY a JSON array, one object per question in order, using this exact shape:
+[{"i":0,"answer":"yes|no|unsure","note":"max 12 words"}]
+Use "unsure" whenever the data above does not clearly cover that question — do not guess.`
+        const raw = await callAI(checklistPrompt, 1100)
+        const parsed = parseAIArray(raw)
+        checklistAnswers = {}
+        for (const item of parsed) {
+          const i = Number(item.i)
+          if (!Number.isInteger(i) || i < 0 || i >= template.questions.length) continue
+          const ans = String(item.answer || '').toLowerCase()
+          if (ans === 'yes' || ans === 'no') {
+            checklistAnswers[i] = ans
+            checklistTotal++
+            if (ans === 'yes') checklistPassed++
+          }
+        }
+      } catch (checklistErr: any) {
+        console.error('AI checklist pre-fill failed (non-fatal):', checklistErr?.message)
+      }
+    }
+
+    const finalTotal = checklistTotal > 0 ? checklistTotal : checksTotal
+    const finalPassed = checklistTotal > 0 ? checklistPassed : Math.max(0, checksTotal - checksFailed)
+    const finalFailed = finalTotal - finalPassed
+
     await query(
       `UPDATE audit_reports SET
         status = 'completed', findings = $1, recommendations = $2, raw_report = $3,
-        total_checks = $4, checks_passed = $5, checks_failed = $6, generated_at = NOW()
+        total_checks = $4, checks_passed = $5, checks_failed = $6, generated_at = NOW(),
+        checklist_answers = COALESCE($8::jsonb, checklist_answers)
        WHERE id = $7`,
-      [findings, recommendations, findings, checksTotal, Math.max(0, checksTotal - checksFailed), checksFailed, auditId]
+      [findings, recommendations, findings, finalTotal, finalPassed, finalFailed, auditId,
+       checklistAnswers ? JSON.stringify(checklistAnswers) : null]
     )
-    console.log('AUDIT COMPLETE:', auditId, `score=${checksTotal - checksFailed}/${checksTotal}`)
+    console.log('AUDIT COMPLETE:', auditId, `score=${finalPassed}/${finalTotal}`)
   } catch (err: any) {
     console.error('Audit generation failed:', err?.message || err)
     await query(`UPDATE audit_reports SET status = 'failed', findings = $1 WHERE id = $2`,

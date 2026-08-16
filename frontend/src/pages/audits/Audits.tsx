@@ -102,11 +102,26 @@ const REVIEW_FREQUENCIES = [
   { value: 'yearly', label: 'Yearly' },
 ]
 
+// Fallback generic checklist, used only if a real template isn't available for this audit type.
 const CHECKLIST_QUESTIONS = [
   'Are all high and low surfaces in good condition, free from dust, e.g. curtain tracks, shelving, skirting boards, windowsills, and window openers?',
   'Are walls and ceilings in good condition, free from dust, dirt and cobwebs?',
   'Are tiles and grouting in good condition, clean and free from mould, e.g. no holes or cracks?',
 ]
+
+function typeInfoFor(auditType: string, templates: any[]) {
+  const tpl = templates.find(t => t.suggestedKey === auditType)
+  if (tpl) {
+    return {
+      value: tpl.suggestedKey,
+      label: tpl.title,
+      icon: tpl.category === 'staff' ? <Users className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
+      color: tpl.category === 'staff' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700',
+      accent: tpl.category === 'staff' ? '#2563eb' : '#9333ea',
+    }
+  }
+  return AUDIT_TYPES.find(t => t.value === auditType)
+}
 
 function riskLevelFromScore(score: number | null): { label: string; bg: string } | null {
   if (score === null) return null
@@ -118,6 +133,7 @@ function riskLevelFromScore(score: number | null): { label: string; bg: string }
 export default function Audits() {
   const { user, isRole } = useAuth()
   const [audits, setAudits] = useState<any[]>([])
+  const [templates, setTemplates] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [loading, setLoading] = useState(true)
@@ -138,6 +154,10 @@ export default function Audits() {
       setSelectedHome(user?.homeId || h[0]?.id || '')
     })
   }, [user])
+
+  useEffect(() => {
+    api.get('/audits/templates').then(res => setTemplates(res.data.data || [])).catch(() => {})
+  }, [])
 
   useEffect(() => { if (selectedHome) load() }, [selectedHome])
 
@@ -269,7 +289,7 @@ export default function Audits() {
                     ? Array.from(new Map(audits.map((a: any) => [a.audit_type, a])).values())
                     : audits
                   ).map((audit: any) => {
-                    const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
+                    const typeInfo = typeInfoFor(audit.audit_type, templates)
                     const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
                     const risk = riskLevelFromScore(score)
                     const freqLabel = REVIEW_FREQUENCIES.find(f => f.value === audit.review_frequency)?.label || 'Every 4 weeks'
@@ -334,6 +354,7 @@ export default function Audits() {
         <Modal open={!!detailAudit} onClose={() => setDetailAudit(null)} title="Audit Report" size="xl">
           <AuditReport
             audit={audits.find((a: any) => a.id === detailAudit.id) || detailAudit}
+            templates={templates}
             homeName={selectedHomeObj?.name}
             homeAddress={selectedHomeObj?.address1}
             canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
@@ -345,7 +366,7 @@ export default function Audits() {
         </Modal>
       )}
 
-      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} />
+      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} templates={templates} />
 
       {actionAudit && actionPlanOpen && (
         <ActionPlanModal
@@ -365,12 +386,12 @@ export default function Audits() {
   )
 }
 
-function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpenActionPlan, onAIActionPlan, onAIComplianceFix }: {
-  audit: any; homeName?: string; homeAddress?: string
+function AuditReport({ audit, templates, homeName, homeAddress, canDelete, onDelete, onOpenActionPlan, onAIActionPlan, onAIComplianceFix }: {
+  audit: any; templates: any[]; homeName?: string; homeAddress?: string
   canDelete?: boolean; onDelete: (id: string) => void; onOpenActionPlan: () => void
   onAIActionPlan?: () => void; onAIComplianceFix?: () => void
 }) {
-  const typeInfo = AUDIT_TYPES.find(t => t.value === audit.audit_type)
+  const typeInfo = typeInfoFor(audit.audit_type, templates)
   const score = audit.total_checks > 0 ? Math.round((audit.checks_passed / audit.total_checks) * 100) : null
   const rating = score !== null ? ratingFromScore(score) : null
   const findings = parseFindings(audit.findings || '')
@@ -664,7 +685,7 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
       )}
 
       {/* Manual checklist, action plan outcome, signature & sign-offs */}
-      {!isGenerating && <AuditChecklist audit={audit} />}
+      {!isGenerating && <AuditChecklist audit={audit} templates={templates} />}
 
       {/* Attachments */}
       {!isGenerating && <AuditAttachments auditId={audit.id} initialAttachments={audit.attachments || []} />}
@@ -691,12 +712,17 @@ function AuditReport({ audit, homeName, homeAddress, canDelete, onDelete, onOpen
   )
 }
 
-function AuditChecklist({ audit }: { audit: any }) {
+function AuditChecklist({ audit, templates }: { audit: any; templates: any[] }) {
   const { isRole } = useAuth()
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
 
+  const template = templates.find(t => t.suggestedKey === audit.audit_type)
+  const questions: { text: string; type: string }[] = template?.questions?.length
+    ? template.questions
+    : CHECKLIST_QUESTIONS.map(text => ({ text, type: 'yes_no' }))
+
   const [auditorName, setAuditorName] = useState(audit.auditor_name || '')
-  const [answers, setAnswers] = useState<Record<number, 'yes' | 'no'>>(() => audit.checklist_answers || {})
+  const [answers, setAnswers] = useState<Record<number, string>>(() => audit.checklist_answers || {})
   const [outcome, setOutcome] = useState(audit.action_plan_outcome || '')
   const [completedDate, setCompletedDate] = useState(audit.action_plan_completed_date ? audit.action_plan_completed_date.split('T')[0] : '')
   const [signature, setSignature] = useState<string | null>(audit.signature_url || null)
@@ -720,9 +746,9 @@ function AuditChecklist({ audit }: { audit: any }) {
 
   useEffect(() => { if (audit.id) loadSignOffs() }, [audit.id])
 
-  const answeredCount = Object.keys(answers).length
-  const yesCount = Object.values(answers).filter(v => v === 'yes').length
-  const totalScore = answeredCount > 0 ? Math.round((yesCount / answeredCount) * 100) : null
+  const yesNoAnswers = Object.values(answers).filter(v => v === 'yes' || v === 'no')
+  const yesCount = yesNoAnswers.filter(v => v === 'yes').length
+  const totalScore = yesNoAnswers.length > 0 ? Math.round((yesCount / yesNoAnswers.length) * 100) : null
 
   const save = async () => {
     setSaving(true)
@@ -762,16 +788,33 @@ function AuditChecklist({ audit }: { audit: any }) {
         </div>
 
         <div className="space-y-3">
-          {CHECKLIST_QUESTIONS.map((q, i) => (
+          {questions.map((q, i) => (
             <div key={i} className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <p className="text-sm text-slate-700 flex-1">{q}</p>
-              <select className="input text-sm py-1.5 w-24 flex-shrink-0" value={answers[i] || ''}
-                disabled={!canManage}
-                onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value as 'yes' | 'no' }))}>
-                <option value="">—</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
+              <p className="text-sm text-slate-700 flex-1">{q.text}</p>
+              {q.type === 'text' ? (
+                <textarea className="input text-sm py-1.5 w-56 flex-shrink-0" rows={2} value={answers[i] || ''}
+                  disabled={!canManage} placeholder="Notes..."
+                  onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value }))} />
+              ) : q.type === 'rating' ? (
+                <select className="input text-sm py-1.5 w-32 flex-shrink-0" value={answers[i] || ''}
+                  disabled={!canManage}
+                  onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value }))}>
+                  <option value="">—</option>
+                  <option value="poor">Poor</option>
+                  <option value="fair">Fair</option>
+                  <option value="good">Good</option>
+                  <option value="excellent">Excellent</option>
+                </select>
+              ) : (
+                <select className="input text-sm py-1.5 w-24 flex-shrink-0" value={answers[i] || ''}
+                  disabled={!canManage}
+                  onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value }))}>
+                  <option value="">—</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                  {q.type === 'yes_no_na' && <option value="na">N/A</option>}
+                </select>
+              )}
             </div>
           ))}
         </div>
@@ -1328,21 +1371,48 @@ function AIComplianceFixModal({ audit, onClose, onGenerateNew }: { audit: any; o
   )
 }
 
-function StartAuditModal({ open, onClose, onGenerate, loading }: {
+function StartAuditModal({ open, onClose, onGenerate, loading, templates }: {
   open: boolean; onClose: () => void; onGenerate: (type: string, name: string, reviewFrequency: string) => void; loading: boolean
+  templates: any[]
 }) {
   const [auditType, setAuditType] = useState('care_plan')
   const [customName, setCustomName] = useState('')
   const [reviewFrequency, setReviewFrequency] = useState('every_4_weeks')
+  const [category, setCategory] = useState<'service_user' | 'staff'>('service_user')
+
+  const grouped = templates.filter(t => t.category === category)
+
+  useEffect(() => {
+    if (templates.length && !templates.some(t => t.suggestedKey === auditType)) {
+      setAuditType(grouped[0]?.suggestedKey || templates[0].suggestedKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates])
 
   return (
     <Modal open={open} onClose={onClose} title="Start Audit" size="md">
       <div className="space-y-5">
         <p className="text-sm text-slate-500">
-          Select an audit type. The system will analyse your live care data and produce a detailed compliance report.
+          Select a real audit or assessment form. The system will analyse your live care data and pre-fill the checklist for you to review and sign off.
         </p>
+        {templates.length > 0 && (
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+            <button onClick={() => { setCategory('service_user'); const first = templates.find(t => t.category === 'service_user'); if (first) setAuditType(first.suggestedKey) }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+              Service User Audits
+            </button>
+            <button onClick={() => { setCategory('staff'); const first = templates.find(t => t.category === 'staff'); if (first) setAuditType(first.suggestedKey) }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'staff' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}>
+              Staff Assessments
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-          {AUDIT_TYPES.map(t => (
+          {(templates.length > 0 ? grouped.map(t => ({ value: t.suggestedKey, label: t.title,
+              icon: category === 'staff' ? <Users className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
+              color: category === 'staff' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700' }))
+            : AUDIT_TYPES
+          ).map(t => (
             <button key={t.value} onClick={() => setAuditType(t.value)}
               className={`flex items-center gap-2.5 p-3 rounded-xl border-2 text-left transition-all ${auditType === t.value ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
               <span className={`p-1.5 rounded-lg ${t.color} flex-shrink-0`}>{t.icon}</span>
