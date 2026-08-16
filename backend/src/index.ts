@@ -684,6 +684,16 @@ async function createCoreTables() {
       UNIQUE(organisation_id, value)
     )` },
 
+    { label: 'table custom_audit_templates', sql: `CREATE TABLE IF NOT EXISTS custom_audit_templates (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+      title           VARCHAR(255) NOT NULL,
+      category        VARCHAR(255) NOT NULL DEFAULT 'Custom',
+      questions       JSONB NOT NULL DEFAULT '[]',
+      created_by      UUID REFERENCES staff(id),
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
     { label: 'table policy_sign_offs', sql: `CREATE TABLE IF NOT EXISTS policy_sign_offs (
       id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       policy_id UUID NOT NULL REFERENCES policies(id) ON DELETE CASCADE,

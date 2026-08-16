@@ -100,12 +100,70 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // GET /api/audits/templates — the real audit/assessment checklist templates
-// (extracted from the organisation's own audit forms), grouped by category.
-router.get('/templates', async (_req: Request, res: Response, next: NextFunction) => {
+// (extracted from the organisation's own audit forms) plus this organisation's
+// own custom audits, grouped by category.
+router.get('/templates', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json({ success: true, data: AUDIT_TEMPLATES } as ApiResponse);
+    const orgId = fromToken(req, 'organisationId');
+    let customRows: any[] = [];
+    if (orgId) {
+      customRows = await query<any>(
+        'SELECT * FROM custom_audit_templates WHERE organisation_id = $1 ORDER BY created_at DESC', [orgId]
+      );
+    }
+    const customTemplates: AuditTemplate[] = customRows.map(r => ({
+      sourceFile: 'custom', category: r.category || 'Custom', title: r.title,
+      suggestedKey: `custom_${r.id}`,
+      fields: [], questions: (r.questions || []).map((q: any) => ({ text: typeof q === 'string' ? q : q.text, type: 'yesno' })),
+      hasActionPlan: true, hasSignature: true, hasScore: true,
+    }));
+    res.json({ success: true, data: [...customTemplates, ...AUDIT_TEMPLATES] } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// GET /api/audits/custom-templates — this organisation's own audit templates
+router.get('/custom-templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = fromToken(req, 'organisationId');
+    const rows = await query('SELECT * FROM custom_audit_templates WHERE organisation_id = $1 ORDER BY created_at DESC', [orgId]);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/audits/custom-templates — create a custom audit template (manager+)
+router.post('/custom-templates', requireRole('group_admin', 'home_manager'),
+  body('title').trim().notEmpty(), body('questions').isArray({ min: 1 }), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orgId = fromToken(req, 'organisationId');
+      const staffId = fromToken(req, 'staffId');
+      const { title, category, questions } = req.body;
+      const cleanQuestions = (questions as any[])
+        .map(q => (typeof q === 'string' ? q : q?.text || ''))
+        .map((t: string) => t.trim())
+        .filter(Boolean);
+      if (!cleanQuestions.length) throw new AppError('At least one question is required', 400);
+      const rows = await query(
+        `INSERT INTO custom_audit_templates (organisation_id, title, category, questions, created_by)
+         VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
+        [orgId, title.trim(), (category || 'Custom').trim(), JSON.stringify(cleanQuestions), staffId]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/audits/custom-templates/:id — remove a custom audit template (manager+)
+router.delete('/custom-templates/:id', requireRole('group_admin', 'home_manager'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orgId = fromToken(req, 'organisationId');
+      await query('DELETE FROM custom_audit_templates WHERE id = $1 AND organisation_id = $2', [req.params.id, orgId]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // POST /api/audits/generate — trigger AI audit
 router.post('/generate',
@@ -431,7 +489,23 @@ British English. Max 400 words total.`
       'Are walls and ceilings in good condition, free from dust, dirt and cobwebs?',
       'Are tiles and grouting in good condition, clean and free from mould, e.g. no holes or cracks?',
     ]
-    const template = AUDIT_TEMPLATE_MAP.get(auditType)
+    let template = AUDIT_TEMPLATE_MAP.get(auditType)
+    if (!template && auditType.startsWith('custom_')) {
+      const customId = auditType.slice('custom_'.length)
+      const customRows = await query<any>(
+        `SELECT cat.title, cat.questions FROM custom_audit_templates cat
+         JOIN homes h ON h.organisation_id = cat.organisation_id
+         WHERE cat.id = $1 AND h.id = $2`,
+        [customId, homeId]
+      )
+      if (customRows.length) {
+        template = {
+          sourceFile: 'custom', category: 'Custom', title: customRows[0].title, suggestedKey: auditType,
+          fields: [], questions: (customRows[0].questions || []).map((q: any) => ({ text: typeof q === 'string' ? q : q.text, type: 'yesno' })),
+          hasActionPlan: true, hasSignature: true, hasScore: true,
+        }
+      }
+    }
     const questionTexts = template && template.questions.length
       ? template.questions.map(q => q.text)
       : GENERIC_QUESTIONS

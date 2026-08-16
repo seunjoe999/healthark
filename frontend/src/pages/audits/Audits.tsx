@@ -155,9 +155,9 @@ export default function Audits() {
     })
   }, [user])
 
-  useEffect(() => {
-    api.get('/audits/templates').then(res => setTemplates(res.data.data || [])).catch(() => {})
-  }, [])
+  const loadTemplates = () => api.get('/audits/templates').then(res => setTemplates(res.data.data || [])).catch(() => {})
+
+  useEffect(() => { loadTemplates() }, [])
 
   useEffect(() => { if (selectedHome) load() }, [selectedHome])
 
@@ -366,7 +366,7 @@ export default function Audits() {
         </Modal>
       )}
 
-      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} templates={templates} />
+      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} templates={templates} onTemplateCreated={loadTemplates} />
 
       {actionAudit && actionPlanOpen && (
         <ActionPlanModal
@@ -1371,16 +1371,19 @@ function AIComplianceFixModal({ audit, onClose, onGenerateNew }: { audit: any; o
   )
 }
 
-function StartAuditModal({ open, onClose, onGenerate, loading, templates }: {
+function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemplateCreated }: {
   open: boolean; onClose: () => void; onGenerate: (type: string, name: string, reviewFrequency: string) => void; loading: boolean
-  templates: any[]
+  templates: any[]; onTemplateCreated: () => void
 }) {
   const [auditType, setAuditType] = useState('care_plan')
   const [customName, setCustomName] = useState('')
   const [reviewFrequency, setReviewFrequency] = useState('every_4_weeks')
-  const [category, setCategory] = useState<'service_user' | 'staff'>('service_user')
+  const [category, setCategory] = useState<'service_user' | 'staff' | 'custom'>('service_user')
+  const [builderOpen, setBuilderOpen] = useState(false)
 
-  const grouped = templates.filter(t => t.category === category)
+  const grouped = category === 'custom'
+    ? templates.filter(t => t.suggestedKey.startsWith('custom_'))
+    : templates.filter(t => t.category === category && !t.suggestedKey.startsWith('custom_'))
 
   useEffect(() => {
     if (templates.length && !templates.some(t => t.suggestedKey === auditType)) {
@@ -1396,21 +1399,31 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates }: {
           Select a real audit or assessment form. The system will analyse your live care data and pre-fill the checklist for you to review and sign off.
         </p>
         {templates.length > 0 && (
-          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-            <button onClick={() => { setCategory('service_user'); const first = templates.find(t => t.category === 'service_user'); if (first) setAuditType(first.suggestedKey) }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
-              Service User Audits
-            </button>
-            <button onClick={() => { setCategory('staff'); const first = templates.find(t => t.category === 'staff'); if (first) setAuditType(first.suggestedKey) }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'staff' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}>
-              Staff Assessments
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+              <button onClick={() => { setCategory('service_user'); const first = templates.find(t => t.category === 'service_user' && !t.suggestedKey.startsWith('custom_')); if (first) setAuditType(first.suggestedKey) }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+                Service User Audits
+              </button>
+              <button onClick={() => { setCategory('staff'); const first = templates.find(t => t.category === 'staff' && !t.suggestedKey.startsWith('custom_')); if (first) setAuditType(first.suggestedKey) }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'staff' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}>
+                Staff Assessments
+              </button>
+              <button onClick={() => { setCategory('custom'); const first = templates.find(t => t.suggestedKey.startsWith('custom_')); if (first) setAuditType(first.suggestedKey) }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'custom' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}>
+                My Audits
+              </button>
+            </div>
+            <button type="button" onClick={() => setBuilderOpen(true)}
+              className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Create my own audit
             </button>
           </div>
         )}
         <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
           {(templates.length > 0 ? grouped.map(t => ({ value: t.suggestedKey, label: t.title,
-              icon: category === 'staff' ? <Users className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
-              color: category === 'staff' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700' }))
+              icon: category === 'staff' ? <Users className="w-4 h-4" /> : category === 'custom' ? <ListChecks className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
+              color: category === 'staff' ? 'bg-blue-100 text-blue-700' : category === 'custom' ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700' }))
             : AUDIT_TYPES
           ).map(t => (
             <button key={t.value} onClick={() => setAuditType(t.value)}
@@ -1419,6 +1432,9 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates }: {
               <span className={`text-xs font-semibold leading-tight ${auditType === t.value ? 'text-purple-900' : 'text-slate-700'}`}>{t.label}</span>
             </button>
           ))}
+          {category === 'custom' && grouped.length === 0 && (
+            <p className="col-span-2 text-xs text-slate-400 italic py-2">No custom audits yet — click "Create my own audit" to build one.</p>
+          )}
         </div>
         {auditType === 'free_template' && (
           <div>
@@ -1437,6 +1453,67 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates }: {
           <Button loading={loading} icon={<Activity className="w-4 h-4" />} onClick={() => onGenerate(auditType, customName, reviewFrequency)}>
             Start Audit
           </Button>
+        </div>
+      </div>
+      <CreateCustomAuditModal open={builderOpen} onClose={() => setBuilderOpen(false)}
+        onCreated={(key) => { onTemplateCreated(); setCategory('custom'); setAuditType(key); setBuilderOpen(false) }} />
+    </Modal>
+  )
+}
+
+function CreateCustomAuditModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (suggestedKey: string) => void }) {
+  const [title, setTitle] = useState('')
+  const [questions, setQuestions] = useState<string[]>([''])
+  const [saving, setSaving] = useState(false)
+
+  const setQuestion = (i: number, v: string) => setQuestions(qs => qs.map((q, idx) => idx === i ? v : q))
+  const addQuestion = () => setQuestions(qs => [...qs, ''])
+  const removeQuestion = (i: number) => setQuestions(qs => qs.filter((_, idx) => idx !== i))
+
+  const save = async () => {
+    const cleanQuestions = questions.map(q => q.trim()).filter(Boolean)
+    if (!title.trim()) { toast.error('Give your audit a title'); return }
+    if (!cleanQuestions.length) { toast.error('Add at least one question'); return }
+    setSaving(true)
+    try {
+      const res = await api.post('/audits/custom-templates', { title: title.trim(), questions: cleanQuestions })
+      toast.success('Custom audit created')
+      onCreated(`custom_${res.data.data.id}`)
+      setTitle(''); setQuestions([''])
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to create audit')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Create my own audit" size="md">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-500">
+          Build your own audit checklist. Once saved it appears under "My Audits" and the system will pre-fill every question from your live data just like the built-in audits.
+        </p>
+        <div>
+          <label className="label">Audit title</label>
+          <input className="input" placeholder="e.g. Kitchen Hygiene Audit" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Checklist questions</label>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {questions.map((q, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <input className="input flex-1" placeholder={`Question ${i + 1}`} value={q} onChange={e => setQuestion(i, e.target.value)} />
+                {questions.length > 1 && (
+                  <button type="button" onClick={() => removeQuestion(i)} className="p-2 text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={addQuestion} className="mt-2 flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1.5 rounded-lg transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add question
+          </button>
+        </div>
+        <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button loading={saving} onClick={save}>Save audit</Button>
         </div>
       </div>
     </Modal>
