@@ -111,6 +111,15 @@ router.post('/',
          latitude || null, longitude || null, phone || null,
          email || null, managerName || null, geofenceRadius || 200, qrToken]
       );
+      // Every home gets a compulsory daily medication stock check task, same as
+      // the one-off backfill for existing homes at startup.
+      await query(
+        `INSERT INTO task_templates (home_id, title, category, description, frequency, priority)
+         VALUES ($1, 'Check medication stock', 'medication',
+                 'Count remaining stock for each resident''s medications and log any that are low or missing.',
+                 'daily', 'high')`,
+        [rows[0].id]
+      ).catch(() => {});
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

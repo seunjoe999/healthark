@@ -1819,6 +1819,17 @@ async function ensureColumns() {
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS signature_url TEXT`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS conducted_by_name VARCHAR(255)`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS task_reminder_minutes INTEGER NOT NULL DEFAULT 60`,
+    // Every home gets a compulsory daily "Check medication stock" task template
+    // (visible to all roles — assigned_role left NULL) so it's guaranteed to
+    // appear on staff's task list each shift, seeded once per home.
+    `INSERT INTO task_templates (home_id, title, category, description, frequency, priority)
+     SELECT h.id, 'Check medication stock', 'medication',
+            'Count remaining stock for each resident''s medications and log any that are low or missing.',
+            'daily', 'high'
+     FROM homes h
+     WHERE NOT EXISTS (
+       SELECT 1 FROM task_templates tt WHERE tt.home_id = h.id AND tt.title = 'Check medication stock'
+     )`,
     `ALTER TABLE policy_sign_offs ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ`,
     `ALTER TABLE policy_sign_offs ALTER COLUMN signed_at DROP NOT NULL`,
     `ALTER TABLE policy_sign_offs ALTER COLUMN signed_at DROP DEFAULT`,
