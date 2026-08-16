@@ -89,6 +89,8 @@ const PLAN_TYPES = [
   { value: 'mental_health', label: 'Mental Health Support Plan' },
   { value: 'medication_support', label: 'Medication Support Plan' },
   { value: 'monthly_progress', label: 'Monthly Progress Report' },
+  { value: 'pbs', label: 'PBS Support Plan' },
+  { value: 'about_me', label: 'About Me' },
   { value: 'custom', label: 'Custom / Other' },
 ]
 
@@ -126,22 +128,41 @@ function deleteTemplate(idx: number) {
 // ── TEMPLATE INFRASTRUCTURE ──────────────────────────────────────────────────
 
 const AUTISM_SECTIONS = [
+  { key: 'aimsOutcomes', label: 'My Aims/Outcomes' },
   { key: 'background', label: 'Background' },
-  { key: 'autismProfile', label: 'My Autism and PDA Profile' },
-  { key: 'distressBehaviours', label: 'My Behaviour When I\'m Distressed' },
-  { key: 'behaviourTriggers', label: 'What These Behaviours Are Usually Linked To' },
-  { key: 'whatHelpsDistress', label: 'What Helps Me in These Moments' },
-  { key: 'howICommunicate', label: 'How I Communicate' },
-  { key: 'communicationNeeds', label: 'How I Need People to Communicate With Me' },
-  { key: 'setupApproach', label: 'The SETUP Communication Approach' },
-  { key: 'dailyRoutines', label: 'My Daily Activities and Routines' },
-  { key: 'changeExperience', label: 'My Experience of Change' },
-  { key: 'changeSupport', label: 'How Staff Should Support Me During Change' },
-  { key: 'changeHarderFactors', label: 'What Makes Change Harder for Me' },
-  { key: 'cognitiveNeeds', label: 'My Cognition / Thinking Style' },
-  { key: 'mentalHealth', label: 'My Mental Health & Emotional Wellbeing' },
-  { key: 'whatHelpsRegulation', label: 'What Helps Me Stay Regulated' },
-  { key: 'whatMakesHarder', label: 'What Makes Things Harder for Me' },
+  { key: 'communicationPreferences', label: 'My communication preferences and challenges and how you can help me' },
+  { key: 'dailyActivitiesRoutines', label: 'My daily activities and routines and how you can help me' },
+  { key: 'changeExperience', label: 'My experience of Change and how you can help me' },
+  { key: 'cognitionThinking', label: 'My cognition/thinking style and how you can help me' },
+  { key: 'emotionsExperience', label: 'My experience of emotions and how you can help me' },
+]
+
+const PBS_SECTIONS = [
+  { key: 'aimsOutcomes', label: 'My Aims/Outcomes' },
+  { key: 'triggerBehaviour', label: 'My Trigger/Behaviour' },
+  { key: 'supportStrategy', label: 'My Support Strategy' },
+]
+const PBS_TRAFFIC_LIGHTS = [
+  { key: 'pbsGreen', label: 'Green' },
+  { key: 'pbsYellowAmber', label: 'Yellow Amber' },
+  { key: 'pbsRed', label: 'Red' },
+]
+
+const CRISIS_SECTIONS = [
+  { key: 'aimsOutcomes', label: 'My Aims/Outcomes' },
+  { key: 'crisisBehaviours', label: 'Behaviours To Look Out For When I Am In Crisis' },
+  { key: 'crisisSupportPlan', label: 'My Crisis Support Plan' },
+  { key: 'mentalHealthSupportServices', label: 'Mental Health Support Services (staff are to contact any of the relevant services below for service user\'s mental health support)' },
+]
+
+const ABOUT_ME_SECTIONS = [
+  { key: 'aboutMe', label: 'About Me' },
+  { key: 'aimsOutcomes', label: 'Aims / Outcomes' },
+  { key: 'importantPeople', label: 'People who are important to me' },
+  { key: 'routine', label: 'Routine is important to me' },
+  { key: 'whatUpsets', label: 'What upsets, irritates, or makes me anxious' },
+  { key: 'whatHelps', label: 'What makes me feel better when I\'m upset, irritated or anxious' },
+  { key: 'hobbies', label: 'My Hobbies and Interests (My hobbies)' },
 ]
 
 const ADHD_SECTIONS = [
@@ -253,6 +274,44 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
     return (
       <div className="space-y-3">
         {ADHD_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'pbs') {
+    return (
+      <div className="space-y-3">
+        {PBS_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">PBS Traffic Light System</p>
+          {PBS_TRAFFIC_LIGHTS.map(s => (
+            <div key={s.key} className={`rounded-lg border p-3 ${s.key === 'pbsGreen' ? 'bg-green-50 border-green-200' : s.key === 'pbsYellowAmber' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+              <SpeechTextarea label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (planType === 'crisis') {
+    return (
+      <div className="space-y-3">
+        {CRISIS_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'about_me') {
+    return (
+      <div className="space-y-3">
+        {ABOUT_ME_SECTIONS.map(s => (
           <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
         ))}
       </div>
@@ -371,6 +430,31 @@ function TemplateDetail({ plan }: { plan: any }) {
     return (
       <div className="space-y-3">
         {ADHD_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'pbs') {
+    return (
+      <div className="space-y-3">
+        {PBS_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+        {PBS_TRAFFIC_LIGHTS.filter(s => tv(s.key)).map(s => sec(`PBS Traffic Light — ${s.label}`, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'crisis') {
+    return (
+      <div className="space-y-3">
+        {CRISIS_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'about_me') {
+    return (
+      <div className="space-y-3">
+        {ABOUT_ME_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
       </div>
     )
   }
@@ -571,9 +655,26 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
   }
 
   if (p === 'autism' || p === 'adhd') {
-    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
+    if (p === 'adhd' && plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
     const list = p === 'autism' ? AUTISM_SECTIONS : ADHD_SECTIONS
     list.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    return sections
+  }
+
+  if (p === 'pbs') {
+    PBS_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    const lightParts = PBS_TRAFFIC_LIGHTS.filter(s => tv(s.key)).map(s => `<h3 class="sub">${s.label}</h3><p class="body-text">${tv(s.key).replace(/\n/g, '<br/>')}</p>`).join('')
+    if (lightParts) sections.push({ title: 'PBS Traffic Light System', inner: lightParts })
+    return sections
+  }
+
+  if (p === 'crisis') {
+    CRISIS_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    return sections
+  }
+
+  if (p === 'about_me') {
+    ABOUT_ME_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
     return sections
   }
 
@@ -1233,7 +1334,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
           </>
         ) : isTemplatedPlan ? (
           <div className="space-y-4">
-            {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && plan.aims_outcomes && (
+            {plan.plan_type === 'adhd' && plan.aims_outcomes && (
               <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
             )}
             <TemplateDetail plan={plan} />
@@ -1447,7 +1548,7 @@ const EMPTY_ADD_FORM = {
   prnProtocol: '', prnList: '', indicationForUse: '',
 }
 
-const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress'])
+const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'crisis', 'about_me'])
 
 function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
   open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void; suName?: string
@@ -1645,7 +1746,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
           </>
         ) : isTemplated ? (
           <>
-            {(form.planType === 'autism' || form.planType === 'adhd') && (
+            {form.planType === 'adhd' && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
             <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
@@ -1764,7 +1865,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
           </>
         ) : isTemplated ? (
           <>
-            {(plan.plan_type === 'autism' || plan.plan_type === 'adhd') && (
+            {plan.plan_type === 'adhd' && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
             <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
