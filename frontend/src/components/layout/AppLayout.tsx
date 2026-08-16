@@ -36,6 +36,7 @@ const navSections = [
       { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
       { label: 'Care Reviews',                      to: '/reviews',             icon: ClipboardCheck,roles: [], featureKey: 'reviews' },
+      { label: 'Resident Diary',                    to: '/diary',               icon: BookOpen,      roles: [], featureKey: 'diary' },
       { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
       { label: 'Safeguarding',                      to: '/safeguarding',        icon: ShieldCheck,   roles: [], featureKey: 'safeguarding' },
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },

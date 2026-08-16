@@ -197,6 +197,46 @@ router.get('/mar-report', async (req: Request, res: Response, next: NextFunction
   } catch (err) { next(err); }
 });
 
+// Medication stock report — home-wide, or filtered to a single resident (suId)
+router.get('/medication-stock', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const { suId } = req.query as Record<string, string>;
+    let sql = `SELECT ms.*, su.first_name || ' ' || su.last_name as su_name,
+                      s.first_name || ' ' || s.last_name as last_updated_by_name
+               FROM medication_stock ms
+               JOIN service_users su ON su.id = ms.su_id
+               LEFT JOIN staff s ON s.id = ms.last_updated_by
+               WHERE ms.home_id = $1`;
+    const params: unknown[] = [homeId];
+    if (suId) { sql += ` AND ms.su_id = $2`; params.push(suId); }
+    sql += ' ORDER BY (ms.current_stock <= ms.reorder_level) DESC, su_name, ms.medication_name';
+    const rows = await query(sql, params);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Calendar / appointments report
+router.get('/calendar', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const { suId, from, to } = req.query as Record<string, string>;
+    const fromDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = to || new Date().toISOString().split('T')[0];
+    let sql = `SELECT ce.*, su.first_name || ' ' || su.last_name as su_name,
+                      s.first_name || ' ' || s.last_name as created_by_name
+               FROM calendar_events ce
+               LEFT JOIN service_users su ON su.id = ce.su_id
+               LEFT JOIN staff s ON s.id = ce.created_by
+               WHERE ce.home_id = $1 AND ce.event_date BETWEEN $2 AND $3`;
+    const params: unknown[] = [homeId, fromDate, toDate];
+    if (suId) { sql += ` AND ce.su_id = $4`; params.push(suId); }
+    sql += ' ORDER BY ce.event_date DESC, ce.start_time DESC';
+    const rows = await query(sql, params);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // Medication report
 router.get('/medication-report', async (req: Request, res: Response, next: NextFunction) => {
   try {

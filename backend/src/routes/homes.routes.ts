@@ -111,13 +111,27 @@ router.post('/',
          latitude || null, longitude || null, phone || null,
          email || null, managerName || null, geofenceRadius || 200, qrToken]
       );
-      // Every home gets a compulsory daily medication stock check task, same as
-      // the one-off backfill for existing homes at startup.
+      // Every home gets its compulsory recurring task templates, same as the
+      // one-off backfill for existing homes at startup.
       await query(
         `INSERT INTO task_templates (home_id, title, category, description, frequency, priority)
          VALUES ($1, 'Check medication stock', 'medication',
                  'Count remaining stock for each resident''s medications and log any that are low or missing.',
                  'daily', 'high')`,
+        [rows[0].id]
+      ).catch(() => {});
+      await query(
+        `INSERT INTO task_templates (home_id, title, category, description, frequency, priority, assigned_role)
+         VALUES ($1, 'Complete service user outcome report', 'outcomes',
+                 'Review and record an outcome report for your assigned residents.',
+                 'weekly', 'high', 'team_leader')`,
+        [rows[0].id]
+      ).catch(() => {});
+      await query(
+        `INSERT INTO task_templates (home_id, title, category, description, frequency, priority, assigned_role)
+         VALUES ($1, 'Complete care review', 'reviews',
+                 'Carry out a care review for your assigned residents.',
+                 'weekly', 'high', 'team_leader')`,
         [rows[0].id]
       ).catch(() => {});
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);

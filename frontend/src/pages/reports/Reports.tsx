@@ -19,6 +19,9 @@ const REPORT_TYPES = [
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
   { value: 'incident-analysis', label: 'Incident Analysis', description: 'Analysis of incident patterns' },
+  { value: 'medication-stock', label: 'Medication Stock', description: 'Stock counts, home-wide or per resident' },
+  { value: 'calendar', label: 'Calendar & Appointments', description: 'Everything added to the calendar' },
+  { value: 'system-activity', label: 'System Activity', description: 'Anything done on the system, by any staff member' },
 ]
 
 const DAILY_RECORD_TYPES = [
@@ -75,7 +78,8 @@ export default function Reports() {
       const params: any = { homeId: selectedHome, from, to }
       if (selectedSu) params.suId = selectedSu
       if (reportType === 'daily-records' && dailyRecordType) params.recordType = dailyRecordType
-      const res = await api.get(`/reports/${reportType}`, { params })
+      const endpoint = reportType === 'system-activity' ? '/audit-trail' : `/reports/${reportType}`
+      const res = await api.get(endpoint, { params })
       setData(reportType === 'incident-analysis' ? res.data : res.data.data)
     } catch (err: any) { console.error('Report error:', err?.response?.data); toast.error(err?.response?.data?.error || 'Failed to load report') }
     finally { setLoading(false) }

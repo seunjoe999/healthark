@@ -4,14 +4,15 @@ import { Spinner, EmptyState, Button, Input } from '../../components/ui'
 import { Calendar, User, AlertTriangle, Plus, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 
 export default function ResidentDiary() {
   const { user, isRole } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
-  const [selectedSU, setSelectedSU] = useState('')
+  const [selectedSU, setSelectedSU] = useState(searchParams.get('su') || '')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [incidents, setIncidents] = useState<any[]>([])

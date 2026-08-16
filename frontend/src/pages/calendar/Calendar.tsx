@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { homesApi } from '../../api'
+import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isPast } from 'date-fns'
 import { Spinner, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Clock, CheckCircle2 } from 'lucide-react'
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Clock, CheckCircle2, BookOpen } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 const APPOINTMENT_TYPES = [
@@ -20,7 +21,11 @@ const EVENT_TYPES = [
   { value: 'other', label: 'Other' },
 ]
 
-const ALL_TYPES = [...APPOINTMENT_TYPES, ...EVENT_TYPES]
+const TASK_TYPES = [
+  { value: 'task', label: 'Task' },
+]
+
+const ALL_TYPES = [...APPOINTMENT_TYPES, ...EVENT_TYPES, ...TASK_TYPES]
 
 const APPOINTMENT_TYPE_VALUES = APPOINTMENT_TYPES.map(t => t.value)
 
@@ -32,6 +37,7 @@ const TYPE_COLORS: Record<string, string> = {
   training: 'bg-orange-500',
   review: 'bg-teal-500',
   other: 'bg-slate-500',
+  task: 'bg-indigo-500',
 }
 
 const TYPE_BG: Record<string, string> = {
@@ -42,6 +48,7 @@ const TYPE_BG: Record<string, string> = {
   training: 'bg-orange-50 border-orange-200 text-orange-800',
   review: 'bg-teal-50 border-teal-200 text-teal-800',
   other: 'bg-slate-50 border-slate-200 text-slate-800',
+  task: 'bg-indigo-50 border-indigo-200 text-indigo-800',
 }
 
 export default function CalendarPage() {
@@ -314,6 +321,11 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
           <Button variant="danger" size="sm" onClick={onDeleted}>Delete</Button>
           <div className="flex gap-2">
+            {isAppointment && event.su_id && (
+              <Link to={`/diary?su=${event.su_id}`}>
+                <Button variant="outline" size="sm" icon={<BookOpen className="w-3.5 h-3.5" />}>Log in Resident Diary</Button>
+              </Link>
+            )}
             {!alreadySigned && (
               <Button variant="outline" size="sm" icon={<Check className="w-3.5 h-3.5" />} loading={signing} onClick={signOff}>Sign off</Button>
             )}
@@ -329,24 +341,30 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
 function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
   open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; onSaved: () => void
 }) {
-  const [kind, setKind] = useState<'appointment' | 'event'>('appointment')
+  const [kind, setKind] = useState<'appointment' | 'event' | 'task'>('appointment')
   const [form, setForm] = useState({
-    title: '', eventType: 'appointment',
+    title: '', eventType: 'appointment', suId: '',
     eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
     startTime: '', endTime: '', description: '', location: ''
   })
+  const [sus, setSus] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (open && homeId) suApi.list(homeId).then(res => setSus(res.data.data || [])).catch(() => {})
+  }, [open, homeId])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/calendar', { homeId, ...form }); onSaved() }
+    try { await api.post('/calendar', { homeId, ...form, suId: form.suId || null }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
 
-  const typeOptions = kind === 'appointment' ? APPOINTMENT_TYPES : EVENT_TYPES
+  const typeOptions = kind === 'appointment' ? APPOINTMENT_TYPES : kind === 'event' ? EVENT_TYPES : TASK_TYPES
+  const getSuName = (su: any) => `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
 
   return (
     <Modal open={open} onClose={onClose} title="Add to calendar">
@@ -361,13 +379,21 @@ function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'event' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
             Event
           </button>
+          <button type="button" onClick={() => { setKind('task'); set('eventType', 'task') }}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'task' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>
+            Task
+          </button>
         </div>
         <form onSubmit={save} className="space-y-4">
-          <Input label={`${kind === 'appointment' ? 'Appointment' : 'Event'} title *`} required value={form.title} onChange={e => set('title', e.target.value)} placeholder={kind === 'appointment' ? 'e.g. GP appointment, Dental check...' : 'e.g. Fire drill, Staff meeting...'} autoFocus />
+          <Input label={`${kind === 'appointment' ? 'Appointment' : kind === 'event' ? 'Event' : 'Task'} title *`} required value={form.title} onChange={e => set('title', e.target.value)} placeholder={kind === 'appointment' ? 'e.g. GP appointment, Dental check...' : kind === 'event' ? 'e.g. Fire drill, Staff meeting...' : 'e.g. Order supplies, Follow up with GP...'} autoFocus />
           <div className="grid grid-cols-2 gap-3">
             <Select label="Type" value={form.eventType} onChange={e => set('eventType', e.target.value)} options={typeOptions} />
             <Input label="Date *" type="date" required value={form.eventDate} onChange={e => set('eventDate', e.target.value)} />
           </div>
+          {kind === 'appointment' && (
+            <Select label="Service user" value={form.suId} onChange={e => set('suId', e.target.value)}
+              options={[{ value: '', label: 'Not resident-specific' }, ...sus.map(su => ({ value: su.id, label: getSuName(su) }))]} />
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Input label="Start time" type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
             <Input label="End time" type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)} />

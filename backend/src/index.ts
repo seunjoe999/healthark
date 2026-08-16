@@ -1830,6 +1830,24 @@ async function ensureColumns() {
      WHERE NOT EXISTS (
        SELECT 1 FROM task_templates tt WHERE tt.home_id = h.id AND tt.title = 'Check medication stock'
      )`,
+    // Team leaders get compulsory recurring tasks for service user outcome
+    // reports and care reviews (assigned_role scopes it to team_leader only).
+    `INSERT INTO task_templates (home_id, title, category, description, frequency, priority, assigned_role)
+     SELECT h.id, 'Complete service user outcome report', 'outcomes',
+            'Review and record an outcome report for your assigned residents.',
+            'weekly', 'high', 'team_leader'
+     FROM homes h
+     WHERE NOT EXISTS (
+       SELECT 1 FROM task_templates tt WHERE tt.home_id = h.id AND tt.title = 'Complete service user outcome report'
+     )`,
+    `INSERT INTO task_templates (home_id, title, category, description, frequency, priority, assigned_role)
+     SELECT h.id, 'Complete care review', 'reviews',
+            'Carry out a care review for your assigned residents.',
+            'weekly', 'high', 'team_leader'
+     FROM homes h
+     WHERE NOT EXISTS (
+       SELECT 1 FROM task_templates tt WHERE tt.home_id = h.id AND tt.title = 'Complete care review'
+     )`,
     `ALTER TABLE policy_sign_offs ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ`,
     `ALTER TABLE policy_sign_offs ALTER COLUMN signed_at DROP NOT NULL`,
     `ALTER TABLE policy_sign_offs ALTER COLUMN signed_at DROP DEFAULT`,
