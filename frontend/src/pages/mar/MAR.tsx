@@ -61,7 +61,7 @@ function getName(su: any) {
 }
 
 export default function MAR() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const now = new Date()
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
@@ -141,6 +141,12 @@ export default function MAR() {
 
   const su = chartData?.serviceUser || selectedSu
   const suInitials = su ? `${(su.first_name || su.firstName || '?')[0]}${(su.last_name || su.lastName || '?')[0]}` : '?'
+
+  // Care staff / senior carers see medication as a simple task list, not the full MAR grid/history
+  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  if (!isPrivilegedMar) {
+    return <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0a0a0a' }}>
@@ -435,6 +441,125 @@ export default function MAR() {
       {witnessSignOffModal && (
         <WitnessSignOffModal recordId={witnessSignOffModal}
           onClose={() => { setWitnessSignOffModal(null); window.history.replaceState({}, '', '/mar') }} />
+      )}
+    </div>
+  )
+}
+
+/* ─── Medication Tasks — staff-facing To-Do view ──────────────────────────
+   Non-admin roles see medication due today as a simple checklist rather than
+   the full MAR grid/history. Signing off opens the same LogMARModal used by
+   admins, so records land identically in the back office. */
+const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: 'To-do', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  given: { label: 'Given', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  refused: { label: 'Refused', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+}
+
+function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHome: string; homes: any[]; setSelectedHome: (v: string) => void }) {
+  const [tasks, setTasks] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [signOffTask, setSignOffTask] = useState<any>(null)
+  const today = format(new Date(), 'yyyy-MM-dd')
+
+  const load = () => {
+    if (!selectedHome) return
+    setLoading(true)
+    api.get('/mar/due-today', { params: { homeId: selectedHome } })
+      .then(res => setTasks(res.data.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [selectedHome])
+
+  const pending = tasks.filter(t => t.status === 'pending')
+  const done = tasks.filter(t => t.status !== 'pending')
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0a0a0a' }}>
+      <div className="no-print border-b border-white/10 px-4 py-3 flex items-center gap-4 flex-wrap" style={{ background: '#111' }}>
+        <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+          <Pill className="w-4 h-4 text-purple-600" /> Medication Tasks
+        </span>
+        <span className="text-xs text-slate-400">{format(new Date(), 'EEEE, d MMMM yyyy')}</span>
+        {homes.length > 1 && (
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 ml-auto"
+            value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+            {homes.map((h: any) => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? <Spinner /> : tasks.length === 0 ? (
+          <EmptyState title="No medication due today" description="Check back later, or select the correct home above" />
+        ) : (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
+                <p className="text-xl font-bold text-slate-100">{tasks.length}</p>
+                <p className="text-xs text-slate-400">Total today</p>
+              </div>
+              <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
+                <p className="text-xl font-bold text-amber-400">{pending.length}</p>
+                <p className="text-xs text-slate-400">To-do</p>
+              </div>
+              <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
+                <p className="text-xl font-bold text-emerald-400">{done.length}</p>
+                <p className="text-xs text-slate-400">Completed</p>
+              </div>
+            </div>
+
+            {[...pending, ...done].map((t, i) => {
+              const style = STATUS_STYLE[t.status] || { label: t.status, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' }
+              const isPending = t.status === 'pending'
+              return (
+                <div key={`${t.medicationId}-${t.scheduledTime}-${i}`}
+                  className={`bg-white/5 rounded-2xl border p-4 flex items-center gap-4 ${isPending ? 'border-white/10' : 'border-emerald-500/20 opacity-70'}`}>
+                  <button onClick={() => isPending && setSignOffTask(t)}
+                    disabled={!isPending}
+                    className={`w-9 h-9 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isPending ? 'border-slate-500 hover:border-purple-400' : 'bg-emerald-500 border-emerald-500'}`}>
+                    {!isPending && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-sm text-slate-100">{t.medicationName}</h3>
+                      {t.dose && <span className="text-xs text-slate-400">{t.dose}</span>}
+                      {t.isControlled && <span className="flex items-center gap-1 text-xs bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full"><Shield className="w-3 h-3" /> Controlled</span>}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.suName} · {t.scheduledTime}</p>
+                    {t.instructions && <p className="text-xs text-slate-500 mt-1">{t.instructions}</p>}
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: style.color, background: style.bg }}>
+                    {style.label}
+                  </span>
+                  {isPending && (
+                    <Button size="sm" onClick={() => setSignOffTask(t)}>Sign off</Button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {signOffTask && (
+        <LogMARModal
+          med={{
+            id: signOffTask.medicationId,
+            medication_name: signOffTask.medicationName,
+            is_controlled: signOffTask.isControlled,
+            location_access_code: null,
+            medicine_warning: null,
+          }}
+          date={today}
+          slot={signOffTask.scheduledTime}
+          suId={signOffTask.suId}
+          homeId={selectedHome}
+          onClose={() => setSignOffTask(null)}
+          onSaved={() => { setSignOffTask(null); load(); toast.success('Medication signed off') }}
+        />
       )}
     </div>
   )

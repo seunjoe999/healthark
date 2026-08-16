@@ -93,6 +93,81 @@ router.delete('/medications/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+const FREQ_TIMES: Record<string, string[]> = {
+  once_daily: ['08:00'],
+  twice_daily: ['08:00', '20:00'],
+  three_times_daily: ['08:00', '14:00', '20:00'],
+  four_times_daily: ['08:00', '12:00', '16:00', '20:00'],
+  weekly: ['08:00'],
+  as_required: [],
+  other: ['08:00'],
+};
+
+// GET /api/mar/due-today?homeId=<uuid> — medication due today as a staff task list
+// Non-privileged staff only see medications for residents assigned to them.
+router.get('/due-today', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    if (!homeId) { res.status(400).json({ success: false, error: 'homeId query parameter is required' }); return; }
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const today = new Date().toISOString().split('T')[0];
+
+    let assignedSuIds: string[] | null = null;
+    if (!isPrivileged) {
+      const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [myStaffId]);
+      assignedSuIds = assignments.map((a: any) => a.su_id);
+      if (assignedSuIds.length === 0) { res.json({ success: true, data: [] } as ApiResponse); return; }
+    }
+
+    let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
+                      m.notes AS instructions, m.is_prn, m.is_controlled,
+                      su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
+               FROM su_medications m
+               JOIN service_users su ON su.id = m.su_id
+               WHERE m.home_id = $1 AND m.is_active = true AND m.is_prn = false`;
+    const params: any[] = [homeId];
+    if (assignedSuIds) {
+      sql += ` AND m.su_id = ANY($2)`;
+      params.push(assignedSuIds);
+    }
+    const meds = await query<any>(sql, params);
+
+    // Pull today's existing records to know what's already signed off
+    const recordRows = await query<any>(
+      `SELECT medication_id, scheduled_time, given, refused, mar_code
+       FROM mar_records WHERE home_id = $1 AND record_date = $2`,
+      [homeId, today]
+    );
+    const recordMap = new Map<string, any>();
+    for (const r of recordRows as any[]) recordMap.set(`${r.medication_id}|${r.scheduled_time}`, r);
+
+    const tasks: any[] = [];
+    for (const med of meds as any[]) {
+      const times = FREQ_TIMES[med.frequency] || ['08:00'];
+      for (const t of times) {
+        const existing = recordMap.get(`${med.medication_id}|${t}`);
+        tasks.push({
+          medicationId: med.medication_id,
+          suId: med.su_id,
+          suName: med.su_name,
+          suPhoto: med.su_photo,
+          medicationName: med.medication_name,
+          dose: med.dose,
+          route: med.route,
+          instructions: med.instructions,
+          isControlled: med.is_controlled,
+          scheduledTime: t,
+          status: existing ? (existing.given ? 'given' : existing.refused ? 'refused' : (existing.mar_code || 'logged')) : 'pending',
+        });
+      }
+    }
+    tasks.sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
+    res.json({ success: true, data: tasks } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/mar/records/today?homeId=<uuid> — dashboard summary for today
 router.get('/records/today', async (req: Request, res: Response, next: NextFunction) => {
   try {
