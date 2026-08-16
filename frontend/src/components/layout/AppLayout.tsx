@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
-  Pill, CheckSquare, ChevronRight, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
+  Pill, CheckSquare, ChevronRight, ChevronDown, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
@@ -208,7 +208,17 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
   )
 }
 
+const COLLAPSIBLE_SECTIONS = new Set(['QUALITY ASSURANCE'])
+
 function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSIBLE_SECTIONS))
+  const toggleSection = (label: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label); else next.add(label)
+      return next
+    })
+  }
   return (
     <div className="flex flex-col h-full" style={{ background: '#000000' }}>
       <div className="px-5 pb-4" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
@@ -235,13 +245,24 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
             return true
           })
           if (!visible.length) return null
+          const isCollapsible = COLLAPSIBLE_SECTIONS.has(section.label)
+          const isOpen = !collapsed.has(section.label)
           return (
             <div key={si}>
               {section.label && (
-                <p className={`px-3 mb-1.5 text-xs font-bold tracking-widest ${(section as any).highlight ? 'text-amber-400' : 'text-slate-500'}`}>
-                  {section.label}
-                </p>
+                isCollapsible ? (
+                  <button onClick={() => toggleSection(section.label)}
+                    className="flex items-center gap-1.5 mb-1.5 px-2 py-1 rounded-full text-xs font-bold tracking-widest bg-amber-400/15 text-amber-400 hover:bg-amber-400/25 transition-colors">
+                    {section.label}
+                    <ChevronDown className={clsx('w-3 h-3 transition-transform', isOpen && 'rotate-180')} />
+                  </button>
+                ) : (
+                  <p className={`px-3 mb-1.5 text-xs font-bold tracking-widest ${(section as any).highlight ? 'text-amber-400' : 'text-slate-500'}`}>
+                    {section.label}
+                  </p>
+                )
               )}
+              {(!isCollapsible || isOpen) && (
               <div className="space-y-0.5">
                 {visible.map(item => {
                   const Icon = item.icon
@@ -263,6 +284,7 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
                   )
                 })}
               </div>
+              )}
             </div>
           )
         })}

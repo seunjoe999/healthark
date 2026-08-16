@@ -19,9 +19,12 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    if (!homeId || !UUID_RE.test(homeId)) { res.json({ success: true, data: [] } as ApiResponse); return; }
     const { from, to } = req.query as Record<string, string>;
     let sql = 'SELECT ce.*, s.first_name || \' \' || s.last_name as created_by_name FROM calendar_events ce LEFT JOIN staff s ON s.id = ce.created_by WHERE ce.home_id = $1';
     const params: unknown[] = [homeId];
@@ -39,6 +42,7 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
+      if (!homeId || !UUID_RE.test(homeId)) throw new AppError('No care home selected for this event', 400);
       const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff } = req.body;
       // start_time is NOT NULL in the DB. If the client didn't pass an explicit
       // startTime (e.g. an all-day / date-only event), derive it from eventDate
