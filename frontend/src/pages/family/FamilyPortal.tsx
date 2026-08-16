@@ -45,7 +45,7 @@ export default function FamilyPortal() {
   }
 
   return (
-    <div className="min-h-full bg-slate-50 p-6">
+    <div className="family-portal-page min-h-full p-6">
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>

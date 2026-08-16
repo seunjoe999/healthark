@@ -307,6 +307,35 @@
   .hover\:bg-purple-100:hover { background-color: rgba(168,85,247,0.12)  !important; }
 }
 
+/* Family Portal opts out of the site-wide dark theme — plain light page */
+.family-portal-page { background-color: #f8fafc !important; }
+.family-portal-page .bg-white { background-color: #ffffff !important; }
+.family-portal-page .bg-slate-50 { background-color: #f8fafc !important; }
+.family-portal-page .bg-slate-100 { background-color: #f1f5f9 !important; }
+.family-portal-page .bg-slate-200 { background-color: #e2e8f0 !important; }
+.family-portal-page .text-slate-900 { color: #0f172a !important; }
+.family-portal-page .text-slate-800 { color: #1e293b !important; }
+.family-portal-page .text-slate-700 { color: #334155 !important; }
+.family-portal-page .text-slate-600 { color: #475569 !important; }
+.family-portal-page .text-slate-500 { color: #64748b !important; }
+.family-portal-page .text-slate-400 { color: #94a3b8 !important; }
+.family-portal-page .border-slate-100 { border-color: #f1f5f9 !important; }
+.family-portal-page .border-slate-200 { border-color: #e2e8f0 !important; }
+.family-portal-page .hover\:bg-slate-50:hover { background-color: #f8fafc !important; }
+.family-portal-page .hover\:bg-slate-100:hover { background-color: #f1f5f9 !important; }
+.family-portal-page .hover\:bg-slate-200:hover { background-color: #e2e8f0 !important; }
+.family-portal-page .text-emerald-700 { color: #047857 !important; }
+.family-portal-page .text-blue-900 { color: #1e3a8a !important; }
+.family-portal-page .text-blue-700 { color: #1d4ed8 !important; }
+.family-portal-page .text-purple-700 { color: #7e22ce !important; }
+.family-portal-page .border-emerald-200 { border-color: #a7f3d0 !important; }
+.family-portal-page .bg-emerald-50 { background-color: #ecfdf5 !important; }
+.family-portal-page .bg-blue-50 { background-color: #eff6ff !important; }
+.family-portal-page .bg-purple-50 { background-color: #faf5ff !important; }
+.family-portal-page .hover\:bg-purple-100:hover { background-color: #f3e8ff !important; }
+.family-portal-page .bg-emerald-100 { background-color: #d1fae5 !important; }
+.family-portal-page .text-emerald-700.bg-emerald-100 { color: #047857 !important; }
+
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes slideInLeft { 0% { opacity: 0; transform: translateX(-12px); } 100% { opacity: 1; transform: translateX(0); } }
