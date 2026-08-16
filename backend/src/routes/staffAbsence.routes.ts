@@ -48,7 +48,10 @@ router.use(async (_req, _res, next) => {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const staffId = req.query.staffId as string | undefined;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const staffId = isPrivileged ? (req.query.staffId as string | undefined) : myStaffId;
     const year = req.query.year as string | undefined;
 
     let sql = `

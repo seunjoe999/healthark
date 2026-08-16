@@ -24,7 +24,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = tok(req, 'role');
     const orgId = tok(req, 'organisationId');
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
-    const { staffId: filterStaff } = req.query as Record<string, string>;
+    const myStaffId = tok(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const { staffId: queryFilterStaff } = req.query as Record<string, string>;
+    const filterStaff = isPrivileged ? queryFilterStaff : myStaffId;
 
     let sql: string;
     const params: unknown[] = [];
@@ -45,10 +48,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
              LEFT JOIN staff a ON a.id = pm.assessed_by
              WHERE pm.home_id = $1`;
       params.push(homeId);
-      if (role === 'care_staff') {
-        sql += ` AND pm.staff_id = $${params.length + 1}`;
-        params.push(tok(req, 'staffId'));
-      } else if (filterStaff) {
+      if (filterStaff) {
         sql += ` AND pm.staff_id = $${params.length + 1}`;
         params.push(filterStaff);
       }
@@ -65,6 +65,8 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
     const role = tok(req, 'role');
     const orgId = tok(req, 'organisationId');
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
+    const myStaffId = tok(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
 
     let rows;
     if (role === 'group_admin' && !homeId) {
@@ -97,6 +99,9 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
         LEFT JOIN staff_performance pm ON pm.staff_id = s.id AND pm.home_id = $1
         WHERE s.home_id = $1 AND s.is_active = TRUE
         ORDER BY s.id, pm.created_at DESC NULLS LAST`, [homeId]);
+    }
+    if (!isPrivileged) {
+      rows = (rows as any[]).filter(r => r.staff_id === myStaffId);
     }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -267,6 +272,8 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
     const role = tok(req, 'role');
     const orgId = tok(req, 'organisationId');
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
+    const myStaffId = tok(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
 
     let staffRows: any[];
     let homeRows: any[];
@@ -320,6 +327,13 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
     for (const r of shiftRows as any[]) {
       if (!shiftMap[r.staff_id]) shiftMap[r.staff_id] = {};
       shiftMap[r.staff_id][r.home_id] = parseInt(r.shift_count);
+    }
+
+    if (!isPrivileged) {
+      staffRows = staffRows.filter(s => s.id === myStaffId);
+      for (const staffId of Object.keys(shiftMap)) {
+        if (staffId !== myStaffId) delete shiftMap[staffId];
+      }
     }
 
     res.json({ success: true, data: { staff: staffRows, homes: homeRows, shiftMap } } as ApiResponse);

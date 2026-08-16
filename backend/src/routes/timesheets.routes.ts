@@ -20,9 +20,10 @@ function fromToken(req: Request, field: string): string {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const staffId = req.query.staffId as string;
     const role = fromToken(req, 'role');
-    const tokenStaffId = fromToken(req, 'staffId');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     const weekStart = req.query.weekStart as string;
 
     let sql = `
@@ -37,10 +38,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       WHERE t.home_id = $1`;
     const params: any[] = [homeId];
 
-    if (role === 'care_staff' || role === 'senior_carer') {
-      sql += ` AND t.staff_id = $${params.length + 1}`;
-      params.push(tokenStaffId);
-    } else if (staffId) {
+    if (staffId) {
       sql += ` AND t.staff_id = $${params.length + 1}`;
       params.push(staffId);
     }
@@ -135,6 +133,12 @@ router.get('/:id', param('id').isUUID(), validateRequest,
         FROM timesheets t JOIN staff s ON s.id = t.staff_id
         WHERE t.id = $1`, [req.params.id]);
       if (!ts) throw new AppError('Not found', 404);
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      if (!isPrivileged && (ts as any).staff_id !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const entries = await query('SELECT * FROM timesheet_entries WHERE timesheet_id = $1 ORDER BY work_date', [req.params.id]);
       res.json({ success: true, data: { ...ts, entries } } as ApiResponse);
     } catch (err) { next(err); }

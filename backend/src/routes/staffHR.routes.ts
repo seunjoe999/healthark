@@ -26,16 +26,21 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
     const queryStaffId = req.query.staffId as string;
     const tokenStaffId = fromToken(req, 'staffId');
     const role = fromToken(req, 'role');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
     let rows;
     if (queryStaffId) {
-      // Fetch leave for a specific staff member (manager viewing someone's profile)
+      // Fetch leave for a specific staff member (manager viewing someone's profile).
+      // Non-privileged staff may only view their own leave.
+      if (!isPrivileged && queryStaffId !== tokenStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       rows = await query(
         `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name
          FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
          WHERE sl.staff_id = $1 AND sl.home_id = $2 ORDER BY sl.created_at DESC`,
         [queryStaffId, homeId]
       );
-    } else if (role === 'group_admin' || role === 'home_manager') {
+    } else if (isPrivileged) {
       rows = await query(
         `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name, s.photo_url
          FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
@@ -43,12 +48,12 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
         [homeId]
       );
     } else {
-      // Care staff: show all leave in their home so they can see who has requested/been approved leave
+      // Non-privileged staff: only their own leave records.
       rows = await query(
         `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name, s.photo_url
          FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
-         WHERE sl.home_id = $1 ORDER BY sl.created_at DESC`,
-        [homeId]
+         WHERE sl.home_id = $1 AND sl.staff_id = $2 ORDER BY sl.created_at DESC`,
+        [homeId, tokenStaffId]
       );
     }
     res.json({ success: true, data: rows } as ApiResponse);
@@ -96,6 +101,12 @@ router.post('/leave',
 router.get('/training/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const rows = await query(
         'SELECT * FROM staff_training WHERE staff_id = $1 ORDER BY completed_date DESC',
         [req.params.staffId]
@@ -126,6 +137,12 @@ router.post('/training',
 router.get('/absences/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const rows = await query(
         'SELECT * FROM staff_absences WHERE staff_id = $1 ORDER BY absence_start DESC',
         [req.params.staffId]
@@ -157,6 +174,12 @@ router.post('/absences',
 router.get('/onboarding/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const rows = await query('SELECT * FROM staff_onboarding WHERE staff_id = $1', [req.params.staffId]);
       res.json({ success: true, data: rows[0] || null } as ApiResponse);
     } catch (err) { next(err); }
@@ -192,6 +215,12 @@ router.put('/onboarding/:staffId', param('staffId').isUUID(), validateRequest,
 router.get('/assessments/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const rows = await query(
         `SELECT sa.*, s.first_name || ' ' || s.last_name as conducted_by_name
          FROM assessments sa LEFT JOIN staff s ON s.id = sa.conducted_by

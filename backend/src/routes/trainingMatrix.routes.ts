@@ -29,18 +29,30 @@ const MANDATORY_TRAINING = [
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     const today = new Date();
     const in30Days = new Date(today);
     in30Days.setDate(in30Days.getDate() + 30);
 
-    // Get all active staff for the home
-    const staffRows = await query(
-      `SELECT id, first_name || ' ' || last_name AS name, role
-       FROM staff
-       WHERE home_id = $1 AND is_active = TRUE
-       ORDER BY first_name, last_name`,
-      [homeId]
-    );
+    // Get all active staff for the home (or just the requester's own record if not privileged)
+    const staffRows = staffId
+      ? await query(
+          `SELECT id, first_name || ' ' || last_name AS name, role
+           FROM staff
+           WHERE home_id = $1 AND is_active = TRUE AND id = $2
+           ORDER BY first_name, last_name`,
+          [homeId, staffId]
+        )
+      : await query(
+          `SELECT id, first_name || ' ' || last_name AS name, role
+           FROM staff
+           WHERE home_id = $1 AND is_active = TRUE
+           ORDER BY first_name, last_name`,
+          [homeId]
+        );
 
     // Get all relevant training records for those staff
     const staffIds = staffRows.map((s: any) => s.id);
