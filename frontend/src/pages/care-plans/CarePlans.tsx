@@ -450,13 +450,13 @@ const CARE_PLAN_PRINT_CSS = `
   body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
 
   /* Letterhead */
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1a1a1a;padding-bottom:10px;margin-bottom:4px}
-  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em}
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:10px;margin-bottom:4px}
+  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#132a4f}
   .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
   .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
-  .doc-meta strong{color:#1a1a1a}
+  .doc-meta strong{color:#132a4f}
 
-  .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
+  .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f}
   .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
 
   /* Resident identity block */
@@ -469,14 +469,14 @@ const CARE_PLAN_PRINT_CSS = `
   table.idtable td.val{width:31%;font-size:11px}
 
   /* Plan meta strip */
-  .plan-meta-box{border:1.5px solid #1a1a1a;padding:9px 14px;margin-bottom:4px;font-family:Arial,sans-serif;display:flex;flex-wrap:wrap;gap:4px 22px}
+  .plan-meta-box{border:1.5px solid #132a4f;padding:9px 14px;margin-bottom:4px;font-family:Arial,sans-serif;display:flex;flex-wrap:wrap;gap:4px 22px}
   .plan-meta-box span{font-size:9.5px;color:#333}
-  .plan-meta-box strong{color:#1a1a1a}
+  .plan-meta-box strong{color:#132a4f}
 
   /* Section headings */
-  h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1a1a1a;border-bottom:1px solid #1a1a1a;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
+  h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#132a4f;border-bottom:1px solid #132a4f;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
   h2.sec .num{display:inline-block;width:18px}
-  h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#1a1a1a;margin:12px 0 4px;page-break-after:avoid}
+  h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#132a4f;margin:12px 0 4px;page-break-after:avoid}
   .body-text{font-size:11px;line-height:1.7;color:#222;white-space:pre-line;margin-bottom:8px}
   .body-text.muted{color:#777;font-style:italic}
 
@@ -490,7 +490,7 @@ const CARE_PLAN_PRINT_CSS = `
   table.data th{text-align:left;background:#f2f2f0;border:1px solid #999;padding:6px 10px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#333}
   table.data td{border:1px solid #999;padding:6px 10px;vertical-align:top;font-size:10.5px}
 
-  .allergy-block{border:1px solid #1a1a1a;border-left:5px solid #1a1a1a;padding:9px 14px;margin-bottom:16px;font-family:Arial,sans-serif}
+  .allergy-block{border:1px solid #132a4f;border-left:5px solid #132a4f;padding:9px 14px;margin-bottom:16px;font-family:Arial,sans-serif}
   .allergy-block .al-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
   .allergy-block .al-val{font-size:12.5px;font-weight:700}
 

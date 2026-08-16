@@ -45,8 +45,16 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default function ResidentAssignments() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const homeId = (user as any)?.homeId || ''
+
+  if (!isRole('group_admin', 'admin')) {
+    return (
+      <div className="p-8 text-center text-slate-400">
+        <p className="text-sm">Only admins can assign staff to residents.</p>
+      </div>
+    )
+  }
 
   const [residents, setResidents] = useState<Resident[]>([])
   const [staff, setStaff] = useState<StaffMember[]>([])
