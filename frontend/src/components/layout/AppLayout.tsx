@@ -3,6 +3,7 @@ import NotificationsBell from './NotificationsBell'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
+import { useTaskReminders } from '../../hooks/useTaskReminders'
 import clsx from 'clsx'
 import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
@@ -453,6 +454,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  useTaskReminders(!!user)
 
   const pageTitle = allNavItems.find(item => location.pathname.startsWith(item.to) && item.to !== '/dashboard')?.label
     ?? (location.pathname === '/dashboard' ? 'Dashboard' : 'CompCare Hub')

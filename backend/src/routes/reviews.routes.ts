@@ -255,7 +255,7 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
   try {
     const homeId = fromToken(req, 'homeId');
     const { name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
-            careType, cqcLocationId, cqcRating, totalBeds } = req.body;
+            careType, cqcLocationId, cqcRating, totalBeds, taskReminderMinutes } = req.body;
     // Ensure optional columns exist
     await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS care_type TEXT`).catch(() => {});
     await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS cqc_rating TEXT`).catch(() => {});
@@ -267,9 +267,11 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
         longitude=COALESCE($8,longitude), geofence_radius=COALESCE($9,geofence_radius),
         care_type=COALESCE($11,care_type), cqc_location_id=COALESCE($12,cqc_location_id),
         cqc_rating=COALESCE($13,cqc_rating), total_beds=COALESCE($14,total_beds),
+        task_reminder_minutes=COALESCE($15,task_reminder_minutes),
         updated_at=NOW() WHERE id=$10`,
       [name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
-       homeId, careType || null, cqcLocationId || null, cqcRating || null, totalBeds ? Number(totalBeds) : null]
+       homeId, careType || null, cqcLocationId || null, cqcRating || null, totalBeds ? Number(totalBeds) : null,
+       taskReminderMinutes ? Number(taskReminderMinutes) : null]
     );
     res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
   } catch (err) { next(err); }

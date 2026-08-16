@@ -729,12 +729,18 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                   let display = ''
                   let subDisplay = ''
 
+                  const currentHM = format(new Date(), 'HH:mm')
+                  const isPastSlot = slot !== 'PRN' && (d < today || (isToday && slot < currentHM))
+                  const isMissed = !rec && isPastSlot
+
                   if (rec) {
                     const code = rec.mar_code
                     if (rec.given) { bg = '#d1fae5'; textColor = '#065f46'; display = code || 'G' }
                     else if (rec.refused) { bg = '#fee2e2'; textColor = '#991b1b'; display = code || 'R' }
                     else if (rec.omitted) { bg = '#fef9c3'; textColor = '#78350f'; display = code || 'O' }
                     else { bg = '#f3f4f6'; display = code || '—' }
+                  } else if (isMissed) {
+                    bg = '#fecaca'; textColor = '#991b1b'; display = 'M'
                   } else if (isToday && !isFuture) {
                     bg = '#fef3c720'
                   }
@@ -777,7 +783,9 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
           <span className="text-slate-400">|</span>
           <span><span className="font-bold text-red-700 bg-red-100 px-1 rounded">X</span> = Refused</span>
           <span className="text-slate-400">|</span>
-          <span><span className="font-bold text-yellow-700 bg-yellow-100 px-1 rounded">O</span> = Omitted / Missed</span>
+          <span><span className="font-bold text-yellow-700 bg-yellow-100 px-1 rounded">O</span> = Omitted</span>
+          <span className="text-slate-400">|</span>
+          <span><span className="font-bold text-red-800 bg-red-200 px-1 rounded">M</span> = Missed (not recorded)</span>
           <span className="text-slate-400">|</span>
           <span><span className="font-bold text-slate-500 bg-slate-200 px-1 rounded">—</span> = Not Recorded</span>
           <span className="text-slate-400">|</span>

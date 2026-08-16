@@ -289,9 +289,36 @@ function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: 
 }
 
 function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
+  const { isRole } = useAuth()
+  const canManageTypes = isRole('home_manager', 'group_admin')
   const [form, setForm] = useState({ reviewType: 'monthly_review', customReviewType: '', reviewDate: new Date().toISOString().split('T')[0], summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', monthlyProgress: '', nextReviewDate: '', attendees: '' })
   const [loading, setLoading] = useState(false)
+  const [customTypes, setCustomTypes] = useState<{ id: string; value: string; label: string }[]>([])
+  const [manageOpen, setManageOpen] = useState(false)
+  const [newTypeLabel, setNewTypeLabel] = useState('')
+  const [addingType, setAddingType] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  const loadCustomTypes = () => { api.get('/review-types').then(res => setCustomTypes(res.data.data || [])).catch(() => {}) }
+  useEffect(() => { if (open) loadCustomTypes() }, [open])
+
+  const addCustomType = async () => {
+    if (!newTypeLabel.trim()) return
+    setAddingType(true)
+    try {
+      await api.post('/review-types', { label: newTypeLabel.trim() })
+      setNewTypeLabel('')
+      loadCustomTypes()
+      toast.success('Review type added')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to add review type') }
+    finally { setAddingType(false) }
+  }
+
+  const removeCustomType = async (id: string) => {
+    try { await api.delete(`/review-types/${id}`); loadCustomTypes() } catch { toast.error('Failed to remove') }
+  }
+
+  const typeOptions = [...REVIEW_TYPES.slice(0, -1), ...customTypes.map(t => ({ value: t.value, label: t.label })), REVIEW_TYPES[REVIEW_TYPES.length - 1]]
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -309,9 +336,34 @@ function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClo
     <Modal open={open} onClose={onClose} title="Record review / feedback" size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Review type *" required value={form.reviewType} onChange={e => set('reviewType', e.target.value)} options={REVIEW_TYPES} />
+          <div>
+            <Select label="Review type *" required value={form.reviewType} onChange={e => set('reviewType', e.target.value)} options={typeOptions} />
+            {canManageTypes && (
+              <button type="button" onClick={() => setManageOpen(true)} className="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">
+                + Manage review types
+              </button>
+            )}
+          </div>
           <Input label="Review date *" type="date" required value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         </div>
+        {manageOpen && (
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom review types</p>
+            {customTypes.length === 0 && <p className="text-xs text-slate-400">No custom types yet</p>}
+            {customTypes.map(t => (
+              <div key={t.id} className="flex items-center justify-between text-sm text-slate-700">
+                <span>{t.label}</span>
+                <button type="button" onClick={() => removeCustomType(t.id)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button>
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <input className="flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-sm" placeholder="New review type name"
+                value={newTypeLabel} onChange={e => setNewTypeLabel(e.target.value)} />
+              <button type="button" disabled={addingType} onClick={addCustomType}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">Add</button>
+            </div>
+          </div>
+        )}
         {form.reviewType === 'other' && (
           <Input label="Custom review type name *" required value={form.customReviewType} onChange={e => set('customReviewType', e.target.value)} placeholder="e.g. Annual best interests review" />
         )}

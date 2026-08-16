@@ -212,10 +212,15 @@ export default function Policies() {
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {signOffs.map((so: any) => (
                       <div key={so.id} className="flex items-center gap-2 text-xs text-slate-600">
-                        <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        {so.signed_at
+                          ? <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                          : <Clock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
                         <span>{so.staff_name}</span>
                         <span className="text-slate-400 capitalize">{so.role?.replace(/_/g, ' ')}</span>
-                        {so.signed_at && <span className="text-slate-400 ml-auto">{format(new Date(so.signed_at), 'd MMM yyyy')}</span>}
+                        <span className="text-slate-400 ml-auto text-right">
+                          {so.sent_at && <span>Sent {format(new Date(so.sent_at), 'd MMM yyyy')}</span>}
+                          {so.signed_at && <span className="ml-2 text-emerald-600">Signed {format(new Date(so.signed_at), 'd MMM yyyy')}</span>}
+                        </span>
                       </div>
                     ))}
                   </div>

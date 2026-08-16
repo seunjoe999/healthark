@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -38,7 +39,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       params.push(role);
     }
     sql += ' ORDER BY t.due_time, t.priority DESC';
-    const rows = await query(sql, params);
+    let rows = await query(sql, params);
+
+    // Restricted roles only see tasks tied to their own assigned residents (tasks
+    // with no resident attached, i.e. general/home-wide tasks, remain visible).
+    const staffId = fromToken(req, 'staffId');
+    if (RESTRICTED_ROLES.includes(role) && staffId) {
+      const assignedSuIds = await getAssignedSuIds(staffId);
+      rows = (rows as any[]).filter(t => !t.su_id || assignedSuIds.includes(t.su_id));
+    }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });

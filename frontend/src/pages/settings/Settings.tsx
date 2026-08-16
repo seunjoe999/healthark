@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Card, SectionHeading, Spinner } from '../../components/ui'
-import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle, Shield, RefreshCw, Users, ChevronDown, ChevronUp } from 'lucide-react'
+import { Settings as SettingsIcon, Save, Key, MapPin, Copy, Check, Search, CheckCircle, AlertTriangle, Shield, RefreshCw, Users, ChevronDown, ChevronUp, Bell } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 
@@ -111,6 +111,7 @@ export default function Settings() {
         cqcLocationId: h.cqc_location_id || '',
         cqcRating: h.cqc_rating || '',
         totalBeds: h.total_beds || 30,
+        taskReminderMinutes: h.task_reminder_minutes || 60,
       })
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
@@ -319,6 +320,25 @@ export default function Settings() {
                 setForm((p: any) => ({ ...p, latitude: lat, longitude: lng, geofenceRadius: radius }))
               }}
             />
+          </div>
+
+          {/* Task reminder pop-ups */}
+          <div className="border-t border-slate-100 pt-4 mt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <Bell className="w-4 h-4 text-purple-500" />
+              <h4 className="font-semibold text-slate-800 text-sm">Task reminder pop-ups</h4>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">Staff get an in-app pop-up reminding them of tasks due today, repeated at this interval.</p>
+            <div>
+              <label className="label">Remind staff every</label>
+              <select className="input max-w-xs" value={form.taskReminderMinutes || 60} onChange={e => set('taskReminderMinutes', e.target.value)}>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="120">2 hours</option>
+                <option value="240">4 hours</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end mt-4">

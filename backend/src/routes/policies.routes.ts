@@ -25,8 +25,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const staffId = fromToken(req, 'staffId');
     const rows = await query(
       `SELECT p.*, s.first_name || ' ' || s.last_name as uploaded_by_name,
-              EXISTS(SELECT 1 FROM policy_sign_offs pso WHERE pso.policy_id = p.id AND pso.staff_id = $1) as signed_by_me,
-              (SELECT COUNT(*) FROM policy_sign_offs pso WHERE pso.policy_id = p.id) as signed_count
+              EXISTS(SELECT 1 FROM policy_sign_offs pso WHERE pso.policy_id = p.id AND pso.staff_id = $1 AND pso.signed_at IS NOT NULL) as signed_by_me,
+              (SELECT COUNT(*) FROM policy_sign_offs pso WHERE pso.policy_id = p.id AND pso.signed_at IS NOT NULL) as signed_count
        FROM policies p LEFT JOIN staff s ON s.id = p.uploaded_by
        WHERE p.organisation_id = $2 ORDER BY p.created_at DESC`,
       [staffId, orgId]
@@ -64,14 +64,14 @@ router.post('/:id/sign', param('id').isUUID(), validateRequest,
       // Try insert with signature_url; fall back to basic insert if column doesn't exist
       try {
         await query(
-          `INSERT INTO policy_sign_offs (policy_id, staff_id, signature_url)
-           VALUES ($1,$2,$3) ON CONFLICT (policy_id, staff_id) DO UPDATE SET signature_url = EXCLUDED.signature_url`,
+          `INSERT INTO policy_sign_offs (policy_id, staff_id, signature_url, signed_at)
+           VALUES ($1,$2,$3,NOW()) ON CONFLICT (policy_id, staff_id) DO UPDATE SET signature_url = EXCLUDED.signature_url, signed_at = NOW()`,
           [req.params.id, staffId, signatureUrl || null]
         );
       } catch {
         await query(
-          `INSERT INTO policy_sign_offs (policy_id, staff_id)
-           VALUES ($1,$2) ON CONFLICT (policy_id, staff_id) DO NOTHING`,
+          `INSERT INTO policy_sign_offs (policy_id, staff_id, signed_at)
+           VALUES ($1,$2,NOW()) ON CONFLICT (policy_id, staff_id) DO UPDATE SET signed_at = NOW()`,
           [req.params.id, staffId]
         );
       }
@@ -86,7 +86,7 @@ router.get('/:id/sign-offs', param('id').isUUID(), validateRequest,
       const rows = await query(
         `SELECT pso.*, s.first_name || ' ' || s.last_name as staff_name, s.role
          FROM policy_sign_offs pso JOIN staff s ON s.id = pso.staff_id
-         WHERE pso.policy_id = $1 ORDER BY pso.signed_at DESC`,
+         WHERE pso.policy_id = $1 ORDER BY COALESCE(pso.signed_at, pso.sent_at) DESC`,
         [req.params.id]
       );
       res.json({ success: true, data: rows } as ApiResponse);
@@ -133,6 +133,11 @@ router.post('/:id/send-signoff-requests',
           `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message)
            VALUES ($1, $2, $3, $4, $5, $5)`,
           [senderId, staffId, homeId || null, subject, messageBody]
+        );
+        await query(
+          `INSERT INTO policy_sign_offs (policy_id, staff_id, sent_at)
+           VALUES ($1,$2,NOW()) ON CONFLICT (policy_id, staff_id) DO UPDATE SET sent_at = NOW()`,
+          [policyId, staffId]
         );
         sent++;
       }

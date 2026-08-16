@@ -128,6 +128,7 @@ import searchRoutes from './routes/search.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import uploadRoutes from './routes/upload.routes';
 import reviewsRoutes from './routes/reviews.routes';
+import reviewTypesRoutes from './routes/reviewTypes.routes';
 import tasksRoutes from './routes/tasks.routes';
 import qualityRoutes from './routes/quality.routes';
 import assessmentsRoutes from './routes/assessments.routes';
@@ -142,6 +143,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
+app.use('/api/review-types', reviewTypesRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/quality', qualityRoutes);
 // Mount the more specific /api/assessments/news2 BEFORE the general
@@ -663,11 +665,21 @@ async function createCoreTables() {
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )` },
 
+    { label: 'table review_types', sql: `CREATE TABLE IF NOT EXISTS review_types (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+      value           VARCHAR(100) NOT NULL,
+      label           VARCHAR(255) NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(organisation_id, value)
+    )` },
+
     { label: 'table policy_sign_offs', sql: `CREATE TABLE IF NOT EXISTS policy_sign_offs (
       id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       policy_id UUID NOT NULL REFERENCES policies(id) ON DELETE CASCADE,
       staff_id  UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-      signed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      sent_at   TIMESTAMPTZ,
+      signed_at TIMESTAMPTZ,
       UNIQUE(policy_id, staff_id)
     )` },
 
@@ -1806,6 +1818,10 @@ async function ensureColumns() {
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS action_plan_completed_date DATE`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS signature_url TEXT`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS conducted_by_name VARCHAR(255)`,
+    `ALTER TABLE homes ADD COLUMN IF NOT EXISTS task_reminder_minutes INTEGER NOT NULL DEFAULT 60`,
+    `ALTER TABLE policy_sign_offs ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ`,
+    `ALTER TABLE policy_sign_offs ALTER COLUMN signed_at DROP NOT NULL`,
+    `ALTER TABLE policy_sign_offs ALTER COLUMN signed_at DROP DEFAULT`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
     // ── mar_records — columns added to CREATE TABLE but may be missing from existing DB ─
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE`,

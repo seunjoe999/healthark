@@ -123,7 +123,7 @@ router.put('/:id', requireRole('group_admin', 'home_manager'),
     try {
       const organisationId = getOrgId(req);
       const { name, address1, address2, address3, postcode, phone,
-              email, managerName, geofenceRadius, latitude, longitude } = req.body;
+              email, managerName, geofenceRadius, latitude, longitude, taskReminderMinutes } = req.body;
       const rows = await query(
         `UPDATE homes SET
           name = COALESCE($1, name), address1 = COALESCE($2, address1),
@@ -132,10 +132,11 @@ router.put('/:id', requireRole('group_admin', 'home_manager'),
           email = COALESCE($7, email), manager_name = COALESCE($8, manager_name),
           geofence_radius = COALESCE($9, geofence_radius),
           latitude = COALESCE($10, latitude), longitude = COALESCE($11, longitude),
+          task_reminder_minutes = COALESCE($12, task_reminder_minutes),
           updated_at = NOW()
-         WHERE id = $12 AND organisation_id = $13 RETURNING *`,
+         WHERE id = $13 AND organisation_id = $14 RETURNING *`,
         [name, address1, address2, address3, postcode, phone,
-         email, managerName, geofenceRadius, latitude, longitude,
+         email, managerName, geofenceRadius, latitude, longitude, taskReminderMinutes || null,
          req.params.id, organisationId]
       );
       if (!rows.length) throw new AppError('Home not found', 404);
