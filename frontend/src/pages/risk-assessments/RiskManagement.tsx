@@ -424,7 +424,7 @@ export default function RiskManagement() {
         </div>
       </div>
 
-      <div className="flex items-start justify-between mb-6 no-print">
+      <div className="flex items-start justify-between mb-6 no-print p-4 rounded-2xl" style={{ background: 'rgba(232,177,48,0.12)', border: '1px solid rgba(232,177,48,0.3)' }}>
         <div>
           <h1 className="text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
             <Shield className="w-6 h-6" style={{ color: '#e8b130' }} /> RISK MANAGEMENT
@@ -559,7 +559,7 @@ export default function RiskManagement() {
                           { label: 'Protective factors', value: ra.protective_factors },
                         ].filter(f => f.value).map(f => (
                           <div key={f.label} className="bg-white p-4">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{f.label}</p>
+                            <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: '#c99518' }}>{f.label}</p>
                             <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">{f.value}</p>
                           </div>
                         ))}

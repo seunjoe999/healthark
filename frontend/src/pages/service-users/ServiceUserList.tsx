@@ -4,7 +4,7 @@ import { suApi, homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { differenceInYears } from 'date-fns'
 import { Spinner, EmptyState, StatusBadge, EmergencyBadge, Button } from '../../components/ui'
-import { UserPlus, Search, Filter, AlertTriangle, Heart } from 'lucide-react'
+import { UserPlus, Search, Filter, AlertTriangle, Heart, Users } from 'lucide-react'
 
 const STATUS_OPTS = [
   { value: '', label: 'All residents' },
@@ -58,9 +58,14 @@ export default function ServiceUserList() {
           <p className="text-slate-400 text-sm mt-0.5">{filtered.length} resident{filtered.length !== 1 ? 's' : ''} {statusFilter ? `· ${statusFilter}` : ''}</p>
         </div>
         {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-          <Link to="/service-users/new">
-            <Button icon={<UserPlus className="w-4 h-4" />}>Add resident</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/settings/resident-assignments">
+              <Button variant="outline" icon={<Users className="w-4 h-4" />}>Assign staff to residents</Button>
+            </Link>
+            <Link to="/service-users/new">
+              <Button icon={<UserPlus className="w-4 h-4" />}>Add resident</Button>
+            </Link>
+          </div>
         )}
       </div>
 

@@ -998,6 +998,7 @@ export default function CarePlans() {
       {viewPlan && (
         <PlanDetailModal
           plan={viewPlan}
+          su={selectedSu}
           reads={planReads[viewPlan.id] || []}
           canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
           onClose={() => setViewPlan(null)}
@@ -1054,17 +1055,38 @@ export default function CarePlans() {
   )
 }
 
-function PlanDetailModal({ plan, reads, canDelete, onClose, onEdit, onDelete, onPrint }: {
-  plan: any; reads: any[]; canDelete: boolean;
+function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete, onPrint }: {
+  plan: any; su?: any; reads: any[]; canDelete: boolean;
   onClose: () => void; onEdit: () => void; onDelete: () => void; onPrint: () => void
 }) {
   const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const isMed = plan.plan_type === 'medication_support'
   const isTemplatedPlan = TEMPLATED_TYPES.has(plan.plan_type)
+  const suName = su ? `${su.first_name || ''} ${su.last_name || ''}`.trim() : plan.su_name || ''
+  const suAge = su?.date_of_birth ? Math.floor((Date.now() - new Date(su.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
+  const photoUrl = su?.photo_url ? (su.photo_url.startsWith('http') ? su.photo_url : su.photo_url) : null
 
   return (
     <Modal open={true} onClose={onClose} title={label} size="lg">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+        {/* Hospital-style patient banner */}
+        {suName && (
+          <div className="flex items-center gap-4 p-4 rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, #1a5c3a, #0f3d26)' }}>
+            {photoUrl ? (
+              <img src={photoUrl} alt={suName} className="w-16 h-16 rounded-full object-cover border-2 border-white/40 flex-shrink-0" />
+            ) : (
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold bg-white/15 border-2 border-white/40 flex-shrink-0">
+                {suName[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-widest text-emerald-200 font-semibold">Support Plan</p>
+              <h2 className="text-xl font-bold truncate">{suName}{suAge !== null ? ` · ${suAge} yrs` : ''}</h2>
+              <p className="text-sm text-emerald-100 truncate">{label}</p>
+            </div>
+          </div>
+        )}
+
         {/* Meta */}
         <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-slate-100">
           <ReviewStatus nextReviewDate={plan.next_review_date} />

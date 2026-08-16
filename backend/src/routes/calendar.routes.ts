@@ -44,15 +44,18 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       if (!homeId || !UUID_RE.test(homeId)) throw new AppError('No care home selected for this event', 400);
       const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff } = req.body;
-      // start_time is NOT NULL in the DB. If the client didn't pass an explicit
-      // startTime (e.g. an all-day / date-only event), derive it from eventDate
-      // so the insert doesn't violate the not-null constraint.
-      const startTs = startTime || (eventDate ? `${eventDate}T09:00:00` : new Date().toISOString());
+      // start_time/end_time are TIMESTAMPTZ, but the client only sends a bare
+      // "HH:mm" (from <input type="time">) plus the date separately — combine
+      // them into a real timestamp so Postgres doesn't reject the insert.
+      // start_time is also NOT NULL, so fall back to 09:00 when no time is given.
+      const isTimeOnly = (v: string) => /^\d{2}:\d{2}(:\d{2})?$/.test(v || '');
+      const startTs = isTimeOnly(startTime) ? `${eventDate}T${startTime}` : (startTime || `${eventDate}T09:00:00`);
+      const endTs = isTimeOnly(endTime) ? `${eventDate}T${endTime}` : (endTime || null);
       const rows = await query(
         `INSERT INTO calendar_events (home_id, created_by, title, event_type, event_date, start_time, end_time, description, location, su_id, all_staff)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [homeId, staffId, title, eventType || 'other', eventDate,
-         startTs, endTime || null, description || null,
+         startTs, endTs, description || null,
          location || null, suId || null, allStaff || false]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);

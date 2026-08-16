@@ -359,6 +359,14 @@
   background-color: #1a1a1a !important;
   color: #f5f0e8 !important;
 }
+/* Native time/date picker icons render black by default — invisible on the
+   dark input backgrounds above, so invert them to white. */
+.app-shell input[type="time"]::-webkit-calendar-picker-indicator,
+.app-shell input[type="date"]::-webkit-calendar-picker-indicator,
+.app-shell input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
 
 /* ── Touch target minimums ────────────────────────────────────────────────── */
 button, [role="button"], a {

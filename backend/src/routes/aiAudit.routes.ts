@@ -273,7 +273,7 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
     // ── Gather live data ──────────────────────────────────────────────────────
     let carePlans: any[] = [], incidents: any[] = [], dailyRecords: any[] = []
     let fluidData: any[] = [], staffTraining: any[] = [], marRecords: any[] = [], missingRecords: any[] = []
-    let safeguardingRows: any[] = []
+    let safeguardingRows: any[] = [], medicationStock: any[] = []
 
     await Promise.allSettled([
       query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active,
@@ -311,6 +311,11 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
                     su.first_name || ' ' || su.last_name as su_name
              FROM safeguarding_concerns sc JOIN service_users su ON su.id = sc.su_id
              WHERE sc.home_id = $1 AND sc.incident_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { safeguardingRows = r }),
+      query(`SELECT ms.medication_name, ms.current_stock, ms.unit, ms.reorder_level,
+                    su.first_name || ' ' || su.last_name as su_name
+             FROM medication_stock ms JOIN service_users su ON su.id = ms.su_id
+             WHERE ms.home_id = $1 ORDER BY (ms.current_stock <= ms.reorder_level) DESC, ms.current_stock ASC`,
+             [homeId]).then(r => { medicationStock = r }),
     ])
 
     // ── Derived metrics ───────────────────────────────────────────────────────
@@ -321,16 +326,18 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
     const totalRecords    = dailyRecords.reduce((s, r) => s + parseInt(r.count), 0)
     const marPct          = marStat.total > 0 ? Math.round((parseInt(marStat.given || 0) / parseInt(marStat.total)) * 100) : 0
     const auditLabel      = auditType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+    const lowStock        = medicationStock.filter((m: any) => Number(m.current_stock) <= Number(m.reorder_level))
 
     // ── Scoring (based on real data, not AI) ─────────────────────────────────
     const checksTotal  = Math.max(10,
       carePlans.length + incidents.length + dailyRecords.length +
-      (marStat.total > 0 ? 5 : 0) + safeguardingRows.length + staffTraining.length + missingRecords.length
+      (marStat.total > 0 ? 5 : 0) + safeguardingRows.length + staffTraining.length + missingRecords.length +
+      medicationStock.length
     )
     const checksFailed = overduePlans.length + fluidFlags.length + expiringTraining.length +
-      missingRecords.length + safeguardingRows.filter((s: any) => !s.manager_ack).length + 
+      missingRecords.length + safeguardingRows.filter((s: any) => !s.manager_ack).length +
       incidents.filter((i: any) => !i.manager_reviewed).length +
-      (marPct > 0 && marPct < 95 ? 2 : 0)
+      (marPct > 0 && marPct < 95 ? 2 : 0) + lowStock.length
 
     // ── Build compact data context for AI (kept short to stay under token limits) ──
     const limit5 = (arr: any[], fn: (x: any) => string) => arr.slice(0, 5).map(fn).join('; ') || 'none'
@@ -350,6 +357,8 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
         (expiringTraining.length ? ` (${limit5(expiringTraining, t => `${t.staff_name}: ${t.course_name}`)})` : ''),
       `Safeguarding: ${safeguardingRows.length}` +
         (safeguardingRows.length ? ` (${limit5(safeguardingRows, s => `${s.su_name}: ${s.manager_ack ? 'acked' : 'PENDING'}`)})` : ''),
+      `Medication stock: ${medicationStock.length} items, ${lowStock.length} at/below reorder level` +
+        (lowStock.length ? ` (${limit5(lowStock, m => `${m.su_name} ${m.medication_name}: ${m.current_stock}${m.unit} left`)})` : ''),
     ].join('\n')
 
     // ── AI prompt (concise to stay within Groq free-tier token limits) ─────────
