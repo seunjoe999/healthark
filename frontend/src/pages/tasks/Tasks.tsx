@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQUENCIES = [
@@ -24,6 +24,45 @@ const FREQUENCIES = [
 
 const CATEGORIES = [{ value: 'housekeeping', label: 'Housekeeping' }, { value: 'medication', label: 'Medication check' }, { value: 'social_visit', label: 'Social visit' }, { value: 'personal_care', label: 'Personal care' }, { value: 'health_check', label: 'Health check' }, { value: 'general', label: 'General' }, { value: 'maintenance', label: 'Maintenance' }]
 const PRIORITIES = [{ value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' }]
+const TEAMS = [
+  { value: '', label: 'All' },
+  { value: 'care_staff', label: 'Care Staff' },
+  { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'team_leader', label: 'Team Leader' },
+  { value: 'deputy_manager', label: 'Deputy Manager' },
+  { value: 'home_manager', label: 'Manager' },
+  { value: 'auditor', label: 'Auditor' },
+]
+
+function PictureUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      onChange(res.data?.data?.fileUrl || '')
+      toast.success('Picture uploaded')
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false); if (inputRef.current) inputRef.current.value = '' }
+  }
+  return (
+    <div>
+      <label className="label">Picture (optional)</label>
+      <div className="flex items-center gap-3">
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={upload} />
+        <Button type="button" size="sm" variant="outline" icon={<ImageIcon className="w-3.5 h-3.5" />} loading={uploading} onClick={() => inputRef.current?.click()}>
+          {value ? 'Change picture' : 'Choose file'}
+        </Button>
+        {value && <img src={value} alt="Task" className="w-10 h-10 rounded-lg object-cover border border-slate-200" />}
+      </div>
+    </div>
+  )
+}
 
 export default function Tasks() {
   const { user, isRole } = useAuth()
@@ -297,7 +336,7 @@ export default function Tasks() {
 }
 
 function AddTaskModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '' })
+  const [form, setForm] = useState({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', pictureUrl: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
@@ -324,7 +363,9 @@ function AddTaskModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; 
           <Input label="Date" type="date" value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
           <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
+        <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
+        <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add task</Button>
@@ -335,7 +376,7 @@ function AddTaskModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; 
 }
 
 function AddTemplateModal({ open, onClose, homeId, onSaved }: { open: boolean; onClose: () => void; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', assignedRole: '', priority: 'normal' })
+  const [form, setForm] = useState({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', assignedRole: '', priority: 'normal', pictureUrl: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -357,10 +398,11 @@ function AddTemplateModal({ open, onClose, homeId, onSaved }: { open: boolean; o
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
-          <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+          <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
-        <Input label="Assigned role" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} placeholder="e.g. care_staff, home_manager..." />
+        <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
+        <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add template</Button>
@@ -379,6 +421,7 @@ function EditTemplateModal({ template, onClose, onSaved }: { template: any; onCl
     dueTime: template.due_time || '',
     assignedRole: template.assigned_role || '',
     priority: template.priority || 'normal',
+    pictureUrl: template.picture_url || '',
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -401,10 +444,11 @@ function EditTemplateModal({ template, onClose, onSaved }: { template: any; onCl
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
-          <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+          <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
-        <Input label="Assigned role" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} placeholder="e.g. care_staff, home_manager..." />
+        <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></div>
+        <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Save changes</Button>

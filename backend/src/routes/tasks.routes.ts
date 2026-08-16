@@ -61,13 +61,13 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { title, category, description, frequency, dueTime, assignedRole, priority, suId } = req.body;
+      const { title, category, description, frequency, dueTime, assignedRole, priority, suId, pictureUrl } = req.body;
       const rows = await query(
         `INSERT INTO task_templates (home_id, title, category, description, frequency, due_time,
-          assigned_role, priority, su_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+          assigned_role, priority, su_id, picture_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
         [homeId, title, category, description || null, frequency || 'daily',
-         dueTime || null, assignedRole || null, priority || 'normal', suId || null]
+         dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -80,14 +80,14 @@ router.post('/', [body('title').notEmpty()], validateRequest,
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const createdBy = fromToken(req, 'staffId');
-      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole } = req.body;
+      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl } = req.body;
       const rows = await query(
         `INSERT INTO tasks (home_id, su_id, created_by, title, category, description,
-          task_date, due_time, priority, assigned_role)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+          task_date, due_time, priority, assigned_role, picture_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [homeId, suId || null, createdBy, title, category || 'general',
          description || null, taskDate || new Date().toISOString().split('T')[0],
-         dueTime || null, priority || 'normal', assignedRole || null]
+         dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -169,10 +169,10 @@ router.delete('/templates/:id', requireRole('home_manager', 'group_admin'), para
 router.put('/templates/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { title, category, description, frequency, dueTime, assignedRole, priority } = req.body;
+      const { title, category, description, frequency, dueTime, assignedRole, priority, pictureUrl } = req.body;
       await query(
-        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7 WHERE id=$8`,
-        [title, category, description||null, frequency, dueTime||null, assignedRole||null, priority, req.params.id]
+        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7, picture_url=COALESCE($9, picture_url) WHERE id=$8`,
+        [title, category, description||null, frequency, dueTime||null, assignedRole||null, priority, req.params.id, pictureUrl || null]
       );
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }

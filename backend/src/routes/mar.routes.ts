@@ -219,19 +219,39 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, medicationId, given, refused, reason, notes, scheduledTime, recordDate, marCode,
-              controlledWitnessId, controlledWitnessName } = req.body;
+              controlledWitnessId, controlledWitnessName,
+              amountTaken, amountUnit, sideEffects, sideEffectsNotes, emotion, completed,
+              signoffRequestedBy, signoffRequestedName } = req.body;
       const rows = await query(
         `INSERT INTO mar_records (su_id, home_id, medication_id, given_by, given, refused,
           refused_reason, notes, scheduled_time, record_date, mar_code,
-          controlled_witness_id, controlled_witness_name)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+          controlled_witness_id, controlled_witness_name,
+          amount_taken, amount_unit, side_effects, side_effects_notes, emotion, completed,
+          signoff_requested_by, signoff_requested_name)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
         [suId, homeId, medicationId, staffId, given ?? null, refused || false,
          reason || null, notes || null, scheduledTime || null,
          recordDate || new Date().toISOString().split('T')[0],
          marCode || null,
-         controlledWitnessId || null, controlledWitnessName || null]
+         controlledWitnessId || null, controlledWitnessName || null,
+         amountTaken || null, amountUnit || null, sideEffects || false, sideEffectsNotes || null,
+         emotion || null, completed !== undefined ? completed : true,
+         signoffRequestedBy || null, signoffRequestedName || null]
       );
       const record = rows[0] as any;
+
+      // Notify staff member asked to sign off this record (separate from controlled-drug witness)
+      if (signoffRequestedBy) {
+        try {
+          const medRows = await query('SELECT medication_name FROM su_medications WHERE id = $1', [medicationId]);
+          const medName = medRows.length ? (medRows[0] as any).medication_name : 'medication';
+          await query(
+            'INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message) VALUES ($1,$2,$3,$4,$5,$5)',
+            [staffId, signoffRequestedBy, homeId, 'Medication Sign-off Requested',
+             `You have been asked to sign off the administration of ${medName}. Please review it in MAR.`]
+          );
+        } catch { /* non-fatal */ }
+      }
 
       // Send notification to witness if controlled medication
       if (controlledWitnessId) {

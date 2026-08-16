@@ -1786,6 +1786,8 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS picture_url TEXT`,
+    `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mar_code VARCHAR(10)`,
     // ── mar_records — columns added to CREATE TABLE but may be missing from existing DB ─
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS medication_id   UUID REFERENCES su_medications(id) ON DELETE CASCADE`,
@@ -2363,6 +2365,14 @@ async function ensureColumns() {
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS controlled_witness_signed_at TIMESTAMPTZ`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mgmt_sign_off_by          VARCHAR(255)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mgmt_sign_off_at          TIMESTAMPTZ`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_taken              VARCHAR(50)`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_unit               VARCHAR(20)`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS side_effects              BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS side_effects_notes        TEXT`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS emotion                   VARCHAR(10)`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS completed                 BOOLEAN NOT NULL DEFAULT TRUE`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS signoff_requested_by      UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS signoff_requested_name    VARCHAR(255)`,
     // ── medicine_risk_assessments — controlled meds, document, sign-off ──────
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_meds          BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS controlled_notes         TEXT`,

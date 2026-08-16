@@ -1038,17 +1038,25 @@ function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
   const [staffList, setStaffList] = useState<any[]>([])
   const [witnessId, setWitnessId] = useState('')
   const [witnessName, setWitnessName] = useState('')
+  const [amountTaken, setAmountTaken] = useState('')
+  const [amountUnit, setAmountUnit] = useState('')
+  const [sideEffects, setSideEffects] = useState(false)
+  const [sideEffectsNotes, setSideEffectsNotes] = useState('')
+  const [emotion, setEmotion] = useState<'red' | 'yellow' | 'green' | ''>('')
+  const [completed, setCompleted] = useState(true)
+  const [signoffId, setSignoffId] = useState('')
+  const [signoffName, setSignoffName] = useState('')
 
   const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
   const isControlled = med.is_controlled
 
   useEffect(() => {
-    if (isControlled && homeId) {
+    if (homeId) {
       api.get('/staff', { params: { homeId } }).then(res => {
         setStaffList(res.data.data || [])
       }).catch(() => {})
     }
-  }, [isControlled, homeId])
+  }, [homeId])
 
   const save = async () => {
     if (!selectedCode) { toast.error('Select an outcome'); return }
@@ -1066,6 +1074,14 @@ function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
         reason: reason || undefined,
         scheduledTime: slot,
         recordDate: date,
+        amountTaken: amountTaken || undefined,
+        amountUnit: amountUnit || undefined,
+        sideEffects,
+        sideEffectsNotes: sideEffects ? (sideEffectsNotes || undefined) : undefined,
+        emotion: emotion || undefined,
+        completed,
+        signoffRequestedBy: signoffId || undefined,
+        signoffRequestedName: signoffId ? signoffName : undefined,
       }
       if (isControlled && witnessId) {
         payload.controlledWitnessId = witnessId
@@ -1164,9 +1180,78 @@ function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
           <Input label="Reason / notes" value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason..." />
         )}
 
+        {selected?.given && (
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Amount taken" value={amountTaken} onChange={e => setAmountTaken(e.target.value)} placeholder="e.g. 1" />
+            <div>
+              <label className="label">Unit</label>
+              <select className="input text-sm" value={amountUnit} onChange={e => setAmountUnit(e.target.value)}>
+                <option value="">Please Select</option>
+                <option value="tablet">Tablet(s)</option>
+                <option value="ml">ml</option>
+                <option value="mg">mg</option>
+                <option value="drop">Drop(s)</option>
+                <option value="puff">Puff(s)</option>
+                <option value="application">Application</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="label">Side effects</label>
+          <select className="input text-sm" value={sideEffects ? 'yes' : 'no'} onChange={e => setSideEffects(e.target.value === 'yes')}>
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+        {sideEffects && (
+          <Input label="Side effect details" value={sideEffectsNotes} onChange={e => setSideEffectsNotes(e.target.value)} placeholder="Describe the side effects observed..." />
+        )}
+
         <div>
           <label className="label">Additional notes (optional)</label>
           <textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." />
+        </div>
+
+        <div>
+          <label className="label">Request Signoff by</label>
+          <select className="input text-sm" value={signoffId} onChange={e => {
+            const s = staffList.find((x: any) => x.id === e.target.value)
+            setSignoffId(e.target.value)
+            setSignoffName(s ? `${s.first_name} ${s.last_name}` : '')
+          }}>
+            <option value="">Signoff not needed</option>
+            {staffList.map((s: any) => (
+              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}{s.role ? ` (${s.role})` : ''}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="label">Completed</label>
+          <select className="input text-sm" value={completed ? 'yes' : 'no'} onChange={e => setCompleted(e.target.value === 'yes')}>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div>
+          <p className="label mb-2">Emotion</p>
+          <div className="flex items-center gap-4">
+            {[
+              { key: 'red', emoji: '☹️', label: 'Poor' },
+              { key: 'yellow', emoji: '😐', label: 'Okay' },
+              { key: 'green', emoji: '🙂', label: 'Good' },
+            ].map(e => (
+              <button key={e.key} type="button" onClick={() => setEmotion(e.key as any)}
+                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 transition-all ${emotion === e.key ? 'border-purple-400 bg-purple-500/10' : 'border-white/10 opacity-60 hover:opacity-100'}`}>
+                <span className="text-2xl">{e.emoji}</span>
+                <span className="text-[10px] text-slate-400">{e.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-3 justify-end pt-1">
