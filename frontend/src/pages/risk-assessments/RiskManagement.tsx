@@ -86,13 +86,13 @@ export default function RiskManagement() {
     .page:last-child{page-break-after:avoid}
 
     /* Letterhead */
-    .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1a1a1a;padding-bottom:10px;margin-bottom:4px}
-    .org-name{font-size:15px;font-weight:700;letter-spacing:.01em}
+    .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:10px;margin-bottom:4px}
+    .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#132a4f}
     .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
     .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
-    .doc-meta strong{color:#1a1a1a}
+    .doc-meta strong{color:#132a4f}
 
-    .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
+    .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f}
     .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
 
     /* Resident identity block */
@@ -102,9 +102,9 @@ export default function RiskManagement() {
     table.idtable td.val{width:31%;font-size:11px}
 
     /* Section headings */
-    h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1a1a1a;border-bottom:1px solid #1a1a1a;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
+    h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#132a4f;border-bottom:1px solid #132a4f;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
     h2.sec .num{display:inline-block;width:18px}
-    h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#1a1a1a;margin:12px 0 4px;page-break-after:avoid}
+    h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#132a4f;margin:12px 0 4px;page-break-after:avoid}
     .body-text{font-size:11px;line-height:1.7;color:#222;white-space:pre-line;margin-bottom:8px}
 
     /* Data / field tables */
@@ -113,7 +113,7 @@ export default function RiskManagement() {
     table.fields td{border:1px solid #999;padding:6px 10px;font-size:11px}
 
     /* Risk summary */
-    .risk-box{border:1.5px solid #1a1a1a;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;page-break-inside:avoid}
+    .risk-box{border:1.5px solid #132a4f;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;page-break-inside:avoid}
     .risk-box .rb-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#444}
     .risk-box .rb-value{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
     .risk-box.high{border-width:2.5px}

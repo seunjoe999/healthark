@@ -142,6 +142,10 @@ export default function TrainingMatrix() {
   const [addOpen, setAddOpen] = useState(false)
   const [addForm, setAddForm] = useState({ staffId: '', courseName: '', completedDate: new Date().toISOString().split('T')[0], expiryDate: '' })
   const [saving, setSaving] = useState(false)
+  const [trainingTypes, setTrainingTypes] = useState<{ id: string; name: string }[]>([])
+  const [manageTypesOpen, setManageTypesOpen] = useState(false)
+  const [newTypeName, setNewTypeName] = useState('')
+  const [addingType, setAddingType] = useState(false)
   const [popover, setPopover] = useState<{
     staffId: string
     trainingType: string
@@ -153,6 +157,7 @@ export default function TrainingMatrix() {
 
   useEffect(() => {
     load()
+    loadTrainingTypes()
   }, [])
 
   async function load() {
@@ -162,6 +167,26 @@ export default function TrainingMatrix() {
       setData(res.data.data)
     } catch {}
     setLoading(false)
+  }
+
+  function loadTrainingTypes() {
+    api.get('/training-types').then(res => setTrainingTypes(res.data.data || [])).catch(() => {})
+  }
+
+  async function addTrainingType() {
+    if (!newTypeName.trim()) return
+    setAddingType(true)
+    try {
+      await api.post('/training-types', { name: newTypeName.trim() })
+      setNewTypeName('')
+      loadTrainingTypes()
+      toast.success('Training section added')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to add training section') }
+    finally { setAddingType(false) }
+  }
+
+  async function removeTrainingType(id: string) {
+    try { await api.delete(`/training-types/${id}`); loadTrainingTypes() } catch { toast.error('Failed to remove') }
   }
 
   async function saveTrainingRecord(e: React.FormEvent) {
@@ -426,7 +451,33 @@ export default function TrainingMatrix() {
           <form onSubmit={saveTrainingRecord} className="space-y-4">
             <Select label="Staff member *" value={addForm.staffId} onChange={e => setAddForm(p => ({ ...p, staffId: e.target.value }))}
               options={[{ value: '', label: 'Select staff member...' }, ...data.staff.map(s => ({ value: s.id, label: `${s.name} (${formatRole(s.role)})` }))]} />
-            <Input label="Name of training *" required value={addForm.courseName} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))} placeholder="e.g. Manual Handling, Fire Safety..." />
+            <div>
+              <Select label="Name of training *" value={addForm.courseName} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))}
+                options={[{ value: '', label: 'Select training section...' }, ...trainingTypes.map(t => ({ value: t.name, label: t.name })), { value: '__custom__', label: 'Other (type below)' }]} />
+              {addForm.courseName === '__custom__' && (
+                <Input label="Custom training name *" required value={''} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))} placeholder="e.g. Manual Handling, Fire Safety..." className="mt-2" />
+              )}
+              <button type="button" onClick={() => setManageTypesOpen(o => !o)} className="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">
+                + Manage training sections
+              </button>
+              {manageTypesOpen && (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
+                  {trainingTypes.length === 0 && <p className="text-xs text-slate-400">No training sections yet</p>}
+                  {trainingTypes.map(t => (
+                    <div key={t.id} className="flex items-center justify-between text-sm text-slate-700">
+                      <span>{t.name}</span>
+                      <button type="button" onClick={() => removeTrainingType(t.id)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-1">
+                    <input className="flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-sm" placeholder="New training section name"
+                      value={newTypeName} onChange={e => setNewTypeName(e.target.value)} />
+                    <button type="button" disabled={addingType} onClick={addTrainingType}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">Add</button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Input label="Date training completed *" type="date" required value={addForm.completedDate} onChange={e => setAddForm(p => ({ ...p, completedDate: e.target.value }))} />
               <Input label="Expiry date of training" type="date" value={addForm.expiryDate} onChange={e => setAddForm(p => ({ ...p, expiryDate: e.target.value }))} />

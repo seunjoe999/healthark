@@ -23,6 +23,7 @@ export default function ResidentDiary() {
     gpReviewDate: '', gpReviewNotes: '', gpReviewNa: false,
     mentalHealthDate: '', mentalHealthNotes: '', mentalHealthNa: false,
     dentistDate: '', dentistNotes: '', dentistNa: false,
+    opticianDate: '', opticianNotes: '', opticianNa: false,
   })
 
   useEffect(() => {
@@ -60,6 +61,9 @@ export default function ResidentDiary() {
         dentistDate: su.dentist_date?.split('T')[0] || '',
         dentistNotes: su.dentist_notes || '',
         dentistNa: su.dentist_na || false,
+        opticianDate: su.optician_date?.split('T')[0] || '',
+        opticianNotes: su.optician_notes || '',
+        opticianNa: su.optician_na || false,
       })
     }
   }, [selectedSU, serviceUsers])
@@ -80,6 +84,7 @@ export default function ResidentDiary() {
         gp_review_date: form.gpReviewDate, gp_review_notes: form.gpReviewNotes, gp_review_na: form.gpReviewNa,
         mental_health_date: form.mentalHealthDate, mental_health_notes: form.mentalHealthNotes, mental_health_na: form.mentalHealthNa,
         dentist_date: form.dentistDate, dentist_notes: form.dentistNotes, dentist_na: form.dentistNa,
+        optician_date: form.opticianDate, optician_notes: form.opticianNotes, optician_na: form.opticianNa,
       } : s))
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to save')
@@ -123,9 +128,9 @@ export default function ResidentDiary() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-purple-600" />
-            Resident Diary (Health Reviews)
+            Residents Health Check
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Track annual health, GP, mental health, and dentist reviews.</p>
+          <p className="text-slate-500 text-sm mt-1">Track annual health, GP, mental health, dentist, and optician reviews.</p>
         </div>
       </div>
 
@@ -145,6 +150,7 @@ export default function ResidentDiary() {
           {renderSection('GP Review', 'gpReviewDate', 'gpReviewNotes', 'gpReviewNa')}
           {renderSection('Mental Health Review', 'mentalHealthDate', 'mentalHealthNotes', 'mentalHealthNa')}
           {renderSection('Dentist Review', 'dentistDate', 'dentistNotes', 'dentistNa')}
+          {renderSection('Optician Review', 'opticianDate', 'opticianNotes', 'opticianNa')}
 
           <div className="mt-6 flex justify-end">
             <Button type="submit" variant="gold" loading={saving}>Save Health Reviews</Button>

@@ -129,6 +129,7 @@ import notificationsRoutes from './routes/notifications.routes';
 import uploadRoutes from './routes/upload.routes';
 import reviewsRoutes from './routes/reviews.routes';
 import reviewTypesRoutes from './routes/reviewTypes.routes';
+import trainingTypesRoutes from './routes/trainingTypes.routes';
 import tasksRoutes from './routes/tasks.routes';
 import qualityRoutes from './routes/quality.routes';
 import assessmentsRoutes from './routes/assessments.routes';
@@ -144,6 +145,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/review-types', reviewTypesRoutes);
+app.use('/api/training-types', trainingTypesRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/quality', qualityRoutes);
 // Mount the more specific /api/assessments/news2 BEFORE the general
@@ -663,6 +665,14 @@ async function createCoreTables() {
       uploaded_by     UUID NOT NULL REFERENCES staff(id),
       requires_sign   BOOLEAN NOT NULL DEFAULT TRUE,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+
+    { label: 'table training_types', sql: `CREATE TABLE IF NOT EXISTS training_types (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+      name            VARCHAR(255) NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(organisation_id, name)
     )` },
 
     { label: 'table review_types', sql: `CREATE TABLE IF NOT EXISTS review_types (
@@ -1819,6 +1829,9 @@ async function ensureColumns() {
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS signature_url TEXT`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS conducted_by_name VARCHAR(255)`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS task_reminder_minutes INTEGER NOT NULL DEFAULT 60`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_date DATE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_notes TEXT`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_na BOOLEAN NOT NULL DEFAULT FALSE`,
     // Every home gets a compulsory daily "Check medication stock" task template
     // (visible to all roles — assigned_role left NULL) so it's guaranteed to
     // appear on staff's task list each shift, seeded once per home.

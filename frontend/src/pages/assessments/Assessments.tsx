@@ -81,8 +81,9 @@ export default function Assessments() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'staff' ? 'staff' : 'service_user'
-  const [tab, setTab] = useState<'service_user' | 'staff'>(initialTab)
+  // Resident assessments moved to the Audits module — this page defaults to
+  // (and is now effectively only) Staff Assessment.
+  const [tab, setTab] = useState<'service_user' | 'staff'>('staff')
   const [templates, setTemplates] = useState<any[]>([])
   const [assessments, setAssessments] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
@@ -163,14 +164,18 @@ export default function Assessments() {
         </div>
       </div>
 
-      {/* Tab switcher — always visible so users can move between resident and staff assessments */}
+      {/* Resident assessments now live in the Audits module (real audit forms with
+          AI-prefilled checklists) — this page is Staff Assessment only, with a
+          shortcut across for anyone looking for resident-side audits. */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
-        {(['service_user', 'staff'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
-            {t === 'service_user' ? 'Resident Assessments' : 'Staff Assessments'}
-          </button>
-        ))}
+        <Link to="/audits"
+          className="px-5 py-2 rounded-lg text-sm font-medium transition-all text-slate-500 hover:text-slate-700">
+          Resident Assessments (in Audits)
+        </Link>
+        <button onClick={() => setTab('staff')}
+          className="px-5 py-2 rounded-lg text-sm font-medium transition-all bg-white shadow text-slate-900">
+          Staff Assessments
+        </button>
       </div>
 
       {/* Template grid */}
