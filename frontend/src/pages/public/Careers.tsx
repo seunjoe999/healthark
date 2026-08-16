@@ -32,7 +32,7 @@ export default function Careers() {
       setCvName(res.data?.data?.fileName || file.name)
       toast.success('CV uploaded')
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Upload failed — please use a PDF or Word document under 8MB')
+      toast.error(err?.response?.data?.error || 'Upload failed. Please use a PDF or Word document under 8MB')
     } finally { setUploading(false) }
   }
 
@@ -43,7 +43,7 @@ export default function Careers() {
       await api.post('/recruitment/apply', { ...form, cvUrl })
       setSubmitted(true)
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to submit application — please try again')
+      toast.error(err?.response?.data?.error || 'Failed to submit application. Please try again')
     } finally { setSubmitting(false) }
   }
 

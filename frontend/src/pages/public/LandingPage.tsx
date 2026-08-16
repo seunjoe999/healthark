@@ -89,7 +89,7 @@ const IMG = {
 
 const TESTIMONIALS = [
   { quote: "We replaced three separate systems with CompCare Hub. Our staff spend 40% less time on paperwork and our last CQC inspection was the smoothest ever.", name: 'Sarah Mitchell', role: 'Registered Manager', home: 'Oakwood Care Home, Birmingham', img: IMG.t1 },
-  { quote: "The MAR system alone was worth it. Controlled drug sign-offs, PRN records, stock counts — everything our pharmacist needs is right there.", name: 'James Okonkwo', role: 'Home Manager', home: 'Sunrise Lodge, Manchester', img: IMG.t2 },
+  { quote: "The MAR system alone was worth it. Controlled drug sign-offs, PRN records, stock counts, everything our pharmacist needs is right there.", name: 'James Okonkwo', role: 'Home Manager', home: 'Sunrise Lodge, Manchester', img: IMG.t2 },
   { quote: "Families love the portal. They can see daily notes and activities without us making a single phone call. It's transformed our family relationships.", name: 'Patricia Donnelly', role: 'Director of Care', home: 'Ashfield Group, Leeds', img: IMG.t3 },
 ];
 
@@ -346,7 +346,7 @@ export default function LandingPage() {
       <header ref={heroRef} className="relative flex items-center overflow-hidden" style={{ minHeight: '100svh' }}>
         {/* Parallax photo */}
         <motion.div className="absolute inset-0" style={{ y: heroImgY, scale: 1.08 }}>
-          <img src={IMG.hero} alt="Care home residents and staff — professional care management environment"
+          <img src={IMG.hero} alt="Care home residents and staff, professional care management environment"
             className="w-full h-full object-cover object-center" />
         </motion.div>
 
@@ -390,7 +390,7 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 1.1 }}
               className="text-sm sm:text-base lg:text-lg leading-relaxed mt-5 mb-8 sm:mb-10 max-w-lg"
               style={{ color: 'rgba(255,255,255,0.70)' }}>
-              A purpose-built care management system for UK care homes — replacing paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
+              A purpose-built care management system for UK care homes, replacing paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
             </motion.p>
 
             {/* CTAs */}
@@ -412,15 +412,6 @@ export default function LandingPage() {
               </button>
             </motion.div>
 
-            {/* Trust row */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 1.45 }}
-              className="flex flex-wrap items-center gap-4 sm:gap-6">
-              {[{ icon: Shield, text: 'CQC Ready' }, { icon: Users, text: '500+ Residents' }, { icon: CheckCircle, text: 'No Setup Fee' }].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  <Icon size={12} style={{ color: '#7DD9A8' }} />{text}
-                </div>
-              ))}
-            </motion.div>
           </div>
         </div>
 
@@ -464,16 +455,16 @@ export default function LandingPage() {
                 <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#1A5C3A' }}>Every Day</em>
               </h2>
               <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: '#6B7A6A' }}>
-                Built for CQC-regulated care homes — covering resident wellbeing, staff operations and compliance in one beautifully simple platform.
+                Built for CQC-regulated care homes, covering resident wellbeing, staff operations and compliance in one beautifully simple platform.
               </p>
             </div>
           </Reveal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {[
-              { img: IMG.card1, label: 'Resident Care', title: 'Every resident profile, always up to date', desc: 'Care plans, MAR, risk assessments, daily records and family updates — all linked and accessible from any device.' },
-              { img: IMG.card2, label: 'Staff Management', title: 'Your team, organised and compliant', desc: 'Rota, timesheets, DBS tracking, training records and supervision notes — with automatic alerts before anything expires.' },
-              { img: IMG.card3, label: 'CQC Compliance', title: 'Inspection-ready, every single day', desc: 'Incident reports, safeguarding concerns and a complete audit trail — with AI-generated compliance reports in seconds.' },
+              { img: IMG.card1, label: 'Resident Care', title: 'Every resident profile, always up to date', desc: 'Care plans, MAR, risk assessments, daily records and family updates, all linked and accessible from any device.' },
+              { img: IMG.card2, label: 'Staff Management', title: 'Your team, organised and compliant', desc: 'Rota, timesheets, DBS tracking, training records and supervision notes, with automatic alerts before anything expires.' },
+              { img: IMG.card3, label: 'CQC Compliance', title: 'Inspection-ready, every single day', desc: 'Incident reports, safeguarding concerns and a complete audit trail, with AI-generated compliance reports in seconds.' },
             ].map((card, i) => (
               <Reveal key={i} delay={i * 0.1}>
                 <div className="rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group cursor-pointer bg-white">
@@ -507,21 +498,21 @@ export default function LandingPage() {
             {
               tag: 'Digital MAR',
               title: "Medication administration\nyour team can trust",
-              body: "Paper MAR charts are a compliance risk. CompCare Hub's digital MAR lets carers record every medication in real time — with controlled drug witness sign-off, PRN logs and stock management built in.",
-              bullets: ['Controlled drug witness signing, done digitally', 'PRN medication logs with reason and outcome', 'Stock count tracking and low-stock alerts', 'Full history — every dose, every carer, every time'],
+              body: "Paper MAR charts are a compliance risk. CompCare Hub's digital MAR lets carers record every medication in real time, with controlled drug witness sign-off, PRN logs and stock management built in.",
+              bullets: ['Controlled drug witness signing, done digitally', 'PRN medication logs with reason and outcome', 'Stock count tracking and low-stock alerts', 'Full history: every dose, every carer, every time'],
               img: IMG.feat1, imgAlt: 'Nurse reviewing care records with an elderly resident',
             },
             {
               tag: 'Staff & HR',
-              title: "From rota to DBS —\nall in one place",
-              body: "Managing a care team is complex. CompCare Hub brings your rota, timesheets, leave, DBS tracking, training records and supervision notes into one system — with automatic alerts before anything expires.",
+              title: "From rota to DBS,\nall in one place",
+              body: "Managing a care team is complex. CompCare Hub brings your rota, timesheets, leave, DBS tracking, training records and supervision notes into one system, with automatic alerts before anything expires.",
               bullets: ['Visual rota builder with GPS clock-in verification', 'DBS and training expiry alerts sent automatically', 'Leave requests and approvals handled in the app', 'Staff performance matrix and appraisal records'],
               img: IMG.feat2, imgAlt: 'Care home staff team in a planning session', flip: true,
             },
             {
               tag: 'Audit & Reporting',
               title: "CQC audit reports in\nminutes, not days",
-              body: "When an inspector arrives, you need to demonstrate quality care instantly. CompCare Hub generates a complete audit report from your live data in seconds — covering care plans, incidents, training, MAR and more.",
+              body: "When an inspector arrives, you need to demonstrate quality care instantly. CompCare Hub generates a complete audit report from your live data in seconds, covering care plans, incidents, training, MAR and more.",
               bullets: ['AI-generated CQC audit report from live data', 'Full audit trail for every action across the home', 'Incident, safeguarding and complaint management', 'Exportable reports for inspectors and trustees'],
               img: IMG.feat3, imgAlt: 'Care manager reviewing compliance documentation',
             },
@@ -570,7 +561,7 @@ export default function LandingPage() {
                 One platform.{' '}
                 <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#1A5C3A' }}>Every module.</em>
               </h2>
-              <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: '#6B7A6A' }}>From seizure logs to staff appraisals — if it happens in a care home, we cover it.</p>
+              <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: '#6B7A6A' }}>From seizure logs to staff appraisals: if it happens in a care home, we cover it.</p>
             </div>
           </Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -715,7 +706,7 @@ export default function LandingPage() {
               <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#7DD9A8' }}>on CompCare Hub</em>
             </h2>
             <p className="text-sm sm:text-lg mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.62)' }}>
-              Start your free trial today — no card required. Or let us walk you through the full platform in 30 minutes.
+              Start your free trial today, no card required. Or let us walk you through the full platform in 30 minutes.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <Link to="/login"
@@ -726,8 +717,33 @@ export default function LandingPage() {
               <button onClick={() => setDemoOpen(true)}
                 className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base border-2 text-white transition-all hover:bg-white/10"
                 style={{ borderColor: 'rgba(255,255,255,0.32)' }}>
-                Request a Walkthrough
+                Book a Demo
               </button>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── Careers ────────────────────────────────────────────────── */}
+      <section className="py-14 sm:py-20" style={{ background: '#F5F0E8' }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <Reveal>
+            <div className="rounded-3xl p-8 sm:p-12 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-8"
+              style={{ background: 'white', border: '1px solid rgba(26,46,30,0.08)' }}>
+              <div className="text-center sm:text-left">
+                <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#1A5C3A' }}>Careers</p>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2" style={{ color: '#1A2E1E' }}>
+                  We're hiring compassionate carers
+                </h2>
+                <p className="text-sm sm:text-base max-w-md" style={{ color: '#6B7A6A' }}>
+                  Join a care home team using CompCare Hub. See our open roles and apply in minutes.
+                </p>
+              </div>
+              <Link to="/careers"
+                className="flex-shrink-0 px-7 py-3.5 rounded-2xl font-bold text-sm text-white transition-all hover:-translate-y-0.5"
+                style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
+                View Careers <ArrowRight size={15} className="inline ml-1.5" />
+              </Link>
             </div>
           </Reveal>
         </div>
@@ -769,7 +785,7 @@ export default function LandingPage() {
               <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5 text-white">Company</p>
               <ul className="space-y-2.5 sm:space-y-3">
                 {['About Us', 'Privacy Policy', 'Terms of Service', 'Support'].map(l => (
-                  <li key={l}><span className="text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>{l}</span></li>
+                  <li key={l}><span className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{l}</span></li>
                 ))}
               </ul>
             </div>
@@ -780,30 +796,30 @@ export default function LandingPage() {
               <div className="space-y-3 mb-5">
                 <div className="flex items-start gap-2.5">
                   <MapPin size={13} style={{ color: '#7DD9A8', flexShrink: 0, marginTop: 2 }} />
-                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
                     Office 2-13 Ivy Business Centre,<br />Crown Street, Failsworth,<br />Manchester, M35 9BG
                   </p>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Phone size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
                   <div>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>0161 667 6030</p>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>0161 843 0277</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>0161 667 6030</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>0161 843 0277</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Mail size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>info@comprehensivecare.org.uk</p>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>info@comprehensivecare.org.uk</p>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Mail size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>recruitment@comprehensivecare.org.uk</p>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>recruitment@comprehensivecare.org.uk</p>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Clock size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
                   <div>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>Mon–Fri: 9:00 AM – 5:00 PM</p>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.28)' }}>Weekends & Bank Holidays: Closed</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>Mon–Fri: 9:00 AM – 5:00 PM</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>Weekends & Bank Holidays: Closed</p>
                   </div>
                 </div>
               </div>
@@ -816,18 +832,10 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 sm:pt-8"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs text-center sm:text-left" style={{ color: 'rgba(255,255,255,0.22)' }}>
+            style={{ borderTop: '1px solid rgba(255,255,255,0.85)' }}>
+            <p className="text-xs text-center sm:text-left" style={{ color: 'rgba(255,255,255,0.85)' }}>
               © {new Date().getFullYear()} Comprehensive Care. All rights reserved. Registered in England and Wales.
             </p>
-            <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2 sm:gap-3">
-              {['CQC Aligned', 'NHS-Aligned'].map(b => (
-                <span key={b} className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(125,217,168,0.07)', color: '#7DD9A8', border: '1px solid rgba(125,217,168,0.13)' }}>
-                  {b}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
       </footer>

@@ -174,10 +174,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('ha:unauthorized', handle)
   }, [])
 
-  // Inactivity timeout — log out after 30 minutes of no interaction
+  // Inactivity timeout — log out after 2 minutes of no interaction
   useEffect(() => {
     if (!user) return
-    const TIMEOUT_MS = 30 * 60 * 1000
+    const TIMEOUT_MS = 2 * 60 * 1000
     let timer: ReturnType<typeof setTimeout>
     const reset = () => {
       clearTimeout(timer)

@@ -78,14 +78,17 @@ export default function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[min(320px,calc(100vw-1rem))] rounded-2xl shadow-modal z-50 overflow-hidden"
-          style={{ background: '#1e2d4a', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="fixed inset-0 z-40 sm:hidden" onClick={() => setOpen(false)} />
+      )}
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl shadow-2xl z-50 overflow-hidden"
+          style={{ background: '#151515', border: '1px solid rgba(232,177,48,0.25)' }}>
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(232,177,48,0.15)' }}>
             <h3 className="text-white font-semibold text-sm">Notifications</h3>
             <div className="flex items-center gap-2">
               {unread > 0 && (
-                <button onClick={markAllRead} className="text-xs text-slate-400 hover:text-white transition-colors">
+                <button onClick={markAllRead} className="text-xs font-medium transition-colors" style={{ color: '#e8b130' }}>
                   Mark all read
                 </button>
               )}

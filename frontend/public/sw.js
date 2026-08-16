@@ -1,5 +1,5 @@
-const CACHE = 'compcare-v4';
-const DYNAMIC_CACHE = 'compcare-dynamic-v4';
+const CACHE = 'compcare-v5';
+const DYNAMIC_CACHE = 'compcare-dynamic-v5';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE = [
@@ -90,8 +90,11 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE)
       .then(cache => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -138,19 +141,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Static assets (JS/CSS/images/fonts) — cache-first, network fallback, store in dynamic cache
+  // Static assets (JS/CSS/images/fonts) — network-first so a new deploy is always picked up
+  // immediately; falls back to cache only when offline. JS/CSS filenames are content-hashed
+  // by the build, so a fresh deploy naturally requests new files anyway — this just protects
+  // against any stale intermediate cache (e.g. logo/icons) lingering after an update.
   if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2|woff|ttf)$/)) {
     event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone));
-          }
-          return response;
-        }).catch(() => new Response('', { status: 503 }));
-      })
+      fetch(request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request).then(cached => cached || new Response('', { status: 503 })))
     );
     return;
   }
