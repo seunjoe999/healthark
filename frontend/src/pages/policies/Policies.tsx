@@ -370,18 +370,38 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
   const [loading, setLoading] = useState(false)
   const [allStaff, setAllStaff] = useState<any[]>([])
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([])
+  const [attachedFile, setAttachedFile] = useState<{ url: string; name: string } | null>(null)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
     if (open) api.get('/staff').then(r => setAllStaff(r.data.data || [])).catch(() => {})
   }, [open])
 
+  const attachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingFile(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const url: string = res.data.data.fileUrl
+      const name: string = res.data.data.fileName || file.name
+      setAttachedFile({ url, name })
+      set('documentUrl', url)
+      toast.success('File attached')
+    } catch { toast.error('Failed to attach file') }
+    finally { setUploadingFile(false); if (fileInputRef.current) fileInputRef.current.value = '' }
+  }
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
       const payload: any = { ...form }
-      if (payload.documentUrl && !/^https?:\/\//i.test(payload.documentUrl)) {
+      if (payload.documentUrl && !attachedFile && !/^https?:\/\//i.test(payload.documentUrl)) {
         payload.documentUrl = `https://${payload.documentUrl}`
       }
       const res = await api.post('/policies', payload)
@@ -403,7 +423,18 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
           <Input label="Version" value={form.version} onChange={e => set('version', e.target.value)} placeholder="1.0" />
           <Input label="Effective date" type="date" value={form.effectiveDate} onChange={e => set('effectiveDate', e.target.value)} />
         </div>
-        <Input label="Document URL (optional)" value={form.documentUrl} onChange={e => set('documentUrl', e.target.value)} placeholder="https://..." hint="Link to document in Google Drive, OneDrive, etc." />
+        <div>
+          <label className="label">Policy document</label>
+          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png" onChange={attachFile} />
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 transition-colors">
+            <Paperclip className="w-3.5 h-3.5" />
+            {uploadingFile ? 'Uploading...' : attachedFile ? attachedFile.name : 'Attach file (PDF, Word, image...)'}
+          </button>
+          {!attachedFile && (
+            <Input label="Or paste a document URL (optional)" value={form.documentUrl} onChange={e => set('documentUrl', e.target.value)} placeholder="https://..." hint="Link to document in Google Drive, OneDrive, etc." />
+          )}
+        </div>
         <Input label="Review due date" type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         <div className="flex items-center gap-2">
           <input type="checkbox" id="req" checked={form.requiresSign} onChange={e => set('requiresSign', e.target.checked)} className="rounded" />

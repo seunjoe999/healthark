@@ -378,8 +378,11 @@ function RecruitModal({ open, onClose, homeId, editing, onSaved }: {
 
 const ALL_ROLES = [
   { value: 'group_admin', label: 'Group Admin — full access to all homes' },
+  { value: 'admin', label: 'Admin' },
   { value: 'home_manager', label: 'Home Manager — manage a single home' },
-  { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'deputy_manager', label: 'Deputy Manager' },
+  { value: 'team_leader', label: 'Team Leader' },
+  { value: 'senior_carer', label: 'Senior Carer / Supervisor' },
   { value: 'care_staff', label: 'Care Staff' },
   { value: 'auditor', label: 'Auditor — read-only access' },
 ]
@@ -444,7 +447,10 @@ const ALL_FEATURES = [
 
 const ROLE_LABELS: Record<string, string> = {
   group_admin: 'Group Admin',
+  admin: 'Admin',
   home_manager: 'Home Manager',
+  deputy_manager: 'Deputy Manager',
+  team_leader: 'Team Leader',
   senior_carer: 'Senior Carer',
   care_staff: 'Care Staff',
   auditor: 'Auditor',
@@ -772,7 +778,7 @@ function AddAdminModal({ open, onClose, homes, onCreated }: {
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.firstName || !form.lastName || !form.email) { toast.error('First name, last name and email are required'); return }
-    if (['home_manager', 'senior_carer', 'care_staff'].includes(form.role) && !form.homeId) { toast.error('Select a home for this account'); return }
+    if (['home_manager', 'deputy_manager', 'team_leader', 'senior_carer', 'care_staff', 'admin'].includes(form.role) && !form.homeId) { toast.error('Select a home for this account'); return }
     setLoading(true)
     try {
       const payload: any = { firstName: form.firstName, lastName: form.lastName, email: form.email, role: form.role }
