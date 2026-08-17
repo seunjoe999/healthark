@@ -50,7 +50,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
           `SELECT id, first_name, last_name, preferred_name, email, role, status,
                   home_id, photo_url, start_date, is_active, last_login, created_at,
                   feature_flags, (login_pin_hash IS NOT NULL) as has_pin
-           FROM staff WHERE organisation_id = $1 AND is_active = TRUE ${where}
+           FROM staff WHERE organisation_id = $1 AND status != 'terminated' ${where}
            ORDER BY last_name, first_name`,
           params
         );
@@ -59,7 +59,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, email, role, status,
                   home_id, photo_url, start_date, is_active, last_login, created_at
-           FROM staff WHERE organisation_id = $1 AND is_active = TRUE ${where}
+           FROM staff WHERE organisation_id = $1 AND status != 'terminated' ${where}
            ORDER BY last_name, first_name`,
           params
         );
@@ -68,7 +68,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
                 home_id, photo_url, start_date, is_active
-         FROM staff WHERE home_id = $1 AND organisation_id = $2 AND is_active = TRUE
+         FROM staff WHERE home_id = $1 AND organisation_id = $2 AND status != 'terminated'
          ORDER BY last_name, first_name`,
         [homeId, organisationId]
       );

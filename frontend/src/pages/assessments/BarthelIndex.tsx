@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Activity, ChevronDown, ChevronUp, Save, Printer } from 'lucide-react'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate as fmtLetterDate, nl as letterNl } from '../../utils/letterheadPrint'
 
 // Barthel Index — 10 domain, 0–100 scale (Mahoney & Barthel 1965)
 const DOMAINS = [
@@ -178,6 +179,38 @@ export default function BarthelIndex() {
 
   const interp = getInterpretation(totalScore)
 
+  const printCurrent = () => {
+    const h = history[0]
+    if (!h) { toast.error('No saved Barthel assessment to print yet'); return }
+    const su = residents.find(r => r.id === selectedSu)
+    const residentName = su ? `${su.first_name} ${su.last_name}` : ''
+    const hi = getInterpretation(h.total_score)
+    const domainRows = DOMAINS.map(d => {
+      const s = h.scores?.[d.id]
+      const opt = d.options.find(o => o.value === s)
+      return `<tr><th>${d.label}</th><td>${s !== undefined ? `${s} — ${opt?.label || ''}` : '—'}</td></tr>`
+    }).join('')
+    const page = buildLetterheadPage({
+      docTitle: 'Barthel Index',
+      docSubtitle: 'Activities of Daily Living Dependency Assessment',
+      docRefPrefix: 'BI', docRefId: h.id, residentName,
+      sections: [
+        {
+          title: 'Result Summary',
+          inner: `
+            <div class="risk-box"><span class="rb-label">Dependency Level</span><span class="rb-value">${hi.label}</span></div>
+            <table class="fields">
+              <tr><th>Total Score</th><td>${h.total_score} / 100</td></tr>
+              <tr><th>Assessed</th><td>${fmtLetterDate(h.created_at)}</td></tr>
+            </table>`,
+        },
+        { title: 'Domain Scores', inner: `<table class="fields">${domainRows}</table>` },
+        ...(h.notes ? [{ title: 'Notes', inner: `<p class="body-text">${letterNl(h.notes)}</p>` }] : []),
+      ],
+    })
+    if (!openLetterheadPrint('Barthel Index', page)) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -190,7 +223,7 @@ export default function BarthelIndex() {
             Validated ADL dependency assessment — scores from 0 (total dependency) to 100 (full independence)
           </p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={printCurrent} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

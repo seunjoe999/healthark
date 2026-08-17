@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Activity, Save, ChevronDown, ChevronUp, AlertTriangle, Printer, TrendingUp } from 'lucide-react'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate as fmtLetterDate, nl as letterNl } from '../../utils/letterheadPrint'
 
 // ── NEWS2 scoring ──────────────────────────────────────────────────
 function scoreRR(v: number) {
@@ -133,6 +134,45 @@ export default function NEWS2Score() {
 
   const resident = residents.find(r => r.id === selectedSu)
 
+  const printCurrent = () => {
+    const h = history[0]
+    if (!h) { toast.error('No saved NEWS2 assessment to print yet'); return }
+    const su = residents.find(r => r.id === selectedSu)
+    const residentName = su ? `${su.first_name} ${su.last_name}` : ''
+    const hr = getClinicalResponse(h.total_score, [h.rr_score, h.spo2_score, h.o2_score, h.sbp_score, h.pulse_score, h.avpu_score, h.temp_score].some((s: number) => s >= 3))
+    const page = buildLetterheadPage({
+      docTitle: 'NEWS2 Score',
+      docSubtitle: 'National Early Warning Score 2 — Royal College of Physicians',
+      docRefPrefix: 'NEWS2', docRefId: h.id, residentName,
+      sections: [
+        {
+          title: 'Risk Summary',
+          inner: `
+            <div class="risk-box"><span class="rb-label">Clinical Risk</span><span class="rb-value">${hr.badge}</span></div>
+            <table class="fields">
+              <tr><th>Total Score</th><td>${h.total_score}</td></tr>
+              <tr><th>Assessed</th><td>${fmtLetterDate(h.created_at)}</td></tr>
+            </table>`,
+        },
+        {
+          title: 'Vital Signs',
+          inner: `<table class="fields">
+            <tr><th>Respiration Rate</th><td>${h.respiration_rate} (score ${h.rr_score})</td></tr>
+            <tr><th>SpO2</th><td>${h.spo2}% (score ${h.spo2_score})</td></tr>
+            <tr><th>Supplemental O2</th><td>${h.supplemental_o2 ? 'Yes' : 'No'} (score ${h.o2_score})</td></tr>
+            <tr><th>Systolic BP</th><td>${h.systolic_bp} (score ${h.sbp_score})</td></tr>
+            <tr><th>Pulse</th><td>${h.pulse} (score ${h.pulse_score})</td></tr>
+            <tr><th>AVPU</th><td>${h.avpu} (score ${h.avpu_score})</td></tr>
+            <tr><th>Temperature</th><td>${h.temperature}°C (score ${h.temp_score})</td></tr>
+          </table>`,
+        },
+        { title: 'Clinical Response', inner: `<p class="body-text">${letterNl(hr.response)}</p>` },
+        ...(h.notes ? [{ title: 'Notes', inner: `<p class="body-text">${letterNl(h.notes)}</p>` }] : []),
+      ],
+    })
+    if (!openLetterheadPrint('NEWS2 Score', page)) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -143,7 +183,7 @@ export default function NEWS2Score() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">National Early Warning Score 2 — Royal College of Physicians</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={printCurrent} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

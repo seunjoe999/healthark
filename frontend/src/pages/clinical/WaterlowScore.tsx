@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Shield, Save, ChevronDown, ChevronUp, Plus, Printer, RefreshCw, Clock } from 'lucide-react'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate as fmtLetterDate, nl as letterNl } from '../../utils/letterheadPrint'
 
 // ── Waterlow risk interpretation ──────────────────────────────────
 function getWaterlowRisk(score: number) {
@@ -187,6 +188,69 @@ export default function WaterlowScore() {
     } finally { setRepoSaving(false) }
   }
 
+  const residentName = residents.find(r => r.id === selectedSu)
+    ? `${residents.find(r => r.id === selectedSu)!.first_name} ${residents.find(r => r.id === selectedSu)!.last_name}` : ''
+
+  const printCurrent = () => {
+    if (tab === 'waterlow') {
+      const h = waterlowHistory[0]
+      if (!h) { toast.error('No saved Waterlow assessment to print yet'); return }
+      const hr = getWaterlowRisk(h.total_score)
+      const page = buildLetterheadPage({
+        docTitle: 'Waterlow Score & Repositioning',
+        docSubtitle: 'Pressure Ulcer Risk Assessment',
+        docRefPrefix: 'WL', docRefId: h.id, residentName,
+        sections: [
+          {
+            title: 'Risk Summary',
+            inner: `
+              <div class="risk-box"><span class="rb-label">Overall Risk</span><span class="rb-value">${hr.label}</span></div>
+              <table class="fields">
+                <tr><th>Total Score</th><td>${h.total_score}</td></tr>
+                <tr><th>Assessed</th><td>${fmtLetterDate(h.created_at)}</td></tr>
+              </table>`,
+          },
+          {
+            title: 'Score Breakdown',
+            inner: `<table class="fields">
+              <tr><th>Build</th><td>${h.build_score}</td></tr>
+              <tr><th>Skin</th><td>${h.skin_score}</td></tr>
+              <tr><th>Sex/Age</th><td>${h.sex_age_score}</td></tr>
+              <tr><th>Malnutrition</th><td>${h.malnutrition_score}</td></tr>
+              <tr><th>Continence</th><td>${h.continence_score}</td></tr>
+              <tr><th>Mobility</th><td>${h.mobility_score}</td></tr>
+              <tr><th>Special Risk Factors</th><td>${(h.tissue_risk_score||0)+(h.neuro_risk_score||0)+(h.surgery_risk_score||0)+(h.med_risk_score||0)}</td></tr>
+            </table>`,
+          },
+          { title: 'Recommended Action', inner: `<p class="body-text">${letterNl(hr.action)}</p>` },
+          ...(h.notes ? [{ title: 'Notes', inner: `<p class="body-text">${letterNl(h.notes)}</p>` }] : []),
+        ],
+      })
+      if (!openLetterheadPrint('Waterlow Score', page)) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+    } else {
+      const h = repoHistory[0]
+      if (!h) { toast.error('No repositioning record to print yet'); return }
+      const page = buildLetterheadPage({
+        docTitle: 'Repositioning Chart',
+        docSubtitle: 'Pressure Care Repositioning Record',
+        docRefPrefix: 'RP', docRefId: h.id, residentName,
+        sections: [
+          {
+            title: 'Repositioning Record',
+            inner: `<table class="fields">
+              <tr><th>Position</th><td>${h.position}</td></tr>
+              <tr><th>Skin integrity OK</th><td>${h.skin_integrity_ok ? 'Yes' : 'No'}</td></tr>
+              <tr><th>Pain free</th><td>${h.pain_free ? 'Yes' : 'No'}</td></tr>
+              <tr><th>Recorded</th><td>${fmtLetterDate(h.created_at)}</td></tr>
+            </table>`,
+          },
+          ...(h.notes ? [{ title: 'Notes', inner: `<p class="body-text">${letterNl(h.notes)}</p>` }] : []),
+        ],
+      })
+      if (!openLetterheadPrint('Repositioning Chart', page)) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+    }
+  }
+
   const RadioGroup = ({ opts, value, onChange }: { opts: { label: string; score: number }[]; value: number | null; onChange: (v: number) => void }) => (
     <div className="space-y-2">
       {opts.map(opt => (
@@ -228,7 +292,7 @@ export default function WaterlowScore() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Pressure ulcer risk assessment and repositioning chart</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={printCurrent} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

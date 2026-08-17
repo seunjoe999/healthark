@@ -497,6 +497,14 @@ export default function AdminAccounts() {
     )
   }
 
+  const approve = async (admin: AdminUser) => {
+    try {
+      await api.put(`/staff/${admin.id}`, { status: 'active', isActive: true })
+      toast.success(`${admin.first_name} ${admin.last_name}'s account approved`)
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to approve account') }
+  }
+
   const deactivate = async (admin: AdminUser) => {
     if (!window.confirm(`Deactivate ${admin.first_name} ${admin.last_name}? They will lose access immediately.`)) return
     try {
@@ -610,6 +618,12 @@ export default function AdminAccounts() {
                   <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
                     onClick={() => removePin(admin)}>
                     Remove PIN
+                  </Button>
+                )}
+                {admin.status === 'pending' && (
+                  <Button size="sm" icon={<Check className="w-3.5 h-3.5" />}
+                    onClick={() => approve(admin)}>
+                    Approve
                   </Button>
                 )}
                 {admin.status === 'active' && (
