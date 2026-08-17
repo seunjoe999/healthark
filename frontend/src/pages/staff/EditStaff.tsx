@@ -97,12 +97,19 @@ function UploadStaffDocModal({ open, onClose, staffId, onUploaded }: {
 }
 
 const ROLES = [
-  { value: 'care_staff', label: 'Care Staff' },
-  { value: 'team_leader', label: 'Team Leader' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'director', label: 'Director' },
+  { value: 'registered_manager', label: 'Registered Manager' },
+  { value: 'service_manager', label: 'Service Manager' },
   { value: 'deputy_manager', label: 'Deputy Manager' },
+  { value: 'team_leader', label: 'Team Leader' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'care_staff', label: 'Care Staff' },
+  { value: 'recruitment_admin', label: 'Recruitment / Administrator' },
   { value: 'home_manager', label: 'Manager' },
-  { value: 'group_admin', label: 'Director' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'group_admin', label: 'Group Admin (full access)' },
+  { value: 'auditor', label: 'Auditor' },
 ]
 const STATUSES = [{ value: 'active', label: 'Active' }, { value: 'pending', label: 'Pending' }, { value: 'suspended', label: 'Suspended' }, { value: 'terminated', label: 'Terminated' }]
 const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'non_binary', label: 'Non-binary' }, { value: 'other', label: 'Other' }]

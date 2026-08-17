@@ -256,6 +256,12 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
     const homeId = fromToken(req, 'homeId');
     const { name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
             careType, cqcLocationId, cqcRating, totalBeds, taskReminderMinutes } = req.body;
+    // Empty-string numeric fields (unset lat/long, blank bed count, etc.) must
+    // become null, not '' — Postgres throws "invalid input syntax for type
+    // numeric" trying to cast '' directly, which is what was causing every
+    // save (even just editing the name) to fail with a server error whenever
+    // the home had no GPS coordinates set yet.
+    const numOrNull = (v: any) => (v === '' || v === null || v === undefined ? null : Number(v));
     // Ensure optional columns exist
     await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS care_type TEXT`).catch(() => {});
     await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS cqc_rating TEXT`).catch(() => {});
@@ -269,9 +275,10 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
         cqc_rating=COALESCE($13,cqc_rating), total_beds=COALESCE($14,total_beds),
         task_reminder_minutes=COALESCE($15,task_reminder_minutes),
         updated_at=NOW() WHERE id=$10`,
-      [name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
-       homeId, careType || null, cqcLocationId || null, cqcRating || null, totalBeds ? Number(totalBeds) : null,
-       taskReminderMinutes ? Number(taskReminderMinutes) : null]
+      [name || null, address1 || null, postcode || null, phone || null, email || null, managerName || null,
+       numOrNull(latitude), numOrNull(longitude), numOrNull(geofenceRadius),
+       homeId, careType || null, cqcLocationId || null, cqcRating || null, numOrNull(totalBeds),
+       numOrNull(taskReminderMinutes)]
     );
     res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
   } catch (err) { next(err); }

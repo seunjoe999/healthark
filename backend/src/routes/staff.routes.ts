@@ -218,12 +218,13 @@ router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 // POST /api/staff - create staff member
 router.post(
   '/',
-  requireRole('group_admin', 'home_manager'),
+  requireRole('group_admin', 'home_manager', 'recruitment_admin'),
   [
     body('email').isEmail().normalizeEmail(),
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
-    body('role').isIn(['care_staff','team_leader','admin','deputy_manager','home_manager','group_admin','senior_carer','auditor']),
+    body('role').isIn(['care_staff','team_leader','admin','deputy_manager','home_manager','group_admin','senior_carer','auditor',
+      'director','registered_manager','service_manager','supervisor','recruitment_admin']),
     body('password').optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage('Minimum 8 characters'),
     body('homeId').optional({ checkFalsy: true }).isUUID(),
   ],
@@ -565,13 +566,19 @@ router.delete('/:id', requireRole('group_admin', 'home_manager'),
     try {
       const token = req.headers.authorization?.substring(7);
       const decoded = token ? jwt.decode(token) as any : {};
-      const callerRole = req.staff?.role || decoded?.role;
       const staffRow = await query<any>('SELECT first_name, last_name, home_id FROM staff WHERE id=$1', [req.params.id]);
-      if (callerRole === 'group_admin') {
-        await query('UPDATE staff SET is_active=false, status=$1, refresh_token=NULL WHERE id=$2', ['terminated', req.params.id]);
-      } else {
-        await query('UPDATE staff SET is_active=false, status=$1 WHERE id=$2', ['terminated', req.params.id]);
-      }
+      // Soft-delete, but also free up the email address (by tagging it with the
+      // now-terminated staff id) so a brand new account can be created with the
+      // same email straight away — the email UNIQUE constraint would otherwise
+      // block recreation forever even though the old account is deactivated.
+      await query(
+        `UPDATE staff SET is_active=false, status='terminated', refresh_token=NULL,
+           email = CASE WHEN email !~ ('\\+deleted-' || id::text || '@')
+                        THEN regexp_replace(email, '@', '+deleted-' || id::text || '@')
+                        ELSE email END
+         WHERE id=$1`,
+        [req.params.id]
+      );
       if (staffRow[0]) {
         const s = staffRow[0];
         logAudit({ homeId: s.home_id || '', staffId: decoded?.staffId || '', staffName: '', action: 'delete', resourceType: 'staff', resourceId: req.params.id, resourceLabel: `${s.first_name} ${s.last_name}` });
@@ -591,6 +598,11 @@ const DEFAULT_PERMS: Record<string, Record<string, boolean>> = {
   deputy_manager: { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
   home_manager:   { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
   group_admin:    { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  director:            { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  registered_manager:  { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  service_manager:     { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
+  supervisor:          { edit_service_users: false, edit_care_plans: false, view_sensitive_info: true,  edit_staff: false, manage_rota: true,  approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
+  recruitment_admin:   { edit_service_users: false, edit_care_plans: false, view_sensitive_info: false, edit_staff: true,  manage_rota: false, approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
 };
 
 export default router;

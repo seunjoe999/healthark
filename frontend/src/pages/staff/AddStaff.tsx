@@ -8,10 +8,15 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
-  { value: 'care_staff', label: 'Care Staff' },
-  { value: 'senior_carer', label: 'Senior Carer / Supervisor' },
-  { value: 'team_leader', label: 'Team Leader' },
+  { value: 'director', label: 'Director' },
+  { value: 'registered_manager', label: 'Registered Manager' },
+  { value: 'service_manager', label: 'Service Manager' },
   { value: 'deputy_manager', label: 'Deputy Manager' },
+  { value: 'team_leader', label: 'Team Leader' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'senior_carer', label: 'Senior Carer' },
+  { value: 'care_staff', label: 'Care Staff' },
+  { value: 'recruitment_admin', label: 'Recruitment / Administrator' },
   { value: 'home_manager', label: 'Home Manager' },
   { value: 'admin', label: 'Admin' },
   { value: 'group_admin', label: 'Group Admin (full access)' },

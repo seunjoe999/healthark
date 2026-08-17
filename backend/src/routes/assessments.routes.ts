@@ -1645,11 +1645,18 @@ router.get('/templates/:key', (req: Request, res: Response) => {
   res.json({ success: true, data: t } as ApiResponse);
 });
 
+// Roles that can see every staff member's assessment/supervision records.
+// Everyone else can only see their own — staff assessments are personnel
+// records and must not be browsable by other frontline staff.
+const ASSESSMENT_MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+
 // GET /api/assessments
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || req.staff?.homeId || '';
     const { category, subjectId, staffId, templateKey } = req.query;
+    const isManager = ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '');
+    const forcedOwnSubject = category === 'staff' && !isManager ? (req.staff?.staffId || '') : null;
     let sql = `SELECT a.*,
       s.first_name || ' ' || s.last_name as conducted_by_name
       FROM assessments a
@@ -1657,8 +1664,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       WHERE a.home_id = $1`;
     const params: any[] = [homeId];
     if (category) { params.push(category); sql += ` AND a.category = $${params.length}`; }
-    if (subjectId) { params.push(subjectId); sql += ` AND a.subject_id = $${params.length}`; }
-    if (staffId) { params.push(staffId); sql += ` AND a.subject_id = $${params.length}`; }
+    if (forcedOwnSubject !== null) {
+      params.push(forcedOwnSubject); sql += ` AND a.subject_id = $${params.length}`;
+    } else if (subjectId) { params.push(subjectId); sql += ` AND a.subject_id = $${params.length}`; }
+    else if (staffId) { params.push(staffId); sql += ` AND a.subject_id = $${params.length}`; }
     if (templateKey) { params.push(templateKey); sql += ` AND a.template_key = $${params.length}`; }
     sql += ' ORDER BY a.assessment_date DESC, a.created_at DESC LIMIT 100';
     const rows = await query(sql, params);
@@ -1683,7 +1692,12 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
            FROM assessments a LEFT JOIN staff s ON s.id = a.conducted_by
            WHERE a.id = $1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
-    res.json({ success: true, data: rows[0] } as ApiResponse);
+    const assessment = rows[0] as any;
+    const isManager = ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '');
+    if (assessment.category === 'staff' && !isManager && assessment.subject_id !== req.staff?.staffId) {
+      return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
+    }
+    res.json({ success: true, data: assessment } as ApiResponse);
   } catch (err) { next(err); }
 });
 

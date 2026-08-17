@@ -7,14 +7,19 @@ import { Shield, Check, X, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const ROLES = [
-  { value: 'care_staff',    label: 'Care Staff',      color: 'bg-slate-100 text-slate-700' },
-  { value: 'senior_carer',  label: 'Senior Carer',    color: 'bg-cyan-100 text-cyan-700' },
-  { value: 'team_leader',   label: 'Team Leader',     color: 'bg-blue-100 text-blue-700' },
-  { value: 'admin',         label: 'Admin',           color: 'bg-purple-100 text-purple-700' },
-  { value: 'deputy_manager',label: 'Deputy Manager',  color: 'bg-amber-100 text-amber-700' },
-  { value: 'home_manager',  label: 'Manager',         color: 'bg-orange-100 text-orange-700' },
-  { value: 'auditor',       label: 'Auditor',         color: 'bg-teal-100 text-teal-700' },
-  { value: 'group_admin',   label: 'Director',        color: 'bg-rose-100 text-rose-700' },
+  { value: 'care_staff',         label: 'Care Staff',               color: 'bg-slate-100 text-slate-700' },
+  { value: 'senior_carer',       label: 'Senior Carer',             color: 'bg-cyan-100 text-cyan-700' },
+  { value: 'recruitment_admin',  label: 'Recruitment / Administrator', color: 'bg-lime-100 text-lime-700' },
+  { value: 'team_leader',        label: 'Team Leader',              color: 'bg-blue-100 text-blue-700' },
+  { value: 'supervisor',         label: 'Supervisor',               color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'admin',              label: 'Admin',                    color: 'bg-purple-100 text-purple-700' },
+  { value: 'deputy_manager',     label: 'Deputy Manager',           color: 'bg-amber-100 text-amber-700' },
+  { value: 'service_manager',    label: 'Service Manager',          color: 'bg-orange-100 text-orange-700' },
+  { value: 'registered_manager', label: 'Registered Manager',       color: 'bg-orange-100 text-orange-700' },
+  { value: 'home_manager',       label: 'Manager',                  color: 'bg-orange-100 text-orange-700' },
+  { value: 'auditor',            label: 'Auditor',                  color: 'bg-teal-100 text-teal-700' },
+  { value: 'director',           label: 'Director',                 color: 'bg-rose-100 text-rose-700' },
+  { value: 'group_admin',        label: 'Group Admin',              color: 'bg-rose-100 text-rose-700' },
 ]
 
 const PERMISSIONS = [
