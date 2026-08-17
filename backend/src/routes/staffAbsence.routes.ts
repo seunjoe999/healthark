@@ -50,7 +50,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string | undefined) : myStaffId;
     const year = req.query.year as string | undefined;
 

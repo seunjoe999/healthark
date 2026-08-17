@@ -29,8 +29,12 @@ const STAFF_DOC_TYPES = [
 
 type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions'
 
+const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
+
 export default function StaffModule() {
   const { user, isRole } = useAuth()
+  const isManager = isRole(...MANAGER_ROLES)
+  const canCreateStaff = isManager || isRole('recruitment_admin')
   const [staff, setStaff] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
   const [tab, setTab] = useState<StaffTab>('profile')
@@ -63,8 +67,18 @@ export default function StaffModule() {
   useEffect(() => {
     if (!selectedHome) return
     setLoading(true)
-    staffApi.list({ homeId: selectedHome }).then(res => setStaff(res.data.data || []))
-      .catch(console.error).finally(() => setLoading(false))
+    staffApi.list({ homeId: selectedHome }).then(res => {
+      const list = res.data.data || []
+      setStaff(list)
+      // Non-managers can only ever view their own profile/records — never
+      // show them a picker for colleagues (confidentiality: cautions,
+      // supervisions, documents, DOB/address etc. are personnel data).
+      if (!isManager) {
+        const me = list.find((s: any) => s.id === user?.id) || (user?.id ? { id: user.id } : null)
+        if (me) selectStaff(me)
+      }
+    }).catch(console.error).finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHome])
 
   const selectStaff = async (s: any) => {
@@ -118,28 +132,34 @@ export default function StaffModule() {
           </select>
         )}
 
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Staff member</label>
-          <select
-            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-[200px]"
-            value={selected?.id || ''}
-            onChange={e => {
-              if (!e.target.value) { setSelected(null); return }
-              const s = staff.find(x => x.id === e.target.value)
-              if (s) selectStaff(s)
-            }}>
-            <option value="">— Select staff member —</option>
-            {staff.map(s => <option key={s.id} value={s.id}>{getName(s)} · {(s.role || '').replace(/_/g, ' ')}</option>)}
-          </select>
-        </div>
+        {isManager ? (
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Staff member</label>
+            <select
+              className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-[200px]"
+              value={selected?.id || ''}
+              onChange={e => {
+                if (!e.target.value) { setSelected(null); return }
+                const s = staff.find(x => x.id === e.target.value)
+                if (s) selectStaff(s)
+              }}>
+              <option value="">— Select staff member —</option>
+              {staff.map(s => <option key={s.id} value={s.id}>{getName(s)} · {(s.role || '').replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+        ) : (
+          <p className="text-xs font-semibold text-slate-500">My profile</p>
+        )}
 
-        <div className="sm:ml-auto">
-          <Link to="/staff/new">
-            <button className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
-              + Add staff member
-            </button>
-          </Link>
-        </div>
+        {canCreateStaff && (
+          <div className="sm:ml-auto">
+            <Link to="/staff/new">
+              <button className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
+                + Add staff member
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Staff detail — full width */}

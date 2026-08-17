@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { Button, Input, Select, Card, SectionHeading, Modal } from '../../components/ui'
-import { ArrowLeft, UserPlus, Copy, CheckCircle } from 'lucide-react'
+import { ArrowLeft, UserPlus, Copy, CheckCircle, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
@@ -24,11 +24,14 @@ const ROLES = [
 ]
 
 export default function AddStaff() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
+  const canAssignResidents = isRole('group_admin', 'admin')
   const navigate = useNavigate()
   const [homes, setHomes] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
   const [createdStaff, setCreatedStaff] = useState<{ email: string; temporaryPassword: string } | null>(null)
+  const [residents, setResidents] = useState<any[]>([])
+  const [assignedResidentIds, setAssignedResidentIds] = useState<string[]>([])
   const [form, setForm] = useState({
     homeId: '', firstName: '', lastName: '', email: '', phone: '',
     role: 'care_staff', startDate: '', dateOfBirth: '', gender: '',
@@ -45,6 +48,16 @@ export default function AddStaff() {
       set('homeId', user?.homeId || h[0]?.id || '')
     })
   }, [user])
+
+  useEffect(() => {
+    if (!form.homeId) return
+    api.get('/service-users', { params: { homeId: form.homeId } })
+      .then(res => setResidents(res.data.data || []))
+      .catch(() => setResidents([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.homeId])
+
+  const toggleResident = (id: string) => setAssignedResidentIds(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
 
   const save = async () => {
     if (!form.firstName || !form.lastName || !form.email || !form.homeId) {
@@ -63,6 +76,11 @@ export default function AddStaff() {
     try {
       const res = await api.post('/staff', form)
       const data = res.data.data
+      if (assignedResidentIds.length && data?.id) {
+        await Promise.all(assignedResidentIds.map(suId =>
+          api.post('/service-users/assignments', { homeId: form.homeId, staffId: data.id, suId }).catch(() => {})
+        ))
+      }
       if (data?.temporaryPassword) {
         setCreatedStaff({ email: data.email, temporaryPassword: data.temporaryPassword })
       } else {
@@ -129,6 +147,25 @@ export default function AddStaff() {
             <Input label="Notes" value={form.emergencyNotes} onChange={e => set('emergencyNotes', e.target.value)} className="md:col-span-2" placeholder="Relationship, any important notes..." />
           </div>
         </Card>
+
+        {canAssignResidents && (
+          <Card>
+            <SectionHeading title="Assign residents" description="Optional — choose which residents this staff member will support. They'll only see records for residents assigned to them." />
+            {residents.length === 0 ? (
+              <p className="text-sm text-slate-400">No residents found for this home.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                {residents.map(r => (
+                  <label key={r.id} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-sm">
+                    <input type="checkbox" checked={assignedResidentIds.includes(r.id)} onChange={() => toggleResident(r.id)} />
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    {r.first_name} {r.last_name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         <Card>
           <SectionHeading title="Account password" description="Set an initial password for this staff member. They can change it after logging in." />

@@ -116,6 +116,12 @@ router.delete('/su/:suId/:docId',
 router.get('/staff/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const rows = await query(
         `SELECT sd.*, s.first_name || ' ' || s.last_name as uploaded_by_name
          FROM staff_documents sd LEFT JOIN staff s ON s.id = sd.uploaded_by

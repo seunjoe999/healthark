@@ -26,7 +26,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
     const role = fromToken(req, 'role');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     let sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
               s.first_name || ' ' || s.last_name as completed_by_name
        FROM tasks t

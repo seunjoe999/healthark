@@ -5,7 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-import { assertResidentAccess } from '../utils/residentAccess';
+import { assertResidentAccess, getAssignedSuIds, getRole, getStaffId, RESTRICTED_ROLES } from '../utils/residentAccess';
 
 const router = Router();
 router.use(authenticate);
@@ -31,6 +31,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       WHERE mr.home_id = $1`;
     const params: unknown[] = [homeId];
     if (suId) { sql += ` AND mr.su_id = $2`; params.push(suId); }
+    else if (RESTRICTED_ROLES.includes(getRole(req))) {
+      const ids = await getAssignedSuIds(getStaffId(req));
+      if (!ids.length) return res.json({ success: true, data: [] } as ApiResponse);
+      params.push(ids); sql += ` AND mr.su_id = ANY($${params.length})`;
+    }
     sql += ' ORDER BY mr.assessed_at DESC LIMIT 200';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
@@ -41,14 +46,21 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/latest', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = tok(req, 'homeId');
+    const params: unknown[] = [homeId];
+    let residentFilter = '';
+    if (RESTRICTED_ROLES.includes(getRole(req))) {
+      const ids = await getAssignedSuIds(getStaffId(req));
+      if (!ids.length) return res.json({ success: true, data: [] } as ApiResponse);
+      params.push(ids); residentFilter = ` AND su.id = ANY($${params.length})`;
+    }
     const rows = await query(`
       SELECT DISTINCT ON (su.id)
              su.id AS su_id, su.first_name || ' ' || su.last_name AS su_name, su.room_number,
              mr.*
       FROM service_users su
       LEFT JOIN medicine_risk_assessments mr ON mr.su_id = su.id AND mr.home_id = $1
-      WHERE su.home_id = $1 AND su.status = 'live'
-      ORDER BY su.id, mr.assessed_at DESC NULLS LAST`, [homeId]);
+      WHERE su.home_id = $1 AND su.status = 'live'${residentFilter}
+      ORDER BY su.id, mr.assessed_at DESC NULLS LAST`, params);
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });

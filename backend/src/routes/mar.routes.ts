@@ -113,7 +113,7 @@ router.get('/due-today', async (req: Request, res: Response, next: NextFunction)
     if (!homeId) { res.status(400).json({ success: false, error: 'homeId query parameter is required' }); return; }
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const today = new Date().toISOString().split('T')[0];
 
     let assignedSuIds: string[] | null = null;

@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const orgId = tok(req, 'organisationId');
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
     const myStaffId = tok(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const { staffId: queryFilterStaff } = req.query as Record<string, string>;
     const filterStaff = isPrivileged ? queryFilterStaff : myStaffId;
 
@@ -66,7 +66,7 @@ router.get('/matrix', async (req: Request, res: Response, next: NextFunction) =>
     const orgId = tok(req, 'organisationId');
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
     const myStaffId = tok(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
 
     let rows;
     if (role === 'group_admin' && !homeId) {
@@ -273,7 +273,7 @@ router.get('/shift-matrix', async (req: Request, res: Response, next: NextFuncti
     const orgId = tok(req, 'organisationId');
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
     const myStaffId = tok(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
 
     let staffRows: any[];
     let homeRows: any[];

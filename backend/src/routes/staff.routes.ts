@@ -198,17 +198,19 @@ router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
       if (!rows.length) throw new AppError('Staff not found', 404);
       const staff = rows[0] as Record<string, unknown>;
 
-      // Remove sensitive fields for non-admin / not-self
-      if (role !== 'group_admin' && role !== 'home_manager' && !isSelf) {
-        delete staff.password_hash;
-        delete staff.ni_number;
-        delete staff.refresh_token;
-        delete staff.reset_token;
-      } else {
-        delete staff.password_hash;
-        delete staff.refresh_token;
-        delete staff.reset_token;
+      const isPrivileged = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      // A staff member's personal profile (DOB, address, NI number, emergency
+      // contacts, etc.) is confidential — only managers or the person
+      // themselves may view it, matching the same rule applied to their
+      // training/leave/onboarding/documents/cautions/supervisions records.
+      if (!isPrivileged && !isSelf) {
+        throw new AppError('Forbidden', 403);
       }
+
+      delete staff.password_hash;
+      delete staff.refresh_token;
+      delete staff.reset_token;
+      if (!isPrivileged) delete staff.ni_number;
 
       res.json({ success: true, data: staff } as ApiResponse);
     } catch (err) { next(err); }
@@ -543,6 +545,14 @@ router.post('/:id/clock',
 router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? jwt.decode(token) as any : {};
+      const role = req.staff?.role || decoded?.role || '';
+      const myStaffId = req.staff?.staffId || decoded?.staffId || '';
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      if (!isPrivileged && req.params.id !== myStaffId) {
+        throw new AppError('Forbidden', 403);
+      }
       const { from, to } = req.query;
       const rows = await query(
         `SELECT ce.*, h.name as home_name FROM staff_clock_events ce

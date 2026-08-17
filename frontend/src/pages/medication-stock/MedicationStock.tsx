@@ -190,7 +190,7 @@ function AddEditModal({
             <input className={inputCls} value={form.supplier} onChange={set('supplier')} />
           </Field>
         </div>
-        <Field label="Notes">
+        <Field label="Notes (optional)">
           <textarea className={inputCls} rows={2} value={form.notes} onChange={set('notes')} />
         </Field>
         <div className="flex justify-end gap-2 pt-2">

@@ -22,7 +22,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     const weekStart = req.query.weekStart as string;
 
@@ -135,7 +135,7 @@ router.get('/:id', param('id').isUUID(), validateRequest,
       if (!ts) throw new AppError('Not found', 404);
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && (ts as any).staff_id !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }

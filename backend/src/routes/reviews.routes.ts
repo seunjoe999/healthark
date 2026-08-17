@@ -27,7 +27,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const dueSoon = parseInt(req.query.dueSoon as string) || 0;
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     let assignedSuIds: string[] | null = null;
     if (!isPrivileged) {
       const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [myStaffId]);
@@ -111,6 +111,12 @@ router.post('/su', [body('suId').isUUID(), body('summary').notEmpty(), body('rev
 router.get('/cautions/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
+      }
       const rows = await query(
         `SELECT sc.*, s.first_name || ' ' || s.last_name as created_by_name
          FROM staff_cautions sc LEFT JOIN staff s ON s.id = sc.created_by
@@ -144,6 +150,12 @@ router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()]
 router.get('/supervisions/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
+      }
       const rows = await query(
         `SELECT ss.*, s.first_name || ' ' || s.last_name as conducted_by_name
          FROM staff_supervisions ss LEFT JOIN staff s ON s.id = ss.conducted_by

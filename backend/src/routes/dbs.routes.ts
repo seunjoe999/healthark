@@ -22,7 +22,7 @@ router.get('/dbs', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     let sql = `SELECT d.*, s.first_name || ' ' || s.last_name AS staff_name, s.photo_url
                FROM staff_dbs d JOIN staff s ON s.id = d.staff_id
@@ -102,7 +102,7 @@ router.get('/references', async (req: Request, res: Response, next: NextFunction
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     let sql = `SELECT r.*, s.first_name || ' ' || s.last_name AS staff_name
                FROM staff_references r JOIN staff s ON s.id = r.staff_id
@@ -137,7 +137,7 @@ router.get('/right-to-work', async (req: Request, res: Response, next: NextFunct
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     let sql = `SELECT r.*, s.first_name || ' ' || s.last_name AS staff_name
                FROM staff_right_to_work r JOIN staff s ON s.id = r.staff_id
@@ -179,7 +179,7 @@ router.get('/summary/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]{
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }
@@ -198,7 +198,7 @@ router.get('/compliance-overview', async (req: Request, res: Response, next: Nex
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     if (!isPrivileged) {
       throw new AppError('Forbidden', 403);
     }

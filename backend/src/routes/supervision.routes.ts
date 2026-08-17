@@ -26,7 +26,7 @@ router.get('/', validateRequest,
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
       let sql = 'SELECT sup.*, s.first_name || \' \' || s.last_name as staff_name, svr.first_name || \' \' || svr.last_name as supervisor_name FROM supervisions sup JOIN staff s ON s.id = sup.staff_id JOIN staff svr ON svr.id = sup.supervisor_id';
       const params: any[] = [];
@@ -85,7 +85,7 @@ router.get('/appraisal', validateRequest,
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
       let sql = 'SELECT apr.*, s.first_name || \' \' || s.last_name as staff_name, apr_s.first_name || \' \' || apr_s.last_name as appraiser_name FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id';
       const params: any[] = [];
@@ -104,7 +104,7 @@ router.get('/appraisal/:id', param('id').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       const rows = await query(
         `SELECT apr.*, s.first_name || ' ' || s.last_name as staff_name, apr_s.first_name || ' ' || apr_s.last_name as appraiser_name
          FROM appraisals apr JOIN staff s ON s.id = apr.staff_id JOIN staff apr_s ON apr_s.id = apr.appraiser_id WHERE apr.id = $1`,
@@ -175,7 +175,7 @@ router.get('/:id', param('id').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       const rows = await query(
         `SELECT sup.*, s.first_name || ' ' || s.last_name as staff_name, svr.first_name || ' ' || svr.last_name as supervisor_name
          FROM supervisions sup JOIN staff s ON s.id = sup.staff_id JOIN staff svr ON svr.id = sup.supervisor_id WHERE sup.id = $1`,
