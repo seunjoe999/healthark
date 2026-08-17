@@ -8,7 +8,6 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
-  { value: 'super_admin', label: 'Super Admin (full access + can delete)', groupAdminOnly: true },
   { value: 'director', label: 'Director' },
   { value: 'registered_manager', label: 'Registered Manager' },
   { value: 'service_manager', label: 'Service Manager' },
@@ -135,8 +134,7 @@ export default function AddStaff() {
         <Card>
           <SectionHeading title="Employment details" />
           <div className="grid md:grid-cols-2 gap-4">
-            <Select label="Role *" value={form.role} onChange={e => set('role', e.target.value)}
-              options={ROLES.filter(r => !r.groupAdminOnly || isRole('group_admin'))} />
+            <Select label="Role *" value={form.role} onChange={e => set('role', e.target.value)} options={ROLES} />
             <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           </div>
         </Card>

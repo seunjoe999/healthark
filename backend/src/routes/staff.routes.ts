@@ -225,8 +225,10 @@ router.post(
     body('email').isEmail().normalizeEmail(),
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
+    // super_admin is deliberately excluded — it must never be creatable through
+    // the app itself, only by a developer with direct database access.
     body('role').isIn(['care_staff','team_leader','admin','deputy_manager','home_manager','group_admin','senior_carer','auditor',
-      'director','registered_manager','service_manager','supervisor','recruitment_admin','super_admin']),
+      'director','registered_manager','service_manager','supervisor','recruitment_admin']),
     body('password').optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage('Minimum 8 characters'),
     body('homeId').optional({ checkFalsy: true }).isUUID(),
   ],
