@@ -1,10 +1,10 @@
 ﻿import React, { useEffect, useState } from 'react'
-import { homesApi, suApi } from '../../api'
+import { homesApi, suApi, staffApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
 
@@ -23,7 +23,7 @@ const FREQUENCIES = [
   { value: 'yearly', label: 'Yearly' },
 ]
 
-const CATEGORIES = [{ value: 'housekeeping', label: 'Housekeeping' }, { value: 'medication', label: 'Medication check' }, { value: 'social_visit', label: 'Social visit' }, { value: 'personal_care', label: 'Personal care' }, { value: 'health_check', label: 'Health check' }, { value: 'general', label: 'General' }, { value: 'maintenance', label: 'Maintenance' }]
+const CATEGORIES = [{ value: 'housekeeping', label: 'Housekeeping' }, { value: 'medication', label: 'Medication check' }, { value: 'social_visit', label: 'Social visit' }, { value: 'personal_care', label: 'Personal care' }, { value: 'health_check', label: 'Health check' }, { value: 'general', label: 'General' }, { value: 'maintenance', label: 'Maintenance' }, { value: 'follow_up', label: 'Follow up' }]
 const PRIORITIES = [{ value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' }]
 const TEAMS = [
   { value: '', label: 'All' },
@@ -84,6 +84,8 @@ export default function Tasks() {
   const [medTasks, setMedTasks] = useState<any[]>([])
   const [medTasksLoading, setMedTasksLoading] = useState(false)
   const [logMedTarget, setLogMedTarget] = useState<any>(null)
+  const [staffList, setStaffList] = useState<any[]>([])
+  const [addFollowUpOpen, setAddFollowUpOpen] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export default function Tasks() {
     Promise.all([
       suApi.list(selectedHome, { status: 'live' }),
     ]).then(([suRes]) => setSus(suRes.data.data || []))
+    staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || [])).catch(() => {})
     load()
     loadTemplates()
     loadMedTasks()
@@ -188,6 +191,7 @@ export default function Tasks() {
         <div className="flex gap-2 items-center">
           <PrintButton />
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
+          {pageTab === 'tasks' && <Button size="sm" variant="outline" icon={<Send className="w-4 h-4" />} onClick={() => setAddFollowUpOpen(true)}>Follow up</Button>}
           {pageTab === 'tasks' && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}
           {pageTab === 'templates' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
         </div>
@@ -259,6 +263,8 @@ export default function Tasks() {
                       <h3 className={`font-semibold text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</h3>
                       <span className={`badge text-xs ${priorityColor(task.priority)}`}>{task.priority}</span>
                       {task.su_name && <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{task.su_name}</span>}
+                      {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
+                      {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">For {task.assigned_staff_name}</span>}
                     </div>
                     {task.description && <p className="text-xs text-slate-500 mt-0.5">{task.description}</p>}
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
@@ -369,8 +375,11 @@ export default function Tasks() {
         />
       )}
 
-      <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome}
+      <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome} staffList={staffList}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Task added') }} />
+
+      <AddFollowUpModal open={addFollowUpOpen} onClose={() => setAddFollowUpOpen(false)} homeId={selectedHome} staffList={staffList}
+        onSaved={async () => { setAddFollowUpOpen(false); await load(); toast.success('Follow up scheduled') }} />
 
       <AddTemplateModal open={addTemplateOpen} onClose={() => setAddTemplateOpen(false)} homeId={selectedHome}
         onSaved={async () => { setAddTemplateOpen(false); await loadTemplates(); toast.success('Template added') }} />
@@ -403,16 +412,17 @@ export default function Tasks() {
   )
 }
 
-function AddTaskModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', pictureUrl: '' })
+function AddTaskModal({ open, onClose, sus, homeId, staffList, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; staffList: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/tasks', { homeId, ...form, suId: form.suId || null }); onSaved() }
+    try { await api.post('/tasks', { homeId, ...form, suId: form.suId || null, assignedStaffId: form.assignedStaffId || null }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -432,11 +442,52 @@ function AddTaskModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; 
           <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
         <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <Select label="Assign to a specific staff member (optional)" value={form.assignedStaffId} onChange={e => set('assignedStaffId', e.target.value)}
+          options={staffOptions} placeholder="Anyone on the team above" />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
         <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add task</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddFollowUpModal({ open, onClose, homeId, staffList, onSaved }: { open: boolean; onClose: () => void; homeId: string; staffList: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState({ title: '', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', assignedStaffId: '' })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.assignedStaffId) { toast.error('Select who this follow up is for'); return }
+    setLoading(true)
+    try {
+      await api.post('/tasks', { homeId, ...form, category: 'follow_up', priority: 'normal' })
+      onSaved()
+      setForm({ title: '', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', assignedStaffId: '' })
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Follow up">
+      <form onSubmit={save} className="space-y-4">
+        <p className="text-sm text-slate-500">Ask a colleague to follow up on something on a specific day — e.g. checking a medication order arrived. It'll pop up as a task for them on the date and time you set.</p>
+        <Input label="Title *" required value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Check medication order arrived" autoFocus />
+        <div><label className="label">Message *</label><textarea required className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Details for whoever follows this up..." /></div>
+        <Select label="Follow up with *" required value={form.assignedStaffId} onChange={e => set('assignedStaffId', e.target.value)}
+          options={staffOptions} placeholder="Select staff member" />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Date *" type="date" required value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
+          <Input label="Time *" type="time" required value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+        </div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading}>Schedule follow up</Button>
         </div>
       </form>
     </Modal>

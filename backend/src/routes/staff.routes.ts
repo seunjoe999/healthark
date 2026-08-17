@@ -570,7 +570,7 @@ router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{
 
 
 // DELETE /api/staff/:id — permanently delete (group_admin only) or terminate (home_manager)
-router.delete('/:id', requireRole('group_admin', 'home_manager'),
+router.delete('/:id', requireRole('group_admin'),
   param('id').matches(laxUuid), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

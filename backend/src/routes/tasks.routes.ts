@@ -27,26 +27,32 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
     const role = fromToken(req, 'role');
     const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const staffId = fromToken(req, 'staffId');
     let sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
-              s.first_name || ' ' || s.last_name as completed_by_name
+              s.first_name || ' ' || s.last_name as completed_by_name,
+              a.first_name || ' ' || a.last_name as assigned_staff_name
        FROM tasks t
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
+       LEFT JOIN staff a ON a.id = t.assigned_staff_id
        WHERE t.home_id = $1 AND t.task_date = $2`;
     const params: any[] = [homeId, date];
     if (!isPrivileged) {
-      sql += ` AND (t.assigned_role IS NULL OR t.assigned_role = $3)`;
-      params.push(role);
+      // A task assigned directly to this staff member is always visible to
+      // them, regardless of role/resident scoping below — a direct
+      // assignment is an explicit instruction that must not get filtered out.
+      sql += ` AND (t.assigned_staff_id = $3 OR (t.assigned_staff_id IS NULL AND (t.assigned_role IS NULL OR t.assigned_role = $4)))`;
+      params.push(staffId, role);
     }
     sql += ' ORDER BY t.due_time, t.priority DESC';
     let rows = await query(sql, params);
 
     // Restricted roles only see tasks tied to their own assigned residents (tasks
-    // with no resident attached, i.e. general/home-wide tasks, remain visible).
-    const staffId = fromToken(req, 'staffId');
+    // with no resident attached, i.e. general/home-wide tasks, remain visible) —
+    // unless the task was assigned directly to them, which always shows.
     if (RESTRICTED_ROLES.includes(role) && staffId) {
       const assignedSuIds = await getAssignedSuIds(staffId);
-      rows = (rows as any[]).filter(t => !t.su_id || assignedSuIds.includes(t.su_id));
+      rows = (rows as any[]).filter(t => t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
     }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -89,14 +95,14 @@ router.post('/', [body('title').notEmpty()], validateRequest,
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const createdBy = fromToken(req, 'staffId');
-      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl } = req.body;
+      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl, assignedStaffId } = req.body;
       const rows = await query(
         `INSERT INTO tasks (home_id, su_id, created_by, title, category, description,
-          task_date, due_time, priority, assigned_role, picture_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+          task_date, due_time, priority, assigned_role, picture_url, assigned_staff_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
         [homeId, suId || null, createdBy, title, category || 'general',
          description || null, taskDate || new Date().toISOString().split('T')[0],
-         dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null]
+         dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null, assignedStaffId || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

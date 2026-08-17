@@ -792,8 +792,16 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
   const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity leave' }, { value: 'paternity', label: 'Paternity leave' }, { value: 'unpaid', label: 'Unpaid leave' }, { value: 'other', label: 'Other' }]
   const STATUSES = [{ value: 'pending', label: 'Pending approval' }, { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' }]
 
+  const minAnnualDate = React.useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() + 28)
+    return d.toISOString().split('T')[0]
+  }, [])
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (form.leaveType === 'annual' && form.startDate < minAnnualDate) {
+      toast.error('Annual leave must be requested at least 4 weeks in advance'); return
+    }
     setLoading(true)
     try {
       await api.post(`/staff-hr/leave`, { staffId, ...form, totalHours: parseFloat(form.totalHours) || null })
@@ -806,8 +814,11 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
     <Modal open={open} onClose={onClose} title="Request / record leave">
       <form onSubmit={save} className="space-y-4">
         <Select label="Leave type *" required value={form.leaveType} onChange={e => set('leaveType', e.target.value)} options={LEAVE_TYPES} />
+        {form.leaveType === 'annual' && (
+          <p className="text-xs text-amber-600 -mt-2">Annual leave requests must be submitted at least 4 weeks ahead of the start date.</p>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="Start date *" type="date" required min={form.leaveType === 'annual' ? minAnnualDate : undefined} value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
         </div>
         <Input label="Total hours" type="number" step="0.5" value={form.totalHours} onChange={e => set('totalHours', e.target.value)} hint="e.g. 7.5 for one day" />

@@ -144,7 +144,8 @@ function norm(s: any) {
 
 export default function EditStaff() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
+  const canDelete = isRole('group_admin')
   const navigate = useNavigate()
   const [form, setForm] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -238,7 +239,7 @@ export default function EditStaff() {
           <ArrowLeft className="w-3.5 h-3.5" /> Back to staff
         </Link>
         <div className="flex gap-2">
-          <Button variant="danger" size="sm" icon={<Trash2 className="w-3.5 h-3.5" />} loading={deleting} onClick={deleteStaff}>Delete</Button>
+          {canDelete && <Button variant="danger" size="sm" icon={<Trash2 className="w-3.5 h-3.5" />} loading={deleting} onClick={deleteStaff}>Delete</Button>}
           <Button icon={<Save className="w-4 h-4" />} loading={saving} onClick={save}>Save changes</Button>
         </div>
       </div>
@@ -368,13 +369,15 @@ export default function EditStaff() {
             onUploaded={(doc) => { setDocuments(prev => [doc, ...prev]); setUploadDocOpen(false); toast.success('Document uploaded') }} />}
         </Card>
 
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
-          <h3 className="font-semibold text-rose-800 mb-1">Danger zone</h3>
-          <p className="text-sm text-rose-600 mb-3">Permanently delete this staff member and all their records. This cannot be undone.</p>
-          <Button variant="danger" icon={<Trash2 className="w-4 h-4" />} loading={deleting} onClick={deleteStaff}>
-            Delete staff member permanently
-          </Button>
-        </div>
+        {canDelete && (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
+            <h3 className="font-semibold text-rose-800 mb-1">Danger zone</h3>
+            <p className="text-sm text-rose-600 mb-3">Permanently delete this staff member and all their records. This cannot be undone.</p>
+            <Button variant="danger" icon={<Trash2 className="w-4 h-4" />} loading={deleting} onClick={deleteStaff}>
+              Delete staff member permanently
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between mt-6">

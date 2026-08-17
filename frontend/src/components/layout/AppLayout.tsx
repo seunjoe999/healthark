@@ -209,7 +209,7 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
   )
 }
 
-const COLLAPSIBLE_SECTIONS = new Set(['QUALITY ASSURANCE'])
+const COLLAPSIBLE_SECTIONS = new Set(navSections.map(s => s.label).filter(Boolean))
 
 function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSIBLE_SECTIONS))

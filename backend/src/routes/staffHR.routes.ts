@@ -69,6 +69,13 @@ router.post('/leave',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { leaveType, startDate, endDate, hoursRequested, totalHours, reason, notes, status } = req.body;
       const targetStaffId = req.body.staffId || staffId;
+      // Annual leave must be requested at least 4 weeks in advance.
+      if (leaveType === 'annual') {
+        const minDate = new Date(); minDate.setHours(0, 0, 0, 0); minDate.setDate(minDate.getDate() + 28);
+        if (new Date(startDate) < minDate) {
+          throw new AppError('Annual leave must be requested at least 4 weeks in advance', 400);
+        }
+      }
       const rows = await query(
         `INSERT INTO staff_leave (staff_id, home_id, leave_type, start_date, end_date, hours_requested, reason)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
