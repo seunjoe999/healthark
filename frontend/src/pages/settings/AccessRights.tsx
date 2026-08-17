@@ -28,7 +28,7 @@ const FEATURES = [
   { key: 'risk_management',     label: 'Other Risk Assessment',       group: 'Residents' },
   { key: 'outcomes',            label: 'Care Outcomes',               group: 'Residents' },
   { key: 'reviews',             label: 'Care Reviews',                group: 'Residents' },
-  { key: 'diary',               label: 'Resident Diary',              group: 'Residents' },
+  { key: 'diary',               label: 'Resident Health Check',        group: 'Residents' },
   { key: 'safeguarding',        label: 'Safeguarding',                group: 'Residents' },
   { key: 'incidents',           label: 'Incidents',                   group: 'Residents' },
   { key: 'consents',            label: 'Consents & Signatures',       group: 'Residents' },

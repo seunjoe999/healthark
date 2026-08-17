@@ -146,6 +146,57 @@ router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()]
   }
 );
 
+// ── Staff Sensitive Information ──────────────────────────────────
+// Confidential documentation about a staff member (safeguarding context,
+// welfare concerns, etc.) that only managers can write, but the staff
+// member themselves can read — never amend or add to.
+router.get('/staff-sensitive-notes/:staffId', param('staffId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      if (!isPrivileged && req.params.staffId !== myStaffId) {
+        return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
+      }
+      const rows = await query(
+        `SELECT sn.*, s.first_name || ' ' || s.last_name as created_by_name
+         FROM staff_sensitive_notes sn LEFT JOIN staff s ON s.id = sn.created_by
+         WHERE sn.staff_id = $1 ORDER BY sn.created_at DESC`,
+        [req.params.staffId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/staff-sensitive-notes',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  [body('staffId').isUUID(), body('note').notEmpty()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const createdBy = fromToken(req, 'staffId');
+      const { staffId, note } = req.body;
+      const rows = await query(
+        `INSERT INTO staff_sensitive_notes (staff_id, created_by, note) VALUES ($1,$2,$3) RETURNING *`,
+        [staffId, createdBy, note]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/staff-sensitive-notes/:id',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM staff_sensitive_notes WHERE id = $1', [req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // ── Staff Supervisions ───────────────────────────────────────────
 router.get('/supervisions/:staffId', param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -273,7 +324,8 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
     // numeric" trying to cast '' directly, which is what was causing every
     // save (even just editing the name) to fail with a server error whenever
     // the home had no GPS coordinates set yet.
-    const numOrNull = (v: any) => (v === '' || v === null || v === undefined ? null : Number(v));
+    const numOrNull = (v: any) => (v === '' || v === null || v === undefined || isNaN(Number(v)) ? null : Number(v));
+    const intOrNull = (v: any) => { const n = numOrNull(v); return n === null ? null : Math.round(n); };
     // Ensure optional columns exist
     await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS care_type TEXT`).catch(() => {});
     await query(`ALTER TABLE homes ADD COLUMN IF NOT EXISTS cqc_rating TEXT`).catch(() => {});
@@ -287,10 +339,10 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
         cqc_rating=COALESCE($13,cqc_rating), total_beds=COALESCE($14,total_beds),
         task_reminder_minutes=COALESCE($15,task_reminder_minutes),
         updated_at=NOW() WHERE id=$10`,
-      [name || null, address1 || null, postcode || null, phone || null, email || null, managerName || null,
-       numOrNull(latitude), numOrNull(longitude), numOrNull(geofenceRadius),
-       homeId, careType || null, cqcLocationId || null, cqcRating || null, numOrNull(totalBeds),
-       numOrNull(taskReminderMinutes)]
+      [name || null, address1 || null, (postcode || '').slice(0, 10) || null, phone || null, email || null, managerName || null,
+       numOrNull(latitude), numOrNull(longitude), intOrNull(geofenceRadius),
+       homeId, careType || null, cqcLocationId || null, cqcRating || null, intOrNull(totalBeds),
+       intOrNull(taskReminderMinutes)]
     );
     res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
   } catch (err) { next(err); }

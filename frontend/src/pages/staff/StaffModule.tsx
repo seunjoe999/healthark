@@ -27,7 +27,7 @@ const STAFF_DOC_TYPES = [
   { value: 'other', label: 'Other document' },
 ]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive'
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
 
@@ -49,8 +49,10 @@ export default function StaffModule() {
   const [uploadStaffDocOpen, setUploadStaffDocOpen] = useState(false)
   const [cautions, setCautions] = useState<any[]>([])
   const [supervisions, setSupervisions] = useState<any[]>([])
+  const [sensitiveNotes, setSensitiveNotes] = useState<any[]>([])
   const [addCautionOpen, setAddCautionOpen] = useState(false)
   const [addSupervisionOpen, setAddSupervisionOpen] = useState(false)
+  const [addSensitiveOpen, setAddSensitiveOpen] = useState(false)
   const [addLeaveOpen, setAddLeaveOpen] = useState(false)
   const [addTrainingOpen, setAddTrainingOpen] = useState(false)
   const [trainingCertificates, setTrainingCertificates] = useState<any[]>([])
@@ -85,7 +87,7 @@ export default function StaffModule() {
     setSelected(s)
     setTab('profile')
     try {
-      const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes] = await Promise.all([
+      const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, sensitiveRes] = await Promise.all([
         api.get(`/staff-hr/training/${s.id}`),
         api.get(`/staff-hr/leave?staffId=${s.id}`),
         api.get(`/staff-hr/onboarding/${s.id}`),
@@ -93,6 +95,7 @@ export default function StaffModule() {
         api.get(`/documents/staff/${s.id}`),
         api.get(`/reviews/cautions/${s.id}`),
         api.get(`/reviews/supervisions/${s.id}`),
+        api.get(`/reviews/staff-sensitive-notes/${s.id}`),
       ])
       setTraining(trainingRes.data.data || [])
       setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
@@ -103,6 +106,7 @@ export default function StaffModule() {
       setTrainingCertificates(allDocs.filter((d: any) => d.document_type === 'training_certificate'))
       setCautions(cautionsRes.data.data || [])
       setSupervisions(supervisionsRes.data.data || [])
+      setSensitiveNotes(sensitiveRes.data.data || [])
     } catch (e) {
       console.error('selectStaff error:', e)
     }
@@ -119,6 +123,7 @@ export default function StaffModule() {
     { key: 'documents', label: 'Documents' },
     { key: 'cautions', label: 'Cautions' },
     { key: 'supervisions', label: 'Supervision & Appraisal' },
+    { key: 'sensitive', label: `Sensitive Info (${sensitiveNotes.length})` },
   ]
 
   return (
@@ -565,6 +570,52 @@ export default function StaffModule() {
               </div>
             )}
 
+            {tab === 'sensitive' && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Sensitive Information ({sensitiveNotes.length})</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Confidential management documentation. Visible to this staff member, but only managers can add or amend it.</p>
+                  </div>
+                  {isManager && (
+                    <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSensitiveOpen(true)}>Add note</Button>
+                  )}
+                </div>
+                {sensitiveNotes.length === 0 ? (
+                  <EmptyState title="No sensitive information recorded" description="Confidential notes for management documentation will appear here"
+                    action={isManager ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSensitiveOpen(true)}>Add note</Button> : undefined} />
+                ) : (
+                  <div className="space-y-3">
+                    {sensitiveNotes.map((n: any) => (
+                      <div key={n.id} className="bg-white/5 rounded-2xl border border-white/10 shadow-card p-5">
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-xs text-slate-400">{n.created_by_name} · {n.created_at ? format(new Date(n.created_at), 'd MMM yyyy, HH:mm') : ''}</p>
+                          {isManager && (
+                            <button onClick={async () => {
+                              if (!window.confirm('Delete this note?')) return
+                              try {
+                                await api.delete(`/reviews/staff-sensitive-notes/${n.id}`)
+                                const res = await api.get(`/reviews/staff-sensitive-notes/${selected.id}`)
+                                setSensitiveNotes(res.data.data || [])
+                                toast.success('Note deleted')
+                              } catch { toast.error('Failed to delete') }
+                            }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-700 whitespace-pre-line">{n.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addSensitiveOpen && selected && (
+                  <AddSensitiveNoteModalInline staffId={selected.id} onClose={() => setAddSensitiveOpen(false)}
+                    onSaved={async () => { setAddSensitiveOpen(false); const res = await api.get(`/reviews/staff-sensitive-notes/${selected.id}`); setSensitiveNotes(res.data.data || []); toast.success('Note added') }} />
+                )}
+              </div>
+            )}
+
             {tab === 'clock' && (
               <div>
                 <h3 className="font-semibold text-slate-900 mb-4">Clock in / out history</h3>
@@ -636,6 +687,29 @@ function AddCautionModalInline({ staffId, onClose, onSaved }: { staffId: string;
         <div><label className="label">Action points</label><textarea className="input" rows={2} value={form.actionPoints} onChange={e => set('actionPoints', e.target.value)} /></div>
         <Input label="Review date" type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
         <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save caution</Button></div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddSensitiveNoteModalInline({ staffId, onClose, onSaved }: { staffId: string; onClose: () => void; onSaved: () => void }) {
+  const [note, setNote] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try { await api.post('/reviews/staff-sensitive-notes', { staffId, note }); onSaved() }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Add sensitive information" size="lg">
+      <form onSubmit={save} className="space-y-4">
+        <p className="text-xs text-slate-500">This staff member will be able to read this note but cannot edit or delete it. Only managers can add or remove sensitive information.</p>
+        <div><label className="label">Note *</label><textarea required autoFocus className="input" rows={5} value={note} onChange={e => setNote(e.target.value)} placeholder="Confidential documentation..." /></div>
+        <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save note</Button></div>
       </form>
     </Modal>
   )
