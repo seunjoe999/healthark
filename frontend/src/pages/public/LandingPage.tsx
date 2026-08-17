@@ -5,6 +5,8 @@ import {
   CheckCircle, ArrowRight, ChevronDown, Plus,
   X, Menu, Star, MapPin, Phone, Mail, Clock,
 } from 'lucide-react';
+import api from '../../api';
+import toast from 'react-hot-toast';
 
 const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
@@ -223,7 +225,34 @@ function FaqItem({ q, a, defaultOpen = false }: { q: string; a: string; defaultO
 /* ═══════════════════════════════════════════════════════════════════════════════ */
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [demoForm, setDemoForm] = useState({ name: '', email: '', phone: '', homeName: '' });
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoSubmitted, setDemoSubmitted] = useState(false);
   const heroMouse = useHeroMouse();
+
+  useEffect(() => {
+    document.body.style.overflow = demoOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [demoOpen]);
+
+  const submitDemo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDemoLoading(true);
+    try {
+      await api.post('/public/contact', {
+        firstName: demoForm.name, email: demoForm.email, phone: demoForm.phone,
+        message: `Walkthrough request from: ${demoForm.homeName || 'Not specified'}`,
+      });
+      setDemoSubmitted(true);
+      toast.success("We'll be in touch within one working day!");
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error : undefined;
+      toast.error(msg || 'Failed to send. Please try again.');
+    }
+    setDemoLoading(false);
+  };
 
   const navLinks = [
     { label: 'Features', id: 'features' },
@@ -234,6 +263,82 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen font-sans overflow-x-hidden" style={{ background: '#FFFFFF', color: TEXT }}>
+
+      {/* ── Walkthrough / demo modal ──────────────────────────────────── */}
+      <AnimatePresence>
+        {demoOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ background: 'rgba(22,12,56,0.75)', backdropFilter: 'blur(12px)' }}
+            onClick={e => { if (e.target === e.currentTarget) setDemoOpen(false); }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }} transition={{ duration: 0.26, ease: EASE }}
+              className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+              style={{ background: 'white' }}>
+              <div className="relative h-32 overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY}, ${NAVY_DARK})` }}>
+                <ConfettiDot delay={0} size={40} x="8%" y="20%" color="rgba(245,166,35,0.35)" />
+                <ConfettiDot delay={1} size={26} x="82%" y="55%" color="rgba(233,30,140,0.35)" />
+                <button onClick={() => setDemoOpen(false)}
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors z-10">
+                  <X size={14} className="text-white" />
+                </button>
+                <div className="absolute bottom-5 left-6 z-10">
+                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Free · No Commitment</p>
+                  <h3 className="text-white text-xl font-black">See CompCare in Action</h3>
+                </div>
+              </div>
+              <div className="p-6">
+                {demoSubmitted ? (
+                  <div className="text-center py-6">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#FDECC8' }}>
+                      <CheckCircle size={26} style={{ color: ORANGE }} />
+                    </div>
+                    <h4 className="text-lg font-black mb-2" style={{ color: TEXT }}>You're booked in!</h4>
+                    <p className="text-sm mb-5" style={{ color: MUTED }}>We'll be in touch within one working day to arrange your personalised walkthrough.</p>
+                    <button onClick={() => { setDemoSubmitted(false); setDemoOpen(false); }} className="text-sm font-bold" style={{ color: NAVY }}>Close</button>
+                  </div>
+                ) : (
+                  <form onSubmit={submitDemo} className="space-y-3">
+                    <p className="text-sm mb-4" style={{ color: MUTED }}>A personalised 30-minute walkthrough tailored to your home. Free, no commitment.</p>
+                    {[
+                      { label: 'Your Name *', key: 'name', type: 'text', placeholder: 'Jane Smith', required: true },
+                      { label: 'Work Email *', key: 'email', type: 'email', placeholder: 'jane@carehome.co.uk', required: true },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: MUTED }}>{f.label}</label>
+                        <input required={f.required} type={f.type} placeholder={f.placeholder}
+                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                          style={{ background: OFFWHITE, borderColor: 'rgba(36,22,84,0.14)', color: TEXT }}
+                          value={demoForm[f.key as keyof typeof demoForm]}
+                          onChange={e => setDemoForm({ ...demoForm, [f.key]: e.target.value })} />
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-2 gap-3">
+                      {[{ label: 'Phone', key: 'phone', placeholder: '07700 900000' }, { label: 'Care Home', key: 'homeName', placeholder: 'Sunrise Lodge' }].map(f => (
+                        <div key={f.key}>
+                          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: MUTED }}>{f.label}</label>
+                          <input type="text" placeholder={f.placeholder}
+                            className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+                            style={{ background: OFFWHITE, borderColor: 'rgba(36,22,84,0.14)', color: TEXT }}
+                            value={demoForm[f.key as keyof typeof demoForm]}
+                            onChange={e => setDemoForm({ ...demoForm, [f.key]: e.target.value })} />
+                        </div>
+                      ))}
+                    </div>
+                    <button type="submit" disabled={demoLoading}
+                      className="w-full mt-2 py-3.5 rounded-full text-white font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
+                      style={{ background: ORANGE }}>
+                      {demoLoading
+                        ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending...</>
+                        : <>Book My Free Demo <ArrowRight size={15} /></>}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Navbar — pill-shaped, always navy ────────────────────────── */}
       <nav className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6">
@@ -246,29 +351,29 @@ export default function LandingPage() {
             <span className="hidden xs:block text-sm font-black text-white tracking-tight">CompCare Hub</span>
           </button>
 
-          <div className="hidden lg:flex items-center gap-0.5">
+          <div className="hidden md:flex items-center gap-0.5">
             {navLinks.map(l => (
               <button key={l.id} onClick={() => scrollTo(l.id)}
-                className="px-4 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/10" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                className="px-3 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/10 whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {l.label}
               </button>
             ))}
-            <Link to="/careers" className="px-4 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/10" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            <Link to="/careers" className="px-3 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/10 whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.85)' }}>
               Careers
             </Link>
           </div>
 
-          <div className="hidden lg:flex items-center gap-2">
-            <Link to="/login" className="px-5 py-2.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
-              Start Free Trial
-            </Link>
-            <Link to="/login" className="px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors hover:bg-white/10"
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            <button onClick={() => setDemoOpen(true)} className="px-4 py-2.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5 whitespace-nowrap" style={{ background: ORANGE, color: NAVY_DARK }}>
+              Demo
+            </button>
+            <Link to="/login" className="px-4 py-2.5 rounded-full text-sm font-semibold border transition-colors hover:bg-white/10 whitespace-nowrap"
               style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
               Login
             </Link>
           </div>
 
-          <button className="lg:hidden p-2 rounded-full text-white" onClick={() => setMenuOpen(v => !v)}>
+          <button className="md:hidden p-2 rounded-full text-white flex-shrink-0" onClick={() => setMenuOpen(v => !v)}>
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -276,17 +381,17 @@ export default function LandingPage() {
         <AnimatePresence>
           {menuOpen && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22 }} className="lg:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: NAVY }}>
+              transition={{ duration: 0.22 }} className="md:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: NAVY }}>
               <div className="px-4 py-4 flex flex-col gap-1">
                 {navLinks.map(l => (
                   <button key={l.id} onClick={() => { scrollTo(l.id); setMenuOpen(false); }}
                     className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors text-white">{l.label}</button>
                 ))}
                 <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors text-white">Careers</Link>
-                <Link to="/login" onClick={() => setMenuOpen(false)}
+                <button onClick={() => { setDemoOpen(true); setMenuOpen(false); }}
                   className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: ORANGE, color: NAVY_DARK }}>
-                  Start Free Trial
-                </Link>
+                  Book a Demo
+                </button>
                 <Link to="/login" onClick={() => setMenuOpen(false)}
                   className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border mt-2 text-white" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
                   Log In
@@ -312,16 +417,16 @@ export default function LandingPage() {
                 CompCare Hub replaces paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Link to="/login"
+                <button onClick={() => setDemoOpen(true)}
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
                   style={{ background: ORANGE, color: NAVY_DARK, boxShadow: '0 10px 30px rgba(245,166,35,0.35)' }}>
-                  Start free trial <ArrowRight size={15} />
-                </Link>
-                <button onClick={() => scrollTo('features')}
+                  Book a demo <ArrowRight size={15} />
+                </button>
+                <Link to="/login"
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 border transition-colors"
                   style={{ color: NAVY, borderColor: 'rgba(36,22,84,0.2)' }}>
-                  Explore features
-                </button>
+                  Start free trial
+                </Link>
               </div>
             </Reveal>
           </div>
@@ -419,11 +524,11 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                  <Link to="/login"
+                  <button onClick={() => setDemoOpen(true)}
                     className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-white text-xs sm:text-sm font-bold transition-transform hover:-translate-y-0.5"
                     style={{ background: NAVY }}>
-                    Start free trial <ArrowRight size={14} />
-                  </Link>
+                    See this in action <ArrowRight size={14} />
+                  </button>
                 </div>
                 <div className="relative rounded-[2rem] p-5 sm:p-6" style={{ background: `${section.accent}1A` }}>
                   <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
@@ -450,10 +555,10 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <Link to="/login"
+            <button onClick={() => setDemoOpen(true)}
               className="inline-block px-7 py-3.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
-              Start free trial
-            </Link>
+              Book a demo with a group-level advisor
+            </button>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3' }}>
@@ -587,7 +692,7 @@ export default function LandingPage() {
           <Reveal delay={0.15}>
             <p className="text-center text-xs sm:text-sm mt-6 sm:mt-8" style={{ color: MUTED }}>
               Not sure which plan?{' '}
-              <a href="mailto:info@comprehensivecare.org.uk" className="font-bold underline" style={{ color: NAVY }}>Get in touch</a>
+              <button onClick={() => setDemoOpen(true)} className="font-bold underline" style={{ color: NAVY }}>Request a free walkthrough</button>
               {' '}and we'll recommend the right one for your home.
             </p>
           </Reveal>
@@ -616,16 +721,21 @@ export default function LandingPage() {
           <Reveal>
             <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5" style={{ color: ORANGE }}>Ready to get started?</p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 sm:mb-5 leading-tight">
-              Join care homes already running on CompCare Hub
+              Let's start the conversation
             </h2>
             <p className="text-sm sm:text-lg mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              Start your free trial today, no card required — CompCare Hub is set up for your home in minutes.
+              Over 30 minutes, we'll discuss your challenges and needs, while exploring how CompCare Hub can help you achieve your goals.
             </p>
-            <div className="flex justify-center">
-              <Link to="/login"
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <button onClick={() => setDemoOpen(true)}
                 className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
                 style={{ background: ORANGE, color: NAVY_DARK }}>
-                Start free trial <ArrowRight size={16} />
+                Book a demo <ArrowRight size={16} />
+              </button>
+              <Link to="/login"
+                className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-bold text-sm sm:text-base border-2 text-white transition-colors hover:bg-white/10"
+                style={{ borderColor: 'rgba(255,255,255,0.32)' }}>
+                Start free trial
               </Link>
             </div>
           </Reveal>
@@ -717,11 +827,11 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
-              <Link to="/login"
-                className="block w-full py-3 text-xs sm:text-sm font-bold text-white rounded-full transition-opacity hover:opacity-90 text-center"
+              <button onClick={() => setDemoOpen(true)}
+                className="w-full py-3 text-xs sm:text-sm font-bold text-white rounded-full transition-opacity hover:opacity-90"
                 style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)' }}>
-                Start Free Trial
-              </Link>
+                Book a Demo
+              </button>
             </div>
           </div>
 
