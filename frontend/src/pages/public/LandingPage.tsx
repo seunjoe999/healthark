@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
-  Shield, Users, Heart, Award,
-  Clock, Phone, Mail, CheckCircle, ArrowRight, ChevronDown,
-  Activity, BarChart3, FileText, GraduationCap,
-  UserCheck, CalendarCheck, Sparkles,
-  TrendingUp, Target, ChevronRight,
-  Pill, ClipboardList, Brain, Building2,
-  Bell, Zap, LayoutDashboard,
-  Play, X, Menu, Star, Globe, AlertTriangle,
-  MapPin, Quote,
+  CheckCircle, ArrowRight, ChevronDown, ChevronRight, Plus,
+  Play, X, Menu, Star, MapPin, Phone, Mail, Clock,
 } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
 const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+
+/* ── Palette ────────────────────────────────────────────────────────────────── */
+const NAVY = '#241654';
+const NAVY_DARK = '#160C38';
+const ORANGE = '#F5A623';
+const PINK = '#E91E8C';
+const TEXT = '#1A1533';
+const MUTED = '#6B6580';
+const OFFWHITE = '#F8F7FB';
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -60,31 +62,28 @@ function StatCounter({ target, suffix, label }: { target: number; suffix: string
   const { count, ref } = useCounter(target);
   return (
     <div ref={ref} className="text-center">
-      <div className="text-3xl sm:text-4xl md:text-5xl font-black tabular-nums mb-1"
-        style={{ color: '#1A4A35', fontFamily: '"DM Serif Display", serif' }}>
+      <div className="text-3xl sm:text-4xl md:text-5xl font-black tabular-nums mb-1" style={{ color: NAVY }}>
         {count}{suffix}
       </div>
-      <div className="text-xs sm:text-sm font-medium" style={{ color: '#6B7A6A' }}>{label}</div>
+      <div className="text-xs sm:text-sm font-medium" style={{ color: MUTED }}>{label}</div>
     </div>
   );
 }
 
 /* ── Images ─────────────────────────────────────────────────────────────────── */
 const IMG = {
-  logo:      '/cc-logo.jpg',
-  hero:      '/hero-care.jpg', // TODO: replace with actual care home image
-  // card photos
-  card1:     'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80&auto=format&fit=crop',
-  card2:     'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80&auto=format&fit=crop',
-  card3:     'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=600&q=80&auto=format&fit=crop',
-  // feature section photos
-  feat1:     'https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=700&q=80&auto=format&fit=crop',
-  feat2:     'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=700&q=80&auto=format&fit=crop',
-  feat3:     'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=700&q=80&auto=format&fit=crop',
-  ctaBg:     'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1400&q=75&auto=format&fit=crop',
-  t1:        'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=120&q=80&auto=format&fit=crop&crop=face',
-  t2:        'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&q=80&auto=format&fit=crop&crop=face',
-  t3:        'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=120&q=80&auto=format&fit=crop&crop=face',
+  logo:  '/cc-logo.jpg',
+  hero:  '/hero-care.jpg',
+  card1: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80&auto=format&fit=crop',
+  card2: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80&auto=format&fit=crop',
+  card3: 'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=600&q=80&auto=format&fit=crop',
+  feat1: 'https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=700&q=80&auto=format&fit=crop',
+  feat2: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=700&q=80&auto=format&fit=crop',
+  feat3: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=700&q=80&auto=format&fit=crop',
+  scale: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=900&q=80&auto=format&fit=crop',
+  t1: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=120&q=80&auto=format&fit=crop&crop=face',
+  t2: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&q=80&auto=format&fit=crop&crop=face',
+  t3: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=120&q=80&auto=format&fit=crop&crop=face',
 };
 
 const TESTIMONIALS = [
@@ -97,48 +96,86 @@ const RESIDENT_MODULES = ['Care Plans', 'Daily Records', 'MAR', 'Medication Stoc
 const STAFF_MODULES = ['Rota', 'Clock In', 'Timesheets', 'Training', 'DBS Tracker', 'Supervision', 'Appraisals', 'Leave Management', 'Recruitment', 'Staff Messages', 'HR Records'];
 const COMPLIANCE_MODULES = ['CQC Notifications', 'Audit Trail', 'Policies', 'Quality Records', 'AI Audit Reports', 'Maintenance', 'PPE', 'Invoicing', 'Tasks', 'Calendar', 'Noticeboard', 'Reports'];
 
-/* ── Hero word animation ────────────────────────────────────────────────────── */
-const heroWords = ['The', 'Complete', 'Care', 'Management'];
-const wordVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.4 } },
-};
-const word = {
-  hidden: { opacity: 0, y: 32, rotateX: -30 },
-  visible: { opacity: 1, y: 0, rotateX: 0, transition: { duration: 0.55, ease: EASE } },
-};
+const EXPLORE_CARDS = [
+  { img: IMG.card1, label: 'Residential', title: 'Every resident profile, always up to date', desc: 'Care plans, MAR, risk assessments, daily records and family updates, all linked and accessible from any device.' },
+  { img: IMG.card2, label: 'Staff & HR', title: 'Your team, organised and compliant', desc: 'Rota, timesheets, DBS tracking, training records and supervision notes, with automatic alerts before anything expires.' },
+  { img: IMG.card3, label: 'CQC Compliance', title: 'Inspection-ready, every single day', desc: 'Incident reports, safeguarding concerns and a complete audit trail, with AI-generated compliance reports in seconds.' },
+];
 
-/* ── Floating petal/orb for hero decoration ─────────────────────────────────── */
-function FloatingOrb({ delay, size, x, y, color }: { delay: number; size: number; x: string; y: string; color: string }) {
+const FEATURE_SECTIONS = [
+  {
+    tag: 'Digital MAR', accent: ORANGE,
+    title: 'Medication administration\nyour team can trust',
+    body: "Paper MAR charts are a compliance risk. CompCare Hub's digital MAR lets carers record every medication in real time, with controlled drug witness sign-off, PRN logs and stock management built in.",
+    bullets: ['Controlled drug witness signing, done digitally', 'PRN medication logs with reason and outcome', 'Stock count tracking and low-stock alerts', 'Full history: every dose, every carer, every time'],
+    img: IMG.feat1, imgAlt: 'Nurse reviewing care records with an elderly resident',
+  },
+  {
+    tag: 'Staff & HR', accent: PINK,
+    title: 'From rota to DBS,\nall in one place',
+    body: 'Managing a care team is complex. CompCare Hub brings your rota, timesheets, leave, DBS tracking, training records and supervision notes into one system, with automatic alerts before anything expires.',
+    bullets: ['Visual rota builder with GPS clock-in verification', 'DBS and training expiry alerts sent automatically', 'Leave requests and approvals handled in the app', 'Staff performance matrix and appraisal records'],
+    img: IMG.feat2, imgAlt: 'Care home staff team in a planning session', flip: true,
+  },
+  {
+    tag: 'Audit & Reporting', accent: NAVY,
+    title: 'CQC audit reports in\nminutes, not days',
+    body: 'When an inspector arrives, you need to demonstrate quality care instantly. CompCare Hub generates a complete audit report from your live data in seconds, covering care plans, incidents, training, MAR and more.',
+    bullets: ['AI-generated CQC audit report from live data', 'Full audit trail for every action across the home', 'Incident, safeguarding and complaint management', 'Exportable reports for inspectors and trustees'],
+    img: IMG.feat3, imgAlt: 'Care manager reviewing compliance documentation',
+  },
+];
+
+const FAQS = [
+  { q: 'What types of care services do you support?', a: 'CompCare Hub is built for residential care homes, supported living services and home care providers of any size, from single-site homes to multi-home groups.' },
+  { q: 'Can I get a demo of your platform?', a: "Yes, book a free 30-minute walkthrough tailored to your home. We'll show you the modules most relevant to your service and answer any questions live." },
+  { q: 'How do I get started?', a: 'Start a free trial from the login page, or book a demo and our team will help you get your first residents, staff and care plans set up, usually within a day.' },
+  { q: 'My account has been activated, how do I log in?', a: 'Head to the login page and sign in with the email and password your manager set up for you. You can switch to PIN login from your account settings once you\'re in.' },
+];
+
+/* ── Decorative confetti dots for the hero ───────────────────────────────────── */
+function ConfettiDot({ delay, size, x, y, color, blur = 0 }: { delay: number; size: number; x: string; y: string; color: string; blur?: number }) {
   return (
     <motion.div
       className="absolute rounded-full pointer-events-none"
-      style={{ width: size, height: size, left: x, top: y, background: color, filter: 'blur(1px)' }}
-      animate={{ y: [0, -18, 0], opacity: [0.35, 0.55, 0.35], scale: [1, 1.1, 1] }}
+      style={{ width: size, height: size, left: x, top: y, background: color, filter: blur ? `blur(${blur}px)` : undefined }}
+      animate={{ y: [0, -14, 0], scale: [1, 1.08, 1] }}
       transition={{ duration: 5 + delay, repeat: Infinity, ease: 'easeInOut', delay }}
     />
+  );
+}
+
+function FaqItem({ q, a, defaultOpen = false }: { q: string; a: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b" style={{ borderColor: 'rgba(36,22,84,0.10)' }}>
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between gap-4 py-5 text-left">
+        <span className="text-sm sm:text-base font-bold" style={{ color: TEXT }}>{q}</span>
+        <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+          style={{ background: OFFWHITE, color: NAVY, transform: open ? 'rotate(45deg)' : 'none' }}>
+          <Plus size={14} />
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }} className="overflow-hidden">
+            <p className="text-sm leading-relaxed pb-5" style={{ color: MUTED }}>{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════ */
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [demoForm, setDemoForm] = useState({ name: '', email: '', phone: '', homeName: '' });
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoSubmitted, setDemoSubmitted] = useState(false);
 
-  // Parallax for hero image
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollY } = useScroll();
-  const heroImgY = useTransform(scrollY, [0, 600], [0, 80]);
-
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 80);
-    window.addEventListener('scroll', fn);
-    return () => window.removeEventListener('scroll', fn);
-  }, []);
   useEffect(() => {
     document.body.style.overflow = demoOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
@@ -170,56 +207,53 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen font-sans overflow-x-hidden" style={{ background: '#F5F0E8', color: '#1A2E1E' }}>
+    <div className="min-h-screen font-sans overflow-x-hidden" style={{ background: '#FFFFFF', color: TEXT }}>
 
       {/* ── Walkthrough modal ──────────────────────────────────────── */}
       <AnimatePresence>
         {demoOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-            style={{ background: 'rgba(10,25,15,0.8)', backdropFilter: 'blur(12px)' }}
+            style={{ background: 'rgba(22,12,56,0.75)', backdropFilter: 'blur(12px)' }}
             onClick={e => { if (e.target === e.currentTarget) setDemoOpen(false); }}>
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }} transition={{ duration: 0.26, ease: EASE }}
               className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
-              style={{ background: '#F5F0E8' }}>
-              {/* Photo header */}
-              <div className="relative h-36 overflow-hidden">
-                <img src={IMG.hero} alt="Care team" className="w-full h-full object-cover object-top" />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(10,35,20,0.45), rgba(10,35,20,0.88))' }} />
+              style={{ background: 'white' }}>
+              <div className="relative h-32 overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY}, ${NAVY_DARK})` }}>
+                <ConfettiDot delay={0} size={40} x="8%" y="20%" color="rgba(245,166,35,0.35)" />
+                <ConfettiDot delay={1} size={26} x="82%" y="55%" color="rgba(233,30,140,0.35)" />
                 <button onClick={() => setDemoOpen(false)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors">
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors z-10">
                   <X size={14} className="text-white" />
                 </button>
-                <div className="absolute bottom-5 left-6">
-                  <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-0.5">Free · No Commitment</p>
-                  <h3 className="text-white text-xl font-black" style={{ fontFamily: '"DM Serif Display", serif' }}>
-                    See CompCare <em>in Action</em>
-                  </h3>
+                <div className="absolute bottom-5 left-6 z-10">
+                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Free · No Commitment</p>
+                  <h3 className="text-white text-xl font-black">See CompCare in Action</h3>
                 </div>
               </div>
               <div className="p-6">
                 {demoSubmitted ? (
                   <div className="text-center py-6">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#D4EDDA' }}>
-                      <CheckCircle size={26} style={{ color: '#1A5C3A' }} />
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#FDECC8' }}>
+                      <CheckCircle size={26} style={{ color: ORANGE }} />
                     </div>
-                    <h4 className="text-lg font-black mb-2" style={{ fontFamily: '"DM Serif Display", serif', color: '#1A2E1E' }}>You're booked in!</h4>
-                    <p className="text-sm mb-5" style={{ color: '#6B7A6A' }}>We'll be in touch within one working day to arrange your personalised walkthrough.</p>
-                    <button onClick={() => { setDemoSubmitted(false); setDemoOpen(false); }} className="text-sm font-bold" style={{ color: '#1A5C3A' }}>Close</button>
+                    <h4 className="text-lg font-black mb-2" style={{ color: TEXT }}>You're booked in!</h4>
+                    <p className="text-sm mb-5" style={{ color: MUTED }}>We'll be in touch within one working day to arrange your personalised walkthrough.</p>
+                    <button onClick={() => { setDemoSubmitted(false); setDemoOpen(false); }} className="text-sm font-bold" style={{ color: NAVY }}>Close</button>
                   </div>
                 ) : (
                   <form onSubmit={submitDemo} className="space-y-3">
-                    <p className="text-sm mb-4" style={{ color: '#6B7A6A' }}>A personalised 30-minute walkthrough tailored to your home. Free, no commitment.</p>
+                    <p className="text-sm mb-4" style={{ color: MUTED }}>A personalised 30-minute walkthrough tailored to your home. Free, no commitment.</p>
                     {[
                       { label: 'Your Name *', key: 'name', type: 'text', placeholder: 'Jane Smith', required: true },
                       { label: 'Work Email *', key: 'email', type: 'email', placeholder: 'jane@carehome.co.uk', required: true },
                     ].map(f => (
                       <div key={f.key}>
-                        <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#8A9A8A' }}>{f.label}</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: MUTED }}>{f.label}</label>
                         <input required={f.required} type={f.type} placeholder={f.placeholder}
                           className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                          style={{ background: 'white', borderColor: '#D9D0C4', color: '#1A2E1E' }}
+                          style={{ background: OFFWHITE, borderColor: 'rgba(36,22,84,0.14)', color: TEXT }}
                           value={demoForm[f.key as keyof typeof demoForm]}
                           onChange={e => setDemoForm({ ...demoForm, [f.key]: e.target.value })} />
                       </div>
@@ -227,18 +261,18 @@ export default function LandingPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {[{ label: 'Phone', key: 'phone', placeholder: '07700 900000' }, { label: 'Care Home', key: 'homeName', placeholder: 'Sunrise Lodge' }].map(f => (
                         <div key={f.key}>
-                          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#8A9A8A' }}>{f.label}</label>
+                          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: MUTED }}>{f.label}</label>
                           <input type="text" placeholder={f.placeholder}
                             className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                            style={{ background: 'white', borderColor: '#D9D0C4', color: '#1A2E1E' }}
+                            style={{ background: OFFWHITE, borderColor: 'rgba(36,22,84,0.14)', color: TEXT }}
                             value={demoForm[f.key as keyof typeof demoForm]}
                             onChange={e => setDemoForm({ ...demoForm, [f.key]: e.target.value })} />
                         </div>
                       ))}
                     </div>
                     <button type="submit" disabled={demoLoading}
-                      className="w-full mt-2 py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-                      style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
+                      className="w-full mt-2 py-3.5 rounded-full text-white font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
+                      style={{ background: ORANGE }}>
                       {demoLoading
                         ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending...</>
                         : <>Book My Free Demo <ArrowRight size={15} /></>}
@@ -251,89 +285,61 @@ export default function LandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Navbar ────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
-        style={{
-          background: scrolled ? 'rgba(245,240,232,0.97)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(26,46,30,0.08)' : 'none',
-          boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.06)' : 'none',
-        }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between" style={{ height: 72 }}>
-          {/* Logo */}
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <div className="flex items-center justify-center rounded-xl overflow-hidden"
-              style={{ width: 42, height: 42, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-              <img src={IMG.logo} alt="Comprehensive Care" className="w-full h-full object-contain" />
+      {/* ── Navbar — pill-shaped, always navy ────────────────────────── */}
+      <nav className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6">
+        <div className="max-w-6xl mx-auto rounded-full flex items-center justify-between px-3 sm:px-4"
+          style={{ height: 60, background: NAVY, boxShadow: '0 8px 30px rgba(22,12,56,0.35)' }}>
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2 flex-shrink-0 pl-1">
+            <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 32, height: 32, background: 'white' }}>
+              <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-contain" />
             </div>
-            <div className="text-left leading-tight hidden xs:block">
-              <span className="block text-sm font-black tracking-tight" style={{ color: scrolled ? '#1A2E1E' : 'white' }}>Comprehensive Care</span>
-              <span className="block text-[9px] font-bold tracking-widest uppercase" style={{ color: scrolled ? '#4A7A5A' : 'rgba(255,255,255,0.65)' }}>Your Care Our Priority</span>
-            </div>
+            <span className="hidden xs:block text-sm font-black text-white tracking-tight">CompCare Hub</span>
           </button>
 
-          {/* Desktop links */}
           <div className="hidden lg:flex items-center gap-0.5">
             {navLinks.map(l => (
               <button key={l.id} onClick={() => scrollTo(l.id)}
-                className="px-4 py-2 text-sm font-medium rounded-full transition-all"
-                style={{ color: scrolled ? '#3A4A3A' : 'rgba(255,255,255,0.85)' }}>
+                className="px-4 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/10" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 {l.label}
               </button>
             ))}
-            <Link to="/careers"
-              className="px-4 py-2 text-sm font-medium rounded-full transition-all"
-              style={{ color: scrolled ? '#3A4A3A' : 'rgba(255,255,255,0.85)' }}>
+            <Link to="/careers" className="px-4 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/10" style={{ color: 'rgba(255,255,255,0.85)' }}>
               Careers
-            </Link>
-            <button onClick={() => setDemoOpen(true)}
-              className="ml-4 px-5 py-2.5 rounded-full text-white text-sm font-bold shadow-md transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
-              Book a Demo
-            </button>
-            <Link to="/login"
-              className="ml-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all"
-              style={{
-                color: scrolled ? '#1A2E1E' : 'white',
-                borderColor: scrolled ? 'rgba(26,46,30,0.2)' : 'rgba(255,255,255,0.3)',
-                background: scrolled ? 'white' : 'rgba(255,255,255,0.1)',
-              }}>
-              Log In
             </Link>
           </div>
 
-          {/* Mobile burger */}
-          <button className="lg:hidden p-2 rounded-xl transition-colors"
-            style={{ color: scrolled ? '#1A2E1E' : 'white', background: scrolled ? 'transparent' : 'rgba(255,255,255,0.1)' }}
-            onClick={() => setMenuOpen(v => !v)}>
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          <div className="hidden lg:flex items-center gap-2">
+            <button onClick={() => setDemoOpen(true)}
+              className="px-5 py-2.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
+              Demo
+            </button>
+            <Link to="/login" className="px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors hover:bg-white/10"
+              style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
+              Login
+            </Link>
+          </div>
+
+          <button className="lg:hidden p-2 rounded-full text-white" onClick={() => setMenuOpen(v => !v)}>
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Mobile menu */}
         <AnimatePresence>
           {menuOpen && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22 }}
-              className="lg:hidden overflow-hidden border-t"
-              style={{ background: '#F5F0E8', borderColor: 'rgba(26,46,30,0.08)' }}>
-              <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22 }} className="lg:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: NAVY }}>
+              <div className="px-4 py-4 flex flex-col gap-1">
                 {navLinks.map(l => (
                   <button key={l.id} onClick={() => { scrollTo(l.id); setMenuOpen(false); }}
-                    className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors"
-                    style={{ color: '#3A4A3A' }}>{l.label}</button>
+                    className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors text-white">{l.label}</button>
                 ))}
-                <Link to="/careers" onClick={() => setMenuOpen(false)}
-                  className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors"
-                  style={{ color: '#3A4A3A' }}>Careers</Link>
+                <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors text-white">Careers</Link>
                 <button onClick={() => { setDemoOpen(true); setMenuOpen(false); }}
-                  className="mt-3 px-5 py-3.5 rounded-2xl text-white text-sm font-bold text-center"
-                  style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
+                  className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: ORANGE, color: NAVY_DARK }}>
                   Book a Demo
                 </button>
                 <Link to="/login" onClick={() => setMenuOpen(false)}
-                  className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border mt-2"
-                  style={{ color: '#1A2E1E', borderColor: 'rgba(26,46,30,0.15)', background: 'white' }}>
+                  className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border mt-2 text-white" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
                   Log In
                 </Link>
               </div>
@@ -342,90 +348,55 @@ export default function LandingPage() {
         </AnimatePresence>
       </nav>
 
-      {/* ── Hero — full bleed + parallax + animations ──────────────── */}
-      <header ref={heroRef} className="relative flex items-center overflow-hidden" style={{ minHeight: '100svh' }}>
-        {/* Parallax photo */}
-        <motion.div className="absolute inset-0" style={{ y: heroImgY, scale: 1.08 }}>
-          <img src={IMG.hero} alt="Care home residents and staff, professional care management environment"
-            className="w-full h-full object-cover object-center" />
-        </motion.div>
+      {/* ── Hero — white bg, text left / photo right ─────────────────── */}
+      <header className="relative overflow-hidden" style={{ paddingTop: 140, paddingBottom: 80 }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative">
+          <div className="relative z-10">
+            <Reveal>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>Care Management Software</p>
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black leading-[1.08] tracking-tight mb-6" style={{ color: NAVY }}>
+                Care management software that helps you stay one step ahead
+              </h1>
+              <p className="text-sm sm:text-base leading-relaxed mb-8 max-w-md" style={{ color: MUTED }}>
+                CompCare Hub replaces paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button onClick={() => setDemoOpen(true)}
+                  className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
+                  style={{ background: ORANGE, color: NAVY_DARK, boxShadow: '0 10px 30px rgba(245,166,35,0.35)' }}>
+                  Book a demo <ArrowRight size={15} />
+                </button>
+                <Link to="/login"
+                  className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 border transition-colors"
+                  style={{ color: NAVY, borderColor: 'rgba(36,22,84,0.2)' }}>
+                  Start free trial
+                </Link>
+              </div>
+            </Reveal>
+          </div>
 
-        {/* Gradient overlays */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(6,18,10,0.90) 0%, rgba(6,18,10,0.65) 45%, rgba(6,18,10,0.20) 72%, rgba(6,18,10,0.05) 100%)' }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(6,18,10,0.55) 0%, transparent 45%)' }} />
-
-        {/* Floating orbs */}
-        <FloatingOrb delay={0}   size={10} x="70%" y="15%" color="rgba(125,217,168,0.7)" />
-        <FloatingOrb delay={1.2} size={7}  x="62%" y="35%" color="rgba(255,220,130,0.6)" />
-        <FloatingOrb delay={2.5} size={12} x="78%" y="55%" color="rgba(125,217,168,0.5)" />
-        <FloatingOrb delay={0.8} size={6}  x="55%" y="70%" color="rgba(200,240,210,0.6)" />
-        <FloatingOrb delay={3.0} size={8}  x="85%" y="28%" color="rgba(255,200,100,0.5)" />
-
-        {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full" style={{ paddingTop: 72 }}>
-          <div className="max-w-xl sm:max-w-2xl py-16 sm:py-24">
-
-
-            {/* Animated headline */}
-            <div className="mb-3 overflow-hidden">
-              <motion.div variants={wordVariants} initial="hidden" animate="visible"
-                className="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
-                {heroWords.map((w, i) => (
-                  <motion.span key={i} variants={word}
-                    className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight text-white inline-block">
-                    {w}
-                  </motion.span>
-                ))}
-              </motion.div>
-            </div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.9, ease: EASE }}>
-              <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight"
-                style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#7DD9A8' }}>
-                System
-              </span>
-            </motion.div>
-
-            <motion.p initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 1.1 }}
-              className="text-sm sm:text-base lg:text-lg leading-relaxed mt-5 mb-8 sm:mb-10 max-w-lg"
-              style={{ color: 'rgba(255,255,255,0.70)' }}>
-              A purpose-built care management system for UK care homes, replacing paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 1.25 }}
-              className="flex flex-col sm:flex-row gap-3 mb-10 sm:mb-12">
-              <Link to="/login"
-                className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5"
-                style={{ background: 'linear-gradient(135deg, #1A5C3A, #2A7A50)', boxShadow: '0 8px 32px rgba(26,92,58,0.50)' }}>
-                Start Free Trial <ArrowRight size={16} />
-              </Link>
-              <button onClick={() => setDemoOpen(true)}
-                className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all hover:-translate-y-0.5"
-                style={{ background: 'rgba(255,255,255,0.10)', border: '1.5px solid rgba(255,255,255,0.28)', color: 'white', backdropFilter: 'blur(8px)' }}>
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <Play size={9} fill="white" className="text-white ml-0.5" />
-                </div>
-                See a Walkthrough
-              </button>
-            </motion.div>
-
+          <div className="relative">
+            <ConfettiDot delay={0} size={26} x="4%" y="6%" color={ORANGE} />
+            <ConfettiDot delay={1.4} size={16} x="90%" y="14%" color={NAVY} />
+            <ConfettiDot delay={0.6} size={60} x="86%" y="70%" color={PINK} blur={2} />
+            <ConfettiDot delay={2.1} size={14} x="2%" y="80%" color={ORANGE} />
+            <Reveal delay={0.15}>
+              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3' }}>
+                <img src={IMG.hero} alt="Care team using CompCare Hub" className="w-full h-full object-cover" />
+              </div>
+            </Reveal>
           </div>
         </div>
 
-        {/* Scroll cue */}
         <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2.2, repeat: Infinity }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1"
-          style={{ color: 'rgba(255,255,255,0.35)' }}>
+          className="hidden sm:flex absolute bottom-6 left-1/2 -translate-x-1/2 flex-col items-center gap-1" style={{ color: 'rgba(36,22,84,0.3)' }}>
           <span className="text-[10px] font-semibold tracking-widest uppercase">Scroll</span>
           <ChevronDown size={15} />
         </motion.div>
       </header>
 
       {/* ── Stats band ────────────────────────────────────────────── */}
-      <section style={{ background: '#EDE8DF', borderBottom: '1px solid rgba(26,46,30,0.08)' }}>
+      <section style={{ background: OFFWHITE, borderTop: '1px solid rgba(36,22,84,0.06)', borderBottom: '1px solid rgba(36,22,84,0.06)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }}
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
@@ -444,45 +415,38 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Photo card grid ────────────────────────────────────────── */}
-      <section style={{ background: '#F5F0E8' }} className="py-16 sm:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      {/* ── Explore cards ─────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24" style={{ background: 'white' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <Reveal>
             <div className="text-center mb-10 sm:mb-14">
-              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#1A5C3A' }}>What We Offer</p>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: '#1A2E1E' }}>
-                Complete Care Management,{' '}
-                <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#1A5C3A' }}>Every Day</em>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>What We Offer</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: NAVY }}>
+                Built for providers who want real-time oversight
               </h2>
-              <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: '#6B7A6A' }}>
-                Built for CQC-regulated care homes, covering resident wellbeing, staff operations and compliance in one beautifully simple platform.
+              <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: MUTED }}>
+                Covering resident wellbeing, staff operations and compliance in one platform.
               </p>
             </div>
           </Reveal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {[
-              { img: IMG.card1, label: 'Resident Care', title: 'Every resident profile, always up to date', desc: 'Care plans, MAR, risk assessments, daily records and family updates, all linked and accessible from any device.' },
-              { img: IMG.card2, label: 'Staff Management', title: 'Your team, organised and compliant', desc: 'Rota, timesheets, DBS tracking, training records and supervision notes, with automatic alerts before anything expires.' },
-              { img: IMG.card3, label: 'CQC Compliance', title: 'Inspection-ready, every single day', desc: 'Incident reports, safeguarding concerns and a complete audit trail, with AI-generated compliance reports in seconds.' },
-            ].map((card, i) => (
+            {EXPLORE_CARDS.map((card, i) => (
               <Reveal key={i} delay={i * 0.1}>
-                <div className="rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group cursor-pointer bg-white">
-                  <div className="relative overflow-hidden" style={{ height: 200 }}>
+                <div className="rounded-3xl overflow-hidden group cursor-pointer" onClick={() => setDemoOpen(true)}>
+                  <div className="relative overflow-hidden rounded-3xl" style={{ height: 190 }}>
                     <img src={card.img} alt={card.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute top-4 left-4">
-                      <span className="text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full text-white"
-                        style={{ background: 'rgba(26,92,58,0.85)', backdropFilter: 'blur(8px)' }}>
-                        {card.label}
-                      </span>
-                    </div>
+                    <span className="absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(36,22,84,0.55)', backdropFilter: 'blur(6px)' }}>
+                      Explore
+                    </span>
                   </div>
-                  <div className="p-5 sm:p-6">
-                    <h3 className="font-black text-base sm:text-lg mb-2 leading-snug" style={{ color: '#1A2E1E', fontFamily: '"DM Serif Display", serif' }}>{card.title}</h3>
-                    <p className="text-xs sm:text-sm leading-relaxed mb-4" style={{ color: '#6B7A6A' }}>{card.desc}</p>
-                    <button onClick={() => setDemoOpen(true)} className="flex items-center gap-1.5 text-xs sm:text-sm font-bold" style={{ color: '#1A5C3A' }}>
+                  <div className="pt-5">
+                    <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: ORANGE }}>{card.label}</p>
+                    <h3 className="font-black text-base sm:text-lg mb-2 leading-snug" style={{ color: NAVY }}>{card.title}</h3>
+                    <p className="text-xs sm:text-sm leading-relaxed mb-3" style={{ color: MUTED }}>{card.desc}</p>
+                    <span className="flex items-center gap-1.5 text-xs sm:text-sm font-bold" style={{ color: NAVY }}>
                       See how it works <ChevronRight size={14} />
-                    </button>
+                    </span>
                   </div>
                 </div>
               </Reveal>
@@ -492,58 +456,34 @@ export default function LandingPage() {
       </section>
 
       {/* ── Feature deep-dive ──────────────────────────────────────── */}
-      <section id="features" style={{ background: '#EDE8DF' }} className="py-16 sm:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-16 sm:space-y-24">
-          {[
-            {
-              tag: 'Digital MAR',
-              title: "Medication administration\nyour team can trust",
-              body: "Paper MAR charts are a compliance risk. CompCare Hub's digital MAR lets carers record every medication in real time, with controlled drug witness sign-off, PRN logs and stock management built in.",
-              bullets: ['Controlled drug witness signing, done digitally', 'PRN medication logs with reason and outcome', 'Stock count tracking and low-stock alerts', 'Full history: every dose, every carer, every time'],
-              img: IMG.feat1, imgAlt: 'Nurse reviewing care records with an elderly resident',
-            },
-            {
-              tag: 'Staff & HR',
-              title: "From rota to DBS,\nall in one place",
-              body: "Managing a care team is complex. CompCare Hub brings your rota, timesheets, leave, DBS tracking, training records and supervision notes into one system, with automatic alerts before anything expires.",
-              bullets: ['Visual rota builder with GPS clock-in verification', 'DBS and training expiry alerts sent automatically', 'Leave requests and approvals handled in the app', 'Staff performance matrix and appraisal records'],
-              img: IMG.feat2, imgAlt: 'Care home staff team in a planning session', flip: true,
-            },
-            {
-              tag: 'Audit & Reporting',
-              title: "CQC audit reports in\nminutes, not days",
-              body: "When an inspector arrives, you need to demonstrate quality care instantly. CompCare Hub generates a complete audit report from your live data in seconds, covering care plans, incidents, training, MAR and more.",
-              bullets: ['AI-generated CQC audit report from live data', 'Full audit trail for every action across the home', 'Incident, safeguarding and complaint management', 'Exportable reports for inspectors and trustees'],
-              img: IMG.feat3, imgAlt: 'Care manager reviewing compliance documentation',
-            },
-          ].map((section, idx) => (
+      <section id="features" style={{ background: OFFWHITE }} className="py-16 sm:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16 sm:space-y-24">
+          {FEATURE_SECTIONS.map((section, idx) => (
             <Reveal key={idx} delay={0.05}>
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 items-center ${section.flip ? 'md:[&>*:first-child]:order-2' : ''}`}>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#1A5C3A' }}>{section.tag}</p>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-4 sm:mb-5 leading-tight whitespace-pre-line"
-                    style={{ color: '#1A2E1E', fontFamily: '"DM Serif Display", serif' }}>{section.title}</h3>
-                  <p className="text-sm sm:text-base leading-relaxed mb-5 sm:mb-7" style={{ color: '#6B7A6A' }}>{section.body}</p>
+                  <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: section.accent }}>{section.tag}</p>
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-4 sm:mb-5 leading-tight whitespace-pre-line" style={{ color: NAVY }}>
+                    {section.title}
+                  </h3>
+                  <p className="text-sm sm:text-base leading-relaxed mb-5 sm:mb-7" style={{ color: MUTED }}>{section.body}</p>
                   <ul className="space-y-3 mb-6 sm:mb-8">
                     {section.bullets.map((b, i) => (
-                      <li key={i} className="flex items-start gap-3 text-xs sm:text-sm" style={{ color: '#3A4A3A' }}>
-                        <CheckCircle size={15} className="flex-shrink-0 mt-0.5" style={{ color: '#1A5C3A' }} />{b}
+                      <li key={i} className="flex items-start gap-3 text-xs sm:text-sm" style={{ color: TEXT }}>
+                        <CheckCircle size={15} className="flex-shrink-0 mt-0.5" style={{ color: section.accent }} />{b}
                       </li>
                     ))}
                   </ul>
                   <button onClick={() => setDemoOpen(true)}
-                    className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-white text-xs sm:text-sm font-bold transition-all hover:-translate-y-0.5"
-                    style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
+                    className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-white text-xs sm:text-sm font-bold transition-transform hover:-translate-y-0.5"
+                    style={{ background: NAVY }}>
                     See this in action <ArrowRight size={14} />
                   </button>
                 </div>
-                <div className="relative">
-                  <div className="absolute -inset-6 rounded-3xl opacity-15" style={{ background: '#1A5C3A', filter: 'blur(48px)' }} />
-                  <div className="relative rounded-3xl overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3' }}>
+                <div className="relative rounded-[2rem] p-5 sm:p-6" style={{ background: `${section.accent}1A` }}>
+                  <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
                     <img src={section.img} alt={section.imgAlt} className="w-full h-full object-cover" />
                   </div>
-                  <div className="absolute -bottom-3 -right-3 w-16 h-16 rounded-2xl opacity-25"
-                    style={{ background: 'linear-gradient(135deg, #1A5C3A, #2A7A50)' }} />
                 </div>
               </div>
             </Reveal>
@@ -551,27 +491,51 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Scale — full-bleed navy block ─────────────────────────── */}
+      <section className="py-16 sm:py-24 relative overflow-hidden" style={{ background: NAVY }}>
+        <ConfettiDot delay={0.4} size={90} x="88%" y="10%" color="rgba(245,166,35,0.12)" blur={4} />
+        <ConfettiDot delay={1.6} size={50} x="4%" y="70%" color="rgba(233,30,140,0.14)" blur={3} />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 gap-10 items-center relative z-10">
+          <Reveal>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-5 text-white">Designed to operate at scale</h2>
+            <ul className="space-y-3 mb-8">
+              {['Clear total cost of ownership', 'Lower cost per resident', 'Advanced incident management, as standard', 'Configurable workflows for every home', 'One partner, not just a provider'].map(b => (
+                <li key={b} className="flex items-start gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                  <CheckCircle size={15} className="flex-shrink-0 mt-0.5" style={{ color: ORANGE }} />{b}
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => setDemoOpen(true)}
+              className="px-7 py-3.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
+              Book a demo with a group-level advisor
+            </button>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3' }}>
+              <img src={IMG.scale} alt="Care group leadership team" className="w-full h-full object-cover" />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ── Module cloud ───────────────────────────────────────────── */}
-      <section id="modules" style={{ background: '#F5F0E8' }} className="py-16 sm:py-24">
+      <section id="modules" className="py-16 sm:py-24" style={{ background: 'white' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <Reveal>
             <div className="text-center mb-10 sm:mb-14">
-              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#1A5C3A' }}>50+ Modules</p>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: '#1A2E1E' }}>
-                One platform.{' '}
-                <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#1A5C3A' }}>Every module.</em>
-              </h2>
-              <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: '#6B7A6A' }}>From seizure logs to staff appraisals: if it happens in a care home, we cover it.</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>50+ Modules</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: NAVY }}>One platform. Every module.</h2>
+              <p className="text-sm sm:text-base max-w-xl mx-auto" style={{ color: MUTED }}>From seizure logs to staff appraisals: if it happens in a care home, we cover it.</p>
             </div>
           </Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {[
-              { title: 'Resident Care', modules: RESIDENT_MODULES, accent: '#1A5C3A', bg: '#E8F4EE', border: '#B8DCC8' },
-              { title: 'Staff & HR', modules: STAFF_MODULES, accent: '#1A3A6B', bg: '#E8EDF6', border: '#B8C8E8' },
-              { title: 'Compliance & Ops', modules: COMPLIANCE_MODULES, accent: '#7A3A10', bg: '#F5EDE0', border: '#E0C5A0' },
+              { title: 'Resident Care', modules: RESIDENT_MODULES, accent: NAVY, bg: '#EEEAF9', border: '#D6CDF0' },
+              { title: 'Staff & HR', modules: STAFF_MODULES, accent: PINK, bg: '#FCE8F2', border: '#F5C2E0' },
+              { title: 'Compliance & Ops', modules: COMPLIANCE_MODULES, accent: '#B5730F', bg: '#FDF1DC', border: '#F3D69B' },
             ].map(col => (
               <Reveal key={col.title} delay={0.08}>
-                <div className="rounded-3xl p-5 sm:p-6 shadow-sm h-full bg-white" style={{ border: '1px solid rgba(26,46,30,0.08)' }}>
+                <div className="rounded-3xl p-5 sm:p-6 h-full" style={{ background: OFFWHITE, border: '1px solid rgba(36,22,84,0.06)' }}>
                   <h3 className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5" style={{ color: col.accent }}>{col.title}</h3>
                   <div className="flex flex-wrap gap-2">
                     {col.modules.map(m => (
@@ -587,15 +551,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── Testimonials ───────────────────────────────────────────── */}
-      <section id="testimonials" className="py-16 sm:py-24" style={{ background: '#1A2E1E' }}>
+      <section id="testimonials" className="py-16 sm:py-24" style={{ background: NAVY }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <Reveal>
             <div className="text-center mb-10 sm:mb-14">
-              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#7DD9A8' }}>Trusted By</p>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 text-white">
-                Real results from{' '}
-                <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#7DD9A8' }}>real homes</em>
-              </h2>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>Trusted By</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 text-white">Real results from real homes</h2>
             </div>
           </Reveal>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
@@ -604,16 +565,17 @@ export default function LandingPage() {
               <motion.div key={i} variants={cardAnim} className="rounded-3xl p-6 sm:p-7 flex flex-col"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="flex gap-0.5 mb-5">
-                  {Array.from({ length: 5 }).map((_, s) => <Star key={s} size={13} fill="#F59E0B" className="text-amber-400" />)}
+                  {Array.from({ length: 5 }).map((_, s) => <Star key={s} size={13} fill={ORANGE} className="text-amber-400" />)}
                 </div>
-                <p className="text-sm leading-relaxed flex-1 mb-6" style={{ color: 'rgba(255,255,255,0.68)' }}>"{t.quote}"</p>
+                <div className="pl-4 flex-1 mb-6" style={{ borderLeft: `3px solid ${PINK}` }}>
+                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.75)' }}>"{t.quote}"</p>
+                </div>
                 <div className="flex items-center gap-3 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                  <img src={t.img} alt={t.name} className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover flex-shrink-0"
-                    style={{ border: '2px solid rgba(125,217,168,0.3)' }} />
+                  <img src={t.img} alt={t.name} className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover flex-shrink-0" style={{ border: `2px solid ${ORANGE}55` }} />
                   <div>
                     <p className="text-sm font-bold text-white">{t.name}</p>
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.role}</p>
-                    <p className="text-xs" style={{ color: '#7DD9A8' }}>{t.home}</p>
+                    <p className="text-xs" style={{ color: ORANGE }}>{t.home}</p>
                   </div>
                 </div>
               </motion.div>
@@ -623,101 +585,107 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-16 sm:py-24" style={{ background: '#EDE8DF' }}>
+      <section id="pricing" className="py-16 sm:py-24" style={{ background: OFFWHITE }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <Reveal>
             <div className="text-center mb-10 sm:mb-14">
-              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#1A5C3A' }}>Pricing</p>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: '#1A2E1E' }}>
-                Simple, transparent{' '}
-                <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#1A5C3A' }}>pricing</em>
-              </h2>
-              <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: '#6B7A6A' }}>No setup fees. No hidden costs. Cancel any time.</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>Pricing</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: NAVY }}>Simple, transparent pricing</h2>
+              <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: MUTED }}>No setup fees. No hidden costs. Cancel any time.</p>
             </div>
           </Reveal>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             <Reveal delay={0}>
-              <div className="rounded-3xl p-6 sm:p-8 flex flex-col h-full shadow-sm bg-white" style={{ border: '1px solid rgba(26,46,30,0.1)' }}>
-                <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#6B7A6A' }}>Starter</p>
+              <div className="rounded-3xl p-6 sm:p-8 flex flex-col h-full bg-white" style={{ border: '1px solid rgba(36,22,84,0.10)' }}>
+                <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: MUTED }}>Starter</p>
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-4xl sm:text-5xl font-black" style={{ color: '#1A2E1E', fontFamily: '"DM Serif Display", serif' }}>£99</span>
-                  <span className="text-sm font-medium" style={{ color: '#8A9A8A' }}>/month</span>
+                  <span className="text-4xl sm:text-5xl font-black" style={{ color: NAVY }}>£99</span>
+                  <span className="text-sm font-medium" style={{ color: MUTED }}>/month</span>
                 </div>
-                <p className="text-sm mb-6 sm:mb-7" style={{ color: '#8A9A8A' }}>For single-site care homes</p>
+                <p className="text-sm mb-6 sm:mb-7" style={{ color: MUTED }}>For single-site care homes</p>
                 <ul className="space-y-3 flex-1 mb-7 sm:mb-8">
                   {['Up to 30 residents', 'All care & MAR modules', 'Staff management & rota', 'DBS & training tracking', 'Email support within 24 hours'].map(f => (
-                    <li key={f} className="flex items-center gap-3 text-sm" style={{ color: '#3A4A3A' }}>
-                      <CheckCircle size={15} style={{ color: '#1A5C3A', flexShrink: 0 }} />{f}
+                    <li key={f} className="flex items-center gap-3 text-sm" style={{ color: TEXT }}>
+                      <CheckCircle size={15} style={{ color: NAVY, flexShrink: 0 }} />{f}
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => setDemoOpen(true)} className="w-full py-3.5 rounded-2xl text-sm font-bold border-2 transition-all"
-                  style={{ color: '#1A5C3A', borderColor: '#1A5C3A', background: 'white' }}>
+                <button onClick={() => setDemoOpen(true)} className="w-full py-3.5 rounded-full text-sm font-bold border-2 transition-all" style={{ color: NAVY, borderColor: NAVY, background: 'white' }}>
                   Start Free Trial
                 </button>
               </div>
             </Reveal>
             <Reveal delay={0.1}>
-              <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden flex flex-col h-full shadow-xl"
-                style={{ background: 'linear-gradient(135deg, #1A5C3A 0%, #1A3A2A 100%)' }}>
+              <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden flex flex-col h-full shadow-xl" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_DARK} 100%)` }}>
                 <div className="absolute top-5 sm:top-6 right-5 sm:right-6">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full"
-                    style={{ background: 'rgba(125,217,168,0.2)', color: '#7DD9A8', border: '1px solid rgba(125,217,168,0.3)' }}>Most Popular</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full" style={{ background: 'rgba(245,166,35,0.2)', color: ORANGE, border: '1px solid rgba(245,166,35,0.35)' }}>Most Popular</span>
                 </div>
                 <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Professional</p>
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-4xl sm:text-5xl font-black text-white" style={{ fontFamily: '"DM Serif Display", serif' }}>£199</span>
+                  <span className="text-4xl sm:text-5xl font-black text-white">£199</span>
                   <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>/month</span>
                 </div>
                 <p className="text-sm mb-6 sm:mb-7" style={{ color: 'rgba(255,255,255,0.5)' }}>For multi-home groups</p>
                 <ul className="space-y-3 flex-1 mb-7 sm:mb-8">
                   {['Unlimited residents', 'Everything in Starter', 'Multi-home management', 'AI audit reports & analytics', 'Priority phone support'].map(f => (
                     <li key={f} className="flex items-center gap-3 text-sm text-white">
-                      <CheckCircle size={15} style={{ color: '#7DD9A8', flexShrink: 0 }} />{f}
+                      <CheckCircle size={15} style={{ color: ORANGE, flexShrink: 0 }} />{f}
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => setDemoOpen(true)} className="w-full py-3.5 rounded-2xl text-sm font-bold transition-all"
-                  style={{ background: 'white', color: '#1A5C3A' }}>
+                <button onClick={() => setDemoOpen(true)} className="w-full py-3.5 rounded-full text-sm font-bold transition-all" style={{ background: ORANGE, color: NAVY_DARK }}>
                   Start Free Trial
                 </button>
               </div>
             </Reveal>
           </div>
           <Reveal delay={0.15}>
-            <p className="text-center text-xs sm:text-sm mt-6 sm:mt-8" style={{ color: '#8A9A8A' }}>
+            <p className="text-center text-xs sm:text-sm mt-6 sm:mt-8" style={{ color: MUTED }}>
               Not sure which plan?{' '}
-              <button onClick={() => setDemoOpen(true)} className="font-bold underline" style={{ color: '#1A5C3A' }}>Request a free walkthrough</button>
+              <button onClick={() => setDemoOpen(true)} className="font-bold underline" style={{ color: NAVY }}>Request a free walkthrough</button>
               {' '}and we'll recommend the right one for your home.
             </p>
           </Reveal>
         </div>
       </section>
 
-      {/* ── Final CTA ──────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ minHeight: 380 }}>
-        <img src={IMG.ctaBg} alt="Care team" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(10,30,18,0.93) 0%, rgba(26,92,58,0.82) 100%)' }} />
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
+      {/* ── FAQ ────────────────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24" style={{ background: 'white' }}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <Reveal>
-            <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5" style={{ color: '#7DD9A8' }}>Ready to get started?</p>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-10 sm:mb-12" style={{ color: NAVY }}>Frequently asked questions</h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div>
+              {FAQS.map((f, i) => <FaqItem key={f.q} q={f.q} a={f.a} defaultOpen={i === 0} />)}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── Final CTA ──────────────────────────────────────────────── */}
+      <section className="py-20 sm:py-28 text-center relative overflow-hidden" style={{ background: NAVY }}>
+        <ConfettiDot delay={0.2} size={70} x="6%" y="20%" color="rgba(245,166,35,0.12)" blur={3} />
+        <ConfettiDot delay={1.1} size={44} x="92%" y="65%" color="rgba(233,30,140,0.14)" blur={2} />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
+          <Reveal>
+            <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5" style={{ color: ORANGE }}>Ready to get started?</p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 sm:mb-5 leading-tight">
-              Join care homes already running{' '}
-              <em style={{ fontFamily: '"DM Serif Display", serif', fontStyle: 'italic', color: '#7DD9A8' }}>on CompCare Hub</em>
+              Let's start the conversation
             </h2>
-            <p className="text-sm sm:text-lg mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.62)' }}>
-              Start your free trial today, no card required. Or let us walk you through the full platform in 30 minutes.
+            <p className="text-sm sm:text-lg mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.65)' }}>
+              Over 30 minutes, we'll discuss your challenges and needs, while also exploring how CompCare Hub can help you achieve your goals.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-              <Link to="/login"
-                className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5"
-                style={{ background: 'white', color: '#1A5C3A', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
-                Start Free Trial <ArrowRight size={16} />
-              </Link>
               <button onClick={() => setDemoOpen(true)}
-                className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base border-2 text-white transition-all hover:bg-white/10"
+                className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
+                style={{ background: ORANGE, color: NAVY_DARK }}>
+                Book a demo <ArrowRight size={16} />
+              </button>
+              <button onClick={() => scrollTo('features')}
+                className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-bold text-sm sm:text-base border-2 text-white transition-colors hover:bg-white/10"
                 style={{ borderColor: 'rgba(255,255,255,0.32)' }}>
-                Book a Demo
+                How it works
               </button>
             </div>
           </Reveal>
@@ -725,23 +693,16 @@ export default function LandingPage() {
       </section>
 
       {/* ── Careers ────────────────────────────────────────────────── */}
-      <section className="py-14 sm:py-20" style={{ background: '#F5F0E8' }}>
+      <section className="py-14 sm:py-20" style={{ background: OFFWHITE }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <Reveal>
-            <div className="rounded-3xl p-8 sm:p-12 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-8"
-              style={{ background: 'white', border: '1px solid rgba(26,46,30,0.08)' }}>
+            <div className="rounded-3xl p-8 sm:p-12 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-8" style={{ background: 'white', border: '1px solid rgba(36,22,84,0.08)' }}>
               <div className="text-center sm:text-left">
-                <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#1A5C3A' }}>Careers</p>
-                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2" style={{ color: '#1A2E1E' }}>
-                  We're hiring compassionate carers
-                </h2>
-                <p className="text-sm sm:text-base max-w-md" style={{ color: '#6B7A6A' }}>
-                  Join a care home team using CompCare Hub. See our open roles and apply in minutes.
-                </p>
+                <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: ORANGE }}>Careers</p>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2" style={{ color: NAVY }}>We're hiring compassionate carers</h2>
+                <p className="text-sm sm:text-base max-w-md" style={{ color: MUTED }}>Join a care home team using CompCare Hub. See our open roles and apply in minutes.</p>
               </div>
-              <Link to="/careers"
-                className="flex-shrink-0 px-7 py-3.5 rounded-2xl font-bold text-sm text-white transition-all hover:-translate-y-0.5"
-                style={{ background: 'linear-gradient(135deg, #1A5C3A, #1A4A35)' }}>
+              <Link to="/careers" className="flex-shrink-0 px-7 py-3.5 rounded-full font-bold text-sm text-white transition-transform hover:-translate-y-0.5" style={{ background: NAVY }}>
                 View Careers <ArrowRight size={15} className="inline ml-1.5" />
               </Link>
             </div>
@@ -750,37 +711,31 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
-      <footer style={{ background: '#0D1E12' }} className="pt-12 sm:pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <footer style={{ background: NAVY_DARK }} className="pt-12 sm:pt-16 pb-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-10 sm:mb-12">
 
-            {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: 'white' }}>
-                  <img src={IMG.logo} alt="Comprehensive Care" className="w-full h-full object-contain" />
+                <div className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden" style={{ background: 'white' }}>
+                  <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-contain" />
                 </div>
-                <div>
-                  <p className="text-sm font-black text-white">Comprehensive Care</p>
-                  <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#4A7A5A' }}>Your Care Our Priority</p>
-                </div>
+                <p className="text-sm font-black text-white">CompCare Hub</p>
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.32)' }}>
+              <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 The complete digital care management platform for CQC-regulated care homes and supported living providers across the UK.
               </p>
             </div>
 
-            {/* Platform */}
             <div>
-              <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5 text-white">Platform</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5 text-white">Product</p>
               <ul className="space-y-2.5 sm:space-y-3">
                 {['Resident Care', 'Staff Management', 'CQC Compliance', 'Family Portal', 'Pricing'].map(l => (
-                  <li key={l}><span className="text-sm cursor-pointer transition-colors" style={{ color: 'rgba(255,255,255,0.38)' }}>{l}</span></li>
+                  <li key={l}><span className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>{l}</span></li>
                 ))}
               </ul>
             </div>
 
-            {/* Company */}
             <div>
               <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5 text-white">Company</p>
               <ul className="space-y-2.5 sm:space-y-3">
@@ -790,33 +745,32 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            {/* Get in touch — real contact info */}
             <div>
-              <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5 text-white">Get In Touch</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5 text-white">Contact Us</p>
               <div className="space-y-3 mb-5">
                 <div className="flex items-start gap-2.5">
-                  <MapPin size={13} style={{ color: '#7DD9A8', flexShrink: 0, marginTop: 2 }} />
+                  <MapPin size={13} style={{ color: ORANGE, flexShrink: 0, marginTop: 2 }} />
                   <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
                     Office 2-13 Ivy Business Centre,<br />Crown Street, Failsworth,<br />Manchester, M35 9BG
                   </p>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Phone size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
+                  <Phone size={13} style={{ color: ORANGE, flexShrink: 0 }} />
                   <div>
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>0161 667 6030</p>
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>0161 843 0277</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Mail size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
+                  <Mail size={13} style={{ color: ORANGE, flexShrink: 0 }} />
                   <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>info@comprehensivecare.org.uk</p>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Mail size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
+                  <Mail size={13} style={{ color: ORANGE, flexShrink: 0 }} />
                   <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>recruitment@comprehensivecare.org.uk</p>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Clock size={13} style={{ color: '#7DD9A8', flexShrink: 0 }} />
+                  <Clock size={13} style={{ color: ORANGE, flexShrink: 0 }} />
                   <div>
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>Mon–Fri: 9:00 AM – 5:00 PM</p>
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>Weekends & Bank Holidays: Closed</p>
@@ -824,16 +778,15 @@ export default function LandingPage() {
                 </div>
               </div>
               <button onClick={() => setDemoOpen(true)}
-                className="w-full py-3 text-xs sm:text-sm font-bold text-white rounded-xl transition-opacity hover:opacity-90"
-                style={{ background: 'rgba(125,217,168,0.10)', border: '1px solid rgba(125,217,168,0.18)' }}>
+                className="w-full py-3 text-xs sm:text-sm font-bold text-white rounded-full transition-opacity hover:opacity-90"
+                style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)' }}>
                 Book a Demo
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 sm:pt-8"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.85)' }}>
-            <p className="text-xs text-center sm:text-left" style={{ color: 'rgba(255,255,255,0.85)' }}>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 sm:pt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <p className="text-xs text-center sm:text-left" style={{ color: 'rgba(255,255,255,0.4)' }}>
               © {new Date().getFullYear()} Comprehensive Care. All rights reserved. Registered in England and Wales.
             </p>
           </div>
