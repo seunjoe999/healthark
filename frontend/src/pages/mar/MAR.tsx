@@ -1017,7 +1017,7 @@ function WitnessSignOffModal({ recordId, onClose }: { recordId: string; onClose:
 }
 
 /* ─── Log MAR Modal ────────────────────────────────────────────────────── */
-const MAR_CODE_OPTIONS = [
+export const MAR_CODE_OPTIONS = [
   { code: 'G',  label: 'Given',          desc: 'Administered',          color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.4)',  given: true,  refused: false },
   { code: 'SM', label: 'Assisted',       desc: 'Prompted/assisted',     color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.4)',   given: true,  refused: false },
   { code: 'S',  label: 'Self-med',       desc: 'Self-medicated',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.4)',  given: true,  refused: false },
@@ -1036,7 +1036,7 @@ const MAR_CODE_OPTIONS = [
   { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
 ]
 
-function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
+export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
   med: any; date: string; slot: string; suId: string; homeId?: string; onClose: () => void; onSaved: () => void
 }) {
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
