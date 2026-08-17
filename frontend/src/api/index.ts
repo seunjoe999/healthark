@@ -28,7 +28,14 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Deletion is locked org-wide until a super_admin role is created — block it
+// client-side too so the user gets an immediate, clear message instead of a
+// generic network error (the server enforces this regardless).
 api.interceptors.request.use((config) => {
+  if ((config.method || '').toLowerCase() === 'delete') {
+    toast.error('Deletion is currently locked for all accounts until a super admin role is set up.')
+    return Promise.reject(new Error('Deletion locked'))
+  }
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config

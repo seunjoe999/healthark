@@ -8,6 +8,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import jwt from 'jsonwebtoken';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { logger } from './config/logger';
 import { pool } from './config/database';
@@ -82,6 +83,27 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev', { stream: { write: (msg) => logger.info(msg.trim()) } }));
+
+// â”€â”€ Global deletion lockdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Every deletion in the system is blocked, org-wide, until a dedicated
+// 'super_admin' role is created — deliberately requested to stop accidental
+// or unauthorized data loss (staff, residents, records, everything) while
+// that role doesn't exist yet. Checked here, once, ahead of all routers,
+// so no individual DELETE endpoint can be missed. Uses jwt.verify (not
+// decode) so a forged/unsigned token can't be used to claim the role.
+app.use('/api', (req, res, next) => {
+  if (req.method !== 'DELETE') { next(); return; }
+  try {
+    const secret = process.env.JWT_SECRET;
+    const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : '';
+    const payload = token && secret ? (jwt.verify(token, secret) as any) : null;
+    if (payload?.role === 'super_admin') { next(); return; }
+  } catch { /* invalid/expired token falls through to the block below */ }
+  res.status(403).json({
+    success: false,
+    error: 'Deletion is currently locked for all accounts until a super admin role is set up. Contact the app owner.',
+  });
+});
 
 // â”€â”€ Static files (uploaded documents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

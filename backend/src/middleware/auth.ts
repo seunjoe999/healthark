@@ -67,7 +67,9 @@ export function requireRole(...roles: StaffRole[]) {
       res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
       return;
     }
-    if (!roles.includes(req.staff.role)) {
+    // super_admin always passes — it's the top-level role above every
+    // per-route whitelist, so it never needs to be added to each one.
+    if (req.staff.role !== 'super_admin' && !roles.includes(req.staff.role)) {
       res.status(403).json({
         success: false,
         error: 'You do not have permission to perform this action'
