@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { motion, useInView, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import {
-  CheckCircle, ArrowRight, ChevronDown, ChevronRight, Plus,
-  Play, X, Menu, Star, MapPin, Phone, Mail, Clock,
+  CheckCircle, ArrowRight, ChevronDown, Plus,
+  X, Menu, Star, MapPin, Phone, Mail, Clock,
 } from 'lucide-react';
-import api from '../../api';
-import toast from 'react-hot-toast';
 
 const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
@@ -145,6 +143,60 @@ function ConfettiDot({ delay, size, x, y, color, blur = 0 }: { delay: number; si
   );
 }
 
+/* ── Water + boat: the hero's bottom edge ripples, and the little boat
+   sails and tilts as your mouse moves across the hero — riding the mouse
+   like it's riding the waves. mx/my (each -1..1) are tracked on the whole
+   hero so the boat reacts no matter where the cursor is, not just when
+   it's directly over this decorative layer. ────────────────────────────── */
+function useHeroMouse() {
+  const heroRef = useRef<HTMLElement>(null);
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = heroRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    mx.set(Math.max(-1, Math.min(1, ((e.clientX - rect.left) / rect.width - 0.5) * 2)));
+    my.set(Math.max(-1, Math.min(1, ((e.clientY - rect.top) / rect.height - 0.5) * 2)));
+  };
+  const handleLeave = () => { mx.set(0); my.set(0); };
+  return { heroRef, mx, my, handleMove, handleLeave };
+}
+
+function WaterAndBoat({ mx, my }: { mx: ReturnType<typeof useMotionValue<number>>; my: ReturnType<typeof useMotionValue<number>> }) {
+  const boatRotate = useSpring(useTransform(mx, [-1, 1], [-12, 12]), { stiffness: 70, damping: 14 });
+  const boatX = useSpring(useTransform(mx, [-1, 1], [-26, 26]), { stiffness: 55, damping: 16 });
+  const boatTilt = useSpring(useTransform(my, [-1, 1], [4, -4]), { stiffness: 55, damping: 16 });
+
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none" style={{ overflow: 'hidden' }}>
+      <motion.svg className="absolute bottom-0 left-0" width="200%" height="120" viewBox="0 0 2400 200" preserveAspectRatio="none"
+        animate={{ x: [0, -1200] }} transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}>
+        <path d="M0,110 C150,150 300,70 450,110 C600,150 750,70 900,110 C1050,150 1200,70 1350,110 C1500,150 1650,70 1800,110 C1950,150 2100,70 2250,110 C2325,130 2400,110 2400,110 L2400,200 L0,200 Z"
+          fill={`${NAVY}14`} />
+        <path d="M1200,110 C1350,150 1500,70 1650,110 C1800,150 1950,70 2100,110 C2250,150 2400,70 2550,110 C2625,130 2700,110 2700,110 L2700,200 L1200,200 Z"
+          fill={`${NAVY}14`} />
+      </motion.svg>
+      <motion.svg className="absolute bottom-0 left-0" width="200%" height="90" viewBox="0 0 2400 200" preserveAspectRatio="none"
+        animate={{ x: [-1200, 0] }} transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}>
+        <path d="M0,130 C200,90 400,170 600,130 C800,90 1000,170 1200,130 C1400,90 1600,170 1800,130 C2000,90 2200,170 2400,130 L2400,200 L0,200 Z"
+          fill={`${ORANGE}12`} />
+        <path d="M1200,130 C1400,90 1600,170 1800,130 C2000,90 2200,170 2400,130 C2600,90 2800,170 3000,130 L3000,200 L1200,200 Z"
+          fill={`${ORANGE}12`} />
+      </motion.svg>
+
+      <motion.div className="absolute" style={{ left: '15%', bottom: 66, x: boatX, rotate: boatRotate }}>
+        <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ rotate: boatTilt }}>
+          <svg width="52" height="46" viewBox="0 0 52 46" aria-label="Boat sailing on water" role="img">
+            <path d="M27 4 L27 30 L11 30 Z" fill={NAVY} />
+            <path d="M6 34 L46 34 L38 43 L14 43 Z" fill={NAVY} />
+          </svg>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
 function FaqItem({ q, a, defaultOpen = false }: { q: string; a: string; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -171,33 +223,7 @@ function FaqItem({ q, a, defaultOpen = false }: { q: string; a: string; defaultO
 /* ═══════════════════════════════════════════════════════════════════════════════ */
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [demoOpen, setDemoOpen] = useState(false);
-  const [demoForm, setDemoForm] = useState({ name: '', email: '', phone: '', homeName: '' });
-  const [demoLoading, setDemoLoading] = useState(false);
-  const [demoSubmitted, setDemoSubmitted] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = demoOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [demoOpen]);
-
-  const submitDemo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setDemoLoading(true);
-    try {
-      await api.post('/public/contact', {
-        firstName: demoForm.name, email: demoForm.email, phone: demoForm.phone,
-        message: `Walkthrough request from: ${demoForm.homeName || 'Not specified'}`,
-      });
-      setDemoSubmitted(true);
-      toast.success("We'll be in touch within one working day!");
-    } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error : undefined;
-      toast.error(msg || 'Failed to send. Please try again.');
-    }
-    setDemoLoading(false);
-  };
+  const heroMouse = useHeroMouse();
 
   const navLinks = [
     { label: 'Features', id: 'features' },
@@ -208,82 +234,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen font-sans overflow-x-hidden" style={{ background: '#FFFFFF', color: TEXT }}>
-
-      {/* ── Walkthrough modal ──────────────────────────────────────── */}
-      <AnimatePresence>
-        {demoOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-            style={{ background: 'rgba(22,12,56,0.75)', backdropFilter: 'blur(12px)' }}
-            onClick={e => { if (e.target === e.currentTarget) setDemoOpen(false); }}>
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }} transition={{ duration: 0.26, ease: EASE }}
-              className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
-              style={{ background: 'white' }}>
-              <div className="relative h-32 overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY}, ${NAVY_DARK})` }}>
-                <ConfettiDot delay={0} size={40} x="8%" y="20%" color="rgba(245,166,35,0.35)" />
-                <ConfettiDot delay={1} size={26} x="82%" y="55%" color="rgba(233,30,140,0.35)" />
-                <button onClick={() => setDemoOpen(false)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors z-10">
-                  <X size={14} className="text-white" />
-                </button>
-                <div className="absolute bottom-5 left-6 z-10">
-                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Free · No Commitment</p>
-                  <h3 className="text-white text-xl font-black">See CompCare in Action</h3>
-                </div>
-              </div>
-              <div className="p-6">
-                {demoSubmitted ? (
-                  <div className="text-center py-6">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#FDECC8' }}>
-                      <CheckCircle size={26} style={{ color: ORANGE }} />
-                    </div>
-                    <h4 className="text-lg font-black mb-2" style={{ color: TEXT }}>You're booked in!</h4>
-                    <p className="text-sm mb-5" style={{ color: MUTED }}>We'll be in touch within one working day to arrange your personalised walkthrough.</p>
-                    <button onClick={() => { setDemoSubmitted(false); setDemoOpen(false); }} className="text-sm font-bold" style={{ color: NAVY }}>Close</button>
-                  </div>
-                ) : (
-                  <form onSubmit={submitDemo} className="space-y-3">
-                    <p className="text-sm mb-4" style={{ color: MUTED }}>A personalised 30-minute walkthrough tailored to your home. Free, no commitment.</p>
-                    {[
-                      { label: 'Your Name *', key: 'name', type: 'text', placeholder: 'Jane Smith', required: true },
-                      { label: 'Work Email *', key: 'email', type: 'email', placeholder: 'jane@carehome.co.uk', required: true },
-                    ].map(f => (
-                      <div key={f.key}>
-                        <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: MUTED }}>{f.label}</label>
-                        <input required={f.required} type={f.type} placeholder={f.placeholder}
-                          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                          style={{ background: OFFWHITE, borderColor: 'rgba(36,22,84,0.14)', color: TEXT }}
-                          value={demoForm[f.key as keyof typeof demoForm]}
-                          onChange={e => setDemoForm({ ...demoForm, [f.key]: e.target.value })} />
-                      </div>
-                    ))}
-                    <div className="grid grid-cols-2 gap-3">
-                      {[{ label: 'Phone', key: 'phone', placeholder: '07700 900000' }, { label: 'Care Home', key: 'homeName', placeholder: 'Sunrise Lodge' }].map(f => (
-                        <div key={f.key}>
-                          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: MUTED }}>{f.label}</label>
-                          <input type="text" placeholder={f.placeholder}
-                            className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-                            style={{ background: OFFWHITE, borderColor: 'rgba(36,22,84,0.14)', color: TEXT }}
-                            value={demoForm[f.key as keyof typeof demoForm]}
-                            onChange={e => setDemoForm({ ...demoForm, [f.key]: e.target.value })} />
-                        </div>
-                      ))}
-                    </div>
-                    <button type="submit" disabled={demoLoading}
-                      className="w-full mt-2 py-3.5 rounded-full text-white font-bold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-                      style={{ background: ORANGE }}>
-                      {demoLoading
-                        ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending...</>
-                        : <>Book My Free Demo <ArrowRight size={15} /></>}
-                    </button>
-                  </form>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Navbar — pill-shaped, always navy ────────────────────────── */}
       <nav className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6">
@@ -309,10 +259,9 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
-            <button onClick={() => setDemoOpen(true)}
-              className="px-5 py-2.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
-              Demo
-            </button>
+            <Link to="/login" className="px-5 py-2.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
+              Start Free Trial
+            </Link>
             <Link to="/login" className="px-5 py-2.5 rounded-full text-sm font-semibold border transition-colors hover:bg-white/10"
               style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
               Login
@@ -334,10 +283,10 @@ export default function LandingPage() {
                     className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors text-white">{l.label}</button>
                 ))}
                 <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors text-white">Careers</Link>
-                <button onClick={() => { setDemoOpen(true); setMenuOpen(false); }}
+                <Link to="/login" onClick={() => setMenuOpen(false)}
                   className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: ORANGE, color: NAVY_DARK }}>
-                  Book a Demo
-                </button>
+                  Start Free Trial
+                </Link>
                 <Link to="/login" onClick={() => setMenuOpen(false)}
                   className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border mt-2 text-white" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
                   Log In
@@ -349,8 +298,10 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero — white bg, text left / photo right ─────────────────── */}
-      <header className="relative overflow-hidden" style={{ paddingTop: 140, paddingBottom: 80 }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative">
+      <header ref={heroMouse.heroRef} onMouseMove={heroMouse.handleMove} onMouseLeave={heroMouse.handleLeave}
+        className="relative overflow-hidden" style={{ paddingTop: 140, paddingBottom: 80 }}>
+        <WaterAndBoat mx={heroMouse.mx} my={heroMouse.my} />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative" style={{ zIndex: 1 }}>
           <div className="relative z-10">
             <Reveal>
               <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>Care Management Software</p>
@@ -361,16 +312,16 @@ export default function LandingPage() {
                 CompCare Hub replaces paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <button onClick={() => setDemoOpen(true)}
+                <Link to="/login"
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
                   style={{ background: ORANGE, color: NAVY_DARK, boxShadow: '0 10px 30px rgba(245,166,35,0.35)' }}>
-                  Book a demo <ArrowRight size={15} />
-                </button>
-                <Link to="/login"
+                  Start free trial <ArrowRight size={15} />
+                </Link>
+                <button onClick={() => scrollTo('features')}
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 border transition-colors"
                   style={{ color: NAVY, borderColor: 'rgba(36,22,84,0.2)' }}>
-                  Start free trial
-                </Link>
+                  Explore features
+                </button>
               </div>
             </Reveal>
           </div>
@@ -433,20 +384,14 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {EXPLORE_CARDS.map((card, i) => (
               <Reveal key={i} delay={i * 0.1}>
-                <div className="rounded-3xl overflow-hidden group cursor-pointer" onClick={() => setDemoOpen(true)}>
+                <div className="rounded-3xl overflow-hidden group">
                   <div className="relative overflow-hidden rounded-3xl" style={{ height: 190 }}>
                     <img src={card.img} alt={card.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <span className="absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(36,22,84,0.55)', backdropFilter: 'blur(6px)' }}>
-                      Explore
-                    </span>
                   </div>
                   <div className="pt-5">
                     <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: ORANGE }}>{card.label}</p>
                     <h3 className="font-black text-base sm:text-lg mb-2 leading-snug" style={{ color: NAVY }}>{card.title}</h3>
-                    <p className="text-xs sm:text-sm leading-relaxed mb-3" style={{ color: MUTED }}>{card.desc}</p>
-                    <span className="flex items-center gap-1.5 text-xs sm:text-sm font-bold" style={{ color: NAVY }}>
-                      See how it works <ChevronRight size={14} />
-                    </span>
+                    <p className="text-xs sm:text-sm leading-relaxed" style={{ color: MUTED }}>{card.desc}</p>
                   </div>
                 </div>
               </Reveal>
@@ -474,11 +419,11 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                  <button onClick={() => setDemoOpen(true)}
+                  <Link to="/login"
                     className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-white text-xs sm:text-sm font-bold transition-transform hover:-translate-y-0.5"
                     style={{ background: NAVY }}>
-                    See this in action <ArrowRight size={14} />
-                  </button>
+                    Start free trial <ArrowRight size={14} />
+                  </Link>
                 </div>
                 <div className="relative rounded-[2rem] p-5 sm:p-6" style={{ background: `${section.accent}1A` }}>
                   <div className="relative rounded-3xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/3' }}>
@@ -505,10 +450,10 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <button onClick={() => setDemoOpen(true)}
-              className="px-7 py-3.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
-              Book a demo with a group-level advisor
-            </button>
+            <Link to="/login"
+              className="inline-block px-7 py-3.5 rounded-full text-sm font-bold transition-transform hover:-translate-y-0.5" style={{ background: ORANGE, color: NAVY_DARK }}>
+              Start free trial
+            </Link>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3' }}>
@@ -610,9 +555,9 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => setDemoOpen(true)} className="w-full py-3.5 rounded-full text-sm font-bold border-2 transition-all" style={{ color: NAVY, borderColor: NAVY, background: 'white' }}>
+                <Link to="/login" className="w-full py-3.5 rounded-full text-sm font-bold border-2 transition-all text-center" style={{ color: NAVY, borderColor: NAVY, background: 'white' }}>
                   Start Free Trial
-                </button>
+                </Link>
               </div>
             </Reveal>
             <Reveal delay={0.1}>
@@ -633,16 +578,16 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => setDemoOpen(true)} className="w-full py-3.5 rounded-full text-sm font-bold transition-all" style={{ background: ORANGE, color: NAVY_DARK }}>
+                <Link to="/login" className="w-full py-3.5 rounded-full text-sm font-bold transition-all text-center block" style={{ background: ORANGE, color: NAVY_DARK }}>
                   Start Free Trial
-                </button>
+                </Link>
               </div>
             </Reveal>
           </div>
           <Reveal delay={0.15}>
             <p className="text-center text-xs sm:text-sm mt-6 sm:mt-8" style={{ color: MUTED }}>
               Not sure which plan?{' '}
-              <button onClick={() => setDemoOpen(true)} className="font-bold underline" style={{ color: NAVY }}>Request a free walkthrough</button>
+              <a href="mailto:info@comprehensivecare.org.uk" className="font-bold underline" style={{ color: NAVY }}>Get in touch</a>
               {' '}and we'll recommend the right one for your home.
             </p>
           </Reveal>
@@ -671,22 +616,17 @@ export default function LandingPage() {
           <Reveal>
             <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5" style={{ color: ORANGE }}>Ready to get started?</p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 sm:mb-5 leading-tight">
-              Let's start the conversation
+              Join care homes already running on CompCare Hub
             </h2>
             <p className="text-sm sm:text-lg mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              Over 30 minutes, we'll discuss your challenges and needs, while also exploring how CompCare Hub can help you achieve your goals.
+              Start your free trial today, no card required — CompCare Hub is set up for your home in minutes.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-              <button onClick={() => setDemoOpen(true)}
+            <div className="flex justify-center">
+              <Link to="/login"
                 className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
                 style={{ background: ORANGE, color: NAVY_DARK }}>
-                Book a demo <ArrowRight size={16} />
-              </button>
-              <button onClick={() => scrollTo('features')}
-                className="px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-bold text-sm sm:text-base border-2 text-white transition-colors hover:bg-white/10"
-                style={{ borderColor: 'rgba(255,255,255,0.32)' }}>
-                How it works
-              </button>
+                Start free trial <ArrowRight size={16} />
+              </Link>
             </div>
           </Reveal>
         </div>
@@ -777,11 +717,11 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setDemoOpen(true)}
-                className="w-full py-3 text-xs sm:text-sm font-bold text-white rounded-full transition-opacity hover:opacity-90"
+              <Link to="/login"
+                className="block w-full py-3 text-xs sm:text-sm font-bold text-white rounded-full transition-opacity hover:opacity-90 text-center"
                 style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)' }}>
-                Book a Demo
-              </button>
+                Start Free Trial
+              </Link>
             </div>
           </div>
 
