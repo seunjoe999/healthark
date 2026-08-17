@@ -4,6 +4,7 @@ import { motion, useInView, AnimatePresence, useMotionValue, useSpring, useTrans
 import {
   CheckCircle, ArrowRight, ChevronDown, Plus,
   X, Menu, Star, MapPin, Phone, Mail, Clock,
+  ShieldCheck, Lock, Database, FileCheck,
 } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -126,6 +127,13 @@ const FEATURE_SECTIONS = [
   },
 ];
 
+const SECURITY_POINTS = [
+  { icon: Lock, q: 'How is our data encrypted?', a: 'All data is encrypted in transit using TLS and encrypted at rest in our database. Passwords are hashed, never stored in plain text, and every session is authenticated before any care record can be viewed or edited.' },
+  { icon: ShieldCheck, q: 'Who can see resident and staff data?', a: 'Role-based access control means each user only sees what their role requires, a carer, a manager and a family member all get a different, deliberately limited view. Every login and every action is tied to an individual user.' },
+  { icon: FileCheck, q: 'Is there an audit trail?', a: 'Yes. Every create, edit and deletion across the platform is logged with the user, timestamp and what changed, giving you a complete, tamper-evident history for CQC inspections and internal reviews.' },
+  { icon: Database, q: 'What happens to our data if something goes wrong?', a: 'Your data is backed up automatically on a regular schedule and stored securely, so a device failure or accidental change never means lost records. Data handling follows UK GDPR principles throughout.' },
+];
+
 const FAQS = [
   { q: 'What types of care services do you support?', a: 'CompCare Hub is built for residential care homes, supported living services and home care providers of any size, from single-site homes to multi-home groups.' },
   { q: 'Can I get a demo of your platform?', a: "Yes, book a free 30-minute walkthrough tailored to your home. We'll show you the modules most relevant to your service and answer any questions live." },
@@ -215,6 +223,32 @@ function FaqItem({ q, a, defaultOpen = false }: { q: string; a: string; defaultO
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }} className="overflow-hidden">
             <p className="text-sm leading-relaxed pb-5" style={{ color: MUTED }}>{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function SecurityItem({ icon: Icon, q, a, defaultOpen = false }: { icon: React.ElementType; q: string; a: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(36,22,84,0.08)' }}>
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-4 p-5 text-left">
+        <span className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: '#EEEAF9', color: NAVY }}>
+          <Icon size={20} />
+        </span>
+        <span className="flex-1 text-sm sm:text-base font-bold" style={{ color: TEXT }}>{q}</span>
+        <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+          style={{ background: OFFWHITE, color: NAVY, transform: open ? 'rotate(45deg)' : 'none' }}>
+          <Plus size={14} />
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }} className="overflow-hidden">
+            <p className="text-sm leading-relaxed px-5 pb-5 pl-[76px]" style={{ color: MUTED }}>{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -600,6 +634,28 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Safety & Security ─────────────────────────────────────── */}
+      <section id="security" className="py-16 sm:py-24" style={{ background: OFFWHITE }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <Reveal>
+            <div className="text-center mb-10 sm:mb-14">
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>Safety & Security</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4" style={{ color: NAVY }}>Built to protect the data you're trusted with</h2>
+              <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: MUTED }}>
+                Resident and staff records are sensitive by nature. Here's how CompCare Hub keeps them safe.
+              </p>
+            </div>
+          </Reveal>
+          <div className="space-y-3">
+            {SECURITY_POINTS.map((s, i) => (
+              <Reveal key={s.q} delay={i * 0.06}>
+                <SecurityItem icon={s.icon} q={s.q} a={s.a} defaultOpen={i === 0} />
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Testimonials ───────────────────────────────────────────── */}
       <section id="testimonials" className="py-16 sm:py-24" style={{ background: NAVY }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -631,6 +687,46 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      </section>
+
+      {/* ── Case study ─────────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24" style={{ background: 'white' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <Reveal>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 items-center">
+              <div className="relative rounded-3xl overflow-hidden order-2 md:order-1" style={{ height: 360 }}>
+                <img src={IMG.t1} alt="Sarah Mitchell, Registered Manager at Oakwood Care Home" className="w-full h-full object-cover" />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(22,12,56,0.75), transparent 55%)' }} />
+                <div className="absolute bottom-5 left-5 right-5">
+                  <p className="text-sm font-bold text-white">Sarah Mitchell</p>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>Registered Manager, Oakwood Care Home</p>
+                </div>
+              </div>
+              <div className="order-1 md:order-2">
+                <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: ORANGE }}>Case Study</p>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-5 leading-tight" style={{ color: NAVY }}>
+                  Why Oakwood Care Home made the switch
+                </h2>
+                <p className="text-sm sm:text-base leading-relaxed mb-6" style={{ color: MUTED }}>
+                  "We replaced three separate systems with CompCare Hub. Our staff spend 40% less time on paperwork and our last CQC inspection was the smoothest ever."
+                </p>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="rounded-2xl p-4" style={{ background: OFFWHITE }}>
+                    <p className="text-2xl font-black" style={{ color: NAVY }}>40%</p>
+                    <p className="text-xs" style={{ color: MUTED }}>Less time on paperwork</p>
+                  </div>
+                  <div className="rounded-2xl p-4" style={{ background: OFFWHITE }}>
+                    <p className="text-2xl font-black" style={{ color: NAVY }}>3 → 1</p>
+                    <p className="text-xs" style={{ color: MUTED }}>Systems replaced with one platform</p>
+                  </div>
+                </div>
+                <button onClick={() => setDemoOpen(true)} className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white transition-transform hover:scale-105" style={{ background: NAVY }}>
+                  Book a demo <ArrowRight size={16} />
+                </button>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
