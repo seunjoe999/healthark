@@ -44,6 +44,7 @@ const navSections = [
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
       { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
       { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
+      { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
     ]
   },
   {
@@ -83,12 +84,6 @@ const navSections = [
     label: 'AI FEATURES', highlight: true,
     items: [
       { label: 'AI Assistant', to: '/ai-assistant', icon: Brain, roles: [], featureKey: 'ai_assistant' },
-    ]
-  },
-  {
-    label: 'AUDIT', highlight: true,
-    items: [
-      { label: 'Audits', to: '/audits', icon: Activity, roles: [], featureKey: 'audits' },
     ]
   },
   {
@@ -211,7 +206,9 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
   )
 }
 
-const COLLAPSIBLE_SECTIONS = new Set(navSections.map(s => s.label).filter(Boolean))
+// Dashboard (Dashboard/Inbox/Noticeboard) always stays expanded — it's the first
+// thing staff see on login and should never be collapsed by default.
+const COLLAPSIBLE_SECTIONS = new Set(navSections.map(s => s.label).filter(l => l && l !== 'DASHBOARD'))
 
 function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSIBLE_SECTIONS))

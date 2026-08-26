@@ -24,24 +24,33 @@ const REPORT_TYPES = [
   { value: 'system-activity', label: 'System Activity', description: 'Anything done on the system, by any staff member' },
 ]
 
+// Kept in sync with RECORD_TYPES in pages/daily-records/DailyRecords.tsx — this list drives the
+// filter on the Daily Records report, so it must match the actual record types staff can log.
 const DAILY_RECORD_TYPES = [
   { value: '', label: 'All types' },
   { value: 'personal_care', label: 'Personal Care' },
-  { value: 'oral_care', label: 'Oral Care' },
   { value: 'food_intake', label: 'Food Intake' },
-  { value: 'fluid_intake', label: 'Fluid Intake' },
-  { value: 'medication', label: 'Medication' },
-  { value: 'prn_medication', label: 'PRN Medication' },
+  { value: 'fluid_intake', label: 'Fluid / Drinks' },
+  { value: 'bowel_movement', label: 'Bowel Movement' },
+  { value: 'behaviour', label: 'Behavior Record (ABC)' },
+  { value: 'welfare_check', label: 'Welfare Check' },
+  { value: 'repositioning', label: 'Repositioning' },
+  { value: 'oral_care', label: 'Oral Care' },
+  { value: 'one_to_one', label: '1-to-1 Conversation' },
+  { value: 'social_activity', label: 'Social Activity' },
+  { value: 'social_visit', label: 'Social Visit' },
+  { value: 'family_visit', label: 'Family Visit' },
   { value: 'incident', label: 'Incident' },
-  { value: 'behaviour', label: 'Behaviour' },
-  { value: 'observation', label: 'Observation' },
-  { value: 'bowel', label: 'Bowel' },
-  { value: 'bath', label: 'Bath/Shower' },
-  { value: 'sleep', label: 'Sleep' },
-  { value: 'activity', label: 'Activity' },
-  { value: 'mood', label: 'Mood' },
-  { value: 'visit', label: 'Visit' },
-  { value: 'other', label: 'Other' },
+  { value: 'prn_medication', label: 'PRN Medication' },
+  { value: 'handover', label: 'Handover Note' },
+  { value: 'general_support', label: 'General Support' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'vitals_bp', label: 'Blood Pressure' },
+  { value: 'vitals_temp', label: 'Temperature' },
+  { value: 'vitals_oxygen', label: 'Oxygen (SpO2)' },
+  { value: 'vitals_weight', label: 'Weight & MUST' },
+  { value: 'body_map', label: 'Body Map / Skin' },
+  { value: 'seizure', label: 'Seizure Episode' },
 ]
 
 export default function Reports() {
@@ -57,6 +66,7 @@ export default function Reports() {
   const [suList, setSuList] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState('')
   const [dailyRecordType, setDailyRecordType] = useState('')
+  const [medStockSummary, setMedStockSummary] = useState<any[]>([])
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -81,6 +91,7 @@ export default function Reports() {
       const endpoint = reportType === 'system-activity' ? '/audit-trail' : `/reports/${reportType}`
       const res = await api.get(endpoint, { params })
       setData(reportType === 'incident-analysis' ? res.data : res.data.data)
+      setMedStockSummary(reportType === 'medication-stock' ? (res.data.currentStock || []) : [])
     } catch (err: any) { console.error('Report error:', err?.response?.data); toast.error(err?.response?.data?.error || 'Failed to load report') }
     finally { setLoading(false) }
   }
@@ -155,6 +166,40 @@ export default function Reports() {
         <TrainingCompliance data={data} />
       ) : reportType === 'incident-analysis' ? (
         <IncidentAnalysis data={data} />
+      ) : reportType === 'medication-stock' ? (
+        <div className="space-y-5">
+          {medStockSummary.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-x-auto">
+              <div className="px-5 py-3 border-b border-slate-100">
+                <p className="text-sm font-medium text-slate-700">Current stock — what's left, per medication</p>
+              </div>
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-slate-600 text-xs">Resident</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-600 text-xs">Medication</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-600 text-xs">Current stock</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-600 text-xs">Reorder level</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {medStockSummary.map((s: any, i: number) => (
+                    <tr key={i} className={s.current_stock <= s.reorder_threshold ? 'bg-rose-50' : 'hover:bg-slate-50'}>
+                      <td className="px-4 py-3 font-medium text-slate-900">{s.su_name}</td>
+                      <td className="px-4 py-3 text-slate-700">{s.medication_name}</td>
+                      <td className="px-4 py-3 text-slate-700">{s.current_stock} {s.unit}</td>
+                      <td className="px-4 py-3 text-slate-500">{s.reorder_threshold ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-medium text-slate-700 mb-2">Stock movements in this date range — what was added, administered or disposed</p>
+            <GenericTable data={Array.isArray(data) ? data : []} reportType={reportType} />
+          </div>
+        </div>
       ) : (
         <GenericTable data={Array.isArray(data) ? data : []} reportType={reportType} />
       )}

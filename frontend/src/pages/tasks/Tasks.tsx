@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
 
@@ -86,6 +86,7 @@ export default function Tasks() {
   const [logMedTarget, setLogMedTarget] = useState<any>(null)
   const [staffList, setStaffList] = useState<any[]>([])
   const [addFollowUpOpen, setAddFollowUpOpen] = useState(false)
+  const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -105,7 +106,15 @@ export default function Tasks() {
     load()
     loadTemplates()
     loadMedTasks()
+    loadTodaysAppointments()
   }, [selectedHome])
+
+  const loadTodaysAppointments = async () => {
+    try {
+      const res = await api.get('/calendar', { params: { homeId: selectedHome, from: today, to: today } })
+      setTodaysAppointments((res.data.data || []).filter((e: any) => e.event_type === 'appointment'))
+    } catch (e) { console.error(e) }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -228,6 +237,24 @@ export default function Tasks() {
               </div>
             ))}
           </div>
+
+          {/* Today's appointments — pulled from the calendar so they show up as things to do today */}
+          {todaysAppointments.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5">
+              <p className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5" /> Today's appointments
+              </p>
+              <div className="space-y-1.5">
+                {todaysAppointments.map((a: any) => (
+                  <div key={a.id} className="flex items-center gap-2 text-sm text-blue-900">
+                    {a.start_time && <span className="text-xs text-blue-500 font-medium">{format(new Date(a.start_time), 'HH:mm')}</span>}
+                    <span className="font-medium">{a.title}</span>
+                    {a.su_name && <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{a.su_name}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Filter + generate button */}
           <div className="flex gap-3 mb-5 items-center">

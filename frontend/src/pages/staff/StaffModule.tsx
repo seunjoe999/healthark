@@ -244,9 +244,9 @@ export default function StaffModule() {
                     <InfoField label="Role" value={(selected.role || '').replace(/_/g, ' ')} />
                     <InfoField label="Status" value={selected.status} />
                     <InfoField label="Start date" value={selected.start_date ? format(new Date(selected.start_date), 'd MMMM yyyy') : null} />
-                    <InfoField label="Annual leave total" value={`${selected.leave_hours_total || 224} hours`} />
-                    <InfoField label="Leave used" value={`${selected.leave_hours_used || 0} hours`} />
-                    <InfoField label="Leave remaining" value={`${selected.leave_hours_remaining ?? 210} hours`} />
+                    <InfoField label="Total leave entitled" value={`${selected.leave_hours_total ?? 224} hours`} />
+                    <InfoField label="Total leave used" value={`${Math.max((selected.leave_hours_total ?? 224) - (selected.leave_hours_remaining ?? selected.leave_hours_total ?? 224), 0)} hours`} />
+                    <InfoField label="Total leave remaining" value={`${selected.leave_hours_remaining ?? selected.leave_hours_total ?? 224} hours`} />
                   </dl>
                 </Card>
                 {selected.emergency_name && (

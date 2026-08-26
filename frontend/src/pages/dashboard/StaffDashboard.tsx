@@ -9,13 +9,14 @@ import TaskPopup from '../../components/TaskPopup'
 import { shouldShowTaskPopup } from '../../utils/taskReminder'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
-  CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare, LogIn
+  CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare, LogIn, CalendarClock
 } from 'lucide-react'
 
 export default function StaffDashboard() {
   const { user } = useAuth()
   const [myShifts, setMyShifts] = useState<any[]>([])
   const [myTasks, setMyTasks] = useState<any[]>([])
+  const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
   const [myLeave, setMyLeave] = useState<any[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [myProfile, setMyProfile] = useState<any>(null)
@@ -36,15 +37,17 @@ export default function StaffDashboard() {
     if (!user) return
     const load = async () => {
       try {
-        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR] = await Promise.allSettled([
-          api.get('/shifts', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
-          api.get('/tasks', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
+        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, calendarR] = await Promise.allSettled([
+          api.get('/shifts', { params: { homeId: user.homeId, date: todayStr } }),
+          api.get('/tasks', { params: { homeId: user.homeId, date: todayStr } }),
           api.get('/staff-hr/leave', { params: { staffId: user.id } }),
           api.get('/notifications'),
           staffApi.get(user.id),
           suApi.list(user.homeId || '', { status: 'live' }),
           api.get('/clockin/status'),
           user.homeId ? api.get(`/clockin/home-qr/${user.homeId}`) : Promise.resolve(null),
+          api.get('/calendar', { params: { homeId: user.homeId, from: todayStr, to: todayStr } }),
         ])
         const v = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null
         const profileData = v(profileR)?.data.data
@@ -60,6 +63,7 @@ export default function StaffDashboard() {
         setClockedIn(!!v(clockStatusR)?.data.data?.clockedIn)
         const qrToken = v(homeQrR)?.data.data?.qrToken
         setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
+        setTodaysAppointments((v(calendarR)?.data.data || []).filter((e: any) => e.event_type === 'appointment'))
       } finally {
         setLoading(false)
       }
@@ -163,10 +167,17 @@ export default function StaffDashboard() {
         </div>
         {!clockedIn ? (
           <p className="text-sm text-slate-400 px-5 py-4">Clock in above to see today's tasks</p>
-        ) : myTasks.length === 0 ? (
+        ) : myTasks.length === 0 && todaysAppointments.length === 0 ? (
           <p className="text-sm text-slate-400 px-5 py-4">No tasks assigned for today</p>
         ) : (
           <div>
+            {todaysAppointments.map((a: any) => (
+              <div key={a.id} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0 bg-blue-50/50">
+                <CalendarClock className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                <p className="text-sm text-blue-900 flex-1">{a.title}{a.su_name ? ` — ${a.su_name}` : ''}</p>
+                {a.start_time && <p className="text-xs text-blue-500">{format(new Date(a.start_time), 'HH:mm')}</p>}
+              </div>
+            ))}
             {pendingTasks.slice(0, 4).map((t: any) => (
               <div key={t.id} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
                 <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />

@@ -30,6 +30,7 @@ export default function Holidays() {
   const [view, setView] = useState<'calendar' | 'list' | 'requests'>('calendar')
   const [preview, setPreview] = useState<any>(null)
   const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('all')
+  const [myBalance, setMyBalance] = useState<{ total: number; remaining: number } | null>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -38,6 +39,16 @@ export default function Holidays() {
       setSelectedHome(user?.homeId || h[0]?.id || '')
     })
   }, [user])
+
+  useEffect(() => {
+    if (!user?.id) return
+    staffApi.get(user.id).then(res => {
+      const s = res.data.data
+      const total = s?.leave_hours_total ?? 224
+      const remaining = s?.leave_hours_remaining ?? total
+      setMyBalance({ total, remaining })
+    }).catch(() => {})
+  }, [user?.id])
 
   useEffect(() => {
     if (!selectedHome) return
@@ -130,6 +141,24 @@ export default function Holidays() {
           <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Request leave</Button>
         </div>
       </div>
+
+      {/* My annual leave balance */}
+      {myBalance && (
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total leave entitled</p>
+            <p className="text-2xl font-bold text-slate-900">{myBalance.total}h</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total leave used</p>
+            <p className="text-2xl font-bold text-slate-900">{Math.max(myBalance.total - myBalance.remaining, 0)}h</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-emerald-100 shadow-card p-4">
+            <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1">Total leave remaining</p>
+            <p className="text-2xl font-bold text-emerald-600">{myBalance.remaining}h</p>
+          </div>
+        </div>
+      )}
 
       {/* Pending approvals banner */}
       {allPending.length > 0 && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && view !== 'requests' && (

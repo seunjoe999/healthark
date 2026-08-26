@@ -201,18 +201,41 @@ router.get('/mar-report', async (req: Request, res: Response, next: NextFunction
 router.get('/medication-stock', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const { suId } = req.query as Record<string, string>;
-    let sql = `SELECT ms.*, su.first_name || ' ' || su.last_name as su_name,
+    const { suId, from, to } = req.query as Record<string, string>;
+
+    // Audit trail: every stock movement (received/administered/disposed/correction)
+    // in the date range, so a manager can check what was added in, how much was
+    // administered, and reconcile it against what's physically left.
+    let logSql = `SELECT msl.created_at, msl.adjustment_type, msl.quantity_change,
+                         msl.quantity_before, msl.quantity_after, msl.notes,
+                         ms.medication_name, ms.unit, ms.current_stock,
+                         su.first_name || ' ' || su.last_name as su_name,
+                         s.first_name || ' ' || s.last_name as adjusted_by_name
+                  FROM medication_stock_log msl
+                  JOIN medication_stock ms ON ms.id = msl.stock_id
+                  JOIN service_users su ON su.id = ms.su_id
+                  LEFT JOIN staff s ON s.id = msl.adjusted_by
+                  WHERE ms.home_id = $1`;
+    const logParams: unknown[] = [homeId];
+    if (suId) { logSql += ` AND ms.su_id = $${logParams.length + 1}`; logParams.push(suId); }
+    if (from) { logSql += ` AND msl.created_at >= $${logParams.length + 1}`; logParams.push(from); }
+    if (to) { logSql += ` AND msl.created_at < $${logParams.length + 1}::date + interval '1 day'`; logParams.push(to); }
+    logSql += ' ORDER BY su_name, ms.medication_name, msl.created_at DESC';
+    const movements = await query(logSql, logParams);
+
+    // Current snapshot, so "what's left" is visible even for medications with no movement in range.
+    let stockSql = `SELECT ms.*, su.first_name || ' ' || su.last_name as su_name,
                       s.first_name || ' ' || s.last_name as last_updated_by_name
                FROM medication_stock ms
                JOIN service_users su ON su.id = ms.su_id
                LEFT JOIN staff s ON s.id = ms.last_updated_by
                WHERE ms.home_id = $1`;
-    const params: unknown[] = [homeId];
-    if (suId) { sql += ` AND ms.su_id = $2`; params.push(suId); }
-    sql += ' ORDER BY (ms.current_stock <= ms.reorder_level) DESC, su_name, ms.medication_name';
-    const rows = await query(sql, params);
-    res.json({ success: true, data: rows } as ApiResponse);
+    const stockParams: unknown[] = [homeId];
+    if (suId) { stockSql += ` AND ms.su_id = $2`; stockParams.push(suId); }
+    stockSql += ' ORDER BY (ms.current_stock <= ms.reorder_level) DESC, su_name, ms.medication_name';
+    const currentStock = await query(stockSql, stockParams);
+
+    res.json({ success: true, data: movements, currentStock } as ApiResponse);
   } catch (err) { next(err); }
 });
 
