@@ -155,10 +155,17 @@ router.post('/',
 );
 
 // PUT /api/care-plans/:id
+// Care staff may only read/complete a care plan — editing requires team_leader
+// or above, and only while currently clocked in to the shift (legal/audit-trail
+// requirement). Team leaders and above are unaffected.
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
+      if (role === 'care_staff') {
+        throw new AppError('Care staff cannot edit care plans — this requires a team leader or above.', 403);
+      }
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
               reviewFrequency, updateNotes, attachmentsNotes, templateData, suSignOff, staffSignOff,
               suSignedBy, suSignedDate, staffSignedBy, staffSignedDate,

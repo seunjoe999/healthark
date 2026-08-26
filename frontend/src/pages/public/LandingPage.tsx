@@ -21,6 +21,12 @@ const MUTED = '#6B6580';
 const OFFWHITE = '#F8F7FB';
 const BLACK = '#1F2430';
 const YELLOW = '#E8B130';
+// Peach + purple pass: PEACH replaces BLACK as a light section background,
+// PURPLE replaces YELLOW as the accent color, per the later homepage-color
+// voice note. BLACK/YELLOW constants are kept for the remaining dark-text /
+// legacy usages that still need a near-black/gold value.
+const PEACH = '#FCE3CC';
+const PURPLE = '#6D28D9';
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -184,9 +190,9 @@ function WaterAndBoat({ mx, my }: { mx: ReturnType<typeof useMotionValue<number>
       <motion.svg className="absolute bottom-0 left-0" width="200%" height="70%" viewBox="0 0 2400 200" preserveAspectRatio="none"
         animate={{ x: [0, -1200] }} transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}>
         <path d="M0,110 C150,150 300,70 450,110 C600,150 750,70 900,110 C1050,150 1200,70 1350,110 C1500,150 1650,70 1800,110 C1950,150 2100,70 2250,110 C2325,130 2400,110 2400,110 L2400,200 L0,200 Z"
-          fill={`${YELLOW}30`} />
+          fill={`${PURPLE}30`} />
         <path d="M1200,110 C1350,150 1500,70 1650,110 C1800,150 1950,70 2100,110 C2250,150 2400,70 2550,110 C2625,130 2700,110 2700,110 L2700,200 L1200,200 Z"
-          fill={`${YELLOW}30`} />
+          fill={`${PURPLE}30`} />
       </motion.svg>
       <motion.svg className="absolute bottom-0 left-0" width="200%" height="52%" viewBox="0 0 2400 200" preserveAspectRatio="none"
         animate={{ x: [-1200, 0] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}>
@@ -200,8 +206,8 @@ function WaterAndBoat({ mx, my }: { mx: ReturnType<typeof useMotionValue<number>
         <motion.div animate={{ y: [0, -20, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           style={{ rotate: boatTilt }}>
           <svg width="180" height="156" viewBox="0 0 52 46" aria-label="Boat sailing on water" role="img">
-            <path d="M27 4 L27 30 L11 30 Z" fill={YELLOW} />
-            <path d="M6 34 L46 34 L38 43 L14 43 Z" fill={YELLOW} />
+            <path d="M27 4 L27 30 L11 30 Z" fill={PURPLE} />
+            <path d="M6 34 L46 34 L38 43 L14 43 Z" fill={PURPLE} />
           </svg>
         </motion.div>
       </motion.div>
@@ -376,40 +382,40 @@ export default function LandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Navbar — pill-shaped, yellow so it stands out against the black hero ── */}
+      {/* ── Navbar — pill-shaped, purple so it stands out against the peach hero ── */}
       <nav className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6">
         <div className="max-w-6xl mx-auto rounded-full flex items-center justify-between px-4 sm:px-6"
-          style={{ height: 118, background: YELLOW, boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
+          style={{ height: 118, background: PURPLE, boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-3 flex-shrink-0 pl-1">
             <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 56, height: 56, background: 'white' }}>
               <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-contain" />
             </div>
-            <span className="hidden xs:block text-lg sm:text-xl font-black tracking-tight" style={{ color: BLACK }}>CompCare Hub</span>
+            <span className="hidden xs:block text-lg sm:text-xl font-black tracking-tight" style={{ color: '#FFFFFF' }}>CompCare Hub</span>
           </button>
 
           <div className="hidden md:flex items-center gap-0.5">
             {navLinks.map(l => (
               <button key={l.id} onClick={() => scrollTo(l.id)}
-                className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-black/10 whitespace-nowrap" style={{ color: BLACK }}>
+                className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-white/10 whitespace-nowrap" style={{ color: '#FFFFFF' }}>
                 {l.label}
               </button>
             ))}
-            <Link to="/careers" className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-black/10 whitespace-nowrap" style={{ color: BLACK }}>
+            <Link to="/careers" className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-white/10 whitespace-nowrap" style={{ color: '#FFFFFF' }}>
               Careers
             </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <button onClick={() => setDemoOpen(true)} className="px-6 py-3.5 rounded-full text-base font-bold transition-transform hover:-translate-y-0.5 whitespace-nowrap" style={{ background: BLACK, color: YELLOW }}>
+            <button onClick={() => setDemoOpen(true)} className="px-6 py-3.5 rounded-full text-base font-bold transition-transform hover:-translate-y-0.5 whitespace-nowrap" style={{ background: '#FFFFFF', color: PURPLE }}>
               Demo
             </button>
-            <Link to="/login" className="px-6 py-3.5 rounded-full text-base font-semibold border-2 transition-colors hover:bg-black/10 whitespace-nowrap"
-              style={{ color: BLACK, borderColor: BLACK }}>
+            <Link to="/login" className="px-6 py-3.5 rounded-full text-base font-semibold border-2 transition-colors hover:bg-white/10 whitespace-nowrap"
+              style={{ color: '#FFFFFF', borderColor: '#FFFFFF' }}>
               Login
             </Link>
           </div>
 
-          <button className="md:hidden p-2 rounded-full flex-shrink-0" style={{ color: BLACK }} onClick={() => setMenuOpen(v => !v)}>
+          <button className="md:hidden p-2 rounded-full flex-shrink-0" style={{ color: '#FFFFFF' }} onClick={() => setMenuOpen(v => !v)}>
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
@@ -417,19 +423,19 @@ export default function LandingPage() {
         <AnimatePresence>
           {menuOpen && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22 }} className="md:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: YELLOW }}>
+              transition={{ duration: 0.22 }} className="md:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: PURPLE }}>
               <div className="px-4 py-4 flex flex-col gap-1">
                 {navLinks.map(l => (
                   <button key={l.id} onClick={() => { scrollTo(l.id); setMenuOpen(false); }}
-                    className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors" style={{ color: BLACK }}>{l.label}</button>
+                    className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/10 transition-colors" style={{ color: '#FFFFFF' }}>{l.label}</button>
                 ))}
-                <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors" style={{ color: BLACK }}>Careers</Link>
+                <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/10 transition-colors" style={{ color: '#FFFFFF' }}>Careers</Link>
                 <button onClick={() => { setDemoOpen(true); setMenuOpen(false); }}
-                  className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: BLACK, color: YELLOW }}>
+                  className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: '#FFFFFF', color: PURPLE }}>
                   Book a Demo
                 </button>
                 <Link to="/login" onClick={() => setMenuOpen(false)}
-                  className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border-2 mt-2" style={{ borderColor: BLACK, color: BLACK }}>
+                  className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border-2 mt-2" style={{ borderColor: '#FFFFFF', color: '#FFFFFF' }}>
                   Log In
                 </Link>
               </div>
@@ -438,29 +444,29 @@ export default function LandingPage() {
         </AnimatePresence>
       </nav>
 
-      {/* ── Hero — black bg, yellow writing, text left / photo right ──── */}
+      {/* ── Hero — peach bg, purple writing, text left / photo right ──── */}
       <header ref={heroMouse.heroRef} onMouseMove={heroMouse.handleMove} onMouseLeave={heroMouse.handleLeave}
-        className="relative overflow-hidden" style={{ paddingTop: 200, paddingBottom: 140, background: BLACK }}>
+        className="relative overflow-hidden" style={{ paddingTop: 200, paddingBottom: 140, background: PEACH }}>
         <WaterAndBoat mx={heroMouse.mx} my={heroMouse.my} />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative" style={{ zIndex: 1 }}>
           <div className="relative z-10">
             <Reveal>
-              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: YELLOW }}>Manage Care Smarter. Stay One Step Ahead!</p>
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black leading-[1.08] tracking-tight mb-6" style={{ color: YELLOW }}>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: PURPLE }}>Manage Care Smarter. Stay One Step Ahead!</p>
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black leading-[1.08] tracking-tight mb-6" style={{ color: PURPLE }}>
                 Smart &amp; Comprehensive Care Management System that keeps you one step ahead
               </h1>
-              <p className="text-sm sm:text-base leading-relaxed mb-8 max-w-md" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              <p className="text-sm sm:text-base leading-relaxed mb-8 max-w-md" style={{ color: TEXT, opacity: 0.75 }}>
                 CompCare Hub replaces paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={() => setDemoOpen(true)}
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
-                  style={{ background: YELLOW, color: BLACK, boxShadow: '0 10px 30px rgba(255,204,0,0.25)' }}>
+                  style={{ background: PURPLE, color: '#FFFFFF', boxShadow: '0 10px 30px rgba(109,40,217,0.3)' }}>
                   Book a demo <ArrowRight size={15} />
                 </button>
                 <Link to="/login"
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 border-2 transition-colors"
-                  style={{ color: YELLOW, borderColor: YELLOW }}>
+                  style={{ color: PURPLE, borderColor: PURPLE }}>
                   Start free trial
                 </Link>
               </div>
@@ -468,12 +474,12 @@ export default function LandingPage() {
           </div>
 
           <div className="relative">
-            <ConfettiDot delay={0} size={26} x="4%" y="6%" color={YELLOW} />
-            <ConfettiDot delay={1.4} size={16} x="90%" y="14%" color="rgba(255,255,255,0.6)" />
-            <ConfettiDot delay={0.6} size={60} x="86%" y="70%" color={YELLOW} blur={2} />
-            <ConfettiDot delay={2.1} size={14} x="2%" y="80%" color="rgba(255,255,255,0.6)" />
+            <ConfettiDot delay={0} size={26} x="4%" y="6%" color={PURPLE} />
+            <ConfettiDot delay={1.4} size={16} x="90%" y="14%" color="rgba(36,22,84,0.4)" />
+            <ConfettiDot delay={0.6} size={60} x="86%" y="70%" color={PURPLE} blur={2} />
+            <ConfettiDot delay={2.1} size={14} x="2%" y="80%" color="rgba(36,22,84,0.4)" />
             <Reveal delay={0.15}>
-              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3', border: `2px solid ${YELLOW}33` }}>
+              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3', border: `2px solid ${PURPLE}33` }}>
                 <img src={IMG.hero} alt="Care team using CompCare Hub" className="w-full h-full object-cover" />
               </div>
             </Reveal>
@@ -481,7 +487,7 @@ export default function LandingPage() {
         </div>
 
         <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2.2, repeat: Infinity }}
-          className="hidden sm:flex absolute bottom-6 left-1/2 -translate-x-1/2 flex-col items-center gap-1" style={{ color: `${YELLOW}88`, zIndex: 2 }}>
+          className="hidden sm:flex absolute bottom-6 left-1/2 -translate-x-1/2 flex-col items-center gap-1" style={{ color: `${PURPLE}aa`, zIndex: 2 }}>
           <span className="text-[10px] font-semibold tracking-widest uppercase">Scroll</span>
           <ChevronDown size={15} />
         </motion.div>
@@ -504,7 +510,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Stats band ────────────────────────────────────────────── */}
-      <section style={{ background: YELLOW, borderTop: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+      <section style={{ background: PEACH, borderTop: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }}
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
@@ -542,7 +548,7 @@ export default function LandingPage() {
             {EXPLORE_CARDS.map((card, i) => (
               <Reveal key={i} delay={i * 0.1}>
                 <div className="rounded-3xl overflow-hidden group cursor-pointer" onClick={() => scrollTo('features')}>
-                  <div className="relative overflow-hidden rounded-3xl" style={{ height: 190, border: `4px solid ${i % 2 === 0 ? YELLOW : BLACK}` }}>
+                  <div className="relative overflow-hidden rounded-3xl" style={{ height: 190, border: `4px solid ${i % 2 === 0 ? PURPLE : NAVY}` }}>
                     <img src={card.img} alt={card.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <span className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1"
                       style={{ background: 'white', color: NAVY }}>
@@ -562,13 +568,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── Feature deep-dive ──────────────────────────────────────── */}
-      <section id="features" style={{ background: YELLOW }} className="py-16 sm:py-24">
+      <section id="features" style={{ background: PEACH }} className="py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16 sm:space-y-24">
           {FEATURE_SECTIONS.map((section, idx) => (
             <Reveal key={idx} delay={0.05}>
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 items-center ${section.flip ? 'md:[&>*:first-child]:order-2' : ''}`}>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: BLACK }}>{section.tag}</p>
+                  <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: PURPLE }}>{section.tag}</p>
                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-4 sm:mb-5 leading-tight whitespace-pre-line" style={{ color: NAVY }}>
                     {section.title}
                   </h3>

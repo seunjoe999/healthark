@@ -109,10 +109,16 @@ router.post('/',
   }
 );
 
+// Care staff are read-only on risk assessments — editing requires team_leader
+// or above (voice-note legal/audit requirement).
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
+      if (role === 'care_staff') {
+        throw new AppError('Care staff cannot edit risk assessments — this requires a team leader or above.', 403);
+      }
       const { description, currentRiskLevel, managementPlan, updateNotes,
               triggers, protectiveFactors, reviewFrequency,
               historicalContext, riskRating,

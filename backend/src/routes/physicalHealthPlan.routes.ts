@@ -93,10 +93,22 @@ router.post('/',
 );
 
 // PATCH /api/physical-health-plans/:id
+// Care staff can add/complete a resident health check while on shift, but once
+// they clock off it becomes read-only to them (legal/audit-trail requirement).
 router.patch('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
+      if (role === 'care_staff') {
+        const lastEvent = await query<any>(
+          `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+          [staffId]
+        );
+        if (lastEvent[0]?.event_type !== 'clock_in') {
+          throw new AppError('You can only edit a resident health check while clocked in to your shift.', 403);
+        }
+      }
       const {
         heightCm, weightKg, bmi, bloodPressure, pulse, temperatureC,
         oxygenSat, conditions, allergies, currentMeds, gpName, gpPhone,
