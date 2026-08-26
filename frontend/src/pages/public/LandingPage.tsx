@@ -20,7 +20,7 @@ const TEXT = '#1A1533';
 const MUTED = '#6B6580';
 const OFFWHITE = '#F8F7FB';
 const BLACK = '#1F2430';
-const YELLOW = '#FFCC00';
+const YELLOW = '#E8B130';
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

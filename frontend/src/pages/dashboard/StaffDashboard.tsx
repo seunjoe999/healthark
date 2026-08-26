@@ -9,7 +9,7 @@ import TaskPopup from '../../components/TaskPopup'
 import { shouldShowTaskPopup } from '../../utils/taskReminder'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
-  CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare
+  CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare, LogIn
 } from 'lucide-react'
 
 export default function StaffDashboard() {
@@ -22,6 +22,8 @@ export default function StaffDashboard() {
   const [residents, setResidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showTaskPopup, setShowTaskPopup] = useState(false)
+  const [clockedIn, setClockedIn] = useState(false)
+  const [clockInUrl, setClockInUrl] = useState<string | null>(null)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -34,13 +36,15 @@ export default function StaffDashboard() {
     if (!user) return
     const load = async () => {
       try {
-        const [shiftsR, tasksR, leaveR, notifR, profileR, suR] = await Promise.allSettled([
+        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR] = await Promise.allSettled([
           api.get('/shifts', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
           api.get('/tasks', { params: { homeId: user.homeId, date: format(new Date(), 'yyyy-MM-dd') } }),
           api.get('/staff-hr/leave', { params: { staffId: user.id } }),
           api.get('/notifications'),
           staffApi.get(user.id),
           suApi.list(user.homeId || '', { status: 'live' }),
+          api.get('/clockin/status'),
+          user.homeId ? api.get(`/clockin/home-qr/${user.homeId}`) : Promise.resolve(null),
         ])
         const v = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null
         const profileData = v(profileR)?.data.data
@@ -53,6 +57,9 @@ export default function StaffDashboard() {
         setNotifications((v(notifR)?.data.data || []).filter((n: any) => !n.is_read).slice(0, 5))
         setMyProfile(profileData)
         setResidents(v(suR)?.data.data || [])
+        setClockedIn(!!v(clockStatusR)?.data.data?.clockedIn)
+        const qrToken = v(homeQrR)?.data.data?.qrToken
+        setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
       } finally {
         setLoading(false)
       }
@@ -75,6 +82,23 @@ export default function StaffDashboard() {
         <h1 className="font-display text-2xl text-slate-900 mt-0.5">{greeting}, {user?.firstName} 👋</h1>
         {myProfile?.role && <p className="text-sm text-slate-400 capitalize mt-0.5">{myProfile.role.replace(/_/g, ' ')} · {myProfile.home_name || ''}</p>}
       </div>
+
+      {/* Clock in first — before anything else */}
+      {!clockedIn && (
+        <Link to={clockInUrl || '/staff'} className="block rounded-2xl p-5 mb-4 text-white"
+          style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <LogIn className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold">Clock in to start your shift</p>
+              <p className="text-white/80 text-xs mt-0.5">Clock in before you can see today's tasks or clock out later.</p>
+            </div>
+            <ArrowRight className="w-4 h-4 flex-shrink-0" />
+          </div>
+        </Link>
+      )}
 
       {/* Today's shift */}
       <div className={`rounded-2xl p-5 mb-4 ${myTodayShift ? 'text-white' : 'bg-slate-50 border border-slate-200'}`}
@@ -112,7 +136,7 @@ export default function StaffDashboard() {
           { label: 'Medication Administration Record', to: '/mar', icon: <Pill className="w-5 h-5" />, color: '#3b82f6', desc: 'Log medications' },
           { label: 'Request leave', to: '/holidays', icon: <Calendar className="w-5 h-5" />, color: '#10b981', desc: `${pendingLeave.length} pending` },
           { label: 'My training', to: '/training', icon: <BookOpen className="w-5 h-5" />, color: '#f59e0b', desc: 'Complete modules' },
-          { label: 'Clock in/out', to: '/staff', icon: <Clock className="w-5 h-5" />, color: '#6366f1', desc: 'View clock history' },
+          { label: 'Clock in/out', to: clockInUrl || '/clockin-analytics', icon: <Clock className="w-5 h-5" />, color: '#6366f1', desc: clockedIn ? 'Clock out' : 'Clock in' },
           { label: 'Messages', to: '/messages', icon: <MessageSquare className="w-5 h-5" />, color: '#ec4899', desc: 'Team messages' },
         ].map(qa => (
           <Link key={qa.to} to={qa.to}
@@ -131,11 +155,15 @@ export default function StaffDashboard() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
           <h2 className="font-semibold text-slate-800">My tasks today</h2>
-          <Link to="/tasks" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
-            View all <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          {clockedIn && (
+            <Link to="/tasks" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
-        {myTasks.length === 0 ? (
+        {!clockedIn ? (
+          <p className="text-sm text-slate-400 px-5 py-4">Clock in above to see today's tasks</p>
+        ) : myTasks.length === 0 ? (
           <p className="text-sm text-slate-400 px-5 py-4">No tasks assigned for today</p>
         ) : (
           <div>

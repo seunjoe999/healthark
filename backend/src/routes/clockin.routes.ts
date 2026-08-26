@@ -174,6 +174,19 @@ router.post('/event', authenticate,
       if (staffRole === 'home_manager' || staffRole === 'group_admin') {
         return res.status(403).json({ success: false, error: 'Managers and admins cannot clock in via QR.' });
       }
+
+      // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
+      const lastEventRows = await query<any>(
+        `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        [staffId]
+      );
+      const isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
+      if (eventType === 'clock_out' && !isClockedIn) {
+        return res.status(400).json({ success: false, error: 'You need to clock in before you can clock out.' });
+      }
+      if (eventType !== 'clock_out' && isClockedIn) {
+        return res.status(400).json({ success: false, error: 'You are already clocked in.' });
+      }
       const punctuality = 'on_time';
 
       const rows = await query(
@@ -511,6 +524,25 @@ router.get('/sessions', authenticate, async (req: Request, res: Response, next: 
       [homeId, date]
     );
     res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// GET /api/clockin/status — is the current staff member currently clocked in?
+router.get('/status', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const rows = await query<any>(
+      `SELECT event_type, event_time FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+      [staffId]
+    );
+    res.json({
+      success: true,
+      data: {
+        clockedIn: rows[0]?.event_type === 'clock_in',
+        lastEventType: rows[0]?.event_type || null,
+        lastEventTime: rows[0]?.event_time || null,
+      }
+    } as ApiResponse);
   } catch (err) { next(err); }
 });
 

@@ -76,7 +76,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
 
-    const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader'];
+    const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
+      'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor'];
     const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
     // Non-privileged staff (care_staff, senior_carer) only see shifts on days they

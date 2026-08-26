@@ -1,9 +1,11 @@
-import React, { useState, ReactNode } from 'react'
+import React, { useState, useEffect, ReactNode } from 'react'
 import NotificationsBell from './NotificationsBell'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { useTaskReminders } from '../../hooks/useTaskReminders'
+import api from '../../api'
+import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import {
   LayoutDashboard, Users, UserSquare, ClipboardList, FileText,
@@ -475,14 +477,31 @@ function MobileBottomNav({ menuOpen, onMenuToggle }: MobileBottomNavProps) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isRole } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [clockedIn, setClockedIn] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   useTaskReminders(!!user)
 
+  // Managers/admins don't clock in via QR, so they aren't gated on shift status.
+  const mustClockOutBeforeSignOut = !isRole('home_manager', 'group_admin')
+
+  useEffect(() => {
+    if (!user || !mustClockOutBeforeSignOut) { setClockedIn(false); return }
+    api.get('/clockin/status').then(res => setClockedIn(!!res.data.data?.clockedIn)).catch(() => {})
+  }, [user, mustClockOutBeforeSignOut])
+
+  const guardedLogout = () => {
+    if (mustClockOutBeforeSignOut && clockedIn) {
+      toast.error('Please clock out before signing out — clock out first, then you can end your session.')
+      return
+    }
+    logout()
+  }
+
   const pageTitle = allNavItems.find(item => location.pathname.startsWith(item.to) && item.to !== '/dashboard')?.label
     ?? (location.pathname === '/dashboard' ? 'Dashboard' : 'CompCare Hub')
 
-  const sidebarProps: SidebarProps = { user, logout, isRole, onNavClick: () => setMobileOpen(false) }
+  const sidebarProps: SidebarProps = { user, logout: guardedLogout, isRole, onNavClick: () => setMobileOpen(false) }
 
   return (
     <div className="app-shell flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
@@ -581,7 +600,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
           {/* Sign out */}
           <button
-            onClick={logout}
+            onClick={guardedLogout}
             className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors flex-shrink-0"
             style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
             aria-label="Sign out"
