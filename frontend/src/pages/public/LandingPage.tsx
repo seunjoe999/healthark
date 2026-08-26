@@ -19,7 +19,7 @@ const PINK = '#D6247F';
 const TEXT = '#1A1533';
 const MUTED = '#6B6580';
 const OFFWHITE = '#F8F7FB';
-const BLACK = '#0A0A0A';
+const BLACK = '#1F2430';
 const YELLOW = '#FFCC00';
 
 function scrollTo(id: string) {
@@ -376,40 +376,40 @@ export default function LandingPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Navbar — pill-shaped, black & yellow ─────────────────────── */}
+      {/* ── Navbar — pill-shaped, yellow so it stands out against the black hero ── */}
       <nav className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6">
         <div className="max-w-6xl mx-auto rounded-full flex items-center justify-between px-4 sm:px-6"
-          style={{ height: 118, background: BLACK, boxShadow: '0 8px 30px rgba(0,0,0,0.45)' }}>
+          style={{ height: 118, background: YELLOW, boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-3 flex-shrink-0 pl-1">
             <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 56, height: 56, background: 'white' }}>
               <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-contain" />
             </div>
-            <span className="hidden xs:block text-lg sm:text-xl font-black tracking-tight" style={{ color: YELLOW }}>CompCare Hub</span>
+            <span className="hidden xs:block text-lg sm:text-xl font-black tracking-tight" style={{ color: BLACK }}>CompCare Hub</span>
           </button>
 
           <div className="hidden md:flex items-center gap-0.5">
             {navLinks.map(l => (
               <button key={l.id} onClick={() => scrollTo(l.id)}
-                className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-white/10 whitespace-nowrap" style={{ color: YELLOW }}>
+                className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-black/10 whitespace-nowrap" style={{ color: BLACK }}>
                 {l.label}
               </button>
             ))}
-            <Link to="/careers" className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-white/10 whitespace-nowrap" style={{ color: YELLOW }}>
+            <Link to="/careers" className="px-4 py-2.5 text-base font-bold rounded-full transition-colors hover:bg-black/10 whitespace-nowrap" style={{ color: BLACK }}>
               Careers
             </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            <button onClick={() => setDemoOpen(true)} className="px-6 py-3.5 rounded-full text-base font-bold transition-transform hover:-translate-y-0.5 whitespace-nowrap" style={{ background: YELLOW, color: BLACK }}>
+            <button onClick={() => setDemoOpen(true)} className="px-6 py-3.5 rounded-full text-base font-bold transition-transform hover:-translate-y-0.5 whitespace-nowrap" style={{ background: BLACK, color: YELLOW }}>
               Demo
             </button>
-            <Link to="/login" className="px-6 py-3.5 rounded-full text-base font-semibold border-2 transition-colors hover:bg-white/10 whitespace-nowrap"
-              style={{ color: YELLOW, borderColor: YELLOW }}>
+            <Link to="/login" className="px-6 py-3.5 rounded-full text-base font-semibold border-2 transition-colors hover:bg-black/10 whitespace-nowrap"
+              style={{ color: BLACK, borderColor: BLACK }}>
               Login
             </Link>
           </div>
 
-          <button className="md:hidden p-2 rounded-full flex-shrink-0" style={{ color: YELLOW }} onClick={() => setMenuOpen(v => !v)}>
+          <button className="md:hidden p-2 rounded-full flex-shrink-0" style={{ color: BLACK }} onClick={() => setMenuOpen(v => !v)}>
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
@@ -417,19 +417,19 @@ export default function LandingPage() {
         <AnimatePresence>
           {menuOpen && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22 }} className="md:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: BLACK }}>
+              transition={{ duration: 0.22 }} className="md:hidden overflow-hidden max-w-6xl mx-auto mt-2 rounded-3xl" style={{ background: YELLOW }}>
               <div className="px-4 py-4 flex flex-col gap-1">
                 {navLinks.map(l => (
                   <button key={l.id} onClick={() => { scrollTo(l.id); setMenuOpen(false); }}
-                    className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors" style={{ color: YELLOW }}>{l.label}</button>
+                    className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors" style={{ color: BLACK }}>{l.label}</button>
                 ))}
-                <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-white/5 transition-colors" style={{ color: YELLOW }}>Careers</Link>
+                <Link to="/careers" onClick={() => setMenuOpen(false)} className="text-left px-4 py-3 text-sm font-semibold rounded-xl hover:bg-black/5 transition-colors" style={{ color: BLACK }}>Careers</Link>
                 <button onClick={() => { setDemoOpen(true); setMenuOpen(false); }}
-                  className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: YELLOW, color: BLACK }}>
+                  className="mt-2 px-5 py-3.5 rounded-2xl text-sm font-bold text-center" style={{ background: BLACK, color: YELLOW }}>
                   Book a Demo
                 </button>
                 <Link to="/login" onClick={() => setMenuOpen(false)}
-                  className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border-2 mt-2" style={{ borderColor: YELLOW, color: YELLOW }}>
+                  className="px-5 py-3.5 rounded-2xl text-sm font-semibold text-center border-2 mt-2" style={{ borderColor: BLACK, color: BLACK }}>
                   Log In
                 </Link>
               </div>
@@ -445,9 +445,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative" style={{ zIndex: 1 }}>
           <div className="relative z-10">
             <Reveal>
-              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: YELLOW }}>Care Management Software</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: YELLOW }}>Manage Care Smarter. Stay One Step Ahead!</p>
               <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black leading-[1.08] tracking-tight mb-6" style={{ color: YELLOW }}>
-                Care management software that helps you stay one step ahead
+                Smart &amp; Comprehensive Care Management System that keeps you one step ahead
               </h1>
               <p className="text-sm sm:text-base leading-relaxed mb-8 max-w-md" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 CompCare Hub replaces paper records and disconnected tools with one complete platform covering care notes, medication, staff rotas, CQC compliance and family updates.
@@ -542,7 +542,7 @@ export default function LandingPage() {
             {EXPLORE_CARDS.map((card, i) => (
               <Reveal key={i} delay={i * 0.1}>
                 <div className="rounded-3xl overflow-hidden group cursor-pointer" onClick={() => scrollTo('features')}>
-                  <div className="relative overflow-hidden rounded-3xl" style={{ height: 190 }}>
+                  <div className="relative overflow-hidden rounded-3xl" style={{ height: 190, border: `4px solid ${i % 2 === 0 ? YELLOW : BLACK}` }}>
                     <img src={card.img} alt={card.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <span className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1"
                       style={{ background: 'white', color: NAVY }}>
@@ -562,13 +562,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── Feature deep-dive ──────────────────────────────────────── */}
-      <section id="features" style={{ background: OFFWHITE }} className="py-16 sm:py-24">
+      <section id="features" style={{ background: YELLOW }} className="py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16 sm:space-y-24">
           {FEATURE_SECTIONS.map((section, idx) => (
             <Reveal key={idx} delay={0.05}>
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 items-center ${section.flip ? 'md:[&>*:first-child]:order-2' : ''}`}>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: section.accent }}>{section.tag}</p>
+                  <p className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: BLACK }}>{section.tag}</p>
                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-4 sm:mb-5 leading-tight whitespace-pre-line" style={{ color: NAVY }}>
                     {section.title}
                   </h3>
