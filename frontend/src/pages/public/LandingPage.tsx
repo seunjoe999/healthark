@@ -485,6 +485,22 @@ export default function LandingPage() {
         </motion.div>
       </header>
 
+      {/* ── Trust strip ──────────────────────────────────────────── */}
+      <section className="py-8" style={{ background: 'white' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <Reveal>
+            <p className="text-center text-[11px] font-black uppercase tracking-widest mb-5" style={{ color: MUTED }}>
+              Trusted by care providers across the UK
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+              {TESTIMONIALS.map(t => (
+                <span key={t.home} className="text-sm sm:text-base font-bold" style={{ color: NAVY, opacity: 0.55 }}>{t.home}</span>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ── Stats band ────────────────────────────────────────────── */}
       <section style={{ background: OFFWHITE, borderTop: '1px solid rgba(36,22,84,0.06)', borderBottom: '1px solid rgba(36,22,84,0.06)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
@@ -523,9 +539,13 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {EXPLORE_CARDS.map((card, i) => (
               <Reveal key={i} delay={i * 0.1}>
-                <div className="rounded-3xl overflow-hidden group">
+                <div className="rounded-3xl overflow-hidden group cursor-pointer" onClick={() => scrollTo('features')}>
                   <div className="relative overflow-hidden rounded-3xl" style={{ height: 190 }}>
                     <img src={card.img} alt={card.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <span className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1"
+                      style={{ background: 'white', color: NAVY }}>
+                      Explore <ArrowRight size={12} />
+                    </span>
                   </div>
                   <div className="pt-5">
                     <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: ORANGE }}>{card.label}</p>
