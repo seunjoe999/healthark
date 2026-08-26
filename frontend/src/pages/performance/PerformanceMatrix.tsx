@@ -235,6 +235,8 @@ export default function PerformanceMatrix() {
                       <th className="text-center py-3 px-3">Supervision</th>
                       <th className="text-center py-3 px-3">Punctuality</th>
                       <th className="text-center py-3 px-3">Care Quality</th>
+                      <th className="text-center py-3 px-3">Absences</th>
+                      <th className="text-center py-3 px-3">Appraisal</th>
                       <th className="text-center py-3 px-3">Assessments</th>
                       <th className="text-center py-3 px-3">Overall</th>
                       <th className="text-center py-3 px-3">Risk</th>
@@ -264,6 +266,18 @@ export default function PerformanceMatrix() {
                         </td>
                         <td className="py-3 px-3 text-center"><Stars value={row.punctuality_score} /></td>
                         <td className="py-3 px-3 text-center"><Stars value={row.care_quality_score} /></td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={clsx('font-bold', Number(row.absence_count || 0) === 0 ? 'text-emerald-400' : Number(row.absence_count) <= 2 ? 'text-amber-400' : 'text-rose-400')}>
+                            {row.absence_count ?? 0}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {row.latest_appraisal_date
+                            ? (new Date(row.latest_appraisal_date) > new Date(Date.now() - 365 * 86400000)
+                                ? <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" />
+                                : <XCircle className="w-4 h-4 text-amber-400 mx-auto" />)
+                            : <XCircle className="w-4 h-4 text-rose-400 mx-auto" />}
+                        </td>
                         <td className="py-3 px-3 text-center">
                           <button onClick={() => navigate('/assessments')}
                             className="flex flex-col items-center gap-0.5 hover:text-amber-400 transition-colors group mx-auto">

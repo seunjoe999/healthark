@@ -92,7 +92,7 @@ export default function RiskManagement() {
     .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
     .doc-meta strong{color:#132a4f}
 
-    .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f}
+    .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f;border-top:3px solid #e8b130;padding-top:14px}
     .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
 
     /* Resident identity block */
@@ -103,7 +103,7 @@ export default function RiskManagement() {
 
     /* Section headings */
     h2.sec{font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#132a4f;border-bottom:1px solid #132a4f;padding-bottom:4px;margin:22px 0 10px;page-break-after:avoid}
-    h2.sec .num{display:inline-block;width:18px}
+    h2.sec .num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#e8b130;color:#132a4f;border-radius:3px;font-size:10px;margin-right:2px}
     h3.sub{font-family:Arial,sans-serif;font-size:10.5px;font-weight:700;color:#132a4f;margin:12px 0 4px;page-break-after:avoid}
     .body-text{font-size:11px;line-height:1.7;color:#222;white-space:pre-line;margin-bottom:8px}
 
@@ -113,11 +113,13 @@ export default function RiskManagement() {
     table.fields td{border:1px solid #999;padding:6px 10px;font-size:11px}
 
     /* Risk summary */
-    .risk-box{border:1.5px solid #132a4f;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;page-break-inside:avoid}
+    .risk-box{border:1.5px solid #132a4f;border-left:6px solid #e8b130;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;page-break-inside:avoid}
     .risk-box .rb-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#444}
-    .risk-box .rb-value{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+    .risk-box .rb-value{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:#fdf3d9;color:#8a6400;padding:3px 10px;border-radius:3px}
     .risk-box.high{border-width:2.5px}
+    .risk-box.high .rb-value{background:#e8b130;color:#132a4f}
     .risk-box.critical{border-width:2.5px;border-style:double}
+    .risk-box.critical .rb-value{background:#132a4f;color:#e8b130}
 
     .footer{margin-top:28px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:8.5px;color:#555}
     .footer .confid{font-weight:700;letter-spacing:.05em}

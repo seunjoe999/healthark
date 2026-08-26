@@ -261,9 +261,23 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // PUT /api/incidents/:id — update incident fields (description, emotion, immediate_action)
+// Care staff may only amend an incident record they're editing while still
+// clocked in to the shift it was raised on — once they clock off, it becomes
+// read-only to them (a legal/audit-trail requirement). Team leaders and above
+// are unaffected.
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = fromToken(req, 'staffId');
+    const role = fromToken(req, 'role');
+    if (role === 'care_staff') {
+      const lastEvent = await query<any>(
+        `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        [staffId]
+      );
+      if (lastEvent[0]?.event_type !== 'clock_in') {
+        throw new AppError('You can only edit an incident record while clocked in to your shift.', 403);
+      }
+    }
     const { description, emotion, immediateAction } = req.body;
     const sets: string[] = [];
     const params: any[] = [];

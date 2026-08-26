@@ -1848,6 +1848,7 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS feature_flags JSONB NOT NULL DEFAULT '{}'`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS contracted_hours NUMERIC(5,2)`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,

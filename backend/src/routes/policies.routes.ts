@@ -83,11 +83,18 @@ router.post('/:id/sign', param('id').isUUID(), validateRequest,
 router.get('/:id/sign-offs', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      // Care staff and other non-privileged roles may only see their OWN sign-off
+      // status for a policy — who else has read/signed it is management-only.
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
+        'director', 'registered_manager', 'service_manager', 'team_leader'].includes(role);
       const rows = await query(
         `SELECT pso.*, s.first_name || ' ' || s.last_name as staff_name, s.role
          FROM policy_sign_offs pso JOIN staff s ON s.id = pso.staff_id
-         WHERE pso.policy_id = $1 ORDER BY COALESCE(pso.signed_at, pso.sent_at) DESC`,
-        [req.params.id]
+         WHERE pso.policy_id = $1 ${isPrivileged ? '' : 'AND pso.staff_id = $2'}
+         ORDER BY COALESCE(pso.signed_at, pso.sent_at) DESC`,
+        isPrivileged ? [req.params.id] : [req.params.id, myStaffId]
       );
       res.json({ success: true, data: rows } as ApiResponse);
     } catch (err) { next(err); }

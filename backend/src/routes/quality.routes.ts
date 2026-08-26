@@ -19,10 +19,21 @@ function fromToken(req: Request, field: string): string {
 }
 
 // GET /api/quality — list QA records
+// Care staff (and other non-privileged roles) can ADD quality/clinical-monitoring
+// records but must not be able to VIEW the list — only management can review what
+// was submitted. Managers can also filter by staffId to run a report on one person.
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const type = req.query.type as string;
+    const staffFilter = req.query.staffId as string;
+    const role = fromToken(req, 'role');
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
+      'director', 'registered_manager', 'service_manager', 'team_leader'].includes(role);
+    if (!isPrivileged) {
+      res.json({ success: true, data: [] } as ApiResponse);
+      return;
+    }
     let sql = `SELECT qa.*, su.first_name || ' ' || su.last_name as su_name,
                       s.first_name || ' ' || s.last_name as created_by_name
                FROM quality_records qa
@@ -30,7 +41,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                LEFT JOIN staff s ON s.id = qa.created_by
                WHERE qa.home_id = $1`;
     const params: unknown[] = [homeId];
-    if (type) { sql += ' AND qa.record_type = $2'; params.push(type); }
+    if (type) { params.push(type); sql += ` AND qa.record_type = $${params.length}`; }
+    if (staffFilter) { params.push(staffFilter); sql += ` AND (qa.created_by = $${params.length} OR qa.related_staff_id = $${params.length})`; }
     sql += ' ORDER BY qa.created_at DESC LIMIT 100';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

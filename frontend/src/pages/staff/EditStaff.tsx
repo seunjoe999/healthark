@@ -137,6 +137,7 @@ function norm(s: any) {
     photoUrl: s.photo_url || s.photoUrl || '',
     niNumber: s.ni_number || s.niNumber || '',
     leaveHoursTotal: s.leave_hours_total || s.leaveHoursTotal || 224,
+    contractedHours: s.contracted_hours || s.contractedHours || '',
     homeId: s.home_id || s.homeId || '',
     isActive: s.is_active ?? true,
   }
@@ -293,7 +294,8 @@ export default function EditStaff() {
             )}
             <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
             <Input label="Leave date" type="date" value={form.leaveDate} onChange={e => set('leaveDate', e.target.value)} hint="Only fill if staff has left" />
-            <Input label="Annual leave hours" type="number" value={String(form.leaveHoursTotal)} onChange={e => set('leaveHoursTotal', parseInt(e.target.value))} hint="Total hours per year (default 224)" />
+            <Input label="Contracted hours / week" type="number" step="0.01" value={String(form.contractedHours)} onChange={e => set('contractedHours', e.target.value)} hint="e.g. 37.5 (full-time) or 36 — annual leave is calculated and prorated from this and the start date" />
+            <Input label="Annual leave hours" type="number" value={String(form.leaveHoursTotal)} onChange={e => set('leaveHoursTotal', parseInt(e.target.value))} hint="Auto-calculated from contracted hours; override only if needed" />
           </div>
           <div className="mt-3 flex items-center gap-3">
             <input type="checkbox" id="active" checked={form.isActive} onChange={e => set('isActive', e.target.checked)} className="rounded" />
