@@ -14,8 +14,8 @@ const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 /* ── Palette ────────────────────────────────────────────────────────────────── */
 const NAVY = '#241654';
 const NAVY_DARK = '#160C38';
-const ORANGE = '#F5A623';
-const PINK = '#E91E8C';
+const ORANGE = '#F0932F';
+const PINK = '#D6247F';
 const TEXT = '#1A1533';
 const MUTED = '#6B6580';
 const OFFWHITE = '#F8F7FB';
@@ -173,31 +173,31 @@ function useHeroMouse() {
 }
 
 function WaterAndBoat({ mx, my }: { mx: ReturnType<typeof useMotionValue<number>>; my: ReturnType<typeof useMotionValue<number>> }) {
-  const boatRotate = useSpring(useTransform(mx, [-1, 1], [-12, 12]), { stiffness: 70, damping: 14 });
-  const boatX = useSpring(useTransform(mx, [-1, 1], [-26, 26]), { stiffness: 55, damping: 16 });
-  const boatTilt = useSpring(useTransform(my, [-1, 1], [4, -4]), { stiffness: 55, damping: 16 });
+  const boatRotate = useSpring(useTransform(mx, [-1, 1], [-18, 18]), { stiffness: 60, damping: 12 });
+  const boatX = useSpring(useTransform(mx, [-1, 1], [-46, 46]), { stiffness: 45, damping: 14 });
+  const boatTilt = useSpring(useTransform(my, [-1, 1], [7, -7]), { stiffness: 45, damping: 14 });
 
   return (
-    <div className="absolute inset-0 z-0 pointer-events-none" style={{ overflow: 'hidden' }}>
-      <motion.svg className="absolute bottom-0 left-0" width="200%" height="120" viewBox="0 0 2400 200" preserveAspectRatio="none"
-        animate={{ x: [0, -1200] }} transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}>
+    <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: 150, overflow: 'hidden' }}>
+      <motion.svg className="absolute bottom-0 left-0" width="200%" height="70%" viewBox="0 0 2400 200" preserveAspectRatio="none"
+        animate={{ x: [0, -1200] }} transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}>
         <path d="M0,110 C150,150 300,70 450,110 C600,150 750,70 900,110 C1050,150 1200,70 1350,110 C1500,150 1650,70 1800,110 C1950,150 2100,70 2250,110 C2325,130 2400,110 2400,110 L2400,200 L0,200 Z"
-          fill={`${NAVY}14`} />
+          fill={`${NAVY}40`} />
         <path d="M1200,110 C1350,150 1500,70 1650,110 C1800,150 1950,70 2100,110 C2250,150 2400,70 2550,110 C2625,130 2700,110 2700,110 L2700,200 L1200,200 Z"
-          fill={`${NAVY}14`} />
+          fill={`${NAVY}40`} />
       </motion.svg>
-      <motion.svg className="absolute bottom-0 left-0" width="200%" height="90" viewBox="0 0 2400 200" preserveAspectRatio="none"
-        animate={{ x: [-1200, 0] }} transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}>
+      <motion.svg className="absolute bottom-0 left-0" width="200%" height="52%" viewBox="0 0 2400 200" preserveAspectRatio="none"
+        animate={{ x: [-1200, 0] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}>
         <path d="M0,130 C200,90 400,170 600,130 C800,90 1000,170 1200,130 C1400,90 1600,170 1800,130 C2000,90 2200,170 2400,130 L2400,200 L0,200 Z"
-          fill={`${ORANGE}12`} />
+          fill={`${ORANGE}30`} />
         <path d="M1200,130 C1400,90 1600,170 1800,130 C2000,90 2200,170 2400,130 C2600,90 2800,170 3000,130 L3000,200 L1200,200 Z"
-          fill={`${ORANGE}12`} />
+          fill={`${ORANGE}30`} />
       </motion.svg>
 
-      <motion.div className="absolute" style={{ left: '15%', bottom: 66, x: boatX, rotate: boatRotate }}>
-        <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
+      <motion.div className="absolute" style={{ left: '30%', bottom: '32%', x: boatX, rotate: boatRotate }}>
+        <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           style={{ rotate: boatTilt }}>
-          <svg width="52" height="46" viewBox="0 0 52 46" aria-label="Boat sailing on water" role="img">
+          <svg width="60" height="52" viewBox="0 0 52 46" aria-label="Boat sailing on water" role="img">
             <path d="M27 4 L27 30 L11 30 Z" fill={NAVY} />
             <path d="M6 34 L46 34 L38 43 L14 43 Z" fill={NAVY} />
           </svg>
@@ -310,8 +310,8 @@ export default function LandingPage() {
               className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
               style={{ background: 'white' }}>
               <div className="relative h-32 overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY}, ${NAVY_DARK})` }}>
-                <ConfettiDot delay={0} size={40} x="8%" y="20%" color="rgba(245,166,35,0.35)" />
-                <ConfettiDot delay={1} size={26} x="82%" y="55%" color="rgba(233,30,140,0.35)" />
+                <ConfettiDot delay={0} size={40} x="8%" y="20%" color="rgba(240,147,47,0.35)" />
+                <ConfettiDot delay={1} size={26} x="82%" y="55%" color="rgba(214,36,127,0.35)" />
                 <button onClick={() => setDemoOpen(false)}
                   className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors z-10">
                   <X size={14} className="text-white" />
@@ -453,7 +453,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={() => setDemoOpen(true)}
                   className="px-7 py-3.5 rounded-full text-sm font-bold flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
-                  style={{ background: ORANGE, color: NAVY_DARK, boxShadow: '0 10px 30px rgba(245,166,35,0.35)' }}>
+                  style={{ background: ORANGE, color: NAVY_DARK, boxShadow: '0 10px 30px rgba(240,147,47,0.35)' }}>
                   Book a demo <ArrowRight size={15} />
                 </button>
                 <Link to="/login"
@@ -597,8 +597,8 @@ export default function LandingPage() {
 
       {/* ── Scale — full-bleed navy block ─────────────────────────── */}
       <section className="py-16 sm:py-24 relative overflow-hidden" style={{ background: NAVY }}>
-        <ConfettiDot delay={0.4} size={90} x="88%" y="10%" color="rgba(245,166,35,0.12)" blur={4} />
-        <ConfettiDot delay={1.6} size={50} x="4%" y="70%" color="rgba(233,30,140,0.14)" blur={3} />
+        <ConfettiDot delay={0.4} size={90} x="88%" y="10%" color="rgba(240,147,47,0.12)" blur={4} />
+        <ConfettiDot delay={1.6} size={50} x="4%" y="70%" color="rgba(214,36,127,0.14)" blur={3} />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 gap-10 items-center relative z-10">
           <Reveal>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-5 text-white">Designed to operate at scale</h2>
@@ -784,7 +784,7 @@ export default function LandingPage() {
             <Reveal delay={0.1}>
               <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden flex flex-col h-full shadow-xl" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_DARK} 100%)` }}>
                 <div className="absolute top-5 sm:top-6 right-5 sm:right-6">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full" style={{ background: 'rgba(245,166,35,0.2)', color: ORANGE, border: '1px solid rgba(245,166,35,0.35)' }}>Most Popular</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full" style={{ background: 'rgba(240,147,47,0.2)', color: ORANGE, border: '1px solid rgba(240,147,47,0.35)' }}>Most Popular</span>
                 </div>
                 <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Professional</p>
                 <div className="flex items-baseline gap-1.5 mb-1">
@@ -831,8 +831,8 @@ export default function LandingPage() {
 
       {/* ── Final CTA ──────────────────────────────────────────────── */}
       <section className="py-20 sm:py-28 text-center relative overflow-hidden" style={{ background: NAVY }}>
-        <ConfettiDot delay={0.2} size={70} x="6%" y="20%" color="rgba(245,166,35,0.12)" blur={3} />
-        <ConfettiDot delay={1.1} size={44} x="92%" y="65%" color="rgba(233,30,140,0.14)" blur={2} />
+        <ConfettiDot delay={0.2} size={70} x="6%" y="20%" color="rgba(240,147,47,0.12)" blur={3} />
+        <ConfettiDot delay={1.1} size={44} x="92%" y="65%" color="rgba(214,36,127,0.14)" blur={2} />
         <div className="max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
           <Reveal>
             <p className="text-xs font-black uppercase tracking-widest mb-4 sm:mb-5" style={{ color: ORANGE }}>Ready to get started?</p>
@@ -945,7 +945,7 @@ export default function LandingPage() {
               </div>
               <button onClick={() => setDemoOpen(true)}
                 className="w-full py-3 text-xs sm:text-sm font-bold text-white rounded-full transition-opacity hover:opacity-90"
-                style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)' }}>
+                style={{ background: 'rgba(240,147,47,0.12)', border: '1px solid rgba(240,147,47,0.25)' }}>
                 Book a Demo
               </button>
             </div>
