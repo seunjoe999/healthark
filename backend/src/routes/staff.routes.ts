@@ -286,7 +286,9 @@ router.post(
 // PUT /api/staff/:id
 router.put(
   '/:id',
-  [param('id').matches(laxUuid)],
+  [param('id').matches(laxUuid),
+   body('role').optional({ checkFalsy: true }).isIn(['care_staff','team_leader','admin','deputy_manager','home_manager','group_admin','senior_carer','auditor',
+     'director','registered_manager','service_manager','supervisor','recruitment_admin'])],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -301,11 +303,14 @@ router.put(
       const { firstName, lastName, preferredName, phone, address1, address2,
               address3, postcode, dateOfBirth, gender, nationality,
               maritalStatus, emergencyName, emergencyPhone, emergencyNotes,
-              photoUrl, status, isActive, leaveDate, homeId } = req.body;
+              photoUrl, status, isActive, leaveDate, homeId, role: newRoleInput } = req.body;
 
       const canManage = role === 'group_admin' || role === 'home_manager';
       const newStatus = canManage ? (status || null) : null;
       const newIsActive = isActive !== undefined ? isActive : (status === 'inactive' || status === 'terminated' ? false : status === 'active' ? true : null);
+      // Only a manager may change someone else's role, and never their own
+      // (self-promotion would let anyone escalate their own privileges).
+      const newRole = (canManage && !isSelf) ? (newRoleInput || null) : null;
 
       const rows = await query(
         `UPDATE staff SET
@@ -328,8 +333,9 @@ router.put(
           status = COALESCE($17, status),
           is_active = COALESCE($18, is_active),
           leave_date = COALESCE($19, leave_date),
-          home_id = COALESCE($20, home_id)
-         WHERE id = $21
+          home_id = COALESCE($20, home_id),
+          role = COALESCE($21, role)
+         WHERE id = $22
          RETURNING id, first_name, last_name, email, role, status, is_active`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
          address1 || null, address2 || null, address3 || null, postcode || null,
@@ -339,6 +345,7 @@ router.put(
          newIsActive,
          role === 'group_admin' ? nd(leaveDate) : null,
          role === 'group_admin' ? (homeId || null) : null,
+         newRole,
          targetId]
       );
 

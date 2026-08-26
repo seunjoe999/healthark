@@ -284,7 +284,8 @@ export default function EditStaff() {
         <Card>
           <SectionHeading title="Employment" />
           <div className="grid md:grid-cols-2 gap-4">
-            <Select label="Role" value={form.role} onChange={e => set('role', e.target.value)} options={ROLES} />
+            <Select label="Role" value={form.role} onChange={e => set('role', e.target.value)} options={ROLES}
+              disabled={isOwnProfile} title={isOwnProfile ? 'Ask another manager to change your role' : undefined} />
             <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)} options={STATUSES} />
             {homes.length > 1 && (
               <Select label="Assigned home" value={form.homeId} onChange={e => set('homeId', e.target.value)}

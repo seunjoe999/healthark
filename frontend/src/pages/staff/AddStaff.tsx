@@ -3,42 +3,17 @@ import { useNavigate, Link } from 'react-router-dom'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { Button, Input, Select, Card, SectionHeading, Modal } from '../../components/ui'
-import { ArrowLeft, UserPlus, Copy, CheckCircle, Users } from 'lucide-react'
+import { ArrowLeft, UserPlus, Copy, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
-const ROLES = [
-  { value: 'director', label: 'Director' },
-  { value: 'registered_manager', label: 'Registered Manager' },
-  { value: 'service_manager', label: 'Service Manager' },
-  { value: 'deputy_manager', label: 'Deputy Manager' },
-  { value: 'team_leader', label: 'Team Leader' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'senior_carer', label: 'Senior Carer' },
-  { value: 'care_staff', label: 'Care Staff' },
-  { value: 'recruitment_admin', label: 'Recruitment / Administrator' },
-  { value: 'home_manager', label: 'Home Manager' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'group_admin', label: 'Group Admin (full access)' },
-  { value: 'auditor', label: 'Auditor' },
-]
-
 export default function AddStaff() {
-  const { user, isRole } = useAuth()
-  const canAssignResidents = isRole('group_admin', 'admin')
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [homes, setHomes] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
   const [createdStaff, setCreatedStaff] = useState<{ email: string; temporaryPassword: string } | null>(null)
-  const [residents, setResidents] = useState<any[]>([])
-  const [assignedResidentIds, setAssignedResidentIds] = useState<string[]>([])
-  const [form, setForm] = useState({
-    homeId: '', firstName: '', lastName: '', email: '', phone: '',
-    role: 'care_staff', startDate: '', dateOfBirth: '', gender: '',
-    nationality: '', maritalStatus: '', address1: '', postcode: '',
-    emergencyName: '', emergencyPhone: '', emergencyNotes: '',
-    password: '', confirmPassword: '',
-  })
+  const [form, setForm] = useState({ homeId: '', firstName: '', lastName: '', email: '' })
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
@@ -49,38 +24,15 @@ export default function AddStaff() {
     })
   }, [user])
 
-  useEffect(() => {
-    if (!form.homeId) return
-    api.get('/service-users', { params: { homeId: form.homeId } })
-      .then(res => setResidents(res.data.data || []))
-      .catch(() => setResidents([]))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.homeId])
-
-  const toggleResident = (id: string) => setAssignedResidentIds(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
-
   const save = async () => {
     if (!form.firstName || !form.lastName || !form.email || !form.homeId) {
-      toast.error('Please fill in first name, last name, email and home')
-      return
-    }
-    if (form.password && form.password !== form.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-    if (form.password && form.password.length < 8) {
-      toast.error('Password must be at least 8 characters')
+      toast.error('Please fill in first name, last name and email')
       return
     }
     setSaving(true)
     try {
-      const res = await api.post('/staff', form)
+      const res = await api.post('/staff', { ...form, role: 'care_staff' })
       const data = res.data.data
-      if (assignedResidentIds.length && data?.id) {
-        await Promise.all(assignedResidentIds.map(suId =>
-          api.post('/service-users/assignments', { homeId: form.homeId, staffId: data.id, suId }).catch(() => {})
-        ))
-      }
       if (data?.temporaryPassword) {
         setCreatedStaff({ email: data.email, temporaryPassword: data.temporaryPassword })
       } else {
@@ -92,9 +44,6 @@ export default function AddStaff() {
     } finally { setSaving(false) }
   }
 
-  const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'non_binary', label: 'Non-binary' }, { value: 'other', label: 'Other' }]
-  const MARITAL = [{ value: 'single', label: 'Single' }, { value: 'married', label: 'Married' }, { value: 'divorced', label: 'Divorced' }, { value: 'widowed', label: 'Widowed' }]
-
   return (
     <div className="max-w-3xl mx-auto p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -104,7 +53,8 @@ export default function AddStaff() {
         <Button icon={<UserPlus className="w-4 h-4" />} loading={saving} onClick={save}>Add staff member</Button>
       </div>
 
-      <h1 className="font-display text-2xl text-slate-900 mb-6">Add new staff member</h1>
+      <h1 className="font-display text-2xl text-slate-900 mb-2">Add new staff member</h1>
+      <p className="text-sm text-slate-400 mb-6">Just their name and email to get started — they can fill in the rest of their profile after logging in.</p>
 
       <div className="space-y-5">
         {homes.length > 1 && (
@@ -116,62 +66,11 @@ export default function AddStaff() {
         )}
 
         <Card>
-          <SectionHeading title="Personal details" />
+          <SectionHeading title="Staff details" />
           <div className="grid md:grid-cols-2 gap-4">
             <Input label="First name *" required value={form.firstName} onChange={e => set('firstName', e.target.value)} autoFocus />
             <Input label="Last name *" required value={form.lastName} onChange={e => set('lastName', e.target.value)} />
-            <Input label="Email address *" type="email" required value={form.email} onChange={e => set('email', e.target.value)} />
-            <Input label="Phone number" type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} />
-            <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} />
-            <Select label="Gender" value={form.gender} onChange={e => set('gender', e.target.value)} options={GENDERS} placeholder="Select gender" />
-            <Input label="Nationality" value={form.nationality} onChange={e => set('nationality', e.target.value)} placeholder="e.g. British" />
-            <Select label="Marital status" value={form.maritalStatus} onChange={e => set('maritalStatus', e.target.value)} options={MARITAL} placeholder="Select status" />
-            <Input label="Address" value={form.address1} onChange={e => set('address1', e.target.value)} className="md:col-span-2" />
-            <Input label="Postcode" value={form.postcode} onChange={e => set('postcode', e.target.value)} />
-          </div>
-        </Card>
-
-        <Card>
-          <SectionHeading title="Employment details" />
-          <div className="grid md:grid-cols-2 gap-4">
-            <Select label="Role *" value={form.role} onChange={e => set('role', e.target.value)} options={ROLES} />
-            <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          </div>
-        </Card>
-
-        <Card>
-          <SectionHeading title="Emergency contact" />
-          <div className="grid md:grid-cols-2 gap-4">
-            <Input label="Contact name" value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} placeholder="Name of emergency contact" />
-            <Input label="Contact phone" value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} />
-            <Input label="Notes" value={form.emergencyNotes} onChange={e => set('emergencyNotes', e.target.value)} className="md:col-span-2" placeholder="Relationship, any important notes..." />
-          </div>
-        </Card>
-
-        {canAssignResidents && (
-          <Card>
-            <SectionHeading title="Assign residents" description="Optional — choose which residents this staff member will support. They'll only see records for residents assigned to them." />
-            {residents.length === 0 ? (
-              <p className="text-sm text-slate-400">No residents found for this home.</p>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                {residents.map(r => (
-                  <label key={r.id} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-sm">
-                    <input type="checkbox" checked={assignedResidentIds.includes(r.id)} onChange={() => toggleResident(r.id)} />
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    {r.first_name} {r.last_name}
-                  </label>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
-
-        <Card>
-          <SectionHeading title="Account password" description="Set an initial password for this staff member. They can change it after logging in." />
-          <div className="grid md:grid-cols-2 gap-4">
-            <Input label="Password" type="password" value={form.password} onChange={e => set('password', e.target.value)} hint="Min. 8 characters" />
-            <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} />
+            <Input label="Email address *" type="email" required value={form.email} onChange={e => set('email', e.target.value)} className="md:col-span-2" />
           </div>
         </Card>
       </div>
@@ -187,7 +86,7 @@ export default function AddStaff() {
           <div className="space-y-4">
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
               <CheckCircle className="w-5 h-5 text-amber-600 inline mr-2" />
-              No password was set — a temporary one was generated. Share these credentials with the staff member.
+              A temporary password was generated. Share these credentials with the staff member so they can log in and complete their profile.
             </div>
             <div>
               <p className="text-xs text-slate-500 font-medium mb-1">Email</p>
@@ -203,7 +102,7 @@ export default function AddStaff() {
                 <button onClick={() => { navigator.clipboard.writeText(createdStaff.temporaryPassword); toast.success('Copied') }} className="text-slate-400 hover:text-slate-700"><Copy className="w-4 h-4" /></button>
               </div>
             </div>
-            <p className="text-xs text-slate-400">The staff member should change their password after first login.</p>
+            <p className="text-xs text-slate-400">The staff member should change their password after first login, and can fill in the rest of their profile from their account settings.</p>
             <div className="flex justify-end pt-2">
               <Button onClick={() => { setCreatedStaff(null); navigate('/staff') }}>Done</Button>
             </div>
