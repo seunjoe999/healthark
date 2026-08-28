@@ -1,0 +1,13 @@
+Move the problem, gap, solution texts to the left
+Move the image to the right
+Make the image smaller
+
+Increase the texts of our partners and collaborators above the footer to be big like our collaborators
+
+When I click the blog
+Let the picture be on the left side and the writings on the right side
+Let people be able to comment
+
+Make the texts in the hero be on the same level as the image beside it 
+Let the link at the hero be beside the link beside it
+So reduce the image a bit
