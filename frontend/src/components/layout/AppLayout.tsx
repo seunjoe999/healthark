@@ -44,6 +44,7 @@ const navSections = [
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
       { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
       { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
+      { label: 'Capacity & Professionals',          to: '/capacity-professionals', icon: Brain,      roles: [], featureKey: 'capacity_professionals' },
       { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
     ]
   },

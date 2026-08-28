@@ -3,14 +3,11 @@ import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { Star, AlertTriangle, Plus, Lock, Users, Brain, Trash2 } from 'lucide-react'
+import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
+import { Plus, Users, Brain, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type QATab = 'qa' | 'capacity' | 'professionals' | 'sensitive'
-
-const QA_TYPES = [{ value: 'complaint', label: 'Complaint' }, { value: 'compliment', label: 'Compliment' }, { value: 'feedback', label: 'Feedback' }, { value: 'suggestion', label: 'Suggestion' }, { value: 'concern', label: 'Concern' }]
-const SEVERITIES = [{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]
+type QATab = 'capacity' | 'professionals'
 
 export default function Quality() {
   const { user } = useAuth()
@@ -18,18 +15,13 @@ export default function Quality() {
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
-  const [tab, setTab] = useState<QATab>('qa')
-  const [qaRecords, setQaRecords] = useState<any[]>([])
+  const [tab, setTab] = useState<QATab>('capacity')
   const [capacityRecords, setCapacityRecords] = useState<any[]>([])
   const [professionals, setProfessionals] = useState<any[]>([])
-  const [sensitiveNotes, setSensitiveNotes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [addQAOpen, setAddQAOpen] = useState(false)
   const [addCapacityOpen, setAddCapacityOpen] = useState(false)
   const [addProfOpen, setAddProfOpen] = useState(false)
-  const [addNoteOpen, setAddNoteOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [previewQA, setPreviewQA] = useState<any>(null)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true)
 
   useEffect(() => {
@@ -43,8 +35,6 @@ export default function Quality() {
   useEffect(() => {
     if (!selectedHome) return
     suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
-    // Load home-level QA records
-    api.get('/quality', { params: { homeId: selectedHome } }).then(res => setQaRecords(res.data.data || []))
   }, [selectedHome])
 
   const selectSu = async (su: any) => {
@@ -52,14 +42,12 @@ export default function Quality() {
     setMobileSidebarOpen(false)
     setLoading(true)
     try {
-      const [capRes, profRes, noteRes] = await Promise.all([
+      const [capRes, profRes] = await Promise.all([
         api.get(`/quality/capacity/${su.id}`),
         api.get(`/quality/professionals/${su.id}`),
-        api.get(`/quality/sensitive-notes/${su.id}`),
       ])
       setCapacityRecords(capRes.data.data || [])
       setProfessionals(profRes.data.data || [])
-      setSensitiveNotes(noteRes.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -75,11 +63,6 @@ export default function Quality() {
           <h2 className="font-semibold text-slate-900 mb-3">Quality & Compliance</h2>
           {homes.length > 1 && <select className="input mb-2 text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
           <input className="input text-sm" placeholder="Search residents..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="p-3 border-b border-slate-100">
-          <button onClick={() => setSelectedSu(null)} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors ${!selectedSu ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-            🏠 Home-level QA
-          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {filteredSus.map(su => {
@@ -108,46 +91,7 @@ export default function Quality() {
         <div className="p-6 flex-1">
         <div className="max-w-4xl mx-auto">
           {!selectedSu ? (
-            <>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-display text-xl text-slate-900">Home-level Quality Records</h2>
-                <div className="flex items-center gap-2">
-                  <PrintButton />
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddQAOpen(true)}>Record complaint / compliment</Button>
-                </div>
-              </div>
-              {qaRecords.length === 0 ? (
-                <EmptyState title="No QA records yet" description="Record complaints, compliments, feedback and concerns"
-                  action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddQAOpen(true)}>Add record</Button>} />
-              ) : (
-                <div className="space-y-3">
-                  {qaRecords.map((r: any) => (
-                    <div key={r.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setPreviewQA(r)}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {r.record_type === 'compliment' ? <Star className="w-4 h-4 text-gold-500" /> : <AlertTriangle className="w-4 h-4 text-rose-500" />}
-                          <span className={`badge ${r.record_type === 'compliment' ? 'badge-success' : r.record_type === 'complaint' ? 'badge-critical' : 'badge-info'}`}>{r.record_type}</span>
-                          {r.su_name && <span className="text-xs text-slate-500">· {r.su_name}</span>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-400">{format(new Date(r.created_at), 'd MMM yyyy')}</span>
-                          <button onClick={async () => {
-                            if (!window.confirm('Delete this record?')) return
-                            try { await api.delete(`/quality/${r.id}`); const res = await api.get('/quality', { params: { homeId: selectedHome } }); setQaRecords(res.data.data || []); toast.success('Record deleted') }
-                            catch { toast.error('Failed to delete') }
-                          }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-800">{r.summary}</p>
-                      {r.detail && <p className="text-sm text-slate-600 mt-1">{r.detail}</p>}
-                      {r.action_taken && <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-1.5 mt-2">Action: {r.action_taken}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            <EmptyState title="Select a resident" description="Choose a resident from the list to view their capacity assessments and professional involvement records" />
           ) : (
             <>
               <h2 className="font-display text-xl text-slate-900 mb-4">{getName(selectedSu)}</h2>
@@ -155,7 +99,6 @@ export default function Quality() {
                 {[
                   { key: 'capacity', label: 'Capacity Assessment', icon: <Brain className="w-3.5 h-3.5" /> },
                   { key: 'professionals', label: 'Professionals', icon: <Users className="w-3.5 h-3.5" /> },
-                  { key: 'sensitive', label: 'Sensitive Notes', icon: <Lock className="w-3.5 h-3.5" /> },
                 ].map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as QATab)}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${tab === t.key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
@@ -230,39 +173,7 @@ export default function Quality() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-slate-500" />
-                      <h3 className="font-semibold text-slate-800">Sensitive Notes ({sensitiveNotes.length})</h3>
-                    </div>
-                    <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddNoteOpen(true)}>Add note</Button>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-700 font-medium">
-                    🔒 These notes are confidential and visible to managers only
-                  </div>
-                  {sensitiveNotes.length === 0 ? <EmptyState title="No sensitive notes" description="Document confidential information securely" action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddNoteOpen(true)}>Add note</Button>} /> : (
-                    <div className="space-y-3">
-                      {sensitiveNotes.map((n: any) => (
-                        <Card key={n.id} className="p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm text-slate-800 whitespace-pre-line flex-1">{n.note}</p>
-                            <button onClick={async () => {
-                              if (!window.confirm('Delete this note?')) return
-                              try { await api.delete(`/quality/sensitive-notes/${n.id}`); const res = await api.get(`/quality/sensitive-notes/${selectedSu.id}`); setSensitiveNotes(res.data.data || []); toast.success('Deleted') }
-                              catch { toast.error('Failed to delete') }
-                            }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-2">{n.created_by_name} · {format(new Date(n.created_at), 'd MMM yyyy, HH:mm')}</p>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              ) : null}
             </>
           )}
         </div>
@@ -270,83 +181,15 @@ export default function Quality() {
       </div>
 
       {/* Modals */}
-      <AddQAModal open={addQAOpen} onClose={() => setAddQAOpen(false)} sus={sus} homeId={selectedHome}
-        onSaved={async () => { setAddQAOpen(false); const res = await api.get('/quality', { params: { homeId: selectedHome } }); setQaRecords(res.data.data || []); toast.success('Record added') }} />
-
       {selectedSu && (
         <>
-      {previewQA && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b">
-              <div className="flex items-center gap-2">
-                <span className={`badge ${previewQA.record_type === 'compliment' ? 'badge-success' : previewQA.record_type === 'complaint' ? 'badge-critical' : 'badge-info'}`}>{previewQA.record_type}</span>
-                {previewQA.su_name && <span className="text-sm text-slate-500">· {previewQA.su_name}</span>}
-              </div>
-              <button onClick={() => setPreviewQA(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><Star className="w-4 h-4" /></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Summary</p>
-                <p className="font-semibold text-slate-900">{previewQA.summary}</p>
-              </div>
-              {previewQA.detail && <div><p className="text-xs text-slate-400 mb-1">Detail</p><p className="text-sm text-slate-700">{previewQA.detail}</p></div>}
-              {previewQA.action_taken && <div><p className="text-xs text-slate-400 mb-1">Action taken</p><p className="text-sm text-emerald-300 bg-emerald-500/10 rounded-lg p-3">{previewQA.action_taken}</p></div>}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {previewQA.raised_by_name && <div><p className="text-xs text-slate-400">Raised by</p><p>{previewQA.raised_by_name}</p></div>}
-                <div><p className="text-xs text-slate-400">Date</p><p>{format(new Date(previewQA.created_at), 'd MMM yyyy')}</p></div>
-              </div>
-            </div>
-            <div className="p-4 border-t flex justify-end">
-              <button onClick={() => setPreviewQA(null)} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
           <AddCapacityModal open={addCapacityOpen} onClose={() => setAddCapacityOpen(false)} suId={selectedSu.id}
             onSaved={async () => { setAddCapacityOpen(false); const res = await api.get(`/quality/capacity/${selectedSu.id}`); setCapacityRecords(res.data.data || []); toast.success('Assessment recorded') }} />
           <AddProfessionalModal open={addProfOpen} onClose={() => setAddProfOpen(false)} suId={selectedSu.id}
             onSaved={async () => { setAddProfOpen(false); const res = await api.get(`/quality/professionals/${selectedSu.id}`); setProfessionals(res.data.data || []); toast.success('Professional added') }} />
-          <AddSensitiveNoteModal open={addNoteOpen} onClose={() => setAddNoteOpen(false)} suId={selectedSu.id}
-            onSaved={async () => { setAddNoteOpen(false); const res = await api.get(`/quality/sensitive-notes/${selectedSu.id}`); setSensitiveNotes(res.data.data || []); toast.success('Note saved') }} />
         </>
       )}
     </div>
-  )
-}
-
-function AddQAModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ recordType: 'complaint', suId: '', summary: '', detail: '', actionTaken: '', reportedBy: '', severity: 'low' })
-  const [loading, setLoading] = useState(false)
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-  const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try { await api.post('/quality', { homeId, ...form, suId: form.suId || null }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Record complaint / compliment" size="md">
-      <form onSubmit={save} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Type *" required value={form.recordType} onChange={e => set('recordType', e.target.value)} options={QA_TYPES} />
-          <Select label="Severity" value={form.severity} onChange={e => set('severity', e.target.value)} options={SEVERITIES} />
-        </div>
-        <Select label="Linked to resident (optional)" value={form.suId} onChange={e => set('suId', e.target.value)} options={suOptions} placeholder="Select resident (optional)" />
-        <Input label="Summary *" required value={form.summary} onChange={e => set('summary', e.target.value)} placeholder="Brief summary of the issue..." />
-        <div><label className="label">Full details</label><textarea className="input" rows={3} value={form.detail} onChange={e => set('detail', e.target.value)} /></div>
-        <div><label className="label">Action taken</label><textarea className="input" rows={2} value={form.actionTaken} onChange={e => set('actionTaken', e.target.value)} /></div>
-        <Input label="Reported by" value={form.reportedBy} onChange={e => set('reportedBy', e.target.value)} placeholder="Who raised this..." />
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={loading}>Save record</Button>
-        </div>
-      </form>
-    </Modal>
   )
 }
 
@@ -411,37 +254,6 @@ function AddProfessionalModal({ open, onClose, suId, onSaved }: { open: boolean;
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add professional</Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-function AddSensitiveNoteModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId: string; onSaved: () => void }) {
-  const [note, setNote] = useState('')
-  const [category, setCategory] = useState('general')
-  const [loading, setLoading] = useState(false)
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try { await api.post('/quality/sensitive-notes', { suId, note, category }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Add sensitive note" size="md">
-      <form onSubmit={save} className="space-y-4">
-        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 font-medium">
-          <Lock className="w-4 h-4" /> This note is confidential — visible to managers only
-        </div>
-        <Select label="Category" value={category} onChange={e => setCategory(e.target.value)}
-          options={[{ value: 'general', label: 'General' }, { value: 'legal', label: 'Legal' }, { value: 'financial', label: 'Financial' }, { value: 'safeguarding', label: 'Safeguarding' }, { value: 'medical', label: 'Medical' }]} />
-        <div><label className="label">Note *</label><textarea required className="input" rows={5} value={note} onChange={e => setNote(e.target.value)} placeholder="Document sensitive information here..." /></div>
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={loading} icon={<Lock className="w-4 h-4" />}>Save confidential note</Button>
         </div>
       </form>
     </Modal>

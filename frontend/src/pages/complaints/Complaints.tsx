@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
-import { homesApi } from '../../api'
+import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Modal } from '../../components/ui'
@@ -32,7 +32,7 @@ const TYPE_COLORS: Record<string, string> = {
 const BLANK: Record<string, any> = {
   recordType: 'compliment', fromType: '', fromName: '', aboutStaff: '',
   summary: '', actionTaken: '', lessonsLearnt: '', updatesText: '',
-  status: 'open', entryDate: new Date().toISOString().split('T')[0],
+  status: 'open', entryDate: new Date().toISOString().split('T')[0], suId: '',
 }
 
 function TypeBadge({ type }: { type: string }) {
@@ -240,9 +240,17 @@ function CreateModal({ open, homeId, onClose, onSaved }: {
 }) {
   const [form, setForm] = useState({ ...BLANK })
   const [loading, setLoading] = useState(false)
+  const [sus, setSus] = useState<any[]>([])
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => { if (open) setForm({ ...BLANK, entryDate: new Date().toISOString().split('T')[0] }) }, [open])
+
+  useEffect(() => {
+    if (!open || !homeId) return
+    suApi.list(homeId, { status: 'live' }).then(res => setSus(res.data.data || [])).catch(() => {})
+  }, [open, homeId])
+
+  const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim() }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -261,6 +269,7 @@ function CreateModal({ open, homeId, onClose, onSaved }: {
         updatesText: form.updatesText,
         status: form.status,
         entryDate: form.entryDate,
+        suId: form.suId || null,
       })
       toast.success('Record saved')
       onSaved()
@@ -299,6 +308,13 @@ function CreateModal({ open, homeId, onClose, onSaved }: {
         <div>
           <label className="label">About Staff</label>
           <input className="input w-full" placeholder="Name of staff member this relates to..." value={form.aboutStaff} onChange={e => set('aboutStaff', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Linked resident (optional)</label>
+          <select className="input w-full" value={form.suId} onChange={e => set('suId', e.target.value)}>
+            <option value="">None</option>
+            {suOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
         <SpeechTextarea label="You said" rows={4} value={form.summary} onChange={v => set('summary', v)}
           placeholder="What the person said / the details of the complaint or compliment..." />

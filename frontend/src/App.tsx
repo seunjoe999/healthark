@@ -36,7 +36,8 @@ const SearchResults = React.lazy(() => import('./pages/search/Search'))
 const Messages = React.lazy(() => import('./pages/messages/Messages'))
 const Reviews = React.lazy(() => import('./pages/reviews/Reviews'))
 const Invoicing = React.lazy(() => import('./pages/invoicing/Invoicing'))
-const QualityAssurance = React.lazy(() => import('./pages/quality/Quality'))
+const CapacityProfessionals = React.lazy(() => import('./pages/quality/Quality'))
+const Complaints = React.lazy(() => import('./pages/complaints/Complaints'))
 const Assessments = React.lazy(() => import('./pages/assessments/Assessments'))
 const AdminAccounts = React.lazy(() => import('./pages/admin/AdminAccounts'))
 const Settings = React.lazy(() => import('./pages/settings/Settings'))
@@ -159,7 +160,8 @@ function AppRoutes() {
 
         <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
         <Route path="/invoicing" element={<ProtectedRoute><Invoicing /></ProtectedRoute>} />
-        <Route path="/complaints" element={<ProtectedRoute><QualityAssurance /></ProtectedRoute>} />
+        <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
+        <Route path="/capacity-professionals" element={<ProtectedRoute><CapacityProfessionals /></ProtectedRoute>} />
         <Route path="/assessments/new" element={<ProtectedRoute><AssessmentForm /></ProtectedRoute>} />
         <Route path="/assessments/:id" element={<ProtectedRoute><AssessmentView /></ProtectedRoute>} />
         <Route path="/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />

@@ -31,7 +31,6 @@ const AUDIT_TYPES = [
   { value: 'equipment', label: 'Equipment Audit', icon: <Home className="w-4 h-4" />, color: 'bg-slate-100 text-slate-700', accent: '#475569' },
   { value: 'premises', label: 'Premises Audit', icon: <Home className="w-4 h-4" />, color: 'bg-slate-100 text-slate-700', accent: '#475569' },
   { value: 'mandatory_safety', label: 'Mandatory Safety', icon: <Shield className="w-4 h-4" />, color: 'bg-amber-100 text-amber-700', accent: '#d97706' },
-  { value: 'staff_all', label: 'All Staff Audit', icon: <Users className="w-4 h-4" />, color: 'bg-cyan-100 text-cyan-700', accent: '#0891b2' },
   { value: 'free_template', label: 'Free Template', icon: <FileText className="w-4 h-4" />, color: 'bg-slate-100 text-slate-700', accent: '#475569' },
 ]
 
@@ -115,9 +114,9 @@ function typeInfoFor(auditType: string, templates: any[]) {
     return {
       value: tpl.suggestedKey,
       label: tpl.title,
-      icon: tpl.category === 'staff' ? <Users className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
-      color: tpl.category === 'staff' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700',
-      accent: tpl.category === 'staff' ? '#2563eb' : '#9333ea',
+      icon: <ClipboardList className="w-4 h-4" />,
+      color: 'bg-purple-100 text-purple-700',
+      accent: '#9333ea',
     }
   }
   return AUDIT_TYPES.find(t => t.value === auditType)
@@ -1378,7 +1377,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
   const [auditType, setAuditType] = useState('care_plan')
   const [customName, setCustomName] = useState('')
   const [reviewFrequency, setReviewFrequency] = useState('every_4_weeks')
-  const [category, setCategory] = useState<'service_user' | 'staff' | 'custom'>('service_user')
+  const [category, setCategory] = useState<'service_user' | 'custom'>('service_user')
   const [builderOpen, setBuilderOpen] = useState(false)
 
   const grouped = category === 'custom'
@@ -1405,10 +1404,6 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
                 Service User Audits
               </button>
-              <button onClick={() => { setCategory('staff'); const first = templates.find(t => t.category === 'staff' && !t.suggestedKey.startsWith('custom_')); if (first) setAuditType(first.suggestedKey) }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'staff' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}>
-                Staff Assessments
-              </button>
               <button onClick={() => { setCategory('custom'); const first = templates.find(t => t.suggestedKey.startsWith('custom_')); if (first) setAuditType(first.suggestedKey) }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${category === 'custom' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}>
                 My Audits
@@ -1422,8 +1417,8 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
         )}
         <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
           {(templates.length > 0 ? grouped.map(t => ({ value: t.suggestedKey, label: t.title,
-              icon: category === 'staff' ? <Users className="w-4 h-4" /> : category === 'custom' ? <ListChecks className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
-              color: category === 'staff' ? 'bg-blue-100 text-blue-700' : category === 'custom' ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700' }))
+              icon: category === 'custom' ? <ListChecks className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />,
+              color: category === 'custom' ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700' }))
             : AUDIT_TYPES
           ).map(t => (
             <button key={t.value} onClick={() => setAuditType(t.value)}
