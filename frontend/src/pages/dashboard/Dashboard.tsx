@@ -11,7 +11,7 @@ import { motion } from 'framer-motion'
 import {
   Users, UserCheck, Pill, AlertTriangle, Calendar,
   Clock, CheckSquare, Cake, Bell, ClipboardList,
-  FileText, Zap, ChevronRight, TrendingUp,
+  FileText, Zap, ChevronRight, TrendingUp, CalendarClock,
 } from 'lucide-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
@@ -130,6 +130,8 @@ export default function Dashboard() {
     alertsList: [],
     dailyRecordsByDay: {},
   })
+  const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
+  const [todaysTasks, setTodaysTasks] = useState<any[]>([])
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -169,6 +171,8 @@ export default function Dashboard() {
       /* 7 */ api.get('/alerts', { params: { homeId: selectedHome, unread: 'true' } }),
       /* 8 */ api.get('/compliance', { params: { homeId: selectedHome } }),
       /* 9 */ api.get('/daily-records', { params: { homeId: selectedHome, from: sevenAgo, to: todayStr } }),
+      /* 10 */ api.get('/calendar', { params: { homeId: selectedHome, from: todayStr, to: todayStr } }),
+      /* 11 */ api.get('/tasks', { params: { homeId: selectedHome, date: todayStr } }),
     ]).then(results => {
       /* ── Existing stats ── */
       const dashRes     = results[0].status === 'fulfilled' ? results[0].value : null
@@ -262,6 +266,14 @@ export default function Dashboard() {
         alertsList,
         dailyRecordsByDay: byDay,
       })
+
+      /* ── Today's appointments & tasks (so they're visible on login, not just under Tasks) ── */
+      const calendarRes = results[10].status === 'fulfilled' ? results[10].value : null
+      const tasksRes     = results[11].status === 'fulfilled' ? results[11].value : null
+      const calendarEvents: any[] = calendarRes?.data?.data || []
+      setTodaysAppointments(calendarEvents.filter((e: any) => e.event_type === 'appointment'))
+      const allTasks: any[] = tasksRes?.data?.data || []
+      setTodaysTasks(allTasks.filter((t: any) => t.status === 'pending'))
     }).catch(console.error).finally(() => setLoading(false))
   }, [selectedHome])
 
@@ -450,6 +462,46 @@ export default function Dashboard() {
               </motion.div>
             ))}
           </div>
+
+          {/* ── Today's Appointments & Tasks ────────────────────────────── */}
+          {(todaysAppointments.length > 0 || todaysTasks.length > 0) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.4 }}
+              className="rounded-2xl p-5 mb-6"
+              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CalendarClock size={16} style={{ color: '#e8b130' }} />
+                  <p className="text-sm font-bold text-white">Due Today</p>
+                </div>
+                <Link to="/tasks" className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+                  View all <ChevronRight size={12} />
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {todaysAppointments.map((a: any) => (
+                  <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.08)' }}>
+                    <CalendarClock size={14} className="flex-shrink-0" style={{ color: '#60a5fa' }} />
+                    <p className="text-sm text-white flex-1 truncate">{a.title}{a.su_name ? ` — ${a.su_name}` : ''}</p>
+                    {a.start_time && <span className="text-xs" style={{ color: '#60a5fa' }}>{a.start_time.slice(0, 5)}</span>}
+                  </div>
+                ))}
+                {todaysTasks.slice(0, 6).map((t: any) => (
+                  <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#fbbf24' }} />
+                    <p className="text-sm text-white flex-1 truncate">{t.title}</p>
+                    {t.due_time && <span className="text-xs text-slate-500">{t.due_time}</span>}
+                  </div>
+                ))}
+                {todaysTasks.length > 6 && (
+                  <p className="text-xs text-slate-500 text-center pt-1">+ {todaysTasks.length - 6} more pending tasks today</p>
+                )}
+              </div>
+            </motion.div>
+          )}
 
           {/* ── Today at a Glance ────────────────────────────────────────── */}
           <motion.div

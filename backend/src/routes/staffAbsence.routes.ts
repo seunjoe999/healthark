@@ -15,6 +15,8 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
+const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+
 // Ensure table exists
 async function ensureTable() {
   await query(`
@@ -36,6 +38,7 @@ async function ensureTable() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `, []);
+  await query(`ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS notes TEXT`, []);
 }
 
 // Initialise table on first request (idempotent)
@@ -50,7 +53,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string | undefined) : myStaffId;
     const year = req.query.year as string | undefined;
 
@@ -184,18 +187,17 @@ router.post('/',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const loggedBy = fromToken(req, 'staffId');
       const {
-        staffId, absenceStart, absenceEnd, absenceType, reason,
-        fitNoteProvided, fitNoteEndDate,
+        staffId, absenceStart, absenceEnd, absenceType, reason, notes,
       } = req.body;
 
       const rows = await query(
         `INSERT INTO staff_absences
-           (home_id, staff_id, absence_start, absence_end, absence_type, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6)
+           (home_id, staff_id, absence_start, absence_end, absence_type, reason, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          RETURNING *`,
         [
           homeId, staffId, absenceStart,
-          absenceEnd || null, absenceType, loggedBy,
+          absenceEnd || null, absenceType, reason || null, notes || null, loggedBy,
         ]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -209,21 +211,31 @@ router.put('/:id',
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const role = fromToken(req, 'role');
+      if (!PRIVILEGED_ROLES.includes(role)) {
+        res.status(403).json({ success: false, error: 'Not authorised to amend absence records' } as ApiResponse);
+        return;
+      }
       const {
-        absenceEnd, returnToWorkDate, returnToWorkCompleted,
-        returnToWorkNotes, absenceType,
+        absenceStart, absenceEnd, returnToWorkDate, returnToWorkCompleted,
+        returnToWorkNotes, absenceType, reason, notes,
       } = req.body;
 
       await query(
         `UPDATE staff_absences SET
-           absence_end = COALESCE($1, absence_end),
-           absence_type = COALESCE($2, absence_type),
-           return_date = COALESCE($3, return_date),
-           return_completed = COALESCE($4, return_completed),
-           return_notes = COALESCE($5, return_notes)
-         WHERE id = $6`,
+           absence_start = COALESCE($1, absence_start),
+           absence_end = COALESCE($2, absence_end),
+           absence_type = COALESCE($3, absence_type),
+           reason = COALESCE($4, reason),
+           notes = COALESCE($5, notes),
+           return_date = COALESCE($6, return_date),
+           return_completed = COALESCE($7, return_completed),
+           return_notes = COALESCE($8, return_notes),
+           updated_at = NOW()
+         WHERE id = $9`,
         [
-          absenceEnd || null, absenceType || null,
+          absenceStart || null, absenceEnd || null, absenceType || null,
+          reason || null, notes || null,
           returnToWorkDate || null, returnToWorkCompleted ?? null,
           returnToWorkNotes || null, req.params.id,
         ]

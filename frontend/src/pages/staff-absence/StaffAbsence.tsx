@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserX, Plus, TrendingUp, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
+import { UserX, Plus, TrendingUp, Calendar, AlertCircle, RefreshCw, X } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 
 interface Absence {
   id: number;
+  staff_id: string;
   staff_name: string;
   absence_start: string;
   absence_end: string | null;
@@ -19,6 +20,8 @@ interface Absence {
   days_so_far: number;
 }
 
+const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+
 interface Bradford { staff_id: number; staff_name: string; bradford_score: number; spells: number; total_days: number; }
 interface Stats { total_absences: number; active_absences: number; total_days: number; avg_days: number; }
 
@@ -29,7 +32,8 @@ const ABSENCE_TYPE_MAP: Record<string, string> = {
 const REASONS = ['Illness', 'Injury', 'Mental Health', 'Family Emergency', 'Bereavement', 'Medical Appointment', 'Unknown', 'Other'];
 
 export default function StaffAbsence() {
-  const { user } = useAuth();
+  const { user, isRole } = useAuth();
+  const canAmend = isRole(...PRIVILEGED_ROLES);
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [bradford, setBradford] = useState<Bradford[]>([]);
   const [stats, setStats] = useState<Stats>({ total_absences: 0, active_absences: 0, total_days: 0, avg_days: 0 });
@@ -38,15 +42,18 @@ export default function StaffAbsence() {
   const [tab, setTab] = useState<'absences' | 'bradford'>('absences');
   const [form, setForm] = useState({ staff_id: '', start_date: '', end_date: '', reason: 'Illness', absence_type: 'Sickness', notes: '' });
   const [staffList, setStaffList] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
+  const [staffFilter, setStaffFilter] = useState('');
+  const [editing, setEditing] = useState<Absence | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (staffId = staffFilter) => {
     try {
-      const hParams = user?.homeId ? { homeId: user.homeId } : {};
+      const hParams: Record<string, string> = user?.homeId ? { homeId: user.homeId } : {};
+      if (staffId) hParams.staffId = staffId;
       const [absRes, bfRes, statsRes, staffRes] = await Promise.all([
         api.get('/staff-absence', { params: hParams }),
-        api.get('/staff-absence/bradford', { params: hParams }),
-        api.get('/staff-absence/stats', { params: hParams }),
-        api.get('/staff', { params: { status: 'active', ...hParams } }),
+        api.get('/staff-absence/bradford', { params: { homeId: hParams.homeId } }),
+        api.get('/staff-absence/stats', { params: { homeId: hParams.homeId } }),
+        api.get('/staff', { params: { status: 'active', ...(hParams.homeId ? { homeId: hParams.homeId } : {}) } }),
       ]);
       setAbsences(absRes.data.data || []);
       setBradford(bfRes.data.data || []);
@@ -63,6 +70,7 @@ export default function StaffAbsence() {
   };
 
   useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(staffFilter); }, [staffFilter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,9 +81,11 @@ export default function StaffAbsence() {
         absenceEnd: form.end_date || undefined,
         absenceType: ABSENCE_TYPE_MAP[form.absence_type] || 'other',
         reason: form.reason,
+        notes: form.notes || undefined,
       });
       toast.success('Absence recorded');
       setShowForm(false);
+      setForm({ staff_id: '', start_date: '', end_date: '', reason: 'Illness', absence_type: 'Sickness', notes: '' });
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
@@ -125,14 +135,23 @@ export default function StaffAbsence() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        {(['absences', 'bradford'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${tab === t ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: tab === t ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
-            {t === 'bradford' ? 'Bradford Factor' : 'Absences'}
-          </button>
-        ))}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-2">
+          {(['absences', 'bradford'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${tab === t ? 'text-white' : 'text-gray-400'}`}
+              style={{ background: tab === t ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
+              {t === 'bradford' ? 'Bradford Factor' : 'Absences'}
+            </button>
+          ))}
+        </div>
+        {tab === 'absences' && (
+          <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <option value="">All staff</option>
+            {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Add form */}
@@ -192,7 +211,9 @@ export default function StaffAbsence() {
       ) : tab === 'absences' ? (
         <div className="space-y-2">
           {absences.length === 0 ? <div className="text-center text-gray-400 py-12">No absences recorded</div> : absences.map(a => (
-            <div key={a.id} className="p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={a.id} onClick={() => canAmend && setEditing(a)}
+              className={`p-4 rounded-xl ${canAmend ? 'cursor-pointer hover:border-white/20' : ''}`}
+              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-white font-medium text-sm">{a.staff_name}</span>
@@ -228,6 +249,95 @@ export default function StaffAbsence() {
           ))}
         </div>
       )}
+
+      {editing && (
+        <EditAbsenceModal absence={editing} onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); fetchData(); }} />
+      )}
+    </div>
+  );
+}
+
+function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    absence_type: Object.keys(ABSENCE_TYPE_MAP).find(k => ABSENCE_TYPE_MAP[k] === absence.absence_type) || 'Other',
+    start_date: absence.absence_start ? absence.absence_start.slice(0, 10) : '',
+    end_date: absence.absence_end ? absence.absence_end.slice(0, 10) : '',
+    reason: absence.reason || '',
+    notes: absence.notes || '',
+    return_completed: !!absence.return_to_work_completed,
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put(`/staff-absence/${absence.id}`, {
+        absenceStart: form.start_date || undefined,
+        absenceEnd: form.end_date || undefined,
+        absenceType: ABSENCE_TYPE_MAP[form.absence_type] || 'other',
+        reason: form.reason || undefined,
+        notes: form.notes || undefined,
+        returnToWorkCompleted: form.return_completed,
+        returnToWorkDate: form.end_date || undefined,
+      });
+      toast.success('Absence updated');
+      onSaved();
+    } catch { toast.error('Failed to update — you may not have permission to amend this record'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} onClick={e => e.stopPropagation()}
+        className="w-full max-w-lg rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-medium">Amend absence — {absence.staff_name}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Absence Type</label>
+            <select value={form.absence_type} onChange={e => set('absence_type', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              {ABSENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Reason</label>
+            <select value={form.reason} onChange={e => set('reason', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Start Date</label>
+            <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">End Date (leave blank if ongoing)</label>
+            <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs text-gray-400 mb-1 block">Notes</label>
+            <input value={form.notes} onChange={e => set('notes', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          </div>
+          <div className="md:col-span-2 flex items-center gap-2">
+            <input type="checkbox" id="rtw" checked={form.return_completed} onChange={e => set('return_completed', e.target.checked)} />
+            <label htmlFor="rtw" className="text-xs text-gray-400">Return-to-work interview completed</label>
+          </div>
+        </div>
+        <div className="flex gap-3 pt-1">
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60" style={{ background: '#e8b130' }}>
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
