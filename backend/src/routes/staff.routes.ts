@@ -20,7 +20,7 @@ function nd(v: any): string | null { return v && String(v).trim() ? String(v).tr
 // contracted-hours values scale linearly off the 37.5h/210h ratio. If the staff
 // member's start date falls after the leave-year start (assumed Jan 1), their
 // entitlement is prorated by the fraction of the leave year actually worked.
-function computeProratedLeave(contractedHours: any, startDate: string | null): { total: number } {
+export function computeProratedLeave(contractedHours: any, startDate: string | null): { total: number } {
   const hours = parseFloat(contractedHours);
   let baseAnnual: number;
   if (!hours || isNaN(hours)) {
@@ -36,6 +36,13 @@ function computeProratedLeave(contractedHours: any, startDate: string | null): {
   if (!startDate) return { total: Math.round(baseAnnual * 100) / 100 };
 
   const start = new Date(startDate);
+  const currentYear = new Date().getFullYear();
+
+  // Proration only applies in the staff member's actual hire year — a mid-year
+  // start means a reduced entitlement for that leave year only. Every subsequent
+  // year (start.getFullYear() < currentYear) gets the full entitlement.
+  if (start.getFullYear() !== currentYear) return { total: Math.round(baseAnnual * 100) / 100 };
+
   const yearEnd = new Date(start.getFullYear(), 11, 31);
   const yearStart = new Date(start.getFullYear(), 0, 1);
   if (start <= yearStart) return { total: Math.round(baseAnnual * 100) / 100 };
@@ -282,15 +289,16 @@ router.post(
       const passwordHash = await authService.hashPassword(rawPassword);
 
       const { total: proratedLeaveHours } = computeProratedLeave(contractedHours, nd(startDate));
+      const currentLeaveYear = new Date().getFullYear();
 
       const rows = await query(
         `INSERT INTO staff (organisation_id, home_id, email, password_hash,
                            first_name, last_name, role, phone, start_date, ni_number,
                            date_of_birth, gender, nationality, marital_status,
                            address1, postcode, emergency_name, emergency_phone, emergency_notes,
-                           contracted_hours, leave_hours_total, leave_hours_remaining,
+                           contracted_hours, leave_hours_total, leave_hours_remaining, leave_year,
                            status, is_active)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$21,'active',true)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$21,$22,'active',true)
          RETURNING id, email, first_name, last_name, role`,
         [orgId, homeId || defaultHomeId, email, passwordHash,
          firstName, lastName, role || 'care_staff', phone || null,
@@ -298,7 +306,7 @@ router.post(
          nd(dateOfBirth), gender || null, nationality || null, maritalStatus || null,
          address1 || null, postcode || null,
          emergencyName || null, emergencyPhone || null, emergencyNotes || null,
-         contractedHours || null, proratedLeaveHours]
+         contractedHours || null, proratedLeaveHours, currentLeaveYear]
       );
 
       const newStaff = rows[0] as { id: string; first_name: string; last_name: string; home_id: string };
@@ -350,19 +358,33 @@ router.put(
       const newRole = (canManage && !isSelf) ? (newRoleInput || null) : null;
 
       // Recompute prorated annual leave entitlement if contracted hours or start
-      // date changed — preserve however much leave has already been used so far.
+      // date changed. If the staff row hasn't been touched since a prior leave
+      // year (leave_year is null or not the current year), this is a year
+      // rollover — full reset to the new entitlement, no carry-over. Otherwise,
+      // preserve however much leave has already been used this year and just
+      // adjust the total/remaining by the delta.
       if (canManage && (contractedHours !== undefined || startDate !== undefined)) {
-        const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining FROM staff WHERE id = $1', [targetId]);
+        const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
         const cur = existing[0] || {};
         const effContractedHours = contractedHours !== undefined ? contractedHours : cur.contracted_hours;
         const effStartDate = startDate !== undefined ? nd(startDate) : cur.start_date;
         const { total: newTotal } = computeProratedLeave(effContractedHours, effStartDate);
-        const oldTotal = parseFloat(cur.leave_hours_total || 0);
-        const oldRemaining = parseFloat(cur.leave_hours_remaining ?? cur.leave_hours_total ?? 0);
-        const newRemaining = Math.max(0, oldRemaining + (newTotal - oldTotal));
+        const currentLeaveYear = new Date().getFullYear();
+        const curLeaveYear = cur.leave_year === null || cur.leave_year === undefined ? null : Number(cur.leave_year);
+        const isRollover = curLeaveYear === null || curLeaveYear !== currentLeaveYear;
+
+        let newRemaining: number;
+        if (isRollover) {
+          newRemaining = newTotal;
+        } else {
+          const oldTotal = parseFloat(cur.leave_hours_total || 0);
+          const oldRemaining = parseFloat(cur.leave_hours_remaining ?? cur.leave_hours_total ?? 0);
+          newRemaining = Math.max(0, oldRemaining + (newTotal - oldTotal));
+        }
+
         await query(
-          'UPDATE staff SET contracted_hours = $1, start_date = COALESCE($2, start_date), leave_hours_total = $3, leave_hours_remaining = $4 WHERE id = $5',
-          [effContractedHours || null, nd(startDate), newTotal, newRemaining, targetId]
+          'UPDATE staff SET contracted_hours = $1, start_date = COALESCE($2, start_date), leave_hours_total = $3, leave_hours_remaining = $4, leave_year = $5 WHERE id = $6',
+          [effContractedHours || null, nd(startDate), newTotal, newRemaining, currentLeaveYear, targetId]
         );
       }
 

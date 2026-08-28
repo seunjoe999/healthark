@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react'
 import api from '../../api'
-import { homesApi } from '../../api'
+import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
@@ -182,10 +182,10 @@ export default function Audits() {
     finally { setLoading(false) }
   }
 
-  const startAudit = async (auditType: string, customName: string, reviewFrequency: string) => {
+  const startAudit = async (auditType: string, customName: string, reviewFrequency: string, suId: string | null) => {
     setGenerating(true)
     try {
-      const res = await api.post('/audits/generate', { homeId: selectedHome, auditType, customName, reviewFrequency })
+      const res = await api.post('/audits/generate', { homeId: selectedHome, auditType, customName, reviewFrequency, suId })
       const auditId = res.data.data.id
       toast.success('Audit started — generating report...')
       setGenerateOpen(false)
@@ -300,6 +300,7 @@ export default function Audits() {
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{lastAssessed}</td>
                         <td className="px-4 py-3">
                           <span className="font-semibold text-slate-800">{audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}</span>
+                          <span className="ml-2 text-xs text-slate-400">({audit.su_name || 'General'})</span>
                           {audit.status === 'generating' && <span className="ml-2 text-xs text-purple-500">generating…</span>}
                         </td>
                         <td className="px-4 py-3 text-slate-600">{score !== null ? `${score}%` : '—'}</td>
@@ -365,7 +366,7 @@ export default function Audits() {
         </Modal>
       )}
 
-      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} templates={templates} onTemplateCreated={loadTemplates} />
+      <StartAuditModal open={generateOpen} onClose={() => setGenerateOpen(false)} onGenerate={startAudit} loading={generating} templates={templates} onTemplateCreated={loadTemplates} homeId={selectedHome} />
 
       {actionAudit && actionPlanOpen && (
         <ActionPlanModal
@@ -432,7 +433,7 @@ function AuditReport({ audit, templates, homeName, homeAddress, canDelete, onDel
               <h1 className="font-display text-2xl text-slate-900 font-bold leading-tight">
                 {audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}
               </h1>
-              <p className="text-slate-400 text-sm mt-0.5">Internal Compliance Audit Report</p>
+              <p className="text-slate-400 text-sm mt-0.5">Internal Compliance Audit Report &middot; {audit.su_name || 'General'}</p>
             </div>
             {canDelete && (
               <button onClick={() => onDelete(audit.id)}
@@ -1370,15 +1371,24 @@ function AIComplianceFixModal({ audit, onClose, onGenerateNew }: { audit: any; o
   )
 }
 
-function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemplateCreated }: {
-  open: boolean; onClose: () => void; onGenerate: (type: string, name: string, reviewFrequency: string) => void; loading: boolean
-  templates: any[]; onTemplateCreated: () => void
+function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemplateCreated, homeId }: {
+  open: boolean; onClose: () => void; onGenerate: (type: string, name: string, reviewFrequency: string, suId: string | null) => void; loading: boolean
+  templates: any[]; onTemplateCreated: () => void; homeId?: string
 }) {
   const [auditType, setAuditType] = useState('care_plan')
   const [customName, setCustomName] = useState('')
   const [reviewFrequency, setReviewFrequency] = useState('every_4_weeks')
   const [category, setCategory] = useState<'service_user' | 'custom'>('service_user')
   const [builderOpen, setBuilderOpen] = useState(false)
+  const [subjectType, setSubjectType] = useState<'service_user' | 'other'>('other')
+  const [suId, setSuId] = useState('')
+  const [residents, setResidents] = useState<any[]>([])
+
+  useEffect(() => {
+    if (open && homeId) {
+      suApi.list(homeId, { status: 'live' }).then(res => setResidents(res.data.data || [])).catch(() => {})
+    }
+  }, [open, homeId])
 
   const grouped = category === 'custom'
     ? templates.filter(t => t.suggestedKey.startsWith('custom_'))
@@ -1438,6 +1448,29 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
           </div>
         )}
         <div>
+          <label className="label">Who is this audit for?</label>
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit mb-2">
+            <button type="button" onClick={() => setSubjectType('service_user')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+              Service User
+            </button>
+            <button type="button" onClick={() => { setSubjectType('other'); setSuId('') }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'other' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+              Other (General)
+            </button>
+          </div>
+          {subjectType === 'service_user' && (
+            <select className="input" value={suId} onChange={e => setSuId(e.target.value)}>
+              <option value="">Select resident...</option>
+              {residents.map(su => (
+                <option key={su.id} value={su.id}>
+                  {`${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div>
           <label className="label">Review frequency</label>
           <select className="input" value={reviewFrequency} onChange={e => setReviewFrequency(e.target.value)}>
             {REVIEW_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
@@ -1445,7 +1478,8 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
         </div>
         <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button loading={loading} icon={<Activity className="w-4 h-4" />} onClick={() => onGenerate(auditType, customName, reviewFrequency)}>
+          <Button loading={loading} icon={<Activity className="w-4 h-4" />}
+            onClick={() => onGenerate(auditType, customName, reviewFrequency, subjectType === 'service_user' && suId ? suId : null)}>
             Start Audit
           </Button>
         </div>

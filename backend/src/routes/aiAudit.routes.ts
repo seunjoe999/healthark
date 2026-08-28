@@ -90,8 +90,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const rows = await query(
-      `SELECT ar.*, s.first_name || ' ' || s.last_name as generated_by_name
-       FROM audit_reports ar LEFT JOIN staff s ON s.id = ar.generated_by
+      `SELECT ar.*, s.first_name || ' ' || s.last_name as generated_by_name,
+              su.first_name || ' ' || su.last_name as su_name
+       FROM audit_reports ar
+       LEFT JOIN staff s ON s.id = ar.generated_by
+       LEFT JOIN service_users su ON su.id = ar.su_id
        WHERE ar.home_id = $1 ORDER BY ar.generated_at DESC LIMIT 50`,
       [homeId]
     );
@@ -168,27 +171,28 @@ router.delete('/custom-templates/:id', requireRole('group_admin', 'home_manager'
 // POST /api/audits/generate — trigger AI audit
 router.post('/generate',
   requireRole('home_manager', 'group_admin'),
-  [body('auditType').notEmpty(), body('homeId').optional({ checkFalsy: true }).isUUID()],
+  [body('auditType').notEmpty(), body('homeId').optional({ checkFalsy: true }).isUUID(), body('suId').optional({ checkFalsy: true }).isUUID()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { auditType, customName, periodFrom, periodTo, reviewFrequency } = req.body;
+      const suId = req.body.suId || null;
 
       const from = periodFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const to = periodTo || new Date().toISOString().split('T')[0];
 
       // Create pending audit record
       const auditRows = await query(
-        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, review_frequency)
-         VALUES ($1,$2,$3,$4,$5,$6,'generating',$7) RETURNING *`,
-        [homeId, auditType, customName || null, from, to, staffId, reviewFrequency || 'every_4_weeks']
+        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, review_frequency, su_id)
+         VALUES ($1,$2,$3,$4,$5,$6,'generating',$7,$8) RETURNING *`,
+        [homeId, auditType, customName || null, from, to, staffId, reviewFrequency || 'every_4_weeks', suId]
       );
       const auditId = (auditRows[0] as any).id;
 
       // Run AI analysis asynchronously
-      generateAuditReport(auditId, homeId, auditType, from, to).catch(console.error);
+      generateAuditReport(auditId, homeId, auditType, from, to, suId).catch(console.error);
 
       res.status(202).json({ success: true, data: { id: auditId, status: 'generating', message: 'Audit generation started. Check back in a moment.' } } as ApiResponse);
     } catch (err) { next(err); }
@@ -199,7 +203,13 @@ router.post('/generate',
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const rows = await query('SELECT * FROM audit_reports WHERE id = $1', [req.params.id]);
+      const rows = await query(
+        `SELECT ar.*, su.first_name || ' ' || su.last_name as su_name
+         FROM audit_reports ar
+         LEFT JOIN service_users su ON su.id = ar.su_id
+         WHERE ar.id = $1`,
+        [req.params.id]
+      );
       if (!rows.length) throw new AppError('Audit not found', 404);
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -326,24 +336,30 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').is
   }
 );
 
-async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string) {
+async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string, suId?: string | null) {
   try {
     // ── Gather live data ──────────────────────────────────────────────────────
     let carePlans: any[] = [], incidents: any[] = [], dailyRecords: any[] = []
     let fluidData: any[] = [], staffTraining: any[] = [], marRecords: any[] = [], missingRecords: any[] = []
     let safeguardingRows: any[] = [], medicationStock: any[] = []
 
+    const suFilter = suId ? ' AND su.id = $4' : ''
+    const suParams = suId ? [homeId, from, to, suId] : [homeId, from, to]
+    const missingRecordsFilter = suId ? ' AND su.id = $2' : ''
+    const missingRecordsParams = suId ? [homeId, suId] : [homeId]
+
     await Promise.allSettled([
       query(`SELECT cp.plan_type, cp.last_review_date, cp.next_review_date, cp.is_active,
                     su.first_name || ' ' || su.last_name as su_name
              FROM care_plans cp JOIN service_users su ON su.id = cp.su_id
-             WHERE cp.home_id = $1 AND cp.is_active = true`, [homeId]).then(r => { carePlans = r }),
+             WHERE cp.home_id = $1 AND cp.is_active = true${suId ? ' AND su.id = $2' : ''}`,
+             suId ? [homeId, suId] : [homeId]).then(r => { carePlans = r }),
       query(`SELECT ri.incident_type, ri.manager_reviewed, dr.record_date,
                     su.first_name || ' ' || su.last_name as su_name
-             FROM records_incidents ri 
+             FROM records_incidents ri
              JOIN daily_records dr ON dr.id = ri.daily_record_id
              JOIN service_users su ON su.id = dr.su_id
-             WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { incidents = r }),
+             WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3${suFilter}`, suParams).then(r => { incidents = r }),
       query(`SELECT record_type, COUNT(*) as count FROM daily_records
              WHERE home_id = $1 AND record_date BETWEEN $2 AND $3
              GROUP BY record_type ORDER BY count DESC`, [homeId, from, to]).then(r => { dailyRecords = r }),
@@ -351,9 +367,9 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
                     SUM(COALESCE(dr.amount_ml,0)) as total_ml, dr.record_date
              FROM daily_records dr JOIN service_users su ON su.id = dr.su_id
              WHERE dr.home_id = $1 AND dr.record_type = 'fluid_intake'
-             AND dr.record_date BETWEEN $2 AND $3
+             AND dr.record_date BETWEEN $2 AND $3${suFilter}
              GROUP BY su.id, su.first_name, su.last_name, su.min_fluid_ml, dr.record_date
-             HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, [homeId, from, to]).then(r => { fluidData = r }),
+             HAVING SUM(COALESCE(dr.amount_ml,0)) < COALESCE(su.min_fluid_ml,1500)`, suParams).then(r => { fluidData = r }),
       query(`SELECT s.first_name || ' ' || s.last_name as staff_name, st.course_name, st.expiry_date
              FROM staff_training st JOIN staff s ON s.id = st.staff_id
              WHERE s.home_id = $1 AND st.expiry_date IS NOT NULL
@@ -363,17 +379,18 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
                     COUNT(CASE WHEN refused = true THEN 1 END) as refused
              FROM mar_records WHERE home_id = $1 AND record_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { marRecords = r }),
       query(`SELECT su.first_name || ' ' || su.last_name as su_name
-             FROM service_users su WHERE su.home_id = $1 AND su.status = 'live'
-             AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`, [homeId]).then(r => { missingRecords = r }),
+             FROM service_users su WHERE su.home_id = $1 AND su.status = 'live'${missingRecordsFilter}
+             AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.su_id = su.id AND dr.record_date = CURRENT_DATE)`,
+             missingRecordsParams).then(r => { missingRecords = r }),
       query(`SELECT sc.overview, sc.incident_date, sc.manager_ack,
                     su.first_name || ' ' || su.last_name as su_name
              FROM safeguarding_concerns sc JOIN service_users su ON su.id = sc.su_id
-             WHERE sc.home_id = $1 AND sc.incident_date BETWEEN $2 AND $3`, [homeId, from, to]).then(r => { safeguardingRows = r }),
+             WHERE sc.home_id = $1 AND sc.incident_date BETWEEN $2 AND $3${suFilter}`, suParams).then(r => { safeguardingRows = r }),
       query(`SELECT ms.medication_name, ms.current_stock, ms.unit, ms.reorder_level,
                     su.first_name || ' ' || su.last_name as su_name
              FROM medication_stock ms JOIN service_users su ON su.id = ms.su_id
-             WHERE ms.home_id = $1 ORDER BY (ms.current_stock <= ms.reorder_level) DESC, ms.current_stock ASC`,
-             [homeId]).then(r => { medicationStock = r }),
+             WHERE ms.home_id = $1${suId ? ' AND su.id = $2' : ''} ORDER BY (ms.current_stock <= ms.reorder_level) DESC, ms.current_stock ASC`,
+             suId ? [homeId, suId] : [homeId]).then(r => { medicationStock = r }),
     ])
 
     // ── Derived metrics ───────────────────────────────────────────────────────

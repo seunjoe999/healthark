@@ -17,7 +17,7 @@ import { startScheduler } from './services/scheduler';
 // Routes
 import authRoutes from './routes/auth.routes';
 import homesRoutes from './routes/homes.routes';
-import staffRoutes from './routes/staff.routes';
+import staffRoutes, { computeProratedLeave } from './routes/staff.routes';
 import alertsRoutes from './routes/alerts.routes';
 import serviceUserRoutes from './routes/serviceUsers.routes';
 import dailyRecordRoutes from './routes/dailyRecords.routes';
@@ -1849,6 +1849,7 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS contracted_hours NUMERIC(5,2)`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_year INTEGER`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,
@@ -1862,6 +1863,7 @@ async function ensureColumns() {
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS action_plan_completed_date DATE`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS signature_url TEXT`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS conducted_by_name VARCHAR(255)`,
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS su_id UUID REFERENCES service_users(id) ON DELETE SET NULL`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS task_reminder_minutes INTEGER NOT NULL DEFAULT 60`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_notes TEXT`,
@@ -2690,6 +2692,40 @@ async function ensureColumns() {
     });
   }
   logger.info('Schema verified');
+
+  // ── Annual leave: recompute every staff member's prorated entitlement from
+  //    their actual contracted_hours/start_date, and apply the automatic
+  //    calendar-year rollover reset (leave year = 1 Jan – 31 Dec; no carry-over).
+  //    Runs on every boot so it's self-correcting and applies the reset the
+  //    first time the backend starts after 1 January each year.
+  try {
+    const currentYear = new Date().getFullYear();
+    const staffResult = await pool.query(
+      `SELECT id, contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff`
+    );
+    for (const row of staffResult.rows) {
+      const { total: newTotal } = computeProratedLeave(row.contracted_hours, row.start_date || null);
+      const rowLeaveYear = row.leave_year === null || row.leave_year === undefined ? null : Number(row.leave_year);
+      const isRollover = rowLeaveYear === null || rowLeaveYear !== currentYear;
+      if (isRollover) {
+        // New leave year (or first run) — full reset, no carry-over from the prior year.
+        await pool.query(
+          `UPDATE staff SET leave_hours_total = $1, leave_hours_remaining = $1, leave_year = $2 WHERE id = $3`,
+          [newTotal, currentYear, row.id]
+        );
+      } else if (Number(row.leave_hours_total) !== newTotal) {
+        // Still within the same leave year — contracted_hours/start_date changed since
+        // last recompute, so adjust remaining by the delta (preserves leave already taken).
+        await pool.query(
+          `UPDATE staff SET leave_hours_total = $1, leave_hours_remaining = GREATEST(0, leave_hours_remaining + ($1 - leave_hours_total)) WHERE id = $2`,
+          [newTotal, row.id]
+        );
+      }
+    }
+    logger.info('Annual leave entitlements recomputed');
+  } catch (err: any) {
+    logger.warn('Annual leave recompute error: ' + err?.message);
+  }
 }
 
 
