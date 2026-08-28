@@ -2986,7 +2986,7 @@ async function bootstrap() {
       `UPDATE staff SET password_hash = $1, refresh_token = NULL WHERE email = 'admin@compcarehub.co.uk' RETURNING id`,
       ['$2a$12$gRmohTZzIz93aTChlJNGkePz39rLKQsoDUMCGvCUu8otDFDngeDCu']
     );
-    logger.info(`Emergency password reset: ${r.length ? 'applied to ' + r[0].id : 'no matching account found'}`);
+    logger.info(`Emergency password reset: ${r.rows.length ? 'applied to ' + r.rows[0].id : 'no matching account found'}`);
   } catch (err: any) { logger.warn('Emergency password reset error: ' + err?.message); }
 
   app.listen(PORT, () => {
