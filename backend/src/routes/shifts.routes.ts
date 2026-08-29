@@ -148,7 +148,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     sql += ' ORDER BY sh.shift_date, sh.start_time';
 
     const rows = await query<any>(sql, params);
-    const role = fromToken(req, 'role');
     res.json({ success: true, data: rows.map((r: any) => stripFinancials(r, role)) } as ApiResponse);
   } catch (err) { next(err); }
 });
