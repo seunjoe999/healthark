@@ -2685,6 +2685,22 @@ async function ensureColumns() {
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS supplier VARCHAR(255)`,
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS last_counted_by UUID REFERENCES staff(id)`,
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS last_counted_at TIMESTAMPTZ`,
+    // ── staff_shifts — RoundSys-style rota rebuild: explicit status, financial
+    //    fields (funder/wage/charge rates, gated to privileged roles), and
+    //    shadow/double-up shift linkage ─────────────────────────────────────
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'unfilled'`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS funder_name TEXT`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS funder_cost_notes TEXT`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS wage_rate NUMERIC(10,2)`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS charge_rate NUMERIC(10,2)`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS charge_bank_holiday_rate NUMERIC(10,2)`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS time_critical BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS shift_run TEXT`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS total_staff_required INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS parent_shift_id UUID REFERENCES staff_shifts(id) ON DELETE SET NULL`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS shift_relation VARCHAR(20)`,
+    // Backfill status from existing staff_id / is_standby data so pre-existing rows aren't stuck as 'unfilled'
+    `UPDATE staff_shifts SET status = 'filled' WHERE staff_id IS NOT NULL AND status = 'unfilled'`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

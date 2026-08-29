@@ -16,6 +16,25 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
+// Roles allowed to see/set wage & charge rates and funder billing details — these
+// are financial fields and must stay hidden from ordinary care staff.
+const FINANCIAL_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
+const FINANCIAL_FIELDS = ['funder_name', 'funder_cost_notes', 'wage_rate', 'charge_rate', 'charge_bank_holiday_rate'];
+
+function isFinancialRole(role: string): boolean {
+  return role === 'super_admin' || FINANCIAL_ROLES.includes(role);
+}
+
+function stripFinancials<T extends Record<string, any>>(row: T, role: string): T {
+  if (isFinancialRole(role)) return row;
+  const clone: any = { ...row };
+  for (const f of FINANCIAL_FIELDS) delete clone[f];
+  return clone;
+}
+
+const SHIFT_STATUSES = ['unfilled', 'filled', 'cancelled', 'on_hold', 'completed'];
+const SHIFT_RELATIONS = ['shadow', 'double_up'];
+
 async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Promise<number> {
   const startDate = new Date(tmpl.start_date + 'T00:00:00Z');
   const endDate = new Date(startDate);
@@ -49,13 +68,22 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
         if (!exists.length) {
           try {
             await query(
-              `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, break_minutes, template_id, notes_for_carers, notes_for_managers, is_standby)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+              `INSERT INTO staff_shifts (
+                 home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, break_minutes, template_id,
+                 notes_for_carers, notes_for_managers, is_standby, status, total_staff_required,
+                 funder_name, funder_cost_notes, wage_rate, charge_rate, charge_bank_holiday_rate,
+                 time_critical, shift_run
+               )
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
               [homeId, tmpl.staff_id || null, tmpl.su_id || null, dateStr,
                tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
                tmpl.break_minutes || 0, tmpl.id,
                tmpl.notes_for_carers || null, tmpl.notes_for_managers || null,
-               tmpl.is_standby || false]
+               tmpl.is_standby || false,
+               tmpl.staff_id ? 'filled' : 'unfilled', tmpl.staff_count || 1,
+               tmpl.funder_name || null, tmpl.funder_cost_notes || null,
+               tmpl.wage_rate || null, tmpl.charge_rate || null, tmpl.charge_bank_holiday_rate || null,
+               tmpl.time_critical || false, tmpl.shift_run || null]
             );
             generated++;
           } catch {}
@@ -119,8 +147,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     }
     sql += ' ORDER BY sh.shift_date, sh.start_time';
 
-    const rows = await query(sql, params);
-    res.json({ success: true, data: rows } as ApiResponse);
+    const rows = await query<any>(sql, params);
+    const role = fromToken(req, 'role');
+    res.json({ success: true, data: rows.map((r: any) => stripFinancials(r, role)) } as ApiResponse);
   } catch (err) { next(err); }
 });
 
@@ -130,18 +159,28 @@ router.post('/', [body('staffId').isUUID(), body('shiftDate').isDate(), body('st
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const createdBy = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
       const { staffId, suId, shiftDate, startTime, endTime, shiftType, notes } = req.body;
+      const financial = isFinancialRole(role) ? req.body : {};
       const rows = await query(
-        `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, notes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [homeId, staffId, suId || null, shiftDate, startTime, endTime, shiftType || 'regular', notes || null, createdBy]
+        `INSERT INTO staff_shifts (
+           home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, notes, created_by,
+           status, funder_name, funder_cost_notes, wage_rate, charge_rate, charge_bank_holiday_rate,
+           time_critical, shift_run, total_staff_required
+         )
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+        [homeId, staffId, suId || null, shiftDate, startTime, endTime, shiftType || 'regular', notes || null, createdBy,
+         staffId ? 'filled' : 'unfilled',
+         financial.funderName || null, financial.funderCostNotes || null,
+         financial.wageRate || null, financial.chargeRate || null, financial.chargeBankHolidayRate || null,
+         !!req.body.timeCritical, req.body.shiftRun || null, parseInt(req.body.totalStaffRequired) || 1]
       );
       await query(
         `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
          VALUES ($1,$2,$3,$4,'shift','/rota')`,
         [staffId, homeId, 'New shift assigned', `You have been assigned a shift on ${shiftDate} from ${startTime} to ${endTime}`]
       );
-      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+      res.status(201).json({ success: true, data: stripFinancials(rows[0] as any, role) } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
@@ -361,12 +400,18 @@ router.post('/service-shift', async (req: Request, res: Response, next: NextFunc
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const createdBy = fromToken(req, 'staffId');
+    const role = fromToken(req, 'role');
     const {
       suId, startDate, isOngoing, endDate, recurrence, daysOfWeek,
       startTime, endTime, shiftType, totalStaffRequired, staffIds,
       notesForCarers, notesForManagers, isStandby, standbyWorkDetails,
       breakMins, weeks: weeksParam,
+      funderName, funderCostNotes, wageRate, chargeRate, chargeBankHolidayRate,
+      timeCritical, shiftRun,
     } = req.body;
+    const financial = isFinancialRole(role)
+      ? { funderName, funderCostNotes, wageRate, chargeRate, chargeBankHolidayRate }
+      : {} as any;
 
     if (!startTime || !endTime) return res.status(400).json({ success: false, error: 'startTime and endTime required' } as any);
 
@@ -390,7 +435,13 @@ router.post('/service-shift', async (req: Request, res: Response, next: NextFunc
          totalStaffRequired || 1, isOngoing || false,
          notesForCarers || null, notesForManagers || null, createdBy]
       );
-      const tmpl = { ...rows[0], is_standby: isStandby || false, standby_work_details: standbyWorkDetails || null };
+      const tmpl = {
+        ...rows[0], is_standby: isStandby || false, standby_work_details: standbyWorkDetails || null,
+        funder_name: financial.funderName || null, funder_cost_notes: financial.funderCostNotes || null,
+        wage_rate: financial.wageRate || null, charge_rate: financial.chargeRate || null,
+        charge_bank_holiday_rate: financial.chargeBankHolidayRate || null,
+        time_critical: !!timeCritical, shift_run: shiftRun || null,
+      };
       templates.push(tmpl);
       const gen = await generateFromTemplate(tmpl, homeId, WEEKS);
       totalGenerated += gen;
@@ -443,6 +494,112 @@ router.delete('/templates/:id', async (req: Request, res: Response, next: NextFu
     res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// PUT /api/shifts/:id — general shift edit (staff assignment, times, size, financial fields, etc.)
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const existing = await query<any>('SELECT * FROM staff_shifts WHERE id = $1', [req.params.id]);
+      if (!existing[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
+
+      const {
+        staffId, suId, shiftDate, startTime, endTime, shiftType, totalStaffRequired,
+        notesForCarers, notesForManagers, status,
+        funderName, funderCostNotes, wageRate, chargeRate, chargeBankHolidayRate,
+        timeCritical, shiftRun,
+      } = req.body;
+
+      const fields: string[] = [];
+      const values: unknown[] = [];
+      const set = (col: string, val: unknown) => { fields.push(`${col} = $${fields.length + 1}`); values.push(val); };
+
+      if (staffId !== undefined) {
+        set('staff_id', staffId || null);
+        // Auto-flip status when staff is (un)assigned, unless caller explicitly set a status this call.
+        if (status === undefined) set('status', staffId ? 'filled' : 'unfilled');
+      }
+      if (suId !== undefined) set('su_id', suId || null);
+      if (shiftDate !== undefined) set('shift_date', shiftDate);
+      if (startTime !== undefined) set('start_time', startTime);
+      if (endTime !== undefined) set('end_time', endTime);
+      if (shiftType !== undefined) set('shift_type', shiftType);
+      if (totalStaffRequired !== undefined) set('total_staff_required', parseInt(totalStaffRequired) || 1);
+      if (notesForCarers !== undefined) set('notes_for_carers', notesForCarers || null);
+      if (notesForManagers !== undefined) set('notes_for_managers', notesForManagers || null);
+      if (status !== undefined) {
+        if (!SHIFT_STATUSES.includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' } as ApiResponse);
+        set('status', status);
+      }
+      if (timeCritical !== undefined) set('time_critical', !!timeCritical);
+      if (shiftRun !== undefined) set('shift_run', shiftRun || null);
+
+      if (isFinancialRole(role)) {
+        if (funderName !== undefined) set('funder_name', funderName || null);
+        if (funderCostNotes !== undefined) set('funder_cost_notes', funderCostNotes || null);
+        if (wageRate !== undefined) set('wage_rate', wageRate || null);
+        if (chargeRate !== undefined) set('charge_rate', chargeRate || null);
+        if (chargeBankHolidayRate !== undefined) set('charge_bank_holiday_rate', chargeBankHolidayRate || null);
+      }
+
+      if (fields.length === 0) return res.json({ success: true, data: stripFinancials(existing[0], role) } as ApiResponse);
+
+      values.push(req.params.id);
+      const rows = await query<any>(
+        `UPDATE staff_shifts SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`,
+        values
+      );
+      res.json({ success: true, data: stripFinancials(rows[0], role) } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/shifts/:id/status — quick status change (Filled / Cancelled / On Hold / Completed)
+router.put('/:id/status', param('id').isUUID(), body('status').isIn(SHIFT_STATUSES), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const rows = await query<any>(
+        `UPDATE staff_shifts SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+        [req.body.status, req.params.id]
+      );
+      if (!rows[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
+      res.json({ success: true, data: stripFinancials(rows[0], role) } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/shifts/:id/link — create a shadow or double-up shift linked to an existing shift.
+// Copies the parent's date / service user / times by default; caller may override staffId/notes.
+router.post('/:id/link', param('id').isUUID(), body('relation').isIn(SHIFT_RELATIONS), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const createdBy = fromToken(req, 'staffId');
+      const parentRows = await query<any>('SELECT * FROM staff_shifts WHERE id = $1', [req.params.id]);
+      const parent = parentRows[0];
+      if (!parent) return res.status(404).json({ success: false, error: 'Parent shift not found' } as ApiResponse);
+
+      const { relation, staffId, startTime, endTime, notesForCarers } = req.body;
+
+      const rows = await query<any>(
+        `INSERT INTO staff_shifts (
+           home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type,
+           notes_for_carers, notes_for_managers, is_standby, status, total_staff_required,
+           parent_shift_id, shift_relation, created_by
+         )
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+        [parent.home_id, staffId || null, parent.su_id, parent.shift_date,
+         startTime || parent.start_time, endTime || parent.end_time, parent.shift_type,
+         notesForCarers !== undefined ? (notesForCarers || null) : parent.notes_for_carers,
+         parent.notes_for_managers, parent.is_standby,
+         staffId ? 'filled' : 'unfilled', 1,
+         parent.id, relation, createdBy]
+      );
+      res.status(201).json({ success: true, data: stripFinancials(rows[0], role) } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // DELETE /api/shifts/:id
 router.delete('/:id', param('id').isUUID(), validateRequest,

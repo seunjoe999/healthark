@@ -48,6 +48,27 @@ const SHIFT_COLORS: Record<string, { bg: string; border: string; text: string }>
 }
 const UNFILLED_COLORS = { bg: '#f8fafc', border: '#cbd5e1', text: '#64748b' }
 
+// Shift STATUS drives the block colour on the rota grid (RoundSys-style), independent
+// of shift_type. Large, solid pastel blocks — colour is the primary at-a-glance signal.
+const SHIFT_STATUSES = [
+  { value: 'unfilled',  label: 'Unfilled' },
+  { value: 'filled',    label: 'Filled' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'on_hold',   label: 'On Hold / Hospital' },
+  { value: 'completed', label: 'Complete' },
+]
+const STATUS_COLORS: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+  unfilled:  { bg: '#f1f5f9', border: '#cbd5e1', text: '#475569', dot: '#94a3b8' },
+  filled:    { bg: '#d1fae5', border: '#6ee7b7', text: '#065f46', dot: '#34d399' },
+  cancelled: { bg: '#fee2e2', border: '#fca5a5', text: '#991b1b', dot: '#f87171' },
+  on_hold:   { bg: '#fef3c7', border: '#fbbf24', text: '#92400e', dot: '#f59e0b' },
+  completed: { bg: '#dbeafe', border: '#93c5fd', text: '#1e40af', dot: '#60a5fa' },
+}
+const SHIFT_RELATIONS: Record<string, { label: string; bg: string; text: string }> = {
+  shadow:     { label: 'Shadow shift',     bg: '#ede9fe', text: '#5b21b6' },
+  double_up:  { label: 'Double-up shift',  bg: '#fce7f3', text: '#9d174d' },
+}
+
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const DAY_SHORT   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -79,6 +100,9 @@ function getName(p: any) {
 export default function Rota() {
   const { user, isRole } = useAuth()
   const canManage = isRole('home_manager', 'group_admin', 'senior_carer')
+  // Financial fields (wage/charge rates, funder billing) are only for management/admin roles —
+  // must match the backend's FINANCIAL_ROLES gate in shifts.routes.ts.
+  const canSeeFinancials = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
 
   const [view, setView]           = useState<'week' | 'day'>('week')
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }))
@@ -448,41 +472,43 @@ export default function Rota() {
                     </div>
                   ))}
 
-                  {/* Shift blocks */}
+                  {/* Shift blocks — large, solid pastel blocks; colour reflects STATUS */}
                   {dayShifts.map((shift: any) => {
                     const st = shift.start_time?.substring(0, 5) || '08:00'
                     const et = shift.end_time?.substring(0, 5)   || '09:00'
                     const top    = shiftTopPx(st)
                     const height = shiftHeightPx(st, et)
-                    const isUnfilled = !shift.staff_id
-                    const colors = isUnfilled ? UNFILLED_COLORS : (SHIFT_COLORS[shift.shift_type] || SHIFT_COLORS.regular)
+                    const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
+                    const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
+                    const relation = SHIFT_RELATIONS[shift.shift_relation]
 
                     return (
                       <button key={shift.id} onClick={() => setDetailShift(shift)}
-                        className="absolute left-0.5 right-0.5 rounded border text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100"
+                        className="absolute left-1 right-1 rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
                           top: top + 1,
-                          height: Math.max(height - 2, 28),
+                          height: Math.max(height - 2, 32),
                           backgroundColor: colors.bg,
                           borderColor:     colors.border,
-                          borderStyle:     isUnfilled ? 'dashed' : 'solid',
                           color:           colors.text,
                         }}>
-                        <div className="px-1.5 py-1">
-                          {isUnfilled ? (
-                            <p className="text-[11px] font-semibold">Unfilled</p>
-                          ) : (
-                            <p className="text-[11px] font-bold leading-tight truncate">
-                              {ROLE_ABBR[shift.staff_role] || 'ST'}{' '}
-                              {shift.staff_name?.split(' ')[0] || ''}{' '}
-                              {(shift.staff_name?.split(' ')[1] || '')[0] || ''}
-                            </p>
-                          )}
+                        <div className="px-2 py-1.5 h-full flex flex-col">
+                          <p className="text-[12px] font-extrabold leading-tight truncate">
+                            {status === 'unfilled'
+                              ? 'Unfilled'
+                              : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
+                          </p>
                           {height > 40 && shift.su_name && (
-                            <p className="text-[10px] leading-tight truncate opacity-70">{shift.su_name}</p>
+                            <p className="text-[10.5px] leading-tight truncate font-medium opacity-80">{shift.su_name}</p>
                           )}
                           {height > 54 && (
-                            <p className="text-[10px] leading-tight opacity-60">{st}–{et}</p>
+                            <p className="text-[10px] leading-tight opacity-70">{st}–{et}</p>
+                          )}
+                          {relation && height > 68 && (
+                            <span className="mt-auto inline-block w-fit text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: relation.bg, color: relation.text }}>
+                              {relation.label}
+                            </span>
                           )}
                         </div>
                       </button>
@@ -505,18 +531,18 @@ export default function Rota() {
       </div>
 
       {/* ── Legend ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-100 text-[11px] text-slate-400 flex-wrap bg-slate-50 no-print">
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm border border-dashed border-slate-300 bg-slate-50" />Unfilled
-        </span>
-        {Object.entries(SHIFT_COLORS).map(([type, c]) => (
-          <span key={type} className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-sm border flex-shrink-0" style={{ backgroundColor: c.bg, borderColor: c.border }} />
-            {SHIFT_TYPES.find(t => t.value === type)?.label || type}
+      <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-100 text-[11px] text-slate-500 flex-wrap bg-slate-50 no-print">
+        {SHIFT_STATUSES.map(s => (
+          <span key={s.value} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS[s.value].dot }} />
+            {s.label}
           </span>
         ))}
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm border border-rose-200 bg-rose-50" />Leave
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#fb7185' }} />Leave
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#fcd34d' }} />Standby
         </span>
       </div>
 
@@ -528,6 +554,7 @@ export default function Rota() {
           suList={suList}
           staffList={staffList}
           homeId={selectedHome}
+          canSeeFinancials={canSeeFinancials}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
           onSaved={() => { setCreateOpen(false); loadAll(); toast.success('Shift created and staff allocated') }}
         />
@@ -559,9 +586,15 @@ export default function Rota() {
         <ShiftDetailModal
           shift={detailShift}
           canManage={canManage}
+          canSeeFinancials={canSeeFinancials}
           onClose={() => setDetailShift(null)}
           onDelete={() => deleteShift(detailShift.id)}
           onSwap={() => { setSwapShift(detailShift); setDetailShift(null) }}
+          onUpdated={(updated) => {
+            setDetailShift(updated)
+            setShifts(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))
+          }}
+          onLinked={() => { setDetailShift(null); loadAll() }}
           staffList={staffList}
         />
       )}
@@ -610,10 +643,10 @@ export default function Rota() {
 
 // ── Create Shift Modal ────────────────────────────────────────────────────────
 
-function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDate, onSaved }: {
+function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDate, onSaved, canSeeFinancials }: {
   open: boolean; onClose: () => void
   suList: any[]; staffList: any[]; homeId: string
-  defaultDate: string; onSaved: () => void
+  defaultDate: string; onSaved: () => void; canSeeFinancials: boolean
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [form, setForm] = useState({
@@ -623,6 +656,10 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
     shiftType: 'regular', totalStaffRequired: '1',
     breakMins: '30',
     notesForCarers: '', notesForManagers: '',
+    // Wage Rates / billing — only ever shown/submitted for privileged roles (canSeeFinancials)
+    funderName: '', funderCostNotes: '',
+    wageRate: '', chargeRate: '', chargeBankHolidayRate: '',
+    timeCritical: false, shiftRun: '',
   })
   const [selectedStaff, setSelectedStaff] = useState<string[]>([])
   const [staffSearch,   setStaffSearch]   = useState('')
@@ -759,6 +796,41 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
               <input type="number" min="0" max="120" step="5" className="input" value={form.breakMins} onChange={e => set('breakMins', e.target.value)} />
             </div>
           </div>
+
+          {/* Time critical + shift run */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Time Critical?</label>
+              <div className="flex gap-2">
+                {[{ v: true, l: 'Yes' }, { v: false, l: 'No' }].map(o => (
+                  <button key={String(o.v)} type="button" onClick={() => set('timeCritical', o.v)}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${form.timeCritical === o.v ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Input label="Shift Run" value={form.shiftRun} onChange={e => set('shiftRun', e.target.value)} placeholder="e.g. Route A" />
+          </div>
+
+          {/* Wage Rates / billing — financial fields, privileged roles only */}
+          {canSeeFinancials && (
+            <div className="border border-slate-200 rounded-xl p-3 space-y-3">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Wage Rates</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Funder" value={form.funderName} onChange={e => set('funderName', e.target.value)} placeholder="Funder name..." />
+                <Input label="Wage Rate (£/hr)" type="number" step="0.01" min="0" value={form.wageRate} onChange={e => set('wageRate', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Funder Cost Notes</label>
+                <textarea className="input" rows={2} value={form.funderCostNotes} onChange={e => set('funderCostNotes', e.target.value)} placeholder="Notes on funder cost arrangement..." />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Charge (£/hr)" type="number" step="0.01" min="0" value={form.chargeRate} onChange={e => set('chargeRate', e.target.value)} />
+                <Input label="Charge as Bank Holidays (£/hr)" type="number" step="0.01" min="0" value={form.chargeBankHolidayRate} onChange={e => set('chargeBankHolidayRate', e.target.value)} />
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -983,16 +1055,44 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, defaultDate, onS
 
 // ── Shift Detail Modal ────────────────────────────────────────────────────────
 
-function ShiftDetailModal({ shift, canManage, onClose, onDelete, onSwap, staffList }: {
-  shift: any; canManage: boolean; onClose: () => void
-  onDelete: () => void; onSwap: () => void; staffList: any[]
+function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onSwap, onUpdated, onLinked, staffList }: {
+  shift: any; canManage: boolean; canSeeFinancials: boolean; onClose: () => void
+  onDelete: () => void; onSwap: () => void
+  onUpdated: (updated: any) => void; onLinked: () => void
+  staffList: any[]
 }) {
-  const colors = SHIFT_COLORS[shift.shift_type] || SHIFT_COLORS.regular
+  const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
+  const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
+  const [savingStatus, setSavingStatus] = useState(false)
+  const [linking, setLinking] = useState<'shadow' | 'double_up' | null>(null)
+  const [showBlockDetails, setShowBlockDetails] = useState(false)
+
+  const changeStatus = async (newStatus: string) => {
+    if (newStatus === status) return
+    setSavingStatus(true)
+    try {
+      const res = await api.put(`/shifts/${shift.id}/status`, { status: newStatus })
+      onUpdated(res.data.data)
+      toast.success('Shift status updated')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update status') }
+    finally { setSavingStatus(false) }
+  }
+
+  const createLinked = async (relation: 'shadow' | 'double_up') => {
+    setLinking(relation)
+    try {
+      await api.post(`/shifts/${shift.id}/link`, { relation })
+      toast.success(relation === 'shadow' ? 'Shadow shift created' : 'Double-up shift created')
+      onLinked()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to create linked shift') }
+    finally { setLinking(null) }
+  }
+
   return (
     <Modal open={true} onClose={onClose} title="Shift details">
       <div className="space-y-4">
         {/* Color stripe */}
-        <div className="rounded-xl p-3 border" style={{ backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }}>
+        <div className="rounded-xl p-3 border-2" style={{ backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }}>
           <p className="font-bold text-sm">
             {shift.staff_id
               ? `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name || 'Unknown'}`
@@ -1001,8 +1101,32 @@ function ShiftDetailModal({ shift, canManage, onClose, onDelete, onSwap, staffLi
           <p className="text-xs opacity-80 mt-0.5">
             {shift.start_time?.substring(0, 5)}–{shift.end_time?.substring(0, 5)}
             {shift.break_minutes > 0 && ` · ${shift.break_minutes}m break`}
+            {shift.total_staff_required > 1 && ` · Shift Size ${shift.total_staff_required}`}
           </p>
+          {SHIFT_RELATIONS[shift.shift_relation] && (
+            <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/60">
+              {SHIFT_RELATIONS[shift.shift_relation].label}
+            </span>
+          )}
         </div>
+
+        {/* Status changer */}
+        {canManage && (
+          <div>
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1.5">Status</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SHIFT_STATUSES.map(s => (
+                <button key={s.value} disabled={savingStatus} onClick={() => changeStatus(s.value)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50 ${
+                    status === s.value ? 'text-white' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                  }`}
+                  style={status === s.value ? { backgroundColor: STATUS_COLORS[s.value].dot, borderColor: STATUS_COLORS[s.value].dot } : {}}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
@@ -1026,6 +1150,11 @@ function ShiftDetailModal({ shift, canManage, onClose, onDelete, onSwap, staffLi
               <p className="text-xs text-amber-600 font-bold uppercase tracking-wider">Standby shift</p>
             </div>
           )}
+          {shift.time_critical && (
+            <div className="col-span-2">
+              <p className="text-xs text-rose-600 font-bold uppercase tracking-wider">⚠ Time Critical</p>
+            </div>
+          )}
         </div>
 
         {shift.notes_for_carers && (
@@ -1041,12 +1170,41 @@ function ShiftDetailModal({ shift, canManage, onClose, onDelete, onSwap, staffLi
           </div>
         )}
 
-        <div className="flex gap-2 pt-2 border-t border-slate-100">
+        {/* Block details / more info toggle */}
+        <button type="button" onClick={() => setShowBlockDetails(v => !v)}
+          className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+          {showBlockDetails ? 'Hide block details' : 'More info / Block Details'}
+        </button>
+        {showBlockDetails && (
+          <div className="text-xs text-slate-600 bg-slate-50 rounded-lg p-3 border border-slate-100 space-y-1">
+            <p><span className="text-slate-400">Shift ID:</span> {shift.id}</p>
+            {shift.shift_run && <p><span className="text-slate-400">Shift Run:</span> {shift.shift_run}</p>}
+            {canSeeFinancials && shift.funder_name && <p><span className="text-slate-400">Funder:</span> {shift.funder_name}</p>}
+            {canSeeFinancials && shift.wage_rate && <p><span className="text-slate-400">Wage Rate:</span> £{shift.wage_rate}/hr</p>}
+            {canSeeFinancials && shift.charge_rate && <p><span className="text-slate-400">Charge Rate:</span> £{shift.charge_rate}/hr</p>}
+            {canSeeFinancials && shift.charge_bank_holiday_rate && <p><span className="text-slate-400">Bank Holiday Charge:</span> £{shift.charge_bank_holiday_rate}/hr</p>}
+            {canSeeFinancials && shift.funder_cost_notes && <p><span className="text-slate-400">Funder Cost Notes:</span> {shift.funder_cost_notes}</p>}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
           {shift.staff_id && (
             <button onClick={onSwap}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
               <ArrowLeftRight className="w-3.5 h-3.5" /> Request swap
             </button>
+          )}
+          {canManage && !shift.parent_shift_id && (
+            <>
+              <button onClick={() => createLinked('shadow')} disabled={linking !== null}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-violet-600 border border-violet-200 hover:bg-violet-50 transition-colors disabled:opacity-50">
+                {linking === 'shadow' ? 'Creating…' : 'Create shadow shift'}
+              </button>
+              <button onClick={() => createLinked('double_up')} disabled={linking !== null}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-pink-600 border border-pink-200 hover:bg-pink-50 transition-colors disabled:opacity-50">
+                {linking === 'double_up' ? 'Creating…' : 'Create double-up shift'}
+              </button>
+            </>
           )}
           {canManage && (
             <button onClick={onDelete}
