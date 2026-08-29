@@ -26,15 +26,49 @@ const FREQUENCIES = [
 
 const CATEGORIES = [{ value: 'housekeeping', label: 'Housekeeping' }, { value: 'medication', label: 'Medication check' }, { value: 'social_visit', label: 'Social visit' }, { value: 'personal_care', label: 'Personal care' }, { value: 'health_check', label: 'Health check' }, { value: 'general', label: 'General' }, { value: 'maintenance', label: 'Maintenance' }, { value: 'follow_up', label: 'Follow up' }]
 const PRIORITIES = [{ value: 'low', label: 'Low' }, { value: 'normal', label: 'Normal' }, { value: 'high', label: 'High' }, { value: 'urgent', label: 'Urgent' }]
+// "Who should see this" — until a dedicated Teams feature lands, visibility is
+// scoped by role: leave as "All staff" or restrict to one specific role/team.
 const TEAMS = [
-  { value: '', label: 'All' },
-  { value: 'care_staff', label: 'Care Staff' },
-  { value: 'senior_carer', label: 'Senior Carer' },
-  { value: 'team_leader', label: 'Team Leader' },
-  { value: 'deputy_manager', label: 'Deputy Manager' },
-  { value: 'home_manager', label: 'Manager' },
-  { value: 'auditor', label: 'Auditor' },
+  { value: '', label: 'All staff' },
+  { value: 'care_staff', label: 'Care Staff only' },
+  { value: 'senior_carer', label: 'Senior Carer only' },
+  { value: 'team_leader', label: 'Team Leader only' },
+  { value: 'deputy_manager', label: 'Deputy Manager only' },
+  { value: 'home_manager', label: 'Manager only' },
+  { value: 'auditor', label: 'Auditor only' },
 ]
+
+// Roles that may create tasks/templates/follow-ups — management sets tasks up,
+// care staff only view and complete them.
+const TASK_CREATOR_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'senior_carer', 'team_leader']
+
+// "Who should see this" — multi-select of real Teams (from the Teams feature) when
+// teams have been set up for this home; otherwise falls back to "All staff" only.
+function TeamVisibilitySelect({ teams, value, onChange }: { teams: any[]; value: string[]; onChange: (ids: string[]) => void }) {
+  const allSelected = value.length === 0
+  const toggle = (id: string) => {
+    if (value.includes(id)) onChange(value.filter(v => v !== id))
+    else onChange([...value, id])
+  }
+  return (
+    <div>
+      <label className="label">Visible to</label>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onChange([])}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${allSelected ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'}`}>
+          All staff
+        </button>
+        {teams.map(t => (
+          <button type="button" key={t.id} onClick={() => toggle(t.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${value.includes(t.id) ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'}`}>
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {teams.length === 0 && <p className="text-xs text-slate-400 mt-1">No teams set up yet under Settings → Teams — everyone can see this task, or narrow it by role below.</p>}
+    </div>
+  )
+}
 
 function PictureUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false)
@@ -88,6 +122,7 @@ export default function Tasks() {
   const [staffList, setStaffList] = useState<any[]>([])
   const [addFollowUpOpen, setAddFollowUpOpen] = useState(false)
   const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
+  const [teams, setTeams] = useState<any[]>([])
   const today = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
@@ -104,6 +139,7 @@ export default function Tasks() {
       suApi.list(selectedHome, { status: 'live' }),
     ]).then(([suRes]) => setSus(suRes.data.data || []))
     staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || [])).catch(() => {})
+    api.get('/teams', { params: { homeId: selectedHome } }).then(res => setTeams(res.data.data || [])).catch(() => setTeams([]))
     load()
     loadTemplates()
     loadMedTasks()
@@ -229,8 +265,8 @@ export default function Tasks() {
         <div className="flex gap-2 items-center">
           <PrintButton onClick={printTasks} />
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          {pageTab === 'tasks' && <Button size="sm" variant="outline" icon={<Send className="w-4 h-4" />} onClick={() => setAddFollowUpOpen(true)}>Follow up</Button>}
-          {pageTab === 'tasks' && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}
+          {pageTab === 'tasks' && isRole(...TASK_CREATOR_ROLES) && <Button size="sm" variant="outline" icon={<Send className="w-4 h-4" />} onClick={() => setAddFollowUpOpen(true)}>Follow up</Button>}
+          {pageTab === 'tasks' && isRole(...TASK_CREATOR_ROLES) && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}
           {pageTab === 'templates' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
         </div>
       </div>
@@ -305,7 +341,7 @@ export default function Tasks() {
           {loading ? <Spinner /> : filtered.length === 0 ? (
             <EmptyState title={filter === 'pending' ? 'No pending tasks' : 'No tasks found'}
               description="All tasks completed for today!"
-              action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>} />
+              action={isRole(...TASK_CREATOR_ROLES) ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button> : undefined} />
           ) : (
             <div className="space-y-3">
               {filtered.map((task: any) => (
@@ -321,6 +357,13 @@ export default function Tasks() {
                       {task.su_name && <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{task.su_name}</span>}
                       {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
                       {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">For {task.assigned_staff_name}</span>}
+                      {!task.assigned_staff_name && task.visible_team_ids && task.visible_team_ids.length > 0 && (
+                        <span className="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          Visible to: {task.visible_team_ids.map((id: string) => teams.find(t => t.id === id)?.name || 'team').join(', ')}
+                        </span>
+                      )}
+                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
+                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">Visible to: All staff</span>}
                     </div>
                     {task.description && <p className="text-xs text-slate-500 mt-0.5">{task.description}</p>}
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
@@ -361,7 +404,11 @@ export default function Tasks() {
                     {tmpl.description && <p className="text-xs text-slate-500 mt-0.5">{tmpl.description}</p>}
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
                       {tmpl.due_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{tmpl.due_time}</span>}
-                      {tmpl.assigned_role && <span>Role: {tmpl.assigned_role.replace('_', ' ')}</span>}
+                      <span>Visible to: {
+                        tmpl.visible_team_ids && tmpl.visible_team_ids.length > 0
+                          ? tmpl.visible_team_ids.map((id: string) => teams.find(t => t.id === id)?.name || 'team').join(', ')
+                          : (tmpl.assigned_role ? tmpl.assigned_role.replace('_', ' ') : 'All staff')
+                      }</span>
                     </div>
                   </div>
                   {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
@@ -431,17 +478,17 @@ export default function Tasks() {
         />
       )}
 
-      <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome} staffList={staffList}
+      <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome} staffList={staffList} teams={teams}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Task added') }} />
 
       <AddFollowUpModal open={addFollowUpOpen} onClose={() => setAddFollowUpOpen(false)} homeId={selectedHome} staffList={staffList}
         onSaved={async () => { setAddFollowUpOpen(false); await load(); toast.success('Follow up scheduled') }} />
 
-      <AddTemplateModal open={addTemplateOpen} onClose={() => setAddTemplateOpen(false)} homeId={selectedHome}
+      <AddTemplateModal open={addTemplateOpen} onClose={() => setAddTemplateOpen(false)} homeId={selectedHome} teams={teams}
         onSaved={async () => { setAddTemplateOpen(false); await loadTemplates(); toast.success('Template added') }} />
 
       {editTemplateOpen && (
-        <EditTemplateModal template={editTemplateOpen} onClose={() => setEditTemplateOpen(null)}
+        <EditTemplateModal template={editTemplateOpen} teams={teams} onClose={() => setEditTemplateOpen(null)}
           onSaved={async () => { setEditTemplateOpen(null); await loadTemplates(); toast.success('Template updated') }} />
       )}
 
@@ -468,8 +515,8 @@ export default function Tasks() {
   )
 }
 
-function AddTaskModal({ open, onClose, sus, homeId, staffList, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; staffList: any[]; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '' })
+function AddTaskModal({ open, onClose, sus, homeId, staffList, teams, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; staffList: any[]; teams: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState<{ title: string; category: string; description: string; taskDate: string; dueTime: string; priority: string; suId: string; assignedRole: string; assignedStaffId: string; pictureUrl: string; visibleTeamIds: string[] }>({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '', visibleTeamIds: [] })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
@@ -497,9 +544,10 @@ function AddTaskModal({ open, onClose, sus, homeId, staffList, onSaved }: { open
           <Input label="Date" type="date" value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
           <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
-        <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
+        <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <Select label="Assign to a specific staff member (optional)" value={form.assignedStaffId} onChange={e => set('assignedStaffId', e.target.value)}
-          options={staffOptions} placeholder="Anyone on the team above" />
+          options={staffOptions} placeholder="Anyone covered above" />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
         <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
@@ -550,8 +598,8 @@ function AddFollowUpModal({ open, onClose, homeId, staffList, onSaved }: { open:
   )
 }
 
-function AddTemplateModal({ open, onClose, homeId, onSaved }: { open: boolean; onClose: () => void; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', assignedRole: '', priority: 'normal', pictureUrl: '' })
+function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boolean; onClose: () => void; homeId: string; teams: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', assignedRole: '', priority: 'normal', pictureUrl: '', visibleTeamIds: [] })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -575,7 +623,8 @@ function AddTemplateModal({ open, onClose, homeId, onSaved }: { open: boolean; o
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
           <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
-        <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
+        <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
         <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
@@ -587,8 +636,8 @@ function AddTemplateModal({ open, onClose, homeId, onSaved }: { open: boolean; o
   )
 }
 
-function EditTemplateModal({ template, onClose, onSaved }: { template: any; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({
+function EditTemplateModal({ template, teams, onClose, onSaved }: { template: any; teams: any[]; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({
     title: template.title || '',
     category: template.category || 'general',
     description: template.description || '',
@@ -597,6 +646,7 @@ function EditTemplateModal({ template, onClose, onSaved }: { template: any; onCl
     assignedRole: template.assigned_role || '',
     priority: template.priority || 'normal',
     pictureUrl: template.picture_url || '',
+    visibleTeamIds: template.visible_team_ids || [],
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -621,7 +671,8 @@ function EditTemplateModal({ template, onClose, onSaved }: { template: any; onCl
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
           <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
-        <Select label="Team" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
+        <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></div>
         <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">

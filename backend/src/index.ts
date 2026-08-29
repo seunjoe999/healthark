@@ -1866,6 +1866,10 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    // "Visible to" targeting — null/empty means visible to all staff (as before);
+    // populated means only staff on one of these teams (plus management) see it.
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS visible_team_ids UUID[]`,
+    `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS visible_team_ids UUID[]`,
     `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type VARCHAR(30)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS apply_time TIME`,

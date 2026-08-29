@@ -6,7 +6,8 @@ import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui'
 import TaskPopup from '../../components/TaskPopup'
-import { shouldShowTaskPopup } from '../../utils/taskReminder'
+import { shouldShowTaskPopup, isTimePastDue } from '../../utils/taskReminder'
+import toast from 'react-hot-toast'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
   CheckCircle, AlertTriangle, Users, ArrowRight, MessageSquare, LogIn, CalendarClock
@@ -32,6 +33,25 @@ export default function StaffDashboard() {
   useEffect(() => {
     if (user?.id) setShowTaskPopup(shouldShowTaskPopup(user.id))
   }, [user?.id])
+
+  // Time-based due check — on top of the frequency-based pop-up above, poll every
+  // 5 minutes for tasks whose due_time has now passed and are still pending, so
+  // a task doesn't just sit silently on a list once it's overdue.
+  const overdueNotifiedRef = React.useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const checkOverdue = () => {
+      const overdue = myTasks.filter(t => t.status === 'pending' && isTimePastDue(t.due_time))
+      const newlyOverdue = overdue.filter(t => !overdueNotifiedRef.current.has(t.id))
+      if (newlyOverdue.length > 0) {
+        newlyOverdue.forEach(t => overdueNotifiedRef.current.add(t.id))
+        toast(`${newlyOverdue.length} task${newlyOverdue.length > 1 ? 's are' : ' is'} now overdue`, { icon: '⏰' })
+        setShowTaskPopup(true)
+      }
+    }
+    checkOverdue()
+    const interval = setInterval(checkOverdue, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [myTasks])
 
   useEffect(() => {
     if (!user) return

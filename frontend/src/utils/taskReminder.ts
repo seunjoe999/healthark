@@ -44,3 +44,19 @@ export function markTaskPopupShown(userId: string) {
   if (!userId) return
   localStorage.setItem(key(userId, 'lastShown'), String(Date.now()))
 }
+
+// Time-based due check — independent of the frequency-based reminder above.
+// A task or medication becomes "overdue" the moment its scheduled HH:mm for
+// today passes, regardless of when the pop-up was last shown. Accepts
+// "HH:mm" or "HH:mm:ss" (as returned by Postgres TIME columns).
+export function isTimePastDue(dueTime?: string | null): boolean {
+  if (!dueTime) return false
+  const parts = String(dueTime).split(':')
+  const h = Number(parts[0])
+  const m = Number(parts[1])
+  if (Number.isNaN(h) || Number.isNaN(m)) return false
+  const now = new Date()
+  const due = new Date()
+  due.setHours(h, m, 0, 0)
+  return now.getTime() >= due.getTime()
+}

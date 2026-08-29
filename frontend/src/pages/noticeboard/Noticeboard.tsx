@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check } from 'lucide-react'
+import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check, CheckSquare, ChevronRight } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { openLetterheadPrint, buildLetterheadPage, esc, nl } from '../../utils/letterheadPrint'
+import TaskPopup from '../../components/TaskPopup'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -111,8 +113,17 @@ export default function Noticeboard() {
   const [filterCat, setFilterCat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ title: '', body: '', category: 'general', isPinned: false, expiresAt: '' })
+  const [pendingTaskCount, setPendingTaskCount] = useState<number | null>(null)
+  const [showTaskPopup, setShowTaskPopup] = useState(false)
 
   const canPost = isRole('home_manager', 'group_admin', 'senior_carer')
+
+  useEffect(() => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    api.get('/tasks', { params: { date: today } })
+      .then(res => setPendingTaskCount((res.data.data || []).filter((t: any) => t.status === 'pending').length))
+      .catch(() => setPendingTaskCount(null))
+  }, [])
 
   async function load() {
     setLoading(true)
@@ -204,6 +215,25 @@ export default function Noticeboard() {
         </div>
       </div>
 
+      {/* Today's Tasks entry point */}
+      {pendingTaskCount !== null && pendingTaskCount > 0 && (
+        <button
+          onClick={() => setShowTaskPopup(true)}
+          className="w-full flex items-center gap-3 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-4 mb-5 text-left hover:border-amber-500/50 transition-all"
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(232,177,48,0.15)' }}>
+            <CheckSquare className="w-5 h-5 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-white text-sm">Click here for today's tasks</p>
+            <p className="text-xs text-slate-400 mt-0.5">{pendingTaskCount} pending task{pendingTaskCount > 1 ? 's' : ''} waiting for you today</p>
+          </div>
+          <Link to="/tasks" onClick={e => e.stopPropagation()} className="text-xs text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1 flex-shrink-0">
+            Open Tasks <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </button>
+      )}
+
       {/* Filter */}
       <div className="flex gap-2 mb-5 flex-wrap">
         <button onClick={() => setFilterCat('')}
@@ -266,6 +296,8 @@ export default function Noticeboard() {
           </div>
         </form>
       </Modal>
+
+      <TaskPopup open={showTaskPopup} onClose={() => setShowTaskPopup(false)} />
     </div>
   )
 }

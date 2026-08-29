@@ -39,7 +39,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const params: any[] = [homeId, date];
     if (!isPrivileged) {
       // A task assigned directly to this staff member is always visible to
-      // them, regardless of role/resident scoping below — a direct
+      // them, regardless of role/resident/team scoping below — a direct
       // assignment is an explicit instruction that must not get filtered out.
       sql += ` AND (t.assigned_staff_id = $3 OR (t.assigned_staff_id IS NULL AND (t.assigned_role IS NULL OR t.assigned_role = $4)))`;
       params.push(staffId, role);
@@ -53,6 +53,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (RESTRICTED_ROLES.includes(role) && staffId) {
       const assignedSuIds = await getAssignedSuIds(staffId);
       rows = (rows as any[]).filter(t => t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
+    }
+
+    // "Visible to" team targeting — a task with visible_team_ids set is only
+    // shown to staff on one of those teams (management always sees everything,
+    // and a direct staff assignment always shows regardless, handled above).
+    if (!isPrivileged && staffId) {
+      const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
+      const myTeamId = staffRows[0]?.team_id || null;
+      rows = (rows as any[]).filter(t => {
+        if (t.assigned_staff_id === staffId) return true;
+        if (!t.visible_team_ids || t.visible_team_ids.length === 0) return true;
+        return myTeamId && t.visible_team_ids.includes(myTeamId);
+      });
     }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -76,33 +89,40 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { title, category, description, frequency, dueTime, assignedRole, priority, suId, pictureUrl } = req.body;
+      const { title, category, description, frequency, dueTime, assignedRole, priority, suId, pictureUrl, visibleTeamIds } = req.body;
       const rows = await query(
         `INSERT INTO task_templates (home_id, title, category, description, frequency, due_time,
-          assigned_role, priority, su_id, picture_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+          assigned_role, priority, su_id, picture_url, visible_team_ids)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [homeId, title, category, description || null, frequency || 'daily',
-         dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null]
+         dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null,
+         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
 
+// Roles allowed to create tasks — management/senior staff who plan the day,
+// not the general care-staff pool who only view and complete tasks.
+// (Matches the StaffRole union; 'director'/'registered_manager'/'service_manager'
+// used for privilege checks elsewhere in this codebase aren't part of that type.)
+
 // POST /api/tasks — create a one-off task
-router.post('/', [body('title').notEmpty()], validateRequest,
+router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'senior_carer', 'team_leader'), [body('title').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const createdBy = fromToken(req, 'staffId');
-      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl, assignedStaffId } = req.body;
+      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl, assignedStaffId, visibleTeamIds } = req.body;
       const rows = await query(
         `INSERT INTO tasks (home_id, su_id, created_by, title, category, description,
-          task_date, due_time, priority, assigned_role, picture_url, assigned_staff_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+          task_date, due_time, priority, assigned_role, picture_url, assigned_staff_id, visible_team_ids)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
         [homeId, suId || null, createdBy, title, category || 'general',
          description || null, taskDate || new Date().toISOString().split('T')[0],
-         dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null, assignedStaffId || null]
+         dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null, assignedStaffId || null,
+         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -156,11 +176,11 @@ router.post('/generate-daily', async (req: Request, res: Response, next: NextFun
       
       if (shouldCreate) {
         await query(
-          `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')`,
+          `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status, visible_team_ids)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10)`,
           [homeId, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
            tmpl.description || null, today, tmpl.due_time || null,
-           tmpl.priority || 'normal', tmpl.assigned_role || null]
+           tmpl.priority || 'normal', tmpl.assigned_role || null, tmpl.visible_team_ids || null]
         );
         created++;
       }
@@ -184,10 +204,11 @@ router.delete('/templates/:id', requireRole('home_manager', 'group_admin'), para
 router.put('/templates/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { title, category, description, frequency, dueTime, assignedRole, priority, pictureUrl } = req.body;
+      const { title, category, description, frequency, dueTime, assignedRole, priority, pictureUrl, visibleTeamIds } = req.body;
       await query(
-        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7, picture_url=COALESCE($9, picture_url) WHERE id=$8`,
-        [title, category, description||null, frequency, dueTime||null, assignedRole||null, priority, req.params.id, pictureUrl || null]
+        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7, picture_url=COALESCE($9, picture_url), visible_team_ids=$10 WHERE id=$8`,
+        [title, category, description||null, frequency, dueTime||null, assignedRole||null, priority, req.params.id, pictureUrl || null,
+         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null]
       );
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }

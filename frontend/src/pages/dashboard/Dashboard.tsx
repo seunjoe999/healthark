@@ -7,6 +7,8 @@ import { Spinner } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, endOfWeek, subDays } from 'date-fns'
 import TaskPopup from '../../components/TaskPopup'
+import { isTimePastDue } from '../../utils/taskReminder'
+import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import {
   Users, UserCheck, Pill, AlertTriangle, Calendar,
@@ -139,6 +141,7 @@ export default function Dashboard() {
     return localStorage.getItem('taskPopupDismissed') !== today
   })
   const bdRef = useRef<HTMLDivElement>(null)
+  const overdueNotifiedRef = useRef<Set<string>>(new Set())
 
   if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
 
@@ -276,6 +279,24 @@ export default function Dashboard() {
       setTodaysTasks(allTasks.filter((t: any) => t.status === 'pending'))
     }).catch(console.error).finally(() => setLoading(false))
   }, [selectedHome])
+
+  // Time-based due check — in addition to the frequency-based pop-up, poll every
+  // 5 minutes for tasks whose due_time has now passed and are still pending, so
+  // it surfaces the moment it's overdue rather than only on the next visit.
+  useEffect(() => {
+    const checkOverdue = () => {
+      const overdue = todaysTasks.filter(t => isTimePastDue(t.due_time))
+      const newlyOverdue = overdue.filter(t => !overdueNotifiedRef.current.has(t.id))
+      if (newlyOverdue.length > 0) {
+        newlyOverdue.forEach(t => overdueNotifiedRef.current.add(t.id))
+        toast(`${newlyOverdue.length} task${newlyOverdue.length > 1 ? 's are' : ' is'} now overdue`, { icon: '⏰' })
+        setShowTaskPopup(true)
+      }
+    }
+    checkOverdue()
+    const interval = setInterval(checkOverdue, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [todaysTasks])
 
   const stats     = data?.stats     || {}
   const birthdays = data?.birthdays || []
@@ -489,13 +510,17 @@ export default function Dashboard() {
                     {a.start_time && <span className="text-xs" style={{ color: '#60a5fa' }}>{a.start_time.slice(0, 5)}</span>}
                   </div>
                 ))}
-                {todaysTasks.slice(0, 6).map((t: any) => (
-                  <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#fbbf24' }} />
-                    <p className="text-sm text-white flex-1 truncate">{t.title}</p>
-                    {t.due_time && <span className="text-xs text-slate-500">{t.due_time}</span>}
-                  </div>
-                ))}
+                {todaysTasks.slice(0, 6).map((t: any) => {
+                  const overdue = isTimePastDue(t.due_time)
+                  return (
+                    <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: overdue ? 'rgba(244,63,94,0.1)' : 'rgba(255,255,255,0.03)' }}>
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: overdue ? '#f43f5e' : '#fbbf24' }} />
+                      <p className="text-sm text-white flex-1 truncate">{t.title}</p>
+                      {overdue && <span className="text-xs font-semibold" style={{ color: '#f43f5e' }}>Overdue</span>}
+                      {t.due_time && <span className="text-xs text-slate-500">{t.due_time.slice(0, 5)}</span>}
+                    </div>
+                  )
+                })}
                 {todaysTasks.length > 6 && (
                   <p className="text-xs text-slate-500 text-center pt-1">+ {todaysTasks.length - 6} more pending tasks today</p>
                 )}
