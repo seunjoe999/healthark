@@ -4,6 +4,7 @@ import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButto
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 
 const DBS_TYPES = [
   { value: 'enhanced', label: 'Enhanced DBS' },
@@ -108,6 +109,45 @@ export default function DBSTracker() {
   const expiringSoon = dbsRecords.filter(d => d.status === 'expiring_soon').length
   const expired = dbsRecords.filter(d => d.status === 'expired').length
 
+  const printCompliance = () => {
+    let title = ''
+    let table = ''
+    if (tab === 'overview') {
+      title = 'Staff Compliance Overview'
+      const rows = overview.map((s: any) => `
+        <tr><th>${esc(s.first_name)} ${esc(s.last_name)}</th><td>${esc(s.dbs_status ? String(s.dbs_status).replace('_', ' ') : 'No DBS')} · References ${esc(s.refs_received)}/2 · RTW ${s.rtw_docs > 0 ? 'Yes' : 'No'}</td></tr>
+      `).join('')
+      table = `<table class="fields"><tr><th>Staff Member</th><th>Compliance</th></tr>${rows || '<tr><td colspan="2">No staff found.</td></tr>'}</table>`
+    } else if (tab === 'dbs') {
+      title = 'DBS Records'
+      const rows = dbsRecords.map((d: any) => `
+        <tr><td>${esc(d.staff_name)}</td><td>${esc(d.dbs_type)}</td><td>${esc(d.dbs_number)}</td><td>${fmtDate(d.issue_date)}</td><td>${d.expiry_date ? fmtDate(d.expiry_date) : 'No expiry'}</td><td>${esc(statusLabel[d.status])}</td></tr>
+      `).join('')
+      table = `<table class="fields"><tr><th>Staff</th><th>Type</th><th>Cert No.</th><th>Issued</th><th>Expiry</th><th>Status</th></tr>${rows || '<tr><td colspan="6">No DBS records.</td></tr>'}</table>`
+    } else if (tab === 'references') {
+      title = 'Staff References'
+      const rows = references.map((r: any) => `
+        <tr><td>${esc(r.staff_name)}</td><td>${esc(r.referee_name)}</td><td>${esc(r.referee_company)}</td><td>${r.received_date ? fmtDate(r.received_date) : 'Pending'}</td><td>${esc(statusLabel[r.status])}</td></tr>
+      `).join('')
+      table = `<table class="fields"><tr><th>Staff</th><th>Referee</th><th>Company</th><th>Received</th><th>Status</th></tr>${rows || '<tr><td colspan="5">No references.</td></tr>'}</table>`
+    } else {
+      title = 'Right to Work Documents'
+      const rows = rtwDocs.map((d: any) => `
+        <tr><td>${esc(d.staff_name)}</td><td>${esc(d.document_type)}</td><td>${esc(d.document_number)}</td><td>${d.expiry_date ? fmtDate(d.expiry_date) : 'No expiry'}</td><td>${esc(statusLabel[d.status])}</td></tr>
+      `).join('')
+      table = `<table class="fields"><tr><th>Staff</th><th>Document</th><th>Number</th><th>Expiry</th><th>Status</th></tr>${rows || '<tr><td colspan="5">No documents.</td></tr>'}</table>`
+    }
+    const body = buildLetterheadPage({
+      docTitle: title,
+      docSubtitle: 'Staff compliance record',
+      docRefPrefix: 'DBS',
+      docRefId: fmtDate(new Date().toISOString()),
+      residentName: 'All staff',
+      sections: [{ title, inner: table }],
+    })
+    openLetterheadPrint(title, body)
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -118,7 +158,7 @@ export default function DBSTracker() {
           <p className="text-slate-400 text-sm mt-1">DBS checks, references & right to work documents</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={printCompliance} />
           {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
             <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
               Add Document

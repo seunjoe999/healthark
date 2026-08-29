@@ -8,6 +8,7 @@ import { FileText, Printer, Save, Check, ChevronDown, ChevronUp, Brain, External
 import { useNavigate } from 'react-router-dom'
 import SignaturePad from '../../components/SignaturePad'
 import SpeechInput from '../../components/SpeechInput'
+import { buildLetterheadPage, openLetterheadPrint, nl } from '../../utils/letterheadPrint'
 
 const SHIFT_TIMES: Record<string, string> = {
   early: '07:00 – 14:00',
@@ -272,6 +273,31 @@ export default function HandoverReport() {
 
   const navigate = useNavigate()
 
+  const printHandover = () => {
+    const residents = filterSuId ? sus.filter(s => s.id === filterSuId) : sus
+    const sections = residents.map(su => {
+      const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
+      const notes = residentNotes[su.id]
+      return {
+        title: name,
+        inner: `<p class="body-text${notes ? '' : ' muted'}">${notes ? nl(notes) : 'No handover notes recorded for this resident.'}</p>`,
+      }
+    })
+
+    const body = buildLetterheadPage({
+      docTitle: 'Shift Handover Report',
+      docSubtitle: `${SHIFT_LABELS[shift]} Shift · ${SHIFT_TIMES[shift]}`,
+      docRefPrefix: 'HO',
+      docRefId: today,
+      residentName: homeName,
+      residentLabel: 'Care Home',
+      extraIdCells: `<td class="lbl">Printed By</td><td class="val">${user?.firstName || ''} ${user?.lastName || ''}</td>`,
+      sections: sections.length ? sections : [{ title: 'Handover Notes', inner: '<p class="body-text muted">No residents to report.</p>' }],
+    })
+
+    openLetterheadPrint(`${homeName} Handover Report`, body)
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -289,7 +315,7 @@ export default function HandoverReport() {
               style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', color: '#a5b4fc' }}>
               <Brain className="w-4 h-4" /> AI Handover Summary <ExternalLink className="w-3.5 h-3.5 opacity-60" />
             </button>
-            <button onClick={() => window.print()}
+            <button onClick={printHandover}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
               style={{ background: 'rgba(232,177,48,0.12)', border: '1px solid rgba(232,177,48,0.35)', color: '#e8b130' }}>
               <Printer className="w-4 h-4" /> Print / Export PDF
@@ -322,7 +348,7 @@ export default function HandoverReport() {
               ))}
             </select>
           </div>
-          <button onClick={() => window.print()}
+          <button onClick={printHandover}
             className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.3)', color: '#e8b130' }}>
             <Printer className="w-4 h-4" /> Print
@@ -424,32 +450,6 @@ export default function HandoverReport() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Print-only header — hidden on screen, shown when printing */}
-      <div className="print-only">
-        <div className="print-logo">CompCare Hub</div>
-        <div className="print-title">{homeName} Handover Report</div>
-        <div className="print-meta">
-          {SHIFT_LABELS[shift]} Shift &nbsp;·&nbsp; {SHIFT_TIMES[shift]} &nbsp;·&nbsp;
-          {format(new Date(), 'd MMMM yyyy')} &nbsp;·&nbsp;
-          Printed by: {user?.firstName} {user?.lastName}
-        </div>
-      </div>
-
-      {/* Print-only resident notes — visible in print */}
-      <div className="print-only print-content" style={{ marginTop: '1rem' }}>
-        {(filterSuId ? sus.filter(s => s.id === filterSuId) : sus).map(su => {
-          const name = `${su.first_name || su.firstName} ${su.last_name || su.lastName}`
-          return (
-            <div key={su.id} className="print-section print-avoid-break" style={{ marginBottom: '1rem' }}>
-              <h3 style={{ margin: '0 0 0.3rem', fontSize: '12pt', fontWeight: 700 }}>{name}</h3>
-              <p style={{ fontSize: '10pt', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-                {residentNotes[su.id] || '— No handover notes recorded for this resident —'}
-              </p>
-            </div>
-          )
-        })}
       </div>
     </div>
   )

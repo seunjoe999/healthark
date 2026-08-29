@@ -6,6 +6,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, PrintButton, Modal, SpeechTextarea } from '../../components/ui'
 import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus, Pencil, CheckCircle, MessageSquarePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
 
 // ── Emotion picker ─────────────────────────────────────────────────
 
@@ -196,6 +197,78 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const INCIDENT_TYPES = Object.keys(TYPE_LABELS)
+
+// ── Letterhead print ──────────────────────────────────────────────
+
+function buildIncidentPrintPage(inc: any): string {
+  const incidentType = inc.incident_type || 'other'
+  const severity = getSeverity(incidentType)
+  const sections: PrintSection[] = []
+
+  sections.push({
+    title: 'Incident Details',
+    inner: `
+      <div class="risk-box${severity === 'critical' ? ' critical' : severity === 'high' ? ' high' : ''}">
+        <span class="rb-label">Severity</span>
+        <span class="rb-value">${esc(severity.charAt(0).toUpperCase() + severity.slice(1))}</span>
+      </div>
+      <table class="fields">
+        <tr><th>Incident Type</th><td>${esc(TYPE_LABELS[incidentType] || incidentType)}</td></tr>
+        <tr><th>Date</th><td>${fmtDate(inc.record_date || inc.created_at)}</td></tr>
+        ${inc.location ? `<tr><th>Location</th><td>${esc(inc.location)}</td></tr>` : ''}
+        <tr><th>Recorded By</th><td>${esc(inc.recorded_by_name)}</td></tr>
+      </table>
+    `,
+  })
+
+  if (inc.description) {
+    sections.push({ title: 'Description of Incident', inner: `<p class="body-text">${nl(inc.description)}</p>` })
+  }
+
+  if (inc.witnesses) {
+    sections.push({ title: 'Witnesses', inner: `<p class="body-text">${nl(inc.witnesses)}</p>` })
+  }
+
+  if (inc.immediate_action) {
+    sections.push({ title: 'Immediate Action Taken', inner: `<p class="body-text">${nl(inc.immediate_action)}</p>` })
+  }
+
+  if (inc.emotion) {
+    sections.push({ title: 'Resident Emotion / Mood', inner: `<p class="body-text">${esc(inc.emotion.charAt(0).toUpperCase() + inc.emotion.slice(1))}</p>` })
+  }
+
+  sections.push({
+    title: 'Injuries, Medical Attention &amp; Notifications',
+    inner: `
+      <table class="fields">
+        <tr class="${inc.injuries ? 'on' : ''}"><th>Injuries Sustained</th><td>${inc.injuries ? `Yes${inc.injury_details ? ` — ${esc(inc.injury_details)}` : ''}` : 'None reported'}</td></tr>
+        <tr class="${inc.medical_needed ? 'on' : ''}"><th>Medical Attention Required</th><td>${inc.medical_needed ? `Yes${inc.medical_details ? ` — ${esc(inc.medical_details)}` : ''}` : 'No'}</td></tr>
+        ${inc.safeguarding_ref ? `<tr class="on"><th>Safeguarding</th><td>Safeguarding referral made</td></tr>` : ''}
+        <tr class="${inc.family_notified ? 'on' : ''}"><th>Family / Next of Kin Notified</th><td>${inc.family_notified ? 'Yes' : 'No'}</td></tr>
+      </table>
+    `,
+  })
+
+  if (inc.review_notes?.length > 0 || inc.signature) {
+    const notesHtml = (inc.review_notes || []).map((note: any) =>
+      `<p class="body-text">On ${fmtDate(note.timestamp)}, <strong>${esc(note.author)}</strong> wrote: ${nl(note.text)}</p>`
+    ).join('')
+    const sigHtml = inc.signature
+      ? `<table class="fields"><tr><th>Signed Off By</th><td>${esc(inc.signature.name)}</td></tr><tr><th>Date</th><td>${fmtDate(inc.signature.timestamp)}</td></tr></table>`
+      : ''
+    sections.push({ title: 'Review Notes &amp; Sign-Off', inner: notesHtml + sigHtml })
+  }
+
+  return buildLetterheadPage({
+    docTitle: 'Incident Report',
+    docSubtitle: 'CQC compliance record',
+    docRefPrefix: 'INC',
+    docRefId: inc.id,
+    residentName: inc.resident_name || 'Unknown resident',
+    extraIdCells: `<td class="lbl">Date</td><td class="val">${fmtDate(inc.record_date || inc.created_at)}</td>`,
+    sections,
+  })
+}
 
 // incidents come back as flat columns from records_incidents
 
@@ -812,6 +885,13 @@ export default function Incidents() {
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault() }
 
+  const handlePrintIncidents = () => {
+    if (incidents.length === 0) { toast.error('No incidents to print for the current filters'); return }
+    const body = incidents.map(inc => buildIncidentPrintPage(inc)).join('')
+    const ok = openLetterheadPrint(`Incident Reports — ${startDate} to ${endDate}`, body)
+    if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   const deleteIncident = async (inc: any) => {
     if (!window.confirm(`Delete this incident report for ${inc.resident_name || 'this service user'}? This cannot be undone.`)) return
     try {
@@ -845,7 +925,7 @@ export default function Incidents() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <PrintButton />
+          <PrintButton onClick={handlePrintIncidents} />
           {homes.length > 1 && (
             <select
               className="input w-auto"

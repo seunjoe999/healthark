@@ -6,6 +6,64 @@ import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
+
+const LOG_TABLE_CSS = `
+  table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
+  table.log th{text-align:left;background:#132a4f;color:#fff;border:1px solid #132a4f;padding:6px 8px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
+  table.log td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:10px}
+  table.log tr:nth-child(even) td{background:#f7f7f5}
+`
+
+function buildSeizureLogHtml(records: any[], suLabel: string): string {
+  const rows = records.map(r => `
+    <tr>
+      <td>${fmtDate(r.seizure_at)}<br/>${r.seizure_at ? new Date(r.seizure_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</td>
+      <td>${esc(r.su_name)}</td>
+      <td style="text-transform:capitalize">${esc(r.seizure_type?.replace(/_/g, ' '))}</td>
+      <td>${r.duration_seconds ? formatDuration(r.duration_seconds) : '—'}</td>
+      <td>${nl(r.description)}</td>
+      <td>${nl(r.action_taken)}</td>
+      <td>${esc(r.recorded_by_name)}</td>
+    </tr>
+  `).join('')
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: SEIZ-${fmtDate(new Date().toISOString())}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Seizure Log</div>
+      <div class="doc-subtitle">${esc(suLabel)}</div>
+
+      <table class="idtable">
+        <tr><td class="lbl">Records</td><td class="val">${records.length}</td></tr>
+      </table>
+
+      <h2 class="sec"><span class="num">1.</span>Episodes</h2>
+      <table class="log">
+        <tr><th>Date / Time</th><th>Resident</th><th>Type</th><th>Duration</th><th>Description</th><th>Action Taken</th><th>Recorded By</th></tr>
+        ${rows || '<tr><td colspan="7" style="text-align:center;color:#888">No episodes recorded</td></tr>'}
+      </table>
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Resident health record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Seizure Log</title><style>${LETTERHEAD_PRINT_CSS}${LOG_TABLE_CSS}</style></head><body>${body}</body></html>`
+  return html
+}
 
 const SEIZURE_TYPES = [
   { value: 'tonic_clonic', label: 'Tonic-Clonic (Grand Mal)' },
@@ -80,6 +138,19 @@ export default function SeizureLog() {
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
+  function handlePrint() {
+    const suLabel = selectedSU
+      ? (suOptions.find(o => o.value === selectedSU)?.label || 'Selected resident')
+      : 'All service users'
+    const html = buildSeizureLogHtml(records, suLabel)
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -90,7 +161,7 @@ export default function SeizureLog() {
           <p className="text-slate-400 text-sm mt-1">Record and track seizure episodes</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrint} />
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
             Log Seizure
           </Button>

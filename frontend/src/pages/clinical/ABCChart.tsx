@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Brain, Save, ChevronDown, ChevronUp, Printer, TrendingUp } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const ANTECEDENTS = ['Personal care', 'Mealtimes', 'Medication time', 'Night time', 'Visiting family', 'Moving/transferring', 'Loud noise', 'Crowded area', 'Change of routine', 'Toileting', 'Other residents', 'Unknown']
 const BEHAVIOURS = ['Verbal aggression', 'Physical aggression', 'Self-harm', 'Wandering', 'Shouting/screaming', 'Refusal of care', 'Restlessness', 'Tearfulness', 'Repetitive questioning', 'Sexual disinhibition', 'Hoarding', 'Other']
@@ -91,6 +92,43 @@ export default function ABCChart() {
   const INTENSITY_COLOR: Record<string, string> = { Mild: '#854d0e', Moderate: '#9a3412', Severe: '#7f1d1d' }
   const INTENSITY_BG: Record<string, string> = { Mild: '#fefce8', Moderate: '#fff7ed', Severe: '#fef2f2' }
 
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const sections: PrintSection[] = []
+
+    if (patterns && patterns.total > 0) {
+      const antRows = patterns.topAnt.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v} occurrence${v === 1 ? '' : 's'}</td></tr>`).join('')
+      const behRows = patterns.topBeh.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v} occurrence${v === 1 ? '' : 's'}</td></tr>`).join('')
+      sections.push({
+        title: 'Pattern Analysis',
+        inner: `<h3 class="sub">Top Triggers</h3><table class="fields">${antRows}</table><h3 class="sub">Top Behaviours</h3><table class="fields">${behRows}</table>`,
+      })
+    }
+
+    if (history.length) {
+      const rows = history.map((h: any) => `
+        <tr><th>${h.recorded_at ? fmtDate(h.recorded_at) : '—'}${h.staff_name ? `<br/><span style="font-weight:400;font-size:8.5px">${esc(h.staff_name)}</span>` : ''}</th>
+        <td>
+          <strong style="color:${INTENSITY_COLOR[h.intensity] || '#333'}">${esc(h.intensity)}</strong>${h.duration ? ` · ${esc(h.duration)}` : ''}<br/>
+          <strong>A:</strong> ${esc((h.antecedents || []).join(', ') || '—')}<br/>
+          <strong>B:</strong> ${esc((h.behaviours || []).join(', ') || '—')}<br/>
+          <strong>C:</strong> ${esc((h.consequences || []).join(', ') || '—')}
+          ${h.notes ? `<br/><em>${esc(h.notes)}</em>` : ''}
+        </td></tr>
+      `).join('')
+      sections.push({ title: 'ABC Log', inner: `<table class="fields">${rows}</table>` })
+    }
+
+    if (!sections.length) sections.push({ title: 'ABC Chart', inner: `<p class="body-text muted">No ABC chart entries recorded yet for this resident.</p>` })
+
+    const body = buildLetterheadPage({
+      docTitle: 'ABC Behaviour Chart', docSubtitle: 'Antecedent · Behaviour · Consequence tracking',
+      docRefPrefix: 'ABC', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — ABC Chart`, body)
+  }
+
   const MultiSelect = ({ opts, selected, setSelected, label }: { opts: string[]; selected: string[]; setSelected: (v: string[]) => void; label: string }) => (
     <div>
       <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">{label}</label>
@@ -115,7 +153,7 @@ export default function ABCChart() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Antecedent · Behaviour · Consequence — behaviour tracking and pattern analysis</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white print:hidden">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white print:hidden">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

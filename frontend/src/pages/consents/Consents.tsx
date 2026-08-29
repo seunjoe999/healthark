@@ -12,6 +12,7 @@ import {
   UserCheck, Syringe, Wrench, Share2, Wallet, MapPin, Key, PenLine
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
 
 // ─── Care-area clinical consents ───────────────────────────────────────────
 const CARE_AREA_TYPES = [
@@ -197,6 +198,70 @@ const EMPTY_FORM = {
   staffSignedDate: '',
 }
 
+function buildConsentPrintPage(c: any, residentName: string): string {
+  const ct = ALL_CONSENT_TYPES.find(t => t.key === c.consent_type)
+  const label = ct?.label || c.consent_type
+  const isDeclaration = DECLARATION_KEYS.has(c.consent_type)
+  const sections: PrintSection[] = []
+
+  sections.push({
+    title: 'Consent Status',
+    inner: `
+      <div class="risk-box${c.consent_given ? '' : ' high'}">
+        <span class="rb-label">Status</span>
+        <span class="rb-value">${c.consent_given ? 'Consent Given' : 'Consent Withheld'}</span>
+      </div>
+    `,
+  })
+
+  if (ct?.description) {
+    sections.push({ title: 'About This Consent', inner: `<p class="body-text muted">${esc(ct.description)}</p>` })
+  }
+
+  if (!isDeclaration) {
+    sections.push({
+      title: 'Mental Capacity &amp; Consent',
+      inner: `
+        <table class="fields">
+          <tr><th>Mental Capacity</th><td>${esc(CAPACITY_OPTIONS.find(o => o.value === c.has_capacity)?.label || c.has_capacity)}</td></tr>
+          ${c.capacity_notes ? `<tr><th>Capacity Notes</th><td>${nl(c.capacity_notes)}</td></tr>` : ''}
+          ${c.has_capacity !== 'no' ? `<tr><th>Method of Consent</th><td>${esc(METHOD_OPTIONS.find(o => o.value === c.consent_method)?.label || c.consent_method)}</td></tr>` : ''}
+        </table>
+      `,
+    })
+    if (c.has_capacity === 'no' && (c.best_interest_decision || c.decision_maker)) {
+      sections.push({
+        title: 'Best Interest Decision',
+        inner: `<p class="body-text">${nl(c.best_interest_decision)}</p>${c.decision_maker ? `<table class="fields"><tr><th>Decision Maker</th><td>${esc(c.decision_maker)}</td></tr></table>` : ''}`,
+      })
+    }
+  }
+
+  if (c.notes) {
+    sections.push({ title: 'Notes', inner: `<p class="body-text">${nl(c.notes)}</p>` })
+  }
+
+  sections.push({
+    title: 'Sign-Off',
+    inner: `
+      <table class="fields">
+        <tr><th>Service User / Decision Maker</th><td>${esc(c.su_signed_by)}${c.su_signed_date ? ` — ${fmtDate(c.su_signed_date)}` : ''}</td></tr>
+        <tr><th>Staff Signed By</th><td>${esc(c.staff_signed_by)}${c.staff_signed_date ? ` — ${fmtDate(c.staff_signed_date)}` : ''}</td></tr>
+        ${c.review_date ? `<tr><th>Review Date</th><td>${fmtDate(c.review_date)}</td></tr>` : ''}
+      </table>
+    `,
+  })
+
+  return buildLetterheadPage({
+    docTitle: label,
+    docSubtitle: 'Consent & signature record',
+    docRefPrefix: 'CON',
+    docRefId: c.id || c.consent_type,
+    residentName,
+    sections,
+  })
+}
+
 export default function Consents() {
   const { user } = useAuth()
   const [sus, setSus] = useState<any[]>([])
@@ -328,6 +393,15 @@ export default function Consents() {
     if (c.has_capacity === 'no') return 'Best interest decision'
     if (c.has_capacity === 'fluctuating') return 'Fluctuating capacity'
     return c.consent_given ? 'Consent given' : 'Consent withheld'
+  }
+
+  const handlePrintConsents = () => {
+    if (consents.length === 0) { toast.error('No consent records to print for this resident'); return }
+    const residentName = sus.find(s => s.id === selectedSu)
+    const name = residentName ? `${residentName.first_name} ${residentName.last_name}` : 'Resident'
+    const body = consents.map(c => buildConsentPrintPage(c, name)).join('')
+    const ok = openLetterheadPrint(`${name} — Consents & Signatures`, body)
+    if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
   }
 
   const activeType = ALL_CONSENT_TYPES.find(t => t.key === modalType)
@@ -541,7 +615,7 @@ export default function Consents() {
               ))}
             </select>
           )}
-          {selectedSu && <PrintButton label="Print consents" />}
+          {selectedSu && <PrintButton label="Print consents" onClick={handlePrintConsents} />}
         </div>
       </div>
 

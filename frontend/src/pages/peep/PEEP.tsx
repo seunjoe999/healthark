@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, isPast, isToday } from 'date-fns'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -228,59 +229,65 @@ function PEEPForm({
   )
 }
 
-// ── Print view ────────────────────────────────────────────────────────
+// ── Print ─────────────────────────────────────────────────────────────
 
-function PrintPEEP({ plan }: { plan: any }) {
-  return (
-    <div className="print-only p-8 font-sans text-black">
-      <div className="border-4 border-red-600 p-6 mb-6 text-center">
-        <h1 className="text-3xl font-black text-red-700 uppercase tracking-widest mb-1">PEEP</h1>
-        <p className="text-lg font-bold text-red-700">Personal Emergency Evacuation Plan</p>
-      </div>
-      <div className="mb-4">
-        <p className="text-2xl font-black">{plan.su_name}</p>
-        {plan.review_date && <p className="text-sm text-gray-600">Review date: {format(parseISO(plan.review_date), 'dd MMMM yyyy')}</p>}
-      </div>
-      <table className="w-full border-collapse border border-gray-400 text-sm mb-6">
-        <tbody>
-          <tr><td className="border border-gray-400 p-2 font-bold bg-gray-100 w-40">Mobility level</td><td className="border border-gray-400 p-2">{mobilityIcon(plan.mobility_level)} {mobilityLabel(plan.mobility_level)}</td></tr>
-          <tr><td className="border border-gray-400 p-2 font-bold bg-gray-100">Can self-evacuate</td><td className="border border-gray-400 p-2">{plan.can_self_evacuate ? 'YES' : 'NO – requires staff assistance'}</td></tr>
-          <tr><td className="border border-gray-400 p-2 font-bold bg-gray-100">Staff required</td><td className="border border-gray-400 p-2">{plan.number_of_staff_required} staff member{plan.number_of_staff_required !== 1 ? 's' : ''}</td></tr>
-          <tr><td className="border border-gray-400 p-2 font-bold bg-gray-100">Assembly point</td><td className="border border-gray-400 p-2">{plan.assembly_point || '—'}</td></tr>
-          <tr><td className="border border-gray-400 p-2 font-bold bg-gray-100">Equipment needed</td><td className="border border-gray-400 p-2">{plan.equipment_needed || 'None'}</td></tr>
-          <tr><td className="border border-gray-400 p-2 font-bold bg-gray-100">Known to fire service</td><td className="border border-gray-400 p-2">{plan.known_to_fire_service ? 'YES' : 'NO'}</td></tr>
-        </tbody>
-      </table>
-      <div className="mb-4 border border-gray-400 p-3">
-        <p className="font-bold mb-1">Evacuation method:</p>
-        <p className="whitespace-pre-wrap">{plan.evacuation_method}</p>
-      </div>
-      {plan.special_considerations && (
-        <div className="mb-4 border-2 border-orange-400 p-3">
-          <p className="font-bold mb-1 text-orange-700">Special considerations:</p>
-          <p className="whitespace-pre-wrap">{plan.special_considerations}</p>
-        </div>
-      )}
-      <div className="mt-8 grid grid-cols-2 gap-8">
-        <div><p className="font-bold border-b-2 border-black pb-1 mb-1">Completed by</p><p className="text-sm text-gray-500">{plan.created_by_name}</p></div>
-        <div><p className="font-bold border-b-2 border-black pb-1 mb-1">Date completed</p><p className="text-sm text-gray-500">{plan.created_at ? format(new Date(plan.created_at), 'dd MMMM yyyy') : ''}</p></div>
-      </div>
-    </div>
-  )
+function printPeepPlan(plan: any) {
+  const sections = [
+    {
+      title: 'Mobility &amp; Evacuation Requirements',
+      inner: `
+        <table class="fields">
+          <tr><th>Mobility Level</th><td>${esc(mobilityLabel(plan.mobility_level))}</td></tr>
+          <tr><th>Can Self-Evacuate</th><td>${plan.can_self_evacuate ? 'Yes' : 'No — requires staff assistance'}</td></tr>
+          <tr><th>Staff Required</th><td>${esc(plan.number_of_staff_required)} staff member${plan.number_of_staff_required !== 1 ? 's' : ''}</td></tr>
+          <tr><th>Equipment Needed</th><td>${esc(plan.equipment_needed || 'None')}</td></tr>
+          <tr><th>Assembly Point</th><td>${esc(plan.assembly_point)}</td></tr>
+          <tr><th>Known to Fire Service</th><td>${plan.known_to_fire_service ? 'Yes' : 'No'}</td></tr>
+        </table>
+      `,
+    },
+    {
+      title: 'Evacuation Method',
+      inner: `<p class="body-text">${nl(plan.evacuation_method)}</p>`,
+    },
+    ...(plan.special_considerations ? [{
+      title: 'Special Considerations',
+      inner: `<div class="risk-box high"><span class="rb-label">Special Considerations</span></div><p class="body-text">${nl(plan.special_considerations)}</p>`,
+    }] : []),
+    {
+      title: 'Sign-Off',
+      inner: `
+        <table class="fields">
+          <tr><th>Completed By</th><td>${esc(plan.created_by_name)}</td></tr>
+          <tr><th>Date Completed</th><td>${fmtDate(plan.created_at)}</td></tr>
+          <tr><th>Next Review Due</th><td>${fmtDate(plan.review_date)}</td></tr>
+        </table>
+      `,
+    },
+  ]
+
+  const body = buildLetterheadPage({
+    docTitle: 'Personal Emergency Evacuation Plan',
+    docSubtitle: 'PEEP',
+    docRefPrefix: 'PEEP',
+    docRefId: plan.id || plan.su_id,
+    residentName: plan.su_name,
+    sections,
+  })
+
+  openLetterheadPrint(`${plan.su_name} — PEEP`, body)
 }
 
 // ── Detail modal ──────────────────────────────────────────────────────
 
 function PEEPDetail({ plan, onClose, onEdit }: { plan: any; onClose: () => void; onEdit: () => void }) {
   function handlePrint() {
-    window.print()
+    printPeepPlan(plan)
   }
 
   return (
     <Modal open={true} onClose={onClose} title={`PEEP – ${plan.su_name}`} size="xl">
-      <PrintPEEP plan={plan} />
-
-      <div className="space-y-4 no-print">
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-3 text-center">
             <div className="text-2xl mb-1">{mobilityIcon(plan.mobility_level)}</div>

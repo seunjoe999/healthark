@@ -5,6 +5,65 @@ import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
+
+const LOG_TABLE_CSS = `
+  table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
+  table.log th{text-align:left;background:#132a4f;color:#fff;border:1px solid #132a4f;padding:6px 8px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
+  table.log td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:10px}
+  table.log tr:nth-child(even) td{background:#f7f7f5}
+`
+
+function buildBowelChartHtml(records: any[], suLabel: string): string {
+  const rows = records.map(r => `
+    <tr>
+      <td>${fmtDate(r.recorded_at)}<br/>${r.recorded_at ? new Date(r.recorded_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}</td>
+      <td>${esc(r.su_name)}</td>
+      <td>Type ${esc(r.bristol_type)}</td>
+      <td style="text-transform:capitalize">${esc(r.amount)}</td>
+      <td style="text-transform:capitalize">${esc(r.colour?.replace(/_/g, ' '))}</td>
+      <td>${r.blood_present ? 'Yes' : '—'}</td>
+      <td>${r.mucus_present ? 'Yes' : '—'}</td>
+      <td>${nl(r.notes)}</td>
+      <td>${esc(r.recorded_by_name)}</td>
+    </tr>
+  `).join('')
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: BOWEL-${fmtDate(new Date().toISOString())}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Bowel Chart</div>
+      <div class="doc-subtitle">${esc(suLabel)} — Bristol Stool Chart Log</div>
+
+      <table class="idtable">
+        <tr><td class="lbl">Records</td><td class="val">${records.length}</td></tr>
+      </table>
+
+      <h2 class="sec"><span class="num">1.</span>Log</h2>
+      <table class="log">
+        <tr><th>Date / Time</th><th>Resident</th><th>Bristol</th><th>Amount</th><th>Colour</th><th>Blood</th><th>Mucus</th><th>Notes</th><th>Recorded By</th></tr>
+        ${rows || '<tr><td colspan="9" style="text-align:center;color:#888">No records</td></tr>'}
+      </table>
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Resident health record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Bowel Chart</title><style>${LETTERHEAD_PRINT_CSS}${LOG_TABLE_CSS}</style></head><body>${body}</body></html>`
+}
 
 const BRISTOL_TYPES = [
   { value: '1', label: 'Type 1 – Separate hard lumps (severe constipation)' },
@@ -106,6 +165,19 @@ export default function BowelChart() {
     return Math.floor(diff / 86400000)
   }
 
+  function handlePrint() {
+    const suLabel = selectedSU
+      ? (suOptions.find(o => o.value === selectedSU)?.label || 'Selected resident')
+      : 'All service users'
+    const html = buildBowelChartHtml(records, suLabel)
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -116,7 +188,7 @@ export default function BowelChart() {
           <p className="text-slate-400 text-sm mt-1">Bristol stool chart monitoring</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrint} />
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
             Record
           </Button>

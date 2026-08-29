@@ -5,6 +5,80 @@ import { useAuth } from '../../context/AuthContext'
 import api, { homesApi } from '../../api'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
+import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
+
+const LOG_TABLE_CSS = `
+  table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
+  table.log th{text-align:left;background:#132a4f;color:#fff;border:1px solid #132a4f;padding:6px 8px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
+  table.log td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:10px}
+  table.log tr:nth-child(even) td{background:#f7f7f5}
+`
+
+function buildMaintenancePrintHtml(tab: 'log' | 'contacts', items: any[], contacts: any[]): string {
+  const rows = tab === 'log'
+    ? items.map(i => `
+        <tr>
+          <td>${esc(i.title)}</td>
+          <td style="text-transform:capitalize">${esc(i.category)}</td>
+          <td style="text-transform:capitalize">${esc(i.priority)}</td>
+          <td style="text-transform:capitalize">${esc(i.status?.replace(/_/g, ' '))}</td>
+          <td>${esc(i.location)}</td>
+          <td>${nl(i.description)}</td>
+          <td>${esc(i.reported_by_name)}</td>
+          <td>${fmtDate(i.created_at)}</td>
+        </tr>
+      `).join('')
+    : contacts.map(c => `
+        <tr>
+          <td>${esc(c.name)}</td>
+          <td>${esc(c.role)}</td>
+          <td>${esc(c.company)}</td>
+          <td>${esc(c.phone)}</td>
+          <td>${esc(c.email)}</td>
+          <td>${nl(c.notes)}</td>
+        </tr>
+      `).join('')
+
+  const headerRow = tab === 'log'
+    ? '<tr><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Location</th><th>Description</th><th>Reported By</th><th>Date</th></tr>'
+    : '<tr><th>Name</th><th>Role</th><th>Company</th><th>Phone</th><th>Email</th><th>Notes</th></tr>'
+  const colCount = tab === 'log' ? 8 : 6
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: MAINT-${fmtDate(new Date().toISOString())}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Maintenance</div>
+      <div class="doc-subtitle">${tab === 'log' ? 'Issue Log' : 'Maintenance Contacts'}</div>
+
+      <table class="idtable">
+        <tr><td class="lbl">Records</td><td class="val">${tab === 'log' ? items.length : contacts.length}</td></tr>
+      </table>
+
+      <h2 class="sec"><span class="num">1.</span>${tab === 'log' ? 'Issues' : 'Contacts'}</h2>
+      <table class="log">
+        ${headerRow}
+        ${rows || `<tr><td colspan="${colCount}" style="text-align:center;color:#888">No records</td></tr>`}
+      </table>
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Facility record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Maintenance</title><style>${LETTERHEAD_PRINT_CSS}${LOG_TABLE_CSS}</style></head><body>${body}</body></html>`
+}
 
 const CATEGORIES = [
   { value: 'electrical', label: 'Electrical' },
@@ -169,6 +243,16 @@ export default function Maintenance() {
     !search || i.title.toLowerCase().includes(search.toLowerCase()) || (i.location || '').toLowerCase().includes(search.toLowerCase())
   )
 
+  function handlePrint() {
+    const html = buildMaintenancePrintHtml(tab, filtered, contacts)
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -179,7 +263,7 @@ export default function Maintenance() {
           <p className="text-slate-400 text-sm mt-1">Track facility issues and maintenance contacts</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrint} />
           {tab === 'log' && (
             <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNew(true)}>
               Report Issue

@@ -69,6 +69,7 @@ export function buildLetterheadPage(opts: {
   docRefPrefix: string
   docRefId: string | number
   residentName: string
+  residentLabel?: string
   extraIdCells?: string
   sections: PrintSection[]
 }): string {
@@ -94,7 +95,7 @@ export function buildLetterheadPage(opts: {
 
     <table class="idtable">
       <tr>
-        <td class="lbl">Resident</td><td class="val">${esc(opts.residentName)}</td>
+        <td class="lbl">${esc(opts.residentLabel || 'Resident')}</td><td class="val">${esc(opts.residentName)}</td>
         ${opts.extraIdCells || ''}
       </tr>
     </table>

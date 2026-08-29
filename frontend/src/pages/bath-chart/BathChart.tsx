@@ -3,6 +3,80 @@ import { Droplets, Plus, Calendar, Users, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
+import toast from 'react-hot-toast'
+import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
+
+const LOG_TABLE_CSS = `
+  table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
+  table.log th{text-align:left;background:#132a4f;color:#fff;border:1px solid #132a4f;padding:6px 8px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
+  table.log td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:10px}
+  table.log tr:nth-child(even) td{background:#f7f7f5}
+`
+
+function buildBathChartHtml(view: 'summary' | 'log', summary: any[], records: any[], suLabel: string): string {
+  const rows = view === 'summary'
+    ? summary.map(s => `
+        <tr>
+          <td>${esc(s.su_name)}</td>
+          <td>${esc(s.room_number)}</td>
+          <td style="text-transform:capitalize">${esc(s.bath_type?.replace(/_/g, ' '))}</td>
+          <td>${fmtDate(s.bath_date)}</td>
+          <td>${esc(s.given_by_name)}</td>
+        </tr>
+      `).join('')
+    : records.map(r => `
+        <tr>
+          <td>${fmtDate(r.bath_date)}${r.bath_time ? '<br/>' + r.bath_time.substring(0, 5) : ''}</td>
+          <td>${esc(r.su_name)}</td>
+          <td style="text-transform:capitalize">${esc(r.bath_type?.replace(/_/g, ' '))}</td>
+          <td style="text-transform:capitalize">${esc(r.assistance_level?.replace(/_/g, ' '))}</td>
+          <td>${[r.hair_washed && 'Hair washed', r.nails_cut && 'Nails cut', r.shaved && 'Shaved'].filter(Boolean).join(', ') || '—'}</td>
+          <td>${nl(r.skin_condition)}</td>
+          <td>${nl(r.notes)}</td>
+          <td>${esc(r.given_by_name)}</td>
+        </tr>
+      `).join('')
+
+  const headerRow = view === 'summary'
+    ? '<tr><th>Resident</th><th>Room</th><th>Last Type</th><th>Last Date</th><th>Given By</th></tr>'
+    : '<tr><th>Date / Time</th><th>Resident</th><th>Type</th><th>Assistance</th><th>Care Given</th><th>Skin Condition</th><th>Notes</th><th>Given By</th></tr>'
+  const colCount = view === 'summary' ? 5 : 8
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: BATH-${fmtDate(new Date().toISOString())}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Bath Chart</div>
+      <div class="doc-subtitle">${esc(suLabel)} — ${view === 'summary' ? 'Last Bath Summary' : 'Full Log'}</div>
+
+      <table class="idtable">
+        <tr><td class="lbl">Records</td><td class="val">${view === 'summary' ? summary.length : records.length}</td></tr>
+      </table>
+
+      <h2 class="sec"><span class="num">1.</span>${view === 'summary' ? 'Summary' : 'Log'}</h2>
+      <table class="log">
+        ${headerRow}
+        ${rows || `<tr><td colspan="${colCount}" style="text-align:center;color:#888">No records</td></tr>`}
+      </table>
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Resident health record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Bath Chart</title><style>${LETTERHEAD_PRINT_CSS}${LOG_TABLE_CSS}</style></head><body>${body}</body></html>`
+}
 
 const BATH_TYPES = [
   { value: 'shower', label: 'Shower' },
@@ -85,6 +159,19 @@ export default function BathChart() {
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
+  function handlePrint() {
+    const suLabel = view === 'log' && selectedSU
+      ? (suOptions.find(o => o.value === selectedSU)?.label || 'Selected resident')
+      : 'All service users'
+    const html = buildBathChartHtml(view, summary, records, suLabel)
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -95,7 +182,7 @@ export default function BathChart() {
           <p className="text-slate-400 text-sm mt-1">Personal hygiene and bathing records</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrint} />
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
             Log Bath / Shower
           </Button>

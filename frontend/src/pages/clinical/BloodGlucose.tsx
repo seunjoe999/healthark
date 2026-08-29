@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Droplets, Save, Printer, TrendingUp, AlertTriangle } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const READING_TYPES = ['Pre-breakfast', 'Post-breakfast', 'Pre-lunch', 'Post-lunch', 'Pre-dinner', 'Post-dinner', 'Bedtime', 'Random', 'Hypo check']
 
@@ -75,6 +76,32 @@ export default function BloodGlucose() {
     ? Math.round((history.slice(0, 7).reduce((s: number, h: any) => s + parseFloat(h.glucose_mmol), 0) / Math.min(history.length, 7)) * 10) / 10
     : null
 
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const sections: PrintSection[] = []
+    if (history.length) {
+      const rows = history.map((h: any) => {
+        const s = getGlucoseStatus(parseFloat(h.glucose_mmol))
+        return `<tr><th>${h.recorded_at ? fmtDate(h.recorded_at) : '—'}</th>
+          <td><strong style="color:${s.color}">${esc(h.glucose_mmol)} mmol/L — ${s.label}</strong><br/>
+          ${esc(h.reading_type)}${h.insulin_given ? ` · Insulin: ${esc(h.insulin_type)} ${esc(h.insulin_units)}u` : ''}${h.staff_name ? ` · ${esc(h.staff_name)}` : ''}
+          ${h.symptoms ? `<br/>Symptoms: ${esc(h.symptoms)}` : ''}${h.action_taken ? `<br/>Action: ${esc(h.action_taken)}` : ''}${h.notes ? `<br/><em>${esc(h.notes)}</em>` : ''}</td></tr>`
+      }).join('')
+      sections.push({
+        title: 'Reading History',
+        inner: `${avg !== null ? `<div class="risk-box"><span class="rb-label">7-Reading Average</span><span class="rb-value">${avg} mmol/L</span></div>` : ''}<table class="fields">${rows}</table>`,
+      })
+    } else {
+      sections.push({ title: 'Blood Glucose Log', inner: `<p class="body-text muted">No blood glucose readings recorded yet for this resident.</p>` })
+    }
+    const body = buildLetterheadPage({
+      docTitle: 'Blood Glucose Log', docSubtitle: 'Blood glucose monitoring and insulin tracking',
+      docRefPrefix: 'BG', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — Blood Glucose Log`, body)
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -85,7 +112,7 @@ export default function BloodGlucose() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Blood glucose monitoring and insulin tracking for diabetic residents</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

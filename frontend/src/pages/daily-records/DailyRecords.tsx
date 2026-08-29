@@ -5,6 +5,7 @@ import { format, subDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
 import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check, Music, Thermometer, Stethoscope, ArrowLeftRight, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 import BodyMap from './forms/BodyMap'
 import IncidentForm from './forms/IncidentForm'
 import SeizureForm from './forms/SeizureForm'
@@ -127,6 +128,18 @@ export default function DailyRecords() {
 
   const isToday = format(viewDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
 
+  function handlePrint() {
+    if (!selectedSu) { toast.error('Select a resident first'); return }
+    const dateLabel = isToday ? 'Today' : format(viewDate, 'd MMMM yyyy')
+    const html = buildDailyRecordsPrintHtml(getName(selectedSu), dateLabel, groupedRecords)
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
@@ -195,7 +208,7 @@ export default function DailyRecords() {
         </div>
 
         <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto justify-end">
-          <PrintButton />
+          <PrintButton onClick={handlePrint} />
           {selectedSu && isToday && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddOpen(true)}>Add record</Button>}
         </div>
       </div>
@@ -302,6 +315,75 @@ export default function DailyRecords() {
       )}
     </div>
   )
+}
+
+function summarizeRecordText(r: any): string {
+  const type = r.record_type || ''
+  if (type === 'fluid_intake') return `${r.fluid_type || 'Fluid'} — ${r.amount_ml}ml`
+  if (type === 'food_intake') return `${r.meal_type || 'Meal'}: ${r.amount_eaten || '—'}${r.food_description ? ` · ${r.food_description}` : ''}`
+  if (type === 'vitals_bp') return `BP: ${r.systolic}/${r.diastolic} mmHg${r.pulse ? ` · Pulse: ${r.pulse}bpm` : ''}`
+  if (type === 'vitals_temp') return `Temp: ${r.temp_celsius}°C`
+  if (type === 'vitals_oxygen') return `SpO2: ${r.spo2_percent}%${r.supplemental_o2 ? ' (on O2)' : ''}`
+  if (type === 'vitals_weight') return `Weight: ${r.weight_kg}kg${r.bmi ? ` · BMI: ${r.bmi}` : ''}`
+  if (type === 'bowel_movement') return `Bristol type ${r.bristol_type || '—'}${r.notes ? ` · ${r.notes}` : ''}`
+  return r.notes || r.description || (r.record_type ? r.record_type.replace(/_/g, ' ') : '—')
+}
+
+function buildDailyRecordsPrintHtml(suName: string, viewDateLabel: string, groupedRecords: Record<string, any[]>): string {
+  const sections = Object.entries(groupedRecords).map(([type, typeRecords], i) => {
+    const typeInfo = RECORD_TYPES.find(r => r.value === type)
+    const label = typeInfo?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    const rows = (typeRecords as any[]).map(r => `
+      <tr>
+        <td>${r.created_at ? new Date(r.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+        <td>${nl(summarizeRecordText(r))}</td>
+        <td>${esc(r.staff_name)}</td>
+      </tr>
+    `).join('')
+    return `<h2 class="sec"><span class="num">${i + 1}.</span>${esc(label)}</h2>
+      <table class="log">
+        <tr><th>Time</th><th>Summary</th><th>Staff</th></tr>
+        ${rows}
+      </table>`
+  }).join('')
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: DR-${fmtDate(new Date().toISOString())}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Daily Records</div>
+      <div class="doc-subtitle">${esc(viewDateLabel)}</div>
+
+      <table class="idtable">
+        <tr><td class="lbl">Resident</td><td class="val">${esc(suName)}</td></tr>
+      </table>
+
+      ${sections || '<p class="body-text muted">No records for this date.</p>'}
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Resident health record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  const logCss = `
+    table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
+    table.log th{text-align:left;background:#132a4f;color:#fff;border:1px solid #132a4f;padding:6px 8px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
+    table.log td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:10px}
+    table.log tr:nth-child(even) td{background:#f7f7f5}
+  `
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Daily Records</title><style>${LETTERHEAD_PRINT_CSS}${logCss}</style></head><body>${body}</body></html>`
 }
 
 function RecordSummary({ record: r }: { record: any }) {

@@ -275,10 +275,10 @@ export { default as PhotoUpload } from './PhotoUpload'
 // ── Print Button ──────────────────────────────────────────────────
 import { Printer } from 'lucide-react'
 
-export function PrintButton({ label = 'Print' }: { label?: string }) {
+export function PrintButton({ label = 'Print', onClick }: { label?: string; onClick?: () => void }) {
   return (
     <button
-      onClick={() => window.print()}
+      onClick={onClick || (() => window.print())}
       className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
       style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.3)', color: '#e8b130' }}
       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#222'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#e8b130' }}

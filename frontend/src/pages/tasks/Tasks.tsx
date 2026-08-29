@@ -7,6 +7,7 @@ import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } 
 import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 
 const FREQUENCIES = [
   { value: 'once', label: 'Once only' },
@@ -181,6 +182,34 @@ export default function Tasks() {
 
   const filtered = tasks.filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
 
+  const printTasks = () => {
+    const homeName = homes.find(h => h.id === selectedHome)?.name || ''
+    const rows = filtered.map(t => `
+      <tr>
+        <td>${esc(t.title)}</td>
+        <td>${esc(t.su_name)}</td>
+        <td>${esc((t.category || '').replace('_', ' '))}</td>
+        <td>${esc(t.priority)}</td>
+        <td>${esc(t.due_time)}</td>
+        <td>${t.status === 'completed' ? 'Completed' : 'Pending'}</td>
+        <td>${esc(t.completed_by_name)}</td>
+      </tr>`).join('')
+    const table = `
+      <table class="fields">
+        <tr><th>Title</th><th>Resident</th><th>Category</th><th>Priority</th><th>Due</th><th>Status</th><th>Completed by</th></tr>
+        ${rows || '<tr><td colspan="7">No tasks recorded for this filter.</td></tr>'}
+      </table>`
+    const body = buildLetterheadPage({
+      docTitle: 'Daily Task List',
+      docSubtitle: `${filter === 'all' ? 'All' : filter === 'pending' ? 'Pending' : 'Completed'} tasks`,
+      docRefPrefix: 'TSK',
+      docRefId: today,
+      residentName: homeName || '—',
+      sections: [{ title: 'Tasks', inner: table }],
+    })
+    openLetterheadPrint(`Task List — ${fmtDate(today)}`, body)
+  }
+
   const priorityColor = (p: string) => {
     if (p === 'urgent') return 'bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20'
     if (p === 'high') return 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20'
@@ -198,7 +227,7 @@ export default function Tasks() {
           <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
         </div>
         <div className="flex gap-2 items-center">
-          <PrintButton />
+          <PrintButton onClick={printTasks} />
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
           {pageTab === 'tasks' && <Button size="sm" variant="outline" icon={<Send className="w-4 h-4" />} onClick={() => setAddFollowUpOpen(true)}>Follow up</Button>}
           {pageTab === 'tasks' && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}

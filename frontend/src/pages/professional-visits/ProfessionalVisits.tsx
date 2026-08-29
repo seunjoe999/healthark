@@ -4,6 +4,8 @@ import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechT
 import api from '../../api'
 import clsx from 'clsx'
 import { format, isPast, parseISO } from 'date-fns'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
+import toast from 'react-hot-toast'
 
 const PROFESSIONAL_TYPES = [
   { value: 'GP', label: 'GP (General Practitioner)' },
@@ -33,6 +35,39 @@ const TYPE_COLORS: Record<string, string> = {
 
 function typeColor(type: string) {
   return TYPE_COLORS[type] || 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+}
+
+function buildVisitPrintPage(r: any): string {
+  const sections: PrintSection[] = []
+  sections.push({
+    title: 'Visit Details',
+    inner: `
+      <table class="fields">
+        <tr><th>Professional Type</th><td>${esc(r.professional_type)}</td></tr>
+        <tr><th>Visit Date</th><td>${fmtDate(r.visit_date)}</td></tr>
+        ${r.professional_name ? `<tr><th>Professional Name</th><td>${esc(r.professional_name)}</td></tr>` : ''}
+        ${r.organisation ? `<tr><th>Organisation</th><td>${esc(r.organisation)}</td></tr>` : ''}
+        <tr><th>Recorded By</th><td>${esc(r.recorded_by_name)}</td></tr>
+      </table>
+    `,
+  })
+  if (r.reason) sections.push({ title: 'Reason for Visit', inner: `<p class="body-text">${esc(r.reason)}</p>` })
+  if (r.outcome) sections.push({ title: 'Outcome / Findings', inner: `<p class="body-text">${esc(r.outcome)}</p>` })
+  if (r.instructions_left) sections.push({ title: 'Instructions Left for Care Team', inner: `<p class="body-text">${esc(r.instructions_left)}</p>` })
+  if (r.follow_up_date) {
+    sections.push({
+      title: 'Follow-Up',
+      inner: `<table class="fields"><tr><th>Follow-up Date</th><td>${fmtDate(r.follow_up_date)}</td></tr><tr class="${r.follow_up_done ? 'on' : ''}"><th>Status</th><td>${r.follow_up_done ? 'Completed' : 'Pending'}</td></tr></table>${r.follow_up_notes ? `<p class="body-text">${esc(r.follow_up_notes)}</p>` : ''}`,
+    })
+  }
+  return buildLetterheadPage({
+    docTitle: 'Professional Visit Record',
+    docSubtitle: esc(r.professional_type),
+    docRefPrefix: 'PV',
+    docRefId: r.id,
+    residentName: r.su_name || 'Unknown resident',
+    sections,
+  })
 }
 
 export default function ProfessionalVisits() {
@@ -121,6 +156,13 @@ export default function ProfessionalVisits() {
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
+  const handlePrintVisits = () => {
+    if (visits.length === 0) { toast.error('No visits to print for the current filters'); return }
+    const body = visits.map(r => buildVisitPrintPage(r)).join('')
+    const ok = openLetterheadPrint('Professional Visits Log', body)
+    if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -131,7 +173,7 @@ export default function ProfessionalVisits() {
           <p className="text-slate-400 text-sm mt-1">GP, OT, nursing and other professional visit records</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrintVisits} />
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
             Log Visit
           </Button>

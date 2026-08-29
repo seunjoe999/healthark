@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton, SpeechTextarea } from '../../components/ui'
 import { FileText, Plus, Trash2, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
 
 const REVIEW_TYPES = [
   { value: 'care_review', label: 'Care Review' },
@@ -25,6 +26,39 @@ function parseAttendees(value: any): string {
     if (Array.isArray(arr)) return arr.map((a: any) => a.name ? `${a.name}${a.role ? ` (${a.role})` : ''}` : String(a)).join(', ')
   } catch {}
   return String(value)
+}
+
+function buildReviewPrintPage(r: any, suName: string): string {
+  const typeLabel = REVIEW_TYPES.find(t => t.value === r.review_type)?.label || r.review_type
+  const sections: PrintSection[] = []
+
+  sections.push({
+    title: 'Review Details',
+    inner: `
+      <table class="fields">
+        <tr><th>Review Type</th><td>${esc(typeLabel)}</td></tr>
+        <tr><th>Date</th><td>${fmtDate(r.review_date)}</td></tr>
+        ${r.next_review_date ? `<tr><th>Next Review Due</th><td>${fmtDate(r.next_review_date)}</td></tr>` : ''}
+        <tr><th>Recorded By</th><td>${esc(r.created_by_name)}</td></tr>
+        ${r.attendees ? `<tr><th>Attendees</th><td>${esc(parseAttendees(r.attendees))}</td></tr>` : ''}
+      </table>
+    `,
+  })
+
+  sections.push({ title: 'Summary', inner: `<p class="body-text">${nl(r.summary)}</p>` })
+
+  if (r.resident_feedback) sections.push({ title: "Resident's Feedback", inner: `<p class="body-text">${nl(r.resident_feedback)}</p>` })
+  if (r.family_feedback) sections.push({ title: 'Family / Advocate Feedback', inner: `<p class="body-text">${nl(r.family_feedback)}</p>` })
+  if (r.outcomes) sections.push({ title: 'Outcomes &amp; Action Points', inner: `<p class="body-text">${nl(r.outcomes)}</p>` })
+
+  return buildLetterheadPage({
+    docTitle: typeLabel,
+    docSubtitle: 'Review & feedback record',
+    docRefPrefix: 'REV',
+    docRefId: r.id,
+    residentName: suName,
+    sections,
+  })
 }
 
 export default function Reviews() {
@@ -72,6 +106,14 @@ export default function Reviews() {
 
   const getName = (su: any) => `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
 
+  const handlePrintReviews = () => {
+    if (!selectedSu || reviews.length === 0) { toast.error('No reviews to print for this resident'); return }
+    const name = getName(selectedSu)
+    const body = reviews.map(r => buildReviewPrintPage(r, name)).join('')
+    const ok = openLetterheadPrint(`${name} — Reviews & Feedback`, body)
+    if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Top control bar */}
@@ -103,7 +145,7 @@ export default function Reviews() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrintReviews} />
           {selectedSu && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddOpen(true)}>Add review</Button>}
         </div>
       </div>

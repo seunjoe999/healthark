@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { ShieldAlert, Plus, CheckCircle2, XCircle, AlertTriangle, Paperclip, Eye, Edit2, Upload, X, Check, Lock, Printer } from 'lucide-react'
-import { Button, Modal, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
+import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
 import api, { getToken } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import SignaturePad from '../../components/SignaturePad'
@@ -445,7 +445,6 @@ export default function MedicineRisk() {
           <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={openNewForm}>New Assessment</Button>
         </div>
       </div>

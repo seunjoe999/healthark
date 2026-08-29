@@ -4,6 +4,8 @@ import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechT
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
+import toast from 'react-hot-toast'
 
 const OBS_TYPES = [
   { value: 'temperature', label: 'Temperature' },
@@ -68,6 +70,58 @@ function ObsValue({ obs }: { obs: any }) {
       {obs.blood_glucose && <span className="font-bold text-amber-400">🩸 {obs.blood_glucose} mmol/L</span>}
     </div>
   )
+}
+
+function obsValueSummary(obs: any): string {
+  const parts: string[] = []
+  if (obs.temp_celsius) parts.push(`${esc(obs.temp_celsius)}°C${obs.temp_method ? ` (${esc(obs.temp_method)})` : ''}`)
+  if (obs.systolic && obs.diastolic) parts.push(`BP ${esc(obs.systolic)}/${esc(obs.diastolic)} mmHg`)
+  if (obs.pulse) parts.push(`${esc(obs.pulse)} bpm`)
+  if (obs.spo2_percent) parts.push(`SpO2 ${esc(obs.spo2_percent)}%${obs.o2_litres_min ? ` (${esc(obs.o2_litres_min)}L/min)` : ''}`)
+  if (obs.weight_kg) parts.push(`${esc(obs.weight_kg)} kg`)
+  if (obs.blood_glucose) parts.push(`${esc(obs.blood_glucose)} mmol/L`)
+  return parts.join(', ') || '—'
+}
+
+function buildObservationsPrintPage(rows: any[], title: string): string {
+  const rowsHtml = rows.map(r => `
+    <tr>
+      <td>${esc(r.su_name)}</td>
+      <td style="text-transform:capitalize">${esc((r.obs_type || '').replace(/_/g, ' '))}</td>
+      <td>${obsValueSummary(r)}</td>
+      <td>${r.observed_at ? fmtDate(r.observed_at) : '—'}</td>
+      <td>${esc(r.recorded_by_name)}</td>
+      <td>${esc(r.notes)}</td>
+    </tr>
+  `).join('')
+
+  const sections: PrintSection[] = [{
+    title: 'Observations',
+    inner: `
+      <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:10px">
+        <thead>
+          <tr style="background:#f2f2f0">
+            <th style="border:1px solid #999;padding:5px 8px;text-align:left">Resident</th>
+            <th style="border:1px solid #999;padding:5px 8px;text-align:left">Type</th>
+            <th style="border:1px solid #999;padding:5px 8px;text-align:left">Reading(s)</th>
+            <th style="border:1px solid #999;padding:5px 8px;text-align:left">Date</th>
+            <th style="border:1px solid #999;padding:5px 8px;text-align:left">Recorded By</th>
+            <th style="border:1px solid #999;padding:5px 8px;text-align:left">Notes</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `,
+  }]
+
+  return buildLetterheadPage({
+    docTitle: title,
+    docSubtitle: 'Clinical observations record',
+    docRefPrefix: 'OBS',
+    docRefId: fmtDate(new Date().toISOString()),
+    residentName: rows.length === 1 ? rows[0].su_name : 'Multiple residents',
+    sections,
+  })
 }
 
 export default function Observations() {
@@ -147,6 +201,13 @@ export default function Observations() {
 
   const abnormalCount = summary.filter(s => abnormalBadge(s).length > 0).length
 
+  const handlePrintObservations = () => {
+    const rows = view === 'list' ? records : summary
+    if (rows.length === 0) { toast.error('No observations to print'); return }
+    const ok = openLetterheadPrint(view === 'list' ? 'Observations — All Records' : 'Observations — Latest per Resident', buildObservationsPrintPage(rows, view === 'list' ? 'Observations — All Records' : 'Observations — Latest per Resident'))
+    if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -157,7 +218,7 @@ export default function Observations() {
           <p className="text-slate-400 text-sm mt-1">Vitals, temperature, blood pressure and clinical recordings</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={handlePrintObservations} />
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
             Record Observation
           </Button>

@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { ClipboardList, Save, Printer, CheckCircle, Clock, AlertCircle, Plus } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const REFERRAL_TYPES = ['GP visit', 'District Nurse', 'Physiotherapy', 'Occupational Therapy', 'Dietitian', 'SALT (Speech & Language)', 'Chiropodist/Podiatrist', 'Optician', 'Dentist', 'Mental Health/Psychiatry', 'Palliative Care', 'Community Matron', 'Hospital Consultant', 'Continence Nurse', 'Tissue Viability', 'Other']
 const URGENCY = ['Routine', 'Urgent (within 24h)', 'Emergency (same day)']
@@ -85,6 +86,28 @@ export default function GPReferral() {
 
   const openCount = referrals.filter(r => r.status === 'Pending' || r.status === 'Appointment booked').length
 
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const sections: PrintSection[] = []
+    if (referrals.length) {
+      const rows = referrals.map((ref: any) => `
+        <tr><th>${esc(ref.referral_type)}<br/><span style="font-weight:400;font-size:8.5px">${ref.referred_at ? fmtDate(ref.referred_at) : '—'}</span></th>
+        <td><strong>${esc(ref.urgency)}</strong> · Status: <strong>${esc(ref.status)}</strong><br/>
+        ${esc(ref.reason)}${ref.referred_to ? `<br/>Referred to: ${esc(ref.referred_to)}` : ''}${ref.appointment_date ? `<br/>Appointment: ${fmtDate(ref.appointment_date)}` : ''}
+        ${ref.staff_name ? `<br/>Logged by: ${esc(ref.staff_name)}` : ''}${ref.notes ? `<br/><em>${esc(ref.notes)}</em>` : ''}${ref.outcome ? `<br/>Outcome: ${esc(ref.outcome)}` : ''}</td></tr>
+      `).join('')
+      sections.push({ title: 'GP / Referral Log', inner: `<table class="fields">${rows}</table>` })
+    } else {
+      sections.push({ title: 'GP / Referral Tracker', inner: `<p class="body-text muted">No referrals logged yet for this resident.</p>` })
+    }
+    const body = buildLetterheadPage({
+      docTitle: 'GP / Referral Tracker', docSubtitle: 'Referrals to GP, district nurses and allied health professionals',
+      docRefPrefix: 'REF', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — GP Referral Log`, body)
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -95,7 +118,7 @@ export default function GPReferral() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Track referrals to GP, district nurses, allied health professionals and specialists</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

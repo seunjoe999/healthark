@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Heart, Save, ChevronDown, ChevronUp, Printer } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
 
 // Abbey Pain Scale — validated for non-verbal/dementia residents
 const ITEMS = [
@@ -80,6 +81,45 @@ function getInterpretation(score: number) {
 
 const PAIN_TYPE_OPTIONS = ['Chronic', 'Acute', 'Post-procedure', 'Unknown']
 
+function printAbbeyPainScale(residentName: string, current: { scores: Record<string, number>; totalScore: number; interp: { label: string } | null; painType: string; notes: string } | null, history: any[]) {
+  const sections: PrintSection[] = []
+
+  if (current && current.interp) {
+    const rows = ITEMS.map(item => {
+      const score = current.scores[item.id]
+      const optLabel = item.options.find(o => o.score === score)?.label
+      return `<tr><th>${esc(item.label)}</th><td>${score}pt — ${esc(optLabel)}</td></tr>`
+    }).join('')
+    sections.push({
+      title: 'Current Assessment',
+      inner: `
+        <div class="risk-box${current.totalScore >= 8 ? ' high' : ''}">
+          <span class="rb-label">Total Score / Interpretation</span>
+          <span class="rb-value">${current.totalScore} / 18 — ${esc(current.interp.label)}</span>
+        </div>
+        <table class="fields">${rows}
+          ${current.painType ? `<tr><th>Type of Pain</th><td>${esc(current.painType)}</td></tr>` : ''}
+        </table>
+        ${current.notes ? `<h3 class="sub">Clinical Notes</h3><p class="body-text">${nl(current.notes)}</p>` : ''}
+      `,
+    })
+  }
+
+  if (history.length) {
+    const rows = history.map(h => `
+      <tr><th>${h.assessed_at ? fmtDate(h.assessed_at) : '—'}</th>
+      <td>Score ${esc(h.total_score)}/18 — ${esc(h.interpretation)}${h.pain_type ? ` · ${esc(h.pain_type)}` : ''}${h.assessed_by_name ? ` · by ${esc(h.assessed_by_name)}` : ''}${h.notes ? `<br/><span style="font-style:italic;color:#555">${nl(h.notes)}</span>` : ''}</td></tr>
+    `).join('')
+    sections.push({ title: 'Assessment History', inner: `<table class="fields">${rows}</table>` })
+  }
+
+  if (!sections.length) {
+    sections.push({ title: 'Assessment', inner: `<p class="body-text muted">No Abbey Pain Scale data recorded yet for this resident.</p>` })
+  }
+
+  return { sections }
+}
+
 export default function AbbeyPainScale() {
   const { user } = useAuth()
   const [residents, setResidents] = useState<any[]>([])
@@ -109,6 +149,17 @@ export default function AbbeyPainScale() {
   const allScored = ITEMS.every(item => scores[item.id] !== undefined)
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0)
   const interp = allScored ? getInterpretation(totalScore) : null
+
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const { sections } = printAbbeyPainScale(residentName, allScored ? { scores, totalScore, interp, painType, notes } : null, history)
+    const body = buildLetterheadPage({
+      docTitle: 'Abbey Pain Scale', docSubtitle: 'Pain assessment — non-verbal / dementia resident',
+      docRefPrefix: 'APS', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — Abbey Pain Scale`, body)
+  }
 
   const save = async () => {
     if (!selectedSu || !allScored) return
@@ -144,7 +195,7 @@ export default function AbbeyPainScale() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Pain assessment for non-verbal / dementia residents</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white print:hidden">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white print:hidden">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

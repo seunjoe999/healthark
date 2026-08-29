@@ -419,7 +419,7 @@ export default function MAR() {
       )}
 
       {printModal && selectedSu && (
-        <PrintMARModal suId={selectedSu.id} startDate={startDate} endDate={endDate} onClose={() => setPrintModal(false)} />
+        <PrintMARModal suId={selectedSu.id} su={su} startDate={startDate} endDate={endDate} onClose={() => setPrintModal(false)} />
       )}
 
       {cellDetail && (
@@ -1450,14 +1450,148 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
   )
 }
 
+/* ─── MAR letterhead print ─────────────────────────────────────────────── */
+const MAR_PRINT_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11px;line-height:1.4;background:#fff}
+  .page{padding:10mm 10mm 12mm;page-break-after:always}
+  .page:last-child{page-break-after:avoid}
+
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:8px;margin-bottom:6px}
+  .org-name{font-size:14px;font-weight:700;letter-spacing:.01em;color:#132a4f}
+  .org-addr{font-size:9px;color:#444;margin-top:2px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9px;color:#444;font-family:Arial,sans-serif;line-height:1.5}
+  .doc-meta strong{color:#132a4f}
+
+  .doc-title{font-family:Arial,sans-serif;font-weight:700;font-size:11.5px;color:#132a4f}
+  .doc-sub{font-family:Arial,sans-serif;font-size:9.5px;color:#555}
+
+  table.mar-grid{border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif}
+  table.mar-grid th, table.mar-grid td{border:1px solid #999;font-size:8px;padding:2px 3px;text-align:center;vertical-align:top}
+  table.mar-grid th{background:#f2f2f0;color:#132a4f;font-weight:700}
+  table.mar-grid th.wk{background:#dbe4f0;color:#132a4f;font-size:9px}
+  table.mar-grid td.med{text-align:left;font-weight:700;font-size:9px}
+  table.mar-grid td.med .dose{font-weight:400;color:#444;font-size:8px}
+  table.mar-grid td.dir{text-align:left;font-size:8px;color:#333}
+  table.mar-grid tr.sig td{border:1px solid #ccc;height:16px;font-size:7.5px;text-align:left;padding:2px 4px}
+
+  .legend{margin-top:6px;font-family:Arial,sans-serif;font-size:7.5px;color:#333;display:flex;gap:10px;flex-wrap:wrap}
+
+  .footer{margin-top:10px;padding-top:6px;border-top:1px solid #999;display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:8px;color:#555}
+  .footer .confid{font-weight:700;letter-spacing:.05em;color:#132a4f}
+
+  @media print{
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:0;size:A4 landscape}
+  }
+`
+
+function buildMarPrintBody(su: any, medications: any[], dates: string[], startDate: string, endDate: string): string {
+  const fmt = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+  const esc = (v: any) => v === null || v === undefined || v === '' ? '—' : String(v)
+  const suName = getName(su)
+  const weeks = buildWeeks(dates)
+
+  const pages = weeks.map((week, idx) => {
+    const rows = medications.length === 0
+      ? `<tr><td colspan="${3 + week.dates.length}" style="text-align:center;padding:10px;color:#666">No medications recorded</td></tr>`
+      : medications.map((med: any) => {
+          const slots: string[] = med.time_slots || FREQ_TIMES[med.frequency] || ['08:00']
+          return slots.map((slot: string, si: number) => `
+            <tr>
+              ${si === 0 ? `<td class="med" rowspan="${slots.length}">${esc(med.medication_name)}${med.dose ? `<div class="dose">${esc(med.dose)}${med.route ? ` · ${esc(med.route)}` : ''}</div>` : ''}${med.is_prn ? '<div class="dose">PRN</div>' : ''}</td>` : ''}
+              ${si === 0 ? `<td class="dir" rowspan="${slots.length}">${esc(med.instructions || med.notes)}</td>` : ''}
+              <td style="font-weight:700">${slot}</td>
+              ${week.dates.map((d: string) => {
+                const dayRecs: any[] = med.records?.[d] || []
+                const rec = slot === 'PRN' ? dayRecs[0] : dayRecs.find((r: any) => r.scheduled_time === slot) || (dayRecs.length === 1 && !dayRecs[0]?.scheduled_time ? dayRecs[0] : undefined)
+                const bg = rec ? (rec.given ? '#d1fae5' : rec.refused ? '#fee2e2' : '#fef9c3') : '#fff'
+                const code = rec ? (rec.mar_code || (rec.given ? 'G' : rec.refused ? 'R' : 'O')) : ''
+                return `<td style="background:${bg}">${code}</td>`
+              }).join('')}
+            </tr>
+          `).join('')
+        }).join('')
+
+    return `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Printed: <strong>${fmt(new Date().toISOString())}</strong></div>
+          <div>Range: ${fmt(startDate)} – ${fmt(endDate)}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:6px 0 8px">
+        <div>
+          <div class="doc-title">${esc(suName)} — Medication Administration Record</div>
+          <div class="doc-sub">${su?.date_of_birth ? `DOB: ${fmt(su.date_of_birth)}` : ''}${su?.home_name ? ` · ${esc(su.home_name)}` : ''}${(su?.food_allergies || su?.allergies) ? ` · Allergies: ${esc([su.food_allergies, su.allergies].filter(Boolean).join(', '))}` : ''}${su?.med_allergies ? ` · Med allergies: ${esc(su.med_allergies)}` : ''}</div>
+        </div>
+        <div class="doc-sub" style="font-weight:700;color:#132a4f">${week.label}</div>
+      </div>
+      <table class="mar-grid">
+        <colgroup><col style="width:150px"/><col style="width:130px"/><col style="width:36px"/>${week.dates.map(() => '<col/>').join('')}</colgroup>
+        <thead>
+          <tr>
+            <th style="text-align:left">Medication</th>
+            <th style="text-align:left">Directions</th>
+            <th>Time</th>
+            ${week.dates.map(d => `<th class="wk">${dayLetter(d)}<br/>${format(parseISO(d), 'd')}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr class="sig"><td colspan="${3 + week.dates.length}">Initials: _______  Name: ________________________  Signature: ________________________  Role: ____________  Date: __________</td></tr>
+        </tbody>
+      </table>
+      <div class="legend">
+        <span><strong>Key:</strong></span>
+        <span style="background:#d1fae5;padding:0 3px">G</span> Given
+        <span style="background:#fee2e2;padding:0 3px">R</span> Refused
+        <span style="background:#fef9c3;padding:0 3px">O</span> Omitted
+      </div>
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Resident health record</span>
+        <span>Page ${idx + 1} of ${weeks.length}</span>
+      </div>
+    </div>
+    `
+  }).join('')
+
+  return pages
+}
+
+function printMarChart(su: any, medications: any[], dates: string[], startDate: string, endDate: string) {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${getName(su)} — MAR</title><style>${MAR_PRINT_CSS}</style></head><body>${buildMarPrintBody(su, medications, dates, startDate, endDate)}</body></html>`
+  const w = window.open('', '_blank')
+  if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  w.print()
+}
+
 /* ─── Print Modal ──────────────────────────────────────────────────────── */
-function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; startDate: string; endDate: string; onClose: () => void }) {
+function PrintMARModal({ suId, su, startDate, endDate, onClose }: { suId: string; su: any; startDate: string; endDate: string; onClose: () => void }) {
   const [sd, setSd] = useState(startDate)
   const [ed, setEd] = useState(endDate)
+  const [printing, setPrinting] = useState(false)
 
-  const open = () => {
-    onClose()
-    setTimeout(() => window.print(), 350)
+  const open = async () => {
+    setPrinting(true)
+    try {
+      const chartRes = await api.get(`/mar/chart-report/${suId}`, { params: { startDate: sd, endDate: ed } })
+      const chart = chartRes.data.data
+      printMarChart(chart?.serviceUser || su, chart?.medications || [], chart?.dates || [], sd, ed)
+      onClose()
+    } catch {
+      toast.error('Failed to load MAR data for printing')
+    } finally {
+      setPrinting(false)
+    }
   }
 
   return (
@@ -1470,7 +1604,7 @@ function PrintMARModal({ suId, startDate, endDate, onClose }: { suId: string; st
         </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button icon={<Printer className="w-4 h-4" />} onClick={open}>Print MAR</Button>
+          <Button icon={<Printer className="w-4 h-4" />} loading={printing} onClick={open}>Print MAR</Button>
         </div>
       </div>
     </Modal>

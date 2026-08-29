@@ -6,6 +6,7 @@ import { format, startOfMonth, eachDayOfInterval, endOfMonth } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Smile, Save, Printer } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const MOUTH_CONDITIONS = ['Normal/healthy', 'Dry mouth', 'Sore mouth', 'Bleeding gums', 'Oral thrush', 'Ulcers', 'Halitosis', 'Food debris']
 const PRODUCTS = ['Toothpaste + brush', 'Mouthwash', 'Denture adhesive', 'Dental floss', 'Interdental brush', 'Dry mouth gel', 'Lip balm']
@@ -81,6 +82,30 @@ export default function OralHygiene() {
     return '#fef9c3'
   }
 
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const sections: PrintSection[] = []
+    if (history.length) {
+      const rows = history.map((h: any) => `
+        <tr><th>${h.recorded_at ? fmtDate(h.recorded_at) : '—'}<br/><span style="font-weight:400;font-size:8.5px">${esc(h.session)}</span></th>
+        <td>${h.refused ? '<strong style="color:#b91c1c">Refused oral care</strong>' : esc((h.mouth_conditions || []).join(', '))}
+        ${h.assistance ? `<br/>Assistance: ${esc(h.assistance)}` : ''}
+        ${(h.products || []).length ? `<br/>Products: ${esc((h.products || []).join(', '))}` : ''}
+        ${h.upper_denture ? `<br/>Upper denture: ${esc(h.upper_denture)}` : ''}${h.lower_denture ? ` · Lower denture: ${esc(h.lower_denture)}` : ''}
+        ${h.staff_name ? `<br/>Recorded by: ${esc(h.staff_name)}` : ''}${h.notes ? `<br/><em>${esc(h.notes)}</em>` : ''}</td></tr>
+      `).join('')
+      sections.push({ title: 'Oral Hygiene Records', inner: `<table class="fields">${rows}</table>` })
+    } else {
+      sections.push({ title: 'Oral Hygiene Chart', inner: `<p class="body-text muted">No oral hygiene records recorded yet for this resident.</p>` })
+    }
+    const body = buildLetterheadPage({
+      docTitle: 'Oral Hygiene Chart', docSubtitle: 'Daily oral care record — morning and evening',
+      docRefPrefix: 'OH', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — Oral Hygiene Chart`, body)
+  }
+
   return (
     <div className="p-4 lg:p-6 max-w-3xl mx-auto">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -91,7 +116,7 @@ export default function OralHygiene() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Daily oral care recording — morning and evening</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

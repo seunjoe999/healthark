@@ -7,6 +7,112 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
+import toast from 'react-hot-toast'
+import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
+
+const LOG_TABLE_CSS = `
+  table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
+  table.log th{text-align:left;background:#132a4f;color:#fff;border:1px solid #132a4f;padding:6px 8px;font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
+  table.log td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:10px}
+  table.log tr:nth-child(even) td{background:#f7f7f5}
+`
+
+function buildPerformanceMatrixPrintHtml(view: 'matrix' | 'history' | 'shift_matrix', matrix: any[], history: any[], shiftMatrixData: { staff: any[]; homes: any[]; shiftMap: Record<string, Record<string, number>> } | null): string {
+  let headerRow = ''
+  let rows = ''
+  let colCount = 1
+  let title = 'Matrix Overview'
+
+  if (view === 'matrix') {
+    title = 'Matrix Overview'
+    headerRow = '<tr><th>Staff Member</th><th>Training %</th><th>Supervision</th><th>Punctuality</th><th>Care Quality</th><th>Absences</th><th>Overall</th><th>Risk</th><th>Period</th></tr>'
+    colCount = 9
+    rows = matrix.map(row => `
+      <tr>
+        <td>${esc(row.staff_name)}</td>
+        <td>${row.training_compliance != null ? esc(row.training_compliance) + '%' : '—'}</td>
+        <td>${row.supervision_completed == null ? '—' : (row.supervision_completed ? 'Yes' : 'No')}</td>
+        <td>${esc(row.punctuality_score)}</td>
+        <td>${esc(row.care_quality_score)}</td>
+        <td>${esc(row.absence_count ?? 0)}</td>
+        <td>${row.overall_score != null ? parseFloat(row.overall_score).toFixed(1) : '—'}</td>
+        <td style="text-transform:capitalize">${esc(row.risk_rating)}</td>
+        <td>${esc(row.period)}</td>
+      </tr>
+    `).join('')
+  } else if (view === 'history') {
+    title = 'Review History'
+    headerRow = '<tr><th>Staff</th><th>Period</th><th>Overall</th><th>Risk</th><th>Strengths</th><th>Areas for Improvement</th><th>Action Plan</th><th>Assessed By</th></tr>'
+    colCount = 8
+    rows = history.map(r => `
+      <tr>
+        <td>${esc(r.staff_name)}</td>
+        <td>${esc(r.period)}</td>
+        <td>${r.overall_score != null ? parseFloat(r.overall_score).toFixed(1) : '—'}</td>
+        <td style="text-transform:capitalize">${esc(r.risk_rating)}</td>
+        <td>${nl(r.strengths)}</td>
+        <td>${nl(r.areas_improvement)}</td>
+        <td>${nl(r.action_plan)}</td>
+        <td>${esc(r.assessed_by_name)}</td>
+      </tr>
+    `).join('')
+  } else {
+    title = 'Shift Matrix'
+    if (!shiftMatrixData || shiftMatrixData.staff.length === 0) {
+      headerRow = '<tr><th>Care Worker</th></tr>'
+      colCount = 1
+      rows = ''
+    } else {
+      const homeCols = shiftMatrixData.homes.map(h => `<th>${esc(h.name)}</th>`).join('')
+      headerRow = `<tr><th>Care Worker</th>${homeCols}<th>Total</th></tr>`
+      colCount = shiftMatrixData.homes.length + 2
+      const bodyRows = shiftMatrixData.staff.map(s => {
+        const staffShifts = shiftMatrixData.shiftMap[s.id] || {}
+        const rowTotal = shiftMatrixData.homes.reduce((sum, h) => sum + (staffShifts[h.id] || 0), 0)
+        const cells = shiftMatrixData.homes.map(h => `<td style="text-align:center">${staffShifts[h.id] || '—'}</td>`).join('')
+        return `<tr><td>${esc(s.name)}<br/><span style="color:#666;text-transform:capitalize">${esc(s.role?.replace(/_/g, ' '))}</span></td>${cells}<td style="text-align:center;font-weight:700">${rowTotal || '—'}</td></tr>`
+      }).join('')
+      const colTotals = shiftMatrixData.homes.map(h => {
+        const colTotal = shiftMatrixData.staff.reduce((sum, s) => sum + (shiftMatrixData.shiftMap[s.id]?.[h.id] || 0), 0)
+        return `<td style="text-align:center;font-weight:700">${colTotal || '—'}</td>`
+      }).join('')
+      const grandTotal = shiftMatrixData.staff.reduce((sum, s) =>
+        sum + shiftMatrixData.homes.reduce((s2, h) => s2 + (shiftMatrixData.shiftMap[s.id]?.[h.id] || 0), 0), 0)
+      rows = `${bodyRows}<tr><td style="font-weight:700">Total</td>${colTotals}<td style="text-align:center;font-weight:700">${grandTotal || '—'}</td></tr>`
+    }
+  }
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: PERF-${fmtDate(new Date().toISOString())}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+
+      <div class="doc-title">Performance Matrix</div>
+      <div class="doc-subtitle">${esc(title)}</div>
+
+      <h2 class="sec"><span class="num">1.</span>${esc(title)}</h2>
+      <table class="log">
+        ${headerRow}
+        ${rows || `<tr><td colspan="${colCount}" style="text-align:center;color:#888">No records</td></tr>`}
+      </table>
+
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Staff record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Performance Matrix</title><style>${LETTERHEAD_PRINT_CSS}${LOG_TABLE_CSS}</style></head><body>${body}</body></html>`
+}
 
 const RISK_RATINGS = [
   { value: 'low',    label: 'Low' },
@@ -162,6 +268,16 @@ export default function PerformanceMatrix() {
 
   const staffOptions = staff.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name} (${s.role?.replace(/_/g, ' ')})` }))
 
+  function handlePrint() {
+    const html = buildPerformanceMatrixPrintHtml(view, matrix, history, shiftMatrixData)
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -175,7 +291,7 @@ export default function PerformanceMatrix() {
           <Button variant="ghost" icon={<ClipboardCheck className="w-4 h-4" />} onClick={() => navigate('/assessments')}>
             Staff Assessments
           </Button>
-          <PrintButton />
+          <PrintButton onClick={handlePrint} />
           {canAssess && (
             <>
               <Button variant="ghost" icon={<Zap className="w-4 h-4" />} onClick={autoGenerate} loading={autoGenerating}>

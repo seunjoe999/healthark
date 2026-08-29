@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Heart, Save, Printer, BookOpen } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const COMFORT_MEASURES = ['Mouth care every 2 hours', 'Eye care', 'Pressure area care', 'Repositioning (comfort)', 'Pain assessment every 4h', 'Nutrition/hydration as tolerated', 'Syringe driver in place']
 const SYMPTOMS = ['Pain', 'Breathlessness', 'Agitation/restlessness', 'Nausea', 'Secretions', 'Constipation', 'Urinary retention']
@@ -121,6 +122,56 @@ export default function EndOfLife() {
     } finally { setSavingRound(false) }
   }
 
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const sections: PrintSection[] = []
+
+    if (plan) {
+      sections.push({
+        title: 'End of Life Care Plan',
+        inner: `
+          <div class="risk-box${plan.dnar_status === 'Yes' ? ' high' : ''}">
+            <span class="rb-label">DNAR Status</span>
+            <span class="rb-value">${esc(plan.dnar_status)}</span>
+          </div>
+          <table class="fields">
+            <tr><th>ReSPECT Form</th><td>${plan.respect_form ? 'In place' : 'Not in place'}</td></tr>
+            <tr><th>Preferred Place of Death</th><td>${esc(plan.preferred_place)}</td></tr>
+            <tr><th>Family Contact</th><td>${esc(plan.family_contact)}</td></tr>
+            <tr><th>Family Informed</th><td>${plan.family_informed ? 'Yes' : 'No'}</td></tr>
+            <tr><th>GP</th><td>${esc(plan.gp)}</td></tr>
+            <tr><th>Comfort Measures</th><td>${esc((plan.comfort_measures || []).join(', '))}</td></tr>
+            <tr><th>Symptoms to Manage</th><td>${esc((plan.symptoms_to_manage || []).join(', '))}</td></tr>
+            <tr><th>Spiritual Needs</th><td>${esc(plan.spiritual_needs)}</td></tr>
+            <tr><th>Cultural Needs</th><td>${esc(plan.cultural_needs)}</td></tr>
+            <tr><th>Syringe Driver</th><td>${plan.syringe_driver ? 'In place' : 'Not in place'}</td></tr>
+            <tr><th>Last Days of Life Care</th><td>${plan.last_days_commenced ? `Commenced${plan.last_days_date ? ' ' + fmtDate(plan.last_days_date) : ''}` : 'Not commenced'}</td></tr>
+            <tr><th>Plan Updated</th><td>${plan.updated_at ? fmtDate(plan.updated_at) : '—'}</td></tr>
+          </table>
+          ${plan.additional_wishes ? `<h3 class="sub">Resident's Wishes / Advance Directives</h3><p class="body-text">${esc(plan.additional_wishes)}</p>` : ''}
+          ${plan.notes ? `<h3 class="sub">Clinical Notes</h3><p class="body-text">${esc(plan.notes)}</p>` : ''}
+        `,
+      })
+    }
+
+    if (roundingHistory.length) {
+      const rows = roundingHistory.map((h: any) => `
+        <tr><th>${h.recorded_at ? fmtDate(h.recorded_at) : '—'}${h.staff_name ? `<br/><span style="font-weight:400;font-size:8.5px">${esc(h.staff_name)}</span>` : ''}</th>
+        <td>${(h.symptoms || []).length ? `<strong>${esc((h.symptoms || []).join(', '))}</strong><br/>` : ''}${esc(h.notes)}</td></tr>
+      `).join('')
+      sections.push({ title: 'Comfort Rounding Log', inner: `<table class="fields">${rows}</table>` })
+    }
+
+    if (!sections.length) sections.push({ title: 'End of Life Care Plan', inner: `<p class="body-text muted">No end of life care plan recorded yet for this resident.</p>` })
+
+    const body = buildLetterheadPage({
+      docTitle: 'End of Life Care Plan', docSubtitle: 'ReSPECT / DNAR / Comfort care record',
+      docRefPrefix: 'EOL', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — End of Life Care Plan`, body)
+  }
+
   const StatusBadge = ({ val }: { val: string }) => {
     const c = val === 'Yes' ? '#dc2626' : val === 'No' ? '#16a34a' : '#6b7280'
     return <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: c }}>{val}</span>
@@ -136,7 +187,7 @@ export default function EndOfLife() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">ReSPECT / DNAR / Comfort care plan and rounding record</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

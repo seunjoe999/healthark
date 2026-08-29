@@ -5,6 +5,7 @@ import { BookOpen, CheckCircle, Lock, Play, Award, ChevronRight, X, RotateCcw, A
 import { differenceInDays } from 'date-fns'
 import api from '../../api'
 import toast from 'react-hot-toast'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 
 const MODULES = [
   {
@@ -299,6 +300,41 @@ export default function Training() {
   const totalCompleted = Object.values(completions).filter(Boolean).length
   const progress = Math.round((totalCompleted / MODULES.length) * 100)
 
+  const printTraining = () => {
+    const staffName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || '—'
+    const modRows = MODULES.map(m => `
+      <tr class="${completions[m.id] ? 'on' : ''}"><th>${esc(m.title)}</th><td>${completions[m.id] ? 'Completed' : 'Not completed'}</td></tr>
+    `).join('')
+    const modTable = `<table class="fields">${modRows}</table>`
+
+    const extRows = externalCourses.map(c => `
+      <tr>
+        <td>${esc(c.course_name)}</td>
+        <td>${fmtDate(c.completed_date)}</td>
+        <td>${c.expiry_date ? fmtDate(c.expiry_date) : '—'}</td>
+        <td>${c.duration_hours ? `${c.duration_hours}h` : '—'}</td>
+      </tr>`).join('')
+    const extTable = `
+      <table class="fields">
+        <tr><th>Course</th><th>Completed</th><th>Expiry</th><th>Duration</th></tr>
+        ${extRows || '<tr><td colspan="4">No external training records on file.</td></tr>'}
+      </table>`
+
+    const sections = [
+      { title: 'Hub Training Modules', inner: `<p class="body-text">${totalCompleted} of ${MODULES.length} modules completed (${progress}%).</p>${modTable}` },
+      { title: 'External Training & Courses', inner: extTable },
+    ]
+    const body = buildLetterheadPage({
+      docTitle: 'Staff Training Record',
+      docSubtitle: 'Hub modules and external courses',
+      docRefPrefix: 'TRN',
+      docRefId: user?.id || '—',
+      residentName: staffName,
+      sections,
+    })
+    openLetterheadPrint(`Training Record — ${staffName}`, body)
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -309,7 +345,7 @@ export default function Training() {
           <p className="text-slate-400 text-sm mt-0.5">Training modules and resources for CompCare Hub</p>
         </div>
         <div className="flex items-center gap-4">
-          <PrintButton />
+          <PrintButton onClick={printTraining} />
           <div className="text-right">
             <p className="text-2xl font-bold text-slate-900 font-display">{totalCompleted}/{MODULES.length}</p>
             <p className="text-xs text-slate-400">modules completed</p>

@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { Spinner, Button, PrintButton } from '../../components/ui'
 import { ChevronLeft, Trash2, Paperclip, Upload, X, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 type AttachmentItem = { url: string; name: string }
 
@@ -115,6 +116,59 @@ function AnswerDisplay({ q, value }: { q: any; value: any }) {
   return <p className="text-sm text-slate-700 whitespace-pre-line">{String(value)}</p>
 }
 
+function formatAnswer(q: any, value: any): string {
+  if (value === undefined || value === null || value === '') return '—'
+  if (q.type === 'yes_no') return String(value).toUpperCase()
+  if (q.type === 'scale') {
+    const labels = ['Not at All', 'Rarely', 'Sometimes', 'Often', 'Very Often']
+    return `${value}/4 — ${labels[value] || ''}`
+  }
+  if (Array.isArray(value)) return value.join(', ') || '—'
+  return String(value)
+}
+
+function buildAssessmentPrintBody(assessment: any, template: any): string {
+  const sections: PrintSection[] = []
+
+  const scoreParts: string[] = []
+  if (assessment.max_score > 0) scoreParts.push(`<tr><th>Score</th><td>${Math.round(assessment.score_pct)}% (${esc(assessment.total_score)} / ${esc(assessment.max_score)} pts)</td></tr>`)
+  if (assessment.risk_level) scoreParts.push(`<tr><th>Risk / Rating</th><td>${esc(String(assessment.risk_level).replace(/_/g, ' '))}</td></tr>`)
+  sections.push({
+    title: 'Assessment Summary',
+    inner: `
+      <table class="fields">
+        <tr><th>Date</th><td>${fmtDate(assessment.assessment_date)}</td></tr>
+        ${(assessment.auditor_name || assessment.conducted_by_name) ? `<tr><th>Conducted By</th><td>${esc(assessment.auditor_name || assessment.conducted_by_name)}</td></tr>` : ''}
+        ${scoreParts.join('')}
+      </table>
+    `,
+  })
+
+  template.sections.forEach((section: any) => {
+    const rows = section.questions.map((q: any, qi: number) =>
+      `<tr><th>${qi + 1}. ${esc(q.text)}</th><td>${esc(formatAnswer(q, assessment.answers?.[q.id]))}</td></tr>`
+    ).join('')
+    sections.push({ title: section.title, inner: `<table class="fields">${rows}</table>` })
+  })
+
+  if (assessment.actions_identified || assessment.notes || assessment.next_review_date) {
+    const parts: string[] = []
+    if (assessment.actions_identified) parts.push(`<h3 class="sub">Actions Identified</h3><p class="body-text">${esc(assessment.actions_identified)}</p>`)
+    if (assessment.next_review_date) parts.push(`<h3 class="sub">Next Review</h3><p class="body-text">${fmtDate(assessment.next_review_date)}</p>`)
+    if (assessment.notes) parts.push(`<h3 class="sub">Notes</h3><p class="body-text">${esc(assessment.notes)}</p>`)
+    sections.push({ title: 'Actions &amp; Follow-up', inner: parts.join('') })
+  }
+
+  return buildLetterheadPage({
+    docTitle: template.name,
+    docSubtitle: 'Assessment / audit report',
+    docRefPrefix: 'ASM',
+    docRefId: assessment.id,
+    residentName: assessment.subject_name || '—',
+    sections,
+  })
+}
+
 export default function AssessmentView() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -141,6 +195,12 @@ export default function AssessmentView() {
     }).catch(() => toast.error('Failed to load assessment')).finally(() => setLoading(false))
   }, [id])
 
+  const handlePrint = () => {
+    if (!assessment || !template) return
+    const ok = openLetterheadPrint(`${template.name} — ${assessment.subject_name || 'Report'}`, buildAssessmentPrintBody(assessment, template))
+    if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+  }
+
   if (loading) return <div className="p-8"><Spinner /></div>
   if (!assessment || !template) return (
     <div className="p-8">
@@ -159,7 +219,7 @@ export default function AssessmentView() {
           <ChevronLeft className="w-4 h-4" /> Back to audits
         </button>
         <div className="flex items-center gap-2">
-          <PrintButton label="Print report" />
+          <PrintButton label="Print report" onClick={handlePrint} />
           {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
             <button onClick={deleteAssessment}
               className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">

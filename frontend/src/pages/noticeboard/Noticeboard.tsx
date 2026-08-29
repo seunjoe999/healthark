@@ -6,6 +6,7 @@ import api from '../../api'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { openLetterheadPrint, buildLetterheadPage, esc, nl } from '../../utils/letterheadPrint'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -163,6 +164,26 @@ export default function Noticeboard() {
   const pinned = notices.filter(n => n.is_pinned)
   const rest = notices.filter(n => !n.is_pinned)
 
+  const printNotices = () => {
+    const noticeBlock = (n: any) => `
+      <h3 class="sub">${esc(n.title)}${n.is_pinned ? ' (Pinned)' : ''}</h3>
+      <p class="body-text">${nl(n.body)}</p>
+      <p class="body-text muted">Posted by ${esc(n.posted_by_name)} on ${format(new Date(n.created_at), 'd MMMM yyyy')}${n.expires_at ? ` — expires ${format(new Date(n.expires_at), 'd MMMM yyyy')}` : ''}</p>
+    `
+    const sections = []
+    if (pinned.length) sections.push({ title: 'Pinned Notices', inner: pinned.map(noticeBlock).join('') })
+    sections.push({ title: 'All Notices', inner: rest.length ? rest.map(noticeBlock).join('') : '<p class="body-text muted">No further notices.</p>' })
+    const body = buildLetterheadPage({
+      docTitle: 'Staff Noticeboard',
+      docSubtitle: filterCat ? `Category: ${CATEGORIES.find(c => c.value === filterCat)?.label || filterCat}` : 'All notices',
+      docRefPrefix: 'NTB',
+      docRefId: format(new Date(), 'yyyyMMdd'),
+      residentName: 'All staff',
+      sections,
+    })
+    openLetterheadPrint('Staff Noticeboard', body)
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -176,7 +197,7 @@ export default function Noticeboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={printNotices} />
           {canPost && (
             <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>Post Notice</Button>
           )}

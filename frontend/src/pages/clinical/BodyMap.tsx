@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { Scan, Save, Printer, Trash2, X } from 'lucide-react'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const WOUND_TYPES = ['Pressure ulcer', 'Surgical wound', 'Leg ulcer', 'Diabetic foot ulcer', 'Skin tear', 'Bruising', 'Rash/Dermatitis', 'Burn', 'Abrasion', 'Oedema', 'Other']
 const PU_GRADES = ['Grade 1 — Non-blanching redness', 'Grade 2 — Partial thickness', 'Grade 3 — Full thickness', 'Grade 4 — Deep tissue damage']
@@ -126,6 +127,41 @@ export default function BodyMap() {
     )
   }
 
+  const handlePrint = () => {
+    const resident = residents.find(r => r.id === selectedSu)
+    const residentName = resident ? `${resident.first_name} ${resident.last_name}` : 'Resident'
+    const sections: PrintSection[] = []
+
+    const markerRows = (ms: any[]) => ms.map((m: any) => `
+      <tr><th>${esc(zoneLabel(m.zoneId))}</th>
+      <td>${esc(m.woundType)}${m.grade ? ` — ${esc(m.grade)}` : ''}${m.size ? ` · ${esc(m.size)}` : ''} · Healing: ${esc(m.healing)}${m.notes ? `<br/><em>${esc(m.notes)}</em>` : ''}</td></tr>
+    `).join('')
+
+    if (markers.length) {
+      sections.push({
+        title: 'Current Marked Areas',
+        inner: `<table class="fields">${markerRows(markers)}</table>${overallNotes ? `<h3 class="sub">Overall Notes</h3><p class="body-text">${esc(overallNotes)}</p>` : ''}`,
+      })
+    }
+
+    if (history.length) {
+      const inner = history.map((h: any) => `
+        <h3 class="sub">${h.recorded_at ? fmtDate(h.recorded_at) : '—'}${h.staff_name ? ` — ${esc(h.staff_name)}` : ''}</h3>
+        <table class="fields">${markerRows(h.wounds || [])}</table>
+        ${h.overall_notes ? `<p class="body-text">${esc(h.overall_notes)}</p>` : ''}
+      `).join('')
+      sections.push({ title: 'Previous Body Maps', inner })
+    }
+
+    if (!sections.length) sections.push({ title: 'Skin Integrity Body Map', inner: `<p class="body-text muted">No wound/skin integrity markers recorded yet for this resident.</p>` })
+
+    const body = buildLetterheadPage({
+      docTitle: 'Skin Integrity Body Map', docSubtitle: 'Wound and pressure area tracking',
+      docRefPrefix: 'BM', docRefId: selectedSu || '—', residentName, sections,
+    })
+    openLetterheadPrint(`${residentName} — Body Map`, body)
+  }
+
   const frontZones = BODY_ZONES.filter(z => !z.id.startsWith('back_') && z.id !== 'upper_back' && z.id !== 'lower_back' && z.id !== 'sacrum' && z.id !== 'buttocks_l' && z.id !== 'buttocks_r')
   const backZones = BODY_ZONES.filter(z => z.id.startsWith('back_') || z.id === 'upper_back' || z.id === 'lower_back' || z.id === 'sacrum' || z.id === 'buttocks_l' || z.id === 'buttocks_r')
 
@@ -139,7 +175,7 @@ export default function BodyMap() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Digital body map — mark and track wounds, pressure areas, and skin conditions</p>
         </div>
-        <button onClick={() => window.print()} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>

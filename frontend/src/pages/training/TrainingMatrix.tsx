@@ -10,6 +10,7 @@ import api from '../../api'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
+import { esc, fmtDate } from '../../utils/letterheadPrint'
 
 // ── Types ─────────────────────────────────────────────────────────
 interface StaffRow { id: string; name: string; role: string }
@@ -131,6 +132,99 @@ function CellPopover({ trainingType, cell, onClose, style }: PopoverProps) {
       </button>
     </div>
   )
+}
+
+const MATRIX_PRINT_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11px;line-height:1.4;background:#fff}
+  .page{padding:12mm}
+
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:8px;margin-bottom:10px}
+  .org-name{font-size:14px;font-weight:700;color:#132a4f}
+  .org-addr{font-size:9px;color:#444;margin-top:2px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9px;color:#444;font-family:Arial,sans-serif;line-height:1.5}
+  .doc-title{font-family:Arial,sans-serif;font-weight:700;font-size:15px;color:#132a4f;margin-bottom:2px}
+  .doc-sub{font-family:Arial,sans-serif;font-size:9.5px;color:#555;margin-bottom:14px}
+
+  table.matrix{border-collapse:collapse;width:100%;font-family:Arial,sans-serif}
+  table.matrix th, table.matrix td{border:1px solid #999;font-size:8.5px;padding:4px 5px;text-align:center}
+  table.matrix th{background:#f2f2f0;color:#132a4f;font-weight:700}
+  table.matrix td.name{text-align:left;font-weight:700}
+  table.matrix td.name .role{font-weight:400;color:#555;font-size:8px;display:block}
+  table.matrix td.current{background:#d1fae5;color:#065f46;font-weight:700}
+  table.matrix td.expiring{background:#fef3c7;color:#92400e;font-weight:700}
+  table.matrix td.expired{background:#fee2e2;color:#991b1b;font-weight:700}
+  table.matrix td.missing{background:#f3f4f6;color:#666}
+
+  .legend{margin-top:10px;font-family:Arial,sans-serif;font-size:8px;color:#333;display:flex;gap:14px;flex-wrap:wrap}
+  .footer{margin-top:14px;padding-top:6px;border-top:1px solid #999;display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:8px;color:#555}
+  .footer .confid{font-weight:700;color:#132a4f}
+
+  @media print{
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:0;size:A4 landscape}
+  }
+`
+
+function printTrainingMatrix(staff: StaffRow[], trainingTypes: string[], matrix: Record<string, Record<string, CellData>>, roleFilter: string) {
+  const symbol: Record<string, string> = { current: '✓', expiring: '!', expired: '✗', missing: '–' }
+  const rows = staff.map(s => {
+    const cells = matrix[s.id] || {}
+    return `
+      <tr>
+        <td class="name">${esc(s.name)}<span class="role">${esc(formatRole(s.role))}</span></td>
+        ${trainingTypes.map(t => {
+          const cell = cells[t] ?? { status: 'missing', expiry_date: null }
+          return `<td class="${cell.status}" title="${cell.expiry_date ? `Expires ${fmtDate(cell.expiry_date)}` : ''}">${symbol[cell.status]}</td>`
+        }).join('')}
+      </tr>
+    `
+  }).join('')
+
+  const body = `
+    <div class="page">
+      <div class="letterhead">
+        <div>
+          <div class="org-name">Comprehensive Care Ltd</div>
+          <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+        </div>
+        <div class="doc-meta">
+          <div>Document ref: TM-${format(new Date(), 'yyyyMMdd')}</div>
+          <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        </div>
+      </div>
+      <div class="doc-title">Mandatory Training Compliance Matrix</div>
+      <div class="doc-sub">${roleFilter ? `Filtered by role: ${esc(formatRole(roleFilter))}` : 'All staff roles'}</div>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th style="text-align:left">Staff Member</th>
+            ${trainingTypes.map(t => `<th>${esc(ABBREV[t] ?? t)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="legend">
+        <span><strong>Key:</strong></span>
+        <span>✓ Current</span>
+        <span>! Expiring Soon</span>
+        <span>✗ Expired</span>
+        <span>– Not Recorded</span>
+      </div>
+      <div class="footer">
+        <span class="confid">CONFIDENTIAL — Staff training record</span>
+        <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      </div>
+    </div>
+  `
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Training Compliance Matrix</title><style>${MATRIX_PRINT_CSS}</style></head><body>${body}</body></html>`
+  const w = window.open('', '_blank')
+  if (!w) { toast.error('Pop-up blocked — please allow pop-ups for this site and try again'); return }
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  w.print()
 }
 
 // ── Main component ────────────────────────────────────────────────
@@ -280,7 +374,7 @@ export default function TrainingMatrix() {
             variant="outline"
             size="sm"
             icon={<Printer className="w-4 h-4" />}
-            onClick={() => window.print()}
+            onClick={() => printTrainingMatrix(filteredStaff, data.trainingTypes, data.matrix, roleFilter)}
           >
             Print
           </Button>

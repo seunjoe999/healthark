@@ -4,6 +4,159 @@ import { useAuth } from '../../context/AuthContext'
 import { format, subMonths } from 'date-fns'
 import { Spinner } from '../../components/ui'
 import { FileText, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp, Printer, Shield, Heart, Users, Star, BarChart2 } from 'lucide-react'
+import { buildLetterheadPage, openLetterheadPrint, esc } from '../../utils/letterheadPrint'
+
+const STATUS_COLOR: Record<string, string> = { good: '#065f46', warn: '#92400e', bad: '#991b1b' }
+
+function evidenceRowHtml(label: string, value: string | number, status?: 'good' | 'warn' | 'bad') {
+  const color = status ? STATUS_COLOR[status] : '#222'
+  return `<tr><th>${esc(label)}</th><td style="color:${color};font-weight:700">${esc(value)}</td></tr>`
+}
+
+function printEvidencePack(d: any, period: number, homeName: string, generatedBy: string) {
+  const sections = [
+    {
+      title: 'Overview',
+      inner: `
+        <table class="fields">
+          ${evidenceRowHtml('Active Residents', d.overview.residentCount)}
+          ${evidenceRowHtml('Active Staff', d.overview.staffCount)}
+          ${evidenceRowHtml(`Daily Records (last ${period} months)`, d.overview.dailyRecordsCount)}
+          ${evidenceRowHtml(`Incidents (last ${period} months)`, d.overview.incidentCount, d.overview.incidentCount > 20 ? 'bad' : 'good')}
+        </table>
+      `,
+    },
+    {
+      title: 'SAFE — People are protected from abuse and avoidable harm',
+      inner: `
+        <h3 class="sub">Incidents &amp; Safeguarding</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Total incidents in period', d.safe.incidentCount, d.safe.incidentCount < 10 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Safeguarding referrals', d.safe.safeguardingCount)}
+          ${evidenceRowHtml('High severity incidents', d.safe.highSeverityCount, d.safe.highSeverityCount === 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Falls incidents', d.safe.fallsCount)}
+          ${evidenceRowHtml('Medication errors', d.safe.medicationErrorCount, d.safe.medicationErrorCount === 0 ? 'good' : 'bad')}
+        </table>
+        <h3 class="sub">Staffing &amp; Compliance</h3>
+        <table class="fields">
+          ${evidenceRowHtml('DBS checks on file', `${d.safe.dbsCount} / ${d.overview.staffCount}`, d.safe.dbsCount >= d.overview.staffCount ? 'good' : 'bad')}
+          ${evidenceRowHtml('Risk assessments completed', d.safe.riskAssessmentCount, d.safe.riskAssessmentCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('MAR records this period', d.safe.marCount, d.safe.marCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('PPE stock checks', d.safe.ppeCount)}
+          ${evidenceRowHtml('Lessons learned recorded', d.safe.lessonsLearnedCount)}
+        </table>
+        ${d.safe.recentIncidents?.length ? `
+          <h3 class="sub">Recent Incidents</h3>
+          <table class="fields">
+            ${d.safe.recentIncidents.slice(0, 5).map((i: any) => `<tr><th>${i.incident_date ? new Date(i.incident_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</th><td>${esc(i.incident_type)} — ${esc((i.description || '').slice(0, 100))}</td></tr>`).join('')}
+          </table>
+        ` : ''}
+      `,
+    },
+    {
+      title: "EFFECTIVE — People's care achieves good outcomes",
+      inner: `
+        <h3 class="sub">Clinical Assessments</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Barthel Index scores', d.effective.barthelCount, d.effective.barthelCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('MUST scores', d.effective.mustCount, d.effective.mustCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('NEWS2 scores', d.effective.news2Count, d.effective.news2Count > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Waterlow assessments', d.effective.waterlowCount, d.effective.waterlowCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Wound care records', d.effective.woundCareCount)}
+        </table>
+        <h3 class="sub">Care Planning</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Active care plans', d.effective.carePlanCount, d.effective.carePlanCount > 0 ? 'good' : 'bad')}
+          ${evidenceRowHtml('Care plan reviews', d.effective.carePlanReviewCount, d.effective.carePlanReviewCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Weight records', d.effective.weightCount, d.effective.weightCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Fluid balance records', d.effective.fluidCount)}
+          ${evidenceRowHtml('Hospital admissions', d.effective.hospitalCount)}
+        </table>
+        <h3 class="sub">Training &amp; Development</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Training completions', d.effective.trainingCount)}
+          ${evidenceRowHtml('Supervisions', d.effective.supervisionCount)}
+          ${evidenceRowHtml('Mandatory compliance', d.effective.trainingCompliancePct != null ? `${d.effective.trainingCompliancePct}%` : '—', d.effective.trainingCompliancePct >= 80 ? 'good' : 'bad')}
+          ${evidenceRowHtml('Audits completed', d.effective.auditCount)}
+        </table>
+      `,
+    },
+    {
+      title: 'CARING — Staff involve and treat people with compassion and dignity',
+      inner: `
+        <h3 class="sub">Person-Centred Care</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Daily care records', d.caring.dailyRecordsCount, d.caring.dailyRecordsCount > 0 ? 'good' : 'bad')}
+          ${evidenceRowHtml('Personal care entries', d.caring.personalCareCount, d.caring.personalCareCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Social activity records', d.caring.socialActivitiesCount, d.caring.socialActivitiesCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Resident diary entries', d.caring.diaryCount)}
+          ${evidenceRowHtml('Consents recorded', d.caring.consentsCount, d.caring.consentsCount > 0 ? 'good' : 'warn')}
+        </table>
+        <h3 class="sub">Communication &amp; Engagement</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Family portal residents', d.caring.familyPortalCount, d.caring.familyPortalCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Professional visit records', d.caring.profVisitsCount)}
+          ${evidenceRowHtml('Observations logged', d.caring.observationsCount)}
+          ${evidenceRowHtml('Noticeboard posts', d.caring.noticeboardCount)}
+          ${evidenceRowHtml('Bath chart entries', d.caring.bathChartCount)}
+        </table>
+      `,
+    },
+    {
+      title: "RESPONSIVE — Services are organised to meet people's needs",
+      inner: `
+        <h3 class="sub">Complaints &amp; Reviews</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Complaints received', d.responsive.complaintsCount)}
+          ${evidenceRowHtml('Compliments received', d.responsive.complimentsCount)}
+          ${evidenceRowHtml('Care reviews', d.responsive.reviewsCount, d.responsive.reviewsCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Outcomes recorded', d.responsive.outcomesCount)}
+        </table>
+        <h3 class="sub">Service Access</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Hospital admissions', d.responsive.hospitalCount)}
+          ${evidenceRowHtml('Waiting list entries', d.responsive.waitingListCount)}
+          ${evidenceRowHtml('Tasks completed', d.responsive.tasksCount, d.responsive.tasksCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Maintenance requests', d.responsive.maintenanceCount)}
+        </table>
+      `,
+    },
+    {
+      title: 'WELL-LED — Leadership promotes a positive culture',
+      inner: `
+        <h3 class="sub">Governance &amp; Oversight</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Policies signed off', d.wellLed.policiesCount, d.wellLed.policiesCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Audits completed', d.wellLed.auditCount, d.wellLed.auditCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Compliance checks', d.wellLed.complianceCount)}
+          ${evidenceRowHtml('CQC notifications sent', d.wellLed.cqcNotifCount)}
+          ${evidenceRowHtml('Lessons learned', d.wellLed.lessonsLearnedCount, d.wellLed.lessonsLearnedCount > 0 ? 'good' : 'warn')}
+        </table>
+        <h3 class="sub">Workforce</h3>
+        <table class="fields">
+          ${evidenceRowHtml('Staff supervisions', d.wellLed.supervisionCount, d.wellLed.supervisionCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('DBS checks current', d.wellLed.dbsCount)}
+          ${evidenceRowHtml('Staff absence records', d.wellLed.absenceCount)}
+          ${evidenceRowHtml('Rota entries', d.wellLed.rotaCount, d.wellLed.rotaCount > 0 ? 'good' : 'warn')}
+          ${evidenceRowHtml('Clock-in records', d.wellLed.clockinCount, d.wellLed.clockinCount > 0 ? 'good' : 'warn')}
+        </table>
+      `,
+    },
+  ]
+
+  const body = buildLetterheadPage({
+    docTitle: 'CQC Evidence Pack',
+    docSubtitle: 'Evidence across all five CQC Key Lines of Enquiry',
+    docRefPrefix: 'CQC-EP',
+    docRefId: `${d.from}_${d.to}`,
+    residentName: homeName,
+    residentLabel: 'Care Home',
+    extraIdCells: `<td class="lbl">Period</td><td class="val">${esc(d.from)} to ${esc(d.to)}</td><td class="lbl">Generated By</td><td class="val">${esc(generatedBy)}</td>`,
+    sections,
+  })
+
+  openLetterheadPrint(`${homeName || 'CQC'} — Evidence Pack`, body)
+}
 
 const PERIODS = [
   { label: 'Last 3 months', months: 3 },
@@ -103,8 +256,8 @@ export default function EvidencePack() {
             Auto-generated evidence across all five CQC Key Lines of Enquiry
           </p>
         </div>
-        {generated && (
-          <button onClick={() => window.print()}
+        {generated && d && (
+          <button onClick={() => printEvidencePack(d, period, d.homeName, `${user?.firstName || ''} ${user?.lastName || ''}`.trim())}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white print:hidden">
             <Printer className="w-4 h-4" /> Print / PDF
           </button>

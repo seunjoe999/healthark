@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, PrintButton } from '../../components/ui'
 import { ClipboardCheck, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { openLetterheadPrint, buildLetterheadPage, esc } from '../../utils/letterheadPrint'
 
 function RiskBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
@@ -145,6 +146,34 @@ export default function Assessments() {
     return t?.name || key.replace(/_/g, ' ')
   }
 
+  const printAssessments = () => {
+    const rows = assessments.map((a: any) => {
+      const score = a.max_score > 0 ? Math.round(a.score_pct) : null
+      return `<tr>
+        <td>${esc(a.subject_name)}</td>
+        <td>${esc(templateName(a.template_key))}</td>
+        <td>${format(new Date(a.assessment_date), 'd MMM yyyy')}</td>
+        <td>${esc(a.auditor_name || a.conducted_by_name)}</td>
+        <td>${score !== null ? `${score}%` : '—'}</td>
+        <td>${esc(a.risk_level ? String(a.risk_level).replace(/_/g, ' ') : '')}</td>
+      </tr>`
+    }).join('')
+    const table = `
+      <table class="fields">
+        <tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Assessor</th><th>Score</th><th>Risk Level</th></tr>
+        ${rows || '<tr><td colspan="6">No assessments completed yet.</td></tr>'}
+      </table>`
+    const body = buildLetterheadPage({
+      docTitle: 'Staff Assessment History',
+      docSubtitle: 'Summary of completed assessments',
+      docRefPrefix: 'ASM',
+      docRefId: format(new Date(), 'yyyyMMdd'),
+      residentName: homes.find(h => h.id === selectedHome)?.name || '—',
+      sections: [{ title: 'Assessment History', inner: table }],
+    })
+    openLetterheadPrint('Staff Assessment History', body)
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -155,7 +184,7 @@ export default function Assessments() {
           <p className="text-slate-500 text-sm mt-0.5">{tab === 'staff' ? 'Conduct and manage staff assessments' : 'Conduct and manage resident care audits'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <PrintButton />
+          <PrintButton onClick={printAssessments} />
           {homes.length > 1 && (
             <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
