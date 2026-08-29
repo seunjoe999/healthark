@@ -127,6 +127,24 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       }
     }
 
+    // Team leaders only see shifts belonging to their own team's staff (plus
+    // still-unfilled shifts, so they can help fill them) — not the whole
+    // home's rota. Team is resolved via teams.leader_staff_id first, falling
+    // back to their own staff.team_id if they're a member rather than leader.
+    let teamStaffIds: string[] | null = null;
+    if (role === 'team_leader') {
+      const teamRows = await query<any>('SELECT id FROM teams WHERE leader_staff_id = $1 LIMIT 1', [myStaffId]);
+      let teamId = teamRows[0]?.id as string | undefined;
+      if (!teamId) {
+        const own = await query<any>('SELECT team_id FROM staff WHERE id = $1', [myStaffId]);
+        teamId = own[0]?.team_id || undefined;
+      }
+      if (teamId) {
+        const members = await query<any>('SELECT id FROM staff WHERE team_id = $1', [teamId]);
+        teamStaffIds = members.map((m: any) => m.id);
+      }
+    }
+
     let sql = `SELECT sh.*,
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
       su.first_name || ' ' || su.last_name as su_name
@@ -136,6 +154,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       WHERE sh.home_id = $1`;
     const params: unknown[] = [homeId];
 
+    if (teamStaffIds) {
+      sql += ` AND (sh.staff_id = ANY($${params.length+1}) OR sh.staff_id IS NULL)`;
+      params.push(teamStaffIds);
+    }
     if (date) { sql += ` AND sh.shift_date = $${params.length+1}`; params.push(date); }
     else if (weekStart) {
       sql += ` AND sh.shift_date >= $${params.length+1} AND sh.shift_date < $${params.length+1}::date + interval '7 days'`;

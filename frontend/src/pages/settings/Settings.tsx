@@ -198,6 +198,19 @@ export default function Settings() {
           <span className="text-blue-500 text-sm font-medium group-hover:underline">Manage →</span>
         </Link>
 
+        {/* Teams shortcut */}
+        <Link to="/settings/teams"
+          className="flex items-center justify-between p-4 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors group">
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-indigo-600" />
+            <div>
+              <p className="font-semibold text-slate-800">Teams</p>
+              <p className="text-sm text-slate-500">Group staff into teams — a team leader only sees their own team's staff and rota</p>
+            </div>
+          </div>
+          <span className="text-indigo-500 text-sm font-medium group-hover:underline">Manage →</span>
+        </Link>
+
         {/* Access rights shortcut */}
         <Link to="/settings/access-rights"
           className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors group">

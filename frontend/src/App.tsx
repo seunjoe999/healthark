@@ -44,6 +44,7 @@ const Settings = React.lazy(() => import('./pages/settings/Settings'))
 const RolePermissions = React.lazy(() => import('./pages/settings/RolePermissions'))
 const AccessRights = React.lazy(() => import('./pages/settings/AccessRights'))
 const ResidentAssignments = React.lazy(() => import('./pages/settings/ResidentAssignments'))
+const Teams = React.lazy(() => import('./pages/settings/Teams'))
 const Maintenance = React.lazy(() => import('./pages/maintenance/Maintenance'))
 const Incidents = React.lazy(() => import('./pages/incidents/Incidents'))
 const DbsTracker = React.lazy(() => import('./pages/dbs/DBSTracker'))
@@ -173,6 +174,7 @@ function AppRoutes() {
         <Route path="/settings/role-permissions" element={<ProtectedRoute><RolePermissions /></ProtectedRoute>} />
         <Route path="/settings/access-rights" element={<ProtectedRoute><AccessRights /></ProtectedRoute>} />
         <Route path="/settings/resident-assignments" element={<ProtectedRoute><ResidentAssignments /></ProtectedRoute>} />
+        <Route path="/settings/teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
         <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
         <Route path="/incidents" element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
         <Route path="/dbs" element={<ProtectedRoute><DbsTracker /></ProtectedRoute>} />

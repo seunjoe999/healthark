@@ -111,6 +111,35 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
          ORDER BY last_name, first_name`,
         [homeId, organisationId]
       );
+    } else if (role === 'team_leader') {
+      // Team leaders only see staff in their own team (a team they lead via
+      // teams.leader_staff_id, or — if not set as a leader anywhere — the team
+      // they themselves belong to via staff.team_id). Falls back to the
+      // home-wide limited view below if the leader has no team at all.
+      const teamRows = await query<any>(
+        `SELECT id FROM teams WHERE leader_staff_id = $1 LIMIT 1`,
+        [staffId]
+      );
+      let teamId = teamRows[0]?.id as string | undefined;
+      if (!teamId) {
+        const own = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
+        teamId = own[0]?.team_id || undefined;
+      }
+      if (teamId) {
+        rows = await query(
+          `SELECT id, first_name, last_name, preferred_name, role, photo_url, team_id
+           FROM staff WHERE home_id = $1 AND team_id = $2 AND is_active = TRUE
+           ORDER BY last_name, first_name`,
+          [homeId, teamId]
+        );
+      } else {
+        rows = await query(
+          `SELECT id, first_name, last_name, preferred_name, role, photo_url
+           FROM staff WHERE home_id = $1 AND is_active = TRUE
+           ORDER BY last_name, first_name`,
+          [homeId]
+        );
+      }
     } else {
       // Care staff can only see colleagues at their home (limited fields)
       rows = await query(

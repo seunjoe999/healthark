@@ -246,6 +246,7 @@ import visitorLogRoutes from './routes/visitorLog.routes';
 import contractorsRoutes from './routes/contractors.routes';
 import lessonsLearnedRoutes from './routes/lessonsLearned.routes';
 import staffAbsenceRoutes from './routes/staffAbsence.routes';
+import teamsRoutes from './routes/teams.routes';
 import trainingMatrixRoutes from './routes/trainingMatrix.routes';
 import externalContactsRoutes from './routes/externalContacts.routes';
 import seedRoutes from './routes/seed.routes';
@@ -261,6 +262,7 @@ app.use('/api/visitor-log', visitorLogRoutes);
 app.use('/api/contractors', contractorsRoutes);
 app.use('/api/lessons-learned', lessonsLearnedRoutes);
 app.use('/api/staff-absence', staffAbsenceRoutes);
+app.use('/api/teams', teamsRoutes);
 app.use('/api/training-matrix', trainingMatrixRoutes);
 app.use('/api/external-contacts', externalContactsRoutes);
 app.use('/api/seed', seedRoutes);
@@ -1366,6 +1368,17 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_safe_home ON safeguarding_concerns(home_id)`,
     `CREATE INDEX IF NOT EXISTS idx_safe_su   ON safeguarding_concerns(su_id)`,
+    `CREATE TABLE IF NOT EXISTS teams (
+       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id         UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       name            TEXT NOT NULL,
+       leader_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_by      UUID,
+       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_teams_home ON teams(home_id)`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES teams(id) ON DELETE SET NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_staff_team ON staff(team_id)`,
     // ── homes schema fixes (for DBs created from old Aiven dump) ─────────────
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS city TEXT`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS address1 TEXT`,
