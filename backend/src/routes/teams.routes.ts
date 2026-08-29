@@ -3,13 +3,13 @@ import { body, param } from 'express-validator';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
-import { ApiResponse } from '../types';
+import { ApiResponse, StaffRole } from '../types';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
 router.use(authenticate);
 
-const MANAGE_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
+const MANAGE_ROLES: StaffRole[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
