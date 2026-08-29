@@ -150,19 +150,24 @@ router.post('/event', authenticate,
           geofencePassed: false,
         });
       } else {
+        // Phone GPS accuracy means the reported position can genuinely be off by
+        // tens/hundreds of metres — comparing raw distance to a fixed radius with
+        // no allowance for that was rejecting staff who were actually on-site.
+        // Give the benefit of the doubt up to the device's own reported uncertainty.
+        const accuracyTolerance = gpsAccuracy !== null ? Math.min(gpsAccuracy, 150) : 0;
         for (const pt of checkPoints) {
           const dist = Math.round(haversine(staffLat, staffLng, pt.lat, pt.lng));
           if (closestDistance === null || dist < closestDistance) {
             closestDistance = dist;
             closestLabel = pt.label;
           }
-          if (dist <= pt.radius) { geofencePassed = true; break; }
+          if (dist <= pt.radius + accuracyTolerance) { geofencePassed = true; break; }
         }
 
         if (!geofencePassed) {
           return res.status(403).json({
             success: false,
-            error: `You are too far from the care home. You are ${closestDistance}m from ${closestLabel} (must be within ${checkPoints[0]?.radius || 200}m).`,
+            error: `You are too far from the care home. You are ${closestDistance}m from ${closestLabel} (must be within ${checkPoints[0]?.radius || 200}m${gpsAccuracy ? `, GPS accuracy ±${Math.round(gpsAccuracy)}m` : ''}).`,
             distanceMetres: closestDistance,
             geofencePassed: false,
           });

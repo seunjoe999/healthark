@@ -52,6 +52,7 @@ export default function ClockIn() {
               homeId: suInfo.homeId,
               staffLat: pos.coords.latitude,
               staffLng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
               eventType,
             }),
           })

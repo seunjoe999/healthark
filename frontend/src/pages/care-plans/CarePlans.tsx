@@ -534,11 +534,11 @@ const CARE_PLAN_PRINT_CSS = `
   body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
 
   /* Letterhead */
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:10px;margin-bottom:4px}
-  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#132a4f}
-  .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
-  .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
-  .doc-meta strong{color:#132a4f}
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;background:#132a4f;padding:12px 16px;margin:-16mm -14mm 4px;border-bottom:3px solid #e8b130}
+  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#fff}
+  .org-addr{font-size:9.5px;color:#c9d3e3;margin-top:3px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9.5px;color:#c9d3e3;font-family:Arial,sans-serif;line-height:1.6}
+  .doc-meta strong{color:#fff}
 
   .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f}
   .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
@@ -744,7 +744,7 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
   const allergiesText = [su?.food_allergies, su?.allergies].filter(Boolean).join(', ')
 
   const photoHtml = su?.photo_url
-    ? `<img class="res-photo" src="${su.photo_url.startsWith('http') ? su.photo_url : `https://app.comprehensivecare.org.uk${su.photo_url}`}" alt="Resident photo" />`
+    ? `<img class="res-photo" src="${su.photo_url}" alt="Resident photo" />`
     : `<div class="res-photo-fallback">${(name[0] || '?').toUpperCase()}</div>`
 
   const bodyText = (v?: string | null) => (v && v.trim() ? `<p class="body-text">${v.replace(/\n/g, '<br/>')}</p>` : '')

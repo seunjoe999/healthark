@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const { suId, homeId } = req.query as Record<string, string>;
     if (suId) await assertResidentAccess(req, suId);
     const targetHomeId = homeId || fromToken(req, 'homeId');
-    let sql = `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name
+    let sql = `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url
                FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id
                WHERE ra.is_active = true`;
     const params: unknown[] = [];
@@ -42,7 +42,7 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(
-        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name
+        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url
          FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id WHERE ra.id = $1`,
         [req.params.id]
       );

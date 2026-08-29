@@ -89,11 +89,11 @@ const MED_RISK_PRINT_CSS = `
   .page{max-width:190mm;margin:0 auto;padding:16mm 14mm 20mm}
 
   /* Letterhead */
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #1a1a1a;padding-bottom:10px;margin-bottom:4px}
-  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em}
-  .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
-  .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
-  .doc-meta strong{color:#1a1a1a}
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;background:#132a4f;padding:12px 16px;margin:-16mm -14mm 4px;border-bottom:3px solid #e8b130}
+  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#fff}
+  .org-addr{font-size:9.5px;color:#c9d3e3;margin-top:3px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9.5px;color:#c9d3e3;font-family:Arial,sans-serif;line-height:1.6}
+  .doc-meta strong{color:#fff}
 
   .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
   .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}

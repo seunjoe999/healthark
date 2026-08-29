@@ -37,6 +37,9 @@ export default function Timesheets() {
   const [genForm, setGenForm] = useState({ staffId: '' })
   const [submitting, setSubmitting] = useState(false)
   const [stats, setStats] = useState<any>(null)
+  const [showAddEntry, setShowAddEntry] = useState(false)
+  const [entryForm, setEntryForm] = useState({ workDate: '', startTime: '', endTime: '', hoursWorked: '', notes: '' })
+  const [entrySubmitting, setEntrySubmitting] = useState(false)
 
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
 
@@ -94,6 +97,39 @@ export default function Timesheets() {
     } catch {
       setShowDetail(ts)
     }
+  }
+
+  function openAddEntry() {
+    setEntryForm({ workDate: '', startTime: '', endTime: '', hoursWorked: '', notes: '' })
+    setShowAddEntry(true)
+  }
+
+  async function addEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!showDetail || !entryForm.workDate || !entryForm.hoursWorked) return
+    setEntrySubmitting(true)
+    try {
+      await api.post(`/timesheets/${showDetail.id}/entries`, {
+        workDate: entryForm.workDate,
+        startTime: entryForm.startTime || null,
+        endTime: entryForm.endTime || null,
+        hoursWorked: entryForm.hoursWorked,
+        notes: entryForm.notes || null,
+      })
+      setShowAddEntry(false)
+      await loadDetail(showDetail)
+      load()
+    } catch {}
+    setEntrySubmitting(false)
+  }
+
+  async function removeEntry(entryId: string) {
+    if (!showDetail) return
+    try {
+      await api.delete(`/timesheets/${showDetail.id}/entries/${entryId}`)
+      await loadDetail(showDetail)
+      load()
+    } catch {}
   }
 
   const weekEnd = new Date(weekStart)
@@ -243,20 +279,34 @@ export default function Timesheets() {
               </div>
             </div>
 
-            {showDetail.entries?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Breakdown</p>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Breakdown</p>
+                {canManage && (
+                  <Button size="sm" variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={openAddEntry}>
+                    Add hours
+                  </Button>
+                )}
+              </div>
+              {showDetail.entries?.length > 0 ? (
                 <div className="space-y-2">
                   {showDetail.entries.map((e: any) => (
                     <div key={e.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg" style={{ background: '#1a1a1a' }}>
                       <span className="text-slate-300">{new Date(e.work_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                      <span className="text-slate-400">{e.start_time} – {e.end_time}</span>
-                      <span className="font-bold text-white">{formatHours(e.hours_worked)}</span>
+                      <span className="text-slate-400">{e.start_time ? `${e.start_time} – ${e.end_time}` : (e.notes || 'Manual entry')}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{formatHours(e.hours_worked)}</span>
+                        {canManage && !e.clockin_id && (
+                          <button type="button" onClick={() => removeEntry(e.id)} className="text-slate-500 hover:text-rose-400 text-xs">✕</button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm text-slate-500">No entries yet.</p>
+              )}
+            </div>
 
             {canManage && showDetail.status === 'pending' && (
               <div className="flex justify-end gap-3 pt-2">
@@ -269,6 +319,43 @@ export default function Timesheets() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Add Hours Modal */}
+      <Modal open={showAddEntry} onClose={() => setShowAddEntry(false)} title="Add hours worked">
+        <form onSubmit={addEntry} className="space-y-4">
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Date</label>
+            <input type="date" required className="input" value={entryForm.workDate}
+              onChange={e => setEntryForm(f => ({ ...f, workDate: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Start time (optional)</label>
+              <input type="time" className="input" value={entryForm.startTime}
+                onChange={e => setEntryForm(f => ({ ...f, startTime: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">End time (optional)</label>
+              <input type="time" className="input" value={entryForm.endTime}
+                onChange={e => setEntryForm(f => ({ ...f, endTime: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Hours worked</label>
+            <input type="number" step="0.25" min="0" max="24" required className="input" placeholder="e.g. 7.5"
+              value={entryForm.hoursWorked} onChange={e => setEntryForm(f => ({ ...f, hoursWorked: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Notes (optional)</label>
+            <input className="input" placeholder="e.g. Forgot to clock in — confirmed with staff"
+              value={entryForm.notes} onChange={e => setEntryForm(f => ({ ...f, notes: e.target.value }))} />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setShowAddEntry(false)}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={entrySubmitting}>Add</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

@@ -8,11 +8,15 @@ export const LETTERHEAD_PRINT_CSS = `
   .page{max-width:190mm;margin:0 auto;padding:16mm 14mm 20mm;page-break-after:always}
   .page:last-child{page-break-after:avoid}
 
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:10px;margin-bottom:4px}
-  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#132a4f}
-  .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
-  .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
-  .doc-meta strong{color:#132a4f}
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-end;background:#132a4f;padding:12px 16px;margin:-16mm -14mm 4px;border-bottom:3px solid #e8b130}
+  .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#fff}
+  .org-addr{font-size:9.5px;color:#c9d3e3;margin-top:3px;font-family:Arial,sans-serif}
+  .doc-meta{text-align:right;font-size:9.5px;color:#c9d3e3;font-family:Arial,sans-serif;line-height:1.6}
+  .doc-meta strong{color:#fff}
+
+  .res-photo{width:58px;height:72px;object-fit:cover;border:1px solid #999;flex-shrink:0}
+  .res-photo-fallback{width:58px;height:72px;border:1px solid #999;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#666;font-family:Arial,sans-serif;flex-shrink:0;background:#f2f2f0}
+  .res-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:14px 0 4px}
 
   .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f}
   .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
@@ -70,12 +74,25 @@ export function buildLetterheadPage(opts: {
   docRefId: string | number
   residentName: string
   residentLabel?: string
+  residentPhotoUrl?: string | null
   extraIdCells?: string
   sections: PrintSection[]
 }): string {
   const sectionsHtml = opts.sections.map((s, i) =>
     `<h2 class="sec"><span class="num">${i + 1}.</span>${s.title}</h2>${s.inner}`
   ).join('')
+
+  const photoHtml = opts.residentPhotoUrl
+    ? `<img class="res-photo" src="${opts.residentPhotoUrl}" alt="Resident photo" />`
+    : `<div class="res-photo-fallback">${esc(opts.residentName).charAt(0).toUpperCase()}</div>`
+
+  const idTable = `
+    <table class="idtable">
+      <tr>
+        <td class="lbl">${esc(opts.residentLabel || 'Resident')}</td><td class="val">${esc(opts.residentName)}</td>
+        ${opts.extraIdCells || ''}
+      </tr>
+    </table>`
 
   return `
   <div class="page">
@@ -93,12 +110,10 @@ export function buildLetterheadPage(opts: {
     <div class="doc-title">${esc(opts.docTitle)}</div>
     <div class="doc-subtitle">${esc(opts.docSubtitle)}</div>
 
-    <table class="idtable">
-      <tr>
-        <td class="lbl">${esc(opts.residentLabel || 'Resident')}</td><td class="val">${esc(opts.residentName)}</td>
-        ${opts.extraIdCells || ''}
-      </tr>
-    </table>
+    <div class="res-head">
+      ${photoHtml}
+      <div style="flex:1">${idTable}</div>
+    </div>
 
     ${sectionsHtml}
 

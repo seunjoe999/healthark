@@ -105,9 +105,10 @@ router.post('/generate', requireRole('home_manager', 'group_admin', 'senior_care
         [staffId, homeId, weekStart, weekEndStr, totalHours.toFixed(2), regularHours.toFixed(2), overtimeHours.toFixed(2), hourlyRate, totalPay]
       );
 
-      // Insert entries
+      // Insert entries — only clear previously auto-derived ones so manually
+      // added entries (clockin_id IS NULL) survive a re-generate.
       if (sessions.length) {
-        await query(`DELETE FROM timesheet_entries WHERE timesheet_id = $1`, [ts[0].id]);
+        await query(`DELETE FROM timesheet_entries WHERE timesheet_id = $1 AND clockin_id IS NOT NULL`, [ts[0].id]);
         for (const s of sessions) {
           await query(`
             INSERT INTO timesheet_entries (timesheet_id, clockin_id, work_date, start_time, end_time, hours_worked)
@@ -164,6 +165,70 @@ router.patch('/:id/reject', requireRole('home_manager', 'group_admin'),
     try {
       const { notes } = req.body;
       await query(`UPDATE timesheets SET status = 'rejected', notes = $1, updated_at = NOW() WHERE id = $2`, [notes || null, req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// Add a manual timesheet entry (e.g. staff forgot to clock in/out) — recomputes totals.
+router.post('/:id/entries', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  [param('id').isUUID(), body('workDate').isDate(), body('hoursWorked').isFloat({ min: 0, max: 24 })],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { workDate, startTime, endTime, hoursWorked, notes } = req.body;
+      const [ts] = await query('SELECT * FROM timesheets WHERE id = $1', [req.params.id]);
+      if (!ts) throw new AppError('Timesheet not found', 404);
+
+      await query(`
+        INSERT INTO timesheet_entries (timesheet_id, clockin_id, work_date, start_time, end_time, hours_worked, notes)
+        VALUES ($1, NULL, $2, $3, $4, $5, $6)`,
+        [req.params.id, workDate, startTime || null, endTime || null, parseFloat(hoursWorked).toFixed(2), notes || null]
+      );
+
+      const [{ sum }] = await query<any>('SELECT COALESCE(SUM(hours_worked), 0) AS sum FROM timesheet_entries WHERE timesheet_id = $1', [req.params.id]);
+      const totalHours = parseFloat(sum);
+      const regularHours = Math.min(totalHours, 40);
+      const overtimeHours = Math.max(0, totalHours - 40);
+      const hourlyRate = (ts as any).hourly_rate;
+      const totalPay = hourlyRate ? regularHours * hourlyRate + overtimeHours * hourlyRate * 1.5 : null;
+
+      const updated = await query(`
+        UPDATE timesheets SET total_hours = $1, regular_hours = $2, overtime_hours = $3, total_pay = $4, updated_at = NOW()
+        WHERE id = $5 RETURNING *`,
+        [totalHours.toFixed(2), regularHours.toFixed(2), overtimeHours.toFixed(2), totalPay, req.params.id]
+      );
+
+      const entries = await query('SELECT * FROM timesheet_entries WHERE timesheet_id = $1 ORDER BY work_date', [req.params.id]);
+      res.status(201).json({ success: true, data: { ...updated[0], entries } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// Delete a manual timesheet entry (auto-derived clock-in entries can't be deleted here — regenerate instead)
+router.delete('/:id/entries/:entryId', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  [param('id').isUUID(), param('entryId').isUUID()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const [entry] = await query('SELECT * FROM timesheet_entries WHERE id = $1 AND timesheet_id = $2', [req.params.entryId, req.params.id]);
+      if (!entry) throw new AppError('Entry not found', 404);
+      if ((entry as any).clockin_id) throw new AppError('Cannot delete a clock-in-derived entry here — use Generate Timesheet to recompute instead', 400);
+
+      await query('DELETE FROM timesheet_entries WHERE id = $1', [req.params.entryId]);
+
+      const [ts] = await query('SELECT * FROM timesheets WHERE id = $1', [req.params.id]);
+      const [{ sum }] = await query<any>('SELECT COALESCE(SUM(hours_worked), 0) AS sum FROM timesheet_entries WHERE timesheet_id = $1', [req.params.id]);
+      const totalHours = parseFloat(sum);
+      const regularHours = Math.min(totalHours, 40);
+      const overtimeHours = Math.max(0, totalHours - 40);
+      const hourlyRate = (ts as any)?.hourly_rate;
+      const totalPay = hourlyRate ? regularHours * hourlyRate + overtimeHours * hourlyRate * 1.5 : null;
+
+      await query(`
+        UPDATE timesheets SET total_hours = $1, regular_hours = $2, overtime_hours = $3, total_pay = $4, updated_at = NOW()
+        WHERE id = $5`,
+        [totalHours.toFixed(2), regularHours.toFixed(2), overtimeHours.toFixed(2), totalPay, req.params.id]
+      );
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }

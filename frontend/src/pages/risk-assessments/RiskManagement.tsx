@@ -86,11 +86,15 @@ export default function RiskManagement() {
     .page:last-child{page-break-after:avoid}
 
     /* Letterhead */
-    .letterhead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #132a4f;padding-bottom:10px;margin-bottom:4px}
-    .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#132a4f}
-    .org-addr{font-size:9.5px;color:#444;margin-top:3px;font-family:Arial,sans-serif}
-    .doc-meta{text-align:right;font-size:9.5px;color:#444;font-family:Arial,sans-serif;line-height:1.6}
-    .doc-meta strong{color:#132a4f}
+    .letterhead{display:flex;justify-content:space-between;align-items:flex-end;background:#132a4f;padding:12px 16px;margin:-16mm -14mm 4px;border-bottom:3px solid #e8b130}
+    .org-name{font-size:15px;font-weight:700;letter-spacing:.01em;color:#fff}
+    .org-addr{font-size:9.5px;color:#c9d3e3;margin-top:3px;font-family:Arial,sans-serif}
+    .doc-meta{text-align:right;font-size:9.5px;color:#c9d3e3;font-family:Arial,sans-serif;line-height:1.6}
+    .doc-meta strong{color:#fff}
+
+    .res-photo{width:58px;height:72px;object-fit:cover;border:1px solid #999;flex-shrink:0}
+    .res-photo-fallback{width:58px;height:72px;border:1px solid #999;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#666;font-family:Arial,sans-serif;flex-shrink:0;background:#f2f2f0}
+    .res-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:14px 0 4px}
 
     .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em;color:#132a4f;border-top:3px solid #e8b130;padding-top:14px}
     .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
@@ -219,12 +223,17 @@ export default function RiskManagement() {
       <div class="doc-title">Risk Assessment</div>
       <div class="doc-subtitle">${esc(ra.assessment_name)}</div>
 
-      <table class="idtable">
-        <tr>
-          <td class="lbl">Resident</td><td class="val">${esc(ra.su_name)}</td>
-          <td class="lbl">Assessment</td><td class="val">${esc(ra.assessment_name)}</td>
-        </tr>
-      </table>
+      <div class="res-head">
+        ${ra.su_photo_url
+          ? `<img class="res-photo" src="${ra.su_photo_url}" alt="Resident photo" />`
+          : `<div class="res-photo-fallback">${esc(ra.su_name).charAt(0).toUpperCase()}</div>`}
+        <table class="idtable" style="flex:1">
+          <tr>
+            <td class="lbl">Resident</td><td class="val">${esc(ra.su_name)}</td>
+            <td class="lbl">Assessment</td><td class="val">${esc(ra.assessment_name)}</td>
+          </tr>
+        </table>
+      </div>
 
       ${sectionsHtml}
 

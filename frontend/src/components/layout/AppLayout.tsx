@@ -24,6 +24,7 @@ const navSections = [
     items: [
       { label: 'Dashboard',   to: '/dashboard',   icon: LayoutDashboard, roles: [], featureKey: 'dashboard' },
       { label: 'Inbox',       to: '/messages',    icon: MessageSquare,   roles: [], featureKey: 'messages' },
+      { label: 'Tasks',       to: '/tasks',       icon: CheckSquare,     roles: ['care_staff', 'team_leader', 'senior_carer'], featureKey: 'tasks' },
       { label: 'Noticeboard', to: '/noticeboard', icon: Newspaper,       roles: [], featureKey: 'noticeboard' },
     ]
   },
@@ -96,7 +97,7 @@ const navSections = [
   {
     label: 'OPERATIONS', highlight: true,
     items: [
-      { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: [], featureKey: 'tasks' },
+      { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
       { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
       { label: 'Leave & Holidays',   to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
