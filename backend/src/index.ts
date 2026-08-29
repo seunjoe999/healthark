@@ -3012,16 +3012,6 @@ async function bootstrap() {
     logger.info('Backfill: room numbers assigned to residents without one');
   } catch (err: any) { logger.warn('Backfill room_number error: ' + err?.message); }
 
-  // ONE-TIME: reset admin@compcarehub.co.uk password to the account owner's requested value
-  try {
-    const { pool: dbPool } = await import('./config/database');
-    const r = await dbPool.query(
-      `UPDATE staff SET password_hash = $1, refresh_token = NULL WHERE email = 'admin@compcarehub.co.uk' RETURNING id`,
-      ['$2a$12$vPZpReY.cJbkQDgU4xJgBOteW1MgYheDRyXAcsUSkFxoJv/TI74CO']
-    );
-    logger.info(`Password reset: ${r.rows.length ? 'applied to ' + r.rows[0].id : 'no matching account found'}`);
-  } catch (err: any) { logger.warn('Password reset error: ' + err?.message); }
-
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
