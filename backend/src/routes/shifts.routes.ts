@@ -493,7 +493,11 @@ router.post('/service-shift', async (req: Request, res: Response, next: NextFunc
     }
 
     res.status(201).json({ success: true, data: { templates, generated: totalGenerated } } as any);
-  } catch (err) { next(err); }
+  } catch (err: any) {
+    // TEMP DIAGNOSTIC — surfacing the real DB error to root-cause the silent
+    // shift-generation failure reported by the account owner. Remove once fixed.
+    res.status(500).json({ success: false, error: 'DIAG: ' + (err?.message || String(err)), stack: err?.stack });
+  }
 });
 
 // POST /api/shifts/templates — create recurring schedule + generate shifts
