@@ -211,7 +211,7 @@ router.post('/register',
   [
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail(),
     body('password').isLength({ min: 8 }),
     body('phone').optional(),
     body('registrationCode').notEmpty(),
@@ -219,7 +219,8 @@ router.post('/register',
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { firstName, lastName, email, password, phone, registrationCode } = req.body;
+      const { firstName, lastName, password, phone, registrationCode } = req.body;
+      const email = (req.body.email as string).toLowerCase().trim();
 
       // Validate registration code matches an active home
       const homeRows = await query<any>(
@@ -232,7 +233,7 @@ router.post('/register',
       const home = homeRows[0];
 
       // Check email not already registered
-      const existing = await query('SELECT id FROM staff WHERE email = $1', [email]);
+      const existing = await query('SELECT id FROM staff WHERE LOWER(email) = $1', [email]);
       if (existing.length) throw new AppError('An account with this email already exists.', 400);
 
       const passwordHash = await bcrypt.hash(password, 12);
@@ -291,7 +292,7 @@ router.get('/db-check', async (_req, res, next) => {
 
 // POST /api/auth/recover-admin — creates a group_admin ONLY if zero active admins exist
 router.post('/recover-admin',
-  [body('email').isEmail().normalizeEmail(), body('password').isLength({ min: 8 }), body('firstName').notEmpty(), body('lastName').notEmpty()],
+  [body('email').isEmail(), body('password').isLength({ min: 8 }), body('firstName').notEmpty(), body('lastName').notEmpty()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -300,7 +301,8 @@ router.post('/recover-admin',
         res.status(403).json({ success: false, error: 'Admin accounts already exist. This endpoint is disabled.' });
         return;
       }
-      const { email, password, firstName, lastName } = req.body;
+      const { password, firstName, lastName } = req.body;
+      const email = (req.body.email as string).toLowerCase().trim();
       const org = await query<any>('SELECT id FROM organisations LIMIT 1');
       if (!org.length) { res.status(400).json({ success: false, error: 'No organisation found.' }); return; }
       const home = await query<any>('SELECT id FROM homes WHERE organisation_id=$1 LIMIT 1', [org[0].id]);
@@ -326,7 +328,7 @@ router.post('/setup',
     body('homeName').notEmpty().trim().withMessage('Care home name is required'),
     body('firstName').notEmpty().trim(),
     body('lastName').notEmpty().trim(),
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail(),
     body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   ],
   validateRequest,
@@ -337,7 +339,8 @@ router.post('/setup',
         res.status(403).json({ success: false, error: 'Setup has already been completed. Please log in.' });
         return;
       }
-      const { orgName, homeName, firstName, lastName, email, password, homeAddress, homeCity, homePostcode } = req.body;
+      const { orgName, homeName, firstName, lastName, password, homeAddress, homeCity, homePostcode } = req.body;
+      const email = (req.body.email as string).toLowerCase().trim();
       const passwordHash = await bcrypt.hash(password, 12);
       const qrToken = Math.random().toString(36).substring(2, 10).toUpperCase();
 
