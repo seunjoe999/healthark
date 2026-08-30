@@ -76,9 +76,10 @@ const PLAN_TYPES = [
   { value: 'positive_behaviour', label: 'Positive Behaviour Support Plan' },
   { value: 'oral_care_assessment', label: 'Oral Care Assessment' },
   { value: 'autism', label: 'Autism Support Plan' },
-  { value: 'pen_assessment', label: 'Pain Assessment' },
+  { value: 'pain_assessment', label: 'Pain Assessment' },
   { value: 'personal_evacuation', label: 'Personal Evacuation Support Plan' },
   { value: 'end_of_life', label: 'End Of Life Support Plan' },
+  { value: 'house_rules', label: 'House Rules' },
   { value: 'adhd', label: 'ADHD Support Plan' },
   { value: 'personal_care', label: 'Personal Care Support Plan' },
   { value: 'mobility', label: 'Mobility Support Plan' },
@@ -209,6 +210,94 @@ const MONTHLY_BODY_SECTIONS = [
   { key: 'behaviourTowardsStaff', label: 'Behaviour Towards Staff' },
   { key: 'summaryNotes', label: 'Summary / Additional Notes' },
 ]
+
+const ONE_PAGE_PROFILE_SECTIONS = [
+  { key: 'whatPeopleLike', label: 'What people like and admire about me' },
+  { key: 'whatIsImportant', label: 'What is important to me' },
+  { key: 'howBestToSupport', label: 'How best to support me' },
+  { key: 'myStrengths', label: 'My strengths' },
+]
+
+const HOUSE_RULES_SECTIONS = [
+  { key: 'communicationMentalHealth', label: '1. Communication and Mental Health Support' },
+  { key: 'medicationTreatment', label: '2. Medication and Treatment Engagement' },
+  { key: 'alcoholSubstanceUse', label: '3. Alcohol and Substance Use' },
+  { key: 'respectfulBehaviour', label: '4. Respectful Behaviour and Safety' },
+  { key: 'propertyEnvironment', label: '5. Property and Environment' },
+  { key: 'sharedAreas', label: '6. Shared Areas and House Conduct' },
+  { key: 'foodHygiene', label: '7. Food, Hygiene, and Daily Living' },
+  { key: 'visitorsBoundaries', label: '8. Visitors and Boundaries' },
+  { key: 'staffSupportIndependence', label: '9. Staff Support and Independence' },
+  { key: 'smokingVaping', label: '10. Smoking and Vaping' },
+  { key: 'pets', label: '11. Pets' },
+  { key: 'tenancyExpectations', label: '12. Tenancy Expectations' },
+]
+
+const EVAC_INFORMED_OPTIONS = ['Existing alarm system', 'Visual alarm system', 'Pager device', 'Members of the work team', 'Other (please specify)']
+const EVAC_ASSISTANCE_OPTIONS = ['1 person', '2 people', '3 people', '4 people', 'No assistance required']
+const EVAC_GUIDANCE_OPTIONS = ['The staff will guide me safely out of the facility', 'I am able to safely leave the facility without support']
+const EVAC_EQUIPMENT_OPTIONS = ['No equipment needed — I just need guidance from staff', 'Specialist equipment is required (please specify below)']
+const EVAC_REVIEW_OPTIONS = ['Every 3 months', 'Every 6 months', 'Annually', 'As required due to changes in needs']
+const PAIN_TREND_OPTIONS = ['The pain is constant', 'The pain comes and goes']
+const EOL_RESUS_OPTIONS = ['Yes — I wish to be resuscitated', 'No — I do not wish to be resuscitated']
+const EOL_PROFESSIONALS_OPTIONS = ['GP', 'Community Nurse', 'Specialist / Key Worker', 'Social Worker', 'Other']
+
+const ORAL_ASSESSMENT_ITEMS = [
+  { key: 'lip', label: 'Lip', options: ['Smooth, pink, moist', 'Dry, chapped, or red at corners', 'Swelling, lump, white/red/ulcerated patch, or bleeding at corners'] },
+  { key: 'oralCleanliness', label: 'Oral Cleanliness', options: ['Clean, no food particles or tartar', 'Food particles/tartar/plaque in 1–2 areas, or halitosis', 'Food particles/tartar/plaque in most areas, or severe halitosis'] },
+  { key: 'saliva', label: 'Saliva', options: ['Moist tissues, watery, free-flowing saliva', 'Dry, sticky tissues, little saliva, mouth feels dry', 'Tissues parched and red, little/no saliva, saliva thick'] },
+  { key: 'dentalPain', label: 'Dental Pain', options: ['No behavioural, verbal, or physical signs of pain', 'Verbal/behavioural signs (pulling at face, not eating)', 'Physical signs (swelling, broken teeth, ulcers) plus verbal/behavioural signs'] },
+  { key: 'tongue', label: 'Tongue', options: ['Normal, moist, pink', 'Patchy, fissured, red, coated', 'Red and/or white patch, ulcerated, swollen'] },
+  { key: 'naturalTeeth', label: 'Natural Teeth', options: ['No decayed or broken teeth or roots', '1–3 decayed/broken teeth or roots, or very worn teeth', '4+ decayed/broken teeth or roots, very worn, or fewer than 4 teeth'] },
+  { key: 'dentures', label: 'Dentures', options: ['No broken areas or teeth; regularly worn and named', '1 broken area/tooth, worn only 1–2 hrs daily, or not named', 'More than 1 broken area/tooth, missing/not worn, loose, or not named'] },
+  { key: 'gumsTissues', label: 'Gums & Tissues', options: ['Pink, moist, smooth, no bleeding', 'Dry, shiny, rough, red, swollen, or 1 ulcer/sore spot', 'Swollen, bleeding, ulcers, white/red patches, generalised redness'] },
+]
+const ORAL_ASSESSMENT_ACTIONS = ['Organise a dental examination by a dentist', 'Service user and/or family or guardian refuses dental treatment', 'Complete the oral hygiene care plan and start oral hygiene care']
+
+function ChoiceRow({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="py-2 border-b border-slate-100 last:border-0">
+      <span className="text-sm font-semibold text-slate-700 block mb-1.5">{label}</span>
+      <div className="space-y-1">
+        {options.map(opt => (
+          <label key={opt} className="flex items-center gap-2 cursor-pointer">
+            <input type="radio" checked={value === opt} onChange={() => onChange(opt)} className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="text-sm text-slate-600">{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CheckboxGroup({ label, options, values, onChange }: { label: string; options: string[]; values: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (opt: string) => onChange(values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt])
+  return (
+    <div className="py-2">
+      <span className="text-sm font-semibold text-slate-700 block mb-1.5">{label}</span>
+      <div className="space-y-1">
+        {options.map(opt => (
+          <label key={opt} className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={values.includes(opt)} onChange={() => toggle(opt)} className="rounded w-3.5 h-3.5 flex-shrink-0" />
+            <span className="text-sm text-slate-600">{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ScoreSelect({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="py-2 border-b border-slate-100 last:border-0">
+      <span className="text-sm font-semibold text-slate-700 block mb-1.5">{label}</span>
+      <select className="input w-full text-sm" value={value} onChange={e => onChange(e.target.value)}>
+        <option value="">Select score...</option>
+        {options.map((opt, i) => <option key={i} value={String(i)}>{`Score ${i} — ${opt}`}</option>)}
+      </select>
+    </div>
+  )
+}
 
 function YesNoRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -367,6 +456,134 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
     )
   }
 
+  if (planType === 'one_page_profile') {
+    return (
+      <div className="space-y-3">
+        {ONE_PAGE_PROFILE_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'house_rules') {
+    return (
+      <div className="space-y-3">
+        {HOUSE_RULES_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'personal_evacuation') {
+    return (
+      <div className="space-y-4">
+        <SpeechTextarea label="Mission statement" className="w-full text-sm" rows={2} value={tv('missionStatement')} onChange={v => set('missionStatement', v)}
+          placeholder="e.g. To protect my safety and wellbeing during emergencies through a personalised evacuation plan..." />
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <ChoiceRow label="I am informed of a fire evacuation by:" options={EVAC_INFORMED_OPTIONS} value={tv('informedBy')} onChange={v => set('informedBy', v)} />
+          {tv('informedBy').startsWith('Other') && (
+            <input className="input w-full text-sm mt-1" placeholder="Please specify" value={tv('informedByOther')} onChange={e => set('informedByOther', e.target.value)} />
+          )}
+        </div>
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <ChoiceRow label="Assistance is required from:" options={EVAC_ASSISTANCE_OPTIONS} value={tv('assistanceRequired')} onChange={v => set('assistanceRequired', v)} />
+          <div className="mt-3"><SpeechTextarea label="Who has been designated to give me assistance to get out of the building in an emergency?" className="w-full text-sm" rows={2} value={tv('designatedAssistance')} onChange={v => set('designatedAssistance', v)} /></div>
+          <div className="mt-3"><ChoiceRow label="Methods of guidance / transfer procedure:" options={EVAC_GUIDANCE_OPTIONS} value={tv('guidanceMethod')} onChange={v => set('guidanceMethod', v)} /></div>
+        </div>
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <ChoiceRow label="Equipment provided:" options={EVAC_EQUIPMENT_OPTIONS} value={tv('equipmentProvided')} onChange={v => set('equipmentProvided', v)} />
+          {tv('equipmentProvided').startsWith('Specialist') && (
+            <input className="input w-full text-sm mt-1" placeholder="What equipment is required?" value={tv('equipmentDetail')} onChange={e => set('equipmentDetail', e.target.value)} />
+          )}
+        </div>
+        <SpeechTextarea label="Safe routes to be used" className="w-full text-sm" rows={3} value={tv('safeRoutes')} onChange={v => set('safeRoutes', v)}
+          placeholder="e.g. Through the nearest safe exit (front door)..." />
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <ChoiceRow label="Practices and reviews should take place:" options={EVAC_REVIEW_OPTIONS} value={tv('evacReviewFrequency')} onChange={v => set('evacReviewFrequency', v)} />
+        </div>
+      </div>
+    )
+  }
+
+  if (planType === 'pain_assessment') {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="label">Assessment date</label><input type="date" className="input w-full" value={tv('assessmentDate')} onChange={e => set('assessmentDate', e.target.value)} /></div>
+          <div><label className="label">Assessor's name</label><input className="input w-full" value={tv('assessorName')} onChange={e => set('assessorName', e.target.value)} /></div>
+        </div>
+        <div><label className="label">Pain intensity rating (0–10, 10 being the worst)</label><input className="input w-full" value={tv('painIntensity')} onChange={e => set('painIntensity', e.target.value)} placeholder="e.g. 7 – Hurts a whole lot – Severe pain" /></div>
+        <SpeechTextarea label="Pain description (qualitative)" className="w-full text-sm" rows={2} value={tv('painDescription')} onChange={v => set('painDescription', v)} placeholder="Ask the individual to describe their pain..." />
+        <div><label className="label">Pain duration & triggers</label><input className="input w-full" value={tv('durationTriggers')} onChange={e => set('durationTriggers', e.target.value)} /></div>
+        <SpeechTextarea label="Impact on daily life" className="w-full text-sm" rows={2} value={tv('impactDailyLife')} onChange={v => set('impactDailyLife', v)} />
+        <YesNoRow label="Pain relief given?" value={tv('painReliefGiven')} onChange={v => set('painReliefGiven', v)} />
+        <YesNoRow label="Last administration time checked and confirmed safe to administer?" value={tv('lastAdminChecked')} onChange={v => set('lastAdminChecked', v)} />
+        <ChoiceRow label="Is the pain constant or does it come and go?" options={PAIN_TREND_OPTIONS} value={tv('painTrend')} onChange={v => set('painTrend', v)} />
+        <SpeechTextarea label="What makes it worse or better?" className="w-full text-sm" rows={2} value={tv('whatMakesWorseBetter')} onChange={v => set('whatMakesWorseBetter', v)} />
+        <div><label className="label">Type of intervention</label><input className="input w-full" value={tv('typeOfIntervention')} onChange={e => set('typeOfIntervention', e.target.value)} placeholder="e.g. Medication, repositioning, distraction..." /></div>
+        <div><label className="label">Outcome</label><input className="input w-full" value={tv('outcome')} onChange={e => set('outcome', e.target.value)} placeholder="e.g. Improved, no change, worsened" /></div>
+        <YesNoRow label="Further action required?" value={tv('furtherActionRequired')} onChange={v => set('furtherActionRequired', v)} />
+        <SpeechTextarea label="If further observations or follow-up required — please detail plan" className="w-full text-sm" rows={2} value={tv('followUpPlan')} onChange={v => set('followUpPlan', v)} />
+      </div>
+    )
+  }
+
+  if (planType === 'oral_care_assessment') {
+    const total = ORAL_ASSESSMENT_ITEMS.reduce((sum, it) => sum + (tv(it.key) !== '' ? parseInt(tv(it.key), 10) : 0), 0)
+    const scored = ORAL_ASSESSMENT_ITEMS.some(it => tv(it.key) !== '')
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="label">Assessment date</label><input type="date" className="input w-full" value={tv('assessmentDate')} onChange={e => set('assessmentDate', e.target.value)} /></div>
+          <div><label className="label">Assessor's name</label><input className="input w-full" value={tv('assessorName')} onChange={e => set('assessorName', e.target.value)} /></div>
+        </div>
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          {ORAL_ASSESSMENT_ITEMS.map(it => (
+            <ScoreSelect key={it.key} label={it.label} options={it.options} value={tv(it.key)} onChange={v => set(it.key, v)} />
+          ))}
+        </div>
+        {scored && (
+          <div className="bg-amber-50 rounded-xl border border-amber-200 p-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-amber-800">Total score</span>
+            <span className="text-lg font-bold text-amber-800">{total} / 16</span>
+          </div>
+        )}
+        <CheckboxGroup label="Actions" options={ORAL_ASSESSMENT_ACTIONS} values={Array.isArray(data?.actions) ? data.actions : []} onChange={v => set('actions' as any, v as any)} />
+        <SpeechTextarea label="Document your interventions (e.g. dental appointment made)" className="w-full text-sm" rows={2} value={tv('interventionsNotes')} onChange={v => set('interventionsNotes', v)} />
+        <div><label className="label">Date of last dentist review</label><input type="date" className="input w-full" value={tv('dateLastDentistReview')} onChange={e => set('dateLastDentistReview', e.target.value)} /></div>
+      </div>
+    )
+  }
+
+  if (planType === 'end_of_life') {
+    return (
+      <div className="space-y-4">
+        <SpeechTextarea label="Mission statement" className="w-full text-sm" rows={2} value={tv('missionStatement')} onChange={v => set('missionStatement', v)}
+          placeholder="This care plan is created to honour the wishes, comfort, and dignity of the person receiving support..." />
+        <SpeechTextarea label="Capacity and consent" className="w-full text-sm" rows={2} value={tv('capacityConsent')} onChange={v => set('capacityConsent', v)} />
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <ChoiceRow label="Resuscitation status" options={EOL_RESUS_OPTIONS} value={tv('resuscitationStatus')} onChange={v => set('resuscitationStatus', v)} />
+        </div>
+        <SpeechTextarea label="Advance decisions / legal directives (ADRT, Lasting Power of Attorney, Advance Statement of Wishes)" className="w-full text-sm" rows={2} value={tv('advanceDecisions')} onChange={v => set('advanceDecisions', v)} />
+        <SpeechTextarea label="Communication needs (preferred language, communication aids, hearing/vision support)" className="w-full text-sm" rows={2} value={tv('communicationNeeds')} onChange={v => set('communicationNeeds', v)} />
+        <SpeechTextarea label="Understanding of condition and prognosis" className="w-full text-sm" rows={2} value={tv('understandingCondition')} onChange={v => set('understandingCondition', v)} />
+        <SpeechTextarea label="Spiritual, cultural & religious needs" className="w-full text-sm" rows={2} value={tv('spiritualCulturalNeeds')} onChange={v => set('spiritualCulturalNeeds', v)} />
+        <div><label className="label">Preferred place of care and death</label><input className="input w-full" value={tv('preferredPlaceOfCare')} onChange={e => set('preferredPlaceOfCare', e.target.value)} placeholder="Home, Hospice, Hospital, Care Home, Other..." /></div>
+        <SpeechTextarea label="Symptom management preferences (pain relief, other symptom control)" className="w-full text-sm" rows={2} value={tv('symptomManagement')} onChange={v => set('symptomManagement', v)} />
+        <SpeechTextarea label="Personal care preferences (bathing, clothing, hair/grooming, caregiver gender)" className="w-full text-sm" rows={2} value={tv('personalCarePreferences')} onChange={v => set('personalCarePreferences', v)} />
+        <SpeechTextarea label="Emotional and psychological support" className="w-full text-sm" rows={2} value={tv('emotionalSupport')} onChange={v => set('emotionalSupport', v)} />
+        <SpeechTextarea label="Nutrition and hydration" className="w-full text-sm" rows={2} value={tv('nutritionHydration')} onChange={v => set('nutritionHydration', v)} />
+        <SpeechTextarea label="After-death wishes (funeral, organ donation, people to notify, cultural/religious practices, preferred clothing)" className="w-full text-sm" rows={3} value={tv('afterDeathWishes')} onChange={v => set('afterDeathWishes', v)} />
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <CheckboxGroup label="Professionals involved" options={EOL_PROFESSIONALS_OPTIONS} values={Array.isArray(data?.professionalsInvolved) ? data.professionalsInvolved : []} onChange={v => set('professionalsInvolved' as any, v as any)} />
+        </div>
+        <SpeechTextarea label="Any additional information" className="w-full text-sm" rows={2} value={tv('additionalInfo')} onChange={v => set('additionalInfo', v)} />
+      </div>
+    )
+  }
+
   return null
 }
 
@@ -501,6 +718,122 @@ function TemplateDetail({ plan }: { plan: any }) {
             </div>
           </div>
         ) : null)}
+      </div>
+    )
+  }
+
+  if (pt === 'one_page_profile') {
+    return (
+      <div className="space-y-3">
+        {ONE_PAGE_PROFILE_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'house_rules') {
+    return (
+      <div className="space-y-3">
+        {HOUSE_RULES_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'personal_evacuation') {
+    return (
+      <div className="space-y-3">
+        {sec('Mission statement', tv('missionStatement'))}
+        {row('Informed of evacuation by', tv('informedBy') === 'Other (please specify)' ? tv('informedByOther') : tv('informedBy'))}
+        {row('Assistance required', tv('assistanceRequired'))}
+        {sec('Designated assistance', tv('designatedAssistance'))}
+        {row('Guidance method', tv('guidanceMethod'))}
+        {row('Equipment provided', tv('equipmentProvided').startsWith('Specialist') ? tv('equipmentDetail') : tv('equipmentProvided'))}
+        {sec('Safe routes to be used', tv('safeRoutes'))}
+        {row('Review frequency', tv('evacReviewFrequency'))}
+      </div>
+    )
+  }
+
+  if (pt === 'pain_assessment') {
+    return (
+      <div className="space-y-3">
+        {row('Assessment date', tv('assessmentDate') ? format(new Date(tv('assessmentDate')), 'd MMM yyyy') : '')}
+        {row("Assessor's name", tv('assessorName'))}
+        {row('Pain intensity rating', tv('painIntensity'))}
+        {sec('Pain description', tv('painDescription'))}
+        {row('Duration & triggers', tv('durationTriggers'))}
+        {sec('Impact on daily life', tv('impactDailyLife'))}
+        {row('Pain relief given?', tv('painReliefGiven'))}
+        {row('Last administration time checked?', tv('lastAdminChecked'))}
+        {row('Constant or comes and goes?', tv('painTrend'))}
+        {sec('What makes it worse or better?', tv('whatMakesWorseBetter'))}
+        {row('Type of intervention', tv('typeOfIntervention'))}
+        {row('Outcome', tv('outcome'))}
+        {row('Further action required?', tv('furtherActionRequired'))}
+        {sec('Follow-up plan', tv('followUpPlan'))}
+      </div>
+    )
+  }
+
+  if (pt === 'oral_care_assessment') {
+    const total = ORAL_ASSESSMENT_ITEMS.reduce((sum, it) => sum + (tv(it.key) !== '' ? parseInt(tv(it.key), 10) : 0), 0)
+    const scored = ORAL_ASSESSMENT_ITEMS.some(it => tv(it.key) !== '')
+    const actions: string[] = Array.isArray(td.actions) ? td.actions : []
+    return (
+      <div className="space-y-3">
+        {row('Assessment date', tv('assessmentDate') ? format(new Date(tv('assessmentDate')), 'd MMM yyyy') : '')}
+        {row("Assessor's name", tv('assessorName'))}
+        <div className="border border-slate-200 rounded-xl overflow-hidden">
+          {ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '').map(it => (
+            <div key={it.key} className="flex justify-between px-4 py-2 border-b border-slate-100 last:border-0">
+              <span className="text-sm font-semibold text-slate-600">{it.label}</span>
+              <span className="text-sm text-slate-800">Score {tv(it.key)} — {it.options[parseInt(tv(it.key), 10)]}</span>
+            </div>
+          ))}
+        </div>
+        {scored && (
+          <div className="bg-amber-50 rounded-xl border border-amber-200 p-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-amber-800">Total score</span>
+            <span className="text-lg font-bold text-amber-800">{total} / 16</span>
+          </div>
+        )}
+        {actions.length > 0 && (
+          <div className="border border-slate-200 rounded-xl p-4">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Actions</p>
+            <ul className="list-disc list-inside text-sm text-slate-800 space-y-1">
+              {actions.map(a => <li key={a}>{a}</li>)}
+            </ul>
+          </div>
+        )}
+        {sec('Interventions', tv('interventionsNotes'))}
+        {row('Date of last dentist review', tv('dateLastDentistReview') ? format(new Date(tv('dateLastDentistReview')), 'd MMM yyyy') : '')}
+      </div>
+    )
+  }
+
+  if (pt === 'end_of_life') {
+    const professionals: string[] = Array.isArray(td.professionalsInvolved) ? td.professionalsInvolved : []
+    return (
+      <div className="space-y-3">
+        {sec('Mission statement', tv('missionStatement'))}
+        {sec('Capacity and consent', tv('capacityConsent'))}
+        {row('Resuscitation status', tv('resuscitationStatus'))}
+        {sec('Advance decisions / legal directives', tv('advanceDecisions'))}
+        {sec('Communication needs', tv('communicationNeeds'))}
+        {sec('Understanding of condition and prognosis', tv('understandingCondition'))}
+        {sec('Spiritual, cultural & religious needs', tv('spiritualCulturalNeeds'))}
+        {row('Preferred place of care and death', tv('preferredPlaceOfCare'))}
+        {sec('Symptom management preferences', tv('symptomManagement'))}
+        {sec('Personal care preferences', tv('personalCarePreferences'))}
+        {sec('Emotional and psychological support', tv('emotionalSupport'))}
+        {sec('Nutrition and hydration', tv('nutritionHydration'))}
+        {sec('After-death wishes', tv('afterDeathWishes'))}
+        {professionals.length > 0 && (
+          <div className="border border-slate-200 rounded-xl p-4">
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Professionals involved</p>
+            <p className="text-sm text-slate-800">{professionals.join(', ')}</p>
+          </div>
+        )}
+        {sec('Additional information', tv('additionalInfo'))}
       </div>
     )
   }
@@ -720,6 +1053,101 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     const prnParts = prnRows.filter(s => td[s.key]).map(s => `<h3 class="sub">${s.label}</h3><p class="body-text">${String(td[s.key]).replace(/\n/g, '<br/>')}</p>`).join('')
     if (prnParts) sections.push({ title: 'PRN Protocol Details', inner: prnParts })
     if (plan.prn_protocol && plan.prn_protocol.trim()) sections.push({ title: 'General PRN Protocol Notes', inner: bodyText(plan.prn_protocol) })
+    return sections
+  }
+
+  if (p === 'one_page_profile') {
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
+    ONE_PAGE_PROFILE_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    return sections
+  }
+
+  if (p === 'house_rules') {
+    HOUSE_RULES_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    return sections
+  }
+
+  if (p === 'personal_evacuation') {
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
+    if (tv('missionStatement')) sections.push({ title: 'Mission Statement', inner: bodyText(tv('missionStatement')) })
+    const rows1 = [textRow('I am informed of a fire evacuation by', tv('informedBy') === 'Other (please specify)' ? tv('informedByOther') : tv('informedBy'))].filter(Boolean).join('')
+    if (rows1) sections.push({ title: 'Awareness of Procedure', inner: `<table class="fields">${rows1}</table>` })
+    const rows2 = [
+      textRow('Assistance is required from', tv('assistanceRequired')),
+      textRow('Methods of guidance / transfer procedure', tv('guidanceMethod')),
+    ].filter(Boolean).join('')
+    sections.push({
+      title: 'Designated Assistance',
+      inner: `${rows2 ? `<table class="fields">${rows2}</table>` : ''}${bodyText(tv('designatedAssistance'))}`,
+    })
+    const rows3 = [textRow('Equipment provided', tv('equipmentProvided').startsWith('Specialist') ? tv('equipmentDetail') : tv('equipmentProvided'))].filter(Boolean).join('')
+    if (rows3) sections.push({ title: 'Equipment Provided', inner: `<table class="fields">${rows3}</table>` })
+    if (tv('safeRoutes')) sections.push({ title: 'Safe Routes to be Used', inner: bodyText(tv('safeRoutes')) })
+    const rows4 = [textRow('Practices and reviews should take place', tv('evacReviewFrequency'))].filter(Boolean).join('')
+    if (rows4) sections.push({ title: 'Monitor and Review', inner: `<table class="fields">${rows4}</table>` })
+    return sections
+  }
+
+  if (p === 'pain_assessment') {
+    const rows = [
+      textRow('Assessment date', tv('assessmentDate') ? new Date(tv('assessmentDate')).toLocaleDateString('en-GB') : ''),
+      textRow("Assessor's name", tv('assessorName')),
+      textRow('Pain intensity rating', tv('painIntensity')),
+      textRow('Duration & triggers', tv('durationTriggers')),
+      textRow('Pain relief given?', tv('painReliefGiven')),
+      textRow('Last administration time checked?', tv('lastAdminChecked')),
+      textRow('Constant or comes and goes?', tv('painTrend')),
+      textRow('Type of intervention', tv('typeOfIntervention')),
+      textRow('Outcome', tv('outcome')),
+      textRow('Further action required?', tv('furtherActionRequired')),
+    ].filter(Boolean).join('')
+    if (rows) sections.push({ title: 'Pain Assessment', inner: `<table class="fields">${rows}</table>` })
+    if (tv('painDescription')) sections.push({ title: 'Pain Description', inner: bodyText(tv('painDescription')) })
+    if (tv('impactDailyLife')) sections.push({ title: 'Impact on Daily Life', inner: bodyText(tv('impactDailyLife')) })
+    if (tv('whatMakesWorseBetter')) sections.push({ title: 'What Makes It Worse or Better', inner: bodyText(tv('whatMakesWorseBetter')) })
+    if (tv('followUpPlan')) sections.push({ title: 'Follow-Up Plan', inner: bodyText(tv('followUpPlan')) })
+    return sections
+  }
+
+  if (p === 'oral_care_assessment') {
+    const meta = [
+      textRow('Assessment date', tv('assessmentDate') ? new Date(tv('assessmentDate')).toLocaleDateString('en-GB') : ''),
+      textRow("Assessor's name", tv('assessorName')),
+    ].filter(Boolean).join('')
+    if (meta) sections.push({ title: 'Assessment Details', inner: `<table class="fields">${meta}</table>` })
+    const scoreRows = ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '').map(it =>
+      `<tr><th>${it.label}</th><td>Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}</td></tr>`).join('')
+    if (scoreRows) {
+      const total = ORAL_ASSESSMENT_ITEMS.reduce((sum, it) => sum + (tv(it.key) !== '' ? parseInt(tv(it.key), 10) : 0), 0)
+      sections.push({ title: 'Oral Care Assessment Scoring', inner: `<table class="fields">${scoreRows}<tr><th>Total Score</th><td><strong>${total} / 16</strong></td></tr></table>` })
+    }
+    const actions: string[] = Array.isArray(td.actions) ? td.actions : []
+    if (actions.length) sections.push({ title: 'Actions', inner: `<ul>${actions.map(a => `<li class="body-text">${a}</li>`).join('')}</ul>` })
+    if (tv('interventionsNotes')) sections.push({ title: 'Interventions', inner: bodyText(tv('interventionsNotes')) })
+    if (tv('dateLastDentistReview')) sections.push({ title: 'Date Last Dentist Review', inner: bodyText(new Date(tv('dateLastDentistReview')).toLocaleDateString('en-GB')) })
+    return sections
+  }
+
+  if (p === 'end_of_life') {
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Plans / Outcomes', inner: bodyText(plan.aims_outcomes) })
+    if (tv('missionStatement')) sections.push({ title: 'Mission Statement', inner: bodyText(tv('missionStatement')) })
+    if (tv('capacityConsent')) sections.push({ title: 'Capacity and Consent', inner: bodyText(tv('capacityConsent')) })
+    const resusRow = textRow('Resuscitation status', tv('resuscitationStatus'))
+    if (resusRow) sections.push({ title: 'Resuscitation Status', inner: `<table class="fields">${resusRow}</table>` })
+    if (tv('advanceDecisions')) sections.push({ title: 'Advance Decisions / Legal Directives', inner: bodyText(tv('advanceDecisions')) })
+    if (tv('communicationNeeds')) sections.push({ title: 'Communication Needs', inner: bodyText(tv('communicationNeeds')) })
+    if (tv('understandingCondition')) sections.push({ title: 'Understanding of Condition and Prognosis', inner: bodyText(tv('understandingCondition')) })
+    if (tv('spiritualCulturalNeeds')) sections.push({ title: 'Spiritual, Cultural & Religious Needs', inner: bodyText(tv('spiritualCulturalNeeds')) })
+    const placeRow = textRow('Preferred place of care and death', tv('preferredPlaceOfCare'))
+    if (placeRow) sections.push({ title: 'Preferred Place of Care and Death', inner: `<table class="fields">${placeRow}</table>` })
+    if (tv('symptomManagement')) sections.push({ title: 'Symptom Management Preferences', inner: bodyText(tv('symptomManagement')) })
+    if (tv('personalCarePreferences')) sections.push({ title: 'Personal Care Preferences', inner: bodyText(tv('personalCarePreferences')) })
+    if (tv('emotionalSupport')) sections.push({ title: 'Emotional and Psychological Support', inner: bodyText(tv('emotionalSupport')) })
+    if (tv('nutritionHydration')) sections.push({ title: 'Nutrition and Hydration', inner: bodyText(tv('nutritionHydration')) })
+    if (tv('afterDeathWishes')) sections.push({ title: 'After-Death Wishes', inner: bodyText(tv('afterDeathWishes')) })
+    const professionals: string[] = Array.isArray(td.professionalsInvolved) ? td.professionalsInvolved : []
+    if (professionals.length) sections.push({ title: 'Professionals Involved', inner: bodyText(professionals.join(', ')) })
+    if (tv('additionalInfo')) sections.push({ title: 'Any Additional Information', inner: bodyText(tv('additionalInfo')) })
     return sections
   }
 
@@ -1334,7 +1762,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
           </>
         ) : isTemplatedPlan ? (
           <div className="space-y-4">
-            {plan.plan_type === 'adhd' && plan.aims_outcomes && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life') && plan.aims_outcomes && (
               <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
             )}
             <TemplateDetail plan={plan} />
@@ -1548,7 +1976,8 @@ const EMPTY_ADD_FORM = {
   prnProtocol: '', prnList: '', indicationForUse: '',
 }
 
-const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'crisis', 'about_me'])
+const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'crisis', 'about_me',
+  'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life'])
 
 function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
   open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void; suName?: string
@@ -1746,7 +2175,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
           </>
         ) : isTemplated ? (
           <>
-            {form.planType === 'adhd' && (
+            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
             <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
@@ -1865,7 +2294,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
           </>
         ) : isTemplated ? (
           <>
-            {plan.plan_type === 'adhd' && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
             <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
