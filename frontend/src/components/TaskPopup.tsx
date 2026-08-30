@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { CheckCircle2, Settings, AlarmClock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { REMINDER_FREQUENCY_OPTIONS, getReminderFrequency, setReminderFrequency, markTaskPopupShown, isTimePastDue } from '../utils/taskReminder'
+import { getServerTodayStr } from '../utils/serverTime'
 
 interface Task {
   id: string
@@ -41,7 +42,7 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
   const loadTasks = async () => {
     setLoading(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
+      const today = await getServerTodayStr()
       const [taskRes, medRes] = await Promise.allSettled([
         api.get('/tasks', { params: { date: today } }),
         user?.homeId ? api.get('/mar/due-today', { params: { homeId: user.homeId } }) : Promise.resolve(null),

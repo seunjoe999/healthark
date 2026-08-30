@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, endOfWeek, subDays } from 'date-fns'
 import TaskPopup from '../../components/TaskPopup'
 import { isTimePastDue } from '../../utils/taskReminder'
+import { getServerTodayStr } from '../../utils/serverTime'
 import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import {
@@ -157,11 +158,12 @@ export default function Dashboard() {
     if (!selectedHome) return
     setLoading(true)
 
-    const todayStr   = format(new Date(), 'yyyy-MM-dd')
-    const in7days    = format(addDays(new Date(), 7), 'yyyy-MM-dd')
-    const weekStart  = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const weekEnd    = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const sevenAgo   = format(subDays(new Date(), 6), 'yyyy-MM-dd')
+    ;(async () => {
+    const todayStr   = await getServerTodayStr()
+    const in7days    = format(addDays(new Date(todayStr), 7), 'yyyy-MM-dd')
+    const weekStart  = format(startOfWeek(new Date(todayStr), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    const weekEnd    = format(endOfWeek(new Date(todayStr), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    const sevenAgo   = format(subDays(new Date(todayStr), 6), 'yyyy-MM-dd')
 
     Promise.allSettled([
       /* 0 */ homesApi.dashboard(selectedHome),
@@ -278,6 +280,7 @@ export default function Dashboard() {
       const allTasks: any[] = tasksRes?.data?.data || []
       setTodaysTasks(allTasks.filter((t: any) => t.status === 'pending'))
     }).catch(console.error).finally(() => setLoading(false))
+    })()
   }, [selectedHome])
 
   // Time-based due check — in addition to the frequency-based pop-up, poll every

@@ -122,6 +122,13 @@ app.get('/api/version', (_req, res) => {
   res.json({ commit: process.env.RENDER_GIT_COMMIT || 'local', ts: Date.now() });
 });
 
+// Server's own clock — the frontend uses this (not the device's local clock) to
+// compute "today" for anything that must match server-generated records, since
+// a device's local date can otherwise disagree with the server.
+app.get('/api/server-time', (_req, res) => {
+  res.json({ success: true, data: { iso: new Date().toISOString() } });
+});
+
 // â”€â”€ ALL API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth', authRoutes);
 app.use('/api/homes', homesRoutes);

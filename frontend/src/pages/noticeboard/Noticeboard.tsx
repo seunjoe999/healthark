@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { openLetterheadPrint, buildLetterheadPage, esc, nl } from '../../utils/letterheadPrint'
+import { getServerTodayStr } from '../../utils/serverTime'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -116,7 +117,7 @@ export default function Noticeboard() {
   const canPost = isRole('home_manager', 'group_admin', 'senior_carer')
 
   async function loadTasks() {
-    const today = format(new Date(), 'yyyy-MM-dd')
+    const today = await getServerTodayStr()
     try {
       const res = await api.get('/tasks', { params: { date: today } })
       setTodaysTasks((res.data.data || []).filter((t: any) => t.status === 'pending'))

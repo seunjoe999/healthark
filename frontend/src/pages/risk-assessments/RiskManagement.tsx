@@ -54,7 +54,7 @@ const BLANK_FORM = {
 
 export default function RiskManagement() {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'senior_carer')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer')
 
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')

@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui'
 import TaskPopup from '../../components/TaskPopup'
 import { shouldShowTaskPopup, isTimePastDue } from '../../utils/taskReminder'
+import { getServerTodayStr } from '../../utils/serverTime'
 import toast from 'react-hot-toast'
 import {
   ClipboardList, Pill, Calendar, Clock, Bell, BookOpen,
@@ -57,7 +58,7 @@ export default function StaffDashboard() {
     if (!user) return
     const load = async () => {
       try {
-        const todayStr = format(new Date(), 'yyyy-MM-dd')
+        const todayStr = await getServerTodayStr()
         const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, calendarR] = await Promise.allSettled([
           api.get('/shifts', { params: { homeId: user.homeId, date: todayStr } }),
           api.get('/tasks', { params: { homeId: user.homeId, date: todayStr } }),

@@ -109,7 +109,7 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
 // used for privilege checks elsewhere in this codebase aren't part of that type.)
 
 // POST /api/tasks — create a one-off task
-router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'senior_carer', 'team_leader'), [body('title').notEmpty()], validateRequest,
+router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'team_leader'), [body('title').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
