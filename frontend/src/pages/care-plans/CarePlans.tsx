@@ -498,6 +498,13 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
             <input className="input w-full text-sm mt-1" placeholder="What equipment is required?" value={tv('equipmentDetail')} onChange={e => set('equipmentDetail', e.target.value)} />
           )}
         </div>
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Evacuation Procedure — during evacuation, staff and I will follow these steps</p>
+          <SpeechTextarea label="Staff responsibilities" className="w-full text-sm" rows={4} value={tv('staffResponsibilities')} onChange={v => set('staffResponsibilities', v)}
+            placeholder="e.g. Stay calm and reassuring; confirm the emergency; call 999 if required; inform me calmly that evacuation is necessary; provide first aid if needed; confirm I'm safe once outside..." />
+          <SpeechTextarea label="Your role during evacuation" className="w-full text-sm" rows={4} value={tv('yourRoleDuringEvacuation')} onChange={v => set('yourRoleDuringEvacuation', v)}
+            placeholder="e.g. Be aware of immediate dangers; inform staff if you need extra assistance; follow staff instructions to the nearest safe exit; proceed to the designated assembly point..." />
+        </div>
         <SpeechTextarea label="Safe routes to be used" className="w-full text-sm" rows={3} value={tv('safeRoutes')} onChange={v => set('safeRoutes', v)}
           placeholder="e.g. Through the nearest safe exit (front door)..." />
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
@@ -580,6 +587,21 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
           <CheckboxGroup label="Professionals involved" options={EOL_PROFESSIONALS_OPTIONS} values={Array.isArray(data?.professionalsInvolved) ? data.professionalsInvolved : []} onChange={v => set('professionalsInvolved' as any, v as any)} />
         </div>
         <SpeechTextarea label="Any additional information" className="w-full text-sm" rows={2} value={tv('additionalInfo')} onChange={v => set('additionalInfo', v)} />
+      </div>
+    )
+  }
+
+  if (planType === 'physical_health') {
+    return (
+      <div className="space-y-4">
+        <SpeechTextarea label="Mission statement" className="w-full text-sm" rows={2} value={tv('missionStatement')} onChange={v => set('missionStatement', v)}
+          placeholder="Comprehensive Care is committed to promoting and supporting the physical health of those we care for." />
+        <SpeechTextarea label="List of physical health issues" className="w-full text-sm" rows={3} value={tv('physicalHealthIssues')} onChange={v => set('physicalHealthIssues', v)} />
+        <div><label className="label">GP review date</label><input type="date" className="input w-full" value={tv('gpReviewDate')} onChange={e => set('gpReviewDate', e.target.value)} /></div>
+        <SpeechTextarea label="What I can do" className="w-full text-sm" rows={3} value={tv('whatICanDo')} onChange={v => set('whatICanDo', v)} />
+        <SpeechTextarea label="What you can do to support me" className="w-full text-sm" rows={3} value={tv('whatYouCanDoToSupportMe')} onChange={v => set('whatYouCanDoToSupportMe', v)} />
+        <SpeechTextarea label="Care plan update tracking" className="w-full text-sm" rows={3} value={tv('carePlanUpdateTracking')} onChange={v => set('carePlanUpdateTracking', v)}
+          placeholder="Log of reviews, updates, and changes to this care plan..." />
       </div>
     )
   }
@@ -747,8 +769,23 @@ function TemplateDetail({ plan }: { plan: any }) {
         {sec('Designated assistance', tv('designatedAssistance'))}
         {row('Guidance method', tv('guidanceMethod'))}
         {row('Equipment provided', tv('equipmentProvided').startsWith('Specialist') ? tv('equipmentDetail') : tv('equipmentProvided'))}
+        {sec('Staff responsibilities during evacuation', tv('staffResponsibilities'))}
+        {sec('Your role during evacuation', tv('yourRoleDuringEvacuation'))}
         {sec('Safe routes to be used', tv('safeRoutes'))}
         {row('Review frequency', tv('evacReviewFrequency'))}
+      </div>
+    )
+  }
+
+  if (pt === 'physical_health') {
+    return (
+      <div className="space-y-3">
+        {sec('Mission statement', tv('missionStatement'))}
+        {sec('List of physical health issues', tv('physicalHealthIssues'))}
+        {row('GP review date', tv('gpReviewDate') ? format(new Date(tv('gpReviewDate')), 'd MMM yyyy') : '')}
+        {sec('What I can do', tv('whatICanDo'))}
+        {sec('What you can do to support me', tv('whatYouCanDoToSupportMe'))}
+        {sec('Care plan update tracking', tv('carePlanUpdateTracking'))}
       </div>
     )
   }
@@ -1082,6 +1119,12 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     })
     const rows3 = [textRow('Equipment provided', tv('equipmentProvided').startsWith('Specialist') ? tv('equipmentDetail') : tv('equipmentProvided'))].filter(Boolean).join('')
     if (rows3) sections.push({ title: 'Equipment Provided', inner: `<table class="fields">${rows3}</table>` })
+    if (tv('staffResponsibilities') || tv('yourRoleDuringEvacuation')) {
+      sections.push({
+        title: 'Evacuation Procedure',
+        inner: `${tv('staffResponsibilities') ? `<h3 class="sub">Staff Responsibilities</h3>${bodyText(tv('staffResponsibilities'))}` : ''}${tv('yourRoleDuringEvacuation') ? `<h3 class="sub">Your Role During Evacuation</h3>${bodyText(tv('yourRoleDuringEvacuation'))}` : ''}`,
+      })
+    }
     if (tv('safeRoutes')) sections.push({ title: 'Safe Routes to be Used', inner: bodyText(tv('safeRoutes')) })
     const rows4 = [textRow('Practices and reviews should take place', tv('evacReviewFrequency'))].filter(Boolean).join('')
     if (rows4) sections.push({ title: 'Monitor and Review', inner: `<table class="fields">${rows4}</table>` })
@@ -1148,6 +1191,18 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     const professionals: string[] = Array.isArray(td.professionalsInvolved) ? td.professionalsInvolved : []
     if (professionals.length) sections.push({ title: 'Professionals Involved', inner: bodyText(professionals.join(', ')) })
     if (tv('additionalInfo')) sections.push({ title: 'Any Additional Information', inner: bodyText(tv('additionalInfo')) })
+    return sections
+  }
+
+  if (p === 'physical_health') {
+    if (tv('missionStatement')) sections.push({ title: 'Mission Statement', inner: bodyText(tv('missionStatement')) })
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
+    const gpRow = textRow('GP review date', tv('gpReviewDate') ? new Date(tv('gpReviewDate')).toLocaleDateString('en-GB') : '')
+    if (gpRow) sections.push({ title: 'GP Review Date', inner: `<table class="fields">${gpRow}</table>` })
+    if (tv('physicalHealthIssues')) sections.push({ title: 'List of Physical Health Issues', inner: bodyText(tv('physicalHealthIssues')) })
+    if (tv('whatICanDo')) sections.push({ title: 'What I Can Do', inner: bodyText(tv('whatICanDo')) })
+    if (tv('whatYouCanDoToSupportMe')) sections.push({ title: 'What You Can Do To Support Me', inner: bodyText(tv('whatYouCanDoToSupportMe')) })
+    if (tv('carePlanUpdateTracking')) sections.push({ title: 'Care Plan Update Tracking', inner: bodyText(tv('carePlanUpdateTracking')) })
     return sections
   }
 
@@ -1762,7 +1817,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
           </>
         ) : isTemplatedPlan ? (
           <div className="space-y-4">
-            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life') && plan.aims_outcomes && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health') && plan.aims_outcomes && (
               <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
             )}
             <TemplateDetail plan={plan} />
@@ -1977,7 +2032,8 @@ const EMPTY_ADD_FORM = {
 }
 
 const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'crisis', 'about_me',
-  'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life'])
+  'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life',
+  'physical_health'])
 
 function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
   open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void; suName?: string
@@ -2175,7 +2231,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
           </>
         ) : isTemplated ? (
           <>
-            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life') && (
+            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life' || form.planType === 'physical_health') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
             <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
@@ -2294,7 +2350,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
           </>
         ) : isTemplated ? (
           <>
-            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life') && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
             <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
