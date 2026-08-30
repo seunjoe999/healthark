@@ -42,7 +42,13 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
   // the frontend's 15s timeout. The browser would show an error and the user
   // would assume nothing saved, while the server kept writing in the
   // background — including THIS week's shifts, just arriving late/silently.
-  const startDate = new Date(tmpl.start_date + 'T00:00:00Z');
+  // tmpl.start_date comes back from `RETURNING *` as a native JS Date object
+  // (pg's default DATE parser), not a string — string-concatenating it here
+  // used to silently produce "Invalid Date" and generate zero shifts.
+  const startDateStr = typeof tmpl.start_date === 'string'
+    ? tmpl.start_date.split('T')[0]
+    : tmpl.start_date.toISOString().split('T')[0];
+  const startDate = new Date(startDateStr + 'T00:00:00Z');
   const dowList: number[] = Array.isArray(tmpl.days_of_week) ? tmpl.days_of_week.map(Number) : [Number(tmpl.days_of_week)];
 
   const dateStrs: string[] = [];
@@ -493,11 +499,7 @@ router.post('/service-shift', async (req: Request, res: Response, next: NextFunc
     }
 
     res.status(201).json({ success: true, data: { templates, generated: totalGenerated } } as any);
-  } catch (err: any) {
-    // TEMP DIAGNOSTIC — surfacing the real DB error to root-cause the silent
-    // shift-generation failure reported by the account owner. Remove once fixed.
-    res.status(500).json({ success: false, error: 'DIAG: ' + (err?.message || String(err)), stack: err?.stack });
-  }
+  } catch (err) { next(err); }
 });
 
 // POST /api/shifts/templates — create recurring schedule + generate shifts
