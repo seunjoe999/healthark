@@ -3,7 +3,7 @@ import { body, param } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { validateRequest } from '../middleware/validate';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
@@ -317,6 +317,41 @@ router.post('/recover-admin',
         [org[0].id, home[0].id, email, hash, firstName, lastName]
       );
       res.json({ success: true, message: 'Admin account created. You can now log in.' });
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/auth/promote-super-admin — creates the org's ONE super_admin account.
+// super_admin is the true top-level role: it auto-passes every requireRole()
+// check app-wide and is the only role allowed to perform deletions (see the
+// global delete lockdown in index.ts). Only an already-authenticated
+// group_admin can call this, and only while zero super_admin accounts exist
+// anywhere — mirrors the one-shot guard on /recover-admin above.
+router.post('/promote-super-admin',
+  authenticate,
+  requireRole('group_admin'),
+  [body('email').isEmail(), body('password').isLength({ min: 8 }), body('firstName').notEmpty().trim(), body('lastName').notEmpty().trim()],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await query("SELECT id FROM staff WHERE role = 'super_admin' LIMIT 1");
+      if (existing.length > 0) {
+        res.status(403).json({ success: false, error: 'A super admin account already exists. This endpoint is disabled.' });
+        return;
+      }
+      const { password, firstName, lastName } = req.body;
+      const email = (req.body.email as string).toLowerCase().trim();
+      const orgId = req.staff.organisationId;
+      const homeId = req.staff.homeId;
+      const hash = await bcrypt.hash(password, 12);
+      await query(
+        `INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, last_name, role, status, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,'super_admin','active',true)
+         ON CONFLICT (email) DO UPDATE SET password_hash=$4, role='super_admin', status='active', is_active=true,
+           first_name=$5, last_name=$6`,
+        [orgId, homeId, email, hash, firstName, lastName]
+      );
+      res.json({ success: true, message: 'Super admin account created.' });
     } catch (err) { next(err); }
   }
 );
