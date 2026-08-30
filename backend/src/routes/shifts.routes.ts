@@ -36,13 +36,18 @@ const SHIFT_STATUSES = ['unfilled', 'filled', 'cancelled', 'on_hold', 'completed
 const SHIFT_RELATIONS = ['shadow', 'double_up'];
 
 async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Promise<number> {
+  // Bulk-generate instead of one DB round-trip per calendar day — with the
+  // "ongoing" default (52 weeks, daily) the old day-by-day loop meant up to
+  // ~700 sequential awaited queries in a single request, routinely exceeding
+  // the frontend's 15s timeout. The browser would show an error and the user
+  // would assume nothing saved, while the server kept writing in the
+  // background — including THIS week's shifts, just arriving late/silently.
   const startDate = new Date(tmpl.start_date + 'T00:00:00Z');
-  const endDate = new Date(startDate);
-  endDate.setUTCDate(endDate.getUTCDate() + weeks * 7);
   const dowList: number[] = Array.isArray(tmpl.days_of_week) ? tmpl.days_of_week.map(Number) : [Number(tmpl.days_of_week)];
-  let generated = 0;
+
+  const dateStrs: string[] = [];
   const cur = new Date(startDate);
-  while (cur <= endDate) {
+  for (let i = 0; i <= weeks * 7; i++) {
     const dow = cur.getUTCDay();
     const dayMatches = tmpl.recurrence === 'daily' || dowList.includes(dow);
     if (dayMatches) {
@@ -51,48 +56,56 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
         const weeksSince = Math.floor((cur.getTime() - startDate.getTime()) / (7 * 86400000));
         if (weeksSince % 2 !== 0) ok = false;
       }
-      if (ok) {
-        const dateStr = cur.toISOString().split('T')[0];
-        let exists: any[];
-        if (tmpl.staff_id) {
-          exists = await query<any>(
-            `SELECT id FROM staff_shifts WHERE staff_id=$1 AND shift_date=$2 AND start_time=$3::time LIMIT 1`,
-            [tmpl.staff_id, dateStr, tmpl.start_time]
-          );
-        } else {
-          exists = await query<any>(
-            `SELECT id FROM staff_shifts WHERE su_id=$1 AND shift_date=$2 AND start_time=$3::time AND staff_id IS NULL LIMIT 1`,
-            [tmpl.su_id, dateStr, tmpl.start_time]
-          );
-        }
-        if (!exists.length) {
-          try {
-            await query(
-              `INSERT INTO staff_shifts (
-                 home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, break_minutes, template_id,
-                 notes_for_carers, notes_for_managers, is_standby, status, total_staff_required,
-                 funder_name, funder_cost_notes, wage_rate, charge_rate, charge_bank_holiday_rate,
-                 time_critical, shift_run
-               )
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
-              [homeId, tmpl.staff_id || null, tmpl.su_id || null, dateStr,
-               tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
-               tmpl.break_minutes || 0, tmpl.id,
-               tmpl.notes_for_carers || null, tmpl.notes_for_managers || null,
-               tmpl.is_standby || false,
-               tmpl.staff_id ? 'filled' : 'unfilled', tmpl.staff_count || 1,
-               tmpl.funder_name || null, tmpl.funder_cost_notes || null,
-               tmpl.wage_rate || null, tmpl.charge_rate || null, tmpl.charge_bank_holiday_rate || null,
-               tmpl.time_critical || false, tmpl.shift_run || null]
-            );
-            generated++;
-          } catch {}
-        }
-      }
+      if (ok) dateStrs.push(cur.toISOString().split('T')[0]);
     }
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
-  return generated;
+  if (!dateStrs.length) return 0;
+
+  // One bulk existence check for every candidate date, instead of one query per date.
+  const existing = tmpl.staff_id
+    ? await query<any>(
+        `SELECT shift_date::text FROM staff_shifts WHERE staff_id=$1 AND shift_date = ANY($2::date[]) AND start_time=$3::time`,
+        [tmpl.staff_id, dateStrs, tmpl.start_time]
+      )
+    : await query<any>(
+        `SELECT shift_date::text FROM staff_shifts WHERE su_id=$1 AND shift_date = ANY($2::date[]) AND start_time=$3::time AND staff_id IS NULL`,
+        [tmpl.su_id, dateStrs, tmpl.start_time]
+      );
+  const existingSet = new Set(existing.map((r: any) => r.shift_date));
+  const toInsert = dateStrs.filter(d => !existingSet.has(d));
+  if (!toInsert.length) return 0;
+
+  // One bulk multi-row INSERT for every remaining date.
+  const cols = [
+    'home_id', 'staff_id', 'su_id', 'shift_date', 'start_time', 'end_time', 'shift_type', 'break_minutes', 'template_id',
+    'notes_for_carers', 'notes_for_managers', 'is_standby', 'status', 'total_staff_required',
+    'funder_name', 'funder_cost_notes', 'wage_rate', 'charge_rate', 'charge_bank_holiday_rate',
+    'time_critical', 'shift_run',
+  ];
+  const params: any[] = [];
+  const valueRows: string[] = [];
+  for (const dateStr of toInsert) {
+    const row = [
+      homeId, tmpl.staff_id || null, tmpl.su_id || null, dateStr,
+      tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
+      tmpl.break_minutes || 0, tmpl.id,
+      tmpl.notes_for_carers || null, tmpl.notes_for_managers || null,
+      tmpl.is_standby || false,
+      tmpl.staff_id ? 'filled' : 'unfilled', tmpl.staff_count || 1,
+      tmpl.funder_name || null, tmpl.funder_cost_notes || null,
+      tmpl.wage_rate || null, tmpl.charge_rate || null, tmpl.charge_bank_holiday_rate || null,
+      tmpl.time_critical || false, tmpl.shift_run || null,
+    ];
+    const placeholders = row.map((_, i) => `$${params.length + i + 1}`).join(',');
+    valueRows.push(`(${placeholders})`);
+    params.push(...row);
+  }
+  await query(
+    `INSERT INTO staff_shifts (${cols.join(', ')}) VALUES ${valueRows.join(', ')}`,
+    params
+  );
+  return toInsert.length;
 }
 
 // GET /api/shifts?homeId=&weekStart=&date=

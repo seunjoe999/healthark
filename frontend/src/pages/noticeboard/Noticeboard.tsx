@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check, CheckSquare, ChevronRight } from 'lucide-react'
+import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check, CheckSquare } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
-import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { openLetterheadPrint, buildLetterheadPage, esc, nl } from '../../utils/letterheadPrint'
-import TaskPopup from '../../components/TaskPopup'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -113,17 +111,27 @@ export default function Noticeboard() {
   const [filterCat, setFilterCat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ title: '', body: '', category: 'general', isPinned: false, expiresAt: '' })
-  const [pendingTaskCount, setPendingTaskCount] = useState<number | null>(null)
-  const [showTaskPopup, setShowTaskPopup] = useState(false)
+  const [todaysTasks, setTodaysTasks] = useState<any[]>([])
 
   const canPost = isRole('home_manager', 'group_admin', 'senior_carer')
 
-  useEffect(() => {
+  async function loadTasks() {
     const today = format(new Date(), 'yyyy-MM-dd')
-    api.get('/tasks', { params: { date: today } })
-      .then(res => setPendingTaskCount((res.data.data || []).filter((t: any) => t.status === 'pending').length))
-      .catch(() => setPendingTaskCount(null))
-  }, [])
+    try {
+      const res = await api.get('/tasks', { params: { date: today } })
+      setTodaysTasks((res.data.data || []).filter((t: any) => t.status === 'pending'))
+    } catch { setTodaysTasks([]) }
+  }
+
+  useEffect(() => { loadTasks() }, [])
+
+  async function completeTask(id: string) {
+    try {
+      await api.put(`/tasks/${id}/complete`, { notes: '' })
+      toast.success('Task completed')
+      loadTasks()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to complete task') }
+  }
 
   async function load() {
     setLoading(true)
@@ -215,24 +223,33 @@ export default function Noticeboard() {
         </div>
       </div>
 
-      {/* Today's Tasks entry point */}
-      {pendingTaskCount !== null && pendingTaskCount > 0 && (
-        <button
-          onClick={() => setShowTaskPopup(true)}
-          className="w-full flex items-center gap-3 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-4 mb-5 text-left hover:border-amber-500/50 transition-all"
-        >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(232,177,48,0.15)' }}>
-            <CheckSquare className="w-5 h-5 text-amber-400" />
+      {/* Today's Tasks — always shown here, not collapsible, not tucked under a menu */}
+      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-4 mb-5">
+        <div className="flex items-center gap-2 mb-3">
+          <CheckSquare className="w-4 h-4 text-amber-400" />
+          <p className="font-bold text-white text-sm">Today's Tasks</p>
+          {todaysTasks.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-semibold">{todaysTasks.length} pending</span>
+          )}
+        </div>
+        {todaysTasks.length === 0 ? (
+          <p className="text-sm text-slate-400">No tasks assigned for today.</p>
+        ) : (
+          <div className="space-y-2">
+            {todaysTasks.map((t: any) => (
+              <div key={t.id} className="flex items-center gap-3 bg-slate-900/40 rounded-lg px-3 py-2.5">
+                <button onClick={() => completeTask(t.id)}
+                  className="w-5 h-5 rounded border-2 border-slate-500 hover:border-amber-400 flex-shrink-0 transition-colors" title="Mark complete" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate">{t.title}</p>
+                  {t.su_name && <p className="text-xs text-slate-400">{t.su_name}</p>}
+                </div>
+                {t.due_time && <span className="text-xs text-slate-400 flex-shrink-0">{t.due_time}</span>}
+              </div>
+            ))}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-white text-sm">Click here for today's tasks</p>
-            <p className="text-xs text-slate-400 mt-0.5">{pendingTaskCount} pending task{pendingTaskCount > 1 ? 's' : ''} waiting for you today</p>
-          </div>
-          <Link to="/tasks" onClick={e => e.stopPropagation()} className="text-xs text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1 flex-shrink-0">
-            Open Tasks <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </button>
-      )}
+        )}
+      </div>
 
       {/* Filter */}
       <div className="flex gap-2 mb-5 flex-wrap">
@@ -297,7 +314,6 @@ export default function Noticeboard() {
         </form>
       </Modal>
 
-      <TaskPopup open={showTaskPopup} onClose={() => setShowTaskPopup(false)} />
     </div>
   )
 }
