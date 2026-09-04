@@ -461,29 +461,25 @@ export default function RiskManagement() {
         </div>
       </div>
 
-      {/* Filter by resident */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6 no-print">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Filter by resident</label>
-            <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
-              <option value="">All residents</option>
-              {sus.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
-            </select>
-          </div>
+      {/* Filter + risk summary — one flat bar, no boxed tiles */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6 no-print flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Filter by resident</label>
+          <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
+            <option value="">All residents</option>
+            {sus.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+          </select>
         </div>
-      </div>
-
-      {/* Risk summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        {RISK_LEVELS.map(rl => (
-          <div key={rl.value} className={`bg-white rounded-xl border shadow-sm p-4 border-l-4 ${rl.color.replace('bg-', 'border-l-').split(' ')[0]}`}>
-            <p className="text-2xl font-bold text-slate-900">
-              {assessments.filter(a => (a.risk_rating || a.current_risk_level) === rl.value).length}
-            </p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">{rl.label} Risk</p>
-          </div>
-        ))}
+        <div className="flex items-stretch divide-x divide-slate-100">
+          {RISK_LEVELS.map(rl => (
+            <div key={rl.value} className="text-center px-4">
+              <p className="text-2xl font-bold text-slate-900">
+                {assessments.filter(a => (a.risk_rating || a.current_risk_level) === rl.value).length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">{rl.label} Risk</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* List */}

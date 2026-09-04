@@ -274,10 +274,10 @@ function buildIncidentPrintPage(inc: any): string {
 
 // ── Stat card ─────────────────────────────────────────────────────
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className={`bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-1 border-l-4 ${color}`}>
-      <span className="text-2xl font-bold text-slate-900">{value}</span>
+    <div className="flex-1 text-center px-4">
+      <span className="block text-2xl font-bold text-slate-900">{value}</span>
       <span className="text-xs text-slate-500 font-medium">{label}</span>
     </div>
   )
@@ -941,12 +941,12 @@ export default function Incidents() {
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total this period" value={incidents.length} color="border-slate-400" />
-        <StatCard label="Critical" value={stats.critical} color="border-red-500" />
-        <StatCard label="High severity" value={stats.high} color="border-orange-500" />
-        <StatCard label="Medium" value={stats.medium} color="border-yellow-500" />
+      {/* Stats row — one flat card, no boxed tiles */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-4 flex items-stretch divide-x divide-slate-100">
+        <StatCard label="Total this period" value={incidents.length} />
+        <StatCard label="Critical" value={stats.critical} />
+        <StatCard label="High severity" value={stats.high} />
+        <StatCard label="Medium" value={stats.medium} />
       </div>
 
       {/* Tab switcher */}
