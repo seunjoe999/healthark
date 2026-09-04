@@ -4,7 +4,7 @@ import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, SpeechTextarea } from '../../components/ui'
-import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck } from 'lucide-react'
+import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const RISK_LEVELS = [
@@ -76,6 +76,7 @@ export default function RiskManagement() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
   const [signOffItem, setSignOffItem] = useState<any>(null)
   const [signOffForm, setSignOffForm] = useState({ signedOffBy: '', signedOffDate: '' })
+  const [search, setSearch] = useState('')
 
   const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
 
@@ -420,6 +421,11 @@ export default function RiskManagement() {
     } catch { toast.error('Failed to archive') }
   }
 
+  const visibleAssessments = assessments
+    .filter((ra: any) => !search.trim() || (ra.assessment_name || '').toLowerCase().includes(search.trim().toLowerCase()))
+    .slice()
+    .sort((a: any, b: any) => (a.assessment_name || '').localeCompare(b.assessment_name || ''))
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Print-only header — hidden on screen, visible when printing */}
@@ -463,12 +469,26 @@ export default function RiskManagement() {
 
       {/* Filter + risk summary — one flat bar, no boxed tiles */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6 no-print flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Filter by resident</label>
-          <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
-            <option value="">All residents</option>
-            {sus.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
-          </select>
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Filter by resident</label>
+            <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
+              <option value="">All residents</option>
+              {sus.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+            </select>
+          </div>
+          <div className="min-w-[200px]">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Search plans</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Search risk assessments..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
         <div className="flex items-stretch divide-x divide-slate-100">
           {RISK_LEVELS.map(rl => (
@@ -486,9 +506,11 @@ export default function RiskManagement() {
       {loading ? <Spinner /> : assessments.length === 0 ? (
         <EmptyState title="No risk management plans" description="Create a risk management plan to get started."
           action={canManage ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>New Plan</Button> : undefined} />
+      ) : visibleAssessments.length === 0 ? (
+        <EmptyState title="No matching plans" description="Try a different search term" />
       ) : (
         <div className="space-y-3">
-          {assessments.map((ra: any) => {
+          {visibleAssessments.map((ra: any) => {
             const isExpanded = expandedId === ra.id
             const likelihood = LIKELIHOOD_OPTIONS.find(o => o.value === ra.risk_rating_option)
             return (

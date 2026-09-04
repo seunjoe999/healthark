@@ -608,11 +608,18 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
+const EMPTY_CONTACT_FORM = { fullName: '', relationship: '', contactTag: 'family', phonePrimary: '', email: '', isPrimary: false, notes: '' }
+
 function AddContactModal({ open, onClose, suId, onAdded }: {
   open: boolean; onClose: () => void; suId: string; onAdded: (c: any) => void
 }) {
-  const [form, setForm] = useState({ fullName: '', relationship: '', contactTag: 'family', phonePrimary: '', email: '', isPrimary: false, notes: '' })
+  const [form, setForm] = useState(EMPTY_CONTACT_FORM)
   const [loading, setLoading] = useState(false)
+
+  const handleClose = () => {
+    setForm(EMPTY_CONTACT_FORM)
+    onClose()
+  }
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -620,12 +627,13 @@ function AddContactModal({ open, onClose, suId, onAdded }: {
     try {
       const res = await suApi.addContact(suId, form)
       onAdded(res.data.data)
+      setForm(EMPTY_CONTACT_FORM)
     } catch { toast.error('Failed to add contact') }
     finally { setLoading(false) }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add contact">
+    <Modal open={open} onClose={handleClose} title="Add contact">
       <form onSubmit={save} className="space-y-4">
         <Input label="Full name *" required value={form.fullName} onChange={e => setForm(p => ({ ...p, fullName: e.target.value }))} />
         <Input label="Relationship" value={form.relationship} onChange={e => setForm(p => ({ ...p, relationship: e.target.value }))} />
@@ -639,7 +647,7 @@ function AddContactModal({ open, onClose, suId, onAdded }: {
           <label htmlFor="primary" className="text-sm text-slate-700">Set as primary contact</label>
         </div>
         <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add contact</Button>
         </div>
       </form>

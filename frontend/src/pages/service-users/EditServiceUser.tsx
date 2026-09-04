@@ -12,7 +12,8 @@ const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Fe
 const PRONOUNS = [{ value: 'he/him', label: 'He/Him' }, { value: 'she/her', label: 'She/Her' }, { value: 'they/them', label: 'They/Them' }, { value: 'other', label: 'Other' }]
 const STATUSES = [{ value: 'live', label: 'Live' }, { value: 'pre_admission', label: 'Pre-admission' }, { value: 'on_hold', label: 'On hold' }, { value: 'hospital', label: 'Hospital' }, { value: 'archive', label: 'Archive' }]
 const EMERGENCY = [{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]
-const RELIGIONS = [{ value: 'christian', label: 'Christian' }, { value: 'muslim', label: 'Muslim' }, { value: 'hindu', label: 'Hindu' }, { value: 'jewish', label: 'Jewish' }, { value: 'sikh', label: 'Sikh' }, { value: 'buddhist', label: 'Buddhist' }, { value: 'no_religion', label: 'No religion' }, { value: 'other', label: 'Other' }]
+const RELIGIONS = [{ value: 'christian', label: 'Christian' }, { value: 'muslim', label: 'Muslim' }, { value: 'hindu', label: 'Hindu' }, { value: 'sikh', label: 'Sikh' }, { value: 'jewish', label: 'Jewish' }, { value: 'buddhist', label: 'Buddhist' }, { value: 'no_religion', label: 'No religion' }, { value: 'other', label: 'Other (please specify)' }, { value: 'prefer_not_to_say', label: 'Prefer not to say' }]
+const RELIGION_VALUES = new Set(RELIGIONS.map(r => r.value))
 const ETHNICITY = [{ value: 'white_british', label: 'White British' }, { value: 'white_irish', label: 'White Irish' }, { value: 'white_other', label: 'White Other' }, { value: 'mixed_white_black_caribbean', label: 'Mixed - White & Black Caribbean' }, { value: 'mixed_white_black_african', label: 'Mixed - White & Black African' }, { value: 'mixed_white_asian', label: 'Mixed - White & Asian' }, { value: 'asian_indian', label: 'Asian - Indian' }, { value: 'asian_pakistani', label: 'Asian - Pakistani' }, { value: 'asian_bangladeshi', label: 'Asian - Bangladeshi' }, { value: 'asian_chinese', label: 'Asian - Chinese' }, { value: 'asian_other', label: 'Asian - Other' }, { value: 'black_african', label: 'Black - African' }, { value: 'black_caribbean', label: 'Black - Caribbean' }, { value: 'black_other', label: 'Black - Other' }, { value: 'other', label: 'Other' }, { value: 'prefer_not_to_say', label: 'Prefer not to say' }]
 const MARITAL = [{ value: 'single', label: 'Single' }, { value: 'married', label: 'Married' }, { value: 'civil_partnership', label: 'Civil partnership' }, { value: 'divorced', label: 'Divorced' }, { value: 'widowed', label: 'Widowed' }, { value: 'separated', label: 'Separated' }]
 const FLUID_CONSISTENCY = [{ value: 'normal', label: 'Normal' }, { value: 'slightly_thick', label: 'Slightly thick' }, { value: 'mildly_thick', label: 'Mildly thick' }, { value: 'moderately_thick', label: 'Moderately thick' }, { value: 'extremely_thick', label: 'Extremely thick' }]
@@ -50,7 +51,8 @@ function normalise(su: any) {
     dnarFormUrl: su.dnar_form_url || su.dnarFormUrl || '',
     admissionDate: su.admission_date?.split?.('T')[0] || su.admissionDate || '',
     localAuthority: su.local_authority || su.localAuthority || '',
-    religion: su.religion || '',
+    religion: su.religion && !RELIGION_VALUES.has(su.religion) ? 'other' : (su.religion || ''),
+    religionOther: su.religion && !RELIGION_VALUES.has(su.religion) ? su.religion : '',
     ethnicity: su.ethnicity || '',
     maritalStatus: su.marital_status || su.maritalStatus || '',
     commsPrefs: su.comms_prefs || su.commsPrefs || '',
@@ -139,9 +141,15 @@ export default function EditServiceUser() {
 
   const save = async () => {
     if (!id || !form) return
+    if (form.religion === 'other' && !form.religionOther?.trim()) {
+      toast.error('Please specify the religion / faith')
+      return
+    }
     setSaving(true)
     try {
-      await suApi.update(id, form)
+      const { religionOther, ...rest } = form
+      const payload = { ...rest, religion: form.religion === 'other' ? religionOther.trim() : form.religion }
+      await suApi.update(id, payload)
       toast.success('Profile updated')
       navigate(`/service-users/${id}`)
     } catch (err: any) {
@@ -337,6 +345,9 @@ export default function EditServiceUser() {
             <Input label="Admission date" type="date" value={form.admissionDate} onChange={e => set('admissionDate', e.target.value)} />
             <Input label="Local authority" value={form.localAuthority} onChange={e => set('localAuthority', e.target.value)} />
             <Select label="Religion / faith" value={form.religion} onChange={e => set('religion', e.target.value)} options={RELIGIONS} placeholder="Select religion" />
+            {form.religion === 'other' && (
+              <Input label="Please specify religion / faith *" required value={form.religionOther} onChange={e => set('religionOther', e.target.value)} placeholder="Enter religion / faith" />
+            )}
             <Select label="Ethnicity" value={form.ethnicity} onChange={e => set('ethnicity', e.target.value)} options={ETHNICITY} placeholder="Select ethnicity" />
             <Select label="Marital status" value={form.maritalStatus} onChange={e => set('maritalStatus', e.target.value)} options={MARITAL} placeholder="Select status" />
             <Input label="Communication preferences" value={form.commsPrefs} onChange={e => set('commsPrefs', e.target.value)} placeholder="e.g. Verbal, Makaton, PECS..." />
@@ -400,7 +411,7 @@ export default function EditServiceUser() {
           <h2 className="text-base font-bold text-amber-400 uppercase tracking-wider">Best Interest & Legal</h2>
           <Select label="Mental Capacity Assessment (MCA)" value={form.mcaCapacity} onChange={e => set('mcaCapacity', e.target.value)} options={MCA_OPTIONS} placeholder="Select capacity status..." />
           <div className="p-4 rounded-xl space-y-4" style={{ background: pillBg }}>
-            <h3 className="text-sm font-bold text-white">Deprivation of Liberty Safeguards (DoLS)</h3>
+            <h3 className={clsx('text-sm font-bold', theme === 'dark' ? 'text-white' : 'text-slate-900')}>Deprivation of Liberty Safeguards (DoLS)</h3>
             <Toggle label="DoLS currently active" checked={form.dolsActive} onChange={v => set('dolsActive', v)} />
             {form.dolsActive && (
               <div className="grid md:grid-cols-2 gap-3">
@@ -415,7 +426,7 @@ export default function EditServiceUser() {
             <Toggle label="CQC informed of DoLS" checked={form.cqcInformed} onChange={v => set('cqcInformed', v)} />
           </div>
           <div className="p-4 rounded-xl space-y-4" style={{ background: pillBg }}>
-            <h3 className="text-sm font-bold text-white">Lasting Power of Attorney (LPA)</h3>
+            <h3 className={clsx('text-sm font-bold', theme === 'dark' ? 'text-white' : 'text-slate-900')}>Lasting Power of Attorney (LPA)</h3>
             <Toggle label="LPA in place" checked={form.hasLpa} onChange={v => set('hasLpa', v)} />
             {form.hasLpa && (
               <div className="grid md:grid-cols-2 gap-3">
@@ -425,7 +436,7 @@ export default function EditServiceUser() {
             )}
           </div>
           <div className="p-4 rounded-xl space-y-4" style={{ background: pillBg }}>
-            <h3 className="text-sm font-bold text-white">Court of Protection (CoP)</h3>
+            <h3 className={clsx('text-sm font-bold', theme === 'dark' ? 'text-white' : 'text-slate-900')}>Court of Protection (CoP)</h3>
             <Toggle label="CoP order in place" checked={form.hasCopOrder} onChange={v => set('hasCopOrder', v)} />
             {form.hasCopOrder && (
               <div>

@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
-         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X } from 'lucide-react'
+         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 async function uploadDoc(file: File): Promise<{ fileUrl: string; fileName: string }> {
@@ -124,6 +124,22 @@ function deleteTemplate(idx: number) {
   const templates = getTemplates()
   templates.splice(idx, 1)
   localStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates))
+}
+
+// ── Draft autosave (Add Support Plan form) ─────────────────────────────────
+// Protects work-in-progress against the inactivity timeout / accidental tab close.
+// Keyed per service user so different residents' in-progress plans don't collide.
+const DRAFT_KEY_PREFIX = 'compcare_plan_draft_'
+
+function draftKey(suId?: string) { return `${DRAFT_KEY_PREFIX}${suId || 'new'}` }
+function getDraft(suId?: string): any | null {
+  try { const raw = localStorage.getItem(draftKey(suId)); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function saveDraft(suId: string | undefined, form: any) {
+  try { localStorage.setItem(draftKey(suId), JSON.stringify({ ...form, savedAt: new Date().toISOString() })) } catch { /* storage unavailable — skip silently */ }
+}
+function clearDraft(suId?: string) {
+  try { localStorage.removeItem(draftKey(suId)) } catch { /* ignore */ }
 }
 
 // ── TEMPLATE INFRASTRUCTURE ──────────────────────────────────────────────────
@@ -1365,6 +1381,7 @@ export default function CarePlans() {
   const [readsModal, setReadsModal] = useState(false)
   const [readsData, setReadsData] = useState<any[]>([])
   const [readsLoading, setReadsLoading] = useState(false)
+  const [planSearch, setPlanSearch] = useState('')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -1463,6 +1480,12 @@ export default function CarePlans() {
 
   const suOptions = sus.map(su => ({ value: su.id, label: getName(su) }))
 
+  const planLabel = (plan: any) => plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type || ''
+  const visiblePlans = plans
+    .filter((plan: any) => !planSearch.trim() || planLabel(plan).toLowerCase().includes(planSearch.trim().toLowerCase()))
+    .slice()
+    .sort((a: any, b: any) => planLabel(a).localeCompare(planLabel(b)))
+
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Print-only header — hidden on screen, visible when printing */}
@@ -1520,6 +1543,26 @@ export default function CarePlans() {
         )}
       </div>
 
+      {/* Search */}
+      {selectedSu && plans.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6 no-print">
+          <div className="max-w-sm">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
+              Search plans
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Search support plans..."
+                value={planSearch}
+                onChange={e => setPlanSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Plans grid */}
       {!selectedSu ? (
         <div className="flex items-center justify-center py-24">
@@ -1530,9 +1573,11 @@ export default function CarePlans() {
       ) : plans.length === 0 ? (
         <EmptyState title="No support plans yet" description="Add the first support plan for this service user"
           action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>} />
+      ) : visiblePlans.length === 0 ? (
+        <EmptyState title="No matching plans" description="Try a different search term" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {plans.map((plan: any) => {
+          {visiblePlans.map((plan: any) => {
             const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
             const reads = planReads[plan.id] || []
             const reviewDays = plan.next_review_date ? differenceInDays(new Date(plan.next_review_date), new Date()) : null
@@ -2050,6 +2095,25 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
     if (open) setTemplates(getTemplates())
   }, [open])
 
+  // Restore an autosaved draft when the form is opened for this service user
+  useEffect(() => {
+    if (!open) return
+    const draft = getDraft(suId)
+    if (draft && (draft.planType || draft.aimsOutcomes || draft.howToSupport)) {
+      setForm({ ...EMPTY_ADD_FORM, ...draft, savedAt: undefined })
+      toast('Restored your unsaved draft', { icon: '📝' })
+    }
+  }, [open, suId])
+
+  // Autosave the in-progress form to this device so work isn't lost to session timeout / tab close
+  useEffect(() => {
+    if (!open) return
+    const hasContent = form.planType || form.aimsOutcomes || form.whatICanDo || form.howToSupport || form.customName
+    if (!hasContent) return
+    const t = setTimeout(() => saveDraft(suId, form), 800)
+    return () => clearTimeout(t)
+  }, [open, suId, form])
+
   const applyTemplate = (tpl: any) => {
     setForm({ ...EMPTY_ADD_FORM, ...tpl, savedAt: undefined })
     setShowTemplates(false)
@@ -2087,6 +2151,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
         prnList: form.prnList,
         indicationForUse: form.indicationForUse,
       })
+      clearDraft(suId)
       setForm({ ...EMPTY_ADD_FORM })
       onSaved()
     } catch (err: any) {

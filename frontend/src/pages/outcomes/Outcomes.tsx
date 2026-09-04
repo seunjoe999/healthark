@@ -358,7 +358,7 @@ export default function Outcomes() {
                         {o.progress_notes && (
                           <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Progress Notes</p>
-                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.progress_notes}</p>
+                            <p className={`text-sm whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.progress_notes}</p>
                           </div>
                         )}
                         {reviews[o.id]?.length > 0 && (
@@ -369,7 +369,7 @@ export default function Outcomes() {
                                 <div className="text-xs text-slate-400 w-20 flex-shrink-0">{new Date(r.review_date).toLocaleDateString('en-GB')}</div>
                                 <div className="flex-1">
                                   <span className={clsx('badge text-xs', statusConfig[r.status]?.badge)}>{STATUSES.find(s => s.value === r.status)?.label}</span>
-                                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.notes}</p>
+                                  <p className={`text-sm mt-1 whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.notes}</p>
                                 </div>
                               </div>
                             ))}

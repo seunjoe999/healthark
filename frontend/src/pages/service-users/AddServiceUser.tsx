@@ -10,7 +10,7 @@ const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Fe
 const PRONOUNS = [{ value: 'he/him', label: 'He/Him' }, { value: 'she/her', label: 'She/Her' }, { value: 'they/them', label: 'They/Them' }]
 const STATUSES = [{ value: 'pre_admission', label: 'Pre-admission' }, { value: 'live', label: 'Live' }]
 const EMERGENCY = [{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]
-const RELIGIONS = [{ value: 'christian', label: 'Christian' }, { value: 'muslim', label: 'Muslim' }, { value: 'hindu', label: 'Hindu' }, { value: 'jewish', label: 'Jewish' }, { value: 'sikh', label: 'Sikh' }, { value: 'buddhist', label: 'Buddhist' }, { value: 'no_religion', label: 'No religion' }, { value: 'other', label: 'Other' }]
+const RELIGIONS = [{ value: 'christian', label: 'Christian' }, { value: 'muslim', label: 'Muslim' }, { value: 'hindu', label: 'Hindu' }, { value: 'sikh', label: 'Sikh' }, { value: 'jewish', label: 'Jewish' }, { value: 'buddhist', label: 'Buddhist' }, { value: 'no_religion', label: 'No religion' }, { value: 'other', label: 'Other (please specify)' }, { value: 'prefer_not_to_say', label: 'Prefer not to say' }]
 const ETHNICITY = [{ value: 'white_british', label: 'White British' }, { value: 'white_irish', label: 'White Irish' }, { value: 'white_other', label: 'White Other' }, { value: 'mixed_white_black_caribbean', label: 'Mixed - White & Black Caribbean' }, { value: 'asian_indian', label: 'Asian - Indian' }, { value: 'asian_pakistani', label: 'Asian - Pakistani' }, { value: 'black_african', label: 'Black - African' }, { value: 'black_caribbean', label: 'Black - Caribbean' }, { value: 'other', label: 'Other' }]
 const MARITAL = [{ value: 'single', label: 'Single' }, { value: 'married', label: 'Married' }, { value: 'civil_partnership', label: 'Civil partnership' }, { value: 'divorced', label: 'Divorced' }, { value: 'widowed', label: 'Widowed' }]
 
@@ -24,7 +24,7 @@ export default function AddServiceUser() {
     homeId: '', firstName: '', lastName: '', preferredName: '', dateOfBirth: '',
     gender: '', pronouns: '', status: 'pre_admission', emergencyRating: 'low',
     nhsNumber: '', niNumber: '', dnar: null as boolean | null, dnarFormUrl: '',
-    admissionDate: '', localAuthority: '', religion: '', ethnicity: '',
+    admissionDate: '', localAuthority: '', religion: '', religionOther: '', ethnicity: '',
     maritalStatus: '', commsPrefs: '', address1: '', address2: '', postcode: '',
     phone: '', email: '', needToKnow: '', myInstructions: '',
     heightCm: '', weightKg: '', medicalHistory: '', medAllergies: '',
@@ -52,9 +52,15 @@ export default function AddServiceUser() {
       toast.error('DNAR form URL is required when Do Not Resuscitate is selected')
       return
     }
+    if (form.religion === 'other' && !form.religionOther.trim()) {
+      toast.error('Please specify the religion / faith')
+      return
+    }
     setSaving(true)
     try {
-      const res = await suApi.create(form)
+      const { religionOther, ...rest } = form
+      const payload = { ...rest, religion: form.religion === 'other' ? religionOther.trim() : form.religion }
+      const res = await suApi.create(payload)
       toast.success('Resident added successfully')
       navigate(`/service-users/${res.data.data.id}`)
     } catch (err: any) {
@@ -131,6 +137,9 @@ export default function AddServiceUser() {
             <Input label="Admission date" type="date" value={form.admissionDate} onChange={e => set('admissionDate', e.target.value)} />
             <Input label="Local authority" value={form.localAuthority} onChange={e => set('localAuthority', e.target.value)} />
             <Select label="Religion / faith" value={form.religion} onChange={e => set('religion', e.target.value)} options={RELIGIONS} placeholder="Select religion" />
+            {form.religion === 'other' && (
+              <Input label="Please specify religion / faith *" required value={form.religionOther} onChange={e => set('religionOther', e.target.value)} placeholder="Enter religion / faith" />
+            )}
             <Select label="Ethnicity" value={form.ethnicity} onChange={e => set('ethnicity', e.target.value)} options={ETHNICITY} placeholder="Select ethnicity" />
             <Select label="Marital status" value={form.maritalStatus} onChange={e => set('maritalStatus', e.target.value)} options={MARITAL} placeholder="Select status" />
             <Input label="Communication preferences" value={form.commsPrefs} onChange={e => set('commsPrefs', e.target.value)} placeholder="e.g. Verbal, Makaton, PECS..." />
