@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
 import { Plus, Users, Brain, Trash2 } from 'lucide-react'
@@ -11,6 +12,7 @@ type QATab = 'capacity' | 'professionals'
 
 export default function Quality() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [homes, setHomes] = useState<any[]>([])
@@ -81,11 +83,11 @@ export default function Quality() {
       {/* Right */}
       <div className={`${!mobileSidebarOpen || !selectedSu ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto bg-slate-50`}>
         {selectedSu && (
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: '#111' }}>
-            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-400 text-sm font-medium flex items-center gap-1">
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/10" style={{ background: theme === 'dark' ? '#111' : '#ffffff' }}>
+            <button onClick={() => setMobileSidebarOpen(true)} className="text-amber-500 text-sm font-medium flex items-center gap-1">
               ← Back
             </button>
-            <span className="text-white text-sm font-semibold">{getName(selectedSu)}</span>
+            <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{getName(selectedSu)}</span>
           </div>
         )}
         <div className="p-6 flex-1">

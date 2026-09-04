@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Wrench, Plus, Search, Phone, Mail, User, Trash2, PhoneCall } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import api, { homesApi } from '../../api'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
@@ -124,6 +125,7 @@ const statusColors: Record<string, string> = {
 
 export default function Maintenance() {
   const { isRole, user } = useAuth()
+  const { theme } = useTheme()
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -406,14 +408,14 @@ export default function Maintenance() {
       <Modal open={!!showDetail} onClose={() => setShowDetail(null)} title="Update Issue" size="lg">
         {showDetail && (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl" style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.15)' }}>
+            <div className="p-4 rounded-xl" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.08)' }}>
               <div className="flex gap-2 mb-2 flex-wrap">
                 <span className={clsx('badge border text-xs', priorityColors[showDetail.priority])}>{showDetail.priority}</span>
                 <span className="text-xs text-slate-500 capitalize">{showDetail.category}</span>
               </div>
-              <h3 className="font-bold text-white text-lg">{showDetail.title}</h3>
+              <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{showDetail.title}</h3>
               {showDetail.location && <p className="text-sm text-slate-400 mt-1">ðŸ“ {showDetail.location}</p>}
-              {showDetail.description && <p className="text-sm text-slate-300 mt-2">{showDetail.description}</p>}
+              {showDetail.description && <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{showDetail.description}</p>}
               <p className="text-xs text-slate-500 mt-3">Reported by {showDetail.reported_by_name} Â· {new Date(showDetail.created_at).toLocaleDateString()}</p>
             </div>
             {canManage && (

@@ -6,6 +6,7 @@ import { Button, Input, Select, Toggle, Card, SectionHeading, Spinner } from '..
 import { ArrowLeft, Save, Plus, Trash2, Phone, Mail, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
+import { useTheme } from '../../context/ThemeContext'
 
 const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'non_binary', label: 'Non-binary' }, { value: 'other', label: 'Other' }, { value: 'prefer_not_to_say', label: 'Prefer not to say' }]
 const PRONOUNS = [{ value: 'he/him', label: 'He/Him' }, { value: 'she/her', label: 'She/Her' }, { value: 'they/them', label: 'They/Them' }, { value: 'other', label: 'Other' }]
@@ -108,6 +109,8 @@ function normalise(su: any) {
 const emptyContact = { fullName: '', relationship: '', contactTag: '', phonePrimary: '', phoneSecondary: '', phoneHome: '', email: '', isPrimary: false, notes: '' }
 
 export default function EditServiceUser() {
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [form, setForm] = useState<any>(null)
@@ -211,7 +214,7 @@ export default function EditServiceUser() {
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Edit Service User</h1>
 
       {/* Section tabs */}
-      <div className="flex gap-1 p-1 rounded-xl mb-6 overflow-x-auto" style={{ background: '#1a1a1a' }}>
+      <div className="flex gap-1 p-1 rounded-xl mb-6 overflow-x-auto" style={{ background: pillBg }}>
         {sections.map(s => (
           <button key={s.key} onClick={() => setActiveSection(s.key)}
             className={clsx('py-2 px-3 rounded-lg text-xs font-medium whitespace-nowrap transition-all', activeSection === s.key ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
@@ -396,7 +399,7 @@ export default function EditServiceUser() {
         <div className="card p-6 space-y-5">
           <h2 className="text-base font-bold text-amber-400 uppercase tracking-wider">Best Interest & Legal</h2>
           <Select label="Mental Capacity Assessment (MCA)" value={form.mcaCapacity} onChange={e => set('mcaCapacity', e.target.value)} options={MCA_OPTIONS} placeholder="Select capacity status..." />
-          <div className="p-4 rounded-xl space-y-4" style={{ background: '#1a1a1a' }}>
+          <div className="p-4 rounded-xl space-y-4" style={{ background: pillBg }}>
             <h3 className="text-sm font-bold text-white">Deprivation of Liberty Safeguards (DoLS)</h3>
             <Toggle label="DoLS currently active" checked={form.dolsActive} onChange={v => set('dolsActive', v)} />
             {form.dolsActive && (
@@ -411,7 +414,7 @@ export default function EditServiceUser() {
             </div>
             <Toggle label="CQC informed of DoLS" checked={form.cqcInformed} onChange={v => set('cqcInformed', v)} />
           </div>
-          <div className="p-4 rounded-xl space-y-4" style={{ background: '#1a1a1a' }}>
+          <div className="p-4 rounded-xl space-y-4" style={{ background: pillBg }}>
             <h3 className="text-sm font-bold text-white">Lasting Power of Attorney (LPA)</h3>
             <Toggle label="LPA in place" checked={form.hasLpa} onChange={v => set('hasLpa', v)} />
             {form.hasLpa && (
@@ -421,7 +424,7 @@ export default function EditServiceUser() {
               </div>
             )}
           </div>
-          <div className="p-4 rounded-xl space-y-4" style={{ background: '#1a1a1a' }}>
+          <div className="p-4 rounded-xl space-y-4" style={{ background: pillBg }}>
             <h3 className="text-sm font-bold text-white">Court of Protection (CoP)</h3>
             <Toggle label="CoP order in place" checked={form.hasCopOrder} onChange={v => set('hasCopOrder', v)} />
             {form.hasCopOrder && (

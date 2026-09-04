@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
 import { Heart, Plus, Edit, ChevronDown, ChevronUp, User } from 'lucide-react'
@@ -51,6 +52,7 @@ const EMPTY_FORM = {
 
 export default function PhysicalHealthPlan() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [plans, setPlans] = useState<Plan[]>([])
   const [sus, setSus] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -199,7 +201,7 @@ export default function PhysicalHealthPlan() {
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="border-t border-white/5 p-4" style={{ background: '#0a0a0a' }}>
+                  <div className="border-t border-white/5 p-4" style={{ background: theme === 'dark' ? '#0a0a0a' : '#f8fafc' }}>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                       {plan.height_cm && <Field label="Height" value={`${plan.height_cm} cm`} />}
                       {plan.weight_kg && <Field label="Weight" value={`${plan.weight_kg} kg`} />}
@@ -299,20 +301,22 @@ export default function PhysicalHealthPlan() {
   )
 }
 
-function Field({ label, value, valueClass = 'text-white' }: { label: string; value: string; valueClass?: string }) {
+function Field({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+  const { theme } = useTheme()
   return (
     <div>
       <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className={`text-sm font-medium ${valueClass}`}>{value}</p>
+      <p className={`text-sm font-medium ${valueClass || (theme === 'dark' ? 'text-white' : 'text-slate-900')}`}>{value}</p>
     </div>
   )
 }
 
 function ExpandField({ label, value }: { label: string; value: string }) {
+  const { theme } = useTheme()
   return (
     <div className="mt-3">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-sm text-slate-300 whitespace-pre-wrap">{value}</p>
+      <p className={`text-sm whitespace-pre-wrap ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{value}</p>
     </div>
   )
 }

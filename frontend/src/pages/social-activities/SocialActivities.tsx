@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO } from 'date-fns'
 import { Spinner, Button, Modal, Input, Select } from '../../components/ui'
 import { Music, Plus, Trash2, Edit2, Check } from 'lucide-react'
@@ -25,6 +26,7 @@ const ENJOYED_COLOR: Record<string, string> = {
 
 export default function SocialActivities() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [sus, setSus] = useState<any[]>([])
@@ -107,10 +109,10 @@ export default function SocialActivities() {
         <div className="space-y-3">
           {activities.map((a: any) => (
             <div key={a.id} className="rounded-xl p-4 flex items-start justify-between gap-4"
-              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}>
+              style={{ background: theme === 'dark' ? '#1a1a1a' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.08)' }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <p className="font-semibold text-white">{a.title}</p>
+                  <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{a.title}</p>
                   {a.enjoyed && (
                     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${ENJOYED_COLOR[a.enjoyed] || 'text-slate-400'}`}>
                       {ENJOYED_OPTIONS.find(o => o.value === a.enjoyed)?.label || a.enjoyed}

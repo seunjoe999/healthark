@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import api from '../../api'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Plus, User, Award, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
@@ -65,6 +66,9 @@ interface SupervisionRecord {
 
 export default function SupervisionAppraisal() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const pageBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
   const [tab, setTab] = useState<'supervision' | 'appraisal'>('supervision')
   const [supervisions, setSupervisions] = useState<SupervisionRecord[]>([])
   const [appraisals, setAppraisals] = useState<any[]>([])
@@ -118,8 +122,8 @@ export default function SupervisionAppraisal() {
   }
 
   return (
-    <div className="flex flex-col h-screen" style={{ background: '#0a0a0a' }}>
-      <div className="px-6 py-4 flex justify-between items-center" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.15)' }}>
+    <div className="flex flex-col h-screen" style={{ background: pageBg }}>
+      <div className="px-6 py-4 flex justify-between items-center" style={{ background: panelBg, borderBottom: '1px solid rgba(232,177,48,0.15)' }}>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Supervision &amp; Appraisals</h1>
           <p className="text-sm text-slate-500 mt-0.5">Staff supervision records and performance appraisals</p>
@@ -127,7 +131,7 @@ export default function SupervisionAppraisal() {
         <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>New Record</Button>
       </div>
 
-      <div className="flex gap-0 px-6" style={{ background: '#111', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex gap-0 px-6" style={{ background: panelBg, borderBottom: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.06)' }}>
         {[{ key: 'supervision', label: 'Supervisions', icon: User }, { key: 'appraisal', label: 'Appraisals', icon: Award }].map(t => {
           const Icon = t.icon
           return (
@@ -268,14 +272,15 @@ function DetailField({ label, value }: { label: string; value?: string }) {
 }
 
 function DetailGrid({ items }: { items: Array<{ label: string; value?: string | null }> }) {
+  const { theme } = useTheme()
   const visible = items.filter(i => i.value)
   if (!visible.length) return null
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {visible.map(i => (
-        <div key={i.label} className="p-2.5 rounded-lg" style={{ background: '#1a1a1a' }}>
+        <div key={i.label} className="p-2.5 rounded-lg" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc' }}>
           <p className="text-xs text-slate-500 mb-0.5">{i.label}</p>
-          <p className="text-sm font-medium text-slate-200 capitalize">{i.value}</p>
+          <p className={`text-sm font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{i.value}</p>
         </div>
       ))}
     </div>

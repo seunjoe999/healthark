@@ -4,6 +4,7 @@ import { BedDouble, Users, RefreshCw, Home, X, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface OccupancyData {
   totalBeds: number;
@@ -30,6 +31,9 @@ interface RoomData {
 
 export default function BedOccupancy() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const modalBg = theme === 'dark' ? '#1a1a1a' : '#ffffff';
+  const modalBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.1)';
   const homeId = user?.homeId || '';
   const [data, setData] = useState<OccupancyData | null>(null);
   const [rooms, setRooms] = useState<RoomData[]>([]);
@@ -224,10 +228,10 @@ export default function BedOccupancy() {
       {/* Set Total Beds Modal */}
       {showBedsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: modalBg, border: modalBorder }}>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Set Total Beds</h2>
-              <button onClick={() => setShowBedsModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+              <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Set Total Beds</h2>
+              <button onClick={() => setShowBedsModal(false)} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}><X size={18} /></button>
             </div>
             <p className="text-sm text-gray-400">Update the total number of beds in this care home.</p>
             <input
@@ -236,8 +240,8 @@ export default function BedOccupancy() {
               onChange={e => setTotalBedsInput(e.target.value)}
               placeholder="e.g. 30"
               min="1" max="500"
-              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              className={`w-full rounded-xl px-3 py-2.5 text-sm outline-none ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}
+              style={theme === 'dark' ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' } : { background: '#f8fafc', border: '1px solid rgba(15,23,42,0.15)' }}
             />
             <button onClick={handleSetTotalBeds} disabled={saving}
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
@@ -251,10 +255,10 @@ export default function BedOccupancy() {
       {/* Room Status Modal */}
       {showRoomModal && selectedRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: modalBg, border: modalBorder }}>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Update {selectedRoom.roomNumber}</h2>
-              <button onClick={() => setShowRoomModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+              <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Update {selectedRoom.roomNumber}</h2>
+              <button onClick={() => setShowRoomModal(false)} className={theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}><X size={18} /></button>
             </div>
             <p className="text-sm text-gray-400">Mark this room as reserved or under maintenance. Occupied rooms are managed through resident admissions.</p>
             <div className="space-y-2">
@@ -269,11 +273,11 @@ export default function BedOccupancy() {
                   style={{
                     background: roomStatus === opt.value
                       ? opt.value === 'reserved' ? 'rgba(234,179,8,0.15)' : opt.value === 'maintenance' ? 'rgba(107,114,128,0.15)' : 'rgba(34,197,94,0.1)'
-                      : 'rgba(255,255,255,0.04)',
+                      : theme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc',
                     borderColor: roomStatus === opt.value
                       ? opt.value === 'reserved' ? 'rgba(234,179,8,0.4)' : opt.value === 'maintenance' ? 'rgba(107,114,128,0.4)' : 'rgba(34,197,94,0.3)'
-                      : 'rgba(255,255,255,0.08)',
-                    color: roomStatus === opt.value ? '#fff' : 'rgba(255,255,255,0.55)',
+                      : theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.1)',
+                    color: roomStatus === opt.value ? (theme === 'dark' ? '#fff' : '#0f172a') : theme === 'dark' ? 'rgba(255,255,255,0.55)' : '#475569',
                   }}>
                   <div>{opt.label}</div>
                   <div className="text-xs mt-0.5 opacity-60">{opt.desc}</div>

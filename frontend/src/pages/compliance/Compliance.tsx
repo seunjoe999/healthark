@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format } from 'date-fns'
 import { Spinner } from '../../components/ui'
 import {
@@ -130,6 +131,7 @@ function AreaCard({ areaKey, data, onClick }: { areaKey: string; data: AreaData;
 // ─── Area drill-down modal ────────────────────────────────────────────────────
 
 function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: AreaData; onClose: () => void; onFix: () => void }) {
+  const { theme } = useTheme()
   const rag = getRAG(data.score)
   const Icon = AREA_ICONS[areaKey] || ShieldCheck
   const tips = AREA_TIPS[areaKey] || []
@@ -137,8 +139,8 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="rounded-2xl shadow-2xl w-full max-w-lg" style={{ background: '#111', border: '1px solid rgba(232,177,48,0.15)' }}>
-        <div className={`rounded-t-2xl p-5 ${rag.bg}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-lg" style={{ background: theme === 'dark' ? '#111' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.1)' }}>
+        <div className={`rounded-t-2xl p-5 ${rag.bg}`} style={{ borderBottom: theme === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(15,23,42,0.06)' }}>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rag.bg}`}>
@@ -158,15 +160,16 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
         <div className="p-5 space-y-4">
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
-            <p className="text-sm text-slate-300">{data.metric}</p>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{data.metric}</p>
           </div>
 
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">How to Improve</p>
             <div className="space-y-2">
               {tips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-slate-400" style={{ background: '#1a1a1a' }}>{i + 1}</div>
+                <div key={i} className={`flex items-start gap-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+                    style={{ background: theme === 'dark' ? '#1a1a1a' : '#f1f5f9' }}>{i + 1}</div>
                   <p>{tip}</p>
                 </div>
               ))}
@@ -181,7 +184,7 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
           )}
         </div>
 
-        <div className="p-4 flex gap-3 justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="p-4 flex gap-3 justify-between" style={{ borderTop: theme === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(15,23,42,0.06)' }}>
           {data.score < 80 ? (
             <button onClick={onFix} className="btn-outline text-sm font-semibold">
               <Zap className="w-4 h-4" /> Auto-fix
@@ -379,10 +382,11 @@ export default function Compliance() {
 }
 
 function SummaryTile({ label, value, sub, colour }: { label: string; value: any; sub: string; colour: string }) {
+  const { theme } = useTheme()
   return (
-    <div className="text-center p-3 rounded-lg" style={{ background: '#1a1a1a' }}>
+    <div className="text-center p-3 rounded-lg" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f1f5f9' }}>
       <p className={`text-2xl font-bold ${colour}`}>{value}</p>
-      <p className="text-xs font-medium text-slate-300 mt-0.5">{label}</p>
+      <p className={`text-xs font-medium mt-0.5 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>{label}</p>
       <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
     </div>
   )

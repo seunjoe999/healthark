@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Select } from '../../components/ui'
 import { FileText, Printer, Save, Check, ChevronDown, ChevronUp, Brain, ExternalLink } from 'lucide-react'
@@ -193,6 +194,10 @@ function RecordSummary({ records }: { records: any[] }) {
 
 export default function HandoverReport() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#1a1a1a' : '#ffffff'
+  const panelBg2 = theme === 'dark' ? '#111' : '#ffffff'
+  const tileBg = theme === 'dark' ? '#1a1a1a' : '#f8fafc'
   const urlSuId = new URLSearchParams(window.location.search).get('suId') || ''
   const [homes, setHomes] = useState<any[]>([])
   const [sus, setSus] = useState<any[]>([])
@@ -325,7 +330,7 @@ export default function HandoverReport() {
       </div>
 
       {/* Controls */}
-      <div className="rounded-2xl border border-white/10 p-5 mb-6 no-print" style={{ background: '#1a1a1a' }}>
+      <div className="rounded-2xl border border-white/10 p-5 mb-6 no-print" style={{ background: panelBg }}>
         <div className="flex flex-wrap gap-4 items-end">
           {homes.length > 1 && (
             <Select label="Care home" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}
@@ -340,7 +345,7 @@ export default function HandoverReport() {
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Filter by resident</label>
             <select className="rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none"
-              style={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)', color: '#e0d8c8', minWidth: '160px' }}
+              style={{ background: panelBg2, border: theme === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(15,23,42,0.15)', color: theme === 'dark' ? '#e0d8c8' : '#1e293b', minWidth: '160px' }}
               value={filterSuId} onChange={e => setFilterSuId(e.target.value)}>
               <option value="">All residents</option>
               {sus.map(s => (
@@ -350,17 +355,17 @@ export default function HandoverReport() {
           </div>
           <button onClick={printHandover}
             className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-            style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.3)', color: '#e8b130' }}>
+            style={{ background: theme === 'dark' ? '#1a1a1a' : '#fdf6e8', border: '1px solid rgba(232,177,48,0.3)', color: theme === 'dark' ? '#e8b130' : '#92700f' }}>
             <Printer className="w-4 h-4" /> Print
           </button>
         </div>
       </div>
 
       {/* Current Shift Entry */}
-      <div className="rounded-2xl border border-white/10 p-6 mb-6 no-print" style={{ background: '#111' }}>
+      <div className="rounded-2xl border border-white/10 p-6 mb-6 no-print" style={{ background: panelBg2 }}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="font-bold text-lg text-white">Current Shift Handover</h2>
+            <h2 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Current Shift Handover</h2>
             <p className="text-sm text-slate-400 mt-0.5">
               {format(new Date(), 'd MMMM yyyy')} · {SHIFT_LABELS[shift]} shift · {SHIFT_TIMES[shift]}
             </p>
@@ -380,9 +385,9 @@ export default function HandoverReport() {
               const recentlySaved = savedAt[su.id] && Date.now() - savedAt[su.id] < 3000
               const suRecords = todayRecords.filter(r => r.su_id === su.id)
               return (
-                <div key={su.id} className="rounded-xl p-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div key={su.id} className="rounded-xl p-4" style={{ background: tileBg, border: theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.08)' }}>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-white">{name}</h4>
+                    <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{name}</h4>
                     <div className="flex items-center gap-2">
                       {recentlySaved && (
                         <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
@@ -425,8 +430,8 @@ export default function HandoverReport() {
       <SignOffSection homeId={selectedHome} shiftDate={today} shiftType={shift} />
 
       {/* Previous Handovers */}
-      <div className="rounded-2xl border border-white/10 p-6 mt-6" style={{ background: '#111' }}>
-        <h3 className="font-bold text-base text-white mb-4">Previous Handovers <span className="text-slate-500 font-normal text-sm">(last 7 days)</span></h3>
+      <div className="rounded-2xl border border-white/10 p-6 mt-6" style={{ background: panelBg2 }}>
+        <h3 className={`font-bold text-base mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Previous Handovers <span className="text-slate-500 font-normal text-sm">(last 7 days)</span></h3>
         {loadingPrev ? (
           <Spinner />
         ) : previousGroups.length === 0 ? (
@@ -434,7 +439,7 @@ export default function HandoverReport() {
         ) : (
           <div className="space-y-4">
             {previousGroups.map(g => (
-              <div key={g.key} className="rounded-xl p-4" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div key={g.key} className="rounded-xl p-4" style={{ background: tileBg, border: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.06)' }}>
                 <p className="text-xs font-bold text-amber-400 uppercase tracking-wide mb-3">
                   {format(new Date(g.date), 'd MMMM yyyy')} · {g.shiftLabel} shift {shiftHeaderTime(g.shiftType)} · {g.staffName}
                 </p>

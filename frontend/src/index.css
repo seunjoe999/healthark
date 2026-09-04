@@ -403,6 +403,14 @@
 .app-shell:not(.theme-dark) select.input option { background: #ffffff !important; color: #1e293b !important; }
 .app-shell:not(.theme-dark) .label { color: #b8960a !important; }
 
+/* .btn-secondary is also hardcoded dark (#1a1a1a) — same class of bug. */
+.app-shell:not(.theme-dark) .btn-secondary {
+  background: #f1f5f9 !important;
+  color: #92700f !important;
+  border-color: rgba(232,177,48,0.35) !important;
+}
+.app-shell:not(.theme-dark) .btn-secondary:hover { background: #e2e8f0 !important; }
+
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes slideInLeft { 0% { opacity: 0; transform: translateX(-12px); } 100% { opacity: 1; transform: translateX(0); } }

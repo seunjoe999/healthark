@@ -2,6 +2,7 @@
 import { Clock, Plus, CheckCircle, Download, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import api from '../../api'
 import clsx from 'clsx'
 
@@ -28,6 +29,7 @@ const statusColor: Record<string, string> = {
 
 export default function Timesheets() {
   const { isRole } = useAuth()
+  const { theme } = useTheme()
   const [timesheets, setTimesheets] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -291,8 +293,8 @@ export default function Timesheets() {
               {showDetail.entries?.length > 0 ? (
                 <div className="space-y-2">
                   {showDetail.entries.map((e: any) => (
-                    <div key={e.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg" style={{ background: '#1a1a1a' }}>
-                      <span className="text-slate-300">{new Date(e.work_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                    <div key={e.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc' }}>
+                      <span className={theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}>{new Date(e.work_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                       <span className="text-slate-400">{e.start_time ? `${e.start_time} – ${e.end_time}` : (e.notes || 'Manual entry')}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white">{formatHours(e.hours_worked)}</span>

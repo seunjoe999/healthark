@@ -3,6 +3,7 @@ import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText, Ed
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
 
@@ -127,6 +128,7 @@ const statusConfig: Record<string, { color: string; badge: string }> = {
 
 export default function Outcomes() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [outcomes, setOutcomes] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -346,28 +348,28 @@ export default function Outcomes() {
                       </div>
                     </div>
                     {expanded === o.id && (
-                      <div className="border-t border-white/5 p-4 space-y-3" style={{ background: '#0a0a0a' }}>
+                      <div className="border-t border-white/5 p-4 space-y-3" style={{ background: theme === 'dark' ? '#0a0a0a' : '#f8fafc' }}>
                         {o.description && (
                           <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
-                            <p className="text-sm text-slate-300 whitespace-pre-line">{o.description}</p>
+                            <p className={`text-sm whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.description}</p>
                           </div>
                         )}
                         {o.progress_notes && (
                           <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Progress Notes</p>
-                            <p className="text-sm text-slate-300">{o.progress_notes}</p>
+                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.progress_notes}</p>
                           </div>
                         )}
                         {reviews[o.id]?.length > 0 && (
                           <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Review History</p>
                             {reviews[o.id].map(r => (
-                              <div key={r.id} className="flex gap-3 mb-2 p-2 rounded-lg" style={{ background: '#111' }}>
+                              <div key={r.id} className="flex gap-3 mb-2 p-2 rounded-lg" style={{ background: theme === 'dark' ? '#111' : '#ffffff' }}>
                                 <div className="text-xs text-slate-400 w-20 flex-shrink-0">{new Date(r.review_date).toLocaleDateString('en-GB')}</div>
                                 <div className="flex-1">
                                   <span className={clsx('badge text-xs', statusConfig[r.status]?.badge)}>{STATUSES.find(s => s.value === r.status)?.label}</span>
-                                  <p className="text-sm text-slate-300 mt-1">{r.notes}</p>
+                                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.notes}</p>
                                 </div>
                               </div>
                             ))}
@@ -530,8 +532,8 @@ export default function Outcomes() {
       <Modal open={!!showReview} onClose={() => setShowReview(null)} title="Add Review">
         {showReview && (
           <form onSubmit={handleReview} className="space-y-4">
-            <div className="p-3 rounded-xl text-sm text-slate-300" style={{ background: '#1a1a1a' }}>
-              <strong className="text-white">{showReview.goal}</strong>
+            <div className={`p-3 rounded-xl text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`} style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc' }}>
+              <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{showReview.goal}</strong>
             </div>
                         <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Outcome Status</label>
