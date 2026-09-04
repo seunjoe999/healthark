@@ -1191,11 +1191,17 @@ CREATE TABLE su_reviews (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   su_id       UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
   home_id     UUID NOT NULL REFERENCES homes(id),
-  review_type VARCHAR(20) NOT NULL CHECK (review_type IN ('review','feedback')),
+  -- review_type is free text (e.g. 'care_review', 'monthly_review', or a
+  -- per-organisation custom type from the review_types table) — no CHECK
+  -- constraint, since the app supports arbitrary custom review types.
+  review_type VARCHAR(50) NOT NULL DEFAULT 'review',
   review_date DATE NOT NULL DEFAULT CURRENT_DATE,
   conducted_by UUID NOT NULL REFERENCES staff(id),
   attendees   TEXT,
   summary     TEXT NOT NULL,
+  resident_feedback TEXT,
+  family_feedback TEXT,
+  monthly_progress TEXT,
   outcomes    TEXT,
   action_plans TEXT,
   next_review_date DATE,

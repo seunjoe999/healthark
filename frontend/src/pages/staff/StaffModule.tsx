@@ -55,12 +55,29 @@ export default function StaffModule() {
   const [supervisions, setSupervisions] = useState<any[]>([])
   const [sensitiveNotes, setSensitiveNotes] = useState<any[]>([])
   const [addCautionOpen, setAddCautionOpen] = useState(false)
-  const [addSupervisionOpen, setAddSupervisionOpen] = useState(false)
   const [addSensitiveOpen, setAddSensitiveOpen] = useState(false)
   const [addLeaveOpen, setAddLeaveOpen] = useState(false)
   const [addTrainingOpen, setAddTrainingOpen] = useState(false)
   const [trainingCertificates, setTrainingCertificates] = useState<any[]>([])
   const [uploadingCert, setUploadingCert] = useState(false)
+  const [updatingOnboardingKey, setUpdatingOnboardingKey] = useState<string | null>(null)
+
+  const toggleOnboardingItem = async (key: string, dateKey: string | null, checked: boolean) => {
+    if (!selected) return
+    const camel = (s: string) => s.replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())
+    const payload: Record<string, any> = { [camel(key)]: checked }
+    if (dateKey) payload[camel(dateKey)] = checked ? new Date().toISOString().slice(0, 10) : null
+    setUpdatingOnboardingKey(key)
+    try {
+      const res = await api.put(`/staff-hr/onboarding/${selected.id}`, payload)
+      setOnboarding(res.data.data || { ...onboarding, ...payload })
+      toast.success(checked ? 'Marked complete' : 'Marked incomplete')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update onboarding')
+    } finally {
+      setUpdatingOnboardingKey(null)
+    }
+  }
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -91,14 +108,20 @@ export default function StaffModule() {
     setSelected(s)
     setTab('profile')
     try {
-      const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, sensitiveRes] = await Promise.all([
+      const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, appraisalsRes, sensitiveRes] = await Promise.all([
         api.get(`/staff-hr/training/${s.id}`),
         api.get(`/staff-hr/leave?staffId=${s.id}`),
         api.get(`/staff-hr/onboarding/${s.id}`),
         staffApi.clockHistory(s.id),
         api.get(`/documents/staff/${s.id}`),
         api.get(`/reviews/cautions/${s.id}`),
-        api.get(`/reviews/supervisions/${s.id}`),
+        // Supervisions & Appraisals shown on the Staff Profile are read-only
+        // and pulled straight from the canonical Assessments feature
+        // (supervision.routes.ts / the `supervisions` + `appraisals` tables)
+        // rather than the separate `staff_supervisions` table, so a
+        // supervision logged under Staff Assessment shows up here too.
+        api.get(`/supervision?staffId=${s.id}`),
+        api.get(`/supervision/appraisal?staffId=${s.id}`),
         api.get(`/reviews/staff-sensitive-notes/${s.id}`),
       ])
       setTraining(trainingRes.data.data || [])
@@ -109,7 +132,9 @@ export default function StaffModule() {
       setStaffDocs(allDocs)
       setTrainingCertificates(allDocs.filter((d: any) => d.document_type === 'training_certificate'))
       setCautions(cautionsRes.data.data || [])
-      setSupervisions(supervisionsRes.data.data || [])
+      const supRecords = (supervisionsRes.data.data || []).map((r: any) => ({ ...r, _kind: 'supervision' }))
+      const aprRecords = (appraisalsRes.data.data || []).map((r: any) => ({ ...r, _kind: 'appraisal' }))
+      setSupervisions([...supRecords, ...aprRecords])
       setSensitiveNotes(sensitiveRes.data.data || [])
     } catch (e) {
       console.error('selectStaff error:', e)
@@ -313,7 +338,7 @@ export default function StaffModule() {
                       <input
                         type="file"
                         className="sr-only"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.zip"
                         disabled={uploadingCert}
                         onChange={async (e) => {
                           const file = e.target.files?.[0]
@@ -322,10 +347,9 @@ export default function StaffModule() {
                           try {
                             const fd = new FormData()
                             fd.append('file', file)
-                            fd.append('staffId', selected.id)
                             fd.append('documentType', 'training_certificate')
                             fd.append('title', file.name.replace(/\.[^/.]+$/, ''))
-                            const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+                            const res = await api.post(`/documents/staff/${selected.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
                             const newDoc = res.data.data || res.data
                             setTrainingCertificates(prev => [newDoc, ...prev])
                             setStaffDocs(prev => [newDoc, ...prev])
@@ -415,26 +439,42 @@ export default function StaffModule() {
                   <SectionHeading title="Onboarding checklist" />
                   <div className="space-y-3">
                     {[
-                      { key: 'application_received', label: 'Application received', date: onboarding.application_date },
-                      { key: 'interview_completed', label: 'Interview completed', date: onboarding.interview_date },
-                      { key: 'dbs_cleared', label: 'DBS check cleared', date: onboarding.dbs_cleared_date },
-                      { key: 'care_cert_completed', label: 'Care certificate completed', date: onboarding.care_cert_date },
-                      { key: 'induction_completed', label: 'Induction completed', date: onboarding.induction_date },
-                      { key: 'med_training_completed', label: 'Medication training', date: onboarding.med_training_date },
-                      { key: 'right_to_work_verified', label: 'Right to work verified' },
-                      { key: 'system_training_completed', label: 'System training', date: onboarding.system_training_date },
-                    ].map(item => (
-                      <div key={item.key} className="flex items-center gap-3">
-                        {onboarding[item.key]
-                          ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          : <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-                        }
-                        <div>
-                          <p className={`text-sm ${onboarding[item.key] ? 'text-slate-900' : 'text-slate-400'}`}>{item.label}</p>
-                          {item.date && onboarding[item.key] && <p className="text-xs text-slate-400">{format(new Date(item.date), 'd MMM yyyy')}</p>}
+                      { key: 'application_received', dateKey: 'application_date', label: 'Application received', date: onboarding.application_date },
+                      { key: 'interview_completed', dateKey: 'interview_date', label: 'Interview completed', date: onboarding.interview_date },
+                      { key: 'dbs_cleared', dateKey: 'dbs_cleared_date', label: 'DBS check cleared', date: onboarding.dbs_cleared_date },
+                      { key: 'care_cert_completed', dateKey: 'care_cert_date', label: 'Care certificate completed', date: onboarding.care_cert_date },
+                      { key: 'induction_completed', dateKey: 'induction_date', label: 'Induction completed', date: onboarding.induction_date },
+                      { key: 'med_training_completed', dateKey: 'med_training_date', label: 'Medication training', date: onboarding.med_training_date },
+                      { key: 'right_to_work_verified', dateKey: null, label: 'Right to work verified', date: null },
+                      { key: 'system_training_completed', dateKey: 'system_training_date', label: 'System training', date: onboarding.system_training_date },
+                    ].map(item => {
+                      const isChecked = !!onboarding[item.key]
+                      const canEdit = isManager
+                      const isBusy = updatingOnboardingKey === item.key
+                      return (
+                        <div key={item.key} className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            disabled={!canEdit || isBusy}
+                            onClick={() => toggleOnboardingItem(item.key, item.dateKey, !isChecked)}
+                            className={`flex-shrink-0 ${canEdit ? 'cursor-pointer' : 'cursor-default'} ${isBusy ? 'opacity-50' : ''}`}
+                            title={canEdit ? (isChecked ? 'Click to mark incomplete' : 'Click to mark complete') : undefined}
+                          >
+                            {isChecked
+                              ? <CheckCircle className="w-4 h-4 text-green-500" />
+                              : <div className={`w-4 h-4 rounded-full border-2 ${canEdit ? 'border-slate-400 hover:border-amber-400' : 'border-slate-300'}`} />
+                            }
+                          </button>
+                          <div>
+                            <p className={`text-sm ${isChecked ? 'text-slate-900' : 'text-slate-400'}`}>{item.label}</p>
+                            {item.date && isChecked && <p className="text-xs text-slate-400">{format(new Date(item.date), 'd MMM yyyy')}</p>}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
+                    {!isManager && (
+                      <p className="text-xs text-slate-400 italic pt-2">Only managers/admins can update onboarding steps.</p>
+                    )}
                   </div>
                 </Card>
               </div>
@@ -529,47 +569,53 @@ export default function StaffModule() {
             {tab === 'supervisions' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-slate-800">Supervision &amp; Appraisal ({supervisions.length})</h3>
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddSupervisionOpen(true)}>Add record</Button>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Supervision &amp; Appraisal ({supervisions.length})</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Read-only summary of supervisions and appraisals completed under Staff Assessment.</p>
+                  </div>
+                  <Link to="/supervision-appraisal">
+                    <Button size="sm" variant="outline" icon={<ChevronRight className="w-3.5 h-3.5" />}>Go to Assessments</Button>
+                  </Link>
                 </div>
                 {supervisions.length === 0 ? (
-                  <EmptyState title="No supervision or appraisal records" description="Document supervision sessions and annual appraisals"
-                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddSupervisionOpen(true)}>Add record</Button>} />
+                  <EmptyState title="No supervision or appraisal records" description="Supervisions and appraisals are logged from the Assessments (Staff Assessment) page"
+                    action={<Link to="/supervision-appraisal"><Button icon={<ChevronRight className="w-4 h-4" />}>Go to Assessments</Button></Link>} />
                 ) : (
-                  <>
-                    {['appraisal', 'supervision', 'one_to_one', 'return_to_work', 'probation_review'].map(type => {
-                      const items = supervisions.filter((s: any) => s.supervision_type === type)
-                      if (!items.length) return null
-                      const label = type === 'appraisal' ? 'Appraisals' : type === 'supervision' ? 'Supervisions' : type.replace(/_/g, ' ')
-                      return (
-                        <div key={type} className="mb-5">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 capitalize">{label}</h4>
-                          <div className="space-y-3">
-                            {items.map((s: any) => (
-                              <div key={s.id} className="bg-white/5 rounded-2xl border border-white/10 shadow-card p-5">
-                                <div className="flex items-start justify-between mb-2">
-                                  <span className="badge badge-info capitalize">{(s.supervision_type || '').replace(/_/g, ' ')}</span>
-                                  <p className="text-xs text-slate-400">{s.supervision_date ? format(new Date(s.supervision_date), 'd MMM yyyy') : ''}</p>
-                                </div>
-                                <div className="space-y-2 text-sm">
-                                  {s.summary && <p className="text-slate-700">{s.summary}</p>}
-                                  {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
-                                  {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
-                                  {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
-                                  {s.staff_comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff comments</p><p className="text-slate-700 mt-0.5 italic">"{s.staff_comments}"</p></div>}
-                                  {s.next_supervision_date && <p className="text-xs text-slate-400">Next: {format(new Date(s.next_supervision_date), 'd MMM yyyy')}</p>}
-                                </div>
-                              </div>
-                            ))}
+                  <div className="space-y-3">
+                    {[...supervisions]
+                      .sort((a: any, b: any) => new Date(b.supervision_date || b.appraisal_date || 0).getTime() - new Date(a.supervision_date || a.appraisal_date || 0).getTime())
+                      .map((s: any) => (
+                        <div key={`${s._kind}-${s.id}`} className="bg-white/5 rounded-2xl border border-white/10 shadow-card p-5">
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="badge badge-info capitalize">
+                              {s._kind === 'appraisal' ? 'Appraisal' : (s.supervision_type || 'Supervision').replace(/_/g, ' ')}
+                            </span>
+                            <p className="text-xs text-slate-400">
+                              {(s.supervision_date || s.appraisal_date) ? format(new Date(s.supervision_date || s.appraisal_date), 'd MMM yyyy') : ''}
+                            </p>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            {s._kind === 'appraisal' ? (
+                              <>
+                                {s.rating && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rating</p><p className="text-slate-700 mt-0.5 capitalize">{s.rating.replace(/_/g, ' ')}</p></div>}
+                                {s.performance_summary && <p className="text-slate-700">{s.performance_summary}</p>}
+                                {s.comments && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Comments</p><p className="text-slate-700 mt-0.5">{s.comments}</p></div>}
+                                {s.goals && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Goals</p><p className="text-slate-700 mt-0.5">{s.goals}</p></div>}
+                                {s.next_review_date && <p className="text-xs text-slate-400">Next review: {format(new Date(s.next_review_date), 'd MMM yyyy')}</p>}
+                              </>
+                            ) : (
+                              <>
+                                {s.summary && <p className="text-slate-700">{s.summary}</p>}
+                                {s.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{s.strengths}</p></div>}
+                                {s.areas_for_improvement && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{s.areas_for_improvement}</p></div>}
+                                {s.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{s.action_points}</p></div>}
+                                {s.next_date && <p className="text-xs text-slate-400">Next: {format(new Date(s.next_date), 'd MMM yyyy')}</p>}
+                              </>
+                            )}
                           </div>
                         </div>
-                      )
-                    })}
-                  </>
-                )}
-                {addSupervisionOpen && selected && (
-                  <AddSupervisionModalInline staffId={selected.id} onClose={() => setAddSupervisionOpen(false)}
-                    onSaved={async () => { setAddSupervisionOpen(false); const res = await api.get(`/reviews/supervisions/${selected.id}`); setSupervisions(res.data.data || []); toast.success('Recorded') }} />
+                      ))}
+                  </div>
                 )}
               </div>
             )}
@@ -719,39 +765,6 @@ function AddSensitiveNoteModalInline({ staffId, onClose, onSaved }: { staffId: s
   )
 }
 
-function AddSupervisionModalInline({ staffId, onClose, onSaved }: { staffId: string; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = React.useState({ supervisionType: 'supervision', supervisionDate: new Date().toISOString().split('T')[0], summary: '', strengths: '', areasForImprovement: '', actionPoints: '', staffComments: '', nextDate: '' })
-  const [loading, setLoading] = React.useState(false)
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-  const SUPERVISION_TYPES = [{ value: 'supervision', label: 'Supervision' }, { value: 'appraisal', label: 'Appraisal' }, { value: 'one_to_one', label: 'One-to-one' }, { value: 'return_to_work', label: 'Return to work' }, { value: 'probation_review', label: 'Probation review' }]
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try { await api.post('/reviews/supervisions', { staffId, ...form }); onSaved() }
-    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
-    finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open={true} onClose={onClose} title="Record supervision" size="lg">
-      <form onSubmit={save} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Type *" required value={form.supervisionType} onChange={e => set('supervisionType', e.target.value)} options={SUPERVISION_TYPES} />
-          <Input label="Date *" type="date" required value={form.supervisionDate} onChange={e => set('supervisionDate', e.target.value)} />
-        </div>
-        <div><label className="label">Summary</label><textarea className="input" rows={3} value={form.summary} onChange={e => set('summary', e.target.value)} /></div>
-        <div><label className="label">Strengths</label><textarea className="input" rows={2} value={form.strengths} onChange={e => set('strengths', e.target.value)} /></div>
-        <div><label className="label">Areas for improvement</label><textarea className="input" rows={2} value={form.areasForImprovement} onChange={e => set('areasForImprovement', e.target.value)} /></div>
-        <div><label className="label">Action points</label><textarea className="input" rows={2} value={form.actionPoints} onChange={e => set('actionPoints', e.target.value)} /></div>
-        <div><label className="label">Staff member's comments</label><textarea className="input" rows={2} value={form.staffComments} onChange={e => set('staffComments', e.target.value)} /></div>
-        <Input label="Next supervision date" type="date" value={form.nextDate} onChange={e => set('nextDate', e.target.value)} />
-        <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save supervision</Button></div>
-      </form>
-    </Modal>
-  )
-}
-
 function AddTrainingModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
   const [form, setForm] = React.useState({ courseName: '', completedDate: '', expiryDate: '', durationHours: '', provider: '', certificateUrl: '' })
   const [loading, setLoading] = React.useState(false)
@@ -885,7 +898,7 @@ function StaffDocUploadModal({ open, onClose, staffId, onUploaded }: { open: boo
             <div><Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-600 font-medium">Click to choose file</p><p className="text-xs text-slate-400 mt-1">PDF, Word, images up to 20MB</p></div>
           )}
         </div>
-        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt" onChange={e => setFile(e.target.files?.[0] || null)} />
+        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip" onChange={e => setFile(e.target.files?.[0] || null)} />
         <Input label="Expiry date" type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} hint="For certificates with expiry dates" />
         <div><label className="label">Notes</label><textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} /></div>
         <div className="flex gap-3 justify-end pt-2">

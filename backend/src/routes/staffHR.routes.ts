@@ -187,7 +187,14 @@ router.get('/onboarding/:staffId', param('staffId').isUUID(), validateRequest,
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }
-      const rows = await query('SELECT * FROM staff_onboarding WHERE staff_id = $1', [req.params.staffId]);
+      let rows = await query('SELECT * FROM staff_onboarding WHERE staff_id = $1', [req.params.staffId]);
+      if (!rows.length) {
+        rows = await query(
+          'INSERT INTO staff_onboarding (staff_id) VALUES ($1) ON CONFLICT (staff_id) DO NOTHING RETURNING *',
+          [req.params.staffId]
+        );
+        if (!rows.length) rows = await query('SELECT * FROM staff_onboarding WHERE staff_id = $1', [req.params.staffId]);
+      }
       res.json({ success: true, data: rows[0] || null } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -212,8 +219,12 @@ router.put('/onboarding/:staffId', param('staffId').isUUID(), validateRequest,
       if (!updates.length) throw new AppError('No fields to update', 400);
       updates.push('updated_at = NOW()');
       values.push(req.params.staffId);
-      await query(`UPDATE staff_onboarding SET ${updates.join(', ')} WHERE staff_id = $${idx}`, values);
-      res.json({ success: true, message: 'Onboarding updated' } as ApiResponse);
+      // Ensure a row exists (older staff records created before onboarding
+      // rows were auto-inserted at signup won't have one, which previously
+      // made this UPDATE silently affect zero rows and appear to "not save").
+      await query('INSERT INTO staff_onboarding (staff_id) VALUES ($1) ON CONFLICT (staff_id) DO NOTHING', [req.params.staffId]);
+      const rows = await query(`UPDATE staff_onboarding SET ${updates.join(', ')} WHERE staff_id = $${idx} RETURNING *`, values);
+      res.json({ success: true, data: rows[0], message: 'Onboarding updated' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

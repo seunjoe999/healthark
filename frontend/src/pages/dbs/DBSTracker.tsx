@@ -14,6 +14,23 @@ const DBS_TYPES = [
   { value: 'basic', label: 'Basic DBS' },
 ]
 
+const REFERENCE_TYPES = [
+  { value: 'professional', label: 'Professional' },
+  { value: 'personal', label: 'Personal / Character' },
+  { value: 'safeguarding', label: 'Safeguarding' },
+  { value: 'previous_employer', label: 'Previous Employer' },
+]
+
+const RTW_DOC_TYPES = [
+  { value: 'british_irish_passport', label: 'British / Irish Passport' },
+  { value: 'eu_settlement_status', label: 'EU Settlement / Pre-Settled Status' },
+  { value: 'biometric_residence_permit', label: 'Biometric Residence Permit (BRP)' },
+  { value: 'share_code', label: 'Right to Work Share Code (online check)' },
+  { value: 'visa', label: 'Visa / Vignette' },
+  { value: 'certificate_of_naturalisation', label: 'Certificate of Naturalisation/Registration' },
+  { value: 'other', label: 'Other document' },
+]
+
 const statusColor: Record<string, string> = {
   valid:         'badge-success',
   expiring_soon: 'badge-warning',
@@ -38,12 +55,13 @@ export default function DBSTracker() {
   const [rtwDocs, setRtwDocs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
+  const [addDocType, setAddDocType] = useState<'dbs' | 'reference' | 'rtw'>('dbs')
   const [staff, setStaff] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [preview, setPreview] = useState<any>(null)
 
   const [dbsForm, setDbsForm] = useState({ staffId: '', dbsNumber: '', dbsType: 'enhanced', issueDate: '', expiryDate: '', updateService: false, notes: '' })
-  const [refForm, setRefForm] = useState({ staffId: '', refereeName: '', refereePosition: '', refereeCompany: '', refereeEmail: '', receivedDate: '', status: 'pending' })
+  const [refForm, setRefForm] = useState({ staffId: '', refereeName: '', refereePosition: '', refereeCompany: '', refereeEmail: '', referenceType: 'professional', receivedDate: '', status: 'pending' })
   const [rtwForm, setRtwForm] = useState({ staffId: '', documentType: '', documentNumber: '', expiryDate: '' })
 
   async function load() {
@@ -350,35 +368,82 @@ export default function DBSTracker() {
       {/* Add Document Modal */}
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Compliance Document" size="lg">
         <div className="space-y-4">
-          {/* Tab within modal */}
+          {/* Tab within modal — each type has its own set of relevant fields below */}
           <div className="flex gap-2 mb-4">
             {(['dbs', 'reference', 'rtw'] as const).map(t => (
-              <button key={t} onClick={() => {}}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all capitalize">
+              <button key={t} type="button" onClick={() => setAddDocType(t)}
+                className={clsx('px-3 py-1.5 rounded-lg text-xs font-medium border transition-all capitalize',
+                  addDocType === t ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-amber-500/30 text-amber-400/70 hover:bg-amber-500/10')}>
                 {t === 'rtw' ? 'Right to Work' : t === 'dbs' ? 'DBS' : 'Reference'}
               </button>
             ))}
           </div>
 
-          <form onSubmit={submitDBS} className="space-y-4">
-            <Select label="Staff Member" options={staffOptions} placeholder="Select staff..." value={dbsForm.staffId}
-              onChange={e => setDbsForm(f => ({ ...f, staffId: e.target.value }))} />
-            <Select label="DBS Type" options={DBS_TYPES} value={dbsForm.dbsType}
-              onChange={e => setDbsForm(f => ({ ...f, dbsType: e.target.value }))} />
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="DBS Certificate Number" value={dbsForm.dbsNumber}
-                onChange={e => setDbsForm(f => ({ ...f, dbsNumber: e.target.value }))} />
-              <Input label="Issue Date" type="date" value={dbsForm.issueDate} required
-                onChange={e => setDbsForm(f => ({ ...f, issueDate: e.target.value }))} />
-            </div>
-            <Input label="Expiry Date (if applicable)" type="date" value={dbsForm.expiryDate}
-              onChange={e => setDbsForm(f => ({ ...f, expiryDate: e.target.value }))} />
-            <Textarea label="Notes" value={dbsForm.notes} onChange={e => setDbsForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button type="submit" variant="gold" loading={submitting}>Save DBS Record</Button>
-            </div>
-          </form>
+          {addDocType === 'dbs' && (
+            <form onSubmit={submitDBS} className="space-y-4">
+              <Select label="Staff Member" options={staffOptions} placeholder="Select staff..." value={dbsForm.staffId}
+                onChange={e => setDbsForm(f => ({ ...f, staffId: e.target.value }))} />
+              <Select label="DBS Type" options={DBS_TYPES} value={dbsForm.dbsType}
+                onChange={e => setDbsForm(f => ({ ...f, dbsType: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="DBS Certificate Number" value={dbsForm.dbsNumber}
+                  onChange={e => setDbsForm(f => ({ ...f, dbsNumber: e.target.value }))} />
+                <Input label="Issue Date" type="date" value={dbsForm.issueDate} required
+                  onChange={e => setDbsForm(f => ({ ...f, issueDate: e.target.value }))} />
+              </div>
+              <Input label="Expiry Date (if applicable)" type="date" value={dbsForm.expiryDate}
+                onChange={e => setDbsForm(f => ({ ...f, expiryDate: e.target.value }))} />
+              <Textarea label="Notes" value={dbsForm.notes} onChange={e => setDbsForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
+                <Button type="submit" variant="gold" loading={submitting}>Save DBS Record</Button>
+              </div>
+            </form>
+          )}
+
+          {addDocType === 'reference' && (
+            <form onSubmit={submitRef} className="space-y-4">
+              <Select label="Staff Member" options={staffOptions} placeholder="Select staff..." value={refForm.staffId}
+                onChange={e => setRefForm(f => ({ ...f, staffId: e.target.value }))} />
+              <Select label="Reference Type" options={REFERENCE_TYPES} value={refForm.referenceType}
+                onChange={e => setRefForm(f => ({ ...f, referenceType: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Referee Name" required value={refForm.refereeName}
+                  onChange={e => setRefForm(f => ({ ...f, refereeName: e.target.value }))} />
+                <Input label="Referee Position" value={refForm.refereePosition}
+                  onChange={e => setRefForm(f => ({ ...f, refereePosition: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Referee Company / Organisation" value={refForm.refereeCompany}
+                  onChange={e => setRefForm(f => ({ ...f, refereeCompany: e.target.value }))} />
+                <Input label="Referee Email" type="email" value={refForm.refereeEmail}
+                  onChange={e => setRefForm(f => ({ ...f, refereeEmail: e.target.value }))} />
+              </div>
+              <Input label="Date Reference Obtained" type="date" value={refForm.receivedDate}
+                onChange={e => setRefForm(f => ({ ...f, receivedDate: e.target.value }))} />
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
+                <Button type="submit" variant="gold" loading={submitting}>Save Reference</Button>
+              </div>
+            </form>
+          )}
+
+          {addDocType === 'rtw' && (
+            <form onSubmit={submitRTW} className="space-y-4">
+              <Select label="Staff Member" options={staffOptions} placeholder="Select staff..." value={rtwForm.staffId}
+                onChange={e => setRtwForm(f => ({ ...f, staffId: e.target.value }))} />
+              <Select label="Document Type" required options={RTW_DOC_TYPES} placeholder="Select document type..." value={rtwForm.documentType}
+                onChange={e => setRtwForm(f => ({ ...f, documentType: e.target.value }))} />
+              <Input label="Document Number" value={rtwForm.documentNumber}
+                onChange={e => setRtwForm(f => ({ ...f, documentNumber: e.target.value }))} />
+              <Input label="Expiry Date (leave blank for indefinite right to work)" type="date" value={rtwForm.expiryDate}
+                onChange={e => setRtwForm(f => ({ ...f, expiryDate: e.target.value }))} />
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
+                <Button type="submit" variant="gold" loading={submitting}>Save Right to Work Check</Button>
+              </div>
+            </form>
+          )}
         </div>
       </Modal>
     </div>

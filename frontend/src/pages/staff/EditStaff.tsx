@@ -81,7 +81,7 @@ function UploadStaffDocModal({ open, onClose, staffId, onUploaded }: {
                 <p className="text-xs mt-0.5">PDF, JPG, PNG · Max 10MB</p>
               </div>
             )}
-            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.zip"
               onChange={e => setFile(e.target.files?.[0] || null)} />
           </div>
         </div>

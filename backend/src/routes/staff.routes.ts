@@ -374,9 +374,9 @@ router.put(
         throw new AppError('Not authorised to edit this profile', 403);
       }
 
-      const { firstName, lastName, preferredName, phone, address1, address2,
+      const { firstName, lastName, preferredName, email, phone, address1, address2,
               address3, postcode, dateOfBirth, gender, nationality,
-              maritalStatus, emergencyName, emergencyPhone, emergencyNotes,
+              maritalStatus, niNumber, emergencyName, emergencyPhone, emergencyNotes,
               photoUrl, status, isActive, leaveDate, homeId, role: newRoleInput,
               contractedHours, startDate } = req.body;
 
@@ -440,7 +440,9 @@ router.put(
           is_active = COALESCE($18, is_active),
           leave_date = COALESCE($19, leave_date),
           home_id = COALESCE($20, home_id),
-          role = COALESCE($21, role)
+          role = COALESCE($21, role),
+          email = COALESCE($23, email),
+          ni_number = COALESCE($24, ni_number)
          WHERE id = $22
          RETURNING id, first_name, last_name, email, role, status, is_active`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
@@ -452,7 +454,9 @@ router.put(
          role === 'group_admin' ? nd(leaveDate) : null,
          role === 'group_admin' ? (homeId || null) : null,
          newRole,
-         targetId]
+         targetId,
+         email || null,
+         niNumber || null]
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);

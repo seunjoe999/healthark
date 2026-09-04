@@ -799,11 +799,14 @@ async function createCoreTables() {
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       su_id        UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
       home_id      UUID NOT NULL REFERENCES homes(id),
-      review_type  VARCHAR(20) NOT NULL DEFAULT 'review',
+      review_type  VARCHAR(50) NOT NULL DEFAULT 'review',
       review_date  DATE NOT NULL DEFAULT CURRENT_DATE,
       conducted_by UUID NOT NULL REFERENCES staff(id),
       attendees    TEXT,
       summary      TEXT NOT NULL DEFAULT '',
+      resident_feedback TEXT,
+      family_feedback TEXT,
+      monthly_progress TEXT,
       outcomes     TEXT,
       action_plans TEXT,
       next_review_date DATE,
@@ -1410,6 +1413,19 @@ async function ensureColumns() {
     `ALTER TABLE organisations ADD COLUMN IF NOT EXISTS phone TEXT`,
     `ALTER TABLE organisations ADD COLUMN IF NOT EXISTS email TEXT`,
     `ALTER TABLE organisations ADD COLUMN IF NOT EXISTS logo_url TEXT`,
+    // ── su_reviews (Care Review) schema fixes — the reviews.routes.ts POST /su
+    // handler inserts resident_feedback / family_feedback / monthly_progress,
+    // which never existed on this table, and some DBs (bootstrapped from
+    // migrations/001_schema.sql) still carry a CHECK (review_type IN
+    // ('review','feedback')) constraint left over from an earlier design —
+    // every real review type used by the app (care_review, monthly_review,
+    // custom types, etc.) violates that constraint, causing every Care
+    // Review save to fail with a 500. ─────────────────────────────────────────
+    `ALTER TABLE su_reviews ADD COLUMN IF NOT EXISTS resident_feedback TEXT`,
+    `ALTER TABLE su_reviews ADD COLUMN IF NOT EXISTS family_feedback TEXT`,
+    `ALTER TABLE su_reviews ADD COLUMN IF NOT EXISTS monthly_progress TEXT`,
+    `ALTER TABLE su_reviews DROP CONSTRAINT IF EXISTS su_reviews_review_type_check`,
+    `ALTER TABLE su_reviews ALTER COLUMN review_type TYPE VARCHAR(50)`,
     // ── New columns ────────────────────────────────────────────────────────────
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed    BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed_at TIMESTAMPTZ`,

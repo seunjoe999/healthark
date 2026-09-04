@@ -34,7 +34,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const ALLOWED_EXTS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.txt']);
+const ALLOWED_EXTS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.txt', '.zip']);
 const ALLOWED_MIMES = new Set([
   'application/pdf',
   'application/msword',
@@ -42,6 +42,10 @@ const ALLOWED_MIMES = new Set([
   'image/jpeg',
   'image/png',
   'text/plain',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/x-zip',
+  'multipart/x-zip',
 ]);
 
 const upload = multer({

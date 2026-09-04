@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { assessmentsApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import { ChevronLeft, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -84,6 +83,7 @@ export default function AssessmentForm() {
   const [subjectName, setSubjectName] = useState('')
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [actionsIdentified, setActionsIdentified] = useState('')
+  const [assessmentDate, setAssessmentDate] = useState(new Date().toISOString().split('T')[0])
   const [nextReviewDate, setNextReviewDate] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(true)
@@ -126,7 +126,7 @@ export default function AssessmentForm() {
         actionsIdentified,
         nextReviewDate: nextReviewDate || null,
         notes,
-        assessmentDate: new Date().toISOString().split('T')[0],
+        assessmentDate: assessmentDate || new Date().toISOString().split('T')[0],
       })
       setResult(res.data.data)
       toast.success('Assessment saved')
@@ -183,9 +183,16 @@ export default function AssessmentForm() {
 
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
         <h1 className="text-xl font-bold text-slate-900">{template.name}</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Subject: <strong>{subjectName}</strong> &middot; {format(new Date(), 'd MMM yyyy')}
+        <p className="text-slate-500 text-sm mt-1 mb-3">
+          Subject: <strong>{subjectName}</strong>
         </p>
+        <div className="max-w-xs">
+          <label className="label">Date completed</label>
+          <input type="date" className="input w-auto" value={assessmentDate}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={e => setAssessmentDate(e.target.value)} />
+          <p className="text-xs text-slate-400 mt-1">Defaults to today — change this if you're logging an assessment that was completed in the past.</p>
+        </div>
       </div>
 
       <form onSubmit={e => { e.preventDefault(); save() }}>
