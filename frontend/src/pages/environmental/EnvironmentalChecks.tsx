@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface EnvCheck {
   id: number;
@@ -35,6 +36,14 @@ const CHECK_TYPES = [
 
 export default function EnvironmentalChecks() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [checks, setChecks] = useState<EnvCheck[]>([]);
   const [summary, setSummary] = useState<Summary>({ total: 0, passed: 0, failed: 0, warnings: 0 });
   const [loading, setLoading] = useState(true);
@@ -101,7 +110,7 @@ export default function EnvironmentalChecks() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
@@ -113,12 +122,12 @@ export default function EnvironmentalChecks() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: summary.total, color: 'text-white' },
+          { label: 'Total', value: summary.total, color: neutralText },
           { label: 'Passed', value: summary.passed, color: 'text-green-400' },
           { label: 'Failed', value: summary.failed, color: 'text-red-400' },
           { label: 'Warnings', value: summary.warnings, color: 'text-yellow-400' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
             <div className="text-xs text-gray-400 mt-1">{s.label}</div>
           </div>
@@ -130,7 +139,7 @@ export default function EnvironmentalChecks() {
         {['7', '14', '30', '90'].map(d => (
           <button key={d} onClick={() => setFilter(d)}
             className={`px-3 py-1.5 rounded-lg text-sm ${filter === d ? 'text-white font-medium' : 'text-gray-400'}`}
-            style={{ background: filter === d ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
+            style={{ background: filter === d ? '#e8b130' : btnGhostBg }}>
             {d}d
           </button>
         ))}
@@ -139,34 +148,34 @@ export default function EnvironmentalChecks() {
       {/* Add form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">Record Environmental Check</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>Record Environmental Check</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Check Type</label>
               <select value={form.check_type} onChange={e => setForm(p => ({ ...p, check_type: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {CHECK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Location</label>
               <input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} required
-                placeholder="e.g. Kitchen, Room 3" className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                placeholder="e.g. Kitchen, Room 3" className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Reading Value</label>
               <div className="flex gap-2">
                 <input value={form.reading_value} onChange={e => setForm(p => ({ ...p, reading_value: e.target.value }))} required
-                  placeholder="e.g. 5.2" className="flex-1 px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  placeholder="e.g. 5.2" className={`flex-1 px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
                 <input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
-                  placeholder="unit" className="w-20 px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  placeholder="unit" className={`w-20 px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
               </div>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Status</label>
               <select value={form.result} onChange={e => setForm(p => ({ ...p, result: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 <option value="pass">Pass</option>
                 <option value="action_required">Action Required</option>
                 <option value="fail">Fail</option>
@@ -175,11 +184,11 @@ export default function EnvironmentalChecks() {
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Notes</label>
               <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm resize-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Save Check</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -194,11 +203,11 @@ export default function EnvironmentalChecks() {
         <div className="space-y-2">
           {checks.map(c => (
             <motion.div key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="flex items-center gap-4 p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+              className="flex items-center gap-4 p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex-shrink-0">{statusIcon(c.result)}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-white text-sm font-medium">{CHECK_TYPES.find(t => t.value === c.check_type)?.label || c.check_type}</span>
+                  <span className={`${neutralText} text-sm font-medium`}>{CHECK_TYPES.find(t => t.value === c.check_type)?.label || c.check_type}</span>
                   <span className="text-gray-500 text-xs">— {c.location}</span>
                   <span className={`text-xs font-semibold ${statusColor(c.result)}`}>{resultLabel(c.result)}</span>
                 </div>

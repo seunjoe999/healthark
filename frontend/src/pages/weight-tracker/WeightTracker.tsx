@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
 import { format, parseISO } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useTheme } from '../../context/ThemeContext'
 
 interface WeightRecord {
   id: string
@@ -45,10 +46,14 @@ const defaultForm = {
 
 // Simple SVG line chart for last 8 weight readings
 function WeightChart({ records }: { records: WeightRecord[] }) {
+  const { theme } = useTheme()
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
+  const dotStroke = theme === 'dark' ? '#0d1526' : '#ffffff'
   const last8 = useMemo(() => [...records].reverse().slice(-8), [records])
 
   if (last8.length < 2) return (
-    <div className="rounded-xl p-6 text-center text-slate-500 text-sm" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-xl p-6 text-center text-slate-500 text-sm" style={{ background: tileBg, border: tileBorder }}>
       At least 2 readings needed to show trend chart
     </div>
   )
@@ -75,10 +80,10 @@ function WeightChart({ records }: { records: WeightRecord[] }) {
   const polyline = points.map(p => `${p.x},${p.y}`).join(' ')
 
   return (
-    <div className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp className="w-4 h-4 text-blue-400" />
-        <span className="text-sm font-semibold text-white">Weight Trend (last {last8.length} readings)</span>
+        <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Weight Trend (last {last8.length} readings)</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 180 }}>
         {/* Y-axis grid lines */}
@@ -113,7 +118,7 @@ function WeightChart({ records }: { records: WeightRecord[] }) {
         {/* Dots + tooltips */}
         {points.map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r={5} fill="#3b82f6" stroke="#0d1526" strokeWidth={2} />
+            <circle cx={p.x} cy={p.y} r={5} fill="#3b82f6" stroke={dotStroke} strokeWidth={2} />
             <text
               x={p.x}
               y={PAD.top + chartH + 16}
@@ -140,6 +145,10 @@ function WeightChart({ records }: { records: WeightRecord[] }) {
 
 export default function WeightTracker() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const pageBg = theme === 'dark' ? '#0d1526' : '#f8f7fb'
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
   const homeId = user?.homeId || ''
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [records, setRecords] = useState<WeightRecord[]>([])
@@ -219,7 +228,7 @@ export default function WeightTracker() {
   const latestRecord = records[0]
 
   return (
-    <div className="p-6 max-w-5xl mx-auto" style={{ background: '#0d1526', minHeight: '100vh' }}>
+    <div className="p-6 max-w-5xl mx-auto" style={{ background: pageBg, minHeight: '100vh' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -250,18 +259,18 @@ export default function WeightTracker() {
       {/* Latest reading summary */}
       {latestRecord && (
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             <div className="text-2xl font-bold text-blue-400">{parseFloat(latestRecord.weight_kg).toFixed(1)} kg</div>
             <div className="text-xs text-slate-400 mt-1">Latest Weight</div>
             <div className="text-xs text-slate-600 mt-0.5">{format(parseISO(latestRecord.record_date), 'dd MMM yyyy')}</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             <div className="text-2xl font-bold text-slate-300">
               {latestRecord.height_cm ? `${parseFloat(latestRecord.height_cm).toFixed(1)} cm` : '—'}
             </div>
             <div className="text-xs text-slate-400 mt-1">Height</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             {latestRecord.bmi ? (() => {
               const info = bmiClass(parseFloat(latestRecord.bmi))
               return (
@@ -284,7 +293,7 @@ export default function WeightTracker() {
       )}
 
       {!selectedSU ? (
-        <div className="rounded-xl p-10 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="rounded-xl p-10 text-center" style={{ background: tileBg, border: tileBorder }}>
           <Scale className="w-10 h-10 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400">Select a resident above to view their weight history</p>
         </div>
@@ -301,10 +310,10 @@ export default function WeightTracker() {
           {records.length === 0 ? (
             <EmptyState title="No weight records" description="Use 'Add Reading' to record a weight measurement" />
           ) : (
-            <div className="rounded-xl overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="rounded-xl overflow-hidden" style={{ background: tileBg, border: tileBorder }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <tr style={{ borderBottom: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)' }}>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Weight</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Height</th>
@@ -321,14 +330,14 @@ export default function WeightTracker() {
                     return (
                       <tr
                         key={r.id}
-                        style={{ borderBottom: i < records.length - 1 ? '1px solid rgba(255,255,255,0.04)' : undefined }}
-                        className="hover:bg-white/[0.02] transition-colors"
+                        style={{ borderBottom: i < records.length - 1 ? (theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(15,23,42,0.06)') : undefined }}
+                        className={theme === 'dark' ? 'hover:bg-white/[0.02] transition-colors' : 'hover:bg-slate-50 transition-colors'}
                       >
-                        <td className="p-3 text-white font-medium">
+                        <td className={`p-3 font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                           {format(parseISO(r.record_date), 'dd MMM yyyy')}
                         </td>
-                        <td className="p-3 text-blue-300 font-semibold">{parseFloat(r.weight_kg).toFixed(1)} kg</td>
-                        <td className="p-3 text-slate-300">{r.height_cm ? `${parseFloat(r.height_cm).toFixed(1)} cm` : '—'}</td>
+                        <td className="p-3 text-blue-500 font-semibold">{parseFloat(r.weight_kg).toFixed(1)} kg</td>
+                        <td className={`p-3 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.height_cm ? `${parseFloat(r.height_cm).toFixed(1)} cm` : '—'}</td>
                         <td className="p-3">
                           {bmiNum ? (
                             <span className={clsx('px-2 py-0.5 rounded-full text-xs font-semibold border', info.className)}>

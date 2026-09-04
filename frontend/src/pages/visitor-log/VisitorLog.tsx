@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Visit {
   id: string;
@@ -22,6 +23,13 @@ interface CurrentlyIn { visitor_name: string; sign_in_time: string; purpose: str
 
 export default function VisitorLog() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [visits, setVisits] = useState<Visit[]>([]);
   const [currentlyIn, setCurrentlyIn] = useState<CurrentlyIn[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +102,7 @@ export default function VisitorLog() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
@@ -113,7 +121,7 @@ export default function VisitorLog() {
           <div className="space-y-1">
             {currentlyIn.map((v, i) => (
               <div key={i} className="flex items-center gap-3 text-sm">
-                <span className="text-white">{v.visitor_name}</span>
+                <span className={neutralText}>{v.visitor_name}</span>
                 {v.resident_name && <span className="text-gray-400">visiting {v.resident_name}</span>}
                 <span className="text-gray-500 text-xs">{format(new Date(v.sign_in_time), 'HH:mm')}</span>
               </div>
@@ -125,18 +133,18 @@ export default function VisitorLog() {
       {/* Sign in form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">Sign In Visitor</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>Sign In Visitor</h3>
           <form onSubmit={handleSignIn} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Visitor Name</label>
               <input value={form.visitor_name} onChange={e => setForm(p => ({ ...p, visitor_name: e.target.value }))} required
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Resident Being Visited</label>
               <select value={form.resident_visited} onChange={e => setForm(p => ({ ...p, resident_visited: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 <option value="">Not visiting a resident</option>
                 {residents.map(r => <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>)}
               </select>
@@ -144,28 +152,28 @@ export default function VisitorLog() {
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Purpose</label>
               <select value={form.purpose} onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {PURPOSES.map(pu => <option key={pu.value} value={pu.value}>{pu.label}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Phone Number</label>
               <input type="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Vehicle Registration</label>
               <input value={form.vehicle_reg} onChange={e => setForm(p => ({ ...p, vehicle_reg: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Notes</label>
               <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Sign In</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -174,7 +182,7 @@ export default function VisitorLog() {
       {/* Date picker & log */}
       <div className="flex items-center gap-3">
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
-          className="px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          className={`px-3 py-2 rounded-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-sm`} style={{ background: inputBg, border: inputBorder }} />
         <span className="text-gray-400 text-sm">{visits.length} visit{visits.length !== 1 ? 's' : ''}</span>
       </div>
 
@@ -185,11 +193,11 @@ export default function VisitorLog() {
       ) : (
         <div className="space-y-2">
           {visits.map(v => (
-            <div key={v.id} className="p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={v.id} className="p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-medium text-sm">{v.visitor_name}</span>
+                    <span className={`${neutralText} font-medium text-sm`}>{v.visitor_name}</span>
                     {v.resident_name && <span className="text-gray-400 text-xs">→ {v.resident_name}</span>}
                     <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: '#9ca3af' }}>{v.purpose}</span>
                   </div>

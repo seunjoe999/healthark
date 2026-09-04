@@ -6,6 +6,7 @@ import {
 import { Button, Modal, Input, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO, isPast, isToday } from 'date-fns'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -66,6 +67,9 @@ function PEEPForm({
   editingId?: string | null
   defaultSuId?: string
 }) {
+  const { theme } = useTheme()
+  const toggleBg = theme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900'
   const [form, setForm] = useState(emptyForm(defaultSuId))
   const [submitting, setSubmitting] = useState(false)
 
@@ -141,7 +145,7 @@ function PEEPForm({
                   ? 'border-amber-500/50 bg-amber-500/10'
                   : 'border-white/8 bg-white/3 hover:border-white/15')}>
                 <div className="text-lg mb-1">{m.icon}</div>
-                <div className="text-xs font-semibold text-white leading-tight">{m.label}</div>
+                <div className={`text-xs font-semibold leading-tight ${neutralText}`}>{m.label}</div>
                 <div className="text-xs text-slate-500 mt-0.5 leading-tight">{m.desc}</div>
               </button>
             ))}
@@ -149,14 +153,14 @@ function PEEPForm({
         </div>
 
         {/* Can self-evacuate toggle */}
-        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: toggleBg }}>
           <button type="button"
             onClick={() => set('canSelfEvacuate', !form.canSelfEvacuate)}
             className={clsx('relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors', form.canSelfEvacuate ? 'bg-emerald-500' : 'bg-slate-600')}>
             <span className={clsx('inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform m-0.5', form.canSelfEvacuate ? 'translate-x-4' : 'translate-x-0')} />
           </button>
           <div>
-            <p className="text-sm font-medium text-white">Can self-evacuate</p>
+            <p className={`text-sm font-medium ${neutralText}`}>Can self-evacuate</p>
             <p className="text-xs text-slate-400">Resident is able to evacuate themselves with verbal prompting only</p>
           </div>
         </div>
@@ -186,10 +190,10 @@ function PEEPForm({
             <label className="text-xs font-medium text-slate-400 block mb-2">Staff required for evacuation</label>
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => set('numberOfStaffRequired', Math.max(0, form.numberOfStaffRequired - 1))}
-                className="w-9 h-9 rounded-xl border border-white/10 text-white hover:bg-white/8 transition-colors flex items-center justify-center text-lg font-bold">−</button>
-              <span className="text-2xl font-bold text-white w-8 text-center">{form.numberOfStaffRequired}</span>
+                className={`w-9 h-9 rounded-xl border border-white/10 hover:bg-white/8 transition-colors flex items-center justify-center text-lg font-bold ${neutralText}`}>−</button>
+              <span className={`text-2xl font-bold w-8 text-center ${neutralText}`}>{form.numberOfStaffRequired}</span>
               <button type="button" onClick={() => set('numberOfStaffRequired', Math.min(5, form.numberOfStaffRequired + 1))}
-                className="w-9 h-9 rounded-xl border border-white/10 text-white hover:bg-white/8 transition-colors flex items-center justify-center text-lg font-bold">+</button>
+                className={`w-9 h-9 rounded-xl border border-white/10 hover:bg-white/8 transition-colors flex items-center justify-center text-lg font-bold ${neutralText}`}>+</button>
               <span className="text-xs text-slate-400">staff member{form.numberOfStaffRequired !== 1 ? 's' : ''}</span>
             </div>
           </div>
@@ -208,14 +212,14 @@ function PEEPForm({
         </div>
 
         {/* Known to fire service toggle */}
-        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: toggleBg }}>
           <button type="button"
             onClick={() => set('knownToFireService', !form.knownToFireService)}
             className={clsx('relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors', form.knownToFireService ? 'bg-amber-500' : 'bg-slate-600')}>
             <span className={clsx('inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform m-0.5', form.knownToFireService ? 'translate-x-4' : 'translate-x-0')} />
           </button>
           <div>
-            <p className="text-sm font-medium text-white">Known to fire service</p>
+            <p className={`text-sm font-medium ${neutralText}`}>Known to fire service</p>
             <p className="text-xs text-slate-400">The local fire service has been notified of this resident's evacuation needs</p>
           </div>
         </div>
@@ -281,6 +285,7 @@ function printPeepPlan(plan: any) {
 // ── Detail modal ──────────────────────────────────────────────────────
 
 function PEEPDetail({ plan, onClose, onEdit }: { plan: any; onClose: () => void; onEdit: () => void }) {
+  const { theme } = useTheme()
   function handlePrint() {
     printPeepPlan(plan)
   }
@@ -336,7 +341,7 @@ function PEEPDetail({ plan, onClose, onEdit }: { plan: any; onClose: () => void;
         {plan.special_considerations && (
           <div className="rounded-xl p-3 border border-amber-500/30 bg-amber-500/5">
             <p className="text-xs text-amber-400 font-semibold mb-1">Special considerations</p>
-            <p className="text-sm text-slate-200 whitespace-pre-wrap">{plan.special_considerations}</p>
+            <p className={`text-sm whitespace-pre-wrap ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{plan.special_considerations}</p>
           </div>
         )}
 
@@ -360,6 +365,7 @@ function PEEPDetail({ plan, onClose, onEdit }: { plan: any; onClose: () => void;
 
 export default function PEEP() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [summary, setSummary] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -452,7 +458,7 @@ export default function PEEP() {
             return (
               <div key={row.su_id}
                 className="flex items-center gap-3 p-4 rounded-xl cursor-pointer hover:border-white/15 transition-all group"
-                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+                style={{ background: theme === 'dark' ? '#111111' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)' }}
                 onClick={() => {
                   if (row.peep_id) openDetail(row.su_id, row.peep_id)
                   else openCreate(row.su_id)
@@ -460,13 +466,13 @@ export default function PEEP() {
 
                 {/* Avatar placeholder */}
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  style={{ background: theme === 'dark' ? 'rgba(255,255,255,0.08)' : '#f1f5f9', color: theme === 'dark' ? undefined : '#334155' }}>
                   {row.su_name?.charAt(0) || '?'}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white text-sm">{row.su_name}</p>
+                  <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{row.su_name}</p>
                   {row.peep_id ? (
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-slate-400">
                       <span>{mobilityIcon(row.mobility_level)} {mobilityLabel(row.mobility_level)}</span>

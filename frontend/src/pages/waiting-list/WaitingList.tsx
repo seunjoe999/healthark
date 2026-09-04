@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface WaitingEntry {
   id: number;
@@ -31,6 +32,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function WaitingList() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputText = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [entries, setEntries] = useState<WaitingEntry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, waiting: 0, high_priority: 0, avg_wait_days: 0 });
   const [loading, setLoading] = useState(true);
@@ -111,7 +120,7 @@ export default function WaitingList() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
@@ -123,12 +132,12 @@ export default function WaitingList() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: stats.total, color: 'text-white' },
+          { label: 'Total', value: stats.total, color: neutralText },
           { label: 'Waiting', value: stats.waiting, color: 'text-blue-400' },
           { label: 'High Priority', value: stats.high_priority, color: 'text-red-400' },
           { label: 'Avg Wait', value: `${Math.round(stats.avg_wait_days || 0)}d`, color: 'text-yellow-400' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
             <div className="text-xs text-gray-400 mt-1">{s.label}</div>
           </div>
@@ -139,19 +148,19 @@ export default function WaitingList() {
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setFilterStatus('')}
           className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === '' ? 'text-white' : 'text-gray-400'}`}
-          style={{ background: filterStatus === '' ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>All</button>
+          style={{ background: filterStatus === '' ? '#e8b130' : btnGhostBg }}>All</button>
         {STATUSES.map(s => (
           <button key={s} onClick={() => setFilterStatus(s)}
             className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === s ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: filterStatus === s ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>{STATUS_LABELS[s]}</button>
+            style={{ background: filterStatus === s ? '#e8b130' : btnGhostBg }}>{STATUS_LABELS[s]}</button>
         ))}
       </div>
 
       {/* Add form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">Add to Waiting List</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>Add to Waiting List</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { label: 'Full Name', key: 'full_name', type: 'text', required: true },
@@ -164,24 +173,24 @@ export default function WaitingList() {
                 <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
                 <input type={f.type} value={(form as any)[f.key]} required={f.required}
                   onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm`} style={{ background: inputBg, border: inputBorder }} />
               </div>
             ))}
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Priority</label>
               <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {PRIORITIES.map(p => <option key={p} value={p} className="capitalize">{p}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Care Needs Summary</label>
               <textarea value={form.care_needs} onChange={e => setForm(p => ({ ...p, care_needs: e.target.value }))} rows={2}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm resize-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Add</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -195,11 +204,11 @@ export default function WaitingList() {
       ) : (
         <div className="space-y-3">
           {entries.map(e => (
-            <div key={e.id} className="p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={e.id} className="p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white font-medium">{e.full_name}</span>
+                    <span className={`${neutralText} font-medium`}>{e.full_name}</span>
                     {priorityBadge(e.priority)}
                     <span className="text-xs text-gray-500">{STATUS_LABELS[e.status] || e.status}</span>
                   </div>

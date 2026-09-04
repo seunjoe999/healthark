@@ -5,6 +5,7 @@ import { format, parseISO, isPast } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Contractor {
   id: string;
@@ -27,6 +28,14 @@ const EMPTY_FORM = { company_name: '', contact_name: '', contact_phone: '', cont
 
 export default function Contractors() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [expiring, setExpiring] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +114,7 @@ export default function Contractors() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowForm(true); }}
@@ -131,54 +140,54 @@ export default function Contractors() {
       {/* Form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">{editId ? 'Edit Contractor' : 'Add Contractor'}</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>{editId ? 'Edit Contractor' : 'Add Contractor'}</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Company Name</label>
               <input value={form.company_name} onChange={e => setForm(p => ({ ...p, company_name: e.target.value }))} required
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Service Type</label>
               <select value={form.service_type} onChange={e => setForm(p => ({ ...p, service_type: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Contact Name</label>
               <input value={form.contact_name} onChange={e => setForm(p => ({ ...p, contact_name: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Phone</label>
               <input value={form.contact_phone} onChange={e => setForm(p => ({ ...p, contact_phone: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Email</label>
               <input type="email" value={form.contact_email} onChange={e => setForm(p => ({ ...p, contact_email: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Insurance Expiry</label>
               <input type="date" value={form.insurance_expiry} onChange={e => setForm(p => ({ ...p, insurance_expiry: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">DBS Check Expiry</label>
               <input type="date" value={form.dbs_expiry} onChange={e => setForm(p => ({ ...p, dbs_expiry: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Notes</label>
               <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm resize-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>{editId ? 'Update' : 'Add'}</button>
-              <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -192,11 +201,11 @@ export default function Contractors() {
       ) : (
         <div className="space-y-3">
           {contractors.map(c => (
-            <div key={c.id} className="p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={c.id} className="p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white font-medium">{c.company_name}</span>
+                    <span className={`${neutralText} font-medium`}>{c.company_name}</span>
                     <span className="text-xs px-2 py-0.5 rounded text-amber-400" style={{ background: 'rgba(245,158,11,0.1)' }}>{c.service_type}</span>
                     {c.status === 'expired' && <span className="text-xs px-2 py-0.5 rounded text-red-400" style={{ background: 'rgba(239,68,68,0.1)' }}>Expired</span>}
                   </div>
@@ -212,7 +221,7 @@ export default function Contractors() {
                   </div>
                   {c.notes && <div className="text-xs text-gray-500 mt-2">{c.notes}</div>}
                 </div>
-                <button onClick={() => openEdit(c)} className="p-2 rounded-lg text-gray-400 hover:text-white ml-2" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <button onClick={() => openEdit(c)} className="p-2 rounded-lg text-gray-400 hover:text-white ml-2" style={{ background: btnGhostBg }}>
                   <Edit2 size={14} />
                 </button>
               </div>

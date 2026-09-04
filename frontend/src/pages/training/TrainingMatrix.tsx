@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { Button, Select, Spinner, Modal, Input } from '../../components/ui'
 import {
   Grid3X3, Printer, CheckCircle, AlertTriangle, XCircle, MinusCircle,
@@ -89,6 +90,11 @@ interface PopoverProps {
 
 function CellPopover({ trainingType, cell, onClose, style }: PopoverProps) {
   const navigate = useNavigate()
+  const { theme } = useTheme()
+  const popoverBg = theme === 'dark' ? '#1a2540' : '#ffffff'
+  const popoverBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(15,23,42,0.1)'
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900'
+  const secondaryText = theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
   const cfg = STATUS_CONFIG[cell.status]
   return (
     <div
@@ -96,8 +102,8 @@ function CellPopover({ trainingType, cell, onClose, style }: PopoverProps) {
         ...style,
         position: 'fixed',
         zIndex: 50,
-        background: '#1a2540',
-        border: '1px solid rgba(255,255,255,0.12)',
+        background: popoverBg,
+        border: popoverBorder,
         borderRadius: 10,
         padding: '12px 14px',
         minWidth: 200,
@@ -105,7 +111,7 @@ function CellPopover({ trainingType, cell, onClose, style }: PopoverProps) {
       }}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="text-sm font-semibold text-white">{trainingType}</span>
+        <span className={`text-sm font-semibold ${neutralText}`}>{trainingType}</span>
         <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-xs">✕</button>
       </div>
       <div className="flex items-center gap-1.5 mb-2">
@@ -118,7 +124,7 @@ function CellPopover({ trainingType, cell, onClose, style }: PopoverProps) {
       </div>
       {cell.expiry_date && (
         <p className="text-xs text-slate-400">
-          Expiry: <span className="text-slate-200">{format(parseISO(cell.expiry_date), 'd MMM yyyy')}</span>
+          Expiry: <span className={secondaryText}>{format(parseISO(cell.expiry_date), 'd MMM yyyy')}</span>
         </p>
       )}
       {!cell.expiry_date && cell.status === 'missing' && (
@@ -230,6 +236,10 @@ function printTrainingMatrix(staff: StaffRow[], trainingTypes: string[], matrix:
 // ── Main component ────────────────────────────────────────────────
 export default function TrainingMatrix() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900'
   const [data, setData] = useState<MatrixData | null>(null)
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
@@ -436,14 +446,14 @@ export default function TrainingMatrix() {
       {/* Grid */}
       {filteredStaff.length === 0 ? (
         <div className="rounded-xl p-8 text-center text-slate-400"
-          style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          style={{ background: tileBg, border: tileBorder }}>
           No staff found{roleFilter ? ' for this role' : ''}.
         </div>
       ) : (
         <div
           ref={tableRef}
           className="rounded-xl overflow-hidden"
-          style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+          style={{ background: tileBg, border: tileBorder }}
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse min-w-[700px]">
@@ -451,7 +461,7 @@ export default function TrainingMatrix() {
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <th
                     className="text-left px-4 py-3 text-xs font-semibold text-slate-400 sticky left-0"
-                    style={{ background: '#111111', minWidth: 180 }}
+                    style={{ background: tileBg, minWidth: 180 }}
                   >
                     Staff Member
                   </th>
@@ -482,10 +492,10 @@ export default function TrainingMatrix() {
                       {/* Staff name cell */}
                       <td
                         className="px-4 py-2.5 sticky left-0"
-                        style={{ background: '#111111' }}
+                        style={{ background: tileBg }}
                       >
                         <div>
-                          <p className="text-sm font-medium text-white leading-tight">{s.name}</p>
+                          <p className={`text-sm font-medium ${neutralText} leading-tight`}>{s.name}</p>
                           <span className="text-xs text-slate-500">{formatRole(s.role)}</span>
                         </div>
                       </td>

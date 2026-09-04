@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import api, { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import {
   Spinner, EmptyState, Button, Modal, Select, Textarea
@@ -293,6 +294,13 @@ function NewAdmissionModal({ open, onClose, onSaved, homeId }: NewAdmissionModal
 
 export default function HospitalAdmissions() {
   const { isRole, user } = useAuth()
+  const { theme } = useTheme()
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
+  const rowBg = theme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'
+  const rowBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900'
+  const secondaryText = theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
   const [admissions, setAdmissions] = useState<Admission[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -381,20 +389,20 @@ export default function HospitalAdmissions() {
       {/* Stats Bar */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(239,68,68,0.3)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: '1px solid rgba(239,68,68,0.3)' }}>
             <div className="text-2xl font-bold text-rose-400">{stats.current_inpatients ?? 0}</div>
             <div className="text-xs text-slate-400 mt-1">Currently in Hospital</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(52,211,153,0.3)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: '1px solid rgba(52,211,153,0.3)' }}>
             <div className="text-2xl font-bold text-emerald-400">{stats.discharged_this_month ?? 0}</div>
             <div className="text-xs text-slate-400 mt-1">Discharged This Month</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(59,130,246,0.3)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: '1px solid rgba(59,130,246,0.3)' }}>
             <div className="text-2xl font-bold text-blue-400">{stats.planned_admissions ?? 0}</div>
             <div className="text-xs text-slate-400 mt-1">Planned Admissions</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="text-2xl font-bold text-slate-300">
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
+            <div className={`text-2xl font-bold ${neutralText}`}>
               {stats.avg_length_of_stay != null ? `${stats.avg_length_of_stay}d` : '—'}
             </div>
             <div className="text-xs text-slate-400 mt-1">Avg Length of Stay</div>
@@ -433,11 +441,11 @@ export default function HospitalAdmissions() {
                     return (
                       <div key={a.id}
                         className={clsx('rounded-xl p-4 transition-all', typeStyles(a.admission_type))}
-                        style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        style={{ background: tileBg, border: tileBorder }}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="text-white font-semibold">{a.resident_name}</span>
+                              <span className={`${neutralText} font-semibold`}>{a.resident_name}</span>
                               {typeBadge(a.admission_type)}
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
@@ -454,7 +462,7 @@ export default function HospitalAdmissions() {
                                 {days === 0 ? 'Today' : `${days} day${days !== 1 ? 's' : ''}`}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-300 mt-2 line-clamp-2">{a.admission_reason}</p>
+                            <p className={`text-sm ${secondaryText} mt-2 line-clamp-2`}>{a.admission_reason}</p>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <Button variant="secondary" size="sm"
@@ -472,11 +480,11 @@ export default function HospitalAdmissions() {
                           <div className="mt-3 pt-3 border-t border-white/8 grid grid-cols-2 gap-3 text-sm">
                             <div>
                               <span className="text-slate-500 text-xs uppercase tracking-wide">Logged by</span>
-                              <p className="text-slate-300 mt-0.5">{a.logged_by_name}</p>
+                              <p className={`${secondaryText} mt-0.5`}>{a.logged_by_name}</p>
                             </div>
                             <div>
                               <span className="text-slate-500 text-xs uppercase tracking-wide">Follow-up</span>
-                              <p className="text-slate-300 mt-0.5">
+                              <p className={`${secondaryText} mt-0.5`}>
                                 {a.follow_up_required ? (a.follow_up_notes || 'Required') : 'Not required'}
                               </p>
                             </div>
@@ -510,10 +518,10 @@ export default function HospitalAdmissions() {
               {filteredHistory.length === 0 ? (
                 <EmptyState title="No admissions found" description="Try adjusting your filters" />
               ) : (
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="rounded-xl overflow-hidden" style={{ border: tileBorder }}>
                   <table className="w-full">
                     <thead>
-                      <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <tr style={{ background: rowBg, borderBottom: rowBorder }}>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Resident</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Hospital</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Admitted</th>
@@ -526,24 +534,24 @@ export default function HospitalAdmissions() {
                     <tbody>
                       {filteredHistory.map((a, idx) => (
                         <tr key={a.id}
-                          style={{ borderBottom: idx < filteredHistory.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
-                          className="hover:bg-white/3 transition-colors">
-                          <td className="px-4 py-3 text-sm text-white font-medium">{a.resident_name}</td>
-                          <td className="px-4 py-3 text-sm text-slate-300">
+                          style={{ borderBottom: idx < filteredHistory.length - 1 ? rowBorder : 'none' }}
+                          className={theme === 'dark' ? 'hover:bg-white/3 transition-colors' : 'hover:bg-slate-50 transition-colors'}>
+                          <td className={`px-4 py-3 text-sm ${neutralText} font-medium`}>{a.resident_name}</td>
+                          <td className={`px-4 py-3 text-sm ${secondaryText}`}>
                             <div>{a.hospital_name}</div>
                             {a.ward && <div className="text-xs text-slate-500">{a.ward}</div>}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-300">
+                          <td className={`px-4 py-3 text-sm ${secondaryText}`}>
                             {format(parseISO(a.admission_date), 'd MMM yyyy')}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-300">
+                          <td className={`px-4 py-3 text-sm ${secondaryText}`}>
                             {a.discharge_date
                               ? format(parseISO(a.discharge_date), 'd MMM yyyy')
                               : <span className="text-slate-500">—</span>}
                           </td>
                           <td className="px-4 py-3">{typeBadge(a.admission_type)}</td>
                           <td className="px-4 py-3">{statusBadge(a.status)}</td>
-                          <td className="px-4 py-3 text-sm text-slate-300">{duration(a)}</td>
+                          <td className={`px-4 py-3 text-sm ${secondaryText}`}>{duration(a)}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -5,6 +5,7 @@ import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useTheme } from '../../context/ThemeContext'
 
 const INPUT_CATEGORIES = [
   { value: 'drink', label: 'Drink / Oral fluids' },
@@ -30,6 +31,10 @@ const defaultForm = {
 }
 
 export default function FluidBalance() {
+  const { theme } = useTheme()
+  const pageBg = theme === 'dark' ? '#0d1526' : '#f8f7fb'
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [records, setRecords] = useState<any[]>([])
   const [summary, setSummary] = useState({ totalInput: 0, totalOutput: 0, balance: 0 })
@@ -99,7 +104,7 @@ export default function FluidBalance() {
   const balancePositive = summary.balance >= 0
 
   return (
-    <div className="p-6 max-w-5xl mx-auto" style={{ background: '#0d1526', minHeight: '100vh' }}>
+    <div className="p-6 max-w-5xl mx-auto" style={{ background: pageBg, minHeight: '100vh' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -136,15 +141,15 @@ export default function FluidBalance() {
       {/* Summary bar */}
       {selectedSU && (
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             <div className="text-2xl font-bold text-blue-400">{summary.totalInput} ml</div>
             <div className="text-xs text-slate-400 mt-1">Total Input</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             <div className="text-2xl font-bold text-amber-400">{summary.totalOutput} ml</div>
             <div className="text-xs text-slate-400 mt-1">Total Output</div>
           </div>
-          <div className="rounded-xl p-4 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             <div className={clsx('text-2xl font-bold', balancePositive ? 'text-emerald-400' : 'text-rose-400')}>
               {summary.balance >= 0 ? '+' : ''}{summary.balance} ml
             </div>
@@ -163,17 +168,17 @@ export default function FluidBalance() {
 
       {/* Records table */}
       {!selectedSU ? (
-        <div className="rounded-xl p-10 text-center" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="rounded-xl p-10 text-center" style={{ background: tileBg, border: tileBorder }}>
           <Droplets className="w-10 h-10 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400">Select a resident above to view their fluid balance chart</p>
         </div>
       ) : loading ? <Spinner /> : records.length === 0 ? (
         <EmptyState title="No records for this date" description="Use 'Add Record' to log fluid intake or output" />
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: tileBg, border: tileBorder }}>
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <tr style={{ borderBottom: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)' }}>
                 <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Time</th>
                 <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</th>
                 <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
@@ -187,10 +192,10 @@ export default function FluidBalance() {
               {records.map((r: any, i: number) => (
                 <tr
                   key={r.id}
-                  style={{ borderBottom: i < records.length - 1 ? '1px solid rgba(255,255,255,0.04)' : undefined }}
-                  className="hover:bg-white/[0.02] transition-colors"
+                  style={{ borderBottom: i < records.length - 1 ? (theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(15,23,42,0.06)') : undefined }}
+                  className={theme === 'dark' ? 'hover:bg-white/[0.02] transition-colors' : 'hover:bg-slate-50 transition-colors'}
                 >
-                  <td className="p-3 text-white font-mono">{r.record_time ? r.record_time.slice(0, 5) : '—'}</td>
+                  <td className={`p-3 font-mono ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.record_time ? r.record_time.slice(0, 5) : '—'}</td>
                   <td className="p-3">
                     <span className={clsx(
                       'px-2.5 py-0.5 rounded-full text-xs font-semibold',
@@ -201,8 +206,8 @@ export default function FluidBalance() {
                       {r.type === 'input' ? 'Input' : 'Output'}
                     </span>
                   </td>
-                  <td className="p-3 text-slate-300 capitalize">{r.category?.replace(/_/g, ' ')}</td>
-                  <td className="p-3 text-right font-semibold text-white">{r.amount_ml} ml</td>
+                  <td className={`p-3 capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.category?.replace(/_/g, ' ')}</td>
+                  <td className={`p-3 text-right font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.amount_ml} ml</td>
                   <td className="p-3 text-slate-400 max-w-xs truncate">{r.notes || '—'}</td>
                   <td className="p-3 text-slate-500 text-xs">{r.recorded_by_name}</td>
                   <td className="p-3">

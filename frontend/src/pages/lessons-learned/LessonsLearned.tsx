@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Lesson {
   id: string;
@@ -35,6 +36,14 @@ const INCIDENT_TYPES = ['Fall', 'Medication Error', 'Safeguarding', 'Complaint',
 
 export default function LessonsLearned() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, open: 0, in_progress: 0, closed: 0 });
   const [loading, setLoading] = useState(true);
@@ -116,7 +125,7 @@ export default function LessonsLearned() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
@@ -128,12 +137,12 @@ export default function LessonsLearned() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: stats.total, color: 'text-white' },
+          { label: 'Total', value: stats.total, color: neutralText },
           { label: 'Open', value: stats.open, color: 'text-red-400' },
           { label: 'In Progress', value: stats.in_progress, color: 'text-yellow-400' },
           { label: 'Closed', value: stats.closed, color: 'text-green-400' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
             <div className="text-xs text-gray-400 mt-1">{s.label}</div>
           </div>
@@ -145,32 +154,32 @@ export default function LessonsLearned() {
         {[['', 'All'], ['open', 'Open'], ['in_progress', 'In Progress'], ['closed', 'Closed']].map(([v, l]) => (
           <button key={v} onClick={() => setFilterStatus(v)}
             className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === v ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: filterStatus === v ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>{l}</button>
+            style={{ background: filterStatus === v ? '#e8b130' : btnGhostBg }}>{l}</button>
         ))}
       </div>
 
       {/* Add form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">Record Lesson Learned</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>Record Lesson Learned</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Title</label>
               <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} required
-                placeholder="Brief summary of the lesson" className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                placeholder="Brief summary of the lesson" className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Incident Type</label>
               <select value={form.incident_type} onChange={e => setForm(p => ({ ...p, incident_type: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Date of Incident</label>
               <input type="date" value={form.date_of_incident} onChange={e => setForm(p => ({ ...p, date_of_incident: e.target.value }))} required
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             {[
               { key: 'description', label: 'What Happened', rows: 2 },
@@ -181,18 +190,18 @@ export default function LessonsLearned() {
               <div key={f.key} className="md:col-span-2">
                 <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
                 <textarea value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} rows={f.rows}
-                  className="w-full px-3 py-2 rounded-lg text-white text-sm resize-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
               </div>
             ))}
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Action Owner</label>
               <input value={form.action_owner} onChange={e => setForm(p => ({ ...p, action_owner: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Priority</label>
               <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
@@ -200,7 +209,7 @@ export default function LessonsLearned() {
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Save</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -214,12 +223,12 @@ export default function LessonsLearned() {
       ) : (
         <div className="space-y-3">
           {lessons.map(l => (
-            <div key={l.id} className="rounded-xl overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={l.id} className="rounded-xl overflow-hidden" style={{ background: tileBg, border: tileBorder }}>
               <div className="p-4 cursor-pointer" onClick={() => setExpanded(expanded === String(l.id) ? null : String(l.id))}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-medium text-sm">{l.title}</span>
+                      <span className={`${neutralText} font-medium text-sm`}>{l.title}</span>
                       {statusBadge(l.action_completed ? 'closed' : 'open')}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">

@@ -3,6 +3,7 @@ import { Activity, Plus, ChevronRight, TrendingDown, TrendingUp, Minus, AlertCir
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO } from 'date-fns'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -309,18 +310,23 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
   onClose: () => void
   onAddFollowUp: (location: string, suId: string) => void
 }) {
+  const { theme } = useTheme()
   const { latest, history } = wound
   const label = (v: string, opts: { value: string; label: string }[]) => opts.find(o => o.value === v)?.label || v
+  const summaryBg = theme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'
+  const summaryBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
+  const historyItemBg = theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#f8fafc'
+  const secondaryText = theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
 
   return (
     <Modal open={true} onClose={onClose} title={`Wound: ${label(latest.wound_location, LOCATIONS)}`} size="xl">
       <div className="space-y-5">
 
         {/* Latest summary */}
-        <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="rounded-xl p-4 space-y-3" style={{ background: summaryBg, border: summaryBorder }}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-white font-semibold">{latest.su_name}</p>
+              <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{latest.su_name}</p>
               <p className="text-slate-400 text-xs">{label(latest.wound_type, WOUND_TYPES)} · Stage: {label(latest.stage, STAGES)}</p>
             </div>
             <span className={clsx('badge rounded-full px-3 py-1 text-xs font-semibold flex items-center gap-1', healingBadgeClass(latest.healing_status))}>
@@ -331,7 +337,7 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
           {history.length >= 2 && (() => {
             const trend = sizeTrend(history[1], history[0])
             return trend ? (
-              <div className="flex items-center gap-2 text-xs text-slate-300 bg-white/5 rounded-lg px-3 py-2">
+              <div className={`flex items-center gap-2 text-xs ${secondaryText} bg-white/5 rounded-lg px-3 py-2`}>
                 <Activity className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                 <span className="font-medium text-amber-400">Size trend:</span> {trend}
               </div>
@@ -343,10 +349,10 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
             {latest.exudate_amount && <div className="card p-2 text-center"><div className="font-bold text-white capitalize">{latest.exudate_amount}</div><div className="text-slate-500">Exudate</div></div>}
             {latest.next_review_date && <div className="card p-2 text-center"><div className="font-bold text-white">{format(parseISO(latest.next_review_date), 'dd MMM yy')}</div><div className="text-slate-500">Next review</div></div>}
           </div>
-          {latest.dressing_used && <p className="text-xs text-slate-300"><span className="text-slate-500">Dressing:</span> {latest.dressing_used} {latest.dressing_frequency ? `· ${latest.dressing_frequency}` : ''}</p>}
-          {latest.wound_bed && <p className="text-xs text-slate-300"><span className="text-slate-500">Wound bed:</span> {latest.wound_bed}</p>}
-          {latest.surrounding_skin && <p className="text-xs text-slate-300"><span className="text-slate-500">Surrounding skin:</span> {latest.surrounding_skin}</p>}
-          {latest.notes && <p className="text-xs text-slate-300"><span className="text-slate-500">Notes:</span> {latest.notes}</p>}
+          {latest.dressing_used && <p className={`text-xs ${secondaryText}`}><span className="text-slate-500">Dressing:</span> {latest.dressing_used} {latest.dressing_frequency ? `· ${latest.dressing_frequency}` : ''}</p>}
+          {latest.wound_bed && <p className={`text-xs ${secondaryText}`}><span className="text-slate-500">Wound bed:</span> {latest.wound_bed}</p>}
+          {latest.surrounding_skin && <p className={`text-xs ${secondaryText}`}><span className="text-slate-500">Surrounding skin:</span> {latest.surrounding_skin}</p>}
+          {latest.notes && <p className={`text-xs ${secondaryText}`}><span className="text-slate-500">Notes:</span> {latest.notes}</p>}
         </div>
 
         {/* Assessment history timeline */}
@@ -355,11 +361,11 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
           <div className="space-y-3">
             {history.map((a, i) => (
               <div key={a.id} className={clsx('rounded-xl p-3', i === 0 ? 'border-l-2 border-amber-500/60' : 'border-l-2 border-white/10')}
-                style={{ background: 'rgba(255,255,255,0.03)', border: i === 0 ? undefined : '1px solid rgba(255,255,255,0.05)' }}>
+                style={{ background: historyItemBg, border: i === 0 ? undefined : summaryBorder }}>
                 <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
                   <div className="flex items-center gap-2">
                     {i === 0 && <span className="text-xs text-amber-400 font-semibold">Latest</span>}
-                    <span className="text-xs text-white font-medium">{format(parseISO(a.assessment_date), 'dd MMM yyyy')}</span>
+                    <span className={`text-xs font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{format(parseISO(a.assessment_date), 'dd MMM yyyy')}</span>
                   </div>
                   <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1', healingBadgeClass(a.healing_status))}>
                     <HealingIcon status={a.healing_status} />
@@ -395,6 +401,7 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
 
 export default function WoundCare() {
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [assessments, setAssessments] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -478,14 +485,14 @@ export default function WoundCare() {
             return (
               <div key={i}
                 className="rounded-xl p-4 cursor-pointer hover:border-amber-500/30 transition-all group"
-                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+                style={{ background: theme === 'dark' ? '#111111' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)' }}
                 onClick={() => setSelectedWound(w)}>
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-semibold text-white text-sm">{a.su_name}</span>
+                      <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{a.su_name}</span>
                       <span className="text-xs text-slate-500">·</span>
-                      <span className="text-xs text-slate-300">{label(a.wound_location, LOCATIONS)}</span>
+                      <span className={`text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{label(a.wound_location, LOCATIONS)}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs text-slate-400 bg-white/5 px-2 py-0.5 rounded">{label(a.wound_type, WOUND_TYPES)}</span>

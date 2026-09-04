@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Absence {
   id: number;
@@ -33,6 +34,14 @@ const REASONS = ['Illness', 'Injury', 'Mental Health', 'Family Emergency', 'Bere
 
 export default function StaffAbsence() {
   const { user, isRole } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const canAmend = isRole(...PRIVILEGED_ROLES);
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [bradford, setBradford] = useState<Bradford[]>([]);
@@ -110,7 +119,7 @@ export default function StaffAbsence() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
@@ -127,7 +136,7 @@ export default function StaffAbsence() {
           { label: 'Total Days Lost', value: stats.total_days, icon: Calendar, color: 'text-yellow-400' },
           { label: 'Avg Duration', value: `${(stats.avg_days || 0).toFixed(1)}d`, icon: TrendingUp, color: 'text-blue-400' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
             <div className="text-xs text-gray-400 mt-1">{s.label}</div>
           </div>
@@ -140,14 +149,14 @@ export default function StaffAbsence() {
           {(['absences', 'bradford'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${tab === t ? 'text-white' : 'text-gray-400'}`}
-              style={{ background: tab === t ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
+              style={{ background: tab === t ? '#e8b130' : btnGhostBg }}>
               {t === 'bradford' ? 'Bradford Factor' : 'Absences'}
             </button>
           ))}
         </div>
         {tab === 'absences' && (
           <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            className={`px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
             <option value="">All staff</option>
             {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
           </select>
@@ -157,13 +166,13 @@ export default function StaffAbsence() {
       {/* Add form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">Record Absence</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>Record Absence</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Staff Member</label>
               <select value={form.staff_id} onChange={e => setForm(p => ({ ...p, staff_id: e.target.value }))} required
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 <option value="">Select staff...</option>
                 {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
               </select>
@@ -171,35 +180,35 @@ export default function StaffAbsence() {
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Absence Type</label>
               <select value={form.absence_type} onChange={e => setForm(p => ({ ...p, absence_type: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {ABSENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Start Date</label>
               <input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} required
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">End Date (leave blank if ongoing)</label>
               <input type="date" value={form.end_date} onChange={e => setForm(p => ({ ...p, end_date: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Reason</label>
               <select value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Notes</label>
               <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Save</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -213,10 +222,10 @@ export default function StaffAbsence() {
           {absences.length === 0 ? <div className="text-center text-gray-400 py-12">No absences recorded</div> : absences.map(a => (
             <div key={a.id} onClick={() => canAmend && setEditing(a)}
               className={`p-4 rounded-xl ${canAmend ? 'cursor-pointer hover:border-white/20' : ''}`}
-              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+              style={{ background: tileBg, border: tileBorder }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-white font-medium text-sm">{a.staff_name}</span>
+                  <span className={`${neutralText} font-medium text-sm`}>{a.staff_name}</span>
                   <span className="ml-2 px-2 py-0.5 rounded text-xs" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>{a.absence_type}</span>
                 </div>
                 {!a.absence_end && <span className="text-xs text-orange-400">Ongoing</span>}
@@ -239,9 +248,9 @@ export default function StaffAbsence() {
             <span className="text-red-400">● 400+ Critical</span>
           </div>
           {bradford.length === 0 ? <div className="text-center text-gray-400 py-12">No Bradford data available</div> : bradford.map(b => (
-            <div key={b.staff_id} className="flex items-center gap-4 p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={b.staff_id} className="flex items-center gap-4 p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex-1">
-                <div className="text-white text-sm font-medium">{b.staff_name}</div>
+                <div className={`${neutralText} text-sm font-medium`}>{b.staff_name}</div>
                 <div className="text-xs text-gray-400 mt-0.5">{b.spells} spell{b.spells !== 1 ? 's' : ''} · {b.total_days} days (last 52 weeks)</div>
               </div>
               <div className={`text-2xl font-bold ${bradfordColor(b.bradford_score)}`}>{b.bradford_score}</div>
@@ -259,6 +268,14 @@ export default function StaffAbsence() {
 }
 
 function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onClose: () => void; onSaved: () => void }) {
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [form, setForm] = useState({
     absence_type: Object.keys(ABSENCE_TYPE_MAP).find(k => ABSENCE_TYPE_MAP[k] === absence.absence_type) || 'Other',
     start_date: absence.absence_start ? absence.absence_start.slice(0, 10) : '',
@@ -291,40 +308,40 @@ function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onC
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+        className="w-full max-w-lg rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
         <div className="flex items-center justify-between">
-          <h3 className="text-white font-medium">Amend absence — {absence.staff_name}</h3>
+          <h3 className={`${neutralText} font-medium`}>Amend absence — {absence.staff_name}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={18} /></button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Absence Type</label>
             <select value={form.absence_type} onChange={e => set('absence_type', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
               {ABSENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Reason</label>
             <select value={form.reason} onChange={e => set('reason', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
               {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Start Date</label>
             <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1 block">End Date (leave blank if ongoing)</label>
             <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
           </div>
           <div className="md:col-span-2">
             <label className="text-xs text-gray-400 mb-1 block">Notes</label>
             <input value={form.notes} onChange={e => set('notes', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
           </div>
           <div className="md:col-span-2 flex items-center gap-2">
             <input type="checkbox" id="rtw" checked={form.return_completed} onChange={e => set('return_completed', e.target.checked)} />
@@ -335,7 +352,7 @@ function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onC
           <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60" style={{ background: '#e8b130' }}>
             {saving ? 'Saving...' : 'Save changes'}
           </button>
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
         </div>
       </motion.div>
     </div>

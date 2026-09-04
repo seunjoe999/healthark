@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, CheckCircle, AlertCircle, XCircle, ClipboardList, Star } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Domain {
   key: string;
@@ -88,6 +89,17 @@ const SCORES = [
 ];
 
 export default function CQCInspection() {
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.1)';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const secondaryText = theme === 'dark' ? 'text-gray-200' : 'text-gray-700';
+  const secondaryText2 = theme === 'dark' ? 'text-gray-300' : 'text-gray-600';
+  const dividerColor = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)';
   const [activeDomain, setActiveDomain] = useState('safe');
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [showSummary, setShowSummary] = useState(false);
@@ -131,18 +143,18 @@ export default function CQCInspection() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowSummary(!showSummary)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
-            style={{ background: showSummary ? 'rgba(255,255,255,0.06)' : '#e8b130' }}>
+          <button onClick={() => setShowSummary(!showSummary)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${showSummary ? neutralText : 'text-white'}`}
+            style={{ background: showSummary ? btnGhostBg : '#e8b130' }}>
             <Star size={16} /> {showSummary ? 'Hide Summary' : 'View Summary'}
           </button>
         </div>
       </div>
 
       {/* Progress */}
-      <div className="rounded-xl p-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
         <div className="flex justify-between text-sm mb-2">
           <span className="text-gray-400">Progress</span>
-          <span className="text-white font-medium">{answered}/{total} answered</span>
+          <span className={`${neutralText} font-medium`}>{answered}/{total} answered</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
           <motion.div className="h-full rounded-full" style={{ background: '#e8b130' }}
@@ -152,8 +164,8 @@ export default function CQCInspection() {
 
       {/* Summary */}
       {showSummary && (
-        <div className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">Overall Assessment</h3>
+        <div className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>Overall Assessment</h3>
           {overallScore() && (
             <div className={`p-3 rounded-lg border ${scoreInfo(overallScore())?.bg} ${scoreInfo(overallScore())?.border}`}>
               <span className={`font-bold text-lg ${scoreInfo(overallScore())?.color}`}>{scoreInfo(overallScore())?.label}</span>
@@ -176,7 +188,7 @@ export default function CQCInspection() {
               <div key={q.id} className="flex gap-2 text-sm">
                 <AlertCircle size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="text-gray-300">{q.text}</span>
+                  <span className={secondaryText2}>{q.text}</span>
                   {answers[q.id]?.evidence && <p className="text-xs text-gray-500 mt-0.5">{answers[q.id].evidence}</p>}
                 </div>
               </div>
@@ -193,7 +205,7 @@ export default function CQCInspection() {
           return (
             <button key={d.key} onClick={() => setActiveDomain(d.key)}
               className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium ${activeDomain === d.key ? 'text-white' : 'text-gray-400'}`}
-              style={{ background: activeDomain === d.key ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>
+              style={{ background: activeDomain === d.key ? '#e8b130' : btnGhostBg }}>
               {d.label}
               {info && <span className={`ml-1 text-xs ${info.color}`}>●</span>}
             </button>
@@ -202,19 +214,19 @@ export default function CQCInspection() {
       </div>
 
       {/* Domain questions */}
-      <div className="rounded-xl p-5 space-y-5" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="rounded-xl p-5 space-y-5" style={{ background: tileBg, border: tileBorder }}>
         <div>
-          <h3 className="text-white font-medium">{domain.label}</h3>
+          <h3 className={`${neutralText} font-medium`}>{domain.label}</h3>
           <p className="text-sm text-gray-400 mt-1">{domain.description}</p>
         </div>
         {domain.questions.map((q, i) => {
           const ans = answers[q.id] || { score: '', evidence: '' };
           return (
-            <div key={q.id} className="space-y-3 pb-5 border-b last:border-0 last:pb-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <div key={q.id} className="space-y-3 pb-5 border-b last:border-0 last:pb-0" style={{ borderColor: dividerColor }}>
               <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: '#9ca3af' }}>{i + 1}</span>
+                <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: btnGhostBg, color: '#9ca3af' }}>{i + 1}</span>
                 <div className="flex-1">
-                  <p className="text-sm text-gray-200">{q.text}</p>
+                  <p className={`text-sm ${secondaryText}`}>{q.text}</p>
                   <span className="text-xs text-gray-500">{q.category}</span>
                 </div>
                 {ans.score && scoreInfo(ans.score) && (
@@ -230,8 +242,8 @@ export default function CQCInspection() {
                 ))}
               </div>
               <input value={ans.evidence} onChange={e => setAnswer(q.id, 'evidence', e.target.value)}
-                placeholder="Evidence / notes (optional)" className="w-full px-3 py-2 rounded-lg text-white text-sm"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }} />
+                placeholder="Evidence / notes (optional)" className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`}
+                style={{ background: inputBg, border: inputBorder }} />
             </div>
           );
         })}

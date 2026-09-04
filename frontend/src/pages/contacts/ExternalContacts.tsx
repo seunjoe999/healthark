@@ -4,6 +4,7 @@ import { Phone, Plus, Mail, Building2, Search, RefreshCw, Edit2, Trash2 } from '
 import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Contact {
   id: number;
@@ -22,6 +23,14 @@ const EMPTY_FORM = { name: '', organisation: '', role: '', category: 'profession
 
 export default function ExternalContacts() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -101,7 +110,7 @@ export default function ExternalContacts() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
           <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowForm(true); }}
@@ -117,27 +126,27 @@ export default function ExternalContacts() {
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contacts..."
-              className="w-full pl-9 pr-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              className={`w-full pl-9 pr-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
           </div>
-          <button type="submit" className="px-4 py-2 rounded-lg text-sm text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>Search</button>
+          <button type="submit" className="px-4 py-2 rounded-lg text-sm text-white" style={{ background: btnGhostBg }}>Search</button>
         </form>
       </div>
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setFilterCategory('')}
           className={`px-3 py-1.5 rounded-lg text-sm ${filterCategory === '' ? 'text-white' : 'text-gray-400'}`}
-          style={{ background: filterCategory === '' ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>All</button>
+          style={{ background: filterCategory === '' ? '#e8b130' : btnGhostBg }}>All</button>
         {CATEGORIES.map(c => (
           <button key={c} onClick={() => setFilterCategory(c)}
             className={`px-3 py-1.5 rounded-lg text-sm capitalize ${filterCategory === c ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: filterCategory === c ? '#e8b130' : 'rgba(255,255,255,0.06)' }}>{c}</button>
+            style={{ background: filterCategory === c ? '#e8b130' : btnGhostBg }}>{c}</button>
         ))}
       </div>
 
       {/* Add/edit form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 space-y-4" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 className="text-white font-medium">{editId ? 'Edit Contact' : 'Add Contact'}</h3>
+          className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
+          <h3 className={`${neutralText} font-medium`}>{editId ? 'Edit Contact' : 'Add Contact'}</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { key: 'name', label: 'Full Name', required: true, type: 'text' },
@@ -150,29 +159,29 @@ export default function ExternalContacts() {
                 <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
                 <input type={f.type} value={(form as any)[f.key]} required={f.required}
                   onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
               </div>
             ))}
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Category</label>
               <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
                 {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Address</label>
               <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-400 mb-1 block">Notes</label>
               <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
-                className="w-full px-3 py-2 rounded-lg text-white text-sm resize-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>{editId ? 'Update' : 'Add'}</button>
-              <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
@@ -190,11 +199,11 @@ export default function ExternalContacts() {
               <h3 className="text-sm font-medium text-gray-400 capitalize mb-3">{cat} ({items.length})</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {items.map(c => (
-                  <div key={c.id} className="p-4 rounded-xl" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div key={c.id} className="p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-medium text-sm">{c.name}</span>
+                          <span className={`${neutralText} font-medium text-sm`}>{c.name}</span>
                           <span className={`text-xs px-2 py-0.5 rounded capitalize ${categoryColor(c.category)}`}>{c.category}</span>
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">{c.role}</div>
@@ -218,7 +227,7 @@ export default function ExternalContacts() {
                         {c.notes && <p className="text-xs text-gray-500 mt-1">{c.notes}</p>}
                       </div>
                       <div className="flex gap-1 ml-2">
-                        <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-white" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
                           <Edit2 size={12} />
                         </button>
                         <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10">

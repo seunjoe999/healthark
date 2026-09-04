@@ -48,6 +48,8 @@ const cardVariants = {
 
 /* ── Compliance ring ─────────────────────────────────────────────────────────*/
 function ComplianceRing({ score }: { score: number }) {
+  const { theme } = useTheme()
+  const trackStroke = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)'
   const r = 36
   const circ = 2 * Math.PI * r
   const offset = circ - (score / 100) * circ
@@ -55,7 +57,7 @@ function ComplianceRing({ score }: { score: number }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2">
       <svg width="100" height="100" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke={trackStroke} strokeWidth="8" />
         <circle
           cx="50" cy="50" r={r}
           fill="none"
@@ -78,6 +80,8 @@ function ComplianceRing({ score }: { score: number }) {
 
 /* ── Sparkline ───────────────────────────────────────────────────────────────*/
 function Sparkline({ data }: { data: Record<string, number> }) {
+  const { theme } = useTheme()
+  const barTrackBg = theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.12)'
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i)
     return { label: format(d, 'EEE'), key: format(d, 'yyyy-MM-dd') }
@@ -100,7 +104,7 @@ function Sparkline({ data }: { data: Record<string, number> }) {
                 className="w-full rounded-sm transition-all duration-700"
                 style={{
                   height: `${Math.max(pct, 6)}%`,
-                  background: pct > 60 ? '#4ade80' : pct > 30 ? '#e8b130' : 'rgba(255,255,255,0.15)',
+                  background: pct > 60 ? '#4ade80' : pct > 30 ? '#e8b130' : barTrackBg,
                   minHeight: '4px',
                 }}
               />
@@ -118,6 +122,12 @@ export default function Dashboard() {
   const { user, isRole } = useAuth()
   const { theme } = useTheme()
   const panelBg = theme === 'dark' ? '#1a1a1a' : '#ffffff'
+  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
+  const tileBorderColor = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)'
+  const tileHoverBg = theme === 'dark' ? '#161616' : '#f8fafc'
+  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900'
+  const softPanelBg = theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#f8fafc'
   const [homes, setHomes]               = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData]                 = useState<any>(null)
@@ -413,11 +423,11 @@ export default function Dashboard() {
                       onClick={() => setShowBirthdays(s => !s)}
                       className="w-full h-full flex flex-col items-center justify-center rounded-2xl p-4 lg:p-6 text-center transition-all duration-200 min-h-[140px] lg:min-h-[180px]"
                       style={{
-                        background: '#111111',
-                        border: `1px solid ${showBirthdays ? card.color + '40' : 'rgba(255,255,255,0.06)'}`,
+                        background: tileBg,
+                        border: `1px solid ${showBirthdays ? card.color + '40' : tileBorderColor}`,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = card.color + '40'; e.currentTarget.style.background = '#161616' }}
-                      onMouseLeave={e => { if (!showBirthdays) { e.currentTarget.style.background = '#111111'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)' } }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = card.color + '40'; e.currentTarget.style.background = tileHoverBg }}
+                      onMouseLeave={e => { if (!showBirthdays) { e.currentTarget.style.background = tileBg; e.currentTarget.style.borderColor = tileBorderColor } }}
                     >
                       <card.icon size={22} style={{ color: card.color }} className="mb-3 opacity-80" />
                       <p className="text-xs font-semibold leading-snug mb-3" style={{ color: card.color }}>
@@ -468,9 +478,9 @@ export default function Dashboard() {
                   <Link
                     to={card.to as string}
                     className="flex flex-col items-center justify-center rounded-2xl p-4 lg:p-6 text-center transition-all duration-200 min-h-[140px] lg:min-h-[180px] h-full"
-                    style={{ background: '#111111', border: `1px solid ${card.urgent ? card.color + '30' : 'rgba(255,255,255,0.06)'}` }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#161616'; e.currentTarget.style.borderColor = card.color + '40' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.borderColor = card.urgent ? card.color + '30' : 'rgba(255,255,255,0.06)' }}
+                    style={{ background: tileBg, border: `1px solid ${card.urgent ? card.color + '30' : tileBorderColor}` }}
+                    onMouseEnter={e => { e.currentTarget.style.background = tileHoverBg; e.currentTarget.style.borderColor = card.color + '40' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = tileBg; e.currentTarget.style.borderColor = card.urgent ? card.color + '30' : tileBorderColor }}
                   >
                     <card.icon size={22} style={{ color: card.color }} className="mb-3 opacity-80" />
                     <p className="text-xs font-semibold leading-snug mb-3" style={{ color: card.color }}>
@@ -497,12 +507,12 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.45, duration: 0.4 }}
               className="rounded-2xl p-5 mb-6"
-              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+              style={{ background: tileBg, border: tileBorder }}
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <CalendarClock size={16} style={{ color: '#e8b130' }} />
-                  <p className="text-sm font-bold text-white">Due Today</p>
+                  <p className={`text-sm font-bold ${neutralText}`}>Due Today</p>
                 </div>
                 <Link to="/tasks" className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
                   View all <ChevronRight size={12} />
@@ -512,16 +522,16 @@ export default function Dashboard() {
                 {todaysAppointments.map((a: any) => (
                   <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.08)' }}>
                     <CalendarClock size={14} className="flex-shrink-0" style={{ color: '#60a5fa' }} />
-                    <p className="text-sm text-white flex-1 truncate">{a.title}{a.su_name ? ` — ${a.su_name}` : ''}</p>
+                    <p className={`text-sm ${neutralText} flex-1 truncate`}>{a.title}{a.su_name ? ` — ${a.su_name}` : ''}</p>
                     {a.start_time && <span className="text-xs" style={{ color: '#60a5fa' }}>{a.start_time.slice(0, 5)}</span>}
                   </div>
                 ))}
                 {todaysTasks.slice(0, 6).map((t: any) => {
                   const overdue = isTimePastDue(t.due_time)
                   return (
-                    <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: overdue ? 'rgba(244,63,94,0.1)' : 'rgba(255,255,255,0.03)' }}>
+                    <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: overdue ? 'rgba(244,63,94,0.1)' : softPanelBg }}>
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: overdue ? '#f43f5e' : '#fbbf24' }} />
-                      <p className="text-sm text-white flex-1 truncate">{t.title}</p>
+                      <p className={`text-sm ${neutralText} flex-1 truncate`}>{t.title}</p>
                       {overdue && <span className="text-xs font-semibold" style={{ color: '#f43f5e' }}>Overdue</span>}
                       {t.due_time && <span className="text-xs text-slate-500">{t.due_time.slice(0, 5)}</span>}
                     </div>
@@ -547,11 +557,11 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
               {/* LEFT — Recent Alerts */}
-              <div className="rounded-2xl p-5" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="rounded-2xl p-5" style={{ background: tileBg, border: tileBorder }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Bell size={16} style={{ color: '#fbbf24' }} />
-                    <p className="text-sm font-bold text-white">Recent Alerts</p>
+                    <p className={`text-sm font-bold ${neutralText}`}>Recent Alerts</p>
                     {newStats.unreadAlerts > 0 && (
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                         style={{ background: '#fbbf2420', color: '#fbbf24' }}>
@@ -574,11 +584,11 @@ export default function Dashboard() {
                     {newStats.alertsList.map((alert: any, i: number) => (
                       <div key={alert.id || i}
                         className="flex items-start gap-3 p-3 rounded-xl transition-colors"
-                        style={{ background: 'rgba(255,255,255,0.03)' }}>
+                        style={{ background: softPanelBg }}>
                         <div className="mt-0.5 w-2 h-2 rounded-full flex-shrink-0 mt-2"
                           style={{ background: '#fbbf24' }} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white leading-snug truncate">
+                          <p className={`text-sm ${neutralText} leading-snug truncate`}>
                             {alert.message || alert.title || alert.description || 'Alert'}
                           </p>
                           {(alert.created_at || alert.timestamp) && (
@@ -597,7 +607,7 @@ export default function Dashboard() {
               <div className="flex flex-col gap-4">
 
                 {/* Sparkline + optional compliance ring */}
-                <div className="rounded-2xl p-5 flex gap-4 items-end" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="rounded-2xl p-5 flex gap-4 items-end" style={{ background: tileBg, border: tileBorder }}>
                   <div className="flex-1">
                     <Sparkline data={newStats.dailyRecordsByDay} />
                   </div>
@@ -607,10 +617,10 @@ export default function Dashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="rounded-2xl p-5" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="rounded-2xl p-5" style={{ background: tileBg, border: tileBorder }}>
                   <div className="flex items-center gap-2 mb-4">
                     <Zap size={16} style={{ color: '#e8b130' }} />
-                    <p className="text-sm font-bold text-white">Quick Actions</p>
+                    <p className={`text-sm font-bold ${neutralText}`}>Quick Actions</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {[
