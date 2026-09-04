@@ -312,6 +312,51 @@
   .app-shell.theme-dark .hover\:bg-amber-100:hover { background-color: rgba(245,158,11,0.12)  !important; }
   .app-shell.theme-dark .hover\:bg-purple-100:hover { background-color: rgba(168,85,247,0.12)  !important; }
 
+/* Light-theme compensation for "frosted glass on black" utility combos
+   (bg-white/N + border-white/N) used across many page-level cards and the
+   shared Button/Modal components — those were authored assuming the old
+   permanent dark backdrop. In light mode they'd render as near-invisible
+   white-on-white; tint them dark instead so the same translucency reads
+   correctly against the light page background. */
+.app-shell:not(.theme-dark) .bg-white\/5 { background-color: rgba(15,23,42,0.035) !important; }
+.app-shell:not(.theme-dark) .bg-white\/8 { background-color: rgba(15,23,42,0.05)  !important; }
+.app-shell:not(.theme-dark) .bg-white\/10 { background-color: rgba(15,23,42,0.06) !important; }
+.app-shell:not(.theme-dark) .bg-white\/12 { background-color: rgba(15,23,42,0.07) !important; }
+.app-shell:not(.theme-dark) .bg-white\/15 { background-color: rgba(15,23,42,0.08) !important; }
+.app-shell:not(.theme-dark) .border-white\/10 { border-color: rgba(15,23,42,0.12) !important; }
+.app-shell:not(.theme-dark) .border-white\/12 { border-color: rgba(15,23,42,0.12) !important; }
+.app-shell:not(.theme-dark) .border-white\/15 { border-color: rgba(15,23,42,0.15) !important; }
+.app-shell:not(.theme-dark) .border-white\/20 { border-color: rgba(15,23,42,0.18) !important; }
+.app-shell:not(.theme-dark) .hover\:bg-white\/5:hover { background-color: rgba(15,23,42,0.05) !important; }
+.app-shell:not(.theme-dark) .hover\:bg-white\/8:hover { background-color: rgba(15,23,42,0.06) !important; }
+.app-shell:not(.theme-dark) .hover\:bg-white\/10:hover { background-color: rgba(15,23,42,0.07) !important; }
+.app-shell:not(.theme-dark) .hover\:bg-white\/12:hover { background-color: rgba(15,23,42,0.08) !important; }
+
+/* Several pages hand-roll the same "frosted glass" look as an ad-hoc
+   bg-white/N div instead of the shared .card class — compensate text-white
+   /text-slate-300 content nested (at any depth) inside those too. */
+.app-shell:not(.theme-dark) [class*="bg-white/"].text-white,
+.app-shell:not(.theme-dark) [class*="bg-white/"] .text-white { color: #0f172a !important; }
+.app-shell:not(.theme-dark) [class*="bg-white/"].text-slate-300,
+.app-shell:not(.theme-dark) [class*="bg-white/"] .text-slate-300 { color: #475569 !important; }
+
+/* The shared .card class (used almost everywhere) is itself hardcoded to a
+   dark #111111 background in @layer components above — that's a permanent
+   style, not tied to the theme toggle. Override it for light mode, and
+   compensate the text-white/text-slate-300 content that assumed a dark
+   card background. */
+.app-shell:not(.theme-dark) .card {
+  background: #ffffff !important;
+  border: 1px solid rgba(15,23,42,0.08) !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.06) !important;
+}
+.app-shell:not(.theme-dark) .card-hover:hover {
+  border-color: rgba(232,177,48,0.5) !important;
+  box-shadow: 0 4px 12px rgba(15,23,42,0.08) !important;
+}
+.app-shell:not(.theme-dark) .card .text-white { color: #0f172a !important; }
+.app-shell:not(.theme-dark) .card .text-slate-300 { color: #475569 !important; }
+
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes slideInLeft { 0% { opacity: 0; transform: translateX(-12px); } 100% { opacity: 1; transform: translateX(0); } }

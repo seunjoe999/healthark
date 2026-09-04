@@ -4,7 +4,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { useTaskReminders } from '../../hooks/useTaskReminders'
-import { useAppTheme, type AppTheme } from '../../hooks/useAppTheme'
+import { useTheme } from '../../context/ThemeContext'
+import type { AppTheme } from '../../context/ThemeContext'
 import api from '../../api'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -487,7 +488,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [clockedIn, setClockedIn] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useAppTheme()
+  const { theme, toggleTheme } = useTheme()
   useTaskReminders(!!user)
 
   // Managers/admins don't clock in via QR, so they aren't gated on shift status.

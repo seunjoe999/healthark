@@ -2,6 +2,7 @@ import React, { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, SelectHTML
 import { Loader2, AlertTriangle, CheckCircle, Info, X, ChevronDown } from 'lucide-react'
 import clsx from 'clsx'
 import SpeechButtonComponent from './SpeechButton'
+import { useTheme } from '../../context/ThemeContext'
 
 // ── Button ────────────────────────────────────────────────────────
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,13 +13,22 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = 'primary', size = 'md', loading, icon, children, className, ...props }: ButtonProps) {
+  const { theme } = useTheme()
   const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed select-none'
-  const variants: Record<string, string> = {
+  const variants: Record<string, string> = theme === 'dark' ? {
     primary: 'bg-white/8 hover:bg-white/12 text-white shadow-sm',
     secondary: 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/15 shadow-sm',
     gold: 'text-slate-900 font-semibold shadow-sm',
     outline: 'bg-transparent hover:bg-white/5 text-slate-300 border border-white/20',
     ghost: 'bg-transparent hover:bg-white/8 text-slate-300',
+    danger: 'bg-rose-500 hover:bg-rose-600 text-white shadow-sm',
+    teal: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm',
+  } : {
+    primary: 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm',
+    secondary: 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-sm',
+    gold: 'text-slate-900 font-semibold shadow-sm',
+    outline: 'bg-transparent hover:bg-slate-50 text-slate-700 border border-slate-300',
+    ghost: 'bg-transparent hover:bg-slate-100 text-slate-600',
     danger: 'bg-rose-500 hover:bg-rose-600 text-white shadow-sm',
     teal: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm',
   }
@@ -209,17 +219,23 @@ export function AlertBanner({ type, message, onClose }: {
 export function Modal({ open, onClose, title, children, size = 'md' }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl'
 }) {
+  const { theme } = useTheme()
   if (!open) return null
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
+  const cardStyle = theme === 'dark'
+    ? { background: '#111', border: '1px solid rgba(232,177,48,0.2)' }
+    : { background: '#ffffff', border: '1px solid rgba(15,23,42,0.1)' }
+  const headerBorder = theme === 'dark' ? { borderBottom: '1px solid rgba(255,255,255,0.08)' } : { borderBottom: '1px solid rgba(15,23,42,0.08)' }
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-end sm:items-center justify-center p-0 sm:p-4">
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
         <div className={clsx('relative rounded-t-2xl sm:rounded-2xl shadow-modal w-full mx-0 sm:mx-4 max-h-[92vh] flex flex-col animate-slide-up', sizes[size])}
-          style={{ background: '#111', border: '1px solid rgba(232,177,48,0.2)' }}>
-          <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <h2 className="text-base font-semibold text-white">{title}</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+          style={cardStyle}>
+          <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={headerBorder}>
+            <h2 className={clsx('text-base font-semibold', theme === 'dark' ? 'text-white' : 'text-slate-900')}>{title}</h2>
+            <button onClick={onClose} className={clsx('p-1 rounded-lg transition-colors',
+              theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100')}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -276,13 +292,17 @@ export { default as PhotoUpload } from './PhotoUpload'
 import { Printer } from 'lucide-react'
 
 export function PrintButton({ label = 'Print', onClick }: { label?: string; onClick?: () => void }) {
+  const { theme } = useTheme()
+  const restBg = theme === 'dark' ? '#1a1a1a' : '#fdf6e8'
+  const hoverBg = theme === 'dark' ? '#222' : '#faedcb'
+  const restBorder = theme === 'dark' ? 'rgba(232,177,48,0.3)' : 'rgba(200,145,20,0.35)'
   return (
     <button
       onClick={onClick || (() => window.print())}
       className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-      style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.3)', color: '#e8b130' }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#222'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#e8b130' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#1a1a1a'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(232,177,48,0.3)' }}
+      style={{ background: restBg, border: `1px solid ${restBorder}`, color: '#b9860f' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = hoverBg; (e.currentTarget as HTMLButtonElement).style.borderColor = '#e8b130' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = restBg; (e.currentTarget as HTMLButtonElement).style.borderColor = restBorder }}
     >
       <Printer className="w-4 h-4" />
       {label}

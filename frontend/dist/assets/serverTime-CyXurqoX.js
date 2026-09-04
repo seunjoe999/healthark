@@ -1,1 +1,0 @@
-import{a as r}from"./index-CGzOYwun.js";let e=null,n=null;async function a(){return e!==null?e:n||(n=r.get("/server-time").then(t=>(e=new Date(t.data.data.iso).getTime()-Date.now(),e)).catch(()=>0),n)}async function o(){const t=await a();return new Date(Date.now()+t)}async function c(){return(await o()).toISOString().split("T")[0]}export{c as g};

@@ -499,7 +499,7 @@ export default function ServiceUserProfile() {
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="font-bold text-white text-lg flex items-center gap-2">
+              <h2 className="font-bold text-slate-900 text-lg flex items-center gap-2">
                 <ClipboardList className="w-5 h-5" style={{ color: '#e8b130' }} /> Support Plan Reviews
               </h2>
               <p className="text-sm text-slate-400 mt-0.5">Review status for all support plans — {su.firstName} {su.lastName}</p>
