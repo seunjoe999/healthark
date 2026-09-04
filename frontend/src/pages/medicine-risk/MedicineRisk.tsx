@@ -26,21 +26,36 @@ const ADMIN_ROUTES = [
   { value: 'other',       label: 'Other' },
 ]
 
+// "My current risk level" — 4-tier scale with the client's exact wording for
+// each tier (voice-transcribed requirement, clinically meaningful — verbatim).
 const RISK_LEVELS = [
-  { value: 'low',    label: 'Low Risk' },
-  { value: 'medium', label: 'Medium Risk' },
-  { value: 'high',   label: 'High Risk' },
+  { value: 'low',      label: 'Low',      definition: 'I feel stable, have no intent or plan, and medication is supervised' },
+  { value: 'moderate', label: 'Moderate', definition: "I might be struggling emotionally but I'm willing to talk and engage" },
+  { value: 'high',     label: 'High',     definition: 'I feel at risk, might think about harming myself or have acted impulsively before' },
+  { value: 'critical', label: 'Critical', definition: 'I have a plan or strong intent and I could access medication without help' },
+]
+
+const REVIEW_FREQUENCIES = [
+  { value: '',             label: 'Not set — leave blank' },
+  { value: 'weekly',       label: 'Weekly' },
+  { value: 'fortnightly',  label: 'Fortnightly' },
+  { value: 'monthly',      label: 'Monthly' },
+  { value: 'six_weekly',   label: 'Six-weekly' },
+  { value: 'six_monthly',  label: 'Six-monthly' },
+  { value: 'yearly',       label: 'Yearly' },
 ]
 
 function riskBadge(level: string) {
+  if (level === 'critical') return 'text-red-500 bg-red-600/10 border-red-600/30'
   if (level === 'high') return 'text-rose-400 bg-rose-500/10 border-rose-500/30'
-  if (level === 'medium') return 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+  if (level === 'medium' || level === 'moderate') return 'text-amber-400 bg-amber-500/10 border-amber-500/30'
   return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
 }
 
 function riskBorder(level: string) {
+  if (level === 'critical') return 'rgba(220,38,38,0.45)'
   if (level === 'high') return 'rgba(239,68,68,0.35)'
-  if (level === 'medium') return 'rgba(245,158,11,0.35)'
+  if (level === 'medium' || level === 'moderate') return 'rgba(245,158,11,0.35)'
   return 'rgba(232,177,48,0.15)'
 }
 
@@ -83,6 +98,10 @@ const EMPTY_FORM = {
   reviewDate: '',
   documentUrl: '', documentName: '', attachmentNotes: '',
   signedOffBy: '', signedOffDate: '', staffSignature: '',
+  // Narrative risk-assessment fields (client voice-note request, mirrors
+  // the "Other Risk Assessment" template)
+  reviewFrequency: '', riskDescription: '', riskBeforeIntervention: '',
+  whoIsAtRisk: '', isHistorical: false, whatCouldHappen: '',
 }
 
 const MED_RISK_PRINT_CSS = `
@@ -316,6 +335,32 @@ export default function MedicineRisk() {
   const setF = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Risk update tracking — dated log of changes to a resident's medication
+  // risk over time (mirrors Risk Management's update-history feature).
+  const [updateNotesItem, setUpdateNotesItem] = useState<any>(null)
+  const [updateNotes, setUpdateNotes] = useState('')
+  const [updateRiskLevel, setUpdateRiskLevel] = useState('low')
+  const [saving, setSaving] = useState(false)
+
+  async function handleAddUpdate() {
+    if (!updateNotesItem || !updateNotes.trim()) { toast.error('Enter update notes'); return }
+    setSaving(true)
+    try {
+      await api.put(`/medicine-risk/${updateNotesItem.id}`, {
+        riskLevel: updateRiskLevel,
+        updateNotes,
+      })
+      toast.success('Update recorded')
+      setUpdateNotesItem(null)
+      setUpdateNotes('')
+      load()
+      if (viewRecord && viewRecord.id === updateNotesItem.id) {
+        setViewRecord((prev: any) => prev ? { ...prev, risk_level: updateRiskLevel } : prev)
+      }
+    } catch { toast.error('Failed to save update') }
+    finally { setSaving(false) }
+  }
+
   async function load() {
     setLoading(true)
     try {
@@ -388,6 +433,12 @@ export default function MedicineRisk() {
       signedOffBy: r.signed_off_by || '',
       signedOffDate: r.signed_off_date ? r.signed_off_date.substring(0, 10) : '',
       staffSignature: r.staff_signature || '',
+      reviewFrequency: r.review_frequency || '',
+      riskDescription: r.risk_description || '',
+      riskBeforeIntervention: r.risk_before_intervention || '',
+      whoIsAtRisk: r.who_is_at_risk || '',
+      isHistorical: r.is_historical || false,
+      whatCouldHappen: r.what_could_happen || '',
     })
     setViewRecord(null)
     setShowForm(true)
@@ -419,6 +470,12 @@ export default function MedicineRisk() {
         attachmentNotes: form.attachmentNotes,
         signedOffBy: form.signedOffBy, signedOffDate: form.signedOffDate || null,
         staffSignature: form.staffSignature,
+        reviewFrequency: form.reviewFrequency || null,
+        riskDescription: form.riskDescription,
+        riskBeforeIntervention: form.riskBeforeIntervention,
+        whoIsAtRisk: form.whoIsAtRisk,
+        isHistorical: form.isHistorical,
+        whatCouldHappen: form.whatCouldHappen,
       }
 
       if (form.id) {
@@ -436,7 +493,7 @@ export default function MedicineRisk() {
   }
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
-  const highRisk = latest.filter(r => r.risk_level === 'high').length
+  const highRisk = latest.filter(r => r.risk_level === 'high' || r.risk_level === 'critical').length
   const withAssessment = latest.filter(r => r.id)
 
   return (
@@ -512,12 +569,58 @@ export default function MedicineRisk() {
       {viewRecord && (
         <ViewAssessmentModal record={viewRecord} onClose={() => setViewRecord(null)}
           onEdit={() => openEditForm(viewRecord)}
+          onRecordUpdate={() => { setUpdateNotesItem(viewRecord); setUpdateRiskLevel(viewRecord.risk_level || 'low') }}
           onNewAssessment={() => { setForm({ ...EMPTY_FORM, suId: viewRecord.su_id }); setViewRecord(null); setShowForm(true) }} />
       )}
+
+      {/* Record update modal — dated log of changes to this resident's risk */}
+      <Modal open={!!updateNotesItem} onClose={() => setUpdateNotesItem(null)} title="Record Update">
+        <div className="space-y-4">
+          <Select label="Current Risk Level" options={RISK_LEVELS} value={updateRiskLevel} onChange={e => setUpdateRiskLevel(e.target.value)} />
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Update Notes *</label>
+            <textarea className="input" rows={4} value={updateNotes} onChange={e => setUpdateNotes(e.target.value)}
+              placeholder="Describe what has changed, any new information, actions taken, review outcome..." />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button type="button" variant="ghost" onClick={() => setUpdateNotesItem(null)}>Cancel</Button>
+            <Button loading={saving} onClick={handleAddUpdate} icon={<Check className="w-4 h-4" />}>Save Update</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={form.id ? 'Edit Assessment' : 'New Medication Risk Assessment'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
           <Select label="Service User *" options={suOptions} placeholder="Select resident..." value={form.suId} onChange={e => setF('suId', e.target.value)} required />
+
+          {/* Risk assessment narrative — mirrors the "Other Risk Assessment" template */}
+          <Select label="Frequency of review" options={REVIEW_FREQUENCIES} value={form.reviewFrequency} onChange={e => setF('reviewFrequency', e.target.value)} />
+
+          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">What is the risk?</label>
+            <textarea className="input" rows={2} value={form.riskDescription} onChange={e => setF('riskDescription', e.target.value)} placeholder="Name/describe the specific medication risk being assessed..." /></div>
+
+          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Risk before intervention</label>
+            <textarea className="input" rows={2} value={form.riskBeforeIntervention} onChange={e => setF('riskBeforeIntervention', e.target.value)} placeholder="The level of risk before any intervention is put in place — is it high, low, medium?" /></div>
+
+          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Who is at risk?</label>
+            <input className="input w-full" value={form.whoIsAtRisk} onChange={e => setF('whoIsAtRisk', e.target.value)} placeholder="e.g. Service user, staff, visitors" /></div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Is the risk historical?</label>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setF('isHistorical', true)}
+                className={clsx('px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors', form.isHistorical ? 'bg-amber-500/15 text-amber-400 border-amber-500/40' : 'text-slate-500 border-white/10')}>
+                Yes
+              </button>
+              <button type="button" onClick={() => setF('isHistorical', false)}
+                className={clsx('px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors', !form.isHistorical ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40' : 'text-slate-500 border-white/10')}>
+                No
+              </button>
+            </div>
+          </div>
+
+          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">What could happen?</label>
+            <textarea className="input" rows={2} value={form.whatCouldHappen} onChange={e => setF('whatCouldHappen', e.target.value)} placeholder="What could happen if the person doesn't take their medication..." /></div>
 
           <div className="grid grid-cols-2 gap-3">
             <Select label="Swallowing risk" options={SWALLOWING_RISK} value={form.swallowingRisk} onChange={e => setF('swallowingRisk', e.target.value)} />
@@ -599,10 +702,25 @@ export default function MedicineRisk() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Storage location</label>
-              <input className="input w-full" value={form.storageLocation} onChange={e => setF('storageLocation', e.target.value)} placeholder="e.g. Locked cabinet Room 4" /></div>
-            <Select label="Overall risk level" options={RISK_LEVELS} value={form.riskLevel} onChange={e => setF('riskLevel', e.target.value)} />
+          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Storage location</label>
+            <input className="input w-full" value={form.storageLocation} onChange={e => setF('storageLocation', e.target.value)} placeholder="e.g. Locked cabinet Room 4" /></div>
+
+          {/* My current risk level — 4-tier scale with clinically meaningful
+              definitions shown as helper text under each option (verbatim). */}
+          <div className="p-4 rounded-xl border space-y-2" style={{ background: flagBg, borderColor: 'rgba(232,177,48,0.25)' }}>
+            <p className="text-xs font-bold uppercase tracking-wide mb-2 text-amber-500">My current risk level</p>
+            {RISK_LEVELS.map(opt => (
+              <label key={opt.value}
+                className={clsx('flex flex-col gap-0.5 cursor-pointer p-2.5 rounded-lg border transition-colors',
+                  form.riskLevel === opt.value ? 'border-amber-400/50 bg-amber-400/10' : 'border-transparent hover:bg-white/5')}>
+                <span className="flex items-center gap-3">
+                  <input type="radio" name="riskLevel" value={opt.value} checked={form.riskLevel === opt.value}
+                    onChange={() => setF('riskLevel', opt.value)} className="flex-shrink-0" />
+                  <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{opt.label}</span>
+                </span>
+                <span className="text-xs text-slate-400 pl-7">{opt.definition}</span>
+              </label>
+            ))}
           </div>
 
           <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Risk Management Plan</label>
@@ -670,8 +788,8 @@ export default function MedicineRisk() {
   )
 }
 
-function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment }: {
-  record: any; onClose: () => void; onEdit: () => void; onNewAssessment: () => void
+function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRecordUpdate }: {
+  record: any; onClose: () => void; onEdit: () => void; onNewAssessment: () => void; onRecordUpdate: () => void
 }) {
   const { theme } = useTheme()
   return (
@@ -749,14 +867,60 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment }: {
               </div>}
             </div>}
 
-            <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <Button variant="gold" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Assessment</Button>
+              <Button variant="ghost" icon={<History className="w-3.5 h-3.5" />} onClick={onRecordUpdate}>Record Update</Button>
               <Button variant="ghost" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => printMedRiskAssessment(r)}>Print</Button>
               <Button variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={onNewAssessment}>New Assessment</Button>
+            </div>
+
+            {/* Risk update tracking — dated history of changes to this risk */}
+            <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <UpdateHistory riskId={r.id} />
             </div>
           </>
         )}
       </div>
     </Modal>
+  )
+}
+
+function UpdateHistory({ riskId }: { riskId: string }) {
+  const [updates, setUpdates] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    if (!expanded) return
+    setLoading(true)
+    api.get(`/medicine-risk/${riskId}`).then(res => {
+      setUpdates(res.data.data?.updates || [])
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [riskId, expanded])
+
+  return (
+    <div>
+      <button onClick={() => setExpanded(p => !p)}
+        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-300">
+        <History className="w-3.5 h-3.5" />
+        {expanded ? 'Hide' : 'Show'} update history
+      </button>
+      {expanded && (
+        <div className="mt-3 space-y-2">
+          {loading ? <p className="text-xs text-slate-500">Loading...</p> : updates.length === 0 ? (
+            <p className="text-xs text-slate-500">No updates recorded yet.</p>
+          ) : updates.map((u: any) => (
+            <div key={u.id} className="p-3 rounded-lg border" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={clsx('px-2 py-0.5 rounded-full text-xs font-bold border capitalize', riskBadge(u.new_risk_level || 'low'))}>{u.new_risk_level || 'low'}</span>
+                <span className="text-xs text-slate-500">{format(new Date(u.created_at), 'd MMM yyyy HH:mm')}</span>
+                <span className="text-xs text-slate-500">· {u.updated_by_name}</span>
+              </div>
+              <p className="text-xs text-slate-300 whitespace-pre-line">{u.update_notes}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
