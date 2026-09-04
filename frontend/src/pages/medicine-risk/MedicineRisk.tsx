@@ -3,6 +3,7 @@ import { ShieldAlert, Plus, CheckCircle2, XCircle, AlertTriangle, Paperclip, Eye
 import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
 import api, { getToken } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import SignaturePad from '../../components/SignaturePad'
 import clsx from 'clsx'
 import { format } from 'date-fns'
@@ -56,11 +57,12 @@ function Flag({ active, label }: { active: boolean; label: string }) {
 }
 
 function InfoRow({ label, value, className }: { label: string; value: any; className?: string }) {
+  const { theme } = useTheme()
   if (!value && value !== false) return null
   return (
     <div className={className}>
       <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className="text-white text-sm">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}</p>
+      <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}</p>
     </div>
   )
 }
@@ -299,6 +301,8 @@ function printMedRiskAssessment(r: any) {
 
 export default function MedicineRisk() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const flagBg = theme === 'dark' ? '#1a1a1a' : '#f8fafc'
   const homeId = user?.homeId || ''
 
   const [latest, setLatest] = useState<any[]>([])
@@ -473,10 +477,10 @@ export default function MedicineRisk() {
               <button key={r.su_id}
                 onClick={() => { if (!r.id) { setForm({ ...EMPTY_FORM, suId: r.su_id }); setShowForm(true) } else { setViewRecord(r) } }}
                 className="rounded-2xl flex flex-col gap-3 p-4 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
-                style={{ background: '#111111', border: `1px solid ${borderColor}`, boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                style={{ background: theme === 'dark' ? '#111111' : '#ffffff', border: `1px solid ${borderColor}`, boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(15,23,42,0.06)' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-white">{r.su_name}</p>
+                    <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.su_name}</p>
                     {r.room_number && <p className="text-xs text-slate-500">Room {r.room_number}</p>}
                   </div>
                   {r.risk_level ? (
@@ -537,9 +541,9 @@ export default function MedicineRisk() {
               { key: 'prnProtocol',      label: 'PRN protocol in place' },
               { key: 'controlledMeds',   label: 'Controlled medication' },
             ].map(({ key, label }) => (
-              <label key={key} className="flex items-center gap-2 cursor-pointer p-3 rounded-lg" style={{ background: '#1a1a1a' }}>
+              <label key={key} className="flex items-center gap-2 cursor-pointer p-3 rounded-lg" style={{ background: flagBg }}>
                 <input type="checkbox" checked={(form as any)[key]} onChange={e => setF(key, e.target.checked)} className="w-4 h-4 rounded" />
-                <span className="text-sm text-slate-300">{label}</span>
+                <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{label}</span>
               </label>
             ))}
           </div>
@@ -669,6 +673,7 @@ export default function MedicineRisk() {
 function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment }: {
   record: any; onClose: () => void; onEdit: () => void; onNewAssessment: () => void
 }) {
+  const { theme } = useTheme()
   return (
     <Modal open={true} onClose={onClose} title={r.su_name} size="lg">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
@@ -738,7 +743,7 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment }: {
 
             {r.signed_off_by && <div className="p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
               <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Check className="w-3 h-3" /> Signed Off</p>
-              <p className="text-xs text-slate-400">Signed by: <span className="text-white">{r.signed_off_by}</span>{r.signed_off_date && <span> on {format(new Date(r.signed_off_date), 'dd MMM yyyy')}</span>}</p>
+              <p className="text-xs text-slate-400">Signed by: <span className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{r.signed_off_by}</span>{r.signed_off_date && <span> on {format(new Date(r.signed_off_date), 'dd MMM yyyy')}</span>}</p>
               {r.staff_signature && <div className="mt-2 border border-emerald-500/30 rounded-xl overflow-hidden bg-white w-64">
                 <img src={r.staff_signature} alt="Assessor signature" className="w-full h-16 object-contain" />
               </div>}

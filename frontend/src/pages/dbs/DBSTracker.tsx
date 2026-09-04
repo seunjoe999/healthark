@@ -2,6 +2,7 @@
 import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import api from '../../api'
 import clsx from 'clsx'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
@@ -28,6 +29,8 @@ type Tab = 'overview' | 'dbs' | 'references' | 'right_to_work'
 
 export default function DBSTracker() {
   const { isRole } = useAuth()
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [tab, setTab] = useState<Tab>('overview')
   const [overview, setOverview] = useState<any[]>([])
   const [dbsRecords, setDbsRecords] = useState<any[]>([])
@@ -183,10 +186,10 @@ export default function DBSTracker() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-xl" style={{ background: '#1a1a1a' }}>
+      <div className="flex gap-1 mb-5 p-1 rounded-xl" style={{ background: pillBg }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={clsx('flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all', tab === t.key ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
+            className={clsx('flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all', tab === t.key ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700')}
             style={tab === t.key ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : {}}>
             {t.label}
           </button>

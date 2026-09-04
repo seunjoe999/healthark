@@ -318,19 +318,32 @@
    permanent dark backdrop. In light mode they'd render as near-invisible
    white-on-white; tint them dark instead so the same translucency reads
    correctly against the light page background. */
+.app-shell:not(.theme-dark) .bg-white\/2 { background-color: rgba(15,23,42,0.02)  !important; }
+.app-shell:not(.theme-dark) .bg-white\/3 { background-color: rgba(15,23,42,0.03)  !important; }
 .app-shell:not(.theme-dark) .bg-white\/5 { background-color: rgba(15,23,42,0.035) !important; }
 .app-shell:not(.theme-dark) .bg-white\/8 { background-color: rgba(15,23,42,0.05)  !important; }
+.app-shell:not(.theme-dark) .hover\:bg-white\/3:hover { background-color: rgba(15,23,42,0.03) !important; }
 .app-shell:not(.theme-dark) .bg-white\/10 { background-color: rgba(15,23,42,0.06) !important; }
 .app-shell:not(.theme-dark) .bg-white\/12 { background-color: rgba(15,23,42,0.07) !important; }
 .app-shell:not(.theme-dark) .bg-white\/15 { background-color: rgba(15,23,42,0.08) !important; }
+.app-shell:not(.theme-dark) .border-white\/8 { border-color: rgba(15,23,42,0.1) !important; }
 .app-shell:not(.theme-dark) .border-white\/10 { border-color: rgba(15,23,42,0.12) !important; }
 .app-shell:not(.theme-dark) .border-white\/12 { border-color: rgba(15,23,42,0.12) !important; }
 .app-shell:not(.theme-dark) .border-white\/15 { border-color: rgba(15,23,42,0.15) !important; }
 .app-shell:not(.theme-dark) .border-white\/20 { border-color: rgba(15,23,42,0.18) !important; }
+.app-shell:not(.theme-dark) .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15,23,42,0.06) !important; }
+.app-shell:not(.theme-dark) .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15,23,42,0.1) !important; }
 .app-shell:not(.theme-dark) .hover\:bg-white\/5:hover { background-color: rgba(15,23,42,0.05) !important; }
 .app-shell:not(.theme-dark) .hover\:bg-white\/8:hover { background-color: rgba(15,23,42,0.06) !important; }
 .app-shell:not(.theme-dark) .hover\:bg-white\/10:hover { background-color: rgba(15,23,42,0.07) !important; }
 .app-shell:not(.theme-dark) .hover\:bg-white\/12:hover { background-color: rgba(15,23,42,0.08) !important; }
+
+/* MedicationStock.tsx defines its own local Modal + shared inputCls string
+   (15 call sites) using an arbitrary-value dark background instead of the
+   shared .card/.input classes — same problem, different spelling. */
+.app-shell:not(.theme-dark) .bg-\[\#1a1a1a\] { background-color: #ffffff !important; }
+.app-shell:not(.theme-dark) .bg-\[\#1a1a1a\].text-white,
+.app-shell:not(.theme-dark) .bg-\[\#1a1a1a\] .text-white { color: #1e293b !important; }
 
 /* Several pages hand-roll the same "frosted glass" look as an ad-hoc
    bg-white/N div instead of the shared .card class — compensate text-white

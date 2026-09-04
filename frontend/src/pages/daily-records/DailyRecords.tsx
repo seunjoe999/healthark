@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, subDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
 import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check, Music, Thermometer, Stethoscope, ArrowLeftRight, BookOpen } from 'lucide-react'
@@ -66,6 +67,9 @@ const RECORD_TYPES = [
 
 export default function DailyRecords() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
+  const panelBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
   const [sus, setSus] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
@@ -143,7 +147,7 @@ export default function DailyRecords() {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
-      <div className="border-b border-white/10 px-2 flex gap-0 overflow-x-auto shrink-0" style={{ background: '#111' }}>
+      <div className={`border-b ${panelBorder} px-2 flex gap-0 overflow-x-auto shrink-0`} style={{ background: panelBg }}>
         {DR_TABS.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
@@ -168,7 +172,7 @@ export default function DailyRecords() {
       ) : (
       <>
       {/* Top control bar */}
-      <div className="border-b border-white/10 px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
+      <div className={`border-b ${panelBorder} px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-6 gap-y-2`} style={{ background: panelBg }}>
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <ClipboardList className="w-4 h-4 text-purple-600" /> Daily Records
         </span>

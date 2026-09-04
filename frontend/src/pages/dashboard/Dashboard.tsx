@@ -1,6 +1,7 @@
 import StaffDashboard from './StaffDashboard'
 import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { Spinner } from '../../components/ui'
@@ -115,6 +116,8 @@ function Sparkline({ data }: { data: Record<string, number> }) {
 /* ── Main Dashboard ──────────────────────────────────────────────────────────*/
 export default function Dashboard() {
   const { user, isRole } = useAuth()
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#1a1a1a' : '#ffffff'
   const [homes, setHomes]               = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData]                 = useState<any>(null)
@@ -427,7 +430,7 @@ export default function Dashboard() {
 
                     {showBirthdays && (
                       <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl z-50 shadow-2xl overflow-hidden"
-                        style={{ background: '#1a1a1a', border: '1px solid rgba(248,113,113,0.3)' }}>
+                        style={{ background: panelBg, border: '1px solid rgba(248,113,113,0.3)' }}>
                         <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(248,113,113,0.2)' }}>
                           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#f87171' }}>
                             Upcoming Birthdays
@@ -440,7 +443,7 @@ export default function Dashboard() {
                             {birthdays.map((b: any, idx: number) => (
                               <div key={idx} className="flex items-center justify-between px-4 py-3">
                                 <div>
-                                  <p className="text-white font-semibold text-sm">{b.first_name} {b.last_name}</p>
+                                  <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{b.first_name} {b.last_name}</p>
                                   <p className="text-xs text-slate-500 capitalize mt-0.5">
                                     {(b.type || '').replace('_', ' ')}
                                   </p>

@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { homesApi } from '../../api'
 import { Spinner } from '../../components/ui'
 import { Send, Bell, CheckCheck, Users, User, Trash2, Info, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react'
@@ -16,6 +17,8 @@ const TYPE_OPTIONS = [
 
 export default function NotificationsManager() {
   const { user, isRole } = useAuth()
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [staff, setStaff] = useState<any[]>([])
@@ -190,9 +193,9 @@ export default function NotificationsManager() {
         </div>
 
         {/* Recent notifications */}
-        <div className="rounded-2xl border border-white/10 p-6" style={{ background: '#111' }}>
+        <div className="rounded-2xl border border-white/10 p-6" style={{ background: panelBg }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white flex items-center gap-2">
+            <h2 className={`font-semibold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               <Bell className="w-4 h-4 text-amber-400" /> Recent Notifications
             </h2>
             <button onClick={markAllRead} className="text-xs text-amber-400 font-semibold flex items-center gap-1 hover:text-amber-300 transition-colors">
@@ -212,10 +215,12 @@ export default function NotificationsManager() {
                 const Icon = t.icon
                 return (
                   <div key={n.id} className="flex items-start gap-3 p-3 rounded-xl transition-colors"
-                    style={{ background: n.is_read ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    style={theme === 'dark'
+                      ? { background: n.is_read ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)' }
+                      : { background: n.is_read ? '#f8fafc' : '#fffbeb', border: '1px solid rgba(15,23,42,0.08)' }}>
                     <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${t.color}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${n.is_read ? 'text-slate-400' : 'text-white'}`}>{n.title}</p>
+                      <p className={`text-sm font-semibold ${n.is_read ? 'text-slate-400' : theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{n.title}</p>
                       {n.body && <p className="text-xs text-slate-500 mt-0.5 truncate">{n.body}</p>}
                       <p className="text-xs text-slate-600 mt-1">{format(new Date(n.created_at), 'd MMM, HH:mm')}</p>
                     </div>

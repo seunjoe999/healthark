@@ -2,6 +2,7 @@
 import { BarChart3, Plus, Star, CheckCircle2, XCircle, Zap, ClipboardCheck } from 'lucide-react'
 import { Button, Modal, Select, Input, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api'
 import { homesApi } from '../../api'
@@ -164,6 +165,10 @@ function ScoreInput({ label, field, form, setForm }: { label: string; field: str
 
 export default function PerformanceMatrix() {
   const { user, isRole } = useAuth()
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
+  const panelBorder = theme === 'dark' ? 'border-white/8' : 'border-slate-200'
   const navigate = useNavigate()
   const [matrix, setMatrix] = useState<any[]>([])
   const [history, setHistory] = useState<any[]>([])
@@ -315,7 +320,7 @@ export default function PerformanceMatrix() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: '#1a1a1a' }}>
+      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: pillBg }}>
         {([
           { key: 'matrix', label: 'Matrix Overview' },
           { key: 'shift_matrix', label: 'Shift Matrix' },
@@ -342,7 +347,7 @@ export default function PerformanceMatrix() {
         <>
           {view === 'matrix' && (
             matrix.length === 0 ? <EmptyState title="No staff found" /> : (
-              <div className="overflow-x-auto border border-white/8 rounded-xl" style={{ background: '#111' }}>
+              <div className={`overflow-x-auto ${panelBorder} rounded-xl border`} style={{ background: panelBg }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-slate-500 uppercase tracking-wider">
@@ -363,7 +368,7 @@ export default function PerformanceMatrix() {
                     {matrix.map(row => (
                       <tr key={row.staff_id} className="hover:bg-white/3 transition-colors">
                         <td className="py-3 px-3">
-                          <p className="font-medium text-white">{row.staff_name}</p>
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{row.staff_name}</p>
                           <p className="text-xs text-slate-500 capitalize">{row.role?.replace(/_/g, ' ')}</p>
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -436,18 +441,18 @@ export default function PerformanceMatrix() {
                 <p className="text-slate-400 text-sm mb-4">
                   Performance Matrix ({shiftMatrixData.staff.length}) — showing shift counts per care worker per location
                 </p>
-                <div className="overflow-x-auto rounded-xl border border-white/10">
-                  <table className="w-full text-sm border-collapse" style={{ background: '#111' }}>
+                <div className={`overflow-x-auto rounded-xl border ${panelBorder}`}>
+                  <table className="w-full text-sm border-collapse" style={{ background: panelBg }}>
                     <thead>
-                      <tr style={{ background: '#1e1e1e' }}>
-                        <th className="text-left py-3 px-4 text-amber-400 font-bold border-b border-white/10 min-w-40">Care Worker</th>
+                      <tr style={{ background: theme === 'dark' ? '#1e1e1e' : '#f1f5f9' }}>
+                        <th className="text-left py-3 px-4 text-amber-500 font-bold border-b border-white/10 min-w-40">Care Worker</th>
                         {shiftMatrixData.homes.map(h => (
-                          <th key={h.id} className="text-center py-3 px-2 text-slate-300 font-semibold border-b border-white/10 min-w-20"
+                          <th key={h.id} className={`text-center py-3 px-2 font-semibold border-b border-white/10 min-w-20 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}
                             title={h.name}>
                             {h.name.length > 7 ? h.name.substring(0, 7).toUpperCase() : h.name.toUpperCase()}
                           </th>
                         ))}
-                        <th className="text-center py-3 px-3 text-amber-400 font-bold border-b border-white/10">Total</th>
+                        <th className="text-center py-3 px-3 text-amber-500 font-bold border-b border-white/10">Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -457,7 +462,7 @@ export default function PerformanceMatrix() {
                         return (
                           <tr key={s.id} className={clsx('border-b border-white/5 transition-colors hover:bg-white/3', idx % 2 === 0 ? '' : 'bg-white/2')}>
                             <td className="py-2.5 px-4">
-                              <p className="font-medium text-white text-sm">{s.name}</p>
+                              <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{s.name}</p>
                               <p className="text-xs text-slate-500 capitalize">{s.role?.replace(/_/g, ' ')}</p>
                             </td>
                             {shiftMatrixData.homes.map(h => {
@@ -485,7 +490,7 @@ export default function PerformanceMatrix() {
                       })}
                     </tbody>
                     <tfoot>
-                      <tr style={{ background: '#1a1a1a' }}>
+                      <tr style={{ background: pillBg }}>
                         <td className="py-2.5 px-4 text-amber-400 font-bold text-sm">Total</td>
                         {shiftMatrixData.homes.map(h => {
                           const colTotal = shiftMatrixData.staff.reduce((sum, s) => sum + (shiftMatrixData.shiftMap[s.id]?.[h.id] || 0), 0)

@@ -4,6 +4,7 @@ import PhotoUpload from '../../components/ui/PhotoUpload'
 import { Link } from 'react-router-dom'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, differenceInYears } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
 import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
@@ -33,6 +34,9 @@ const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
 
 export default function StaffModule() {
   const { user, isRole } = useAuth()
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
+  const panelBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
   const isManager = isRole(...MANAGER_ROLES)
   const canCreateStaff = isManager || isRole('recruitment_admin')
   const [staff, setStaff] = useState<any[]>([])
@@ -129,7 +133,7 @@ export default function StaffModule() {
   return (
     <div className="flex flex-col h-full">
       {/* Top control bar */}
-      <div className="border-b border-white/10 px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-4 gap-y-2" style={{ background: '#111' }}>
+      <div className={`border-b ${panelBorder} px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-4 gap-y-2`} style={{ background: panelBg }}>
         {homes.length > 1 && (
           <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
             value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelected(null) }}>

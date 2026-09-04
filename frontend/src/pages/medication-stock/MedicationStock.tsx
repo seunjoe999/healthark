@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import api, { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, isPast, addDays, isAfter } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import {
@@ -63,11 +64,13 @@ function ExpiryBadge({ date }: { date: string | null }) {
 // ─── Modal wrapper ────────────────────────────────────────────────────────────
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const { theme } = useTheme()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" style={{ background: '#111111', border: '1px solid rgba(232,177,48,0.15)' }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid rgba(232,177,48,0.12)' }}>
-          <h2 className="font-semibold text-white">{title}</h2>
+      <div className="rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
+        style={{ background: theme === 'dark' ? '#111111' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.1)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: theme === 'dark' ? '1px solid rgba(232,177,48,0.12)' : '1px solid rgba(15,23,42,0.08)' }}>
+          <h2 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/5"><X className="w-5 h-5 text-slate-400" /></button>
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-4">{children}</div>
@@ -205,6 +208,7 @@ function AddEditModal({
 // ─── Adjust modal ─────────────────────────────────────────────────────────────
 
 function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () => void; onSaved: () => void }) {
+  const { theme } = useTheme()
   const [adjustmentType, setAdjustmentType] = useState('administered')
   const [quantityChange, setQuantityChange] = useState('')
   const [notes, setNotes] = useState('')
@@ -243,9 +247,9 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
   return (
     <Modal title={`Adjust Stock — ${item.medication_name}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="rounded-xl p-3 text-center" style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.15)' }}>
+        <div className="rounded-xl p-3 text-center" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.08)' }}>
           <p className="text-xs text-slate-500">Current quantity</p>
-          <p className="text-3xl font-bold text-white">{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
+          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
         </div>
         <Field label="Reason">
           <select className={inputCls} value={adjustmentType} onChange={e => setAdjustmentType(e.target.value)}>
@@ -283,6 +287,7 @@ function StockCard({
 }: {
   item: StockItem; onEdit: () => void; onDelete: () => void; onAdjust: () => void
 }) {
+  const { theme } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const isLow = item.low_stock
   const isExpired = item.expired
@@ -290,9 +295,9 @@ function StockCard({
 
   return (
     <div className="rounded-xl p-4 flex flex-col gap-3 relative" style={{
-      background: '#111111',
-      border: `1px solid ${isExpired ? 'rgba(239,68,68,0.4)' : isLow ? 'rgba(245,158,11,0.4)' : 'rgba(232,177,48,0.15)'}`,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+      background: theme === 'dark' ? '#111111' : '#ffffff',
+      border: `1px solid ${isExpired ? 'rgba(239,68,68,0.4)' : isLow ? 'rgba(245,158,11,0.4)' : theme === 'dark' ? 'rgba(232,177,48,0.15)' : 'rgba(15,23,42,0.08)'}`,
+      boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(15,23,42,0.06)',
     }}>
       {/* Badges row */}
       <div className="flex flex-wrap gap-1.5 min-h-[20px]">
@@ -308,7 +313,7 @@ function StockCard({
 
       {/* Name & details */}
       <div>
-        <p className="font-semibold text-white">{item.medication_name}</p>
+        <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{item.medication_name}</p>
         <p className="text-xs text-slate-500 mt-0.5">
           {[item.form, item.strength].filter(Boolean).join(' · ')}
         </p>
@@ -320,7 +325,7 @@ function StockCard({
       {/* Quantity */}
       <div className="flex items-end justify-between">
         <div>
-          <span className={`text-2xl font-bold ${isLow ? 'text-amber-400' : 'text-white'}`}>{formatQty(item.quantity_remaining)}</span>
+          <span className={`text-2xl font-bold ${isLow ? (theme === 'dark' ? 'text-amber-400' : 'text-amber-600') : theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)}</span>
           <span className="text-sm text-slate-500 ml-1">{item.unit}</span>
           <p className="text-xs text-slate-500 mt-0.5">Reorder at ≤ {item.reorder_threshold}</p>
         </div>
@@ -347,8 +352,8 @@ function StockCard({
           <MoreVertical className="w-4 h-4 text-slate-500" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 top-7 z-20 rounded-xl shadow-xl w-36 py-1" style={{ background: '#1a1a1a', border: '1px solid rgba(232,177,48,0.15)' }}>
-            <button className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+          <div className="absolute right-0 top-7 z-20 rounded-xl shadow-xl w-36 py-1" style={{ background: theme === 'dark' ? '#1a1a1a' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.1)' }}>
+            <button className={`w-full text-left px-4 py-2 text-sm hover:bg-white/5 flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'}`}
               onClick={() => { setMenuOpen(false); onEdit() }}>
               <Pencil className="w-3.5 h-3.5" /> Edit
             </button>
