@@ -359,19 +359,19 @@ export default function FamilyView() {
                   </div>
                 </div>
 
-                {/* Quick stats */}
-                <div className="grid grid-cols-3 gap-2">
+                {/* Quick stats — flat row, no boxes, divided by thin rules */}
+                <div className="flex items-stretch divide-x divide-slate-100">
                   {age && (
-                    <div className="rounded-xl p-3 text-center bg-slate-50 border border-slate-100">
+                    <div className="flex-1 text-center px-2">
                       <p className="text-slate-900 text-xl font-black">{age}</p>
                       <p className="text-slate-500 text-xs font-medium">years old</p>
                     </div>
                   )}
-                  <div className="rounded-xl p-3 text-center bg-slate-50 border border-slate-100">
+                  <div className="flex-1 text-center px-2">
                     <p className="text-slate-900 text-xl font-black">{activeMeds.length}</p>
                     <p className="text-slate-500 text-xs font-medium">medication{activeMeds.length !== 1 ? 's' : ''}</p>
                   </div>
-                  <div className="rounded-xl p-3 text-center bg-slate-50 border border-slate-100">
+                  <div className="flex-1 text-center px-2">
                     <p className="text-slate-900 text-xl font-black">{records.length}</p>
                     <p className="text-slate-500 text-xs font-medium">care notes</p>
                   </div>
