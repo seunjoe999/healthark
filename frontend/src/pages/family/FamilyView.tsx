@@ -343,10 +343,10 @@ export default function FamilyView() {
           <>
             {/* Resident hero card */}
             <Card className="mb-4 overflow-hidden">
-              <div className="h-20" style={{ background: `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_LIGHT} 100%)` }} />
+              <div className="h-24" style={{ background: `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_LIGHT} 100%)` }} />
               <div className="px-5 pb-5">
                 <div className="flex items-end gap-4 mb-4">
-                  <div className="-mt-10 w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-lg border-4 border-white flex-shrink-0"
+                  <div className="-mt-16 w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-lg border-4 border-white flex-shrink-0"
                     style={{ background: `linear-gradient(135deg, ${ACCENT}, #c97d10)` }}>
                     {initials}
                   </div>
