@@ -169,14 +169,19 @@ function useHeroMouse() {
   const heroRef = useRef<HTMLElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
-  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+  const updateFromPoint = (clientX: number, clientY: number) => {
     const rect = heroRef.current?.getBoundingClientRect();
     if (!rect) return;
-    mx.set(Math.max(-1, Math.min(1, ((e.clientX - rect.left) / rect.width - 0.5) * 2)));
-    my.set(Math.max(-1, Math.min(1, ((e.clientY - rect.top) / rect.height - 0.5) * 2)));
+    mx.set(Math.max(-1, Math.min(1, ((clientX - rect.left) / rect.width - 0.5) * 2)));
+    my.set(Math.max(-1, Math.min(1, ((clientY - rect.top) / rect.height - 0.5) * 2)));
+  };
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => updateFromPoint(e.clientX, e.clientY);
+  const handleTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    const touch = e.touches[0];
+    if (touch) updateFromPoint(touch.clientX, touch.clientY);
   };
   const handleLeave = () => { mx.set(0); my.set(0); };
-  return { heroRef, mx, my, handleMove, handleLeave };
+  return { heroRef, mx, my, handleMove, handleTouchMove, handleLeave };
 }
 
 function WaterAndBoat({ mx, my }: { mx: ReturnType<typeof useMotionValue<number>>; my: ReturnType<typeof useMotionValue<number>> }) {
@@ -445,6 +450,7 @@ export default function LandingPage() {
 
       {/* ── Hero — peach bg, purple writing, text left / photo right ──── */}
       <header ref={heroMouse.heroRef} onMouseMove={heroMouse.handleMove} onMouseLeave={heroMouse.handleLeave}
+        onTouchMove={heroMouse.handleTouchMove} onTouchEnd={heroMouse.handleLeave}
         className="relative overflow-hidden" style={{ paddingTop: 200, paddingBottom: 140, background: PEACH }}>
         <WaterAndBoat mx={heroMouse.mx} my={heroMouse.my} />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative" style={{ zIndex: 1 }}>

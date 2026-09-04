@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { Eye, EyeOff, AlertCircle, ArrowRight, Shield, Activity, Users, CheckCircle } from 'lucide-react'
 import api from '../../api'
 
 type Mode = 'login' | 'register' | 'register_success'
+
+// Brand palette — kept in sync with the public landing page (LandingPage.tsx)
+const NAVY = '#241654'
+const NAVY_DARK = '#160C38'
+const ORANGE = '#F0932F'
 
 export default function Login() {
   const { login, loginWithPin } = useAuth()
@@ -67,26 +73,28 @@ export default function Login() {
     } finally { setLoading(false) }
   }
 
-  const inputClass = "w-full px-3.5 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:border-gold-400/60 transition-all"
+  const inputClass = "w-full px-3.5 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:border-orange-300 transition-all"
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #0d1526 0%, #151f35 35%, #1e2d4a 70%, #27334d 100%)' }}>
+    <div className="min-h-screen flex" style={{ background: '#F8F7FB' }}>
       {/* Left — form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-16 relative">
-        <div className="absolute top-0 left-0 w-96 h-96 rounded-full opacity-5" style={{ background: 'radial-gradient(circle, #e8b130, transparent)', transform: 'translate(-30%,-30%)' }} />
+      <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-16 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-96 h-96 rounded-full opacity-10" style={{ background: `radial-gradient(circle, ${ORANGE}, transparent)`, transform: 'translate(-30%,-30%)' }} />
 
         <div className="w-full max-w-md relative z-10">
           {/* Logo */}
-          <div className="flex items-center gap-4 mb-8">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className="flex items-center gap-4 mb-8">
             <img src="/logo.jpeg" alt="CompCare Hub" className="w-14 h-14 rounded-2xl object-contain shadow-lg" style={{ background: 'white', padding: '4px' }} />
             <div>
-              <h1 className="text-white font-display text-2xl leading-none">CompCare Hub</h1>
-              <p className="text-slate-400 text-sm mt-1">Your Care Our Priority</p>
+              <h1 className="font-display text-2xl leading-none" style={{ color: NAVY }}>CompCare Hub</h1>
+              <p className="text-sm mt-1" style={{ color: '#6B6580' }}>Your Care Our Priority</p>
             </div>
-          </div>
+          </motion.div>
 
           {/* Card */}
-          <div className="rounded-3xl p-8" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
+            className="rounded-3xl p-8 shadow-xl" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_DARK} 100%)` }}>
 
             {mode === 'register_success' ? (
               <div className="text-center">
@@ -97,8 +105,8 @@ export default function Login() {
                 <p className="text-slate-300 text-sm mb-2">Welcome, <strong>{successData?.name}</strong></p>
                 <p className="text-slate-400 text-sm mb-6">Your account at <strong className="text-white">{successData?.homeName}</strong> is pending approval. Your manager will activate your account and you'll be able to log in.</p>
                 <button onClick={() => setMode('login')}
-                  className="w-full py-3 rounded-xl font-semibold text-slate-900"
-                  style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                  className="w-full py-3 rounded-full font-bold text-slate-900"
+                  style={{ background: ORANGE }}>
                   Back to sign in
                 </button>
               </div>
@@ -139,22 +147,22 @@ export default function Login() {
                     </div>
                   )}
                   <button type="submit" disabled={loading}
-                    className="w-full mt-2 py-3 rounded-xl font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50 group"
-                    style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                    className="w-full mt-2 py-3 rounded-full font-bold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50 group"
+                    style={{ background: ORANGE }}>
                     {loading ? <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : <>Sign in <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></>}
                   </button>
                 </form>
 
                 <div className="mt-4 text-center">
                   <button type="button" onClick={() => { setUseLoginPin(v => !v); setError('') }}
-                    className="text-xs text-slate-400 hover:text-gold-300 transition-colors">
+                    className="text-xs transition-opacity hover:opacity-80" style={{ color: 'rgba(255,255,255,0.5)' }}>
                     {useLoginPin ? 'Use password instead' : 'Use PIN instead'}
                   </button>
                 </div>
 
                 <div className="mt-4 pt-5 border-t border-white/10 text-center">
                   <p className="text-slate-500 text-sm">New staff member?{' '}
-                    <button onClick={() => { setMode('register'); setError('') }} className="text-gold-400 hover:text-gold-300 font-semibold transition-colors">
+                    <button onClick={() => { setMode('register'); setError('') }} className="font-semibold transition-opacity hover:opacity-80" style={{ color: ORANGE }}>
                       Create account
                     </button>
                   </p>
@@ -204,8 +212,8 @@ export default function Login() {
                     <p className="text-xs text-slate-500 mt-1.5">Your manager will give you a unique registration code for your care home</p>
                   </div>
                   <button type="submit" disabled={loading}
-                    className="w-full mt-2 py-3 rounded-xl font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                    className="w-full mt-2 py-3 rounded-full font-bold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{ background: ORANGE }}>
                     {loading ? <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : 'Submit registration'}
                   </button>
                 </form>
@@ -218,35 +226,47 @@ export default function Login() {
               </>
             )}
 
-            <div className="mt-5 flex items-center justify-center gap-2 text-slate-600">
+            <div className="mt-5 flex items-center justify-center gap-2 text-slate-500">
               <Shield className="w-3.5 h-3.5" />
               <p className="text-xs">UK GDPR compliant · Encrypted · Secure</p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="hidden xl:flex flex-1 flex-col items-center justify-center p-16 relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(212,150,26,0.08) 0%, transparent 60%)' }} />
-        <div className="max-w-sm text-center relative z-10">
+      {/* Right panel — mirrors the landing-page hero: peach/white ground, navy
+          type, a soft animated wave so the login screen reads as the same
+          product rather than a bolted-on admin form. */}
+      <div className="hidden xl:flex flex-1 flex-col items-center justify-center p-16 relative overflow-hidden" style={{ background: '#FFF8EF' }}>
+        <svg className="absolute inset-x-0 bottom-0 w-full" height="220" viewBox="0 0 800 220" preserveAspectRatio="none" style={{ opacity: 0.5 }}>
+          <motion.path
+            d="M0,110 C150,150 300,70 450,110 C600,150 750,70 800,100 L800,220 L0,220 Z"
+            fill={NAVY} fillOpacity={0.08}
+            animate={{ x: [0, -60, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} />
+          <motion.path
+            d="M0,150 C200,120 400,180 600,140 C700,120 750,140 800,150 L800,220 L0,220 Z"
+            fill={ORANGE} fillOpacity={0.12}
+            animate={{ x: [0, 40, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} />
+        </svg>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}
+          className="max-w-sm text-center relative z-10">
           <img src="/logo.jpeg" alt="Comprehensive Care" className="w-28 h-28 rounded-3xl object-contain mx-auto mb-8 shadow-2xl" style={{ background: 'white', padding: '8px' }} />
-          <h2 className="text-white font-display text-4xl mb-3 leading-tight">Comprehensive<br />Care</h2>
-          <p className="text-slate-400 mb-10">The complete care home management platform for UK care providers</p>
+          <h2 className="font-display text-4xl mb-3 leading-tight" style={{ color: NAVY }}>Comprehensive<br />Care</h2>
+          <p className="mb-10" style={{ color: '#6B6580' }}>The complete care home management platform for UK care providers</p>
           <div className="space-y-3">
             {[
               { icon: <Users className="w-4 h-4" />, label: 'Full resident & staff management' },
               { icon: <Activity className="w-4 h-4" />, label: 'Rota, MAR & daily records' },
               { icon: <Shield className="w-4 h-4" />, label: 'CQC compliance ready' },
             ].map(item => (
-              <div key={item.label} className="flex items-center gap-3 px-5 py-3 rounded-xl text-left"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <span className="text-gold-400">{item.icon}</span>
-                <span className="text-sm text-slate-300 font-medium">{item.label}</span>
+              <div key={item.label} className="flex items-center gap-3 px-5 py-3 rounded-xl text-left shadow-sm"
+                style={{ background: 'white', border: '1px solid rgba(36,22,84,0.08)' }}>
+                <span style={{ color: ORANGE }}>{item.icon}</span>
+                <span className="text-sm font-medium" style={{ color: NAVY }}>{item.label}</span>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
