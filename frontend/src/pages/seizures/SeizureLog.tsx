@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
+import { useTheme } from '../../context/ThemeContext'
 
 const LOG_TABLE_CSS = `
   table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
@@ -84,6 +85,8 @@ function formatDuration(seconds: number | null) {
 }
 
 export default function SeizureLog() {
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [searchParams] = useSearchParams()
   const initSuId = searchParams.get('suId') || ''
   const [records, setRecords] = useState<any[]>([])
@@ -169,7 +172,7 @@ export default function SeizureLog() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: '#1a1a1a' }}>
+      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: pillBg }}>
         {(['log', 'stats'] as const).map(t => (
           <button key={t} onClick={() => setView(t)}
             className={clsx('px-5 py-2 rounded-lg text-sm font-medium transition-all capitalize', view === t ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}

@@ -5,6 +5,7 @@ import api from '../../api'
 import clsx from 'clsx'
 import { format, isPast, parseISO } from 'date-fns'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
+import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 
 const PROFESSIONAL_TYPES = [
@@ -71,6 +72,8 @@ function buildVisitPrintPage(r: any): string {
 }
 
 export default function ProfessionalVisits() {
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [visits, setVisits] = useState<any[]>([])
   const [upcoming, setUpcoming] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
@@ -181,7 +184,7 @@ export default function ProfessionalVisits() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: '#1a1a1a' }}>
+      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: pillBg }}>
         {(['log', 'followups'] as const).map(t => (
           <button key={t} onClick={() => setView(t)}
             className={clsx('px-5 py-2 rounded-lg text-sm font-medium transition-all', view === t ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}

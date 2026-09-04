@@ -5,6 +5,7 @@ import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
+import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 
 const OBS_TYPES = [
@@ -42,6 +43,8 @@ function abnormalBadge(obs: any) {
 }
 
 function ObsValue({ obs }: { obs: any }) {
+  const { theme } = useTheme()
+  const neutral = theme === 'dark' ? 'text-white' : 'text-slate-900'
   return (
     <div className="flex flex-wrap gap-3 text-sm">
       {obs.temp_celsius && (
@@ -51,12 +54,12 @@ function ObsValue({ obs }: { obs: any }) {
         </span>
       )}
       {obs.systolic && obs.diastolic && (
-        <span className={clsx('font-bold', obs.systolic >= 140 ? 'text-rose-400' : 'text-white')}>
+        <span className={clsx('font-bold', obs.systolic >= 140 ? 'text-rose-400' : neutral)}>
           BP {obs.systolic}/{obs.diastolic} mmHg
         </span>
       )}
       {obs.pulse && (
-        <span className={clsx('font-bold', obs.pulse > 100 || obs.pulse < 50 ? 'text-rose-400' : 'text-white')}>
+        <span className={clsx('font-bold', obs.pulse > 100 || obs.pulse < 50 ? 'text-rose-400' : neutral)}>
           ♥ {obs.pulse} bpm
         </span>
       )}
@@ -66,7 +69,7 @@ function ObsValue({ obs }: { obs: any }) {
           {obs.o2_litres_min && <span className="text-slate-400 font-normal text-xs ml-1">({obs.o2_litres_min}L/min)</span>}
         </span>
       )}
-      {obs.weight_kg && <span className="font-bold text-white">⚖ {obs.weight_kg} kg</span>}
+      {obs.weight_kg && <span className={`font-bold ${neutral}`}>⚖ {obs.weight_kg} kg</span>}
       {obs.blood_glucose && <span className="font-bold text-amber-400">🩸 {obs.blood_glucose} mmol/L</span>}
     </div>
   )
@@ -125,6 +128,8 @@ function buildObservationsPrintPage(rows: any[], title: string): string {
 }
 
 export default function Observations() {
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [view, setView] = useState<'list' | 'summary'>('summary')
   const [summary, setSummary] = useState<any[]>([])
   const [records, setRecords] = useState<any[]>([])
@@ -233,7 +238,7 @@ export default function Observations() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: '#1a1a1a' }}>
+      <div className="flex gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: pillBg }}>
         {(['summary', 'list'] as const).map(t => (
           <button key={t} onClick={() => setView(t)}
             className={clsx('px-5 py-2 rounded-lg text-sm font-medium transition-all capitalize', view === t ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
