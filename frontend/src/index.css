@@ -334,11 +334,28 @@
 
 /* Several pages hand-roll the same "frosted glass" look as an ad-hoc
    bg-white/N div instead of the shared .card class — compensate text-white
-   /text-slate-300 content nested (at any depth) inside those too. */
-.app-shell:not(.theme-dark) [class*="bg-white/"].text-white,
-.app-shell:not(.theme-dark) [class*="bg-white/"] .text-white { color: #0f172a !important; }
-.app-shell:not(.theme-dark) [class*="bg-white/"].text-slate-300,
-.app-shell:not(.theme-dark) [class*="bg-white/"] .text-slate-300 { color: #475569 !important; }
+   /text-slate-300 content nested (at any depth) inside those too.
+   IMPORTANT: these must be exact class selectors (.bg-white\/5), not an
+   attribute substring match like [class*="bg-white/"] — that substring
+   also matches hover:bg-white/8 (hover-only, e.g. the sidebar's nav-item
+   hover state), which wrongly recolored text sitting on a permanently
+   dark background (e.g. the sidebar profile name) whenever it happened
+   to share a parent with a hover:bg-white/N utility. */
+.app-shell:not(.theme-dark) .bg-white\/5.text-white, .app-shell:not(.theme-dark) .bg-white\/5 .text-white,
+.app-shell:not(.theme-dark) .bg-white\/8.text-white, .app-shell:not(.theme-dark) .bg-white\/8 .text-white,
+.app-shell:not(.theme-dark) .bg-white\/10.text-white, .app-shell:not(.theme-dark) .bg-white\/10 .text-white,
+.app-shell:not(.theme-dark) .bg-white\/12.text-white, .app-shell:not(.theme-dark) .bg-white\/12 .text-white,
+.app-shell:not(.theme-dark) .bg-white\/15.text-white, .app-shell:not(.theme-dark) .bg-white\/15 .text-white { color: #0f172a !important; }
+.app-shell:not(.theme-dark) .bg-white\/5.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/5 .text-slate-100,
+.app-shell:not(.theme-dark) .bg-white\/8.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/8 .text-slate-100,
+.app-shell:not(.theme-dark) .bg-white\/10.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/10 .text-slate-100,
+.app-shell:not(.theme-dark) .bg-white\/12.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/12 .text-slate-100,
+.app-shell:not(.theme-dark) .bg-white\/15.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/15 .text-slate-100 { color: #1e293b !important; }
+.app-shell:not(.theme-dark) .bg-white\/5.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/5 .text-slate-300,
+.app-shell:not(.theme-dark) .bg-white\/8.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/8 .text-slate-300,
+.app-shell:not(.theme-dark) .bg-white\/10.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/10 .text-slate-300,
+.app-shell:not(.theme-dark) .bg-white\/12.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/12 .text-slate-300,
+.app-shell:not(.theme-dark) .bg-white\/15.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/15 .text-slate-300 { color: #475569 !important; }
 
 /* The shared .card class (used almost everywhere) is itself hardcoded to a
    dark #111111 background in @layer components above — that's a permanent
@@ -355,7 +372,23 @@
   box-shadow: 0 4px 12px rgba(15,23,42,0.08) !important;
 }
 .app-shell:not(.theme-dark) .card .text-white { color: #0f172a !important; }
+.app-shell:not(.theme-dark) .card .text-slate-100 { color: #1e293b !important; }
 .app-shell:not(.theme-dark) .card .text-slate-300 { color: #475569 !important; }
+
+/* Same problem as .card: the shared .input class (every text input, select,
+   and textarea that uses className="input") is hardcoded to a dark
+   background regardless of the theme toggle — this is why dropdowns/inputs
+   on every page (MAR included) stayed dark under light mode. */
+.app-shell:not(.theme-dark) .input {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(15,23,42,0.15) !important;
+}
+.app-shell:not(.theme-dark) .input::placeholder { color: #94a3b8 !important; }
+.app-shell:not(.theme-dark) .input:hover { border-color: rgba(15,23,42,0.25) !important; }
+.app-shell:not(.theme-dark) .input:focus { border-color: #e8b130 !important; box-shadow: 0 0 0 3px rgba(232,177,48,0.15) !important; }
+.app-shell:not(.theme-dark) select.input option { background: #ffffff !important; color: #1e293b !important; }
+.app-shell:not(.theme-dark) .label { color: #b8960a !important; }
 
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }

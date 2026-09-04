@@ -1485,8 +1485,7 @@ export default function CarePlans() {
           <p className="text-slate-500 text-sm mt-0.5">View and manage individual support plans</p>
         </div>
         {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-          <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}
-            style={{ color: '#ffffff' }}>
+          <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}>
             Who read plans
           </Button>
         )}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO, startOfWeek, startOfMonth, endOfMonth, addDays, differenceInCalendarDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck } from 'lucide-react'
@@ -62,6 +63,10 @@ function getName(su: any) {
 
 export default function MAR() {
   const { user, isRole } = useAuth()
+  const { theme } = useTheme()
+  const marColors = theme === 'dark'
+    ? { page: '#0a0a0a', panel: '#111', border: 'border-white/10' }
+    : { page: '#f8f7fb', panel: '#ffffff', border: 'border-slate-200' }
   const now = new Date()
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
@@ -149,10 +154,10 @@ export default function MAR() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0a0a0a' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: marColors.page }}>
 
       {/* ── Top control bar (RoundSys-style) ─────────────────────────── */}
-      <div className="no-print border-b border-white/10 px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-6 gap-y-2" style={{ background: '#111' }}>
+      <div className={`no-print border-b ${marColors.border} px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-x-6 gap-y-2`} style={{ background: marColors.panel }}>
         {/* Title */}
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
           <Pill className="w-4 h-4 text-purple-600" /> MAR
@@ -230,7 +235,7 @@ export default function MAR() {
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
           {/* ── Resident profile strip ───────────────────────────────── */}
-          <div className="border-b border-white/10 px-4 py-2 flex items-start gap-4" style={{ background: '#111' }}>
+          <div className={`border-b ${marColors.border} px-4 py-2 flex items-start gap-4`} style={{ background: marColors.panel }}>
             <div className="flex-shrink-0 relative w-12 h-12">
               <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-base font-bold border-2 border-purple-200">
                 {suInitials}
@@ -276,7 +281,7 @@ export default function MAR() {
           </div>
 
           {/* ── Tabs ───────────────────────────────────────────────── */}
-          <div className="no-print border-b border-white/10 px-4 flex gap-0 overflow-x-auto" style={{ background: '#111', WebkitOverflowScrolling: 'touch' }}>
+          <div className={`no-print border-b ${marColors.border} px-4 flex gap-0 overflow-x-auto`} style={{ background: marColors.panel, WebkitOverflowScrolling: 'touch' }}>
             {[
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
@@ -457,6 +462,10 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
 }
 
 function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHome: string; homes: any[]; setSelectedHome: (v: string) => void }) {
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
+  const pageBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
+  const panelBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [signOffTask, setSignOffTask] = useState<any>(null)
@@ -477,12 +486,12 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
   const done = tasks.filter(t => t.status !== 'pending')
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0a0a0a' }}>
-      <div className="no-print border-b border-white/10 px-4 py-3 flex items-center gap-4 flex-wrap" style={{ background: '#111' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: pageBg }}>
+      <div className={`no-print border-b ${panelBorder} px-4 py-3 flex items-center gap-4 flex-wrap`} style={{ background: panelBg }}>
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
           <Pill className="w-4 h-4 text-purple-600" /> Medication Tasks
         </span>
-        <span className="text-xs text-slate-400">{format(new Date(), 'EEEE, d MMMM yyyy')}</span>
+        <span className="text-xs text-slate-500">{format(new Date(), 'EEEE, d MMMM yyyy')}</span>
         {homes.length > 1 && (
           <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 ml-auto"
             value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
@@ -588,9 +597,13 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
   }
 
   const weeks = buildWeeks(dates)
+  const { theme } = useTheme()
+  const gridBodyBg = theme === 'dark' ? '#111' : '#ffffff'
+  const gridBodyBgAlt = theme === 'dark' ? '#161616' : '#f8fafc'
+  const gridBorder = theme === 'dark' ? '#2a2a2a' : '#e2e8f0'
 
-  const stickyMed: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 2, minWidth: 160, maxWidth: 160, width: 160, background: '#111', borderRight: '1px solid #2a2a2a' }
-  const stickyDir: React.CSSProperties = { position: 'sticky', left: 160, zIndex: 2, minWidth: 140, maxWidth: 140, width: 140, background: '#111', borderRight: '1px solid #2a2a2a' }
+  const stickyMed: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 2, minWidth: 160, maxWidth: 160, width: 160, background: gridBodyBg, borderRight: `1px solid ${gridBorder}` }
+  const stickyDir: React.CSSProperties = { position: 'sticky', left: 160, zIndex: 2, minWidth: 140, maxWidth: 140, width: 140, background: gridBodyBg, borderRight: `1px solid ${gridBorder}` }
   const stickyTime: React.CSSProperties = { position: 'sticky', left: 300, zIndex: 2, minWidth: 50, maxWidth: 50, width: 50, background: '#f8fafc', borderRight: '2px solid #94a3b8', textAlign: 'center' }
 
   const thBase = 'border border-slate-200 text-center text-xs font-semibold py-1 px-0.5 bg-slate-100 text-slate-700'
@@ -653,18 +666,18 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
           {medications.map((med: any) => {
             const slots: string[] = med.time_slots || FREQ_TIMES[med.frequency] || ['08:00']
             return slots.map((slot: string, si: number) => (
-              <tr key={`${med.id}-${slot}`} style={{ backgroundColor: si % 2 === 0 ? '#111' : '#161616' }}>
+              <tr key={`${med.id}-${slot}`} style={{ backgroundColor: si % 2 === 0 ? gridBodyBg : gridBodyBgAlt }}>
                 {/* Medication name — spans all time slots */}
                 {si === 0 && (
                   <td rowSpan={slots.length} style={{
                     ...stickyMed,
                     padding: '6px 8px',
                     verticalAlign: 'top',
-                    border: '1px solid #2a2a2a',
-                    borderRight: '1px solid #2a2a2a',
-                    background: '#111',
+                    border: `1px solid ${gridBorder}`,
+                    borderRight: `1px solid ${gridBorder}`,
+                    background: gridBodyBg,
                   }}>
-                    <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: '#f5f0e8' }}>{med.medication_name}</div>
+                    <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: theme === 'dark' ? '#f5f0e8' : '#0f172a' }}>{med.medication_name}</div>
                     {showPrescriptions && med.dose && (
                       <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
                         {med.dose}
@@ -691,14 +704,14 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                     ...stickyDir,
                     padding: '6px 8px',
                     verticalAlign: 'top',
-                    border: '1px solid #2a2a2a',
-                    borderRight: '1px solid #2a2a2a',
-                    background: '#111',
+                    border: `1px solid ${gridBorder}`,
+                    borderRight: `1px solid ${gridBorder}`,
+                    background: gridBodyBg,
                     fontSize: 9,
-                    color: '#b8b3a7',
+                    color: theme === 'dark' ? '#b8b3a7' : '#475569',
                     lineHeight: 1.4,
                   }}>
-                    {med.instructions || med.notes || <span style={{ color: '#d1d5db' }}>—</span>}
+                    {med.instructions || med.notes || <span style={{ color: theme === 'dark' ? '#d1d5db' : '#94a3b8' }}>—</span>}
                   </td>
                 )}
 

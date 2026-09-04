@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check, CheckSquare } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import api from '../../api'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -42,10 +43,10 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
     <div
       onClick={() => !notice.is_read && onRead(notice.id)}
       className={clsx(
-        'relative rounded-xl border transition-all cursor-pointer group',
+        'relative rounded-xl border shadow-sm transition-all cursor-pointer group',
         notice.is_pinned
-          ? 'border-amber-500/50 bg-gradient-to-br from-amber-500/8 to-amber-600/4 shadow-lg shadow-amber-900/10'
-          : 'border-slate-700/60 bg-slate-800/50 hover:border-slate-600/80',
+          ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-white'
+          : 'border-slate-100 bg-white hover:border-slate-200',
         !notice.is_read && !notice.is_pinned && 'border-l-2 border-l-amber-400',
       )}
     >
@@ -73,17 +74,17 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
         </div>
 
         {/* Title */}
-        <h3 className="font-bold text-white text-[15px] leading-snug mb-2">{notice.title}</h3>
+        <h3 className="font-bold text-slate-900 text-[15px] leading-snug mb-2">{notice.title}</h3>
 
         {/* Body */}
         {notice.body && (
-          <p className="text-sm text-slate-300 leading-relaxed line-clamp-3 mb-3">{notice.body}</p>
+          <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-3">{notice.body}</p>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-700/40">
+        <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="font-medium text-slate-400">{notice.posted_by_name}</span>
+            <span className="font-medium text-slate-600">{notice.posted_by_name}</span>
             <span>·</span>
             <span>{formatDistanceToNow(new Date(notice.created_at), { addSuffix: true })}</span>
             {notice.expires_at && (
@@ -106,6 +107,8 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
 
 export default function Noticeboard() {
   const { isRole, user } = useAuth()
+  const { theme } = useTheme()
+  const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [notices, setNotices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -211,7 +214,7 @@ export default function Noticeboard() {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <Newspaper className="w-6 h-6 text-amber-400" /> Updates & News
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-500 text-sm mt-1">
             Staff noticeboard
             {unread > 0 && <span className="ml-2 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-xs font-bold">{unread} unread</span>}
           </p>
@@ -225,27 +228,27 @@ export default function Noticeboard() {
       </div>
 
       {/* Today's Tasks — always shown here, not collapsible, not tucked under a menu */}
-      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-4 mb-5">
+      <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 mb-5">
         <div className="flex items-center gap-2 mb-3">
-          <CheckSquare className="w-4 h-4 text-amber-400" />
-          <p className="font-bold text-white text-sm">Today's Tasks</p>
+          <CheckSquare className="w-4 h-4 text-amber-500" />
+          <p className="font-bold text-slate-900 text-sm">Today's Tasks</p>
           {todaysTasks.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-semibold">{todaysTasks.length} pending</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">{todaysTasks.length} pending</span>
           )}
         </div>
         {todaysTasks.length === 0 ? (
-          <p className="text-sm text-slate-400">No tasks assigned for today.</p>
+          <p className="text-sm text-slate-500">No tasks assigned for today.</p>
         ) : (
           <div className="space-y-2">
             {todaysTasks.map((t: any) => (
-              <div key={t.id} className="flex items-center gap-3 bg-slate-900/40 rounded-lg px-3 py-2.5">
+              <div key={t.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-lg px-3 py-2.5">
                 <button onClick={() => completeTask(t.id)}
-                  className="w-5 h-5 rounded border-2 border-slate-500 hover:border-amber-400 flex-shrink-0 transition-colors" title="Mark complete" />
+                  className="w-5 h-5 rounded border-2 border-slate-300 hover:border-amber-400 flex-shrink-0 transition-colors" title="Mark complete" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{t.title}</p>
-                  {t.su_name && <p className="text-xs text-slate-400">{t.su_name}</p>}
+                  <p className="text-sm text-slate-800 truncate">{t.title}</p>
+                  {t.su_name && <p className="text-xs text-slate-500">{t.su_name}</p>}
                 </div>
-                {t.due_time && <span className="text-xs text-slate-400 flex-shrink-0">{t.due_time}</span>}
+                {t.due_time && <span className="text-xs text-slate-500 flex-shrink-0">{t.due_time}</span>}
               </div>
             ))}
           </div>
@@ -255,14 +258,14 @@ export default function Noticeboard() {
       {/* Filter */}
       <div className="flex gap-2 mb-5 flex-wrap">
         <button onClick={() => setFilterCat('')}
-          className={clsx('px-3 py-1.5 rounded-lg text-xs font-medium transition-all', !filterCat ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
-          style={!filterCat ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : { background: '#1a1a1a' }}>
+          className={clsx('px-3 py-1.5 rounded-lg text-xs font-medium transition-all', !filterCat ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700')}
+          style={!filterCat ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : { background: pillBg }}>
           All
         </button>
         {CATEGORIES.map(c => (
           <button key={c.value} onClick={() => setFilterCat(filterCat === c.value ? '' : c.value)}
-            className={clsx('px-3 py-1.5 rounded-lg text-xs font-medium transition-all', filterCat === c.value ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
-            style={filterCat === c.value ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : { background: '#1a1a1a' }}>
+            className={clsx('px-3 py-1.5 rounded-lg text-xs font-medium transition-all', filterCat === c.value ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-700')}
+            style={filterCat === c.value ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : { background: pillBg }}>
             {c.label}
           </button>
         ))}
@@ -306,7 +309,7 @@ export default function Noticeboard() {
           <Input label="Expires on (optional)" type="date" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} />
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isPinned} onChange={e => setForm(f => ({ ...f, isPinned: e.target.checked }))} className="w-4 h-4 rounded" />
-            <span className="text-sm text-slate-300">Pin to top of noticeboard</span>
+            <span className="text-sm text-slate-700">Pin to top of noticeboard</span>
           </label>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
