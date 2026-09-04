@@ -96,7 +96,7 @@ export default function ExternalContacts() {
             <Phone size={20} className="text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">External Contacts</h1>
+            <h1 className="text-xl font-semibold text-slate-900">External Contacts</h1>
             <p className="text-sm text-gray-400">Healthcare professionals, authorities & key contacts</p>
           </div>
         </div>

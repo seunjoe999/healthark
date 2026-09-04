@@ -152,7 +152,7 @@ export default function DBSTracker() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <ShieldCheck className="w-6 h-6 text-amber-400" /> Staff Compliance
           </h1>
           <p className="text-slate-400 text-sm mt-1">DBS checks, references & right to work documents</p>

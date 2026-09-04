@@ -121,7 +121,7 @@ export default function SupervisionAppraisal() {
     <div className="flex flex-col h-screen" style={{ background: '#0a0a0a' }}>
       <div className="px-6 py-4 flex justify-between items-center" style={{ background: '#111', borderBottom: '1px solid rgba(232,177,48,0.15)' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white">Supervision &amp; Appraisals</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Supervision &amp; Appraisals</h1>
           <p className="text-sm text-slate-500 mt-0.5">Staff supervision records and performance appraisals</p>
         </div>
         <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>New Record</Button>

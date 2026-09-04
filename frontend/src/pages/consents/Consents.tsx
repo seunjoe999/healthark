@@ -603,7 +603,7 @@ export default function Consents() {
             <FileSignature className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Consents & Signatures</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Consents & Signatures</h1>
             <p className="text-slate-400 text-sm">Record and manage consent for all care areas and agreements.</p>
           </div>
         </div>

@@ -260,7 +260,7 @@ export default function Compliance() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">CQC Compliance Overview</h1>
+          <h1 className="text-2xl font-bold text-slate-900">CQC Compliance Overview</h1>
           {data && (
             <p className="text-xs text-slate-500 mt-0.5">
               Last updated: {format(new Date(data.lastUpdated), 'dd MMM yyyy, HH:mm')}

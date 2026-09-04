@@ -103,7 +103,7 @@ export default function FluidBalance() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <Droplets className="w-6 h-6 text-blue-400" /> Fluid Balance Chart
           </h1>
           <p className="text-slate-400 text-sm mt-1">Track daily fluid intake and output for residents</p>

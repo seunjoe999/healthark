@@ -439,7 +439,7 @@ export default function MedicineRisk() {
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-3">
             <ShieldAlert className="w-6 h-6 text-amber-400" /> Medication Risk Assessment
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>

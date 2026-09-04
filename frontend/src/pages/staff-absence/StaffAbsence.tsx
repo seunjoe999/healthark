@@ -105,7 +105,7 @@ export default function StaffAbsence() {
             <UserX size={20} className="text-red-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">Staff Absence</h1>
+            <h1 className="text-xl font-semibold text-slate-900">Staff Absence</h1>
             <p className="text-sm text-gray-400">Absence tracking & Bradford Factor scoring</p>
           </div>
         </div>

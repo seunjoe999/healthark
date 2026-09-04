@@ -434,7 +434,7 @@ export default function MedicationStock() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
           <Pill className="w-6 h-6 text-amber-400" />
-          <h1 className="text-2xl font-bold text-white">Medication Stock</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Medication Stock</h1>
         </div>
         <div className="flex items-center gap-2">
           {homes.length > 1 && (

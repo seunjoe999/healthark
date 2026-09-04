@@ -414,7 +414,7 @@ export default function PEEP() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <ShieldAlert className="w-6 h-6 text-orange-400" /> PEEP
           </h1>
           <p className="text-slate-400 text-sm mt-1">Personal Emergency Evacuation Plans — {summary.length} resident{summary.length !== 1 ? 's' : ''}</p>

@@ -208,7 +208,7 @@ export default function EditServiceUser() {
         <Button icon={<Save className="w-4 h-4" />} loading={saving} onClick={save} variant="gold">Save changes</Button>
       </div>
 
-      <h1 className="text-2xl font-bold text-white mb-6">Edit Service User</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mb-6">Edit Service User</h1>
 
       {/* Section tabs */}
       <div className="flex gap-1 p-1 rounded-xl mb-6 overflow-x-auto" style={{ background: '#1a1a1a' }}>

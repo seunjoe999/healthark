@@ -360,7 +360,7 @@ export default function HospitalAdmissions() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <Building2 className="w-6 h-6 text-blue-400" />
             Hospital Admissions
           </h1>

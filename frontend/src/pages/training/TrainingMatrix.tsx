@@ -358,7 +358,7 @@ export default function TrainingMatrix() {
             <Grid3X3 className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Mandatory Training Matrix</h1>
+            <h1 className="text-xl font-bold text-slate-900">Mandatory Training Matrix</h1>
             <p className="text-xs text-slate-400">Compliance overview for all mandatory training</p>
           </div>
         </div>

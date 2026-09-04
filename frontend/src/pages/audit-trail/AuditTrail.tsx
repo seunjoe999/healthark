@@ -97,7 +97,7 @@ export default function AuditTrail() {
       <div className="flex items-center gap-3 mb-6">
         <History className="w-6 h-6 text-amber-400" />
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Audit Trail</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Audit Trail</h1>
           <p className="text-slate-400 text-xs sm:text-sm">Full history of all actions in the system</p>
         </div>
         {total > 0 && (

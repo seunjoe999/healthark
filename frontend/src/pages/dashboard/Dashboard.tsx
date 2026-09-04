@@ -377,7 +377,7 @@ export default function Dashboard() {
           <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">
             {format(new Date(), 'EEEE, d MMMM yyyy')}
           </p>
-          <h1 className="text-xl lg:text-2xl font-bold text-white">
+          <h1 className="text-xl lg:text-2xl font-bold text-slate-900">
             Welcome back, <span style={{ color: '#e8b130' }}>{user?.firstName}</span>
           </h1>
         </div>

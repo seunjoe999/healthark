@@ -126,7 +126,7 @@ export default function CQCInspection() {
             <Shield size={20} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">CQC Mock Inspection</h1>
+            <h1 className="text-xl font-semibold text-slate-900">CQC Mock Inspection</h1>
             <p className="text-sm text-gray-400">Self-assessment across the 5 key questions</p>
           </div>
         </div>

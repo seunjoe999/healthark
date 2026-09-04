@@ -304,7 +304,7 @@ export default function HandoverReport() {
       <div className="mb-6 no-print">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="font-display text-2xl text-white flex items-center gap-2">
+            <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
               <FileText className="w-6 h-6 text-amber-400" /> Handover Report
             </h1>
             <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE d MMMM yyyy')}</p>

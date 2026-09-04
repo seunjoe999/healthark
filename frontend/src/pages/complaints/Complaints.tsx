@@ -107,7 +107,7 @@ export default function Complaints() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <MessageSquare className="w-6 h-6 text-amber-400" /> Complaints & Compliments
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">Record and manage complaints, compliments and concerns</p>

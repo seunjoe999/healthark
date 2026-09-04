@@ -110,7 +110,7 @@ export default function BedOccupancy() {
             <BedDouble size={20} className="text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">Bed Occupancy</h1>
+            <h1 className="text-xl font-semibold text-slate-900">Bed Occupancy</h1>
             <p className="text-sm text-gray-400">Real-time room and bed availability</p>
           </div>
         </div>

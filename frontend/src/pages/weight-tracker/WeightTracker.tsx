@@ -223,7 +223,7 @@ export default function WeightTracker() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <Scale className="w-6 h-6 text-blue-400" /> Weight / BMI Tracker
           </h1>
           <p className="text-slate-400 text-sm mt-1">Monitor resident weight and body mass index over time</p>
