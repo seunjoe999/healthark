@@ -1080,17 +1080,15 @@ export default function Incidents() {
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <IncidentField label="Service User" value={inc.resident_name} />
-                      <IncidentField label="Incident type" value={TYPE_LABELS[incidentType] || incidentType} />
-                      <IncidentField label="Date" value={inc.record_date ? format(new Date(inc.record_date), 'd MMMM yyyy') : ''} />
-                      {inc.location && <IncidentField label="Location" value={inc.location} />}
-                      <IncidentField label="Recorded by" value={inc.recorded_by_name} />
-                      <IncidentField label="Injuries" value={inc.injuries ? `Yes${inc.injury_details ? ` — ${inc.injury_details}` : ''}` : 'None reported'} />
-                      <IncidentField label="Medical attention" value={inc.medical_needed ? `Yes${inc.medical_details ? ` — ${inc.medical_details}` : ''}` : 'No'} />
-                      {inc.safeguarding_ref && <IncidentField label="Safeguarding" value="Safeguarding referral made" />}
-                    </div>
+                  <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-3">
+                    <IncidentField label="Service User" value={inc.resident_name} />
+                    <IncidentField label="Incident type" value={TYPE_LABELS[incidentType] || incidentType} />
+                    <IncidentField label="Date" value={inc.record_date ? format(new Date(inc.record_date), 'd MMMM yyyy') : ''} />
+                    {inc.location && <IncidentField label="Location" value={inc.location} />}
+                    <IncidentField label="Recorded by" value={inc.recorded_by_name} />
+                    <IncidentField label="Injuries" value={inc.injuries ? `Yes${inc.injury_details ? ` — ${inc.injury_details}` : ''}` : 'None reported'} />
+                    <IncidentField label="Medical attention" value={inc.medical_needed ? `Yes${inc.medical_details ? ` — ${inc.medical_details}` : ''}` : 'No'} />
+                    {inc.safeguarding_ref && <IncidentField label="Safeguarding" value="Safeguarding referral made" />}
                     {inc.description && <IncidentField label="Details of Incident" value={inc.description} />}
                     {inc.witnesses && <IncidentField label="Witnesses" value={inc.witnesses} />}
                     {inc.immediate_action && <IncidentField label="Immediate action taken" value={inc.immediate_action} />}
@@ -1103,37 +1101,29 @@ export default function Incidents() {
                       </div>
                     )}
 
-                    {/* Notification section */}
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <p className="text-xs font-semibold text-blue-700 mb-0.5">Family / next of kin notified</p>
-                      <p className={`text-sm font-medium ${inc.family_notified ? 'text-emerald-700' : 'text-slate-600'}`}>
-                        {inc.family_notified ? 'Yes' : 'No'}
-                      </p>
-                    </div>
+                    <IncidentField label="Family / next of kin notified" value={inc.family_notified ? 'Yes' : 'No'} />
 
                     {/* Review Notes */}
                     {(inc.review_notes?.length > 0 || inc.signature) && (
-                      <div className="space-y-2">
+                      <div className="space-y-3 pt-2 border-t border-slate-100">
                         {inc.review_notes?.length > 0 && (
                           <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Review Notes</p>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Review Notes</p>
                             <div className="space-y-2">
                               {inc.review_notes.map((note: any, i: number) => (
-                                <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700">
-                                  <p className="text-xs text-slate-400 mb-1">
-                                    On {format(new Date(note.timestamp), 'd MMM yyyy HH:mm')} {note.author} wrote:
-                                  </p>
+                                <p key={i} className="text-sm text-slate-700">
+                                  <span className="text-xs text-slate-400">On {format(new Date(note.timestamp), 'd MMM yyyy HH:mm')} {note.author} wrote: </span>
                                   {note.text}
-                                </div>
+                                </p>
                               ))}
                             </div>
                           </div>
                         )}
                         {inc.signature && (
-                          <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <div className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <p className="text-xs text-emerald-700">
-                              Signed off by <strong>{inc.signature.name}</strong> on {format(new Date(inc.signature.timestamp), 'd MMM yyyy HH:mm')}
+                            <p className="text-xs text-slate-500">
+                              Signed off by <strong className="text-slate-700">{inc.signature.name}</strong> on {format(new Date(inc.signature.timestamp), 'd MMM yyyy HH:mm')}
                             </p>
                           </div>
                         )}

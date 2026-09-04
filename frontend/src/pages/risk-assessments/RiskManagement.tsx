@@ -435,10 +435,10 @@ export default function RiskManagement() {
         </div>
       </div>
 
-      <div className="flex items-start justify-between mb-6 no-print p-4 rounded-2xl" style={{ background: 'rgba(232,177,48,0.12)', border: '1px solid rgba(232,177,48,0.3)' }}>
+      <div className="flex items-start justify-between mb-6 no-print">
         <div>
-          <h1 className="text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
-            <Shield className="w-6 h-6" style={{ color: '#e8b130' }} /> RISK MANAGEMENT
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Shield className="w-6 h-6 text-amber-500" /> Risk Management
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Risk management plans for service users</p>
         </div>
@@ -558,9 +558,9 @@ export default function RiskManagement() {
                       )}
                     </div>
 
-                    <div className="px-5 pb-5 pt-4 space-y-0">
-                      {/* Two-column overview */}
-                      <div className="grid sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100 mb-4">
+                    <div className="px-5 pb-5 pt-4 space-y-4">
+                      {/* Overview — plain flowing field list, matching Complaints & Compliments */}
+                      <div className="space-y-3">
                         {[
                           { label: 'What is the risk', value: ra.description },
                           { label: 'Who is at risk', value: ra.who_is_at_risk },
@@ -568,72 +568,42 @@ export default function RiskManagement() {
                           { label: 'Risk before intervention', value: ra.risk_before_intervention },
                           { label: 'Triggers', value: ra.triggers },
                           { label: 'Protective factors', value: ra.protective_factors },
-                        ].filter(f => f.value).map(f => (
-                          <div key={f.label} className="bg-white p-4">
-                            <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: '#c99518' }}>{f.label}</p>
-                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">{f.value}</p>
-                          </div>
-                        ))}
+                          { label: 'Risk Management Plan', value: ra.management_plan },
+                          { label: 'Update tracking', value: ra.risk_update_tracking },
+                        ].map(f => <Field key={f.label} label={f.label} value={f.value} />)}
                       </div>
-
-                      {/* Management plan — full width highlight */}
-                      {ra.management_plan && (
-                        <div className="rounded-xl border-l-4 border-amber-400 bg-amber-50 p-4 mb-4">
-                          <p className="text-xs font-bold uppercase tracking-wide text-amber-700 mb-2">Risk Management Plan</p>
-                          <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{ra.management_plan}</p>
-                        </div>
-                      )}
 
                       {/* Risk rating row */}
-                      <div className="flex flex-wrap gap-3 items-center mb-4">
-                        {likelihood && (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
-                            <span className="text-xs text-slate-500">Likelihood</span>
-                            <span className="text-xs font-semibold text-slate-800">{likelihood.label}</span>
-                          </div>
-                        )}
-                        {ra.risk_after_controls && (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 flex-1 min-w-0">
-                            <span className="text-xs text-slate-500 shrink-0">After controls</span>
-                            <span className="text-xs text-slate-700 truncate">{ra.risk_after_controls}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-500">Overall level</span>
-                          <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} />
-                        </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 items-center text-xs text-slate-500 pt-3 border-t border-slate-100">
+                        {likelihood && <span><span className="font-semibold text-slate-600">Likelihood:</span> {likelihood.label}</span>}
+                        {ra.risk_after_controls && <span className="truncate"><span className="font-semibold text-slate-600">After controls:</span> {ra.risk_after_controls}</span>}
+                        <span className="flex items-center gap-1.5"><span className="font-semibold text-slate-600">Overall level:</span> <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} /></span>
                       </div>
-
-                      {ra.risk_update_tracking && (
-                        <div className="rounded-lg bg-slate-50 border border-slate-100 p-3 mb-4">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Update tracking</p>
-                          <p className="text-sm text-slate-700 whitespace-pre-line">{ra.risk_update_tracking}</p>
-                        </div>
-                      )}
 
                       {/* Sign-off */}
                       {ra.signed_off ? (
-                        <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
+                        <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
                           <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                          <p className="text-xs text-emerald-800">
+                          <p className="text-xs text-emerald-700">
                             <span className="font-semibold">Signed off</span>
                             {ra.signed_off_by && <span> by {ra.signed_off_by}</span>}
                             {ra.signed_off_date && <span> on {format(new Date(ra.signed_off_date), 'd MMM yyyy')}</span>}
                           </p>
                         </div>
                       ) : canManage ? (
-                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-dashed border-slate-300 mb-4">
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                           <p className="text-xs text-slate-500">Not yet signed off</p>
-                          <button
-                            onClick={() => { setSignOffItem(ra); setSignOffForm({ signedOffBy: '', signedOffDate: new Date().toISOString().split('T')[0] }) }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-                            <ShieldCheck className="w-3.5 h-3.5" /> Sign Off
-                          </button>
+                          <Button size="sm" variant="outline" icon={<ShieldCheck className="w-3.5 h-3.5" />}
+                            onClick={() => { setSignOffItem(ra); setSignOffForm({ signedOffBy: '', signedOffDate: new Date().toISOString().split('T')[0] }) }}>
+                            Sign Off
+                          </Button>
                         </div>
                       ) : null}
 
                       {/* Update history */}
-                      <UpdateHistory raId={ra.id} />
+                      <div className="pt-3 border-t border-slate-100">
+                        <UpdateHistory raId={ra.id} />
+                      </div>
                     </div>
                   </div>
                 )}
