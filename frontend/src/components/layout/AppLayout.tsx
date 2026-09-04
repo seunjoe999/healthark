@@ -4,6 +4,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { useTaskReminders } from '../../hooks/useTaskReminders'
+import { useAppTheme, type AppTheme } from '../../hooks/useAppTheme'
 import api from '../../api'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -15,7 +16,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale
+  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon
 } from 'lucide-react'
 
 const navSections = [
@@ -185,6 +186,8 @@ interface SidebarProps {
   logout: () => void
   isRole: (...roles: string[]) => boolean
   onNavClick: () => void
+  theme: AppTheme
+  toggleTheme: () => void
 }
 
 function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
@@ -212,7 +215,7 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
 // thing staff see on login and should never be collapsed by default.
 const COLLAPSIBLE_SECTIONS = new Set(navSections.map(s => s.label).filter(l => l && l !== 'DASHBOARD'))
 
-function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
+function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSIBLE_SECTIONS))
   const toggleSection = (label: string) => {
     setCollapsed(prev => {
@@ -307,6 +310,11 @@ function Sidebar({ user, logout, isRole, onNavClick }: SidebarProps) {
             <p className="text-slate-500 text-xs capitalize leading-tight mt-0.5 group-hover:text-slate-400">{user?.role?.replace(/_/g, ' ')} · <span className="text-gold-400/70 group-hover:text-gold-400">edit profile</span></p>
           </div>
         </NavLink>
+        <button onClick={toggleTheme}
+          className="flex items-center gap-2 w-full px-3 py-2 mb-1 text-slate-500 hover:text-amber-400 hover:bg-white/5 rounded-xl text-sm transition-all duration-150 font-medium">
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/8 rounded-xl text-sm transition-all duration-150 font-medium">
           <LogOut className="w-4 h-4" /> Sign out
         </button>
@@ -479,6 +487,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [clockedIn, setClockedIn] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useAppTheme()
   useTaskReminders(!!user)
 
   // Managers/admins don't clock in via QR, so they aren't gated on shift status.
@@ -500,10 +509,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pageTitle = allNavItems.find(item => location.pathname.startsWith(item.to) && item.to !== '/dashboard')?.label
     ?? (location.pathname === '/dashboard' ? 'Dashboard' : 'CompCare Hub')
 
-  const sidebarProps: SidebarProps = { user, logout: guardedLogout, isRole, onNavClick: () => setMobileOpen(false) }
+  const sidebarProps: SidebarProps = { user, logout: guardedLogout, isRole, onNavClick: () => setMobileOpen(false), theme, toggleTheme }
+  const contentBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
 
   return (
-    <div className="app-shell flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
+    <div className={clsx('app-shell flex h-screen overflow-hidden', theme === 'dark' && 'theme-dark')} style={{ background: contentBg }}>
       {/* Desktop sidebar — hidden on mobile */}
       <aside className="no-print hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
         <Sidebar {...sidebarProps} />
@@ -616,7 +626,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <main
           className="flex-1 overflow-y-auto pb-safe"
           style={{
-            background: '#0a0a0a',
+            background: contentBg,
             // Mobile: top padding for 56px fixed header, bottom padding for 60px nav + safe area
             // Desktop (md+): no extra padding needed (sidebar is static)
           }}

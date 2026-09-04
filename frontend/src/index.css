@@ -162,153 +162,155 @@
 
 }
 
-/* Dark theme utility overrides — scoped to the authenticated app shell only (AppLayout).
-   Public pages (landing page, login, family view) are unaffected. Kept unlayered
-   so it beats any @layer utilities rule regardless of selector specificity. */
-  .app-shell .bg-white { background-color: #111111 !important; }
-  .app-shell .bg-slate-50 { background-color: #0a0a0a !important; }
-  .app-shell .bg-slate-100 { background-color: #1a1a1a !important; }
-  .app-shell .bg-slate-200 { background-color: #222222 !important; }
-  .app-shell .text-slate-900 { color: #ffffff !important; }
-  .app-shell .text-slate-800 { color: #f5f5f5 !important; }
-  .app-shell .text-slate-700 { color: #e8e8e8 !important; }
-  .app-shell .text-slate-600 { color: #d0d0d0 !important; }
-  .app-shell .text-slate-500 { color: #b8b8b8 !important; }
-  .app-shell .text-slate-400 { color: #999999 !important; }
-  .app-shell .border-slate-100 { border-color: rgba(232,177,48,0.12) !important; }
-  .app-shell .border-slate-200 { border-color: rgba(232,177,48,0.2) !important; }
-  .app-shell .border-slate-300 { border-color: rgba(232,177,48,0.3) !important; }
-  .app-shell .border-sky-200 { border-color: rgba(14,165,233,0.25)  !important; }
-  .app-shell .border-fuchsia-200 { border-color: rgba(217,70,239,0.25) !important; }
-  .app-shell .border-lime-200 { border-color: rgba(132,204,22,0.25)  !important; }
-  .app-shell .border-stone-200 { border-color: rgba(168,162,158,0.25) !important; }
-  .app-shell .hover\:bg-slate-50:hover { background-color: rgba(232,177,48,0.05) !important; }
-  .app-shell .hover\:bg-slate-100:hover { background-color: rgba(232,177,48,0.08) !important; }
+/* Dark theme utility overrides — opt-in via the .theme-dark modifier class
+   (toggled in AppLayout, off by default). Scoped to the authenticated app
+   shell only; public pages (landing page, login, family view) are unaffected
+   regardless of the toggle. Kept unlayered so it beats any @layer utilities
+   rule regardless of selector specificity. */
+  .app-shell.theme-dark .bg-white { background-color: #111111 !important; }
+  .app-shell.theme-dark .bg-slate-50 { background-color: #0a0a0a !important; }
+  .app-shell.theme-dark .bg-slate-100 { background-color: #1a1a1a !important; }
+  .app-shell.theme-dark .bg-slate-200 { background-color: #222222 !important; }
+  .app-shell.theme-dark .text-slate-900 { color: #ffffff !important; }
+  .app-shell.theme-dark .text-slate-800 { color: #f5f5f5 !important; }
+  .app-shell.theme-dark .text-slate-700 { color: #e8e8e8 !important; }
+  .app-shell.theme-dark .text-slate-600 { color: #d0d0d0 !important; }
+  .app-shell.theme-dark .text-slate-500 { color: #b8b8b8 !important; }
+  .app-shell.theme-dark .text-slate-400 { color: #999999 !important; }
+  .app-shell.theme-dark .border-slate-100 { border-color: rgba(232,177,48,0.12) !important; }
+  .app-shell.theme-dark .border-slate-200 { border-color: rgba(232,177,48,0.2) !important; }
+  .app-shell.theme-dark .border-slate-300 { border-color: rgba(232,177,48,0.3) !important; }
+  .app-shell.theme-dark .border-sky-200 { border-color: rgba(14,165,233,0.25)  !important; }
+  .app-shell.theme-dark .border-fuchsia-200 { border-color: rgba(217,70,239,0.25) !important; }
+  .app-shell.theme-dark .border-lime-200 { border-color: rgba(132,204,22,0.25)  !important; }
+  .app-shell.theme-dark .border-stone-200 { border-color: rgba(168,162,158,0.25) !important; }
+  .app-shell.theme-dark .hover\:bg-slate-50:hover { background-color: rgba(232,177,48,0.05) !important; }
+  .app-shell.theme-dark .hover\:bg-slate-100:hover { background-color: rgba(232,177,48,0.08) !important; }
 
   /* Light colour backgrounds → dark equivalents */
-  .app-shell .bg-red-50 { background-color: rgba(239,68,68,0.08)    !important; }
-  .app-shell .bg-rose-50 { background-color: rgba(244,63,94,0.08)    !important; }
-  .app-shell .bg-orange-50 { background-color: rgba(249,115,22,0.08)   !important; }
-  .app-shell .bg-amber-50 { background-color: rgba(245,158,11,0.08)   !important; }
-  .app-shell .bg-yellow-50 { background-color: rgba(234,179,8,0.08)    !important; }
-  .app-shell .bg-green-50 { background-color: rgba(34,197,94,0.08)    !important; }
-  .app-shell .bg-emerald-50 { background-color: rgba(16,185,129,0.08)   !important; }
-  .app-shell .bg-teal-50 { background-color: rgba(20,184,166,0.08)   !important; }
-  .app-shell .bg-cyan-50 { background-color: rgba(6,182,212,0.08)    !important; }
-  .app-shell .bg-blue-50 { background-color: rgba(59,130,246,0.08)   !important; }
-  .app-shell .bg-indigo-50 { background-color: rgba(99,102,241,0.08)   !important; }
-  .app-shell .bg-violet-50 { background-color: rgba(139,92,246,0.08)   !important; }
-  .app-shell .bg-purple-50 { background-color: rgba(168,85,247,0.08)   !important; }
-  .app-shell .bg-pink-50 { background-color: rgba(236,72,153,0.08)   !important; }
-  .app-shell .bg-gray-50 { background-color: #0a0a0a                 !important; }
-  .app-shell .bg-gray-100 { background-color: #1a1a1a                 !important; }
-  .app-shell .bg-gray-200 { background-color: #222222                 !important; }
-  .app-shell .bg-zinc-50 { background-color: #0a0a0a                 !important; }
-  .app-shell .bg-zinc-100 { background-color: #1a1a1a                 !important; }
-  .app-shell .bg-neutral-50 { background-color: #0a0a0a                !important; }
-  .app-shell .bg-neutral-100 { background-color: #1a1a1a               !important; }
-  .app-shell .bg-sky-50 { background-color: rgba(14,165,233,0.08)   !important; }
-  .app-shell .bg-sky-100 { background-color: rgba(14,165,233,0.12)   !important; }
-  .app-shell .bg-fuchsia-50 { background-color: rgba(217,70,239,0.08) !important; }
-  .app-shell .bg-fuchsia-100 { background-color: rgba(217,70,239,0.12) !important; }
-  .app-shell .bg-lime-50 { background-color: rgba(132,204,22,0.08)   !important; }
-  .app-shell .bg-lime-100 { background-color: rgba(132,204,22,0.12)   !important; }
-  .app-shell .bg-stone-50 { background-color: rgba(168,162,158,0.08)  !important; }
-  .app-shell .bg-stone-100 { background-color: rgba(168,162,158,0.12)  !important; }
+  .app-shell.theme-dark .bg-red-50 { background-color: rgba(239,68,68,0.08)    !important; }
+  .app-shell.theme-dark .bg-rose-50 { background-color: rgba(244,63,94,0.08)    !important; }
+  .app-shell.theme-dark .bg-orange-50 { background-color: rgba(249,115,22,0.08)   !important; }
+  .app-shell.theme-dark .bg-amber-50 { background-color: rgba(245,158,11,0.08)   !important; }
+  .app-shell.theme-dark .bg-yellow-50 { background-color: rgba(234,179,8,0.08)    !important; }
+  .app-shell.theme-dark .bg-green-50 { background-color: rgba(34,197,94,0.08)    !important; }
+  .app-shell.theme-dark .bg-emerald-50 { background-color: rgba(16,185,129,0.08)   !important; }
+  .app-shell.theme-dark .bg-teal-50 { background-color: rgba(20,184,166,0.08)   !important; }
+  .app-shell.theme-dark .bg-cyan-50 { background-color: rgba(6,182,212,0.08)    !important; }
+  .app-shell.theme-dark .bg-blue-50 { background-color: rgba(59,130,246,0.08)   !important; }
+  .app-shell.theme-dark .bg-indigo-50 { background-color: rgba(99,102,241,0.08)   !important; }
+  .app-shell.theme-dark .bg-violet-50 { background-color: rgba(139,92,246,0.08)   !important; }
+  .app-shell.theme-dark .bg-purple-50 { background-color: rgba(168,85,247,0.08)   !important; }
+  .app-shell.theme-dark .bg-pink-50 { background-color: rgba(236,72,153,0.08)   !important; }
+  .app-shell.theme-dark .bg-gray-50 { background-color: #0a0a0a                 !important; }
+  .app-shell.theme-dark .bg-gray-100 { background-color: #1a1a1a                 !important; }
+  .app-shell.theme-dark .bg-gray-200 { background-color: #222222                 !important; }
+  .app-shell.theme-dark .bg-zinc-50 { background-color: #0a0a0a                 !important; }
+  .app-shell.theme-dark .bg-zinc-100 { background-color: #1a1a1a                 !important; }
+  .app-shell.theme-dark .bg-neutral-50 { background-color: #0a0a0a                !important; }
+  .app-shell.theme-dark .bg-neutral-100 { background-color: #1a1a1a               !important; }
+  .app-shell.theme-dark .bg-sky-50 { background-color: rgba(14,165,233,0.08)   !important; }
+  .app-shell.theme-dark .bg-sky-100 { background-color: rgba(14,165,233,0.12)   !important; }
+  .app-shell.theme-dark .bg-fuchsia-50 { background-color: rgba(217,70,239,0.08) !important; }
+  .app-shell.theme-dark .bg-fuchsia-100 { background-color: rgba(217,70,239,0.12) !important; }
+  .app-shell.theme-dark .bg-lime-50 { background-color: rgba(132,204,22,0.08)   !important; }
+  .app-shell.theme-dark .bg-lime-100 { background-color: rgba(132,204,22,0.12)   !important; }
+  .app-shell.theme-dark .bg-stone-50 { background-color: rgba(168,162,158,0.08)  !important; }
+  .app-shell.theme-dark .bg-stone-100 { background-color: rgba(168,162,158,0.12)  !important; }
 
   /* Matching text colours for light backgrounds */
-  .app-shell .text-red-700 { color: #f87171 !important; }
-  .app-shell .text-red-600 { color: #f87171 !important; }
-  .app-shell .text-rose-700 { color: #fb7185 !important; }
-  .app-shell .text-rose-600 { color: #fb7185 !important; }
-  .app-shell .text-orange-700 { color: #fb923c !important; }
-  .app-shell .text-orange-600 { color: #fb923c !important; }
-  .app-shell .text-amber-700 { color: #fbbf24 !important; }
-  .app-shell .text-amber-600 { color: #fbbf24 !important; }
-  .app-shell .text-yellow-700 { color: #facc15 !important; }
-  .app-shell .text-yellow-600 { color: #facc15 !important; }
-  .app-shell .text-green-700 { color: #4ade80 !important; }
-  .app-shell .text-green-600 { color: #4ade80 !important; }
-  .app-shell .text-emerald-700 { color: #34d399 !important; }
-  .app-shell .text-emerald-600 { color: #34d399 !important; }
-  .app-shell .text-teal-700 { color: #2dd4bf !important; }
-  .app-shell .text-teal-600 { color: #2dd4bf !important; }
-  .app-shell .text-blue-700 { color: #60a5fa !important; }
-  .app-shell .text-blue-600 { color: #60a5fa !important; }
-  .app-shell .text-indigo-700 { color: #818cf8 !important; }
-  .app-shell .text-indigo-600 { color: #818cf8 !important; }
-  .app-shell .text-purple-700 { color: #c084fc !important; }
-  .app-shell .text-purple-600 { color: #c084fc !important; }
-  .app-shell .text-pink-700 { color: #f472b6 !important; }
-  .app-shell .text-pink-600 { color: #f472b6 !important; }
-  .app-shell .text-sky-700 { color: #38bdf8 !important; }
-  .app-shell .text-sky-600 { color: #38bdf8 !important; }
-  .app-shell .text-fuchsia-700 { color: #e879f9 !important; }
-  .app-shell .text-fuchsia-600 { color: #e879f9 !important; }
-  .app-shell .text-lime-700 { color: #a3e635 !important; }
-  .app-shell .text-lime-600 { color: #a3e635 !important; }
-  .app-shell .text-stone-700 { color: #d6d3d1 !important; }
-  .app-shell .text-stone-600 { color: #d6d3d1 !important; }
-  .app-shell .text-gray-900 { color: #f5f0e8 !important; }
-  .app-shell .text-gray-800 { color: #ede8dc !important; }
-  .app-shell .text-gray-700 { color: #d4cfc3 !important; }
-  .app-shell .text-gray-600 { color: #b8b3a7 !important; }
-  .app-shell .text-gray-500 { color: #8a8578 !important; }
-  .app-shell .text-gray-400 { color: #6b6660 !important; }
+  .app-shell.theme-dark .text-red-700 { color: #f87171 !important; }
+  .app-shell.theme-dark .text-red-600 { color: #f87171 !important; }
+  .app-shell.theme-dark .text-rose-700 { color: #fb7185 !important; }
+  .app-shell.theme-dark .text-rose-600 { color: #fb7185 !important; }
+  .app-shell.theme-dark .text-orange-700 { color: #fb923c !important; }
+  .app-shell.theme-dark .text-orange-600 { color: #fb923c !important; }
+  .app-shell.theme-dark .text-amber-700 { color: #fbbf24 !important; }
+  .app-shell.theme-dark .text-amber-600 { color: #fbbf24 !important; }
+  .app-shell.theme-dark .text-yellow-700 { color: #facc15 !important; }
+  .app-shell.theme-dark .text-yellow-600 { color: #facc15 !important; }
+  .app-shell.theme-dark .text-green-700 { color: #4ade80 !important; }
+  .app-shell.theme-dark .text-green-600 { color: #4ade80 !important; }
+  .app-shell.theme-dark .text-emerald-700 { color: #34d399 !important; }
+  .app-shell.theme-dark .text-emerald-600 { color: #34d399 !important; }
+  .app-shell.theme-dark .text-teal-700 { color: #2dd4bf !important; }
+  .app-shell.theme-dark .text-teal-600 { color: #2dd4bf !important; }
+  .app-shell.theme-dark .text-blue-700 { color: #60a5fa !important; }
+  .app-shell.theme-dark .text-blue-600 { color: #60a5fa !important; }
+  .app-shell.theme-dark .text-indigo-700 { color: #818cf8 !important; }
+  .app-shell.theme-dark .text-indigo-600 { color: #818cf8 !important; }
+  .app-shell.theme-dark .text-purple-700 { color: #c084fc !important; }
+  .app-shell.theme-dark .text-purple-600 { color: #c084fc !important; }
+  .app-shell.theme-dark .text-pink-700 { color: #f472b6 !important; }
+  .app-shell.theme-dark .text-pink-600 { color: #f472b6 !important; }
+  .app-shell.theme-dark .text-sky-700 { color: #38bdf8 !important; }
+  .app-shell.theme-dark .text-sky-600 { color: #38bdf8 !important; }
+  .app-shell.theme-dark .text-fuchsia-700 { color: #e879f9 !important; }
+  .app-shell.theme-dark .text-fuchsia-600 { color: #e879f9 !important; }
+  .app-shell.theme-dark .text-lime-700 { color: #a3e635 !important; }
+  .app-shell.theme-dark .text-lime-600 { color: #a3e635 !important; }
+  .app-shell.theme-dark .text-stone-700 { color: #d6d3d1 !important; }
+  .app-shell.theme-dark .text-stone-600 { color: #d6d3d1 !important; }
+  .app-shell.theme-dark .text-gray-900 { color: #f5f0e8 !important; }
+  .app-shell.theme-dark .text-gray-800 { color: #ede8dc !important; }
+  .app-shell.theme-dark .text-gray-700 { color: #d4cfc3 !important; }
+  .app-shell.theme-dark .text-gray-600 { color: #b8b3a7 !important; }
+  .app-shell.theme-dark .text-gray-500 { color: #8a8578 !important; }
+  .app-shell.theme-dark .text-gray-400 { color: #6b6660 !important; }
 
   /* Dark (800/900) text colours that are invisible on dark backgrounds */
-  .app-shell .text-emerald-900, .app-shell .text-emerald-800 { color: #a7f3d0 !important; }
-  .app-shell .text-green-900, .app-shell .text-green-800 { color: #bbf7d0 !important; }
-  .app-shell .text-teal-900, .app-shell .text-teal-800 { color: #99f6e4 !important; }
-  .app-shell .text-cyan-900, .app-shell .text-cyan-800 { color: #a5f3fc !important; }
-  .app-shell .text-blue-900, .app-shell .text-blue-800 { color: #bfdbfe !important; }
-  .app-shell .text-indigo-900, .app-shell .text-indigo-800 { color: #c7d2fe !important; }
-  .app-shell .text-violet-900, .app-shell .text-violet-800 { color: #ddd6fe !important; }
-  .app-shell .text-purple-900, .app-shell .text-purple-800 { color: #e9d5ff !important; }
-  .app-shell .text-pink-900, .app-shell .text-pink-800 { color: #fbcfe8 !important; }
-  .app-shell .text-rose-900, .app-shell .text-rose-800 { color: #fecdd3 !important; }
-  .app-shell .text-red-900, .app-shell .text-red-800 { color: #fecaca !important; }
-  .app-shell .text-orange-900, .app-shell .text-orange-800 { color: #fed7aa !important; }
-  .app-shell .text-amber-900, .app-shell .text-amber-800 { color: #fde68a !important; }
-  .app-shell .text-yellow-900, .app-shell .text-yellow-800 { color: #fef08a !important; }
-  .app-shell .text-sky-900, .app-shell .text-sky-800 { color: #bae6fd !important; }
-  .app-shell .text-fuchsia-900, .app-shell .text-fuchsia-800 { color: #f5d0fe !important; }
-  .app-shell .text-lime-900, .app-shell .text-lime-800 { color: #d9f99d !important; }
-  .app-shell .text-stone-900, .app-shell .text-stone-800 { color: #f5f5f4 !important; }
+  .app-shell.theme-dark .text-emerald-900, .app-shell.theme-dark .text-emerald-800 { color: #a7f3d0 !important; }
+  .app-shell.theme-dark .text-green-900, .app-shell.theme-dark .text-green-800 { color: #bbf7d0 !important; }
+  .app-shell.theme-dark .text-teal-900, .app-shell.theme-dark .text-teal-800 { color: #99f6e4 !important; }
+  .app-shell.theme-dark .text-cyan-900, .app-shell.theme-dark .text-cyan-800 { color: #a5f3fc !important; }
+  .app-shell.theme-dark .text-blue-900, .app-shell.theme-dark .text-blue-800 { color: #bfdbfe !important; }
+  .app-shell.theme-dark .text-indigo-900, .app-shell.theme-dark .text-indigo-800 { color: #c7d2fe !important; }
+  .app-shell.theme-dark .text-violet-900, .app-shell.theme-dark .text-violet-800 { color: #ddd6fe !important; }
+  .app-shell.theme-dark .text-purple-900, .app-shell.theme-dark .text-purple-800 { color: #e9d5ff !important; }
+  .app-shell.theme-dark .text-pink-900, .app-shell.theme-dark .text-pink-800 { color: #fbcfe8 !important; }
+  .app-shell.theme-dark .text-rose-900, .app-shell.theme-dark .text-rose-800 { color: #fecdd3 !important; }
+  .app-shell.theme-dark .text-red-900, .app-shell.theme-dark .text-red-800 { color: #fecaca !important; }
+  .app-shell.theme-dark .text-orange-900, .app-shell.theme-dark .text-orange-800 { color: #fed7aa !important; }
+  .app-shell.theme-dark .text-amber-900, .app-shell.theme-dark .text-amber-800 { color: #fde68a !important; }
+  .app-shell.theme-dark .text-yellow-900, .app-shell.theme-dark .text-yellow-800 { color: #fef08a !important; }
+  .app-shell.theme-dark .text-sky-900, .app-shell.theme-dark .text-sky-800 { color: #bae6fd !important; }
+  .app-shell.theme-dark .text-fuchsia-900, .app-shell.theme-dark .text-fuchsia-800 { color: #f5d0fe !important; }
+  .app-shell.theme-dark .text-lime-900, .app-shell.theme-dark .text-lime-800 { color: #d9f99d !important; }
+  .app-shell.theme-dark .text-stone-900, .app-shell.theme-dark .text-stone-800 { color: #f5f5f4 !important; }
 
   /* bg-*-100 and hover:bg-*-100 overrides */
-  .app-shell .bg-red-100 { background-color: rgba(239,68,68,0.12)   !important; }
-  .app-shell .bg-rose-100 { background-color: rgba(244,63,94,0.12)   !important; }
-  .app-shell .bg-orange-100 { background-color: rgba(249,115,22,0.12)  !important; }
-  .app-shell .bg-amber-100 { background-color: rgba(245,158,11,0.12)  !important; }
-  .app-shell .bg-yellow-100 { background-color: rgba(234,179,8,0.12)   !important; }
-  .app-shell .bg-green-100 { background-color: rgba(34,197,94,0.12)   !important; }
-  .app-shell .bg-emerald-100 { background-color: rgba(16,185,129,0.12)  !important; }
-  .app-shell .bg-teal-100 { background-color: rgba(20,184,166,0.12)  !important; }
-  .app-shell .bg-blue-100 { background-color: rgba(59,130,246,0.12)  !important; }
-  .app-shell .bg-indigo-100 { background-color: rgba(99,102,241,0.12)  !important; }
-  .app-shell .bg-purple-100 { background-color: rgba(168,85,247,0.12)  !important; }
-  .app-shell .bg-pink-100 { background-color: rgba(236,72,153,0.12)  !important; }
-  .app-shell .bg-slate-300 { background-color: #2a2a2a                !important; }
-  .app-shell .bg-slate-400 { background-color: #333333                !important; }
+  .app-shell.theme-dark .bg-red-100 { background-color: rgba(239,68,68,0.12)   !important; }
+  .app-shell.theme-dark .bg-rose-100 { background-color: rgba(244,63,94,0.12)   !important; }
+  .app-shell.theme-dark .bg-orange-100 { background-color: rgba(249,115,22,0.12)  !important; }
+  .app-shell.theme-dark .bg-amber-100 { background-color: rgba(245,158,11,0.12)  !important; }
+  .app-shell.theme-dark .bg-yellow-100 { background-color: rgba(234,179,8,0.12)   !important; }
+  .app-shell.theme-dark .bg-green-100 { background-color: rgba(34,197,94,0.12)   !important; }
+  .app-shell.theme-dark .bg-emerald-100 { background-color: rgba(16,185,129,0.12)  !important; }
+  .app-shell.theme-dark .bg-teal-100 { background-color: rgba(20,184,166,0.12)  !important; }
+  .app-shell.theme-dark .bg-blue-100 { background-color: rgba(59,130,246,0.12)  !important; }
+  .app-shell.theme-dark .bg-indigo-100 { background-color: rgba(99,102,241,0.12)  !important; }
+  .app-shell.theme-dark .bg-purple-100 { background-color: rgba(168,85,247,0.12)  !important; }
+  .app-shell.theme-dark .bg-pink-100 { background-color: rgba(236,72,153,0.12)  !important; }
+  .app-shell.theme-dark .bg-slate-300 { background-color: #2a2a2a                !important; }
+  .app-shell.theme-dark .bg-slate-400 { background-color: #333333                !important; }
 
   /* Override light focus rings for dark theme */
-  .app-shell .focus\:ring-purple-100:focus { --tw-ring-color: rgba(168,85,247,0.2) !important; }
-  .app-shell .focus\:ring-blue-100:focus { --tw-ring-color: rgba(59,130,246,0.2) !important; }
-  .app-shell .focus\:ring-indigo-100:focus { --tw-ring-color: rgba(99,102,241,0.2) !important; }
+  .app-shell.theme-dark .focus\:ring-purple-100:focus { --tw-ring-color: rgba(168,85,247,0.2) !important; }
+  .app-shell.theme-dark .focus\:ring-blue-100:focus { --tw-ring-color: rgba(59,130,246,0.2) !important; }
+  .app-shell.theme-dark .focus\:ring-indigo-100:focus { --tw-ring-color: rgba(99,102,241,0.2) !important; }
 
   /* hover:bg-*-50/100 overrides */
-  .app-shell .hover\:bg-red-50:hover { background-color: rgba(239,68,68,0.08)   !important; }
-  .app-shell .hover\:bg-rose-50:hover { background-color: rgba(244,63,94,0.08)   !important; }
-  .app-shell .hover\:bg-amber-50:hover { background-color: rgba(245,158,11,0.08)  !important; }
-  .app-shell .hover\:bg-green-50:hover { background-color: rgba(34,197,94,0.08)   !important; }
-  .app-shell .hover\:bg-emerald-50:hover { background-color: rgba(16,185,129,0.08)  !important; }
-  .app-shell .hover\:bg-blue-50:hover { background-color: rgba(59,130,246,0.08)  !important; }
-  .app-shell .hover\:bg-indigo-50:hover { background-color: rgba(99,102,241,0.08)  !important; }
-  .app-shell .hover\:bg-indigo-100:hover { background-color: rgba(99,102,241,0.12)  !important; }
-  .app-shell .hover\:bg-purple-50:hover { background-color: rgba(168,85,247,0.08)  !important; }
-  .app-shell .hover\:bg-amber-100:hover { background-color: rgba(245,158,11,0.12)  !important; }
-  .app-shell .hover\:bg-purple-100:hover { background-color: rgba(168,85,247,0.12)  !important; }
+  .app-shell.theme-dark .hover\:bg-red-50:hover { background-color: rgba(239,68,68,0.08)   !important; }
+  .app-shell.theme-dark .hover\:bg-rose-50:hover { background-color: rgba(244,63,94,0.08)   !important; }
+  .app-shell.theme-dark .hover\:bg-amber-50:hover { background-color: rgba(245,158,11,0.08)  !important; }
+  .app-shell.theme-dark .hover\:bg-green-50:hover { background-color: rgba(34,197,94,0.08)   !important; }
+  .app-shell.theme-dark .hover\:bg-emerald-50:hover { background-color: rgba(16,185,129,0.08)  !important; }
+  .app-shell.theme-dark .hover\:bg-blue-50:hover { background-color: rgba(59,130,246,0.08)  !important; }
+  .app-shell.theme-dark .hover\:bg-indigo-50:hover { background-color: rgba(99,102,241,0.08)  !important; }
+  .app-shell.theme-dark .hover\:bg-indigo-100:hover { background-color: rgba(99,102,241,0.12)  !important; }
+  .app-shell.theme-dark .hover\:bg-purple-50:hover { background-color: rgba(168,85,247,0.08)  !important; }
+  .app-shell.theme-dark .hover\:bg-amber-100:hover { background-color: rgba(245,158,11,0.12)  !important; }
+  .app-shell.theme-dark .hover\:bg-purple-100:hover { background-color: rgba(168,85,247,0.12)  !important; }
 
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes slideUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
@@ -318,52 +320,52 @@
 /* ── Dark theme: force dark on ALL native inputs, textareas, selects — scoped to the
    authenticated app shell only, so public pages (landing page, login, family view)
    keep their own input styling (outside @layer for max specificity) ── */
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]) {
+.app-shell.theme-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]) {
   background-color: #1a1a1a !important;
   color: #f5f0e8 !important;
   border: 1px solid rgba(232,177,48,0.25) !important;
   border-radius: 10px;
   outline: none;
 }
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"])::placeholder {
+.app-shell.theme-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"])::placeholder {
   color: #6b6b5a !important;
 }
-.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]):focus {
+.app-shell.theme-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]):focus {
   border-color: #e8b130 !important;
   box-shadow: 0 0 0 3px rgba(232,177,48,0.12) !important;
 }
-.app-shell textarea {
+.app-shell.theme-dark textarea {
   background-color: #1a1a1a !important;
   color: #f5f0e8 !important;
   border: 1px solid rgba(232,177,48,0.25) !important;
   border-radius: 10px;
   outline: none;
 }
-.app-shell textarea::placeholder { color: #6b6b5a !important; }
-.app-shell textarea:focus {
+.app-shell.theme-dark textarea::placeholder { color: #6b6b5a !important; }
+.app-shell.theme-dark textarea:focus {
   border-color: #e8b130 !important;
   box-shadow: 0 0 0 3px rgba(232,177,48,0.12) !important;
 }
-.app-shell select {
+.app-shell.theme-dark select {
   background-color: #1a1a1a !important;
   color: #f5f0e8 !important;
   border: 1px solid rgba(232,177,48,0.25) !important;
   border-radius: 10px;
   outline: none;
 }
-.app-shell select:focus {
+.app-shell.theme-dark select:focus {
   border-color: #e8b130 !important;
   box-shadow: 0 0 0 3px rgba(232,177,48,0.12) !important;
 }
-.app-shell select option {
+.app-shell.theme-dark select option {
   background-color: #1a1a1a !important;
   color: #f5f0e8 !important;
 }
 /* Native time/date picker icons render black by default — invisible on the
    dark input backgrounds above, so invert them to white. */
-.app-shell input[type="time"]::-webkit-calendar-picker-indicator,
-.app-shell input[type="date"]::-webkit-calendar-picker-indicator,
-.app-shell input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+.app-shell.theme-dark input[type="time"]::-webkit-calendar-picker-indicator,
+.app-shell.theme-dark input[type="date"]::-webkit-calendar-picker-indicator,
+.app-shell.theme-dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
   cursor: pointer;
 }
