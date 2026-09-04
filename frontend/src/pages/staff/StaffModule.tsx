@@ -9,6 +9,7 @@ import { format, differenceInYears } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
 import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
 import toast from 'react-hot-toast'
+import MeetingsSection from '../../components/MeetingsSection'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]
 
@@ -28,7 +29,7 @@ const STAFF_DOC_TYPES = [
   { value: 'other', label: 'Other document' },
 ]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings'
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
 
@@ -153,6 +154,7 @@ export default function StaffModule() {
     { key: 'cautions', label: 'Cautions' },
     { key: 'supervisions', label: 'Supervision & Appraisal' },
     { key: 'sensitive', label: `Sensitive Info (${sensitiveNotes.length})` },
+    { key: 'meetings', label: 'Staff Meeting' },
   ]
 
   return (
@@ -664,6 +666,10 @@ export default function StaffModule() {
                     onSaved={async () => { setAddSensitiveOpen(false); const res = await api.get(`/reviews/staff-sensitive-notes/${selected.id}`); setSensitiveNotes(res.data.data || []); toast.success('Note added') }} />
                 )}
               </div>
+            )}
+
+            {tab === 'meetings' && selected && (
+              <MeetingsSection meetingType="staff" parentId={selected.id} label="Staff Meeting" />
             )}
 
             {tab === 'clock' && (

@@ -26,6 +26,7 @@ const EditStaff = React.lazy(() => import('./pages/staff/EditStaff'))
 const Audits = React.lazy(() => import('./pages/audits/Audits'))
 const Reports = React.lazy(() => import('./pages/reports/Reports'))
 const Alerts = React.lazy(() => import('./pages/alerts/Alerts'))
+const ManagementMeeting = React.lazy(() => import('./pages/meetings/ManagementMeeting'))
 const MAR = React.lazy(() => import('./pages/mar/MAR'))
 const Tasks = React.lazy(() => import('./pages/tasks/Tasks'))
 const ClockInAdmin = React.lazy(() => import('./pages/clockin/ClockInAdmin'))
@@ -170,6 +171,7 @@ function AppRoutes() {
         <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+        <Route path="/management-meeting" element={<ProtectedRoute><ManagementMeeting /></ProtectedRoute>} />
         <Route path="/admin/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/settings/role-permissions" element={<ProtectedRoute><RolePermissions /></ProtectedRoute>} />

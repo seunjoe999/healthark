@@ -17,9 +17,10 @@ import { useAuth } from '../../context/AuthContext'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { QRModal } from './QRModal'
 import ResidentTimeline from './ResidentTimeline'
+import MeetingsSection from '../../components/MeetingsSection'
 import toast from 'react-hot-toast'
 
-type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'timeline' | 'reviews'
+type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'meetings' | 'timeline' | 'reviews'
 
 const SU_DOC_TYPES = [
   { value: 'passport', label: 'Copy of passport' },
@@ -156,6 +157,7 @@ export default function ServiceUserProfile() {
     { key: 'documents', label: `Documents (${documents.length})` },
     { key: 'comms', label: 'My Comms' },
     { key: 'background', label: 'Background' },
+    { key: 'meetings', label: 'Resident Meeting' },
     { key: 'timeline', label: 'Daily Timeline' },
     { key: 'reviews', label: 'Reviews' },
   ]
@@ -490,6 +492,9 @@ export default function ServiceUserProfile() {
             <p className="text-sm text-slate-700 whitespace-pre-line">{su.dailyRoutine || '—'}</p>
           </Card>
         </div>
+      )}
+      {tab === 'meetings' && (
+        <MeetingsSection meetingType="resident" parentId={su.id} label="Resident Meeting" />
       )}
       {tab === 'timeline' && (
         <ResidentTimeline suId={su.id} suName={`${su.firstName} ${su.lastName}`} />

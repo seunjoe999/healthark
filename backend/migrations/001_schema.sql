@@ -1208,6 +1208,31 @@ CREATE TABLE su_reviews (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Meetings — shared record type for Resident Meeting (su_id set), Staff
+-- Meeting (staff_id set) and Management Meeting (home-wide, neither set),
+-- distinguished by meeting_type. Same template/fields for all three.
+CREATE TABLE meetings (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  meeting_type      VARCHAR(20) NOT NULL DEFAULT 'resident',
+  su_id             UUID REFERENCES service_users(id) ON DELETE CASCADE,
+  staff_id          UUID REFERENCES staff(id) ON DELETE CASCADE,
+  home_id           UUID NOT NULL REFERENCES homes(id),
+  created_by        UUID REFERENCES staff(id),
+  conducted_by      TEXT NOT NULL DEFAULT '',
+  meeting_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+  attendees         TEXT,
+  service_location  TEXT,
+  notes             TEXT,
+  action_plan       TEXT,
+  signed_off        BOOLEAN NOT NULL DEFAULT FALSE,
+  signed_off_by     TEXT,
+  signed_off_date   DATE,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_meetings_su ON meetings(su_id);
+CREATE INDEX idx_meetings_staff ON meetings(staff_id);
+CREATE INDEX idx_meetings_home ON meetings(home_id, meeting_type);
+
 -- ================================================================
 -- IMMUTABLE AUDIT LOG (every action in the system)
 -- ================================================================

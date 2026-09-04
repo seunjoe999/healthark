@@ -157,6 +157,7 @@ import searchRoutes from './routes/search.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import uploadRoutes from './routes/upload.routes';
 import reviewsRoutes from './routes/reviews.routes';
+import meetingsRoutes from './routes/meetings.routes';
 import reviewTypesRoutes from './routes/reviewTypes.routes';
 import trainingTypesRoutes from './routes/trainingTypes.routes';
 import tasksRoutes from './routes/tasks.routes';
@@ -173,6 +174,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
+app.use('/api/meetings', meetingsRoutes);
 app.use('/api/review-types', reviewTypesRoutes);
 app.use('/api/training-types', trainingTypesRoutes);
 app.use('/api/tasks', tasksRoutes);
@@ -1307,6 +1309,28 @@ async function createCoreTables() {
       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )` },
     { label: 'idx documents_home', sql: `CREATE INDEX IF NOT EXISTS idx_documents_home ON documents(home_id)` },
+
+    { label: 'table meetings', sql: `CREATE TABLE IF NOT EXISTS meetings (
+      id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      meeting_type      VARCHAR(20) NOT NULL DEFAULT 'resident',
+      su_id             UUID REFERENCES service_users(id) ON DELETE CASCADE,
+      staff_id          UUID REFERENCES staff(id) ON DELETE CASCADE,
+      home_id           UUID NOT NULL REFERENCES homes(id),
+      created_by        UUID REFERENCES staff(id),
+      conducted_by      TEXT NOT NULL DEFAULT '',
+      meeting_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+      attendees         TEXT,
+      service_location  TEXT,
+      notes             TEXT,
+      action_plan       TEXT,
+      signed_off        BOOLEAN NOT NULL DEFAULT FALSE,
+      signed_off_by     TEXT,
+      signed_off_date   DATE,
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )` },
+    { label: 'idx meetings_su', sql: `CREATE INDEX IF NOT EXISTS idx_meetings_su ON meetings(su_id)` },
+    { label: 'idx meetings_staff', sql: `CREATE INDEX IF NOT EXISTS idx_meetings_staff ON meetings(staff_id)` },
+    { label: 'idx meetings_home', sql: `CREATE INDEX IF NOT EXISTS idx_meetings_home ON meetings(home_id, meeting_type)` },
 
     { label: 'table signatures', sql: `CREATE TABLE IF NOT EXISTS signatures (
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2538,6 +2562,25 @@ async function ensureColumns() {
     // ── risk_assessments — update tracking and last assessed date ─────────────
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_update_tracking TEXT`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS last_assessed_date   DATE`,
+    // ── medicine_risk_assessments — narrative risk-assessment fields to match
+    //    the "Other Risk Assessment" template (client voice-note request) ─────
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS review_frequency         VARCHAR(50)`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS risk_description         TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS risk_before_intervention TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS who_is_at_risk           TEXT`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS is_historical            BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS what_could_happen        TEXT`,
+    // ── medicine_risk_updates — dated update-tracking history, mirrors
+    //    risk_assessment_updates so Medication Risk gets the same feature ─────
+    `CREATE TABLE IF NOT EXISTS medicine_risk_updates (
+       id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       risk_id        UUID NOT NULL REFERENCES medicine_risk_assessments(id) ON DELETE CASCADE,
+       update_notes   TEXT NOT NULL,
+       new_risk_level VARCHAR(50),
+       updated_by     UUID NOT NULL REFERENCES staff(id),
+       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mru_risk ON medicine_risk_updates(risk_id)`,
     // ── su_documents — service user key documents ─────────────────────────────
     `CREATE TABLE IF NOT EXISTS su_documents (
        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
