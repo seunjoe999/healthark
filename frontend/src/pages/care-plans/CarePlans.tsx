@@ -76,6 +76,8 @@ const PLAN_TYPES = [
   { value: 'positive_behaviour', label: 'Positive Behaviour Support Plan' },
   { value: 'oral_care_assessment', label: 'Oral Care Assessment' },
   { value: 'autism', label: 'Autism Support Plan' },
+  { value: 'learning_disability', label: 'Learning Disability Support Plan' },
+  { value: 'bowel_management', label: 'Bowel Management Support Plan' },
   { value: 'pain_assessment', label: 'Pain Assessment' },
   { value: 'personal_evacuation', label: 'Personal Evacuation Support Plan' },
   { value: 'end_of_life', label: 'End Of Life Support Plan' },
@@ -152,6 +154,22 @@ const AUTISM_SECTIONS = [
   { key: 'changeExperience', label: 'My experience of Change and how you can help me' },
   { key: 'cognitionThinking', label: 'My cognition/thinking style and how you can help me' },
   { key: 'emotionsExperience', label: 'My experience of emotions and how you can help me' },
+]
+
+const LEARNING_DISABILITY_SECTIONS = [
+  { key: 'aimsOutcomes', label: 'My Aims/Outcomes' },
+  { key: 'background', label: 'Background' },
+  { key: 'communicationPreferences', label: 'My communication preferences and challenges and how you can help me' },
+  { key: 'dailyActivitiesRoutines', label: 'My daily activities and routines and how you can help me' },
+  { key: 'changeExperience', label: 'My experience of Change and how you can help me' },
+  { key: 'cognitionThinking', label: 'My cognition/thinking style and how you can help me' },
+  { key: 'emotionsExperience', label: 'My experience of emotions and how you can help me' },
+]
+
+const BOWEL_MANAGEMENT_SECTIONS = [
+  { key: 'aboutMeBowelCareNeed', label: 'About Me & My Bowel Care Need' },
+  { key: 'mySupportNeeds', label: 'My Support Needs' },
+  { key: 'howYouCanSupportMe', label: 'How You Can Support Me' },
 ]
 
 const PBS_SECTIONS = [
@@ -375,6 +393,26 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
     )
   }
 
+  if (planType === 'learning_disability') {
+    return (
+      <div className="space-y-3">
+        {LEARNING_DISABILITY_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+      </div>
+    )
+  }
+
+  if (planType === 'bowel_management') {
+    return (
+      <div className="space-y-3">
+        {BOWEL_MANAGEMENT_SECTIONS.map(s => (
+          <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
+        ))}
+      </div>
+    )
+  }
+
   if (planType === 'adhd') {
     return (
       <div className="space-y-3">
@@ -564,7 +602,10 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
           {ORAL_ASSESSMENT_ITEMS.map(it => (
-            <ScoreSelect key={it.key} label={it.label} options={it.options} value={tv(it.key)} onChange={v => set(it.key, v)} />
+            <div key={it.key} className="py-2 border-b border-slate-100 last:border-0">
+              <YesNoRow label={`${it.label} — issue present?`} value={tv(`${it.key}Flag`)} onChange={v => set(`${it.key}Flag`, v)} />
+              <ScoreSelect label={`${it.label} — severity score`} options={it.options} value={tv(it.key)} onChange={v => set(it.key, v)} />
+            </div>
           ))}
         </div>
         {scored && (
@@ -614,10 +655,8 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
           placeholder="Comprehensive Care is committed to promoting and supporting the physical health of those we care for." />
         <SpeechTextarea label="List of physical health issues" className="w-full text-sm" rows={3} value={tv('physicalHealthIssues')} onChange={v => set('physicalHealthIssues', v)} />
         <div><label className="label">GP review date</label><input type="date" className="input w-full" value={tv('gpReviewDate')} onChange={e => set('gpReviewDate', e.target.value)} /></div>
-        <SpeechTextarea label="What I can do" className="w-full text-sm" rows={3} value={tv('whatICanDo')} onChange={v => set('whatICanDo', v)} />
-        <SpeechTextarea label="What you can do to support me" className="w-full text-sm" rows={3} value={tv('whatYouCanDoToSupportMe')} onChange={v => set('whatYouCanDoToSupportMe', v)} />
-        <SpeechTextarea label="Care plan update tracking" className="w-full text-sm" rows={3} value={tv('carePlanUpdateTracking')} onChange={v => set('carePlanUpdateTracking', v)}
-          placeholder="Log of reviews, updates, and changes to this care plan..." />
+        <SpeechTextarea label="My Support Needs" className="w-full text-sm" rows={3} value={tv('whatICanDo')} onChange={v => set('whatICanDo', v)} />
+        <SpeechTextarea label="How You Can Support Me" className="w-full text-sm" rows={3} value={tv('whatYouCanDoToSupportMe')} onChange={v => set('whatYouCanDoToSupportMe', v)} />
       </div>
     )
   }
@@ -677,6 +716,22 @@ function TemplateDetail({ plan }: { plan: any }) {
     return (
       <div className="space-y-3">
         {AUTISM_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'learning_disability') {
+    return (
+      <div className="space-y-3">
+        {LEARNING_DISABILITY_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
+      </div>
+    )
+  }
+
+  if (pt === 'bowel_management') {
+    return (
+      <div className="space-y-3">
+        {BOWEL_MANAGEMENT_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
       </div>
     )
   }
@@ -799,9 +854,8 @@ function TemplateDetail({ plan }: { plan: any }) {
         {sec('Mission statement', tv('missionStatement'))}
         {sec('List of physical health issues', tv('physicalHealthIssues'))}
         {row('GP review date', tv('gpReviewDate') ? format(new Date(tv('gpReviewDate')), 'd MMM yyyy') : '')}
-        {sec('What I can do', tv('whatICanDo'))}
-        {sec('What you can do to support me', tv('whatYouCanDoToSupportMe'))}
-        {sec('Care plan update tracking', tv('carePlanUpdateTracking'))}
+        {sec('My Support Needs', tv('whatICanDo'))}
+        {sec('How You Can Support Me', tv('whatYouCanDoToSupportMe'))}
       </div>
     )
   }
@@ -836,10 +890,10 @@ function TemplateDetail({ plan }: { plan: any }) {
         {row('Assessment date', tv('assessmentDate') ? format(new Date(tv('assessmentDate')), 'd MMM yyyy') : '')}
         {row("Assessor's name", tv('assessorName'))}
         <div className="border border-slate-200 rounded-xl overflow-hidden">
-          {ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '').map(it => (
+          {ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '' || tv(`${it.key}Flag`) !== '').map(it => (
             <div key={it.key} className="flex justify-between px-4 py-2 border-b border-slate-100 last:border-0">
-              <span className="text-sm font-semibold text-slate-600">{it.label}</span>
-              <span className="text-sm text-slate-800">Score {tv(it.key)} — {it.options[parseInt(tv(it.key), 10)]}</span>
+              <span className="text-sm font-semibold text-slate-600">{it.label}{tv(`${it.key}Flag`) ? ` (Issue present: ${tv(`${it.key}Flag`)})` : ''}</span>
+              <span className="text-sm text-slate-800">{tv(it.key) !== '' ? `Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}` : '—'}</span>
             </div>
           ))}
         </div>
@@ -1040,10 +1094,16 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     return sections
   }
 
-  if (p === 'autism' || p === 'adhd') {
+  if (p === 'autism' || p === 'adhd' || p === 'learning_disability') {
     if (p === 'adhd' && plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
-    const list = p === 'autism' ? AUTISM_SECTIONS : ADHD_SECTIONS
+    const list = p === 'autism' ? AUTISM_SECTIONS : p === 'learning_disability' ? LEARNING_DISABILITY_SECTIONS : ADHD_SECTIONS
     list.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
+    return sections
+  }
+
+  if (p === 'bowel_management') {
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
+    BOWEL_MANAGEMENT_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
     return sections
   }
 
@@ -1084,7 +1144,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
 
   if (p === 'medication_support') {
     if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
-    if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'What I Can Do', inner: bodyText(plan.what_i_can_do) })
+    if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'My Support Needs', inner: bodyText(plan.what_i_can_do) })
     if (plan.how_to_support && plan.how_to_support.trim()) sections.push({ title: 'How To Support Me', inner: bodyText(plan.how_to_support) })
     if (plan.regular_medications && plan.regular_medications.trim()) sections.push({ title: 'Regular Medications', inner: bodyText(plan.regular_medications) })
     if (plan.prn_medications && plan.prn_medications.trim()) sections.push({ title: 'PRN Medications', inner: bodyText(plan.prn_medications) })
@@ -1174,8 +1234,8 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
       textRow("Assessor's name", tv('assessorName')),
     ].filter(Boolean).join('')
     if (meta) sections.push({ title: 'Assessment Details', inner: `<table class="fields">${meta}</table>` })
-    const scoreRows = ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '').map(it =>
-      `<tr><th>${it.label}</th><td>Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}</td></tr>`).join('')
+    const scoreRows = ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '' || tv(`${it.key}Flag`) !== '').map(it =>
+      `<tr><th>${it.label}${tv(`${it.key}Flag`) ? ` (Issue present: ${tv(`${it.key}Flag`)})` : ''}</th><td>${tv(it.key) !== '' ? `Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}` : '—'}</td></tr>`).join('')
     if (scoreRows) {
       const total = ORAL_ASSESSMENT_ITEMS.reduce((sum, it) => sum + (tv(it.key) !== '' ? parseInt(tv(it.key), 10) : 0), 0)
       sections.push({ title: 'Oral Care Assessment Scoring', inner: `<table class="fields">${scoreRows}<tr><th>Total Score</th><td><strong>${total} / 16</strong></td></tr></table>` })
@@ -1216,15 +1276,14 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     const gpRow = textRow('GP review date', tv('gpReviewDate') ? new Date(tv('gpReviewDate')).toLocaleDateString('en-GB') : '')
     if (gpRow) sections.push({ title: 'GP Review Date', inner: `<table class="fields">${gpRow}</table>` })
     if (tv('physicalHealthIssues')) sections.push({ title: 'List of Physical Health Issues', inner: bodyText(tv('physicalHealthIssues')) })
-    if (tv('whatICanDo')) sections.push({ title: 'What I Can Do', inner: bodyText(tv('whatICanDo')) })
-    if (tv('whatYouCanDoToSupportMe')) sections.push({ title: 'What You Can Do To Support Me', inner: bodyText(tv('whatYouCanDoToSupportMe')) })
-    if (tv('carePlanUpdateTracking')) sections.push({ title: 'Care Plan Update Tracking', inner: bodyText(tv('carePlanUpdateTracking')) })
+    if (tv('whatICanDo')) sections.push({ title: 'My Support Needs', inner: bodyText(tv('whatICanDo')) })
+    if (tv('whatYouCanDoToSupportMe')) sections.push({ title: 'How You Can Support Me', inner: bodyText(tv('whatYouCanDoToSupportMe')) })
     return sections
   }
 
-  // Default — standard 3 fields
+  // Default — standard 3-section template (Aims/Outcomes, My Support Needs, How You Can Support Me)
   if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
-  if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'What I Can Do', inner: bodyText(plan.what_i_can_do) })
+  if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'My Support Needs', inner: bodyText(plan.what_i_can_do) })
   if (plan.how_to_support && plan.how_to_support.trim()) sections.push({ title: 'How To Support Me', inner: bodyText(plan.how_to_support) })
   return sections
 }
@@ -1815,7 +1874,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
             {plan.support_types && <Field label="Type of Support Required" value={plan.support_types} />}
             <div className="space-y-4">
               {plan.aims_outcomes && <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />}
-              {plan.what_i_can_do && <GoldSection label="What I Can Do" value={plan.what_i_can_do} />}
+              {plan.what_i_can_do && <GoldSection label="My Support Needs" value={plan.what_i_can_do} />}
               {plan.how_to_support && <GoldSection label="How To Support Me" value={plan.how_to_support} />}
             </div>
             {plan.regular_medications && <Field label="Regular Medications" value={plan.regular_medications} />}
@@ -1861,7 +1920,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
           </>
         ) : isTemplatedPlan ? (
           <div className="space-y-4">
-            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health') && plan.aims_outcomes && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health' || plan.plan_type === 'bowel_management') && plan.aims_outcomes && (
               <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
             )}
             <TemplateDetail plan={plan} />
@@ -1869,7 +1928,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
         ) : (
           <div className="space-y-4">
             <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
-            <GoldSection label="What I Can Do" value={plan.what_i_can_do} />
+            <GoldSection label="My Support Needs" value={plan.what_i_can_do} />
             <GoldSection label="How To Support Me" value={plan.how_to_support} />
           </div>
         )}
@@ -2077,7 +2136,7 @@ const EMPTY_ADD_FORM = {
 
 const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'crisis', 'about_me',
   'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life',
-  'physical_health'])
+  'physical_health', 'learning_disability', 'bowel_management'])
 
 function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
   open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void; suName?: string
@@ -2260,7 +2319,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
               <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">OTHER INFORMATION</p>
               <div className="space-y-3">
                 <SpeechTextarea label="My Aims / Outcomes" className="w-full" rows={2} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
-                <SpeechTextarea label="What I Can Do" className="w-full" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
+                <SpeechTextarea label="My Support Needs" className="w-full" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
                 <SpeechTextarea label="What You Can Do To Support Me" className="w-full" rows={2} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
                 <SpeechTextarea label="My Regular Medications" className="w-full" rows={3} value={form.regularMedications} onChange={v => set('regularMedications', v)} placeholder="List each medication, dose, frequency and purpose..." />
                 <SpeechTextarea label="My PRN Medications" className="w-full" rows={2} value={form.prnMedications} onChange={v => set('prnMedications', v)} />
@@ -2295,7 +2354,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
           </>
         ) : isTemplated ? (
           <>
-            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life' || form.planType === 'physical_health') && (
+            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life' || form.planType === 'physical_health' || form.planType === 'bowel_management') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
             <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
@@ -2303,7 +2362,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
         ) : (
           <>
             <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="What are we working towards for this person..." />
-            <SpeechTextarea label="What I can do independently" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} placeholder="The person's strengths and capabilities..." />
+            <SpeechTextarea label="My Support Needs" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} placeholder="The person's support needs..." />
             <SpeechTextarea label="How you can support me" rows={3} value={form.howToSupport} onChange={v => set('howToSupport', v)} placeholder="Specific guidance for staff supporting this person..." />
           </>
         )}
@@ -2371,7 +2430,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
         {isMedPlan ? (
           <>
             <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
-            <SpeechTextarea label="What I can do" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
+            <SpeechTextarea label="My Support Needs" rows={2} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
             <SpeechTextarea label="How to support me" rows={2} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
             <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
               <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#e8b130' }}>Support</p>
@@ -2414,7 +2473,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
           </>
         ) : isTemplated ? (
           <>
-            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health') && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health' || plan.plan_type === 'bowel_management') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
             <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
@@ -2422,7 +2481,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
         ) : (
           <>
             <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
-            <SpeechTextarea label="What I can do" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
+            <SpeechTextarea label="My Support Needs" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
             <SpeechTextarea label="How to support me" rows={3} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
           </>
         )}
