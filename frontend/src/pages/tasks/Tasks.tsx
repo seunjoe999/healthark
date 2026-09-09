@@ -521,7 +521,7 @@ export default function Tasks() {
 }
 
 function AddTaskModal({ open, onClose, sus, homeId, staffList, teams, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; staffList: any[]; teams: any[]; onSaved: () => void }) {
-  const [form, setForm] = useState<{ title: string; category: string; description: string; taskDate: string; dueTime: string; priority: string; suId: string; assignedRole: string; assignedStaffId: string; pictureUrl: string; visibleTeamIds: string[] }>({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '', visibleTeamIds: [] })
+  const [form, setForm] = useState<{ title: string; category: string; description: string; taskDate: string; dueTime: string; priority: string; suId: string; assignedRole: string; assignedStaffId: string; pictureUrl: string; visibleTeamIds: string[]; frequency: string }>({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '', visibleTeamIds: [], frequency: 'once' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
@@ -549,6 +549,10 @@ function AddTaskModal({ open, onClose, sus, homeId, staffList, teams, onSaved }:
           <Input label="Date" type="date" value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
           <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
         </div>
+        <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
+        {form.frequency !== 'once' && (
+          <p className="text-xs text-slate-400 -mt-2">This task will keep appearing on the task list going forward instead of disappearing after {form.taskDate ? 'its date' : 'today'}.</p>
+        )}
         <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
         <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <Select label="Assign to a specific staff member (optional)" value={form.assignedStaffId} onChange={e => set('assignedStaffId', e.target.value)}

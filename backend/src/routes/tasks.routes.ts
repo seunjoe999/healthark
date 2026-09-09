@@ -108,13 +108,14 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
 // (Matches the StaffRole union; 'director'/'registered_manager'/'service_manager'
 // used for privilege checks elsewhere in this codebase aren't part of that type.)
 
-// POST /api/tasks — create a one-off task
+// POST /api/tasks — create a one-off (or recurring) task
 router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'team_leader'), [body('title').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const createdBy = fromToken(req, 'staffId');
-      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl, assignedStaffId, visibleTeamIds } = req.body;
+      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl, assignedStaffId, visibleTeamIds, frequency } = req.body;
+      const teamIds = Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null;
       const rows = await query(
         `INSERT INTO tasks (home_id, su_id, created_by, title, category, description,
           task_date, due_time, priority, assigned_role, picture_url, assigned_staff_id, visible_team_ids)
@@ -122,8 +123,21 @@ router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'a
         [homeId, suId || null, createdBy, title, category || 'general',
          description || null, taskDate || new Date().toISOString().split('T')[0],
          dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null, assignedStaffId || null,
-         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null]
+         teamIds]
       );
+      // A "one-off" task was only ever tied to a single task_date, so it silently
+      // stopped showing up the next day — every task created without an explicit
+      // recurrence looked "disappeared". When a frequency is picked, also save a
+      // task_templates row so /generate-daily keeps recreating it going forward.
+      if (frequency && frequency !== 'once') {
+        await query(
+          `INSERT INTO task_templates (home_id, title, category, description, frequency, due_time,
+            assigned_role, priority, su_id, picture_url, visible_team_ids)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [homeId, title, category || 'general', description || null, frequency,
+           dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null, teamIds]
+        );
+      }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
