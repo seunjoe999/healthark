@@ -1,7 +1,6 @@
 import StaffDashboard from './StaffDashboard'
 import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { useTheme } from '../../context/ThemeContext'
 import { homesApi } from '../../api'
 import api from '../../api'
 import { Spinner } from '../../components/ui'
@@ -48,8 +47,8 @@ const cardVariants = {
 
 /* ── Compliance ring ─────────────────────────────────────────────────────────*/
 function ComplianceRing({ score }: { score: number }) {
-  const { theme } = useTheme()
-  const trackStroke = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)'
+  // Dashboard boxes always stay dark, independent of the app-wide light/dark toggle.
+  const trackStroke = 'rgba(255,255,255,0.06)'
   const r = 36
   const circ = 2 * Math.PI * r
   const offset = circ - (score / 100) * circ
@@ -80,8 +79,8 @@ function ComplianceRing({ score }: { score: number }) {
 
 /* ── Sparkline ───────────────────────────────────────────────────────────────*/
 function Sparkline({ data }: { data: Record<string, number> }) {
-  const { theme } = useTheme()
-  const barTrackBg = theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.12)'
+  // Dashboard boxes always stay dark, independent of the app-wide light/dark toggle.
+  const barTrackBg = 'rgba(255,255,255,0.15)'
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i)
     return { label: format(d, 'EEE'), key: format(d, 'yyyy-MM-dd') }
@@ -120,14 +119,15 @@ function Sparkline({ data }: { data: Record<string, number> }) {
 /* ── Main Dashboard ──────────────────────────────────────────────────────────*/
 export default function Dashboard() {
   const { user, isRole } = useAuth()
-  const { theme } = useTheme()
-  const panelBg = theme === 'dark' ? '#1a1a1a' : '#ffffff'
-  const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
-  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
-  const tileBorderColor = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)'
-  const tileHoverBg = theme === 'dark' ? '#161616' : '#f8fafc'
-  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900'
-  const softPanelBg = theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#f8fafc'
+  // Dashboard boxes always stay dark — kept fixed regardless of the app-wide
+  // light/dark toggle, per explicit request.
+  const panelBg = '#1a1a1a'
+  const tileBg = '#111111'
+  const tileBorder = '1px solid rgba(255,255,255,0.06)'
+  const tileBorderColor = 'rgba(255,255,255,0.06)'
+  const tileHoverBg = '#161616'
+  const neutralText = 'text-white'
+  const softPanelBg = 'rgba(255,255,255,0.03)'
   const [homes, setHomes]               = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [data, setData]                 = useState<any>(null)
@@ -453,7 +453,7 @@ export default function Dashboard() {
                             {birthdays.map((b: any, idx: number) => (
                               <div key={idx} className="flex items-center justify-between px-4 py-3">
                                 <div>
-                                  <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{b.first_name} {b.last_name}</p>
+                                  <p className="font-semibold text-sm text-white">{b.first_name} {b.last_name}</p>
                                   <p className="text-xs text-slate-500 capitalize mt-0.5">
                                     {(b.type || '').replace('_', ' ')}
                                   </p>
