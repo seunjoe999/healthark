@@ -1,8 +1,20 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import api from '../../../api'
 import { Button, Input, Select, SpeechTextarea } from '../../../components/ui'
 import { Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// ── Draft autosave ───────────────────────────────────────────────────────
+function draftKey(suId: string) { return `compcare_seizure_draft_${suId}` }
+function getDraft(suId: string): any | null {
+  try { const raw = localStorage.getItem(draftKey(suId)); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function saveDraft(suId: string, form: any) {
+  try { localStorage.setItem(draftKey(suId), JSON.stringify({ ...form, savedAt: new Date().toISOString() })) } catch { /* storage unavailable — skip silently */ }
+}
+function clearDraft(suId: string) {
+  try { localStorage.removeItem(draftKey(suId)) } catch { /* ignore */ }
+}
 
 const SEIZURE_TYPES = [
   { value: 'tonic_clonic', label: 'Tonic-Clonic (Grand Mal)' },
@@ -32,6 +44,22 @@ export default function SeizureForm({ suId, onSaved }: { suId: string; onSaved: 
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
+  useEffect(() => {
+    const draft = getDraft(suId)
+    if (draft && (draft.description || draft.action)) {
+      setForm(p => ({ ...p, ...draft, savedAt: undefined }))
+      toast('Restored your unsaved draft', { icon: '📝' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const hasContent = form.description || form.action || form.postIctal
+    if (!hasContent) return
+    const t = setTimeout(() => saveDraft(suId, form), 800)
+    return () => clearTimeout(t)
+  }, [suId, form])
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -43,6 +71,7 @@ export default function SeizureForm({ suId, onSaved }: { suId: string; onSaved: 
         recoveryTime: form.recoveryTime ? parseInt(form.recoveryTime) : null,
       })
       toast.success('Seizure episode recorded')
+      clearDraft(suId)
       onSaved()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to save')

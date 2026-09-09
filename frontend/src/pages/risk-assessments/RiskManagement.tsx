@@ -52,6 +52,20 @@ const BLANK_FORM = {
   riskUpdateTracking: '', lastAssessedDate: '',
 }
 
+// ── Draft autosave (New Risk Management Plan form) ─────────────────────────
+// Protects work-in-progress against the inactivity timeout / accidental tab close.
+const RISK_DRAFT_KEY = 'compcare_risk_plan_draft'
+
+function getRiskDraft(): any | null {
+  try { const raw = localStorage.getItem(RISK_DRAFT_KEY); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function saveRiskDraft(form: any) {
+  try { localStorage.setItem(RISK_DRAFT_KEY, JSON.stringify({ ...form, savedAt: new Date().toISOString() })) } catch { /* storage unavailable — skip silently */ }
+}
+function clearRiskDraft() {
+  try { localStorage.removeItem(RISK_DRAFT_KEY) } catch { /* ignore */ }
+}
+
 export default function RiskManagement() {
   const { user, isRole } = useAuth()
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer')
@@ -305,6 +319,26 @@ export default function RiskManagement() {
 
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
+  // Restore an autosaved draft when the create form is opened
+  useEffect(() => {
+    if (!createOpen) return
+    const draft = getRiskDraft()
+    if (draft && (draft.assessmentName || draft.description || draft.managementPlan)) {
+      setForm({ ...BLANK_FORM, ...draft, savedAt: undefined })
+      toast('Restored your unsaved draft', { icon: '📝' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createOpen])
+
+  // Autosave the in-progress form so work isn't lost to session timeout / tab close
+  useEffect(() => {
+    if (!createOpen) return
+    const hasContent = form.assessmentName || form.description || form.managementPlan || form.whoIsAtRisk
+    if (!hasContent) return
+    const t = setTimeout(() => saveRiskDraft(form), 800)
+    return () => clearTimeout(t)
+  }, [createOpen, form])
+
   const handleCreate = async () => {
     if (!form.suId || !form.assessmentName) { toast.error('Service user and plan name are required'); return }
     setSaving(true)
@@ -325,6 +359,7 @@ export default function RiskManagement() {
         lastAssessedDate: form.lastAssessedDate || undefined,
       })
       toast.success('Risk management plan created')
+      clearRiskDraft()
       setCreateOpen(false)
       setForm({ ...BLANK_FORM, suId: '' })
       load()

@@ -1,8 +1,22 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
 import { Button, Input, Select, Toggle, SpeechTextarea } from '../../../components/ui'
 import { AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// ── Draft autosave ───────────────────────────────────────────────────────
+// Protects work-in-progress against the inactivity timeout / accidental tab close.
+// This is a legal document with a lot of free text, so it's worth protecting.
+function draftKey(suId: string) { return `compcare_incident_draft_${suId}` }
+function getDraft(suId: string): any | null {
+  try { const raw = localStorage.getItem(draftKey(suId)); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function saveDraft(suId: string, form: any) {
+  try { localStorage.setItem(draftKey(suId), JSON.stringify({ ...form, savedAt: new Date().toISOString() })) } catch { /* storage unavailable — skip silently */ }
+}
+function clearDraft(suId: string) {
+  try { localStorage.removeItem(draftKey(suId)) } catch { /* ignore */ }
+}
 
 const INCIDENT_TYPES = [
   { value: 'fall', label: 'Fall' },
@@ -47,6 +61,22 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
+  useEffect(() => {
+    const draft = getDraft(suId)
+    if (draft && (draft.description || draft.incidentType)) {
+      setForm(p => ({ ...p, ...draft, savedAt: undefined }))
+      toast('Restored your unsaved draft', { icon: '📝' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const hasContent = form.incidentType || form.description || form.immediateActions
+    if (!hasContent) return
+    const t = setTimeout(() => saveDraft(suId, form), 800)
+    return () => clearTimeout(t)
+  }, [suId, form])
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.incidentType || !form.description) {
@@ -80,6 +110,7 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
         familyNotNotifiedReason: form.familyNotNotifiedReason,
       })
       toast.success('Incident recorded')
+      clearDraft(suId)
       onSaved()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to save')
