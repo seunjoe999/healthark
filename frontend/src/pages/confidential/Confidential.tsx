@@ -346,7 +346,7 @@ export default function Confidential() {
                   {uploading ? <Loader2 className="w-4 h-4 text-purple-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-400" />}
                   <span className="text-sm text-slate-500">{uploading ? 'Uploading…' : 'Click to attach a document'}</span>
                   <input ref={fileRef} type="file" className="hidden" disabled={uploading}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip"
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f) }} />
                 </label>
               )}

@@ -46,9 +46,9 @@ function AttachmentUploader({ value, onChange }: { value: string; onChange: (v: 
           className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50">
           <Upload className="w-3.5 h-3.5" /> {uploading ? 'Uploading…' : 'Upload file'}
         </button>
-        <span className="text-xs text-slate-400">PDF, Word, Excel, images up to 20MB</span>
+        <span className="text-xs text-slate-400">PDF, Word, Excel, images, zip up to 20MB</span>
         <input ref={inputRef} type="file" className="hidden"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.zip"
           onChange={handleFile} />
       </div>
     </div>

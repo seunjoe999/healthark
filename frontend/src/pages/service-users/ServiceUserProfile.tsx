@@ -733,7 +733,7 @@ function UploadDocModal({ open, onClose, suId, onUploaded }: {
             )}
           </div>
           <input ref={fileRef} type="file" className="hidden"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip"
             onChange={e => setFile(e.target.files?.[0] || null)} />
         </div>
         <Input label="Expiry date" type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}

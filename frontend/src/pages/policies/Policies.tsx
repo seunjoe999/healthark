@@ -236,7 +236,7 @@ export default function Policies() {
                 </p>
                 {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                   <>
-                    <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png" onChange={uploadFile} />
+                    <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.zip" onChange={uploadFile} />
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                       className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50">
                       <Upload className="w-3 h-3" /> {uploading ? 'Uploading...' : 'Upload file'}
@@ -425,7 +425,7 @@ function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
         </div>
         <div>
           <label className="label">Policy document</label>
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png" onChange={attachFile} />
+          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.zip" onChange={attachFile} />
           <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 transition-colors">
             <Paperclip className="w-3.5 h-3.5" />

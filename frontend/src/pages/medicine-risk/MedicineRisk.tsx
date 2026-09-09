@@ -753,7 +753,7 @@ export default function MedicineRisk() {
                 {uploading ? <Spinner /> : <Upload className="w-4 h-4 text-slate-500" />}
                 <span className="text-sm text-slate-500">{uploading ? 'Uploading…' : 'Click to attach document (PDF, Word, image)'}</span>
                 <input ref={fileRef} type="file" className="hidden" disabled={uploading}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip"
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f) }} />
               </label>
             )}
