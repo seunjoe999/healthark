@@ -124,12 +124,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const myStaffId = fromToken(req, 'staffId');
 
     const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
-      'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor'];
+      'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor', 'senior_carer'];
     const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
-    // Non-privileged staff (care_staff, senior_carer) only see shifts on days they
-    // themselves are scheduled — i.e. who else is working alongside them — not the
-    // entire home's rota.
+    // Non-privileged staff (care_staff) only see shifts on days they themselves
+    // are scheduled — i.e. who else is working alongside them — not the entire
+    // home's rota. senior_carer is privileged here to match the frontend, which
+    // already lets them create and edit shifts for the whole team.
     let restrictDates: string[] | null = null;
     if (!isPrivileged) {
       let myDatesSql = `SELECT DISTINCT shift_date FROM staff_shifts WHERE home_id = $1 AND staff_id = $2`;
