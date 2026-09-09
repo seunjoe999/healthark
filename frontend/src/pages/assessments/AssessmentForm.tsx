@@ -8,17 +8,23 @@ import { ChevronLeft, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import SignaturePad from '../../components/SignaturePad'
 
-function QuestionField({ q, value, onChange }: { q: any; value: any; onChange: (v: any) => void }) {
+function QuestionField({ q, value, onChange, detailValue, onDetailChange }: { q: any; value: any; onChange: (v: any) => void; detailValue?: any; onDetailChange?: (v: any) => void }) {
   if (q.type === 'yes_no') {
     return (
-      <div className="flex gap-2 flex-wrap">
-        {['yes', 'no', 'n/a'].map(opt => (
-          <label key={opt} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer text-sm font-medium transition-all select-none
-            ${value === opt ? 'bg-purple-600 text-white border-purple-600' : 'border-slate-200 text-slate-600 hover:border-purple-300'}`}>
-            <input type="radio" className="sr-only" checked={value === opt} onChange={() => onChange(opt)} />
-            {opt.toUpperCase()}
-          </label>
-        ))}
+      <div>
+        <div className="flex gap-2 flex-wrap">
+          {['yes', 'no', 'n/a'].map(opt => (
+            <label key={opt} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer text-sm font-medium transition-all select-none
+              ${value === opt ? 'bg-purple-600 text-white border-purple-600' : 'border-slate-200 text-slate-600 hover:border-purple-300'}`}>
+              <input type="radio" className="sr-only" checked={value === opt} onChange={() => onChange(opt)} />
+              {opt.toUpperCase()}
+            </label>
+          ))}
+        </div>
+        {q.detail && (
+          <textarea className="input w-full mt-2" rows={2} value={detailValue || ''}
+            onChange={e => onDetailChange?.(e.target.value)} placeholder="Add details / evidence..." />
+        )}
       </div>
     )
   }
@@ -212,7 +218,8 @@ export default function AssessmentForm() {
                     {q.text}
                     {q.required && <span className="text-red-500 ml-1">*</span>}
                   </p>
-                  <QuestionField q={q} value={answers[q.id]} onChange={v => setAnswer(q.id, v)} />
+                  <QuestionField q={q} value={answers[q.id]} onChange={v => setAnswer(q.id, v)}
+                    detailValue={answers[`${q.id}__notes`]} onDetailChange={v => setAnswer(`${q.id}__notes`, v)} />
                 </div>
               ))}
             </div>

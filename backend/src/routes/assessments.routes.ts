@@ -52,7 +52,7 @@ initTable().catch(() => {});
 
 // ── Template definitions ─────────────────────────────────────────
 type QType = 'yes_no' | 'text' | 'scale' | 'multiselect' | 'select';
-interface Q { id: string; text: string; type: QType; scored: boolean; helpText?: string; options?: string[] }
+interface Q { id: string; text: string; type: QType; scored: boolean; helpText?: string; options?: string[]; detail?: boolean }
 interface Section { id: string; title: string; questions: Q[] }
 interface Template {
   key: string; name: string; category: 'service_user' | 'staff';
@@ -63,6 +63,10 @@ interface Template {
 }
 
 const yn = (id: string, text: string, help?: string): Q => ({ id, text, type: 'yes_no', scored: true, helpText: help });
+// Same as yn() but also renders a "details / notes" box under the Yes/No/N/A
+// buttons — for templates (e.g. Medication Competency) where every question
+// needs supporting evidence, not just a tick.
+const ynBox = (id: string, text: string, help?: string): Q => ({ id, text, type: 'yes_no', scored: true, helpText: help, detail: true });
 const txt = (id: string, text: string): Q => ({ id, text, type: 'text', scored: false });
 const scale = (id: string, text: string): Q => ({ id, text, type: 'scale', scored: true, options: ['Not at All = 0', 'Rarely = 1', 'Sometimes = 2', 'Often = 3', 'Very Often = 4'] });
 const sel = (id: string, text: string, options: string[]): Q => ({ id, text, type: 'select', scored: false, options });
@@ -952,50 +956,50 @@ const TEMPLATES: Template[] = [
           txt('q0a', 'Assessor\'s Name'),
           txt('q0b', 'Assessor\'s Role'),
           sel('q0c', 'Competency Outcome', ['Met', 'Unmet']),
-          yn('q1', 'Has the care worker completed the required training in Medication Management (online Medication Training 1 and 2, and Practical Medication Training)?'),
-          yn('q2', 'Can the Care Worker evidence they have read all the Medication Management Policies and can name them?'),
+          ynBox('q1', 'Has the care worker completed the required training in Medication Management (online Medication Training 1 and 2, and Practical Medication Training)?'),
+          ynBox('q2', 'Can the Care Worker evidence they have read all the Medication Management Policies and can name them?'),
         ]
       },
       {
         id: 's2', title: 'Preparation and Infection Control',
         questions: [
-          yn('q3', 'Did the Care Worker wash their hands before starting Medication Administration and take correct hygiene measures throughout?'),
-          yn('q4', 'Did the Care Worker ensure everything was prepared correctly before starting (medication pots, spoons, water, beakers, etc.)?'),
-          yn('q5', 'Did the Care Worker take measures to ensure they would not be interrupted or distracted to minimise medication error?'),
+          ynBox('q3', 'Did the Care Worker wash their hands before starting Medication Administration and take correct hygiene measures throughout?'),
+          ynBox('q4', 'Did the Care Worker ensure everything was prepared correctly before starting (medication pots, spoons, water, beakers, etc.)?'),
+          ynBox('q5', 'Did the Care Worker take measures to ensure they would not be interrupted or distracted to minimise medication error?'),
         ]
       },
       {
         id: 's3', title: 'Consent and Mental Capacity',
         questions: [
-          yn('q6', 'Before preparing medication, did the Care Worker check the Care Plan to review the level of medication support required?'),
-          yn('q7', 'Before preparing medication, did the Care Worker obtain the service user\'s consent?'),
-          yn('q8', 'If consent wasn\'t obtained, was the Care Worker satisfied that correct procedures had been followed in the best interests of the service user?'),
+          ynBox('q6', 'Before preparing medication, did the Care Worker check the Care Plan to review the level of medication support required?'),
+          ynBox('q7', 'Before preparing medication, did the Care Worker obtain the service user\'s consent?'),
+          ynBox('q8', 'If consent wasn\'t obtained, was the Care Worker satisfied that correct procedures had been followed in the best interests of the service user?'),
         ]
       },
       {
         id: 's4', title: 'Selection and Preparation of Medication',
         questions: [
-          yn('q9', 'Before selecting medication, did the Care Worker read the MAR correctly?'),
-          yn('q10', 'Did the Care Worker check whether a dose had already been administered?'),
-          yn('q11', 'If medication instructions are unclear, does the Care Worker take appropriate action to clarify directions?'),
-          yn('q12', 'Does the Care Worker demonstrate knowledge of the 10 Rights of Medication?'),
-          yn('q13', 'Was the medication selected checked against the correct MAR including checking the service user\'s name on the drug label?'),
-          yn('q14', 'If MAR directions differed from the label, did the Care Worker take appropriate steps to clarify the correct dose?'),
-          yn('q15', 'Was the correct medication and dose selected at the correct time with consideration given to timing in terms of food?'),
-          yn('q16', 'Was medication prepared as per directions and information on the MAR?'),
-          yn('q17', 'Did the Care Worker use the appropriate measuring device for liquid medication placed on a flat surface?'),
+          ynBox('q9', 'Before selecting medication, did the Care Worker read the MAR correctly?'),
+          ynBox('q10', 'Did the Care Worker check whether a dose had already been administered?'),
+          ynBox('q11', 'If medication instructions are unclear, does the Care Worker take appropriate action to clarify directions?'),
+          ynBox('q12', 'Does the Care Worker demonstrate knowledge of the 10 Rights of Medication?'),
+          ynBox('q13', 'Was the medication selected checked against the correct MAR including checking the service user\'s name on the drug label?'),
+          ynBox('q14', 'If MAR directions differed from the label, did the Care Worker take appropriate steps to clarify the correct dose?'),
+          ynBox('q15', 'Was the correct medication and dose selected at the correct time with consideration given to timing in terms of food?'),
+          ynBox('q16', 'Was medication prepared as per directions and information on the MAR?'),
+          ynBox('q17', 'Did the Care Worker use the appropriate measuring device for liquid medication placed on a flat surface?'),
         ]
       },
       {
         id: 's5', title: 'Administration of Medication',
         questions: [
-          yn('q18', 'Did the Care Worker check records to see how the service user prefers to take their medication?'),
-          yn('q19', 'Did the Care Worker offer information, support, and reassurance throughout in a manner that promotes dignity and independence?'),
-          yn('q20', 'Was the medicine administered correctly with a choice of drink offered where appropriate?'),
-          yn('q21', 'Was the security of all medication maintained throughout (not left unattended)?'),
-          yn('q22', 'Did the Care Worker visually witness the individual taking all their medication?'),
-          yn('q23', 'If medication was not taken, was appropriate advice sought and reason for refusal documented?'),
-          yn('q24', 'If medication was not taken, was it dealt with as outlined in the Administration of Medicines Policy (escalating to GP & Management)?'),
+          ynBox('q18', 'Did the Care Worker check records to see how the service user prefers to take their medication?'),
+          ynBox('q19', 'Did the Care Worker offer information, support, and reassurance throughout in a manner that promotes dignity and independence?'),
+          ynBox('q20', 'Was the medicine administered correctly with a choice of drink offered where appropriate?'),
+          ynBox('q21', 'Was the security of all medication maintained throughout (not left unattended)?'),
+          ynBox('q22', 'Did the Care Worker visually witness the individual taking all their medication?'),
+          ynBox('q23', 'If medication was not taken, was appropriate advice sought and reason for refusal documented?'),
+          ynBox('q24', 'If medication was not taken, was it dealt with as outlined in the Administration of Medicines Policy (escalating to GP & Management)?'),
         ]
       },
       {
@@ -1008,48 +1012,48 @@ const TEMPLATES: Template[] = [
       {
         id: 's7', title: 'Record Keeping',
         questions: [
-          yn('q27', 'Did the Care Worker sign the MAR immediately after the medication was administered?'),
-          yn('q28', 'If medication was not given, was the correct code entered on the MAR?'),
-          yn('q29', 'If the medication is a controlled drug, did the Care Worker ask a trained colleague to witness and sign off?'),
-          yn('q30', 'Does the care worker understand variable dose medication and how to administer and record it?'),
+          ynBox('q27', 'Did the Care Worker sign the MAR immediately after the medication was administered?'),
+          ynBox('q28', 'If medication was not given, was the correct code entered on the MAR?'),
+          ynBox('q29', 'If the medication is a controlled drug, did the Care Worker ask a trained colleague to witness and sign off?'),
+          ynBox('q30', 'Does the care worker understand variable dose medication and how to administer and record it?'),
         ]
       },
       {
         id: 's8', title: 'Stock Control',
         questions: [
-          yn('q31', 'Did the Care Worker check that there was sufficient stock for future rounds?'),
-          yn('q32', 'If shortages were identified, did the Care Worker take appropriate action to replenish stock?'),
-          yn('q33', 'Was all medication returned to secure storage once the round was completed?'),
+          ynBox('q31', 'Did the Care Worker check that there was sufficient stock for future rounds?'),
+          ynBox('q32', 'If shortages were identified, did the Care Worker take appropriate action to replenish stock?'),
+          ynBox('q33', 'Was all medication returned to secure storage once the round was completed?'),
         ]
       },
       {
         id: 's9', title: 'Ordering, Receipt, Disposal and Storage',
         questions: [
-          yn('q34', 'Does the Care Worker know what to do when medication is received?'),
-          yn('q35', 'Does the Care Worker know when to order medication in line with policy?'),
-          yn('q36', 'Does the Care Worker understand what to do with out-of-date or no-longer-required medication?'),
-          yn('q37', 'Does the Care Worker demonstrate understanding of correct storage requirements for medicines?'),
-          yn('q38', 'Is the Care Worker aware of the correct temperature range for the medication fridge?'),
-          yn('q39', 'If new medication is received, is stock put away so that older supplies are used first?'),
+          ynBox('q34', 'Does the Care Worker know what to do when medication is received?'),
+          ynBox('q35', 'Does the Care Worker know when to order medication in line with policy?'),
+          ynBox('q36', 'Does the Care Worker understand what to do with out-of-date or no-longer-required medication?'),
+          ynBox('q37', 'Does the Care Worker demonstrate understanding of correct storage requirements for medicines?'),
+          ynBox('q38', 'Is the Care Worker aware of the correct temperature range for the medication fridge?'),
+          ynBox('q39', 'If new medication is received, is stock put away so that older supplies are used first?'),
         ]
       },
       {
         id: 's10', title: 'Non-Prescribed Medication',
         questions: [
-          yn('q40', 'Is the Care Worker aware of what action to take if a service user wants to take over-the-counter medication?'),
-          yn('q41', 'Is the Care Worker aware of the correct procedure to follow when a service user presents with a minor ailment, including the use of agreed protocols, appropriate documentation, and escalation to senior staff or healthcare professionals where required?'),
-          yn('q41b', 'If a non-prescribed medication was administered, was this from the original container as purchased, and was the dose offered within the directions given on the packaging?'),
-          yn('q41c', 'If a non-prescribed medication was administered, did the Care Worker record this correctly on the MAR?'),
+          ynBox('q40', 'Is the Care Worker aware of what action to take if a service user wants to take over-the-counter medication?'),
+          ynBox('q41', 'Is the Care Worker aware of the correct procedure to follow when a service user presents with a minor ailment, including the use of agreed protocols, appropriate documentation, and escalation to senior staff or healthcare professionals where required?'),
+          ynBox('q41b', 'If a non-prescribed medication was administered, was this from the original container as purchased, and was the dose offered within the directions given on the packaging?'),
+          ynBox('q41c', 'If a non-prescribed medication was administered, did the Care Worker record this correctly on the MAR?'),
         ]
       },
       {
         id: 's11', title: 'Accessing Advice and Medication Error Management',
         questions: [
-          yn('q41d', 'Does the Care Worker know who to contact if they need advice on medication?'),
-          yn('q42', 'Does staff demonstrate knowledge of Medication Errors and their reporting process?'),
-          yn('q43', 'Does staff demonstrate understanding of Covert Administration?'),
-          yn('q44', 'Can staff demonstrate knowledge of Complementary Therapy and Homely Remedies (OTC or GSL)?'),
-          yn('q45', 'Does staff demonstrate safe and accurate auditing of the medication process, including adherence to policies, correct documentation and identification of discrepancies?'),
+          ynBox('q41d', 'Does the Care Worker know who to contact if they need advice on medication?'),
+          ynBox('q42', 'Does staff demonstrate knowledge of Medication Errors and their reporting process?'),
+          ynBox('q43', 'Does staff demonstrate understanding of Covert Administration?'),
+          ynBox('q44', 'Can staff demonstrate knowledge of Complementary Therapy and Homely Remedies (OTC or GSL)?'),
+          ynBox('q45', 'Does staff demonstrate safe and accurate auditing of the medication process, including adherence to policies, correct documentation and identification of discrepancies?'),
           txt('q46', 'Other Information / Discussions held with the Care Worker'),
           txt('q47', 'Action Plan'),
         ]
@@ -1245,16 +1249,61 @@ const TEMPLATES: Template[] = [
     sections: [{
       id: 's1', title: 'Performance Improvement Plan',
       questions: [
-        txt('q1', 'Summary of performance concerns identified'),
-        txt('q2', 'Specific standards that are not being met'),
-        txt('q3', 'Evidence / examples of the performance issues'),
-        txt('q4', 'Expected standard of performance'),
-        txt('q5', 'Support and resources to be provided'),
-        txt('q6', 'Specific targets and timescales'),
-        txt('q7', 'Monitoring and review arrangements'),
-        txt('q8', 'Staff member\'s response / comments'),
-        sel('q9', 'Consequence if improvement is not achieved', ['Further formal action', 'Extension of PIP', 'Dismissal']),
-        txt('q10', 'Review date'),
+        txt('q0a', 'Name Appraiser'),
+        txt('q0b', 'Work Location'),
+        multi('q1', 'Areas of Concerns', [
+          'Inconsistent completion of daily tasks as required within the service.',
+          'Failure to follow agreed task schedules and routines.',
+          'Incomplete, inaccurate documentation.',
+          'Lack of detail in daily notes and records.',
+        ]),
+        multi('q2', 'Expected Standards — the support worker is expected to:', [
+          'Complete all assigned daily tasks.',
+          'Follow each service user’s individual support plan.',
+          'Ensure tasks are carried out to the required standard.',
+          'Follow the daily task schedule for each shift.',
+          'Check and complete all duties assigned for the shift.',
+          'Ensure no tasks are missed before the end of the shift.',
+          'Maintain accurate and clear records',
+          'Complete documentation in a timely manner',
+          'Ensure all entries are up to date',
+          'Record all support provided to service users.',
+          'Document service user engagement and participation.',
+          'Report and record any concerns or changes.',
+          'Encourage service users to be as independent as possible.',
+          'Support service users in completing tasks themselves where appropriate.',
+          'Ensure all responsibilities are still met while promoting independence.',
+        ]),
+        multi('q3', 'Improvement Actions & Targets — Daily Tasks', [
+          'Review and follow the daily task list at the start of each shift.',
+          'Ensure all assigned tasks are completed before the end of the shift.',
+          'Communicate with team members if tasks cannot be completed.',
+          'Target: 100% completion of assigned daily tasks, evidenced through spot checks and handover.',
+          'Follow structured routines set out in support plans.',
+          'Ensure consistency in supporting service users with agreed activities.',
+          'Target: No missed or skipped tasks without clear justification.',
+        ]),
+        multi('q4', 'Improvement Actions & Targets — Documentation', [
+          'Complete all daily notes before the end of each shift.',
+          'Ensure records are clear, accurate, and person-centred.',
+          'Include details of support provided, service user engagement, and any incidents or concerns.',
+          'Use professional, factual, and respectful language.',
+          'Avoid vague or incomplete entries.',
+        ]),
+        multi('q5', 'Support Provided', [
+          'Supervision sessions (8 weekly)',
+          'Guidance on completing documentation to required standards.',
+          'Shadowing experienced staff where needed.',
+          'Clear daily task checklists and expectations provided.',
+          'Ongoing feedback from management.',
+        ]),
+        multi('q6', 'Progress Review', [
+          'Weekly review of completed tasks and documentation.',
+          'Midpoint review to assess progress.',
+          'Final review at the end of the agreed period.',
+        ]),
+        txt('q7', 'Outcome'),
+        txt('q8', 'Any Additional Information'),
       ]
     }]
   },

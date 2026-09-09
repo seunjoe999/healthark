@@ -146,9 +146,10 @@ function buildAssessmentPrintBody(assessment: any, template: any): string {
   })
 
   template.sections.forEach((section: any) => {
-    const rows = section.questions.map((q: any, qi: number) =>
-      `<tr><th>${qi + 1}. ${esc(q.text)}</th><td>${esc(formatAnswer(q, assessment.answers?.[q.id]))}</td></tr>`
-    ).join('')
+    const rows = section.questions.map((q: any, qi: number) => {
+      const note = q.detail ? assessment.answers?.[`${q.id}__notes`] : null
+      return `<tr><th>${qi + 1}. ${esc(q.text)}</th><td>${esc(formatAnswer(q, assessment.answers?.[q.id]))}${note ? `<div style="font-size:11px;color:#555;margin-top:4px">${esc(note)}</div>` : ''}</td></tr>`
+    }).join('')
     sections.push({ title: section.title, inner: `<table class="fields">${rows}</table>` })
   })
 
@@ -276,14 +277,18 @@ export default function AssessmentView() {
           <div className="space-y-4">
             {section.questions.map((q: any, qi: number) => {
               const ans = assessment.answers?.[q.id]
+              const note = q.detail ? assessment.answers?.[`${q.id}__notes`] : null
               return (
-                <div key={q.id} className={`flex gap-4 ${qi > 0 ? 'pt-3 border-t border-slate-50' : ''}`}>
-                  <p className="flex-1 text-sm text-slate-700 leading-snug">
-                    <span className="text-slate-400 mr-1">{qi + 1}.</span>{q.text}
-                  </p>
-                  <div className="flex-shrink-0 text-right max-w-xs">
-                    <AnswerDisplay q={q} value={ans} />
+                <div key={q.id} className={`${qi > 0 ? 'pt-3 border-t border-slate-50' : ''}`}>
+                  <div className="flex gap-4">
+                    <p className="flex-1 text-sm text-slate-700 leading-snug">
+                      <span className="text-slate-400 mr-1">{qi + 1}.</span>{q.text}
+                    </p>
+                    <div className="flex-shrink-0 text-right max-w-xs">
+                      <AnswerDisplay q={q} value={ans} />
+                    </div>
                   </div>
+                  {note && <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 mt-1.5 whitespace-pre-line">{note}</p>}
                 </div>
               )
             })}
