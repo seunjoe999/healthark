@@ -649,10 +649,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
           {ORAL_ASSESSMENT_ITEMS.map(it => (
-            <div key={it.key} className="py-2 border-b border-slate-100 last:border-0">
-              <YesNoRow label={`${it.label} — issue present?`} value={tv(`${it.key}Flag`)} onChange={v => set(`${it.key}Flag`, v)} />
-              <ScoreSelect label={`${it.label} — severity score`} options={it.options} value={tv(it.key)} onChange={v => set(it.key, v)} />
-            </div>
+            <ScoreSelect key={it.key} label={it.label} options={it.options} value={tv(it.key)} onChange={v => set(it.key, v)} />
           ))}
         </div>
         {scored && (
@@ -664,6 +661,20 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
         <CheckboxGroup label="Actions" options={ORAL_ASSESSMENT_ACTIONS} values={Array.isArray(data?.actions) ? data.actions : []} onChange={v => set('actions' as any, v as any)} />
         <SpeechTextarea label="Document your interventions (e.g. dental appointment made)" className="w-full text-sm" rows={2} value={tv('interventionsNotes')} onChange={v => set('interventionsNotes', v)} />
         <div><label className="label">Date of last dentist review</label><input type="date" className="input w-full" value={tv('dateLastDentistReview')} onChange={e => set('dateLastDentistReview', e.target.value)} /></div>
+        <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
+          <p className="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2">Staff Monitoring &amp; Referral</p>
+          <p className="text-sm text-blue-900 mb-1.5">Staff must regularly check for:</p>
+          <ul className="list-disc list-inside text-sm text-blue-900 space-y-0.5 mb-2">
+            <li>Mouth injuries, sores, or signs of discomfort</li>
+            <li>Overuse or damage to chew tools, which may pose a choking risk</li>
+            <li>Inappropriate mouthing behaviours, such as chewing unsafe items</li>
+          </ul>
+          <p className="text-sm text-blue-900 mb-1">If any concerns arise:</p>
+          <ul className="list-disc list-inside text-sm text-blue-900 space-y-0.5">
+            <li>Staff must report them to the senior team immediately</li>
+            <li>Referrals should be made to appropriate professionals, such as the dentist</li>
+          </ul>
+        </div>
       </div>
     )
   }
@@ -939,10 +950,10 @@ function TemplateDetail({ plan }: { plan: any }) {
         {row('Assessment date', tv('assessmentDate') ? format(new Date(tv('assessmentDate')), 'd MMM yyyy') : '')}
         {row("Assessor's name", tv('assessorName'))}
         <div className="border border-slate-200 rounded-xl overflow-hidden">
-          {ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '' || tv(`${it.key}Flag`) !== '').map(it => (
+          {ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '').map(it => (
             <div key={it.key} className="flex justify-between px-4 py-2 border-b border-slate-100 last:border-0">
-              <span className="text-sm font-semibold text-slate-600">{it.label}{tv(`${it.key}Flag`) ? ` (Issue present: ${tv(`${it.key}Flag`)})` : ''}</span>
-              <span className="text-sm text-slate-800">{tv(it.key) !== '' ? `Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}` : '—'}</span>
+              <span className="text-sm font-semibold text-slate-600">{it.label}</span>
+              <span className="text-sm text-slate-800">{`Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}`}</span>
             </div>
           ))}
         </div>
@@ -962,6 +973,10 @@ function TemplateDetail({ plan }: { plan: any }) {
         )}
         {sec('Interventions', tv('interventionsNotes'))}
         {row('Date of last dentist review', tv('dateLastDentistReview') ? format(new Date(tv('dateLastDentistReview')), 'd MMM yyyy') : '')}
+        <div className="border border-blue-200 bg-blue-50 rounded-xl p-4">
+          <p className="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2">Staff Monitoring &amp; Referral</p>
+          <p className="text-sm text-blue-900">Staff must regularly check for mouth injuries/sores, chew tool damage (choking risk), and inappropriate mouthing behaviours — report concerns to the senior team immediately and refer to the dentist where needed.</p>
+        </div>
       </div>
     )
   }
@@ -1294,8 +1309,8 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
       textRow("Assessor's name", tv('assessorName')),
     ].filter(Boolean).join('')
     if (meta) sections.push({ title: 'Assessment Details', inner: `<table class="fields">${meta}</table>` })
-    const scoreRows = ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '' || tv(`${it.key}Flag`) !== '').map(it =>
-      `<tr><th>${it.label}${tv(`${it.key}Flag`) ? ` (Issue present: ${tv(`${it.key}Flag`)})` : ''}</th><td>${tv(it.key) !== '' ? `Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}` : '—'}</td></tr>`).join('')
+    const scoreRows = ORAL_ASSESSMENT_ITEMS.filter(it => tv(it.key) !== '').map(it =>
+      `<tr><th>${it.label}</th><td>Score ${tv(it.key)} — ${it.options[parseInt(tv(it.key), 10)]}</td></tr>`).join('')
     if (scoreRows) {
       const total = ORAL_ASSESSMENT_ITEMS.reduce((sum, it) => sum + (tv(it.key) !== '' ? parseInt(tv(it.key), 10) : 0), 0)
       sections.push({ title: 'Oral Care Assessment Scoring', inner: `<table class="fields">${scoreRows}<tr><th>Total Score</th><td><strong>${total} / 16</strong></td></tr></table>` })
@@ -1304,6 +1319,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     if (actions.length) sections.push({ title: 'Actions', inner: `<ul>${actions.map(a => `<li class="body-text">${a}</li>`).join('')}</ul>` })
     if (tv('interventionsNotes')) sections.push({ title: 'Interventions', inner: bodyText(tv('interventionsNotes')) })
     if (tv('dateLastDentistReview')) sections.push({ title: 'Date Last Dentist Review', inner: bodyText(new Date(tv('dateLastDentistReview')).toLocaleDateString('en-GB')) })
+    sections.push({ title: 'Staff Monitoring & Referral', inner: `<p class="body-text">Staff must regularly check for mouth injuries/sores, chew tool damage (choking risk), and inappropriate mouthing behaviours — report concerns to the senior team immediately and refer to the dentist where needed.</p>` })
     return sections
   }
 
