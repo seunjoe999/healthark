@@ -7,6 +7,7 @@ import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } fro
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
          History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { handleTextareaPaste } from '../../utils/pasteFormat'
 
 async function uploadDoc(file: File): Promise<{ fileUrl: string; fileName: string }> {
   const fd = new FormData()
@@ -507,6 +508,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
                 rows={s.key === 'summaryNotes' ? 4 : 3}
                 className="w-full text-sm font-semibold border-0 bg-transparent outline-none resize-none text-slate-900 placeholder-slate-400 leading-relaxed"
                 value={tv(s.key)} onChange={e => set(s.key, e.target.value)}
+                onPaste={e => handleTextareaPaste(e, tv(s.key) || '', v => set(s.key, v))}
                 placeholder={`Enter notes for ${s.label.toLowerCase()}...`}
               />
             </div>
@@ -2000,12 +2002,13 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
           </div>
         </div>
 
-        {/* Review History */}
-        {plan.updates && plan.updates.length > 0 && (
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 uppercase tracking-wide" style={{ color: '#e8b130' }}>
-              <History className="w-4 h-4" style={{ color: '#e8b130' }} /> Review History
-            </h4>
+        {/* Care Plan Update Tracking — always visible, even before the first update, so the
+            feature is discoverable rather than only appearing once history exists */}
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 uppercase tracking-wide" style={{ color: '#e8b130' }}>
+            <History className="w-4 h-4" style={{ color: '#e8b130' }} /> Care Plan Update Tracking
+          </h4>
+          {plan.updates && plan.updates.length > 0 ? (
             <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
               {plan.updates.map((u: any, i: number) => (
                 <div key={i} className="py-2.5 first:pt-0">
@@ -2023,8 +2026,10 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-xs text-slate-400">No updates recorded yet. Add review notes next time this plan is edited to start the history.</p>
+          )}
+        </div>
 
         <div className="flex gap-2 pt-3 border-t border-slate-100 flex-wrap">
           <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={onPrint}>Print</Button>
@@ -2493,7 +2498,15 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
         )}
         <Select label="Outcome achieved" value={form.outcomeAchieved} onChange={e => set('outcomeAchieved', e.target.value)} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
         <Select label="Review frequency" value={form.reviewFrequency} onChange={e => set('reviewFrequency', e.target.value)} options={FREQ_OPTIONS} />
-        <SpeechTextarea label="Review notes (what changed and why)" rows={3} value={form.updateNotes} onChange={v => set('updateNotes', v)} />
+
+        {/* Care Plan Update Tracking — present on every plan type, backed by care_plan_updates */}
+        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+          <h4 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: '#92700f' }}>
+            <History className="w-4 h-4" /> Care Plan Update Tracking
+          </h4>
+          <SpeechTextarea label="Review notes (what changed and why)" rows={3} value={form.updateNotes} onChange={v => set('updateNotes', v)}
+            placeholder="Recorded here every time this plan is saved — builds the Review History shown on the plan." />
+        </div>
 
         <AttachmentUploader value={form.attachmentsNotes} onChange={v => set('attachmentsNotes', v)} />
 

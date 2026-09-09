@@ -179,7 +179,7 @@ export default function ServiceUserProfile() {
             <AlertTriangle className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Need To Know</p>
-              <p className="text-sm font-medium text-slate-800">{su.needToKnow}</p>
+              <p className="text-sm font-medium text-slate-800 whitespace-pre-line leading-relaxed">{su.needToKnow}</p>
             </div>
           </div>
         )}
@@ -188,7 +188,7 @@ export default function ServiceUserProfile() {
             <Clipboard className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-0.5">My instructions</p>
-              <p className="text-sm text-blue-800">{su.myInstructions}</p>
+              <p className="text-sm text-blue-800 whitespace-pre-line leading-relaxed">{su.myInstructions}</p>
             </div>
           </div>
         )}
@@ -305,9 +305,9 @@ export default function ServiceUserProfile() {
               <ToggleDisp label="Special diet" value={!!su.specialDiet} />
               <ToggleDisp label="Thickened fluids" value={!!su.fluidConsistency} />
             </div>
-            {su.foodAllergies && <p className="text-sm text-rose-700 bg-rose-500/8 p-3 rounded-xl mb-2 border border-rose-500/15"><strong>Allergies:</strong> {su.foodAllergies}</p>}
-            {su.specialDiet && <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl mb-2"><strong>Special diet:</strong> {su.specialDiet}</p>}
-            {su.dietInstructions && <p className="text-sm text-blue-800 bg-blue-500/8 p-3 rounded-xl border border-blue-500/15"><strong>Instructions:</strong> {su.dietInstructions}</p>}
+            {su.foodAllergies && <p className="text-sm text-rose-700 bg-rose-500/8 p-3 rounded-xl mb-2 border border-rose-500/15 whitespace-pre-line leading-relaxed"><strong>Allergies:</strong> {su.foodAllergies}</p>}
+            {su.specialDiet && <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl mb-2 whitespace-pre-line leading-relaxed"><strong>Special diet:</strong> {su.specialDiet}</p>}
+            {su.dietInstructions && <p className="text-sm text-blue-800 bg-blue-500/8 p-3 rounded-xl border border-blue-500/15 whitespace-pre-line leading-relaxed"><strong>Instructions:</strong> {su.dietInstructions}</p>}
             <p className="text-xs text-slate-400 mt-3">Minimum daily fluid intake: <strong className="text-slate-700">{su.minFluidMl}ml</strong></p>
           </Card>
         </div>

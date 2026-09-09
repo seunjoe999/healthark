@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { handleTextareaPaste } from '../../utils/pasteFormat'
 
 declare global {
   interface Window { SpeechRecognition: any; webkitSpeechRecognition: any }
@@ -188,6 +189,7 @@ export function SpeechTextarea({
           rows={rows}
           value={value}
           onChange={e => onChange(e.target.value)}
+          onPaste={e => handleTextareaPaste(e, value, onChange)}
           placeholder={listening ? (interim || 'Listening… speak now') : placeholder}
           required={required}
         />

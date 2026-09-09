@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
+import { handleTextareaPaste } from '../../utils/pasteFormat'
 
 const MONTHLY_SECTIONS = [
   {
@@ -526,6 +527,7 @@ export default function Outcomes() {
                       className="w-full text-sm font-semibold border-0 bg-transparent outline-none resize-none text-slate-900 placeholder-slate-400 leading-relaxed"
                       value={(monthlyForm as any)[s.key]}
                       onChange={e => setMonthlyForm(f => ({ ...f, [s.key]: e.target.value }))}
+                      onPaste={e => handleTextareaPaste(e, (monthlyForm as any)[s.key] || '', v => setMonthlyForm(f => ({ ...f, [s.key]: v })))}
                       placeholder={s.key === 'summaryNotes' ? 'Enter any additional notes or summary…' : 'Additional notes…'} />
                   </div>
                 </div>

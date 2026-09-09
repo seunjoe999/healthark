@@ -3,6 +3,7 @@ import { Loader2, AlertTriangle, CheckCircle, Info, X, ChevronDown } from 'lucid
 import clsx from 'clsx'
 import SpeechButtonComponent from './SpeechButton'
 import { useTheme } from '../../context/ThemeContext'
+import { handleTextareaPaste } from '../../utils/pasteFormat'
 
 // ── Button ────────────────────────────────────────────────────────
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -97,6 +98,10 @@ export function Textarea({ label, error, className, onChange, value, ...props }:
           rows={3}
           value={value}
           onChange={onChange}
+          onPaste={e => {
+            if (!onChange) return
+            handleTextareaPaste(e, String(value ?? ''), v => onChange({ target: { value: v } } as React.ChangeEvent<HTMLTextAreaElement>))
+          }}
           {...props}
         />
         <SpeechButtonComponent
