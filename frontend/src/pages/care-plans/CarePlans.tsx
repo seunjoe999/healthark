@@ -2,7 +2,7 @@
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format, differenceInDays } from 'date-fns'
+import { format, differenceInDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
          History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search, Check } from 'lucide-react'
@@ -1331,8 +1331,8 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
   const esc = (v: any) => (v === null || v === undefined || v === '' ? '—' : String(v))
   const planLabel = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const name = su ? `${su.first_name || ''} ${su.last_name || ''}`.trim() : plan.su_name || ''
-  const dobLong = su?.date_of_birth ? new Date(su.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
-  const age = su?.date_of_birth ? Math.floor((Date.now() - new Date(su.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
+  const dobLong = su?.date_of_birth ? parseISO(su.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
+  const age = su?.date_of_birth ? Math.floor((Date.now() - parseISO(su.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
   const address = [su?.address1, su?.address2, su?.address3, su?.postcode].filter(Boolean).join(', ') || '—'
   const reviewDate = plan.last_review_date ? new Date(plan.last_review_date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')
   const nextReview = plan.next_review_date ? new Date(plan.next_review_date).toLocaleDateString('en-GB') : '—'
@@ -1799,13 +1799,13 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
   }, [su?.id])
 
   const suName = fullSu ? `${fullSu.first_name || ''} ${fullSu.last_name || ''}`.trim() : plan.su_name || ''
-  const suAge = fullSu?.date_of_birth ? Math.floor((Date.now() - new Date(fullSu.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
+  const suAge = fullSu?.date_of_birth ? Math.floor((Date.now() - parseISO(fullSu.date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
   const photoUrl = fullSu?.photo_url || null
 
   const personalFields = fullSu ? [
     { label: 'Address', value: [fullSu.address1, fullSu.address2, fullSu.postcode].filter(Boolean).join(', ') },
     { label: 'Preferred Name', value: fullSu.preferred_name },
-    { label: 'Date of Birth', value: fullSu.date_of_birth ? `${format(new Date(fullSu.date_of_birth), 'd MMM yyyy')}${suAge !== null ? ` (${suAge} yrs)` : ''}` : null },
+    { label: 'Date of Birth', value: fullSu.date_of_birth ? `${format(parseISO(fullSu.date_of_birth), 'd MMM yyyy')}${suAge !== null ? ` (${suAge} yrs)` : ''}` : null },
     { label: 'Gender', value: fullSu.gender },
     { label: 'NHS Number', value: fullSu.nhs_number },
     { label: 'Admission Date', value: fullSu.admission_date ? format(new Date(fullSu.admission_date), 'd MMM yyyy') : null },

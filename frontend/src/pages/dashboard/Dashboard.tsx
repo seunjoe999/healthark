@@ -5,7 +5,7 @@ import { homesApi } from '../../api'
 import api from '../../api'
 import { Spinner } from '../../components/ui'
 import { Link } from 'react-router-dom'
-import { format, addDays, startOfWeek, endOfWeek, subDays } from 'date-fns'
+import { format, addDays, startOfWeek, endOfWeek, subDays, parseISO } from 'date-fns'
 import TaskPopup from '../../components/TaskPopup'
 import { isTimePastDue } from '../../utils/taskReminder'
 import { getServerTodayStr } from '../../utils/serverTime'
@@ -460,7 +460,7 @@ export default function Dashboard() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-xs font-semibold" style={{ color: '#f87171' }}>
-                                    {b.date_of_birth ? format(new Date(new Date().getFullYear() + '-' + b.date_of_birth.slice(5)), 'd MMM') : ''}
+                                    {b.date_of_birth ? format(parseISO(new Date().getFullYear() + '-' + b.date_of_birth.slice(5)), 'd MMM') : ''}
                                   </p>
                                 </div>
                               </div>

@@ -12,7 +12,7 @@ import {
   Upload, Download, Trash2, Eye, File, FileImage, Lock, QrCode, Check,
   CheckCircle, Clock, ClipboardList
 } from 'lucide-react'
-import { format, differenceInYears, differenceInDays } from 'date-fns'
+import { format, differenceInYears, differenceInDays, parseISO } from 'date-fns'
 import { useAuth } from '../../context/AuthContext'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { QRModal } from './QRModal'
@@ -148,7 +148,7 @@ export default function ServiceUserProfile() {
   if (loading) return <div className="p-8"><Spinner /></div>
   if (!su) return <div className="p-8"><EmptyState title="Resident not found" /></div>
 
-  const age = su.dateOfBirth ? differenceInYears(new Date(), new Date(su.dateOfBirth)) : '?'
+  const age = su.dateOfBirth ? differenceInYears(new Date(), parseISO(su.dateOfBirth)) : '?'
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
@@ -214,7 +214,7 @@ export default function ServiceUserProfile() {
                   {su.pronouns && <span className="text-sm text-slate-400">({su.pronouns})</span>}
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  Age {age}{su.dateOfBirth && ` · Born ${format(new Date(su.dateOfBirth), 'd MMMM yyyy')}`}
+                  Age {age}{su.dateOfBirth && ` · Born ${format(parseISO(su.dateOfBirth), 'd MMMM yyyy')}`}
                   {su.nhsNumber && ` · NHS: ${su.nhsNumber}`}
                 </p>
               </div>

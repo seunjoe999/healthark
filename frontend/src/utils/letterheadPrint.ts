@@ -2,6 +2,8 @@
 // navy-blue print layout so every clinical assessment tool prints the same
 // professional document instead of a raw browser print of the live page.
 
+import { parseISO } from 'date-fns'
+
 export const LETTERHEAD_PRINT_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
@@ -54,7 +56,7 @@ export const LETTERHEAD_PRINT_CSS = `
 `
 
 export function fmtDate(d: string | null | undefined): string {
-  return d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
+  return d ? parseISO(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
 }
 
 export function esc(v: any): string {

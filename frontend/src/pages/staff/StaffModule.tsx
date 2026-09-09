@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import { format, differenceInYears } from 'date-fns'
+import { format, differenceInYears, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
 import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -263,7 +263,7 @@ export default function StaffModule() {
                   <dl className="space-y-3">
                     <InfoField label="Email" value={selected.email} />
                     <InfoField label="Phone" value={selected.phone} />
-                    <InfoField label="Date of birth" value={selected.date_of_birth ? format(new Date(selected.date_of_birth), 'd MMMM yyyy') : null} />
+                    <InfoField label="Date of birth" value={selected.date_of_birth ? format(parseISO(selected.date_of_birth), 'd MMMM yyyy') : null} />
                     <InfoField label="Gender" value={selected.gender} />
                     <InfoField label="Nationality" value={selected.nationality} />
                     <InfoField label="Marital status" value={selected.marital_status} />

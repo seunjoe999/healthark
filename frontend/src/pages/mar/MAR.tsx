@@ -312,7 +312,10 @@ export default function MAR() {
                 today={today}
                 onCellClick={(med, date, records, slot) => {
                   if (records.length > 0) setCellDetail({ med, date, records })
-                  else setLogModal({ med, date, slot })
+                  // 'PRN' is a display label, not a real time — the DB column is a TIME
+                  // and rejects it, which was surfacing as "internal server error" whenever
+                  // staff tried to log an as-required dose. Record the actual time given instead.
+                  else setLogModal({ med, date, slot: slot === 'PRN' ? format(new Date(), 'HH:mm') : slot })
                 }}
                 onRefresh={() => fetchAll(selectedSu)}
               />
@@ -1052,6 +1055,7 @@ export const MAR_CODE_OPTIONS = [
 export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
   med: any; date: string; slot: string; suId: string; homeId?: string; onClose: () => void; onSaved: () => void
 }) {
+  const { theme } = useTheme()
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [reason, setReason] = useState('')
@@ -1152,11 +1156,11 @@ export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }:
                 <button key={opt.code} onClick={() => setSelectedCode(opt.code)}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all text-center"
                   style={{
-                    background: isSelected ? opt.bg : 'rgba(255,255,255,0.04)',
-                    border: `2px solid ${isSelected ? opt.border : 'rgba(255,255,255,0.08)'}`,
-                    color: isSelected ? opt.color : '#94a3b8',
+                    background: isSelected ? opt.bg : (theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc'),
+                    border: `2px solid ${isSelected ? opt.border : (theme === 'dark' ? 'rgba(255,255,255,0.12)' : '#e2e8f0')}`,
+                    color: isSelected ? opt.color : (theme === 'dark' ? '#cbd5e1' : '#475569'),
                   }}>
-                  <span className="text-base font-black leading-none" style={{ color: isSelected ? opt.color : '#64748b' }}>{opt.code}</span>
+                  <span className="text-base font-black leading-none" style={{ color: isSelected ? opt.color : (theme === 'dark' ? '#e2e8f0' : '#334155') }}>{opt.code}</span>
                   <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
                 </button>
               )
@@ -1267,9 +1271,9 @@ export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }:
               { key: 'green', emoji: '🙂', label: 'Good' },
             ].map(e => (
               <button key={e.key} type="button" onClick={() => setEmotion(e.key as any)}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 transition-all ${emotion === e.key ? 'border-purple-400 bg-purple-500/10' : 'border-white/10 opacity-60 hover:opacity-100'}`}>
+                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 transition-all ${emotion === e.key ? 'border-purple-400 bg-purple-500/10' : (theme === 'dark' ? 'border-white/10 opacity-60 hover:opacity-100' : 'border-slate-200 bg-slate-50 opacity-80 hover:opacity-100')}`}>
                 <span className="text-2xl">{e.emoji}</span>
-                <span className="text-[10px] text-slate-400">{e.label}</span>
+                <span className={theme === 'dark' ? 'text-[10px] text-slate-400' : 'text-[10px] text-slate-600'}>{e.label}</span>
               </button>
             ))}
           </div>
@@ -1295,6 +1299,10 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
     e.preventDefault()
     if (!form.medicationName.trim()) { toast.error('Medication name is required'); return }
     if (!suId) { toast.error('No service user selected'); return }
+    if (!form.frequency) { toast.error('Frequency is required'); return }
+    // Apply time is required (except for PRN, which has no fixed schedule) — without it every
+    // medication silently defaulted to 08:00 on the MAR regardless of when it's actually due.
+    if (!form.applyTime && !form.isPrn) { toast.error('Apply time is required'); return }
     setLoading(true)
     try {
       await api.post('/mar/medications', { suId, homeId, ...form })
@@ -1311,8 +1319,9 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
         <Input label="Medication name *" required value={form.medicationName} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Amlodipine, Paracetamol..." />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          <Input label="Apply time" type="time" value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
+          <Input label={`Apply time${form.isPrn ? '' : ' *'}`} type="time" required={!form.isPrn} value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
         </div>
+        {!form.isPrn && <p className="text-xs text-slate-400 -mt-2">Set the exact time this medication is due — it drives when it shows up on the MAR, not a fixed 08:00 default.</p>}
         <div className="grid grid-cols-2 gap-3">
           <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
             options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
@@ -1321,7 +1330,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
-          <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+          <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
         </div>
         <div>
           <label className="label">Directions / Instructions</label>
@@ -1394,6 +1403,8 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.frequency) { toast.error('Frequency is required'); return }
+    if (!form.applyTime && !form.isPrn) { toast.error('Apply time is required'); return }
     setLoading(true)
     try { await api.patch(`/mar/medications/${med.id}`, form); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
@@ -1405,8 +1416,9 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-3">
           <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          <Input label="Apply time" type="time" value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
+          <Input label={`Apply time${form.isPrn ? '' : ' *'}`} type="time" required={!form.isPrn} value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
         </div>
+        {!form.isPrn && <p className="text-xs text-slate-400 -mt-2">Set the exact time this medication is due — it drives when it shows up on the MAR, not a fixed 08:00 default.</p>}
         <div className="grid grid-cols-2 gap-3">
           <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
             options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
@@ -1415,7 +1427,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
-          <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+          <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
         </div>
         <div>
           <label className="label">Directions / Instructions</label>
@@ -1500,7 +1512,7 @@ const MAR_PRINT_CSS = `
 `
 
 function buildMarPrintBody(su: any, medications: any[], dates: string[], startDate: string, endDate: string): string {
-  const fmt = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+  const fmt = (d: string | null | undefined) => d ? parseISO(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
   const esc = (v: any) => v === null || v === undefined || v === '' ? '—' : String(v)
   const suName = getName(su)
   const weeks = buildWeeks(dates)

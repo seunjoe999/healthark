@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../api'
 import { Search as SearchIcon, Users, UserSquare, FileText } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { differenceInYears } from 'date-fns'
+import { differenceInYears, parseISO } from 'date-fns'
 
 export default function GlobalSearch() {
   const { user } = useAuth()
@@ -52,7 +52,7 @@ export default function GlobalSearch() {
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
                       {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" alt="" /> : `${(r.first_name||'?')[0]}${(r.last_name||'?')[0]}`}
                     </div>
-                    <div className="flex-1"><p className="font-semibold text-slate-900">{r.first_name} {r.last_name}</p><p className="text-xs text-slate-400 capitalize">{r.date_of_birth ? `Age ${differenceInYears(new Date(), new Date(r.date_of_birth))} · ` : ''}{(r.status||'').replace('_',' ')}</p></div>
+                    <div className="flex-1"><p className="font-semibold text-slate-900">{r.first_name} {r.last_name}</p><p className="text-xs text-slate-400 capitalize">{r.date_of_birth ? `Age ${differenceInYears(new Date(), parseISO(r.date_of_birth))} · ` : ''}{(r.status||'').replace('_',' ')}</p></div>
                     <span className="text-xs text-purple-500 font-semibold">View →</span>
                   </Link>
                 ))}

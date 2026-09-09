@@ -105,6 +105,23 @@ const FREQ_TIMES: Record<string, string[]> = {
   other: ['08:00'],
 };
 
+// A medication's `apply_time` is the staff-chosen administration time (e.g. Atorvastatin
+// at 19:00 instead of a default 08:00). Without this, every medication silently fell back
+// to the FREQ_TIMES defaults above regardless of what was entered when adding it — this
+// shifts the whole slot list so apply_time drives the actual MAR time(s) shown.
+function getTimeSlots(frequency: string, applyTime?: string | null): string[] {
+  const defaults = FREQ_TIMES[frequency] || ['08:00'];
+  if (!applyTime || !defaults.length) return defaults;
+  const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const toTime = (mins: number) => {
+    mins = ((mins % 1440) + 1440) % 1440;
+    return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+  };
+  const applyMin = toMin(String(applyTime).slice(0, 5));
+  const offset = applyMin - toMin(defaults[0]);
+  return defaults.map(t => toTime(toMin(t) + offset));
+}
+
 // GET /api/mar/due-today?homeId=<uuid> — medication due today as a staff task list
 // Non-privileged staff only see medications for residents assigned to them.
 router.get('/due-today', async (req: Request, res: Response, next: NextFunction) => {
@@ -124,7 +141,7 @@ router.get('/due-today', async (req: Request, res: Response, next: NextFunction)
     }
 
     let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
-                      m.notes AS instructions, m.is_prn, m.is_controlled,
+                      m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time,
                       su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
                FROM su_medications m
                JOIN service_users su ON su.id = m.su_id
@@ -147,7 +164,7 @@ router.get('/due-today', async (req: Request, res: Response, next: NextFunction)
 
     const tasks: any[] = [];
     for (const med of meds as any[]) {
-      const times = FREQ_TIMES[med.frequency] || ['08:00'];
+      const times = getTimeSlots(med.frequency, med.apply_time);
       for (const t of times) {
         const existing = recordMap.get(`${med.medication_id}|${t}`);
         tasks.push({
@@ -358,20 +375,11 @@ router.get('/chart-report/:suId', param('suId').isUUID(), validateRequest,
         recordMap[medId][d].push(rec);
       }
 
-      // Derive expected time slots from frequency
-      const freqTimes: Record<string, string[]> = {
-        once_daily: ['08:00'],
-        twice_daily: ['08:00', '20:00'],
-        three_times_daily: ['08:00', '14:00', '20:00'],
-        four_times_daily: ['08:00', '12:00', '16:00', '20:00'],
-        weekly: ['08:00'],
-        as_required: ['PRN'],
-        other: [''],
-      };
-
+      // Derive expected time slots from frequency, honouring each medication's
+      // own apply_time instead of always defaulting to the canned frequency times.
       const medsWithRecords = (meds as any[]).map(med => ({
         ...med,
-        time_slots: freqTimes[med.frequency] || ['08:00'],
+        time_slots: med.frequency === 'as_required' ? ['PRN'] : getTimeSlots(med.frequency, med.apply_time),
         records: recordMap[med.id] || {},
       }));
 

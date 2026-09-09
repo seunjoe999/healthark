@@ -2,7 +2,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { suApi, homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { differenceInYears } from 'date-fns'
+import { differenceInYears, parseISO } from 'date-fns'
 import { Spinner, EmptyState, StatusBadge, EmergencyBadge, Button } from '../../components/ui'
 import { UserPlus, Search, Filter, AlertTriangle, Heart, Users } from 'lucide-react'
 
@@ -51,7 +51,7 @@ export default function ServiceUserList() {
     .sort((a, b) => `${a.first_name || ''} ${a.last_name || ''}`.trim().localeCompare(`${b.first_name || ''} ${b.last_name || ''}`.trim()))
 
   const getName = (su: any) => `${su.first_name || ''} ${su.last_name || ''}`.trim()
-  const getAge = (dob: string) => dob ? differenceInYears(new Date(), new Date(dob)) : null
+  const getAge = (dob: string) => dob ? differenceInYears(new Date(), parseISO(dob)) : null
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">

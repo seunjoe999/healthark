@@ -1034,14 +1034,22 @@ const TEMPLATES: Template[] = [
         ]
       },
       {
-        id: 's10', title: 'Non-Prescribed Medication and Error Management',
+        id: 's10', title: 'Non-Prescribed Medication',
         questions: [
           yn('q40', 'Is the Care Worker aware of what action to take if a service user wants to take over-the-counter medication?'),
-          yn('q41', 'Is the Care Worker aware of the procedure when a service user presents with a minor ailment?'),
+          yn('q41', 'Is the Care Worker aware of the correct procedure to follow when a service user presents with a minor ailment, including the use of agreed protocols, appropriate documentation, and escalation to senior staff or healthcare professionals where required?'),
+          yn('q41b', 'If a non-prescribed medication was administered, was this from the original container as purchased, and was the dose offered within the directions given on the packaging?'),
+          yn('q41c', 'If a non-prescribed medication was administered, did the Care Worker record this correctly on the MAR?'),
+        ]
+      },
+      {
+        id: 's11', title: 'Accessing Advice and Medication Error Management',
+        questions: [
+          yn('q41d', 'Does the Care Worker know who to contact if they need advice on medication?'),
           yn('q42', 'Does staff demonstrate knowledge of Medication Errors and their reporting process?'),
           yn('q43', 'Does staff demonstrate understanding of Covert Administration?'),
-          yn('q44', 'Can staff demonstrate knowledge of Complementary Therapy and Homely Remedies?'),
-          yn('q45', 'Does staff demonstrate safe and accurate auditing of the medication process?'),
+          yn('q44', 'Can staff demonstrate knowledge of Complementary Therapy and Homely Remedies (OTC or GSL)?'),
+          yn('q45', 'Does staff demonstrate safe and accurate auditing of the medication process, including adherence to policies, correct documentation and identification of discrepancies?'),
           txt('q46', 'Other Information / Discussions held with the Care Worker'),
           txt('q47', 'Action Plan'),
         ]

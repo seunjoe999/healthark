@@ -235,7 +235,7 @@ export default function FamilyView() {
   // Derived
   const name = resident ? (resident.preferred_name || `${resident.first_name} ${resident.last_name}`) : ''
   const initials = name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
-  const age = resident?.date_of_birth ? differenceInYears(new Date(), new Date(resident.date_of_birth)) : null
+  const age = resident?.date_of_birth ? differenceInYears(new Date(), parseISO(resident.date_of_birth)) : null
 
   const activeMeds = medications.filter((m: any) => m.is_active !== false)
   const regularMeds = activeMeds.filter((m: any) => !m.is_prn)
@@ -421,7 +421,7 @@ export default function FamilyView() {
               <InfoGrid items={[
                 { label: 'Full name', value: `${resident.first_name} ${resident.last_name}` },
                 { label: 'Preferred name', value: resident.preferred_name },
-                { label: 'Date of birth', value: resident.date_of_birth ? format(new Date(resident.date_of_birth), 'd MMMM yyyy') : null },
+                { label: 'Date of birth', value: resident.date_of_birth ? format(parseISO(resident.date_of_birth), 'd MMMM yyyy') : null },
                 { label: 'Age', value: age ? `${age} years old` : null },
                 { label: 'Gender', value: resident.gender },
                 { label: 'NHS number', value: resident.nhs_number },
