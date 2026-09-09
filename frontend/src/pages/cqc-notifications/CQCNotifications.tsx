@@ -190,7 +190,7 @@ function CreateNotificationModal({ open, onClose, homeId, onSaved }: { open: boo
         <div>
           <label className="label">Attachment (optional)</label>
           <div className="flex items-center gap-2">
-            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0])} />
+            <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip" onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0])} />
             <button type="button" onClick={() => fileRef.current?.click()}
               className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium border border-slate-200 transition-colors">
               <Paperclip className="w-4 h-4" /> {uploading ? 'Uploading...' : 'Attach file'}

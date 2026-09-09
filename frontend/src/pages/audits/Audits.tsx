@@ -984,7 +984,7 @@ function AuditAttachments({ auditId, initialAttachments }: { auditId: string; in
         <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : 'text-slate-600 bg-slate-100 hover:bg-slate-200'}`}>
           <Upload className="w-3.5 h-3.5" />
           {uploading ? 'Uploading…' : 'Upload file'}
-          <input ref={inputRef} type="file" className="hidden" onChange={upload} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
+          <input ref={inputRef} type="file" className="hidden" onChange={upload} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" />
         </label>
       </div>
       {attachments.length === 0 ? (
