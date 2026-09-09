@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { suApi, getToken } from '../../api'
+import { suApi, getToken, API_BASE } from '../../api'
 import api from '../../api'
 import {
   Spinner, StatusBadge, EmergencyBadge, DNARBanner, NilByMouthBanner,
@@ -684,7 +684,7 @@ function UploadDocModal({ open, onClose, suId, onUploaded }: {
       if (notes) formData.append('notes', notes)
       if (expiryDate) formData.append('expiryDate', expiryDate)
 
-      const res = await fetch(`/api/documents/su/${suId}`, {
+      const res = await fetch(`${API_BASE}/documents/su/${suId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

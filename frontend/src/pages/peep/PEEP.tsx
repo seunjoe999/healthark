@@ -25,8 +25,9 @@ const MOBILITY_LEVELS = [
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function mobilityLabel(v: string) { return MOBILITY_LEVELS.find(m => m.value === v)?.label || v }
-function mobilityIcon(v: string)  { return MOBILITY_LEVELS.find(m => m.value === v)?.icon || '?' }
+function mobilityLevelsArray(v: string): string[] { return (v || '').split(',').map(s => s.trim()).filter(Boolean) }
+function mobilityLabel(v: string) { return mobilityLevelsArray(v).map(x => MOBILITY_LEVELS.find(m => m.value === x)?.label || x).join(', ') || v }
+function mobilityIcon(v: string)  { const arr = mobilityLevelsArray(v); return (MOBILITY_LEVELS.find(m => m.value === arr[0])?.icon) || '?' }
 
 function peepStatus(row: any): 'none' | 'review_due' | 'current' {
   if (!row.peep_id) return 'none'
@@ -45,7 +46,7 @@ function StatusBadge({ status }: { status: 'none' | 'review_due' | 'current' }) 
 function emptyForm(suId = '') {
   return {
     suId,
-    mobilityLevel: 'independent',
+    mobilityLevels: ['independent'] as string[],
     canSelfEvacuate: false,
     evacuationMethod: '',
     equipmentNeeded: '',
@@ -78,9 +79,10 @@ function PEEPForm({
       if (editingId) {
         api.get(`/peep/${editingId}`).then(r => {
           const d = r.data.data
+          const levels = mobilityLevelsArray(d.mobility_level)
           setForm({
             suId: d.su_id,
-            mobilityLevel: d.mobility_level || 'independent',
+            mobilityLevels: levels.length ? levels : ['independent'],
             canSelfEvacuate: d.can_self_evacuate || false,
             evacuationMethod: d.evacuation_method || '',
             equipmentNeeded: d.equipment_needed || '',
@@ -102,14 +104,16 @@ function PEEPForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.suId) { toast.error('Please select a resident'); return }
+    if (!form.mobilityLevels.length) { toast.error('Please select at least one mobility level'); return }
     if (!form.evacuationMethod.trim()) { toast.error('Please describe the evacuation method'); return }
     setSubmitting(true)
+    const payload = { ...form, mobilityLevel: form.mobilityLevels.join(',') }
     try {
       if (editingId) {
-        await api.put(`/peep/${editingId}`, form)
+        await api.put(`/peep/${editingId}`, payload)
         toast.success('PEEP plan updated')
       } else {
-        await api.post('/peep', form)
+        await api.post('/peep', payload)
         toast.success('PEEP plan created')
       }
       onSaved()
@@ -134,21 +138,31 @@ function PEEPForm({
           </select>
         </div>
 
-        {/* Mobility level */}
+        {/* Mobility level — multi-select, a resident can match more than one profile */}
         <div>
-          <label className="text-xs font-medium text-slate-400 block mb-2">Mobility level *</label>
+          <label className="text-xs font-medium text-slate-400 block mb-2">Mobility level * <span className="font-normal normal-case text-slate-500">(select all that apply)</span></label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {MOBILITY_LEVELS.map(m => (
-              <button key={m.value} type="button"
-                onClick={() => { set('mobilityLevel', m.value); if (m.value === 'independent') set('numberOfStaffRequired', 0) }}
-                className={clsx('text-left p-3 rounded-xl border transition-all', form.mobilityLevel === m.value
-                  ? 'border-amber-500/50 bg-amber-500/10'
-                  : 'border-white/8 bg-white/3 hover:border-white/15')}>
-                <div className="text-lg mb-1">{m.icon}</div>
-                <div className={`text-xs font-semibold leading-tight ${neutralText}`}>{m.label}</div>
-                <div className="text-xs text-slate-500 mt-0.5 leading-tight">{m.desc}</div>
-              </button>
-            ))}
+            {MOBILITY_LEVELS.map(m => {
+              const selected = form.mobilityLevels.includes(m.value)
+              return (
+                <button key={m.value} type="button"
+                  onClick={() => {
+                    const next = selected ? form.mobilityLevels.filter(v => v !== m.value) : [...form.mobilityLevels, m.value]
+                    set('mobilityLevels', next)
+                    if (m.value === 'independent' && !selected) set('numberOfStaffRequired', 0)
+                  }}
+                  className={clsx('text-left p-3 rounded-xl border transition-all', selected
+                    ? 'border-amber-500/50 bg-amber-500/10'
+                    : 'border-white/8 bg-white/3 hover:border-white/15')}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg mb-1">{m.icon}</div>
+                    {selected && <CheckCircle className="w-4 h-4 text-amber-400" />}
+                  </div>
+                  <div className={`text-xs font-semibold leading-tight ${neutralText}`}>{m.label}</div>
+                  <div className="text-xs text-slate-500 mt-0.5 leading-tight">{m.desc}</div>
+                </button>
+              )
+            })}
           </div>
         </div>
 

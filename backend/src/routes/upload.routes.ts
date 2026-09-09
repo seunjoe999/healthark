@@ -45,30 +45,18 @@ const docStorage = multer.diskStorage({
 });
 
 const ALLOWED_IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
 const ALLOWED_DOC_EXTS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.jpg', '.jpeg', '.png', '.zip']);
-const ALLOWED_DOC_MIMES = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain',
-  'image/jpeg',
-  'image/png',
-  'application/zip',
-  'application/x-zip-compressed',
-  'application/x-zip',
-  'multipart/x-zip',
-]);
 
+// Trust the extension as the primary check — browsers/OS (especially on
+// mobile) frequently report a generic or inconsistent MIME type for a
+// perfectly valid file, which was silently rejecting legitimate uploads
+// when the reported MIME type also had to match an allowlist.
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ALLOWED_IMAGE_EXTS.has(ext) && ALLOWED_IMAGE_MIMES.has(file.mimetype)) cb(null, true);
+    if (ALLOWED_IMAGE_EXTS.has(ext)) cb(null, true);
     else cb(new Error('Only image files allowed (jpg, jpeg, png, webp)'));
   },
 });
@@ -78,7 +66,7 @@ const docUpload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ALLOWED_DOC_EXTS.has(ext) && ALLOWED_DOC_MIMES.has(file.mimetype)) cb(null, true);
+    if (ALLOWED_DOC_EXTS.has(ext)) cb(null, true);
     else cb(new Error('File type not allowed'));
   },
 });
@@ -96,12 +84,7 @@ const cvUpload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const allowed = new Set(['.pdf', '.doc', '.docx']);
-    const allowedMimes = new Set([
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ]);
-    if (allowed.has(ext) && allowedMimes.has(file.mimetype)) cb(null, true);
+    if (allowed.has(ext)) cb(null, true);
     else cb(new Error('Only PDF or Word documents are allowed'));
   },
 });

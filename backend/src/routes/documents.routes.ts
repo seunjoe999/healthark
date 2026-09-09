@@ -35,25 +35,17 @@ const storage = multer.diskStorage({
 });
 
 const ALLOWED_EXTS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.txt', '.zip']);
-const ALLOWED_MIMES = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg',
-  'image/png',
-  'text/plain',
-  'application/zip',
-  'application/x-zip-compressed',
-  'application/x-zip',
-  'multipart/x-zip',
-]);
 
 const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (_req, file, cb) => {
+    // Trust the extension as the primary check — browsers/OS (especially on
+    // mobile) frequently report a generic or inconsistent MIME type
+    // (e.g. application/octet-stream) for a perfectly valid file, which was
+    // silently rejecting legitimate uploads when both had to match.
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ALLOWED_EXTS.has(ext) && ALLOWED_MIMES.has(file.mimetype)) cb(null, true);
+    if (ALLOWED_EXTS.has(ext)) cb(null, true);
     else cb(new Error('File type not allowed'));
   },
 });

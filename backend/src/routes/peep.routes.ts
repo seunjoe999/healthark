@@ -23,7 +23,7 @@ const CREATE_TABLE = `
     su_id UUID NOT NULL,
     created_by UUID NOT NULL,
     review_date DATE,
-    mobility_level TEXT NOT NULL CHECK (mobility_level IN ('independent','assisted_1','assisted_2','hoist','bedbound','wheelchair')),
+    mobility_level TEXT NOT NULL,
     can_self_evacuate BOOLEAN DEFAULT false,
     evacuation_method TEXT NOT NULL,
     equipment_needed TEXT,
@@ -40,6 +40,8 @@ const CREATE_TABLE = `
 
 router.use(async (_req, _res, next) => {
   try { await query(CREATE_TABLE, []); } catch (_) {}
+  // Mobility level now stores a comma-separated list (a resident can match more than one profile)
+  try { await query('ALTER TABLE peep_plans DROP CONSTRAINT IF EXISTS peep_plans_mobility_level_check', []); } catch (_) {}
   next();
 });
 

@@ -20,7 +20,7 @@ try {
 
 // Detect if running inside Capacitor native shell
 const isNative = !!(window as any).Capacitor?.isNativePlatform?.()
-const API_BASE = isNative ? 'https://compcarehub.co.uk/api' : '/api'
+export const API_BASE = isNative ? 'https://compcarehub.co.uk/api' : '/api'
 
 const api = axios.create({
   baseURL: API_BASE,
