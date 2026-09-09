@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
-         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search } from 'lucide-react'
+         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { handleTextareaPaste } from '../../utils/pasteFormat'
 
@@ -311,6 +311,36 @@ function ChoiceRow({ label, options, value, onChange }: { label: string; options
   )
 }
 
+// Same as ChoiceRow, but a resident can match more than one option at once
+// (e.g. multiple fire evacuation alert methods) — tick buttons instead of
+// radios, value stored as a comma-separated list.
+function MultiChoiceRow({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (v: string) => void }) {
+  const selected = value ? value.split(',').map(s => s.trim()).filter(Boolean) : []
+  const toggle = (opt: string) => {
+    const next = selected.includes(opt) ? selected.filter(o => o !== opt) : [...selected, opt]
+    onChange(next.join(', '))
+  }
+  return (
+    <div className="py-2 border-b border-slate-100 last:border-0">
+      <span className="text-sm font-semibold text-slate-700 block mb-1.5">{label} <span className="font-normal text-slate-400 text-xs">(select all that apply)</span></span>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => {
+          const isSelected = selected.includes(opt)
+          return (
+            <button key={opt} type="button" onClick={() => toggle(opt)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm transition-colors ${isSelected ? 'bg-amber-50 border-amber-400 text-amber-800' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+              <span className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500' : 'border-slate-300'}`}>
+                {isSelected && <Check className="w-3 h-3 text-white" />}
+              </span>
+              {opt}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function CheckboxGroup({ label, options, values, onChange }: { label: string; options: string[]; values: string[]; onChange: (v: string[]) => void }) {
   const toggle = (opt: string) => onChange(values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt])
   return (
@@ -544,19 +574,19 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
         <SpeechTextarea label="Mission statement" className="w-full text-sm" rows={2} value={tv('missionStatement')} onChange={v => set('missionStatement', v)}
           placeholder="e.g. To protect my safety and wellbeing during emergencies through a personalised evacuation plan..." />
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <ChoiceRow label="I am informed of a fire evacuation by:" options={EVAC_INFORMED_OPTIONS} value={tv('informedBy')} onChange={v => set('informedBy', v)} />
-          {tv('informedBy').startsWith('Other') && (
+          <MultiChoiceRow label="I am informed of a fire evacuation by:" options={EVAC_INFORMED_OPTIONS} value={tv('informedBy')} onChange={v => set('informedBy', v)} />
+          {tv('informedBy').includes('Other') && (
             <input className="input w-full text-sm mt-1" placeholder="Please specify" value={tv('informedByOther')} onChange={e => set('informedByOther', e.target.value)} />
           )}
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <ChoiceRow label="Assistance is required from:" options={EVAC_ASSISTANCE_OPTIONS} value={tv('assistanceRequired')} onChange={v => set('assistanceRequired', v)} />
+          <MultiChoiceRow label="Assistance is required from:" options={EVAC_ASSISTANCE_OPTIONS} value={tv('assistanceRequired')} onChange={v => set('assistanceRequired', v)} />
           <div className="mt-3"><SpeechTextarea label="Who has been designated to give me assistance to get out of the building in an emergency?" className="w-full text-sm" rows={2} value={tv('designatedAssistance')} onChange={v => set('designatedAssistance', v)} /></div>
-          <div className="mt-3"><ChoiceRow label="Methods of guidance / transfer procedure:" options={EVAC_GUIDANCE_OPTIONS} value={tv('guidanceMethod')} onChange={v => set('guidanceMethod', v)} /></div>
+          <div className="mt-3"><MultiChoiceRow label="Methods of guidance / transfer procedure:" options={EVAC_GUIDANCE_OPTIONS} value={tv('guidanceMethod')} onChange={v => set('guidanceMethod', v)} /></div>
         </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-          <ChoiceRow label="Equipment provided:" options={EVAC_EQUIPMENT_OPTIONS} value={tv('equipmentProvided')} onChange={v => set('equipmentProvided', v)} />
-          {tv('equipmentProvided').startsWith('Specialist') && (
+          <MultiChoiceRow label="Equipment provided:" options={EVAC_EQUIPMENT_OPTIONS} value={tv('equipmentProvided')} onChange={v => set('equipmentProvided', v)} />
+          {tv('equipmentProvided').includes('Specialist') && (
             <input className="input w-full text-sm mt-1" placeholder="What equipment is required?" value={tv('equipmentDetail')} onChange={e => set('equipmentDetail', e.target.value)} />
           )}
         </div>
@@ -843,11 +873,11 @@ function TemplateDetail({ plan }: { plan: any }) {
     return (
       <div className="space-y-3">
         {sec('Mission statement', tv('missionStatement'))}
-        {row('Informed of evacuation by', tv('informedBy') === 'Other (please specify)' ? tv('informedByOther') : tv('informedBy'))}
+        {row('Informed of evacuation by', tv('informedBy').includes('Other') && tv('informedByOther') ? `${tv('informedBy')} — ${tv('informedByOther')}` : tv('informedBy'))}
         {row('Assistance required', tv('assistanceRequired'))}
         {sec('Designated assistance', tv('designatedAssistance'))}
         {row('Guidance method', tv('guidanceMethod'))}
-        {row('Equipment provided', tv('equipmentProvided').startsWith('Specialist') ? tv('equipmentDetail') : tv('equipmentProvided'))}
+        {row('Equipment provided', tv('equipmentProvided').includes('Specialist') && tv('equipmentDetail') ? `${tv('equipmentProvided')} — ${tv('equipmentDetail')}` : tv('equipmentProvided'))}
         {sec('Staff responsibilities during evacuation', tv('staffResponsibilities'))}
         {sec('Your role during evacuation', tv('yourRoleDuringEvacuation'))}
         {sec('Safe routes to be used', tv('safeRoutes'))}
@@ -1071,6 +1101,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
   const sections: { title: string; inner: string }[] = []
 
   if (p === 'oral_care') {
+    if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
     const teethRows = [yesNoRow('I have all my own teeth', tv('hasOwnTeeth')), yesNoRow('I have dentures', tv('hasDentures'))].filter(Boolean).join('')
     sections.push({
       title: 'About My Teeth',
@@ -1191,7 +1222,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
   if (p === 'personal_evacuation') {
     if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
     if (tv('missionStatement')) sections.push({ title: 'Mission Statement', inner: bodyText(tv('missionStatement')) })
-    const rows1 = [textRow('I am informed of a fire evacuation by', tv('informedBy') === 'Other (please specify)' ? tv('informedByOther') : tv('informedBy'))].filter(Boolean).join('')
+    const rows1 = [textRow('I am informed of a fire evacuation by', tv('informedBy').includes('Other') && tv('informedByOther') ? `${tv('informedBy')} — ${tv('informedByOther')}` : tv('informedBy'))].filter(Boolean).join('')
     if (rows1) sections.push({ title: 'Awareness of Procedure', inner: `<table class="fields">${rows1}</table>` })
     const rows2 = [
       textRow('Assistance is required from', tv('assistanceRequired')),
@@ -1201,7 +1232,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
       title: 'Designated Assistance',
       inner: `${rows2 ? `<table class="fields">${rows2}</table>` : ''}${bodyText(tv('designatedAssistance'))}`,
     })
-    const rows3 = [textRow('Equipment provided', tv('equipmentProvided').startsWith('Specialist') ? tv('equipmentDetail') : tv('equipmentProvided'))].filter(Boolean).join('')
+    const rows3 = [textRow('Equipment provided', tv('equipmentProvided').includes('Specialist') && tv('equipmentDetail') ? `${tv('equipmentProvided')} — ${tv('equipmentDetail')}` : tv('equipmentProvided'))].filter(Boolean).join('')
     if (rows3) sections.push({ title: 'Equipment Provided', inner: `<table class="fields">${rows3}</table>` })
     if (tv('staffResponsibilities') || tv('yourRoleDuringEvacuation')) {
       sections.push({
@@ -1928,7 +1959,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
           </>
         ) : isTemplatedPlan ? (
           <div className="space-y-4">
-            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health' || plan.plan_type === 'bowel_management') && plan.aims_outcomes && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health' || plan.plan_type === 'bowel_management' || plan.plan_type === 'oral_care') && plan.aims_outcomes && (
               <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
             )}
             <TemplateDetail plan={plan} />
@@ -2365,7 +2396,7 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
           </>
         ) : isTemplated ? (
           <>
-            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life' || form.planType === 'physical_health' || form.planType === 'bowel_management') && (
+            {(form.planType === 'adhd' || form.planType === 'one_page_profile' || form.planType === 'personal_evacuation' || form.planType === 'end_of_life' || form.planType === 'physical_health' || form.planType === 'bowel_management' || form.planType === 'oral_care') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="List the aims and outcomes for this person..." />
             )}
             <TemplateFields planType={form.planType} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />
@@ -2484,7 +2515,7 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
           </>
         ) : isTemplated ? (
           <>
-            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health' || plan.plan_type === 'bowel_management') && (
+            {(plan.plan_type === 'adhd' || plan.plan_type === 'one_page_profile' || plan.plan_type === 'personal_evacuation' || plan.plan_type === 'end_of_life' || plan.plan_type === 'physical_health' || plan.plan_type === 'bowel_management' || plan.plan_type === 'oral_care') && (
               <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             )}
             <TemplateFields planType={plan.plan_type} data={form.templateData} onChange={td => set('templateData', td)} suName={suName} />

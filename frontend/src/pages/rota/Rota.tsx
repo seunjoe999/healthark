@@ -99,7 +99,7 @@ function getName(p: any) {
 
 export default function Rota() {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'senior_carer')
+  const canManage = isRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin')
   // Financial fields (wage/charge rates, funder billing) are only for management/admin roles —
   // must match the backend's FINANCIAL_ROLES gate in shifts.routes.ts.
   const canSeeFinancials = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
