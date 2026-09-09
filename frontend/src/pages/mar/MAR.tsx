@@ -310,12 +310,19 @@ export default function MAR() {
                 showPrescriptions={showPrescriptions}
                 showDirections={showDirections}
                 today={today}
+                canManage={isPrivilegedMar}
                 onCellClick={(med, date, records, slot) => {
                   if (records.length > 0) setCellDetail({ med, date, records })
                   // 'PRN' is a display label, not a real time — the DB column is a TIME
                   // and rejects it, which was surfacing as "internal server error" whenever
                   // staff tried to log an as-required dose. Record the actual time given instead.
                   else setLogModal({ med, date, slot: slot === 'PRN' ? format(new Date(), 'HH:mm') : slot })
+                }}
+                onDiscontinue={async (med) => {
+                  if (!confirm(`Discontinue ${med.medication_name}?`)) return
+                  await api.delete(`/mar/medications/${med.id}`)
+                  toast.success('Medication discontinued')
+                  fetchAll(selectedSu)
                 }}
                 onRefresh={() => fetchAll(selectedSu)}
               />
@@ -578,9 +585,9 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
 }
 
 /* ─── MAR Grid ─────────────────────────────────────────────────────────── */
-function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellClick, onRefresh }: {
-  chartData: any; showPrescriptions: boolean; showDirections: boolean; today: string;
-  onCellClick: (med: any, date: string, records: any[], slot: string) => void; onRefresh: () => void
+function MARGrid({ chartData, showPrescriptions, showDirections, today, canManage, onCellClick, onDiscontinue, onRefresh }: {
+  chartData: any; showPrescriptions: boolean; showDirections: boolean; today: string; canManage?: boolean;
+  onCellClick: (med: any, date: string, records: any[], slot: string) => void; onDiscontinue?: (med: any) => void; onRefresh: () => void
 }) {
   if (!chartData) {
     return (
@@ -680,7 +687,15 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, onCellCl
                     borderRight: `1px solid ${gridBorder}`,
                     background: gridBodyBg,
                   }}>
-                    <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: theme === 'dark' ? '#f5f0e8' : '#0f172a' }}>{med.medication_name}</div>
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="font-semibold" style={{ fontSize: 11, lineHeight: 1.3, color: theme === 'dark' ? '#f5f0e8' : '#0f172a' }}>{med.medication_name}</div>
+                      {canManage && onDiscontinue && (
+                        <button type="button" onClick={() => onDiscontinue(med)} title="Discontinue this medication"
+                          style={{ flexShrink: 0, fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: 'rgba(244,63,94,0.1)', color: '#e11d48', border: '1px solid rgba(244,63,94,0.3)' }}>
+                          Discontinue
+                        </button>
+                      )}
+                    </div>
                     {showPrescriptions && med.dose && (
                       <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
                         {med.dose}
