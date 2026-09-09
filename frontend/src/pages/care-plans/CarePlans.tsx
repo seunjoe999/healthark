@@ -695,7 +695,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
           placeholder="Comprehensive Care is committed to promoting and supporting the physical health of those we care for." />
         <SpeechTextarea label="List of physical health issues" className="w-full text-sm" rows={3} value={tv('physicalHealthIssues')} onChange={v => set('physicalHealthIssues', v)} />
         <div><label className="label">GP review date</label><input type="date" className="input w-full" value={tv('gpReviewDate')} onChange={e => set('gpReviewDate', e.target.value)} /></div>
-        <SpeechTextarea label="My Support Needs" className="w-full text-sm" rows={3} value={tv('whatICanDo')} onChange={v => set('whatICanDo', v)} />
+        <SpeechTextarea label="My Health Needs" className="w-full text-sm" rows={3} value={tv('whatICanDo')} onChange={v => set('whatICanDo', v)} />
         <SpeechTextarea label="How You Can Support Me" className="w-full text-sm" rows={3} value={tv('whatYouCanDoToSupportMe')} onChange={v => set('whatYouCanDoToSupportMe', v)} />
       </div>
     )
@@ -895,7 +895,7 @@ function TemplateDetail({ plan }: { plan: any }) {
         {sec('Mission statement', tv('missionStatement'))}
         {sec('List of physical health issues', tv('physicalHealthIssues'))}
         {row('GP review date', tv('gpReviewDate') ? format(new Date(tv('gpReviewDate')), 'd MMM yyyy') : '')}
-        {sec('My Support Needs', tv('whatICanDo'))}
+        {sec('My Health Needs', tv('whatICanDo'))}
         {sec('How You Can Support Me', tv('whatYouCanDoToSupportMe'))}
       </div>
     )
@@ -1327,7 +1327,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     const gpRow = textRow('GP review date', tv('gpReviewDate') ? new Date(tv('gpReviewDate')).toLocaleDateString('en-GB') : '')
     if (gpRow) sections.push({ title: 'GP Review Date', inner: `<table class="fields">${gpRow}</table>` })
     if (tv('physicalHealthIssues')) sections.push({ title: 'List of Physical Health Issues', inner: bodyText(tv('physicalHealthIssues')) })
-    if (tv('whatICanDo')) sections.push({ title: 'My Support Needs', inner: bodyText(tv('whatICanDo')) })
+    if (tv('whatICanDo')) sections.push({ title: 'My Health Needs', inner: bodyText(tv('whatICanDo')) })
     if (tv('whatYouCanDoToSupportMe')) sections.push({ title: 'How You Can Support Me', inner: bodyText(tv('whatYouCanDoToSupportMe')) })
     return sections
   }
