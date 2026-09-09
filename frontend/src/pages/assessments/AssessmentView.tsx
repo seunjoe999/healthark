@@ -317,8 +317,8 @@ export default function AssessmentView() {
       )}
 
       {/* Sign-off */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mt-4">
-        <h2 className="font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-100">Sign-off</h2>
+      <div className="rounded-xl border-2 shadow-sm p-6 mt-4" style={{ background: 'linear-gradient(135deg, rgba(232,177,48,0.08), rgba(212,150,26,0.04))', borderColor: 'rgba(232,177,48,0.35)' }}>
+        <h2 className="font-semibold mb-4 pb-2 border-b" style={{ color: '#92700f', borderColor: 'rgba(232,177,48,0.25)' }}>Sign-off</h2>
         <div className="grid sm:grid-cols-2 gap-6">
           <SignaturePad label="Management / Assessor Signature" savedSignature={assessment.assessor_signature}
             onSave={dataUrl => saveSignature('assessorSignature', dataUrl)} />

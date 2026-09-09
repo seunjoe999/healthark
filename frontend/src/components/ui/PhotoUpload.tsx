@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -14,6 +14,12 @@ export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, s
   const [preview, setPreview] = useState<string | null>(currentUrl || null)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // React reuses this component instance when the parent just swaps props
+  // (e.g. clicking from one staff/resident profile to another without a
+  // remount) — without this, `preview` stayed stuck on whichever photo was
+  // first loaded, so the previous person's picture kept showing.
+  useEffect(() => { setPreview(currentUrl || null) }, [currentUrl])
 
   const initials = name
     ? name.trim().split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase()

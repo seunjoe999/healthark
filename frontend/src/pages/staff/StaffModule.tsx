@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, differenceInYears, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit } from 'lucide-react'
+import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import MeetingsSection from '../../components/MeetingsSection'
 
@@ -62,6 +62,7 @@ export default function StaffModule() {
   const [trainingCertificates, setTrainingCertificates] = useState<any[]>([])
   const [uploadingCert, setUploadingCert] = useState(false)
   const [updatingOnboardingKey, setUpdatingOnboardingKey] = useState<string | null>(null)
+  const [staffSearch, setStaffSearch] = useState('')
 
   const toggleOnboardingItem = async (key: string, dateKey: string | null, checked: boolean) => {
     if (!selected) return
@@ -109,7 +110,14 @@ export default function StaffModule() {
     setSelected(s)
     setTab('profile')
     try {
-      const [trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, appraisalsRes, sensitiveRes] = await Promise.all([
+      // The staff list endpoint only returns a handful of columns (name, role,
+      // photo, status) — DOB, phone, gender, nationality, emergency contact and
+      // the real leave_hours_total/remaining all live only on the single-record
+      // endpoint. Without this fetch the profile silently fell back to blanks
+      // and hardcoded leave defaults (224/210), which is why DOB never showed
+      // here despite saving fine, and why leave remaining didn't match total.
+      const [fullRes, trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, appraisalsRes, sensitiveRes] = await Promise.all([
+        api.get(`/staff/${s.id}`),
         api.get(`/staff-hr/training/${s.id}`),
         api.get(`/staff-hr/leave?staffId=${s.id}`),
         api.get(`/staff-hr/onboarding/${s.id}`),
@@ -125,6 +133,7 @@ export default function StaffModule() {
         api.get(`/supervision/appraisal?staffId=${s.id}`),
         api.get(`/reviews/staff-sensitive-notes/${s.id}`),
       ])
+      if (fullRes.data.data) setSelected((p: any) => ({ ...p, ...fullRes.data.data }))
       setTraining(trainingRes.data.data || [])
       setLeave((leaveRes.data.data || []).filter((l: any) => l.staff_id === s.id))
       setOnboarding(onboardingRes.data.data)
@@ -202,11 +211,62 @@ export default function StaffModule() {
       <div className="flex flex-col flex-1 overflow-y-auto bg-slate-50">
         <div className="p-6 flex-1">
         {!selected ? (
-          <div className="flex items-center justify-center h-full">
-            <EmptyState title="Select a staff member" description="Choose a staff member to view their profile and records" />
-          </div>
+          isManager ? (
+            <div className="max-w-5xl mx-auto">
+              <div className="relative mb-4">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input value={staffSearch} onChange={e => setStaffSearch(e.target.value)}
+                  placeholder="Search staff by name…"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              </div>
+              {staff.length === 0 ? (
+                <EmptyState title="No staff found" description="No staff members at this home yet" />
+              ) : (() => {
+                const filtered = staff
+                  .filter(s => !staffSearch.trim() || getName(s).toLowerCase().includes(staffSearch.trim().toLowerCase()))
+                  .slice()
+                  .sort((a, b) => getName(a).localeCompare(getName(b)))
+                return filtered.length === 0 ? (
+                  <EmptyState title="No staff found" description="Try a different search" />
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {filtered.map(s => {
+                      const initials = getName(s).split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
+                      return (
+                        <button key={s.id} onClick={() => selectStaff(s)} type="button"
+                          className="bg-white rounded-2xl border border-slate-100 shadow-card hover:shadow-card-hover hover:border-slate-200 transition-all p-4 text-left">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm font-display"
+                              style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
+                              {(s.photo_url || s.photoUrl)
+                                ? <img src={s.photo_url || s.photoUrl} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                : initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-slate-900 text-sm truncate">{getName(s)}</h3>
+                              <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <EmptyState title="Select a staff member" description="Choose a staff member to view their profile and records" />
+            </div>
+          )
         ) : (
           <div className="max-w-4xl mx-auto">
+            {isManager && (
+              <button type="button" onClick={() => setSelected(null)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700 mb-4 uppercase tracking-wider transition-colors">
+                ← Back to staff list
+              </button>
+            )}
             {/* Header */}
             {/* WhatsApp-style clickable profile header */}
             <Link to={`/staff/${selected.id}/edit`} className="block bg-white/5 rounded-xl border border-white/10 shadow-sm p-5 mb-4 hover:border-purple-400/40 hover:shadow-md transition-all group">
