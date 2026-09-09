@@ -480,19 +480,19 @@ export default function Outcomes() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Month:</span>
-                  <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+                  <input className="flex-1 border-b border-slate-400 bg-transparent text-sm font-semibold text-slate-900 outline-none py-0.5 focus:border-amber-500"
                     value={monthlyForm.month} onChange={e => setMonthlyForm(f => ({ ...f, month: e.target.value }))}
                     placeholder="e.g. June 2026" required />
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Completed by (Name &amp; Role):</span>
-                  <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+                  <input className="flex-1 border-b border-slate-400 bg-transparent text-sm font-semibold text-slate-900 outline-none py-0.5 focus:border-amber-500"
                     value={monthlyForm.completedBy} onChange={e => setMonthlyForm(f => ({ ...f, completedBy: e.target.value }))}
                     placeholder="Name and role" />
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Date Completed:</span>
-                  <input type="date" className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+                  <input type="date" className="flex-1 border-b border-slate-400 bg-transparent text-sm font-semibold text-slate-900 outline-none py-0.5 focus:border-amber-500"
                     value={monthlyForm.dateCompleted} onChange={e => setMonthlyForm(f => ({ ...f, dateCompleted: e.target.value }))} />
                 </div>
               </div>
@@ -516,14 +516,14 @@ export default function Outcomes() {
                               setMonthlyChecks(prev => ({ ...prev, [s.key]: updated }))
                             }}
                           />
-                          <span className="text-xs text-slate-600">{checkLabel}</span>
+                          <span className="text-xs font-semibold text-slate-800">{checkLabel}</span>
                         </label>
                       ))}
                     </div>
                   )}
                   <div className="px-5 pb-3">
                     <textarea rows={s.key === 'summaryNotes' ? 4 : 2}
-                      className="w-full text-sm border-0 bg-transparent outline-none resize-none text-slate-800 placeholder-slate-300 leading-relaxed"
+                      className="w-full text-sm font-semibold border-0 bg-transparent outline-none resize-none text-slate-900 placeholder-slate-400 leading-relaxed"
                       value={(monthlyForm as any)[s.key]}
                       onChange={e => setMonthlyForm(f => ({ ...f, [s.key]: e.target.value }))}
                       placeholder={s.key === 'summaryNotes' ? 'Enter any additional notes or summary…' : 'Additional notes…'} />
