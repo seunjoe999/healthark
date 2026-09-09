@@ -8,7 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, AlertTriangle, CheckCircle, Phone,
+  Brain, UserX, AlertTriangle, CheckCircle, Phone, Users,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -128,6 +128,7 @@ export default function Rota() {
   // modals
   const [createOpen,  setCreateOpen]  = useState(false)
   const [standbyOpen, setStandbyOpen] = useState(false)
+  const [serviceRotaOpen, setServiceRotaOpen] = useState(false)
   const [leaveOpen,   setLeaveOpen]   = useState(false)
   const [bulkOpen,    setBulkOpen]    = useState(false)
   const [detailShift, setDetailShift] = useState<any>(null)
@@ -245,6 +246,9 @@ export default function Rota() {
               </Button>
               <Button variant="outline" icon={<Plus className="w-4 h-4" />} onClick={() => setStandbyOpen(true)}>
                 Create Standby Shift
+              </Button>
+              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setServiceRotaOpen(true)}>
+                Create Rota for Service
               </Button>
               <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}>
                 Bulk Operations
@@ -568,6 +572,19 @@ export default function Rota() {
           homeId={selectedHome}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
           onSaved={() => { setStandbyOpen(false); loadAll(); toast.success('Standby shift created') }}
+        />
+      )}
+
+      {serviceRotaOpen && (
+        <CreateServiceRotaModal
+          open={serviceRotaOpen}
+          onClose={() => setServiceRotaOpen(false)}
+          suList={suList}
+          staffList={staffList}
+          homeId={selectedHome}
+          canSeeFinancials={canSeeFinancials}
+          defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
+          onSaved={() => { setServiceRotaOpen(false); loadAll() }}
         />
       )}
 
@@ -901,6 +918,285 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button loading={saving} onClick={save} icon={<Check className="w-4 h-4" />}>
                 Create Shift {selectedStaff.length > 0 && `(${selectedStaff.length} staff)`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ── Create Rota for Service Modal ─────────────────────────────────────────────
+// Same shift/times/staff shared across every selected resident in the home —
+// creates one shift per resident (via the existing /shifts/service-shift
+// endpoint) instead of repeating "Create Shift" once per resident by hand.
+
+function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defaultDate, onSaved, canSeeFinancials }: {
+  open: boolean; onClose: () => void
+  suList: any[]; staffList: any[]; homeId: string
+  defaultDate: string; onSaved: () => void; canSeeFinancials: boolean
+}) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [form, setForm] = useState({
+    startDate: defaultDate, isOngoing: true, endDate: '',
+    recurrence: 'daily', daysOfWeek: [1, 2, 3, 4, 5],
+    startTime: '08:00', endTime: '20:00',
+    shiftType: 'regular', totalStaffRequired: '1',
+    breakMins: '30',
+    notesForCarers: '', notesForManagers: '',
+    funderName: '', funderCostNotes: '',
+    wageRate: '', chargeRate: '', chargeBankHolidayRate: '',
+    timeCritical: false, shiftRun: '',
+  })
+  const [selectedSus, setSelectedSus] = useState<string[]>([])
+  const [suSearch, setSuSearch] = useState('')
+  const [selectedStaff, setSelectedStaff] = useState<string[]>([])
+  const [staffSearch, setStaffSearch] = useState('')
+  const [saving, setSaving] = useState(false)
+  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (open) { setStep(1); setSelectedSus([]); setSelectedStaff([]); setSuSearch(''); setStaffSearch(''); setForm(f => ({ ...f, startDate: defaultDate })) }
+  }, [open, defaultDate])
+
+  const toggleDay = (d: number) =>
+    setForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
+
+  const toggleSu = (id: string) =>
+    setSelectedSus(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const toggleStaff = (id: string) =>
+    setSelectedStaff(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const next = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedSus.length === 0) { toast.error('Select at least one resident'); return }
+    if (form.recurrence !== 'daily' && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
+    setStep(2)
+  }
+
+  const save = async () => {
+    if (selectedStaff.length === 0) { toast.error('Allocate at least one staff member'); return }
+    setSaving(true)
+    try {
+      const daysOfWeek = form.recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : form.daysOfWeek
+      const results = await Promise.allSettled(selectedSus.map(suId =>
+        api.post('/shifts/service-shift', {
+          homeId, ...form, suId,
+          staffIds: selectedStaff,
+          daysOfWeek,
+          totalStaffRequired: parseInt(form.totalStaffRequired) || 1,
+          breakMins: parseInt(form.breakMins) || 0,
+        })
+      ))
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed === 0) {
+        toast.success(`Rota created for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}`)
+      } else if (failed < results.length) {
+        toast.error(`${failed} of ${results.length} residents failed — the rest were created`)
+      } else {
+        toast.error('Failed to create rota')
+        return
+      }
+      onSaved()
+    } finally { setSaving(false) }
+  }
+
+  const filteredSus = suList.filter(s => getName(s).toLowerCase().includes(suSearch.toLowerCase()))
+  const filteredStaff = staffList.filter(s => getName(s).toLowerCase().includes(staffSearch.toLowerCase()))
+  const required = parseInt(form.totalStaffRequired) || 1
+
+  return (
+    <Modal open={open} onClose={onClose} title="Create Rota for Service" size="md">
+      {step === 1 ? (
+        <form onSubmit={next} className="space-y-4">
+          {/* Residents (multi-select) */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Residents * <span className="text-slate-400 font-normal normal-case">({selectedSus.length} selected)</span>
+            </label>
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input className="input pl-8 text-sm" placeholder="Search residents..." value={suSearch} onChange={e => setSuSearch(e.target.value)} />
+            </div>
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              {filteredSus.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No residents found</p>
+              ) : (
+                filteredSus.map((s: any) => {
+                  const selected = selectedSus.includes(s.id)
+                  return (
+                    <button key={s.id} type="button" onClick={() => toggleSu(s.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 border-b border-slate-50 last:border-0 text-left transition-colors ${selected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                      <div className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center ${selected ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <p className={`text-sm truncate ${selected ? 'font-medium text-blue-800' : 'text-slate-700'}`}>{getName(s)}</p>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">From *</label>
+              <input type="date" required className="input" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Until</label>
+              <div className="flex items-center gap-2">
+                {form.isOngoing ? (
+                  <div className="input flex items-center gap-2 text-sm text-emerald-600 font-medium">
+                    <RefreshCw className="w-3.5 h-3.5" /> Ongoing
+                  </div>
+                ) : (
+                  <input type="date" className="input flex-1" value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+                )}
+              </div>
+              <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer">
+                <input type="checkbox" checked={form.isOngoing} onChange={e => set('isOngoing', e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600" />
+                <span className="text-xs text-slate-500">Ongoing (no end date)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Recurrence */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Every</label>
+            <div className="flex gap-2 mb-2">
+              {[{ value: 'daily', label: 'Every Day' }, { value: 'weekly', label: 'Specific Days' }].map(o => (
+                <button key={o.value} type="button" onClick={() => set('recurrence', o.value)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {form.recurrence !== 'daily' && (
+              <div className="flex gap-1">
+                {DAY_LETTERS.map((d, i) => (
+                  <button key={i} type="button" onClick={() => toggleDay(i)}
+                    className={`flex-1 h-9 rounded-full text-xs font-bold border transition-colors ${form.daysOfWeek.includes(i) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Times */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start Time *</label>
+              <input type="time" required className="input" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End Time *</label>
+              <input type="time" required className="input" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Shift type + staff required */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Shift Type</label>
+              <select className="input" value={form.shiftType} onChange={e => set('shiftType', e.target.value)}>
+                {SHIFT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Total Staff Required</label>
+              <input type="number" min="1" max="20" className="input" value={form.totalStaffRequired} onChange={e => set('totalStaffRequired', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Break (mins)</label>
+              <input type="number" min="0" max="120" step="5" className="input" value={form.breakMins} onChange={e => set('breakMins', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Wage Rates / billing — financial fields, privileged roles only */}
+          {canSeeFinancials && (
+            <div className="border border-slate-200 rounded-xl p-3 space-y-3">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Wage Rates</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Funder" value={form.funderName} onChange={e => set('funderName', e.target.value)} placeholder="Funder name..." />
+                <Input label="Wage Rate (£/hr)" type="number" step="0.01" min="0" value={form.wageRate} onChange={e => set('wageRate', e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Charge (£/hr)" type="number" step="0.01" min="0" value={form.chargeRate} onChange={e => set('chargeRate', e.target.value)} />
+                <Input label="Charge as Bank Holidays (£/hr)" type="number" step="0.01" min="0" value={form.chargeBankHolidayRate} onChange={e => set('chargeBankHolidayRate', e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Notes for carers</label>
+            <textarea className="input" rows={2} value={form.notesForCarers} onChange={e => set('notesForCarers', e.target.value)} placeholder="Instructions visible to care staff..." />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Next: Allocate Staff →</Button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          {/* Summary */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+            <p className="font-semibold">{selectedSus.length} resident{selectedSus.length !== 1 ? 's' : ''} selected</p>
+            <p className="text-xs text-blue-600 mt-0.5">
+              {form.startDate} · {form.isOngoing ? 'Ongoing' : form.endDate} · {form.startTime}–{form.endTime} ·{' '}
+              {form.recurrence === 'daily' ? 'Every day' : form.daysOfWeek.map(d => DAY_SHORT[d]).join(', ')}
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-slate-700">
+                Allocate staff <span className="text-slate-400 font-normal">({selectedStaff.length} of {required} required, shared across all selected residents)</span>
+              </p>
+            </div>
+
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input className="input pl-8 text-sm" placeholder="Search staff..." value={staffSearch} onChange={e => setStaffSearch(e.target.value)} />
+            </div>
+
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+              {filteredStaff.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No staff found</p>
+              ) : (
+                filteredStaff.map((s: any) => {
+                  const selected = selectedStaff.includes(s.id)
+                  return (
+                    <button key={s.id} type="button" onClick={() => toggleStaff(s.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 border-b border-slate-50 last:border-0 text-left transition-colors ${selected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        {selected ? <Check className="w-4 h-4" /> : (getName(s).split(' ').map((n: string) => n[0]).join('').substring(0, 2))}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${selected ? 'text-blue-800' : 'text-slate-800'}`}>{getName(s)}</p>
+                        <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
+                      </div>
+                      {selected && <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-between pt-2">
+            <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button loading={saving} onClick={save} icon={<Check className="w-4 h-4" />}>
+                Create Rota {selectedStaff.length > 0 && `(${selectedStaff.length} staff × ${selectedSus.length} residents)`}
               </Button>
             </div>
           </div>
