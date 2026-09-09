@@ -89,9 +89,18 @@ export const homesApi = {
   update: (id: string, data: Record<string, unknown>) => api.put(`/homes/${id}`, data),
 }
 
+function byResidentName(a: any, b: any) {
+  const nameOf = (su: any) => `${su.first_name || ''} ${su.last_name || ''}`.trim()
+  return nameOf(a).localeCompare(nameOf(b))
+}
+
 export const suApi = {
+  // Sorted alphabetically by name here so every page that lists or picks a
+  // resident (Support Plans, Risk Assessments, Outcomes, PEEP, etc.) gets a
+  // consistent order without each page having to sort it independently.
   list: (homeId: string, params?: Record<string, string>) =>
-    api.get('/service-users', { params: { homeId, ...params } }),
+    api.get('/service-users', { params: { homeId, ...params } })
+      .then(res => { res.data.data = (res.data.data || []).slice().sort(byResidentName); return res }),
   get: (id: string) => api.get(`/service-users/${id}`),
   create: (data: Record<string, unknown>) => api.post('/service-users', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/service-users/${id}`, data),

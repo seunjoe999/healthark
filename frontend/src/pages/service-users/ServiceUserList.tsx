@@ -42,10 +42,13 @@ export default function ServiceUserList() {
       .finally(() => setLoading(false))
   }, [selectedHome, statusFilter])
 
-  const filtered = sus.filter(su => {
-    const name = `${su.first_name || ''} ${su.last_name || ''} ${su.preferred_name || ''}`.toLowerCase()
-    return name.includes(search.toLowerCase())
-  })
+  const filtered = sus
+    .filter(su => {
+      const name = `${su.first_name || ''} ${su.last_name || ''} ${su.preferred_name || ''}`.toLowerCase()
+      return name.includes(search.toLowerCase())
+    })
+    .slice()
+    .sort((a, b) => `${a.first_name || ''} ${a.last_name || ''}`.trim().localeCompare(`${b.first_name || ''} ${b.last_name || ''}`.trim()))
 
   const getName = (su: any) => `${su.first_name || ''} ${su.last_name || ''}`.trim()
   const getAge = (dob: string) => dob ? differenceInYears(new Date(), new Date(dob)) : null
