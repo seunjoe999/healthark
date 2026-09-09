@@ -1191,6 +1191,15 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     if (plan.prn_list && plan.prn_list.trim()) sections.push({ title: 'PRN List', inner: bodyText(plan.prn_list) })
     if (plan.indication_for_use && plan.indication_for_use.trim()) sections.push({ title: 'Indication for Use', inner: bodyText(plan.indication_for_use) })
     const prnRows = [
+      { key: 'prnHowTaken', label: 'How I Like to Take My Medication' },
+      { key: 'prnCommunicate', label: 'How I Will Communicate That I Need a PRN Medicine' },
+      { key: 'prnMedDetails', label: 'Medication Details' },
+      { key: 'prnMaxDose24h', label: 'Maximum Dose in 24 Hours' },
+      { key: 'prnReasonGiving', label: 'Reason for Giving Medication' },
+      { key: 'prnExpectedOutcome', label: 'Expected Outcome' },
+      { key: 'prnTimeframeOutcome', label: 'Timeframe of Expected Outcome' },
+      { key: 'prnActionIfNotAchieved', label: 'Action to Take if Required Outcome Not Achieved' },
+      { key: 'prnReferGP', label: 'When to Refer Back to GP' },
       { key: 'prnAssessment', label: 'Assessment Before Administration' },
       { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
       { key: 'prnAdminProcess', label: 'Administration Process' },
@@ -1924,6 +1933,15 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
             {(() => {
               const td = plan.template_data || {}
               const prnSections = [
+                { key: 'prnHowTaken', label: 'How I Like to Take My Medication' },
+                { key: 'prnCommunicate', label: 'How I Will Communicate That I Need a PRN Medicine' },
+                { key: 'prnMedDetails', label: 'Medication Details' },
+                { key: 'prnMaxDose24h', label: 'Maximum Dose in 24 Hours' },
+                { key: 'prnReasonGiving', label: 'Reason for Giving Medication' },
+                { key: 'prnExpectedOutcome', label: 'Expected Outcome' },
+                { key: 'prnTimeframeOutcome', label: 'Timeframe of Expected Outcome' },
+                { key: 'prnActionIfNotAchieved', label: 'Action to Take if Required Outcome Not Achieved' },
+                { key: 'prnReferGP', label: 'When to Refer Back to GP' },
                 { key: 'prnAssessment', label: 'Assessment Before Administration' },
                 { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
                 { key: 'prnAdminProcess', label: 'Administration Process' },
@@ -2375,6 +2393,15 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
               <div className="space-y-3">
                 <p className="text-xs text-rose-600">Complete all sections below to ensure consistent, safe PRN administration across all staff.</p>
                 {[
+                  { key: 'prnHowTaken', label: 'How I Like to Take My Medication', ph: 'The person\'s preferred way of taking this PRN medicine...' },
+                  { key: 'prnCommunicate', label: 'How I Will Communicate That I Need a PRN Medicine', ph: 'Verbal, gesture, behaviour changes staff should watch for...' },
+                  { key: 'prnMedDetails', label: 'Medication Details', ph: 'Name, strength, form...' },
+                  { key: 'prnMaxDose24h', label: 'Maximum Dose in 24 Hours', ph: 'e.g. Max 4 doses in 24 hours, minimum 4 hours apart' },
+                  { key: 'prnReasonGiving', label: 'Reason for Giving Medication', ph: 'What symptom or situation this PRN is given for...' },
+                  { key: 'prnExpectedOutcome', label: 'Expected Outcome', ph: 'What a successful response looks like...' },
+                  { key: 'prnTimeframeOutcome', label: 'Timeframe of Expected Outcome', ph: 'How long until the medication should take effect...' },
+                  { key: 'prnActionIfNotAchieved', label: 'Action to Take if Required Outcome Not Achieved', ph: 'What staff should do if the expected outcome isn\'t met...' },
+                  { key: 'prnReferGP', label: 'When to Refer Back to GP', ph: 'Signs or thresholds that mean the GP must be contacted...' },
                   { key: 'prnAssessment', label: 'Assessment Before Administration', ph: 'Steps staff must take before administering PRN (e.g. check vital signs, assess pain level)...' },
                   { key: 'prnStaffInvolvement', label: 'Staff Involvement', ph: 'Who can administer? Witness requirements?' },
                   { key: 'prnAdminProcess', label: 'Administration Process', ph: 'Step-by-step administration instructions...' },
@@ -2496,6 +2523,15 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 space-y-3">
               <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">PRN Medication Protocol</p>
               {[
+                { key: 'prnHowTaken', label: 'How I Like to Take My Medication' },
+                { key: 'prnCommunicate', label: 'How I Will Communicate That I Need a PRN Medicine' },
+                { key: 'prnMedDetails', label: 'Medication Details' },
+                { key: 'prnMaxDose24h', label: 'Maximum Dose in 24 Hours' },
+                { key: 'prnReasonGiving', label: 'Reason for Giving Medication' },
+                { key: 'prnExpectedOutcome', label: 'Expected Outcome' },
+                { key: 'prnTimeframeOutcome', label: 'Timeframe of Expected Outcome' },
+                { key: 'prnActionIfNotAchieved', label: 'Action to Take if Required Outcome Not Achieved' },
+                { key: 'prnReferGP', label: 'When to Refer Back to GP' },
                 { key: 'prnAssessment', label: 'Assessment Before Administration' },
                 { key: 'prnStaffInvolvement', label: 'Staff Involvement' },
                 { key: 'prnAdminProcess', label: 'Administration Process' },
