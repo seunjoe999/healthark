@@ -1309,6 +1309,39 @@ const TEMPLATES: Template[] = [
   },
 
   {
+    key: 'lone_working_risk_assessment', name: 'Lone Working Risk Assessment', category: 'staff',
+    description: 'Risk assessment for staff working alone in the community or on lone shifts.',
+    sections: [{
+      id: 's1', title: 'Lone Working Risk Assessment',
+      questions: [
+        txt('q1', 'What is the hazard?'),
+        txt('q2', 'Who might be harmed?'),
+        txt('q3', 'How might staff be harmed?'),
+        txt('q4', 'Existing risk control measures?'),
+        txt('q5', 'Risk rating?'),
+        txt('q6', 'Additional control measures?'),
+        sel('q7', 'Likelihood', [
+          '1 — very unlikely, perhaps less than once every 5-10 years',
+          '2 — unlikely, perhaps once a year',
+          '3 — fairly likely, every 6 months or so',
+          '4 — likely, perhaps once a month or so',
+          '5 — very likely, once a week or so',
+        ]),
+        sel('q8', 'Consequences', [
+          '1 — insignificant, no injury',
+          '2 — minor injury needing first aid',
+          '3 — moderate, lost time injury',
+          '4 — major, hospital treatment needed',
+          '5 — catastrophic, death or disabling injury',
+        ]),
+        sel('q9', 'New risk rating residual', ['Low 1-5', 'Medium 10-15', 'High 20-25']),
+        txt('q10', 'Action monitored by who?'),
+        txt('q11', 'Action monitored by when?'),
+      ]
+    }]
+  },
+
+  {
     key: 'pregnancy_risk_assessment', name: 'Pregnancy Risk Assessment', category: 'staff',
     description: 'Risk assessment for pregnant, recently pregnant, or breastfeeding staff.',
     sections: [{

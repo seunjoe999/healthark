@@ -95,6 +95,7 @@ const PLAN_TYPES = [
   { value: 'monthly_progress', label: 'Monthly Progress Report' },
   { value: 'pbs', label: 'PBS Support Plan' },
   { value: 'about_me', label: 'About Me' },
+  { value: 'suicidal_ideation', label: 'Suicidal Ideation & Self Injury Support Plan' },
   { value: 'custom', label: 'Custom / Other' },
 ].sort((a, b) => {
   // "Custom / Other" is a catch-all, not a real plan type — keep it last
@@ -551,6 +552,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
   if (planType === 'one_page_profile') {
     return (
       <div className="space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#e8b130' }}>My One Page Profile</p>
         {ONE_PAGE_PROFILE_SECTIONS.map(s => (
           <SpeechTextarea key={s.key} label={s.label} className="w-full text-sm" rows={4} value={tv(s.key)} onChange={v => set(s.key, v)} />
         ))}
@@ -856,6 +858,7 @@ function TemplateDetail({ plan }: { plan: any }) {
   if (pt === 'one_page_profile') {
     return (
       <div className="space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#e8b130' }}>My One Page Profile</p>
         {ONE_PAGE_PROFILE_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
       </div>
     )
@@ -1333,6 +1336,9 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
   if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims & Objectives', inner: bodyText(plan.aims_outcomes) })
   if (plan.what_i_can_do && plan.what_i_can_do.trim()) sections.push({ title: 'My Support Needs', inner: bodyText(plan.what_i_can_do) })
   if (plan.how_to_support && plan.how_to_support.trim()) sections.push({ title: 'How To Support Me', inner: bodyText(plan.how_to_support) })
+  if (plan.plan_type === 'suicidal_ideation' && plan.template_data?.relevantContactNumbers?.trim()) {
+    sections.push({ title: 'Relevant Contact Numbers', inner: bodyText(plan.template_data.relevantContactNumbers) })
+  }
   return sections
 }
 
@@ -1987,6 +1993,9 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
             <GoldSection label="My Aims & Objectives" value={plan.aims_outcomes} />
             <GoldSection label="My Support Needs" value={plan.what_i_can_do} />
             <GoldSection label="How To Support Me" value={plan.how_to_support} />
+            {plan.plan_type === 'suicidal_ideation' && plan.template_data?.relevantContactNumbers && (
+              <GoldSection label="Relevant Contact Numbers" value={plan.template_data.relevantContactNumbers} />
+            )}
           </div>
         )}
 
@@ -2433,6 +2442,11 @@ function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
             <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} placeholder="What are we working towards for this person..." />
             <SpeechTextarea label="My Support Needs" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} placeholder="The person's support needs..." />
             <SpeechTextarea label="How you can support me" rows={3} value={form.howToSupport} onChange={v => set('howToSupport', v)} placeholder="Specific guidance for staff supporting this person..." />
+            {form.planType === 'suicidal_ideation' && (
+              <SpeechTextarea label="Relevant Contact Numbers" rows={4} value={form.templateData?.relevantContactNumbers || ''}
+                onChange={v => set('templateData', { ...form.templateData, relevantContactNumbers: v })}
+                placeholder="Crisis team, GP, CMHT, Samaritans, next of kin, out-of-hours number..." />
+            )}
           </>
         )}
 
@@ -2561,6 +2575,11 @@ function EditPlanModal({ plan, suId, onClose, onSaved, suName }: { plan: any; su
             <SpeechTextarea label="My aims & outcomes" rows={3} value={form.aimsOutcomes} onChange={v => set('aimsOutcomes', v)} />
             <SpeechTextarea label="My Support Needs" rows={3} value={form.whatICanDo} onChange={v => set('whatICanDo', v)} />
             <SpeechTextarea label="How to support me" rows={3} value={form.howToSupport} onChange={v => set('howToSupport', v)} />
+            {plan.plan_type === 'suicidal_ideation' && (
+              <SpeechTextarea label="Relevant Contact Numbers" rows={4} value={form.templateData?.relevantContactNumbers || ''}
+                onChange={v => set('templateData', { ...form.templateData, relevantContactNumbers: v })}
+                placeholder="Crisis team, GP, CMHT, Samaritans, next of kin, out-of-hours number..." />
+            )}
           </>
         )}
         <Select label="Outcome achieved" value={form.outcomeAchieved} onChange={e => set('outcomeAchieved', e.target.value)} options={OUTCOME_OPTIONS} placeholder="Select outcome" />
