@@ -112,6 +112,33 @@ function formatMonthlyDescription(fields: Record<string, string>, checks: Record
     .join('\n\n')
 }
 
+// Renders a stored outcome description cleanly: turns "**Section**" markers
+// (used by the Monthly Outcome Report generator) into proper styled headings
+// instead of showing the literal asterisks, and gives each section its own
+// spaced block instead of one dense run-on paragraph.
+function FormattedDescription({ text, theme }: { text: string; theme: string }) {
+  const blocks = text.split(/\n\n+/).filter(Boolean)
+  const bodyColor = theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => {
+        const lines = block.split('\n')
+        const headerMatch = lines[0].trim().match(/^\*\*(.+)\*\*$/)
+        if (headerMatch) {
+          const rest = lines.slice(1).join('\n').trim()
+          return (
+            <div key={i}>
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#e8b130' }}>{headerMatch[1]}</p>
+              {rest && <p className={`text-sm whitespace-pre-line mt-0.5 ${bodyColor}`}>{rest}</p>}
+            </div>
+          )
+        }
+        return <p key={i} className={`text-sm whitespace-pre-line ${bodyColor}`}>{block.replace(/\*\*/g, '')}</p>
+      })}
+    </div>
+  )
+}
+
 const STATUSES = [
   { value: 'ongoing', label: 'Ongoing' },
   { value: 'yes', label: 'Achieved' },
@@ -332,7 +359,7 @@ export default function Outcomes() {
                             {o.plan_type && <span className="text-xs text-slate-500 capitalize">{o.plan_type.replace(/_/g, ' ')}</span>}
                           </div>
                           <p className="font-semibold text-white">{o.goal}</p>
-                          {o.description && <p className="text-sm text-slate-400 mt-0.5 whitespace-pre-line line-clamp-3">{o.description}</p>}
+                          {o.description && <p className="text-sm text-slate-400 mt-0.5 whitespace-pre-line line-clamp-3">{o.description.replace(/\*\*/g, '')}</p>}
                           <div className="flex flex-wrap gap-1.5 mt-2" onClick={e => e.stopPropagation()}>
                             {[{ value: 'yes', label: 'Achieved', active: 'bg-emerald-600 text-white', inactive: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' },
                               { value: 'partially', label: 'Partial', active: 'bg-amber-500 text-white', inactive: 'bg-amber-500/10 text-amber-400 border border-amber-500/30' },
@@ -359,8 +386,8 @@ export default function Outcomes() {
                       <div className="border-t border-white/5 p-4 space-y-3" style={{ background: theme === 'dark' ? '#0a0a0a' : '#f8fafc' }}>
                         {o.description && (
                           <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
-                            <p className={`text-sm whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.description}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p>
+                            <FormattedDescription text={o.description} theme={theme} />
                           </div>
                         )}
                         {o.progress_notes && (
