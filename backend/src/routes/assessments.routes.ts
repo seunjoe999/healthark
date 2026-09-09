@@ -146,8 +146,9 @@ const TEMPLATES: Template[] = [
     sections: [{
       id: 's1', title: 'MAR Review',
       questions: [
-        txt('q1', 'Review Note'),
-        txt('q2', 'Action Plan'),
+        sel('q1', 'Frequency', ['Weekly', 'Fortnightly', 'Monthly', 'Quarterly', 'Ad-hoc']),
+        txt('q2', 'Review Note'),
+        txt('q3', 'Action Plan'),
       ]
     }]
   },

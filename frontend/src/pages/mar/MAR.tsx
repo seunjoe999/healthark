@@ -397,7 +397,7 @@ export default function MAR() {
                         className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'MAR Review'}</p>
-                          {r.review_frequency && <span className="text-xs text-slate-400 capitalize">{r.review_frequency.replace(/_/g, ' ')}</span>}
+                          {r.answers?.q1 && <span className="text-xs text-slate-400">{r.answers.q1}</span>}
                         </div>
                         {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
                       </a>

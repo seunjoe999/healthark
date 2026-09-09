@@ -47,6 +47,6 @@ jobs:
             docker pull ghcr.io/seunjoe999/healthark:latest
             docker stop healthark_app || true
             docker rm healthark_app || true
-            docker run -d --name healthark_app --restart always --network host --env-file /opt/healthark/.env ghcr.io/seunjoe999/healthark:latest
+            docker run -d --name healthark_app --restart always --network host --env-file /opt/healthark/.env -v healthark_uploads:/app/backend/uploads ghcr.io/seunjoe999/healthark:latest
             docker image prune -f
             echo "Deploy complete"
