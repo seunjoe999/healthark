@@ -42,7 +42,28 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     else { sql += ` AND cp.home_id = $${idx++}`; params.push(targetHomeId); }
     sql += ' ORDER BY cp.plan_type, cp.created_at DESC';
 
-    const rows = await query(sql, params);
+    const rows = await query<any>(sql, params);
+
+    // The Care Plan Update Tracking section reads plan.updates — this list
+    // endpoint never populated it (only the single-plan GET /:id did), so every
+    // update note saved via PUT /:id was persisted correctly but never showed
+    // up anywhere in the UI, which looked exactly like "it doesn't save".
+    if (rows.length) {
+      const planIds = rows.map(r => r.id);
+      const updateRows = await query<any>(
+        `SELECT cpu.*, s.first_name || ' ' || s.last_name as updated_by_name
+         FROM care_plan_updates cpu LEFT JOIN staff s ON s.id = cpu.updated_by
+         WHERE cpu.care_plan_id = ANY($1) ORDER BY cpu.created_at DESC`,
+        [planIds]
+      );
+      const updatesByPlan = new Map<string, any[]>();
+      for (const u of updateRows) {
+        if (!updatesByPlan.has(u.care_plan_id)) updatesByPlan.set(u.care_plan_id, []);
+        updatesByPlan.get(u.care_plan_id)!.push(u);
+      }
+      for (const r of rows) r.updates = updatesByPlan.get(r.id) || [];
+    }
+
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });

@@ -141,6 +141,18 @@ const TEMPLATES: Template[] = [
   },
 
   {
+    key: 'mar_review', name: 'MAR Review', category: 'service_user',
+    description: 'Periodic review of a service user\'s Medication Administration Record.',
+    sections: [{
+      id: 's1', title: 'MAR Review',
+      questions: [
+        txt('q1', 'Review Note'),
+        txt('q2', 'Action Plan'),
+      ]
+    }]
+  },
+
+  {
     key: 'falls_prevention_audit', name: 'Falls Prevention Audit', category: 'service_user',
     description: 'Comprehensive audit of falls risk assessment, prevention strategies, and post-fall management.',
     reviewFrequency: 'Every six months or 26 weeks',

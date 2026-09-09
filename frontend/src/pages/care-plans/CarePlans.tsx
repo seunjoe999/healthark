@@ -186,9 +186,12 @@ const PBS_SECTIONS = [
   { key: 'supportStrategy', label: 'My Support Strategy' },
 ]
 const PBS_TRAFFIC_LIGHTS = [
-  { key: 'pbsGreen', label: 'Green' },
-  { key: 'pbsYellowAmber', label: 'Yellow Amber' },
-  { key: 'pbsRed', label: 'Red' },
+  { key: 'pbsGreenLooksLike', label: 'Green — Stable Presentation: What This Looks Like', color: 'green' },
+  { key: 'pbsGreenSupport', label: 'Green — Staff Support', color: 'green' },
+  { key: 'pbsAmberLooksLike', label: 'Yellow/Amber — Early Warning Signs: What This Looks Like', color: 'amber' },
+  { key: 'pbsAmberSupport', label: 'Yellow/Amber — Staff Support', color: 'amber' },
+  { key: 'pbsRedLooksLike', label: 'Red — Crisis / High Risk Presentation: What This Looks Like', color: 'red' },
+  { key: 'pbsRedSupport', label: 'Red — Staff Support', color: 'red' },
 ]
 
 const CRISIS_SECTIONS = [
@@ -462,6 +465,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
   }
 
   if (planType === 'pbs') {
+    const colorBg: Record<string, string> = { green: 'bg-green-50 border-green-200', amber: 'bg-amber-50 border-amber-200', red: 'bg-red-50 border-red-200' }
     return (
       <div className="space-y-3">
         {PBS_SECTIONS.map(s => (
@@ -469,12 +473,15 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
         ))}
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
           <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">PBS Traffic Light System</p>
+          <p className="text-xs text-slate-500">In PBS, strategies are organised into three phases, colour coded like a traffic light system — Green (proactive primary), Amber (proactive secondary), Red (reactive).</p>
           {PBS_TRAFFIC_LIGHTS.map(s => (
-            <div key={s.key} className={`rounded-lg border p-3 ${s.key === 'pbsGreen' ? 'bg-green-50 border-green-200' : s.key === 'pbsYellowAmber' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+            <div key={s.key} className={`rounded-lg border p-3 ${colorBg[s.color]}`}>
               <SpeechTextarea label={s.label} className="w-full text-sm" rows={3} value={tv(s.key)} onChange={v => set(s.key, v)} />
             </div>
           ))}
         </div>
+        <SpeechTextarea label="Professionals Involved" className="w-full text-sm" rows={3} value={tv('pbsProfessionals')} onChange={v => set('pbsProfessionals', v)}
+          placeholder="e.g. Named Support Worker, Community Psychiatric Nurse (CPN), CMHT, Psychiatrist, MDT..." />
       </div>
     )
   }
@@ -789,6 +796,7 @@ function TemplateDetail({ plan }: { plan: any }) {
       <div className="space-y-3">
         {PBS_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
         {PBS_TRAFFIC_LIGHTS.filter(s => tv(s.key)).map(s => sec(`PBS Traffic Light — ${s.label}`, tv(s.key)))}
+        {tv('pbsProfessionals') && sec('Professionals Involved', tv('pbsProfessionals'))}
       </div>
     )
   }
@@ -1153,6 +1161,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     PBS_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
     const lightParts = PBS_TRAFFIC_LIGHTS.filter(s => tv(s.key)).map(s => `<h3 class="sub">${s.label}</h3><p class="body-text">${tv(s.key).replace(/\n/g, '<br/>')}</p>`).join('')
     if (lightParts) sections.push({ title: 'PBS Traffic Light System', inner: lightParts })
+    if (tv('pbsProfessionals')) sections.push({ title: 'Professionals Involved', inner: bodyText(tv('pbsProfessionals')) })
     return sections
   }
 

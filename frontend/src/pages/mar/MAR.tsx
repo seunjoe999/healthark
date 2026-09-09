@@ -76,7 +76,8 @@ export default function MAR() {
   const [stockData, setStockData] = useState<any[]>([])
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy'>('mar')
+  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review'>('mar')
+  const [marReviews, setMarReviews] = useState<any[]>([])
   const [addMedOpen, setAddMedOpen] = useState(false)
   const [editMedModal, setEditMedModal] = useState<any>(null)
   const [stockModalMed, setStockModalMed] = useState<any>(null)
@@ -113,14 +114,16 @@ export default function MAR() {
     if (!su) return
     setLoading(true)
     try {
-      const [chartRes, medRes, stockRes] = await Promise.all([
+      const [chartRes, medRes, stockRes, marReviewRes] = await Promise.all([
         api.get(`/mar/chart-report/${su.id}`, { params: { startDate, endDate } }),
         api.get(`/mar/medications/${su.id}`),
         api.get(`/mar/stock/${su.id}`),
+        api.get('/assessments', { params: { category: 'service_user', templateKey: 'mar_review', subjectId: su.id } }),
       ])
       setChartData(chartRes.data.data || null)
       setMedications(medRes.data.data || [])
       setStockData(stockRes.data.data || [])
+      setMarReviews(marReviewRes.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [startDate, endDate])
@@ -287,6 +290,7 @@ export default function MAR() {
               { key: 'medications', label: 'Medications' },
               { key: 'stock', label: 'Stock Count' },
               { key: 'gp_pharmacy', label: 'GP & Pharmacy' },
+              { key: 'mar_review', label: 'MAR Review' },
             ].map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
                 className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
@@ -376,6 +380,31 @@ export default function MAR() {
               </div>
             ) : tab === 'gp_pharmacy' ? (
               <GPPharmacyTab su={su} medications={medications} />
+            ) : tab === 'mar_review' ? (
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-slate-500">Periodic reviews of this resident's Medication Administration Record.</p>
+                  <a href={`/assessments/new?template=mar_review&category=service_user&subjectId=${su.id}&homeId=${selectedHome}`}>
+                    <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add MAR Review</Button>
+                  </a>
+                </div>
+                {marReviews.length === 0 ? (
+                  <EmptyState title="No MAR reviews yet" description="Add the first MAR review for this resident" />
+                ) : (
+                  <div className="space-y-2">
+                    {marReviews.map((r: any) => (
+                      <a key={r.id} href={`/assessments/${r.id}`}
+                        className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'MAR Review'}</p>
+                          {r.review_frequency && <span className="text-xs text-slate-400 capitalize">{r.review_frequency.replace(/_/g, ' ')}</span>}
+                        </div>
+                        {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="p-4 space-y-3">
                 <p className="text-sm text-slate-500">Record medication stock counts for audit purposes.</p>
