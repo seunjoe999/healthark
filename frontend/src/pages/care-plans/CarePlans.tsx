@@ -95,7 +95,13 @@ const PLAN_TYPES = [
   { value: 'pbs', label: 'PBS Support Plan' },
   { value: 'about_me', label: 'About Me' },
   { value: 'custom', label: 'Custom / Other' },
-]
+].sort((a, b) => {
+  // "Custom / Other" is a catch-all, not a real plan type — keep it last
+  // instead of alphabetizing it into the middle of the list.
+  if (a.value === 'custom') return 1
+  if (b.value === 'custom') return -1
+  return a.label.localeCompare(b.label)
+})
 
 const FREQ_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
@@ -476,17 +482,17 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Month:</span>
-            <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+            <input className="flex-1 border-b border-slate-400 bg-transparent text-sm font-semibold text-slate-900 outline-none py-0.5 focus:border-amber-500"
               value={tv('month')} onChange={e => set('month', e.target.value)} placeholder="e.g. June 2026" />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Completed by (Name &amp; Role):</span>
-            <input className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+            <input className="flex-1 border-b border-slate-400 bg-transparent text-sm font-semibold text-slate-900 outline-none py-0.5 focus:border-amber-500"
               value={tv('completedBy')} onChange={e => set('completedBy', e.target.value)} placeholder="Name and role" />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-slate-600 w-52 flex-shrink-0">Date Completed:</span>
-            <input type="date" className="flex-1 border-b border-slate-400 bg-transparent text-sm outline-none py-0.5 focus:border-amber-500"
+            <input type="date" className="flex-1 border-b border-slate-400 bg-transparent text-sm font-semibold text-slate-900 outline-none py-0.5 focus:border-amber-500"
               value={tv('dateCompleted')} onChange={e => set('dateCompleted', e.target.value)} />
           </div>
         </div>
@@ -499,7 +505,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
             <div className="px-5 pb-3">
               <textarea
                 rows={s.key === 'summaryNotes' ? 4 : 3}
-                className="w-full text-sm border-0 bg-transparent outline-none resize-none text-slate-800 placeholder-slate-300 leading-relaxed"
+                className="w-full text-sm font-semibold border-0 bg-transparent outline-none resize-none text-slate-900 placeholder-slate-400 leading-relaxed"
                 value={tv(s.key)} onChange={e => set(s.key, e.target.value)}
                 placeholder={`Enter notes for ${s.label.toLowerCase()}...`}
               />
