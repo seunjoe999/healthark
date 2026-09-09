@@ -8,6 +8,7 @@ import { Spinner, Button, PrintButton } from '../../components/ui'
 import { ChevronLeft, Trash2, Paperclip, Upload, X, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
+import SignaturePad from '../../components/SignaturePad'
 
 type AttachmentItem = { url: string; name: string }
 
@@ -177,6 +178,14 @@ export default function AssessmentView() {
   const [template, setTemplate] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
+  const saveSignature = async (field: 'assessorSignature' | 'staffSignature', dataUrl: string) => {
+    try {
+      const res = await api.put(`/assessments/${id}`, { [field]: dataUrl })
+      setAssessment((prev: any) => ({ ...prev, ...res.data.data }))
+      toast.success('Signature saved')
+    } catch { toast.error('Failed to save signature') }
+  }
+
   const deleteAssessment = async () => {
     if (!confirm('Delete this assessment? This cannot be undone.')) return
     try {
@@ -306,6 +315,17 @@ export default function AssessmentView() {
           )}
         </div>
       )}
+
+      {/* Sign-off */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mt-4">
+        <h2 className="font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-100">Sign-off</h2>
+        <div className="grid sm:grid-cols-2 gap-6">
+          <SignaturePad label="Management / Assessor Signature" savedSignature={assessment.assessor_signature}
+            onSave={dataUrl => saveSignature('assessorSignature', dataUrl)} />
+          <SignaturePad label="Staff Member Signature" savedSignature={assessment.staff_signature}
+            onSave={dataUrl => saveSignature('staffSignature', dataUrl)} />
+        </div>
+      </div>
 
       <AssessmentAttachments assessmentId={assessment.id} initial={assessment.attachments || []} />
     </div>

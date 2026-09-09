@@ -42,6 +42,11 @@ const initTable = async () => {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Management/Assessor and Staff Member sign-off — added to every assessment
+  // template's bottom, captured as a drawn signature (data URL) via the shared
+  // SignaturePad component.
+  await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS assessor_signature TEXT`);
+  await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS staff_signature TEXT`);
 };
 initTable().catch(() => {});
 
@@ -791,6 +796,7 @@ const TEMPLATES: Template[] = [
       {
         id: 's2', title: 'Health & Wellbeing',
         questions: [
+          txt('q3b', 'Potential Areas of Discussion: Feelings and Experiences (start of supervision and end of supervision); Annual Leave; Personal issues potentially impacting on work; Appointment; Lateness, Sickness (triggers for health and safety in job role)'),
           sel('q4', 'Have You Had Any Sickness Absence In The Previous 8 Weeks?', ['Yes', 'No']),
           txt('q5', 'If yes, please provide details and any support required'),
           txt('q6', 'Workload rating (1–10) and reason – how manageable is your current workload?'),
@@ -809,8 +815,8 @@ const TEMPLATES: Template[] = [
         questions: [
           txt('q10', 'What are the KEY VALUES that guide our organisation, and how do you apply them in your everyday work?'),
           txt('q11', 'What Policy have you read and how do you apply this to your day to day job?'),
-          txt('q12', 'What Does Safeguarding Mean To You?'),
-          txt('q13', 'What Steps Would You Take, If You Discover A Safeguarding Concern?'),
+          txt('q12', 'What Does Safeguarding Mean To You? What Steps Would You Take, If You Discover A Safeguarding Concern? (Please tweak the safeguarding question on every supervision)'),
+          txt('q13', 'Who Is The Safeguarding Lead For Comprehensive Care?'),
           txt('q14', 'In what ways do you help ensure our mission is genuinely reflected in the experiences of our service users?'),
           txt('q15', 'What steps do you take to develop a trusting and therapeutic relationship with the service users you support?'),
         ]
@@ -855,6 +861,7 @@ const TEMPLATES: Template[] = [
     sections: [{
       id: 's1', title: 'Annual Appraisal',
       questions: [
+        txt('q0', 'Assessor\'s Name'),
         sel('q1', 'Location / Format', ['Face to Face', 'Teams / Video Call']),
         txt('q2', 'How are you?'),
         txt('q3', 'How would you describe your performance so far?'),
@@ -879,6 +886,9 @@ const TEMPLATES: Template[] = [
         id: 's1', title: 'Care Delivery',
         questions: [
           txt('q0', 'Client Name'),
+          txt('q0b', 'Time Assessed'),
+          txt('q0c', 'Assessed By'),
+          txt('q0d', 'Assessor\'s Role'),
           sel('q1', 'Did the worker arrive at the correct time of shift?', ['Yes', 'No', 'N/A']),
           sel('q2', 'Personal Care / Support Given', ['Yes', 'No', 'N/A']),
           sel('q3', 'Moving and Assisting Completed When Due?', ['Yes', 'No', 'N/A']),
@@ -939,6 +949,9 @@ const TEMPLATES: Template[] = [
       {
         id: 's1', title: 'Policy and Training',
         questions: [
+          txt('q0a', 'Assessor\'s Name'),
+          txt('q0b', 'Assessor\'s Role'),
+          sel('q0c', 'Competency Outcome', ['Met', 'Unmet']),
           yn('q1', 'Has the care worker completed the required training in Medication Management (online Medication Training 1 and 2, and Practical Medication Training)?'),
           yn('q2', 'Can the Care Worker evidence they have read all the Medication Management Policies and can name them?'),
         ]
@@ -1166,26 +1179,24 @@ const TEMPLATES: Template[] = [
     description: 'Initial skills assessment for newly recruited care staff.',
     sections: [
       {
-        id: 's1', title: 'Core Care Skills',
+        id: 's1', title: 'New Staff Skill Assessment',
         questions: [
-          sel('q1', 'Personal care support', ['Competent', 'Developing', 'Needs training']),
-          sel('q2', 'Moving and assisting', ['Competent', 'Developing', 'Needs training']),
-          sel('q3', 'Infection control practices', ['Competent', 'Developing', 'Needs training']),
-          sel('q4', 'Food safety and nutrition support', ['Competent', 'Developing', 'Needs training']),
-          sel('q5', 'Record keeping and documentation', ['Competent', 'Developing', 'Needs training']),
-          sel('q6', 'Communication with service users', ['Competent', 'Developing', 'Needs training']),
-          sel('q7', 'Understanding of safeguarding', ['Competent', 'Developing', 'Needs training']),
-          sel('q8', 'Health and safety awareness', ['Competent', 'Developing', 'Needs training']),
-        ]
-      },
-      {
-        id: 's2', title: 'Knowledge Check',
-        questions: [
-          yn('q9', 'Can the staff member demonstrate knowledge of the duty of care?'),
-          yn('q10', 'Can the staff member explain what to do in an emergency?'),
-          yn('q11', 'Does the staff member understand confidentiality and GDPR?'),
-          txt('q12', 'Training needs identified'),
-          txt('q13', 'Actions and timeframes for completing required training'),
+          txt('q0a', 'Time'),
+          txt('q0b', 'Assessor\'s Name'),
+          txt('q1', 'Does staff have an understanding of their job role? Please provide detailed information.'),
+          txt('q2', 'Does staff understand and demonstrate knowledge of the service user\'s Care Plan and Risk Assessment? Please provide detailed information.'),
+          txt('q3', 'Does staff engage with the service user in a person-centred way? Please provide detailed information.'),
+          txt('q4', 'Does staff demonstrate equality and diversity? Please provide detailed information.'),
+          txt('q5', 'Does staff know how to apply their PBS training? Please provide detailed information.'),
+          txt('q6', 'Does staff understand and be able to use de-escalation techniques in crisis? Please provide detailed information.'),
+          txt('q7', 'Does staff understand the protocol to follow when there is an incident? Please provide detailed information.'),
+          txt('q8', 'Is staff aware of the service user\'s risks? Please provide detailed information.'),
+          txt('q9', 'Does staff demonstrate effective communication? Please provide detailed information.'),
+          txt('q10', 'Does staff maintain the privacy and dignity of the service user? Please provide detailed information.'),
+          txt('q11', 'Is staff competent in medication administration? Please provide detailed information.'),
+          txt('q12', 'Does staff understand what a professional boundary is? Ask them to explain. Please provide detailed information.'),
+          sel('q13', 'Are you happy for staff to be signed off?', ['Yes', 'No']),
+          txt('q14', 'Assessor\'s Recommendation'),
         ]
       }
     ]
@@ -1262,23 +1273,58 @@ const TEMPLATES: Template[] = [
 
   {
     key: 'probation_meeting', name: 'Probation Meeting', category: 'staff',
-    description: 'Structured probation review meeting to assess performance during probationary period.',
-    sections: [{
-      id: 's1', title: 'Probation Review',
-      questions: [
-        sel('q1', 'Probation review stage', ['3-month review', '6-month review', 'Final probation review']),
-        txt('q2', 'Summary of performance during probation period'),
-        yn('q3', 'Has the staff member met the required performance standards?'),
-        yn('q4', 'Has the staff member completed required training during probation?'),
-        yn('q5', 'Has the staff member demonstrated the right values and behaviours?'),
-        yn('q6', 'Are there any attendance or punctuality concerns?'),
-        txt('q7', 'Areas of strength demonstrated during probation'),
-        txt('q8', 'Areas requiring improvement'),
-        txt('q9', 'Targets set for the next review period'),
-        sel('q10', 'Outcome', ['Pass probation – confirmed in post', 'Extend probation period', 'Fail probation – employment terminated']),
-        txt('q11', 'Any additional comments'),
-      ]
-    }]
+    description: 'To review performance, conduct, attendance and overall suitability during the probationary period and determine the appropriate next steps in employment.',
+    reviewFrequency: 'Every six months or 26 weeks',
+    sections: [
+      {
+        id: 's1', title: 'Purpose of Meeting',
+        questions: [
+          txt('q0a', 'Reviewer\'s Name'),
+        ]
+      },
+      {
+        id: 's2', title: 'Role Expectations Review',
+        questions: [
+          sel('q1', 'Has the employee understood their role and responsibilities?', ['Yes', 'No', 'Partially']),
+          sel('q2', 'Progress against objectives/skills required to do their job', ['Meets expectations', 'Partially meets expectations', 'Does not meet expectations']),
+          sel('q3', 'Skills and Competency Assessment Outcome', ['Excellent', 'Adequate', 'Requires Improvement', 'Inadequate']),
+        ]
+      },
+      {
+        id: 's3', title: 'Attendance & Conduct',
+        questions: [
+          sel('q4', 'Any concerns regarding attendance, punctuality or behaviour?', ['Excellent', 'Good', 'Adequate', 'Requires Improvement']),
+        ]
+      },
+      {
+        id: 's4', title: 'Training & Compliance',
+        questions: [
+          sel('q5', 'Has the staff member completed all required training and compliance modules?', ['Yes', 'No', 'Partially', 'Difficulties completing training']),
+          sel('q6', 'Are there any concerns regarding the employee\'s sickness absence or overall attendance levels? — Sickness Absence Level', ['Acceptable', 'Some concerns', 'Significant concerns']),
+        ]
+      },
+      {
+        id: 's5', title: 'Employee Feedback',
+        questions: [
+          txt('q7', 'How does the employee feel about their performance so far? What do they feel has gone well and what could be improved?'),
+        ]
+      },
+      {
+        id: 's6', title: 'Manager Feedback',
+        questions: [
+          txt('q8', 'Strengths'),
+          txt('q9', 'Areas for Improvement'),
+          txt('q10', 'Concerns (if any)'),
+        ]
+      },
+      {
+        id: 's7', title: 'Outcome of Probation Review',
+        questions: [
+          sel('q11', 'Outcome of Probation Review', ['Probation Passed – Confirmed in Role', 'Probation Extended for 3 Months', 'Probation Extended for 6 Months', 'Probation Failed – Employment Terminated']),
+          txt('q12', 'Next Probation Review Date'),
+        ]
+      }
+    ]
   },
 
   {
@@ -1380,31 +1426,81 @@ const TEMPLATES: Template[] = [
 
   {
     key: 'staff_competency', name: 'Staff Competency Assessment', category: 'staff',
-    description: 'General competency assessment covering key care skills and knowledge.',
+    description: 'Competency Model assessment (Talent Management based approach) covering core, safeguarding, clinical, manual handling and infection control competency.',
+    outcomeOptions: ['Excellent', 'Good', 'Adequate', 'Requires Improvement'],
     sections: [
       {
-        id: 's1', title: 'Care Skills',
+        id: 's0', title: 'Assessment Details',
         questions: [
-          sel('q1', 'Personal care and hygiene support', ['Competent', 'Requires Development', 'Not Competent']),
-          sel('q2', 'Moving and assisting / manual handling', ['Competent', 'Requires Development', 'Not Competent']),
-          sel('q3', 'Nutritional support and fluid monitoring', ['Competent', 'Requires Development', 'Not Competent']),
-          sel('q4', 'Infection prevention and control', ['Competent', 'Requires Development', 'Not Competent']),
-          sel('q5', 'Medication administration (if applicable)', ['Competent', 'Requires Development', 'Not Competent', 'N/A']),
-          sel('q6', 'Skin integrity and pressure care', ['Competent', 'Requires Development', 'Not Competent']),
-          sel('q7', 'Documentation and record keeping', ['Competent', 'Requires Development', 'Not Competent']),
-          sel('q8', 'Communication and engagement with service users', ['Competent', 'Requires Development', 'Not Competent']),
+          txt('q0a', 'Time'),
+          txt('q0b', 'Assessor\'s Name'),
         ]
       },
       {
-        id: 's2', title: 'Knowledge',
+        id: 's1', title: 'Section 1 — Core Competency',
         questions: [
-          yn('q9', 'Does the staff member demonstrate understanding of safeguarding?'),
-          yn('q10', 'Does the staff member understand and apply dignity in care?'),
-          yn('q11', 'Does the staff member understand health and safety responsibilities?'),
-          yn('q12', 'Does the staff member understand GDPR and confidentiality?'),
-          txt('q13', 'Overall assessor comments'),
-          txt('q14', 'Training and development plan'),
-          sel('q15', 'Overall Outcome', ['Fully Competent', 'Competent with Development Areas', 'Requires Significant Improvement']),
+          txt('q1', 'Describe your role as a Care Worker in supporting service users to achieve their outcomes/goals.'),
+          txt('q2', 'Explain your service user\'s Care Plan and Risk Assessment when: (answer must demonstrate understanding of the service user\'s Care Plan and Risk Assessment)'),
+          txt('q3', 'Can you describe how you engage and build therapeutic relationships with service users using a person-centred approach? (provide an example based on your experience)'),
+          txt('q4', 'Can you explain your understanding of Equality and Diversity and provide an example of how you promote these values within your team?'),
+          txt('q5', 'What is Positive Behaviour Support (PBS), and how do you apply your PBS training to support service users experiencing distress and encourage positive behaviour change? (include a practical de-escalation example)'),
+          txt('q6', 'What is the difference between an Incident and Distress Behaviour, and what protocol should you follow when either occurs?'),
+        ]
+      },
+      {
+        id: 's2', title: 'Section 2 — Safeguarding',
+        questions: [
+          txt('q7', 'List the key 6 principles of Safeguarding.'),
+          txt('q8', 'Name the different types of abuse and explain how you would recognise abuse.'),
+          txt('q9', 'Who can be an abuser, and what factors might prevent someone from reporting abuse?'),
+          txt('q10', 'What is your understanding of whistleblowing, and when should you whistleblow?'),
+        ]
+      },
+      {
+        id: 's3', title: 'Section 3 — Medication & First Aid',
+        questions: [
+          txt('q11', 'Can you explain the process involved in administering medication?'),
+          txt('q12', 'Demonstrate how to complete a MAR (Medication Administration Record) chart and explain the importance of doing so immediately after administering medication.'),
+          txt('q13', 'What are the 10 Rights of Medication Administration?'),
+          txt('q14', 'What is the difference between PRN and Regular Medication?'),
+          txt('q15', 'Can you describe the process for ordering, receiving and storing medication? (must demonstrate even if their service user is not currently prescribed medication)'),
+          txt('q16', 'What is your understanding of First Aid, and how would you conduct an initial assessment of a casualty?'),
+          txt('q17', 'What actions should you take if you find a service user or staff member unconscious but breathing, and what steps should you follow if they are unconscious and not breathing?'),
+          txt('q18', 'What actions should you take in the case of Mild Choking and Severe Choking?'),
+          txt('q19', 'What signs should you be aware of when supporting a service user with Diabetes, and what action should you take?'),
+        ]
+      },
+      {
+        id: 's4', title: 'Section 4 — Manual Handling',
+        questions: [
+          txt('q20', 'How can people be affected by poor manual handling?'),
+          txt('q21', 'What does the acronym TILE stand for, and how would you use it as the foundation of your risk assessment before performing any task when supporting your service user? (provide an example)'),
+          txt('q22', 'Demonstrate the principles of efficient lifting.'),
+        ]
+      },
+      {
+        id: 's5', title: 'Section 5 — Infection Control & Personal Care',
+        questions: [
+          sel('q23', 'Which of the following is the most effective way to prevent the spread of infection?', ['Hand washing', 'Use of PPE']),
+          txt('q24', 'Demonstrate how you support a service user in maintaining their personal care and living environment.'),
+          txt('q25', 'How do you ensure that the dignity of a service user with incontinence needs is respected and maintained?'),
+          txt('q26', 'What are the Chains of Infection?'),
+        ]
+      },
+      {
+        id: 's6', title: 'Competency Assessment Evaluation',
+        questions: [
+          sel('q27', 'Competency Assessment Evaluation (Excellent = Yearly, Good = 6 Monthly, Adequate = 3 Months, Requires Improvement = 4 Weeks)', ['Excellent', 'Good', 'Adequate', 'Requires Improvement']),
+          txt('q28', 'Assessor\'s Recommendation — Areas of strength, Areas for improvement, Recommended training, Actions required to support development'),
+        ]
+      },
+      {
+        id: 's7', title: 'Reassessment',
+        questions: [
+          txt('q29', 'Reassessment Date'),
+          txt('q30', 'Reassessment of Areas of Concern'),
+          sel('q31', 'Reassessment Evaluation (Excellent = Yearly, Good = 6 Monthly, Adequate = 3 Months, Requires Improvement = 4 Weeks)', ['Excellent', 'Good', 'Adequate', 'Requires Improvement']),
+          txt('q32', 'Next Assessment Date'),
         ]
       }
     ]
@@ -1706,7 +1802,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const conductedBy = req.staff?.staffId;
     const homeId = req.body.homeId || req.staff?.homeId;
-    const { templateKey, category, subjectId, subjectName, auditorName, answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, assessmentDate } = req.body;
+    const { templateKey, category, subjectId, subjectName, auditorName, answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, assessmentDate, assessorSignature, staffSignature } = req.body;
 
     const template = TEMPLATES.find(t => t.key === templateKey);
     if (!template) return res.status(400).json({ success: false, error: 'Invalid template key' } as ApiResponse);
@@ -1716,14 +1812,16 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const rows = await query(
       `INSERT INTO assessments (home_id, template_key, category, subject_id, subject_name,
         conducted_by, auditor_name, answers, total_score, max_score, score_pct, risk_level,
-        actions_identified, actions_outcome, actions_completed_date, next_review_date, notes, assessment_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        actions_identified, actions_outcome, actions_completed_date, next_review_date, notes, assessment_date,
+        assessor_signature, staff_signature)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
       [homeId, templateKey, category || template.category, subjectId || null, subjectName || null,
        conductedBy || null, auditorName || null, JSON.stringify(answers || {}),
        totalScore, maxScore, scorePct, riskLevel,
        actionsIdentified || null, actionsOutcome || null, actionsCompletedDate || null,
-       nextReviewDate || null, notes || null, assessmentDate || new Date().toISOString().split('T')[0]]
+       nextReviewDate || null, notes || null, assessmentDate || new Date().toISOString().split('T')[0],
+       assessorSignature || null, staffSignature || null]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
@@ -1735,7 +1833,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     if (!UUID_RE.test(req.params.id)) {
       return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
     }
-    const { answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, auditorName } = req.body;
+    const { answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, auditorName, assessorSignature, staffSignature } = req.body;
     const existing = await query('SELECT * FROM assessments WHERE id = $1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
     const ex = existing[0] as any;
@@ -1748,11 +1846,12 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const rows = await query(
       `UPDATE assessments SET answers=$1, total_score=$2, max_score=$3, score_pct=$4, risk_level=$5,
         actions_identified=$6, actions_outcome=$7, actions_completed_date=$8, next_review_date=$9,
-        notes=$10, auditor_name=$11, updated_at=NOW() WHERE id=$12 RETURNING *`,
+        notes=$10, auditor_name=$11, assessor_signature=$12, staff_signature=$13, updated_at=NOW() WHERE id=$14 RETURNING *`,
       [JSON.stringify(answers || ex.answers), totalScore, maxScore, scorePct, riskLevel,
        actionsIdentified ?? ex.actions_identified, actionsOutcome ?? ex.actions_outcome,
        actionsCompletedDate ?? ex.actions_completed_date, nextReviewDate ?? ex.next_review_date,
-       notes ?? ex.notes, auditorName ?? ex.auditor_name, req.params.id]
+       notes ?? ex.notes, auditorName ?? ex.auditor_name,
+       assessorSignature ?? ex.assessor_signature, staffSignature ?? ex.staff_signature, req.params.id]
     );
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }

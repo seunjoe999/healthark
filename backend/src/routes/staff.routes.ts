@@ -451,7 +451,7 @@ router.put(
          emergencyName || null, emergencyPhone || null, emergencyNotes || null, photoUrl || null,
          newStatus,
          newIsActive,
-         role === 'group_admin' ? nd(leaveDate) : null,
+         canManage ? nd(leaveDate) : null,
          role === 'group_admin' ? (homeId || null) : null,
          newRole,
          targetId,

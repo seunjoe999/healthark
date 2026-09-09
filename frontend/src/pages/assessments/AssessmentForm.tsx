@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Spinner, Button } from '../../components/ui'
 import { ChevronLeft, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import SignaturePad from '../../components/SignaturePad'
 
 function QuestionField({ q, value, onChange }: { q: any; value: any; onChange: (v: any) => void }) {
   if (q.type === 'yes_no') {
@@ -86,6 +87,8 @@ export default function AssessmentForm() {
   const [assessmentDate, setAssessmentDate] = useState(new Date().toISOString().split('T')[0])
   const [nextReviewDate, setNextReviewDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [assessorSignature, setAssessorSignature] = useState('')
+  const [staffSignature, setStaffSignature] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState<any>(null)
@@ -127,6 +130,8 @@ export default function AssessmentForm() {
         nextReviewDate: nextReviewDate || null,
         notes,
         assessmentDate: assessmentDate || new Date().toISOString().split('T')[0],
+        assessorSignature: assessorSignature || null,
+        staffSignature: staffSignature || null,
       })
       setResult(res.data.data)
       toast.success('Assessment saved')
@@ -234,6 +239,17 @@ export default function AssessmentForm() {
                 onChange={e => setNotes(e.target.value)} />
             </div>
           </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6" style={{ marginTop: '16px', marginBottom: '4px' }}>
+          <h2 className="font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-100">Sign-off</h2>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <SignaturePad label="Management / Assessor Signature" onSave={setAssessorSignature} />
+            <SignaturePad label="Staff Member Signature" onSave={setStaffSignature} />
+          </div>
+          <p className="text-xs text-slate-400 mt-3">
+            If the staff member isn't present to sign now, save the assessment and they can add their signature later from the assessment record.
+          </p>
         </div>
       </form>
 
