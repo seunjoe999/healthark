@@ -38,7 +38,7 @@ const ALLOWED_EXTS = new Set(['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', 
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB — matches nginx's client_max_body_size ceiling
   fileFilter: (_req, file, cb) => {
     // Trust the extension as the primary check — browsers/OS (especially on
     // mobile) frequently report a generic or inconsistent MIME type
@@ -46,7 +46,7 @@ const upload = multer({
     // silently rejecting legitimate uploads when both had to match.
     const ext = path.extname(file.originalname).toLowerCase();
     if (ALLOWED_EXTS.has(ext)) cb(null, true);
-    else cb(new Error('File type not allowed'));
+    else cb(new AppError(`"${ext || 'this file type'}" is not allowed. Allowed types: ${Array.from(ALLOWED_EXTS).join(', ')}`, 400));
   },
 });
 

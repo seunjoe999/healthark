@@ -728,7 +728,7 @@ function UploadDocModal({ open, onClose, suId, onUploaded }: {
               <div>
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 font-medium">Click to choose a file</p>
-                <p className="text-xs text-slate-400 mt-1">PDF, Word, images up to 20MB</p>
+                <p className="text-xs text-slate-400 mt-1">PDF, Word, images, zip up to 50MB</p>
               </div>
             )}
           </div>

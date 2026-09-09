@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { logger } from '../config/logger';
 import { ApiResponse } from '../types';
 
@@ -32,6 +33,23 @@ export function errorHandler(
       success: false,
       error: err.message,
       code: err.code,
+    } as ApiResponse);
+    return;
+  }
+
+  // Multer upload errors (file too large, too many files, etc.) were falling
+  // through to the generic 500 below — a large zip (or any file over the
+  // route's size limit) looked identical to "upload broken" with no
+  // indication it was actually a size problem.
+  if (err instanceof multer.MulterError) {
+    const messages: Record<string, string> = {
+      LIMIT_FILE_SIZE: 'File is too large for this upload.',
+      LIMIT_FILE_COUNT: 'Too many files selected.',
+      LIMIT_UNEXPECTED_FILE: 'Unexpected file field.',
+    };
+    res.status(400).json({
+      success: false,
+      error: messages[err.code] || `Upload error: ${err.message}`,
     } as ApiResponse);
     return;
   }

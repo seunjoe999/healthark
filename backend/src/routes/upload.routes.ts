@@ -57,17 +57,17 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (ALLOWED_IMAGE_EXTS.has(ext)) cb(null, true);
-    else cb(new Error('Only image files allowed (jpg, jpeg, png, webp)'));
+    else cb(new AppError('Only image files allowed (jpg, jpeg, png, webp)', 400));
   },
 });
 
 const docUpload = multer({
   storage: docStorage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 }, // matches nginx's client_max_body_size ceiling
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (ALLOWED_DOC_EXTS.has(ext)) cb(null, true);
-    else cb(new Error('File type not allowed'));
+    else cb(new AppError(`"${ext || 'this file type'}" is not allowed. Allowed types: ${Array.from(ALLOWED_DOC_EXTS).join(', ')}`, 400));
   },
 });
 
@@ -85,7 +85,7 @@ const cvUpload = multer({
     const ext = path.extname(file.originalname).toLowerCase();
     const allowed = new Set(['.pdf', '.doc', '.docx']);
     if (allowed.has(ext)) cb(null, true);
-    else cb(new Error('Only PDF or Word documents are allowed'));
+    else cb(new AppError('Only PDF or Word documents are allowed', 400));
   },
 });
 

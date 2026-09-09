@@ -901,7 +901,7 @@ function StaffDocUploadModal({ open, onClose, staffId, onUploaded }: { open: boo
               <FileText className="w-5 h-5" /><span className="text-sm font-medium">{file.name}</span>
             </div>
           ) : (
-            <div><Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-600 font-medium">Click to choose file</p><p className="text-xs text-slate-400 mt-1">PDF, Word, images up to 20MB</p></div>
+            <div><Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" /><p className="text-sm text-slate-600 font-medium">Click to choose file</p><p className="text-xs text-slate-400 mt-1">PDF, Word, images, zip up to 50MB</p></div>
           )}
         </div>
         <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip" onChange={e => setFile(e.target.files?.[0] || null)} />
