@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import api from '../../api'
+import api, { resolveUploadUrl } from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
@@ -12,6 +12,26 @@ const RISK_LEVELS = [
   { value: 'medium',   label: 'Medium',   color: 'bg-amber-100 text-amber-700 border-amber-200' },
   { value: 'high',     label: 'High',     color: 'bg-orange-100 text-orange-700 border-orange-200' },
   { value: 'critical', label: 'Critical', color: 'bg-red-100 text-red-700 border-red-200' },
+]
+
+// Fixed set of risk assessment types — replaces the old free-text name field,
+// which let staff type whatever they liked and made the list "confusing and
+// everywhere" (duplicate/inconsistent names for what should be a fixed set),
+// matching how Support Plans use a fixed plan-type dropdown.
+const RISK_TYPES = [
+  { value: 'falls', label: 'Falls Risk Assessment' },
+  { value: 'manual_handling', label: 'Manual Handling Risk Assessment' },
+  { value: 'environmental', label: 'Environmental Risk Assessment' },
+  { value: 'behavioural', label: 'Behavioural / Distress Risk Assessment' },
+  { value: 'self_neglect', label: 'Self-Neglect Risk Assessment' },
+  { value: 'choking', label: 'Choking Risk Assessment' },
+  { value: 'absconding', label: 'Absconding Risk Assessment' },
+  { value: 'financial', label: 'Financial Risk Assessment' },
+  { value: 'community_access', label: 'Community Access Risk Assessment' },
+  { value: 'pressure_ulcer', label: 'Pressure Ulcer / Skin Integrity Risk Assessment' },
+  { value: 'fire', label: 'Fire / Personal Emergency Evacuation Risk Assessment' },
+  { value: 'substance_misuse', label: 'Substance Misuse Risk Assessment' },
+  { value: 'custom', label: 'Custom / Other' },
 ]
 
 const LIKELIHOOD_OPTIONS = [
@@ -45,7 +65,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 }
 
 const BLANK_FORM = {
-  assessmentName: '', description: '', riskRating: 'low', currentRiskLevel: 'low',
+  riskType: '', customName: '', description: '', riskRating: 'low', currentRiskLevel: 'low',
   whoIsAtRisk: '', whatCouldHappen: '', triggers: '', protectiveFactors: '',
   managementPlan: '', historicalContext: '', reviewFrequency: 'monthly',
   riskBeforeIntervention: '', riskRatingOption: '', riskAfterControls: '',
@@ -91,6 +111,8 @@ export default function RiskManagement() {
   const [signOffItem, setSignOffItem] = useState<any>(null)
   const [signOffForm, setSignOffForm] = useState({ signedOffBy: '', signedOffDate: '' })
   const [search, setSearch] = useState('')
+  const [residentSearch, setResidentSearch] = useState('')
+  const [residentPickerOpen, setResidentPickerOpen] = useState(false)
 
   const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
 
@@ -319,11 +341,16 @@ export default function RiskManagement() {
 
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
+  // The stored assessment_name is derived from the fixed type dropdown (or the
+  // custom name when "Custom / Other" is picked) rather than free text.
+  const resolveAssessmentName = (f: typeof BLANK_FORM) =>
+    f.riskType === 'custom' ? f.customName.trim() : (RISK_TYPES.find(t => t.value === f.riskType)?.label || '')
+
   // Restore an autosaved draft when the create form is opened
   useEffect(() => {
     if (!createOpen) return
     const draft = getRiskDraft()
-    if (draft && (draft.assessmentName || draft.description || draft.managementPlan)) {
+    if (draft && (draft.riskType || draft.description || draft.managementPlan)) {
       setForm({ ...BLANK_FORM, ...draft, savedAt: undefined })
       toast('Restored your unsaved draft', { icon: '📝' })
     }
@@ -333,20 +360,21 @@ export default function RiskManagement() {
   // Autosave the in-progress form so work isn't lost to session timeout / tab close
   useEffect(() => {
     if (!createOpen) return
-    const hasContent = form.assessmentName || form.description || form.managementPlan || form.whoIsAtRisk
+    const hasContent = form.riskType || form.description || form.managementPlan || form.whoIsAtRisk
     if (!hasContent) return
     const t = setTimeout(() => saveRiskDraft(form), 800)
     return () => clearTimeout(t)
   }, [createOpen, form])
 
   const handleCreate = async () => {
-    if (!form.suId || !form.assessmentName) { toast.error('Service user and plan name are required'); return }
+    const assessmentName = resolveAssessmentName(form)
+    if (!form.suId || !form.riskType || !assessmentName) { toast.error('Service user and risk assessment type are required'); return }
     setSaving(true)
     try {
       const riskLevel = form.riskRatingOption ? likelihoodToRiskLevel(form.riskRatingOption) : form.riskRating
       await api.post('/risk-assessments', {
         suId: form.suId, homeId: selectedHome,
-        assessmentName: form.assessmentName, description: form.description,
+        assessmentName, description: form.description,
         riskLevel, currentRiskLevel: riskLevel, riskRating: riskLevel,
         whoIsAtRisk: form.whoIsAtRisk, whatCouldHappen: form.whatCouldHappen,
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
@@ -425,8 +453,14 @@ export default function RiskManagement() {
   }
 
   const openEdit = (ra: any) => {
+    // Existing records may predate the fixed-type list (free-text names) — match
+    // the stored name back to a known type where possible, otherwise treat it as
+    // a custom name so it still displays correctly (the type field is read-only
+    // in edit mode either way).
+    const matchedType = RISK_TYPES.find(t => t.label === ra.assessment_name)
     setForm({
-      assessmentName: ra.assessment_name || '',
+      riskType: matchedType ? matchedType.value : 'custom',
+      customName: matchedType ? '' : (ra.assessment_name || ''),
       description: ra.description || '',
       riskRating: ra.risk_rating || ra.current_risk_level || 'low',
       currentRiskLevel: ra.current_risk_level || 'low',
@@ -460,6 +494,11 @@ export default function RiskManagement() {
     .filter((ra: any) => !search.trim() || (ra.assessment_name || '').toLowerCase().includes(search.trim().toLowerCase()))
     .slice()
     .sort((a: any, b: any) => (a.assessment_name || '').localeCompare(b.assessment_name || ''))
+
+  const visibleSus = sus
+    .filter((s: any) => !residentSearch.trim() || getName(s).toLowerCase().includes(residentSearch.trim().toLowerCase()))
+    .slice()
+    .sort((a: any, b: any) => getName(a).localeCompare(getName(b)))
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -505,12 +544,43 @@ export default function RiskManagement() {
       {/* Filter + risk summary — one flat bar, no boxed tiles */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6 no-print flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Filter by resident</label>
-            <select className="input w-auto" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
-              <option value="">All residents</option>
-              {sus.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
-            </select>
+          <div className="relative">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Resident</label>
+            <button type="button" onClick={() => setResidentPickerOpen(p => !p)}
+              className="input w-auto min-w-[180px] text-left flex items-center justify-between gap-2">
+              <span>{selectedSu ? getName(sus.find(s => s.id === selectedSu) || {}) : 'All residents'}</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            </button>
+            {residentPickerOpen && (
+              <div className="absolute z-20 mt-1 w-80 bg-white rounded-xl border border-slate-200 shadow-lg p-3">
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input autoFocus className="input pl-8 text-sm" placeholder="Search residents..."
+                    value={residentSearch} onChange={e => setResidentSearch(e.target.value)} />
+                </div>
+                <div className="max-h-72 overflow-y-auto space-y-1">
+                  <button type="button" onClick={() => { setSelectedSu(''); setResidentPickerOpen(false); setResidentSearch('') }}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg text-sm font-medium transition-colors ${!selectedSu ? 'bg-purple-50 text-purple-700' : 'hover:bg-slate-50 text-slate-700'}`}>
+                    All residents
+                  </button>
+                  {visibleSus.map(s => {
+                    const initials = getName(s).split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
+                    return (
+                      <button key={s.id} type="button"
+                        onClick={() => { setSelectedSu(s.id); setResidentPickerOpen(false); setResidentSearch('') }}
+                        className={`w-full flex items-center gap-2.5 text-left px-2.5 py-2 rounded-lg text-sm transition-colors ${selectedSu === s.id ? 'bg-purple-50 text-purple-700' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        <span className="w-7 h-7 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-[10px]"
+                          style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
+                          {s.photo_url ? <img src={resolveUploadUrl(s.photo_url)} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+                        </span>
+                        <span className="font-medium truncate">{getName(s)}</span>
+                      </button>
+                    )
+                  })}
+                  {visibleSus.length === 0 && <p className="text-xs text-slate-400 text-center py-3">No residents found</p>}
+                </div>
+              </div>
+            )}
           </div>
           <div className="min-w-[200px]">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Search plans</label>
@@ -741,10 +811,19 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
         </div>
       )}
       <div>
-        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk (Plan Name) *</label>
-        <input className="input w-full" placeholder="e.g. Falls Risk, Pressure Sores" value={form.assessmentName}
-          onChange={e => setF('assessmentName', e.target.value)} disabled={isEdit} />
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Risk Assessment Type *</label>
+        <select className="input w-full" value={form.riskType} onChange={e => setF('riskType', e.target.value)} disabled={isEdit}>
+          <option value="">Select risk assessment type...</option>
+          {RISK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
       </div>
+      {form.riskType === 'custom' && (
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Custom Risk Assessment Name *</label>
+          <input className="input w-full" placeholder="e.g. Sensory Overload Risk" value={form.customName}
+            onChange={e => setF('customName', e.target.value)} disabled={isEdit} />
+        </div>
+      )}
       <div>
         <label className="text-xs font-semibold text-slate-600 block mb-1">Last Assessed</label>
         <input type="date" className="input w-full" value={form.lastAssessedDate}
