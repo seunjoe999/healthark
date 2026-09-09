@@ -125,6 +125,12 @@ export default function Rota() {
   const [swapRequests, setSwapRequests] = useState<any[]>([])
   const [swapActing, setSwapActing] = useState<string | null>(null)
 
+  // bulk shift selection
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedShiftIds, setSelectedShiftIds] = useState<Set<string>>(new Set())
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
   // modals
   const [createOpen,  setCreateOpen]  = useState(false)
   const [standbyOpen, setStandbyOpen] = useState(false)
@@ -187,6 +193,64 @@ export default function Rota() {
       setDetailShift(null)
       toast.success('Shift removed')
     } catch { toast.error('Failed') }
+  }
+
+  // Removes the recurring template plus every future occurrence generated
+  // from it (past shifts stay, for the record) — for an "ongoing"/recurring
+  // shift, deleting just today's occurrence via deleteShift() leaves every
+  // future day still scheduled.
+  const deleteShiftSeries = async (shift: any) => {
+    if (!shift.template_id) return deleteShift(shift.id)
+    if (!confirm('Remove this AND all future occurrences of this recurring shift? Past shifts are kept for the record.')) return
+    try {
+      await api.delete(`/shifts/templates/${shift.template_id}`)
+      setShifts(prev => prev.filter(s => !(s.template_id === shift.template_id && s.shift_date >= format(new Date(), 'yyyy-MM-dd'))))
+      setDetailShift(null)
+      toast.success('Recurring shift removed from today onwards')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to remove recurring shift') }
+  }
+
+  // ── Bulk selection ───────────────────────────────────────────────────────
+
+  const toggleShiftSelected = (id: string) => {
+    setSelectedShiftIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const exitSelectMode = () => { setSelectMode(false); setSelectedShiftIds(new Set()) }
+
+  const bulkDeleteShifts = async () => {
+    if (selectedShiftIds.size === 0) return
+    if (!confirm(`Delete ${selectedShiftIds.size} selected shift${selectedShiftIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedShiftIds)
+      const results = await Promise.allSettled(ids.map(id => api.delete(`/shifts/${id}`)))
+      const okIds = ids.filter((_, i) => results[i].status === 'fulfilled')
+      const failed = ids.length - okIds.length
+      setShifts(prev => prev.filter(s => !okIds.includes(s.id)))
+      if (failed === 0) toast.success(`${okIds.length} shift${okIds.length !== 1 ? 's' : ''} deleted`)
+      else toast.error(`Deleted ${okIds.length}, ${failed} failed`)
+      exitSelectMode()
+    } finally { setBulkDeleting(false) }
+  }
+
+  const bulkAssignStaff = async (staffId: string) => {
+    if (selectedShiftIds.size === 0) return
+    setBulkDeleting(true)
+    try {
+      const ids = Array.from(selectedShiftIds)
+      const results = await Promise.allSettled(ids.map(id => api.put(`/shifts/${id}`, { staffId })))
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed === 0) toast.success(`Assigned to ${ids.length} shift${ids.length !== 1 ? 's' : ''}`)
+      else toast.error(`Assigned ${ids.length - failed}, ${failed} failed`)
+      setBulkAssignOpen(false)
+      exitSelectMode()
+      loadAll()
+    } finally { setBulkDeleting(false) }
   }
 
   const actOnSwap = async (swapId: string, action: 'agree' | 'decline' | 'approved' | 'rejected') => {
@@ -252,6 +316,10 @@ export default function Rota() {
               </Button>
               <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}>
                 Bulk Operations
+              </Button>
+              <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}>
+                {selectMode ? `${selectedShiftIds.size} selected` : 'Select shifts'}
               </Button>
               <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
                 Report Absence + Find Cover
@@ -330,6 +398,26 @@ export default function Rota() {
           {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''} today
         </div>
       </div>
+
+      {/* ── Bulk selection action bar ──────────────────────────────────── */}
+      {selectMode && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-blue-100 bg-blue-50 flex-wrap">
+          <p className="text-sm font-semibold text-blue-800">
+            {selectedShiftIds.size === 0 ? 'Click shifts on the grid to select them' : `${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected`}
+          </p>
+          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={selectedShiftIds.size === 0 || bulkDeleting}
+              icon={<Users className="w-3.5 h-3.5" />} onClick={() => setBulkAssignOpen(true)}>
+              Assign staff
+            </Button>
+            <Button size="sm" variant="danger" disabled={selectedShiftIds.size === 0} loading={bulkDeleting}
+              icon={<Trash2 className="w-3.5 h-3.5" />} onClick={bulkDeleteShifts}>
+              Delete selected
+            </Button>
+            <Button size="sm" variant="ghost" onClick={exitSelectMode}>Cancel</Button>
+          </div>
+        </div>
+      )}
 
       {/* ── Swap Requests Inbox ─────────────────────────────────────────── */}
       {swapRequests.length > 0 && (
@@ -485,17 +573,24 @@ export default function Rota() {
                     const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
                     const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
                     const relation = SHIFT_RELATIONS[shift.shift_relation]
+                    const selected = selectedShiftIds.has(shift.id)
 
                     return (
-                      <button key={shift.id} onClick={() => setDetailShift(shift)}
+                      <button key={shift.id} onClick={() => selectMode ? toggleShiftSelected(shift.id) : setDetailShift(shift)}
                         className="absolute left-1 right-1 rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
                           top: top + 1,
                           height: Math.max(height - 2, 32),
                           backgroundColor: colors.bg,
-                          borderColor:     colors.border,
+                          borderColor:     selected ? '#2563eb' : colors.border,
                           color:           colors.text,
+                          boxShadow: selected ? '0 0 0 2px #2563eb' : undefined,
                         }}>
+                        {selectMode && (
+                          <div className={`absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center border ${selected ? 'bg-blue-600 border-blue-600' : 'bg-white/80 border-slate-300'}`}>
+                            {selected && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                        )}
                         <div className="px-2 py-1.5 h-full flex flex-col">
                           <p className="text-[12px] font-extrabold leading-tight truncate">
                             {status === 'unfilled'
@@ -606,6 +701,7 @@ export default function Rota() {
           canSeeFinancials={canSeeFinancials}
           onClose={() => setDetailShift(null)}
           onDelete={() => deleteShift(detailShift.id)}
+          onDeleteSeries={() => deleteShiftSeries(detailShift)}
           onSwap={() => { setSwapShift(detailShift); setDetailShift(null) }}
           onUpdated={(updated) => {
             setDetailShift(updated)
@@ -613,6 +709,17 @@ export default function Rota() {
           }}
           onLinked={() => { setDetailShift(null); loadAll() }}
           staffList={staffList}
+        />
+      )}
+
+      {bulkAssignOpen && (
+        <BulkAssignStaffModal
+          open={bulkAssignOpen}
+          onClose={() => setBulkAssignOpen(false)}
+          staffList={staffList}
+          count={selectedShiftIds.size}
+          assigning={bulkDeleting}
+          onAssign={bulkAssignStaff}
         />
       )}
 
@@ -1351,9 +1458,9 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, defaultDate, onS
 
 // ── Shift Detail Modal ────────────────────────────────────────────────────────
 
-function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onSwap, onUpdated, onLinked, staffList }: {
+function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onDeleteSeries, onSwap, onUpdated, onLinked, staffList }: {
   shift: any; canManage: boolean; canSeeFinancials: boolean; onClose: () => void
-  onDelete: () => void; onSwap: () => void
+  onDelete: () => void; onDeleteSeries: () => void; onSwap: () => void
   onUpdated: (updated: any) => void; onLinked: () => void
   staffList: any[]
 }) {
@@ -1503,11 +1610,64 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             </>
           )}
           {canManage && (
-            <button onClick={onDelete}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-600 border border-rose-100 hover:bg-rose-50 transition-colors">
-              <Trash2 className="w-3.5 h-3.5" /> Remove
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              {shift.template_id && (
+                <button onClick={onDeleteSeries}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-700 border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" /> Remove this + all future
+                </button>
+              )}
+              <button onClick={onDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-600 border border-rose-100 hover:bg-rose-50 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" /> Remove
+              </button>
+            </div>
           )}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Bulk Assign Staff Modal ────────────────────────────────────────────────────
+// Assigns one staff member to every currently-selected shift on the grid.
+
+function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assigning }: {
+  open: boolean; onClose: () => void
+  staffList: any[]; count: number
+  onAssign: (staffId: string) => void; assigning: boolean
+}) {
+  const [search, setSearch] = useState('')
+  const filtered = staffList.filter(s => getName(s).toLowerCase().includes(search.toLowerCase()))
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Assign staff to ${count} selected shift${count !== 1 ? 's' : ''}`} size="sm">
+      <div className="space-y-3">
+        <p className="text-xs text-slate-500">This replaces any staff currently assigned to the selected shifts.</p>
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <input className="input pl-8 text-sm" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">No staff found</p>
+          ) : (
+            filtered.map((s: any) => (
+              <button key={s.id} type="button" disabled={assigning} onClick={() => onAssign(s.id)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-slate-50 last:border-0 text-left hover:bg-slate-50 transition-colors disabled:opacity-50">
+                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  {getName(s).split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{getName(s)}</p>
+                  <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+        <div className="flex justify-end pt-1">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
         </div>
       </div>
     </Modal>
