@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react'
-import api from '../../api'
+import api, { resolveUploadUrl } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
@@ -251,7 +251,7 @@ export default function Policies() {
               ) : (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
                   {attachments.map((att: any) => (
-                    <a key={att.id} href={att.file_url} target="_blank" rel="noreferrer"
+                    <a key={att.id} href={resolveUploadUrl(att.file_url)} target="_blank" rel="noreferrer"
                       className="flex items-center gap-2 text-xs text-slate-700 hover:text-blue-600 bg-slate-50 rounded-lg px-3 py-1.5 group">
                       <FileText className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                       <span className="flex-1 truncate">{att.file_name}</span>

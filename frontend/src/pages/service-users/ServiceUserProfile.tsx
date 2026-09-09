@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { suApi, getToken, API_BASE } from '../../api'
-import api from '../../api'
+import api, { resolveUploadUrl } from '../../api'
 import {
   Spinner, StatusBadge, EmergencyBadge, DNARBanner, NilByMouthBanner,
   Button, Card, SectionHeading, EmptyState, Modal, Input, Select
@@ -421,7 +421,7 @@ export default function ServiceUserProfile() {
                     {doc.notes && <p className="text-xs text-slate-400 mt-1 italic">{doc.notes}</p>}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <a href={doc.file_url} target="_blank" rel="noreferrer">
+                    <a href={resolveUploadUrl(doc.file_url)} target="_blank" rel="noreferrer">
                       <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                     </a>
                     {(
@@ -571,7 +571,7 @@ export default function ServiceUserProfile() {
             <div key={doc.id} className="flex items-center gap-2 text-xs text-black py-1 border-b border-gray-200">
               <span>{doc.title || doc.file_name}</span>
               <span className="text-gray-500 capitalize">({SU_DOC_TYPES.find(t => t.value === doc.document_type)?.label || doc.document_type})</span>
-              {doc.file_url && <a href={doc.file_url} className="text-blue-700 underline ml-2">{doc.file_url}</a>}
+              {doc.file_url && <a href={resolveUploadUrl(doc.file_url)} className="text-blue-700 underline ml-2">{doc.file_url}</a>}
             </div>
           ))
         )}

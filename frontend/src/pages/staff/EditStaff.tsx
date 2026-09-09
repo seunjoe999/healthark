@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { staffApi, homesApi, getToken, authApi } from '../../api'
-import api from '../../api'
+import api, { resolveUploadUrl } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Card, SectionHeading, Spinner, Modal } from '../../components/ui'
 import PhotoUpload from '../../components/ui/PhotoUpload'
@@ -359,7 +359,7 @@ export default function EditStaff() {
                     {doc.notes && <p className="text-xs text-slate-400 mt-1 italic">{doc.notes}</p>}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <a href={doc.file_url} target="_blank" rel="noreferrer">
+                    <a href={resolveUploadUrl(doc.file_url)} target="_blank" rel="noreferrer">
                       <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                     </a>
                     <Button size="sm" variant="ghost" icon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />} onClick={() => deleteDoc(doc.id)} />

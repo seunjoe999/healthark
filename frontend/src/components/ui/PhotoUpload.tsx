@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { resolveUploadUrl } from '../../api'
 
 interface PhotoUploadProps {
   currentUrl?: string | null
@@ -86,7 +87,7 @@ export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, s
   return (
     <div style={containerStyle} onClick={() => fileRef.current?.click()} className="group">
       {preview ? (
-        <img src={preview} alt={name || ''} style={imgStyle} />
+        <img src={resolveUploadUrl(preview)} alt={name || ''} style={imgStyle} />
       ) : (
         <span style={{ fontSize: fs, fontWeight: 700, color: '#151f35', lineHeight: 1, zIndex: 1 }}>
           {initials}

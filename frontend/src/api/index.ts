@@ -21,6 +21,19 @@ try {
 // Detect if running inside Capacitor native shell
 const isNative = !!(window as any).Capacitor?.isNativePlatform?.()
 export const API_BASE = isNative ? 'https://compcarehub.co.uk/api' : '/api'
+const UPLOADS_ORIGIN = isNative ? 'https://compcarehub.co.uk' : ''
+
+// Every uploaded file (documents, photos) is stored as a site-relative path
+// like "/uploads/docs/xxx.pdf". On web that resolves fine against the page's
+// own origin. Inside the Capacitor native shell the webview's origin is NOT
+// compcarehub.co.uk, so the same relative href/src silently 404s — this is
+// why attachments "don't open" and photos may not load on the mobile app.
+// Wrap any uploaded-file URL with this before using it in href/src.
+export function resolveUploadUrl(url?: string | null): string {
+  if (!url) return ''
+  if (/^(https?:|data:|blob:)/i.test(url)) return url
+  return `${UPLOADS_ORIGIN}${url}`
+}
 
 const api = axios.create({
   baseURL: API_BASE,

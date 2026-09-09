@@ -2,7 +2,7 @@
 import { staffApi, homesApi } from '../../api'
 import PhotoUpload from '../../components/ui/PhotoUpload'
 import { Link } from 'react-router-dom'
-import api from '../../api'
+import api, { resolveUploadUrl } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, differenceInYears, parseISO } from 'date-fns'
@@ -239,7 +239,7 @@ export default function StaffModule() {
                             <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm font-display"
                               style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
                               {(s.photo_url || s.photoUrl)
-                                ? <img src={s.photo_url || s.photoUrl} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                ? <img src={resolveUploadUrl(s.photo_url || s.photoUrl)} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                 : initials}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -437,7 +437,7 @@ export default function StaffModule() {
                             <p className="font-medium text-slate-900 text-sm truncate">{doc.title || doc.file_name}</p>
                             <p className="text-xs text-slate-400">{doc.created_at ? format(new Date(doc.created_at), 'd MMM yyyy') : ''}</p>
                           </div>
-                          <a href={doc.file_url} target="_blank" rel="noreferrer">
+                          <a href={resolveUploadUrl(doc.file_url)} target="_blank" rel="noreferrer">
                             <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                           </a>
                         </div>
@@ -567,7 +567,7 @@ export default function StaffModule() {
                             <span>{doc.created_at ? format(new Date(doc.created_at), 'd MMM yyyy') : ''}</span>
                           </div>
                         </div>
-                        <a href={doc.file_url} target="_blank" rel="noreferrer">
+                        <a href={resolveUploadUrl(doc.file_url)} target="_blank" rel="noreferrer">
                           <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                         </a>
                       </div>
