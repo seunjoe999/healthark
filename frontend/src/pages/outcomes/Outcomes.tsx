@@ -254,6 +254,14 @@ export default function Outcomes() {
     setSubmitting(false)
   }
 
+  // A text <input> inside a <form> submits on Enter by default. With this many
+  // fields that meant pressing Enter while filling one field (e.g. after typing
+  // the Month) silently saved a half-filled outcome and closed the modal —
+  // re-filling and saving again then created a genuine duplicate record.
+  function preventEnterSubmit(e: React.KeyboardEvent<HTMLFormElement>) {
+    if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') e.preventDefault()
+  }
+
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
   const filtered = outcomes.filter(o => (!filterStatus || o.status === filterStatus))
 
@@ -324,7 +332,7 @@ export default function Outcomes() {
                             {o.plan_type && <span className="text-xs text-slate-500 capitalize">{o.plan_type.replace(/_/g, ' ')}</span>}
                           </div>
                           <p className="font-semibold text-white">{o.goal}</p>
-                          {o.description && <p className="text-sm text-slate-400 mt-0.5">{o.description}</p>}
+                          {o.description && <p className="text-sm text-slate-400 mt-0.5 whitespace-pre-line line-clamp-3">{o.description}</p>}
                           <div className="flex flex-wrap gap-1.5 mt-2" onClick={e => e.stopPropagation()}>
                             {[{ value: 'yes', label: 'Achieved', active: 'bg-emerald-600 text-white', inactive: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' },
                               { value: 'partially', label: 'Partial', active: 'bg-amber-500 text-white', inactive: 'bg-amber-500/10 text-amber-400 border border-amber-500/30' },
@@ -400,7 +408,7 @@ export default function Outcomes() {
 
       {/* Add Outcome Modal */}
       <Modal open={showAdd} onClose={() => { setShowAdd(false); setAddMode('goal') }} title="Add Care Outcome" size="lg">
-        <form onSubmit={handleAdd} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+        <form onSubmit={handleAdd} onKeyDown={preventEnterSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
           {/* Mode toggle */}
           <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
             {[{ v: 'goal' as const, label: 'Individual Goal' }, { v: 'monthly' as const, label: 'Monthly Outcome Report' }].map(({ v, label }) => (
@@ -508,7 +516,7 @@ export default function Outcomes() {
       {/* Edit Outcome Modal */}
       <Modal open={!!showEdit} onClose={() => setShowEdit(null)} title="Edit Outcome">
         {showEdit && (
-          <form onSubmit={handleEdit} className="space-y-4">
+          <form onSubmit={handleEdit} onKeyDown={preventEnterSubmit} className="space-y-4">
             <Input label="Goal *" required value={editForm.goal}
               onChange={e => setEditForm(f => ({ ...f, goal: e.target.value }))}
               placeholder="e.g. Improve mobility to walk 10 metres independently" />
@@ -531,7 +539,7 @@ export default function Outcomes() {
       {/* Review Modal */}
       <Modal open={!!showReview} onClose={() => setShowReview(null)} title="Add Review">
         {showReview && (
-          <form onSubmit={handleReview} className="space-y-4">
+          <form onSubmit={handleReview} onKeyDown={preventEnterSubmit} className="space-y-4">
             <div className={`p-3 rounded-xl text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`} style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc' }}>
               <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{showReview.goal}</strong>
             </div>
