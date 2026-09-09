@@ -387,6 +387,10 @@
 .app-shell:not(.theme-dark) .card .text-white { color: #0f172a !important; }
 .app-shell:not(.theme-dark) .card .text-slate-100 { color: #1e293b !important; }
 .app-shell:not(.theme-dark) .card .text-slate-300 { color: #475569 !important; }
+/* text-slate-400 (#94a3b8) was tuned for the dark #111111 card and fails
+   contrast against the white light-theme card — e.g. the resident profile's
+   "Age X · Born <date of birth>" line, which read as almost invisible. */
+.app-shell:not(.theme-dark) .card .text-slate-400 { color: #64748b !important; }
 
 /* Same problem as .card: the shared .input class (every text input, select,
    and textarea that uses className="input") is hardcoded to a dark
