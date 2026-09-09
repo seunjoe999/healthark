@@ -104,6 +104,7 @@ const NEWS2Score = React.lazy(() => import('./pages/clinical/NEWS2Score'))
 const WaterlowScore = React.lazy(() => import('./pages/clinical/WaterlowScore'))
 const EvidencePack = React.lazy(() => import('./pages/cqc/EvidencePack'))
 const AbbeyPainScale = React.lazy(() => import('./pages/clinical/AbbeyPainScale'))
+const PainAssessment = React.lazy(() => import('./pages/clinical/PainAssessment'))
 const ABCChart = React.lazy(() => import('./pages/clinical/ABCChart'))
 const BloodGlucose = React.lazy(() => import('./pages/clinical/BloodGlucose'))
 const BodyMap = React.lazy(() => import('./pages/clinical/BodyMap'))
@@ -233,6 +234,7 @@ function AppRoutes() {
         <Route path="/clinical/waterlow" element={<ProtectedRoute><WaterlowScore /></ProtectedRoute>} />
         <Route path="/cqc/evidence-pack" element={<ProtectedRoute><EvidencePack /></ProtectedRoute>} />
         <Route path="/clinical/abbey-pain" element={<ProtectedRoute><AbbeyPainScale /></ProtectedRoute>} />
+        <Route path="/clinical/pain-assessment" element={<ProtectedRoute><PainAssessment /></ProtectedRoute>} />
         <Route path="/clinical/abc-chart" element={<ProtectedRoute><ABCChart /></ProtectedRoute>} />
         <Route path="/clinical/blood-glucose" element={<ProtectedRoute><BloodGlucose /></ProtectedRoute>} />
         <Route path="/clinical/body-map" element={<ProtectedRoute><BodyMap /></ProtectedRoute>} />

@@ -17,7 +17,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon
+  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown
 } from 'lucide-react'
 
 const navSections = [
@@ -125,6 +125,7 @@ const navSections = [
       { label: 'NEWS2 Score',         to: '/clinical/news2',          icon: Activity,      roles: [], featureKey: 'news2' },
       { label: 'Waterlow / Turns',    to: '/clinical/waterlow',       icon: Shield,        roles: [], featureKey: 'waterlow' },
       { label: 'Abbey Pain Scale',    to: '/clinical/abbey-pain',     icon: Brain,         roles: [], featureKey: 'abbey_pain' },
+      { label: 'Pain Assessment',     to: '/clinical/pain-assessment',icon: Frown,         roles: [], featureKey: 'pain_assessment_tool' },
       { label: 'Body Map',            to: '/clinical/body-map',       icon: Stethoscope,   roles: [], featureKey: 'body_map' },
       { label: 'ABC Behaviour',       to: '/clinical/abc-chart',      icon: AlertCircle,   roles: [], featureKey: 'abc_chart' },
       { label: 'Blood Glucose',       to: '/clinical/blood-glucose',  icon: Droplets,      roles: [], featureKey: 'blood_glucose' },

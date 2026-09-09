@@ -35,6 +35,29 @@ async function initTables() {
   `).catch(() => {})
 
   await query(`
+    CREATE TABLE IF NOT EXISTS pain_assessments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      su_id UUID NOT NULL, home_id UUID NOT NULL,
+      assessed_date DATE,
+      pain_intensity TEXT,
+      pain_description TEXT,
+      duration_triggers TEXT,
+      daily_life_impact JSONB DEFAULT '[]',
+      pain_relief_given TEXT,
+      last_admin_time_checked TEXT,
+      pain_pattern TEXT,
+      worse_better TEXT,
+      intervention_type TEXT,
+      outcome TEXT,
+      further_action_required TEXT,
+      further_action_plan TEXT,
+      notes TEXT,
+      assessed_by UUID,
+      assessed_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `).catch(() => {})
+
+  await query(`
     CREATE TABLE IF NOT EXISTS abc_chart_entries (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       su_id UUID NOT NULL, home_id UUID NOT NULL,
@@ -192,6 +215,36 @@ router.post('/abbey-pain', async (req, res) => {
       INSERT INTO abbey_pain_assessments (su_id, home_id, vocalisation, facial_expression, body_language, behavioural_change, physiological_change, physical_change, total_score, interpretation, pain_type, notes, assessed_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
     `, [suId, homeId, vocalisation, facialExpression, bodyLanguage, behaviouralChange, physiologicalChange, physicalChange, totalScore, interpretation, painType, notes, assessedBy])
+    res.json({ success: true })
+  } catch (e) { res.status(500).json({ error: 'Failed' }) }
+})
+
+// ─── PAIN ASSESSMENT ─────────────────────────────────────────────────────────
+
+router.get('/pain-assessment/:suId', async (req, res) => {
+  try {
+    const rows = await query<any>(`
+      SELECT p.*, s.first_name || ' ' || s.last_name AS assessed_by_name
+      FROM pain_assessments p
+      LEFT JOIN staff s ON s.id = p.assessed_by
+      WHERE p.su_id = $1
+      ORDER BY p.assessed_at DESC LIMIT 50
+    `, [req.params.suId])
+    res.json({ success: true, data: rows })
+  } catch (e) { res.status(500).json({ error: 'Failed' }) }
+})
+
+router.post('/pain-assessment', async (req, res) => {
+  const {
+    suId, homeId, assessedDate, painIntensity, painDescription, durationTriggers,
+    dailyLifeImpact, painReliefGiven, lastAdminTimeChecked, painPattern, worseBetter,
+    interventionType, outcome, furtherActionRequired, furtherActionPlan, notes, assessedBy,
+  } = req.body
+  try {
+    await query(`
+      INSERT INTO pain_assessments (su_id, home_id, assessed_date, pain_intensity, pain_description, duration_triggers, daily_life_impact, pain_relief_given, last_admin_time_checked, pain_pattern, worse_better, intervention_type, outcome, further_action_required, further_action_plan, notes, assessed_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+    `, [suId, homeId, assessedDate, painIntensity, painDescription, durationTriggers, JSON.stringify(dailyLifeImpact || []), painReliefGiven, lastAdminTimeChecked, painPattern, worseBetter, interventionType, outcome, furtherActionRequired, furtherActionPlan, notes, assessedBy])
     res.json({ success: true })
   } catch (e) { res.status(500).json({ error: 'Failed' }) }
 })
