@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -91,6 +91,22 @@ router.delete('/medications/:id', param('id').isUUID(), validateRequest,
     try {
       await query('UPDATE su_medications SET is_active = false WHERE id = $1', [req.params.id]);
       res.json({ success: true, message: 'Medication discontinued' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/mar/medications/:id/permanent — fully remove a medication (managers/admins only),
+// e.g. one entered by mistake. Also clears its MAR history and stock record.
+router.delete('/medications/:id/permanent', requireRole('group_admin', 'admin', 'home_manager', 'deputy_manager'),
+  param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const medRows = await query<any>('SELECT medication_name, su_id FROM su_medications WHERE id = $1', [req.params.id]);
+      if (!medRows[0]) throw new AppError('Medication not found', 404);
+      await query('DELETE FROM mar_records WHERE medication_id = $1', [req.params.id]);
+      await query('DELETE FROM medication_stock WHERE su_id = $1 AND medication_name = $2', [medRows[0].su_id, medRows[0].medication_name]);
+      await query('DELETE FROM su_medications WHERE id = $1', [req.params.id]);
+      res.json({ success: true, message: 'Medication permanently deleted' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

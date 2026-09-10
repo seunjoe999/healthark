@@ -375,6 +375,15 @@ export default function MAR() {
                           setMedications(res.data.data || [])
                           toast.success('Medication discontinued')
                         }}>Discontinue</Button>
+                        <Button size="sm" variant="ghost" className="text-rose-500 hover:text-rose-600" onClick={async () => {
+                          if (!confirm(`Permanently delete ${med.medication_name}? This removes it and its MAR history entirely and cannot be undone.`)) return
+                          try {
+                            await api.delete(`/mar/medications/${med.id}/permanent`)
+                            const res = await api.get(`/mar/medications/${selectedSu.id}`)
+                            setMedications(res.data.data || [])
+                            toast.success('Medication deleted')
+                          } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete medication') }
+                        }}>Delete</Button>
                       </div>
                     </div>
                   </div>
