@@ -29,10 +29,11 @@ export default function Holidays() {
   const [addOpen, setAddOpen] = useState(false)
   const [view, setView] = useState<'calendar' | 'list' | 'requests'>('calendar')
   const [preview, setPreview] = useState<any>(null)
-  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('all')
+  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined' | 'cancelled'>('all')
   const [myBalance, setMyBalance] = useState<{ total: number; remaining: number } | null>(null)
   const [declineTarget, setDeclineTarget] = useState<any>(null)
   const [declineReason, setDeclineReason] = useState('')
+  const [declineMode, setDeclineMode] = useState<'decline' | 'cancel'>('decline')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -96,14 +97,18 @@ export default function Holidays() {
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
   }
 
-  // Decline requires a reason — opens a small modal instead of firing
-  // immediately (see declineTarget/declineReason state + submitDecline below).
+  // Decline (pending only) and cancel (approved only) both need a reason, so
+  // they share the same confirm-with-reason modal — declineMode picks which
+  // endpoint actually gets called.
+  const openDecline = (l: any) => { setDeclineTarget(l); setDeclineMode('decline'); setDeclineReason('') }
+  const openCancel = (l: any) => { setDeclineTarget(l); setDeclineMode('cancel'); setDeclineReason('') }
+
   const submitDecline = async () => {
     if (!declineTarget) return
     try {
-      await api.put(`/staff-hr/leave/${declineTarget.id}/decline`, { reason: declineReason.trim() || undefined })
+      await api.put(`/staff-hr/leave/${declineTarget.id}/${declineMode}`, { reason: declineReason.trim() || undefined })
       await Promise.all([load(), loadAllRequests()])
-      toast.success('Leave declined')
+      toast.success(declineMode === 'cancel' ? 'Leave cancelled and hours refunded' : 'Leave declined')
       setDeclineTarget(null)
       setDeclineReason('')
       setPreview(null)
@@ -134,6 +139,7 @@ export default function Holidays() {
   const allPending = allLeaves.filter(l => l.status === 'pending')
   const allApproved = allLeaves.filter(l => l.status === 'approved')
   const allDeclined = allLeaves.filter(l => l.status === 'declined')
+  const allCancelled = allLeaves.filter(l => l.status === 'cancelled')
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -202,6 +208,7 @@ export default function Holidays() {
                 <option value="pending">Pending ({allPending.length})</option>
                 <option value="approved">Approved ({allApproved.length})</option>
                 <option value="declined">Declined ({allDeclined.length})</option>
+                <option value="cancelled">Cancelled ({allCancelled.length})</option>
               </select>
             </div>
             {(() => {
@@ -209,6 +216,7 @@ export default function Holidays() {
                 { status: 'pending', label: 'Pending', items: allPending, accent: 'border-amber-400', badge: 'badge-warning' },
                 { status: 'approved', label: 'Approved', items: allApproved, accent: 'border-emerald-400', badge: 'badge-success' },
                 { status: 'declined', label: 'Declined', items: allDeclined, accent: 'border-rose-400', badge: 'badge-critical' },
+                { status: 'cancelled', label: 'Cancelled', items: allCancelled, accent: 'border-slate-300', badge: 'badge-critical' },
               ].filter(s => requestStatusFilter === 'all' || s.status === requestStatusFilter)
 
               if (sections.every(s => s.items.length === 0)) {
@@ -260,11 +268,17 @@ export default function Holidays() {
                               className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
                               <Check className="w-3.5 h-3.5" /> Approve
                             </button>
-                            <button onClick={() => { setDeclineTarget(l); setDeclineReason('') }}
+                            <button onClick={() => { openDecline(l) }}
                               className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                               <X className="w-3.5 h-3.5" /> Decline
                             </button>
                           </>
+                        )}
+                        {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                          <button onClick={() => openCancel(l)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                            <X className="w-3.5 h-3.5" /> Cancel leave
+                          </button>
                         )}
                         {l.status !== 'pending' && (
                           <span className={`badge ${badge}`}>{status}</span>
@@ -383,11 +397,17 @@ export default function Holidays() {
                       className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
                       <Check className="w-3.5 h-3.5" /> Approve
                     </button>
-                    <button onClick={() => { setDeclineTarget(l); setDeclineReason('') }}
+                    <button onClick={() => { openDecline(l) }}
                       className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                       <X className="w-3.5 h-3.5" /> Decline
                     </button>
                   </>
+                )}
+                {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                  <button onClick={() => openCancel(l)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                    <X className="w-3.5 h-3.5" /> Cancel leave
+                  </button>
                 )}
                 {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
                   <button onClick={() => deleteLeave(l.id)} title="Delete this leave request"
@@ -455,11 +475,17 @@ export default function Holidays() {
                   className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600">
                   Approve
                 </button>
-                <button onClick={() => { setDeclineTarget(preview); setDeclineReason('') }}
+                <button onClick={() => { openDecline(preview) }}
                   className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600">
                   Decline
                 </button>
               </div>
+            )}
+            {preview.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+              <button onClick={() => openCancel(preview)}
+                className="w-full py-2 flex items-center justify-center gap-1.5 text-rose-500 rounded-xl text-sm font-semibold hover:bg-rose-50 transition-colors">
+                <X className="w-3.5 h-3.5" /> Cancel this leave
+              </button>
             )}
             {preview.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
               <button onClick={() => deleteLeave(preview.id)}
@@ -467,26 +493,27 @@ export default function Holidays() {
                 <Trash2 className="w-3.5 h-3.5" /> Delete this request
               </button>
             )}
-            {preview.status === 'approved' && (
-              <p className="text-xs text-slate-400 text-center italic">Approved leave is locked and cannot be cancelled or deleted.</p>
-            )}
           </div>
         )}
       </Modal>
 
-      {/* Decline reason modal */}
-      <Modal open={!!declineTarget} onClose={() => setDeclineTarget(null)} title="Decline leave request" size="sm">
+      {/* Decline / cancel reason modal — shared between both actions */}
+      <Modal open={!!declineTarget} onClose={() => setDeclineTarget(null)} title={declineMode === 'cancel' ? 'Cancel approved leave' : 'Decline leave request'} size="sm">
         {declineTarget && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Declining <strong>{declineTarget.staff_name}</strong>'s {(declineTarget.leave_type || '').replace('_', ' ')} request.</p>
+            <p className="text-sm text-slate-600">
+              {declineMode === 'cancel'
+                ? <>Cancelling <strong>{declineTarget.staff_name}</strong>'s approved {(declineTarget.leave_type || '').replace('_', ' ')} leave. {declineTarget.hours_requested ? `${declineTarget.hours_requested}h will be refunded to their balance.` : ''}</>
+                : <>Declining <strong>{declineTarget.staff_name}</strong>'s {(declineTarget.leave_type || '').replace('_', ' ')} request.</>}
+            </p>
             <div>
               <label className="label">Reason (shown to the staff member)</label>
               <textarea className="input" rows={3} value={declineReason} onChange={e => setDeclineReason(e.target.value)}
-                placeholder="Explain why this request is being declined..." />
+                placeholder={declineMode === 'cancel' ? 'Explain why this approved leave is being cancelled...' : 'Explain why this request is being declined...'} />
             </div>
             <div className="flex gap-3 justify-end pt-2">
-              <Button type="button" variant="outline" onClick={() => setDeclineTarget(null)}>Cancel</Button>
-              <Button variant="danger" onClick={submitDecline}>Decline request</Button>
+              <Button type="button" variant="outline" onClick={() => setDeclineTarget(null)}>Back</Button>
+              <Button variant="danger" onClick={submitDecline}>{declineMode === 'cancel' ? 'Cancel leave & refund hours' : 'Decline request'}</Button>
             </div>
           </div>
         )}

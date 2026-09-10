@@ -940,11 +940,8 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
           {/* Wage Rates / billing — financial fields, privileged roles only */}
           {canSeeFinancials && (
             <div className="border border-slate-200 rounded-xl p-3 space-y-3">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Wage Rates</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Funder" value={form.funderName} onChange={e => set('funderName', e.target.value)} placeholder="Funder name..." />
-                <Input label="Wage Rate (£/hr)" type="number" step="0.01" min="0" value={form.wageRate} onChange={e => set('wageRate', e.target.value)} />
-              </div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Funder & Billing</p>
+              <Input label="Funder" value={form.funderName} onChange={e => set('funderName', e.target.value)} placeholder="Funder name..." />
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Funder Cost Notes</label>
                 <textarea className="input" rows={2} value={form.funderCostNotes} onChange={e => set('funderCostNotes', e.target.value)} placeholder="Notes on funder cost arrangement..." />
@@ -1228,11 +1225,8 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
           {/* Wage Rates / billing — financial fields, privileged roles only */}
           {canSeeFinancials && (
             <div className="border border-slate-200 rounded-xl p-3 space-y-3">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Wage Rates</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Funder" value={form.funderName} onChange={e => set('funderName', e.target.value)} placeholder="Funder name..." />
-                <Input label="Wage Rate (£/hr)" type="number" step="0.01" min="0" value={form.wageRate} onChange={e => set('wageRate', e.target.value)} />
-              </div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Funder & Billing</p>
+              <Input label="Funder" value={form.funderName} onChange={e => set('funderName', e.target.value)} placeholder="Funder name..." />
               <div className="grid grid-cols-2 gap-3">
                 <Input label="Charge (£/hr)" type="number" step="0.01" min="0" value={form.chargeRate} onChange={e => set('chargeRate', e.target.value)} />
                 <Input label="Charge as Bank Holidays (£/hr)" type="number" step="0.01" min="0" value={form.chargeBankHolidayRate} onChange={e => set('chargeBankHolidayRate', e.target.value)} />
@@ -1583,7 +1577,6 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             <p><span className="text-slate-400">Shift ID:</span> {shift.id}</p>
             {shift.shift_run && <p><span className="text-slate-400">Shift Run:</span> {shift.shift_run}</p>}
             {canSeeFinancials && shift.funder_name && <p><span className="text-slate-400">Funder:</span> {shift.funder_name}</p>}
-            {canSeeFinancials && shift.wage_rate && <p><span className="text-slate-400">Wage Rate:</span> £{shift.wage_rate}/hr</p>}
             {canSeeFinancials && shift.charge_rate && <p><span className="text-slate-400">Charge Rate:</span> £{shift.charge_rate}/hr</p>}
             {canSeeFinancials && shift.charge_bank_holiday_rate && <p><span className="text-slate-400">Bank Holiday Charge:</span> £{shift.charge_bank_holiday_rate}/hr</p>}
             {canSeeFinancials && shift.funder_cost_notes && <p><span className="text-slate-400">Funder Cost Notes:</span> {shift.funder_cost_notes}</p>}

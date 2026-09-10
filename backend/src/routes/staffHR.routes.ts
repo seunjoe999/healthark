@@ -338,6 +338,39 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
   }
 );
 
+// PUT /api/staff-hr/leave/:id/cancel — revoke an already-approved leave.
+// Distinct from decline (which only ever applies to a still-pending request):
+// cancelling reverses an approval after the fact, so it must refund the
+// hours that were deducted at approval time, capped at the entitlement.
+router.put('/leave/:id/cancel', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      requireLeaveManager(req);
+      const { reason } = req.body;
+      const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Leave not found', 404);
+      const leave = rows[0];
+      if (leave.status !== 'approved') throw new AppError('Only approved leave can be cancelled', 400);
+      await query('UPDATE staff_leave SET status=$1, decline_reason=$2 WHERE id=$3', ['cancelled', reason || null, req.params.id]);
+      const hoursToRefund = parseFloat(String(leave.hours_requested || 0));
+      if (hoursToRefund > 0) {
+        await query(
+          `UPDATE staff SET leave_hours_remaining = LEAST(
+             COALESCE(leave_hours_remaining, 0) + $1,
+             COALESCE(leave_hours_total, COALESCE(leave_hours_remaining, 0) + $1)
+           ) WHERE id = $2`,
+          [hoursToRefund, leave.staff_id]
+        );
+      }
+      await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+        VALUES ($1,$2,'Leave cancelled',$3,'warning','/holidays')`,
+        [leave.staff_id, leave.home_id,
+         reason ? `Your approved leave has been cancelled: ${reason}` : 'Your approved leave has been cancelled by your manager.']);
+      res.json({ success: true, message: 'Leave cancelled and hours refunded' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // PUT /api/staff-hr/leave/:id/decline
 router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

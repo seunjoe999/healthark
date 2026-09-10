@@ -974,15 +974,21 @@ function EditLeaveModal({ staff, onClose, onSaved }: { staff: any; onClose: () =
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (total === '' && remaining === '') { toast.error('Enter at least one value'); return }
     setSaving(true)
     try {
-      const payload = {
-        leaveHoursTotal: total === '' ? null : parseFloat(total),
-        leaveHoursRemaining: remaining === '' ? null : parseFloat(remaining),
-      }
+      // Leaving a field blank means "don't touch this one" — it must be left
+      // out of the payload entirely, not sent as null, or it silently wipes
+      // out whatever was already tracked there (this is exactly how a
+      // manager entering only the entitlement previously reset "remaining"
+      // to null, which then falls back to equal the total and makes hours
+      // used look like 0 even though leave had genuinely been approved).
+      const payload: Record<string, number> = {}
+      if (total !== '') payload.leaveHoursTotal = parseFloat(total)
+      if (remaining !== '') payload.leaveHoursRemaining = parseFloat(remaining)
       await api.put(`/staff/${staff.id}`, payload)
       toast.success('Annual leave updated')
-      onSaved({ leave_hours_total: payload.leaveHoursTotal, leave_hours_remaining: payload.leaveHoursRemaining })
+      onSaved(payload)
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update annual leave') }
     finally { setSaving(false) }
   }
