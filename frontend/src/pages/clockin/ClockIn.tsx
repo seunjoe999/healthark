@@ -209,8 +209,8 @@ export default function ClockIn() {
               <p className="text-slate-300 text-sm mb-4">{result.error}</p>
               <div className="p-4 rounded-xl mb-5" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
                 <p className="text-rose-300 text-2xl font-bold font-display mb-1">{result.distanceMetres}m</p>
-                <p className="text-rose-400 text-xs">from the service user's location</p>
-                <p className="text-slate-500 text-xs mt-1">Must be within {suInfo?.geofenceRadius || 200}m</p>
+                <p className="text-rose-400 text-xs">from {result.locationLabel || suInfo?.name || 'the care location'}</p>
+                <p className="text-slate-500 text-xs mt-1">Must be within {result.requiredRadius || suInfo?.geofenceRadius || 200}m</p>
               </div>
               <p className="text-slate-500 text-xs mb-4">Make sure you are physically at the care location, then try again.</p>
               <button onClick={() => setState('confirming')}

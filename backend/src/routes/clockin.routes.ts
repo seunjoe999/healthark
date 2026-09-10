@@ -132,6 +132,8 @@ router.post('/event', authenticate,
           success: false,
           error: messages[outcome.reason],
           distanceMetres: outcome.distanceMetres,
+          requiredRadius: checkPoints[0]?.radius || 200,
+          locationLabel: outcome.closestLabel,
           geofencePassed: false,
         });
       }
