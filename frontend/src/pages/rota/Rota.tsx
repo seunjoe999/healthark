@@ -95,6 +95,50 @@ function getName(p: any) {
   return `${p?.first_name || p?.firstName || ''} ${p?.last_name || p?.lastName || ''}`.trim()
 }
 
+// Assigns each shift a lane (col) and lane count (cols) so overlapping shifts on the
+// same day render side-by-side instead of stacking on top of each other full-width —
+// without this, two shifts at the same time hide one another entirely.
+function layoutShiftLanes(dayShifts: any[]): Map<string, { col: number; cols: number }> {
+  const layout = new Map<string, { col: number; cols: number }>()
+  const sorted = [...dayShifts].sort((a, b) => {
+    const as = timeToMins(a.start_time?.substring(0, 5) || '08:00')
+    const bs = timeToMins(b.start_time?.substring(0, 5) || '08:00')
+    return as - bs
+  })
+  let open: { id: string; end: number; col: number }[] = []
+  let cluster: string[] = []
+  let clusterMaxCols = 0
+
+  const finalizeCluster = () => {
+    for (const id of cluster) {
+      const entry = layout.get(id)
+      if (entry) entry.cols = clusterMaxCols
+    }
+    cluster = []
+    clusterMaxCols = 0
+  }
+
+  for (const shift of sorted) {
+    const start = timeToMins(shift.start_time?.substring(0, 5) || '08:00')
+    let end = timeToMins(shift.end_time?.substring(0, 5) || '09:00')
+    if (end <= start) end += 1440
+
+    open = open.filter(o => o.end > start)
+    if (open.length === 0 && cluster.length > 0) finalizeCluster()
+
+    const usedCols = new Set(open.map(o => o.col))
+    let col = 0
+    while (usedCols.has(col)) col++
+
+    open.push({ id: shift.id, end, col })
+    cluster.push(shift.id)
+    clusterMaxCols = Math.max(clusterMaxCols, open.length)
+    layout.set(shift.id, { col, cols: 1 })
+  }
+  finalizeCluster()
+  return layout
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Rota() {
@@ -525,6 +569,7 @@ export default function Rota() {
               const isToday  = isSameDay(day, today)
               const dayShifts = getDayShifts(day)
               const dayLeaves = getDayLeaves(day)
+              const shiftLanes = layoutShiftLanes(dayShifts)
 
               return (
                 <div key={day.toString()}
@@ -574,13 +619,18 @@ export default function Rota() {
                     const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
                     const relation = SHIFT_RELATIONS[shift.shift_relation]
                     const selected = selectedShiftIds.has(shift.id)
+                    const lane = shiftLanes.get(shift.id) || { col: 0, cols: 1 }
+                    const laneWidth = 100 / lane.cols
+                    const laneLeft = lane.col * laneWidth
 
                     return (
                       <button key={shift.id} onClick={() => selectMode ? toggleShiftSelected(shift.id) : setDetailShift(shift)}
-                        className="absolute left-1 right-1 rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
+                        className="absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
                           top: top + 1,
                           height: Math.max(height - 2, 32),
+                          left: `calc(${laneLeft}% + 2px)`,
+                          width: `calc(${laneWidth}% - 4px)`,
                           backgroundColor: colors.bg,
                           borderColor:     selected ? '#2563eb' : colors.border,
                           color:           colors.text,
@@ -1463,6 +1513,39 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [savingStatus, setSavingStatus] = useState(false)
   const [linking, setLinking] = useState<'shadow' | 'double_up' | null>(null)
   const [showBlockDetails, setShowBlockDetails] = useState(false)
+  const [editingTimes, setEditingTimes] = useState(false)
+  const [editDate, setEditDate] = useState(shift.shift_date ? shift.shift_date.substring(0, 10) : '')
+  const [editStart, setEditStart] = useState(shift.start_time?.substring(0, 5) || '')
+  const [editEnd, setEditEnd] = useState(shift.end_time?.substring(0, 5) || '')
+  const [savingTimes, setSavingTimes] = useState(false)
+  const [reallocating, setReallocating] = useState(false)
+  const [reallocateTo, setReallocateTo] = useState('')
+  const [savingReallocate, setSavingReallocate] = useState(false)
+
+  const saveTimes = async () => {
+    if (!editDate || !editStart || !editEnd) { toast.error('Date, start and finish times are required'); return }
+    setSavingTimes(true)
+    try {
+      const res = await api.put(`/shifts/${shift.id}`, { shiftDate: editDate, startTime: editStart, endTime: editEnd })
+      onUpdated(res.data.data)
+      toast.success('Shift times updated')
+      setEditingTimes(false)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update shift times') }
+    finally { setSavingTimes(false) }
+  }
+
+  const saveReallocate = async () => {
+    if (!reallocateTo) { toast.error('Select a staff member'); return }
+    setSavingReallocate(true)
+    try {
+      await api.put(`/shifts/${shift.id}`, { staffId: reallocateTo })
+      toast.success('Shift reallocated')
+      setReallocating(false)
+      setReallocateTo('')
+      onLinked() // closes the modal and reloads shifts so the new staff name/role join comes through
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to reallocate shift') }
+    finally { setSavingReallocate(false) }
+  }
 
   const changeStatus = async (newStatus: string) => {
     if (newStatus === status) return
@@ -1525,17 +1608,51 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           </div>
         )}
 
+        {canManage && editingTimes ? (
+          <div className="rounded-xl border border-slate-200 p-3 space-y-2.5 bg-slate-50">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Date</label>
+                <input type="date" className="input text-sm" value={editDate} onChange={e => setEditDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Start</label>
+                <input type="time" className="input text-sm" value={editStart} onChange={e => setEditStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Finish</label>
+                <input type="time" className="input text-sm" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={() => setEditingTimes(false)}>Cancel</Button>
+              <Button size="sm" loading={savingTimes} onClick={saveTimes}>Save</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date / Times</p>
+              <div className="flex items-center gap-2">
+                <p className="text-slate-800 font-medium">
+                  {shift.shift_date ? format(parseISO(shift.shift_date), 'EEE d MMM yyyy') : '—'}
+                  {' · '}{shift.start_time?.substring(0, 5)}–{shift.end_time?.substring(0, 5)}
+                </p>
+                {canManage && (
+                  <button type="button" onClick={() => setEditingTimes(true)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                    Edit
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Shift type</p>
+              <p className="text-slate-800 font-medium capitalize">{shift.shift_type?.replace(/_/g, ' ')}</p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date</p>
-            <p className="text-slate-800 font-medium">
-              {shift.shift_date ? format(parseISO(shift.shift_date), 'EEE d MMM yyyy') : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Shift type</p>
-            <p className="text-slate-800 font-medium capitalize">{shift.shift_type?.replace(/_/g, ' ')}</p>
-          </div>
           {shift.su_name && (
             <div className="col-span-2">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Service User</p>
@@ -1583,7 +1700,25 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           </div>
         )}
 
+        {canManage && reallocating && (
+          <div className="rounded-xl border border-slate-200 p-3 space-y-2.5 bg-slate-50">
+            <Select label="Reallocate to" value={reallocateTo} onChange={e => setReallocateTo(e.target.value)}
+              options={staffList.filter(s => s.id !== shift.staff_id).map(s => ({ value: s.id, label: getName(s) }))}
+              placeholder="Select staff member" />
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={() => { setReallocating(false); setReallocateTo('') }}>Cancel</Button>
+              <Button size="sm" loading={savingReallocate} onClick={saveReallocate}>Reallocate</Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+          {canManage && (
+            <button onClick={() => setReallocating(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors">
+              <ArrowLeftRight className="w-3.5 h-3.5" /> Reallocate shift
+            </button>
+          )}
           {shift.staff_id && (
             <button onClick={onSwap}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
