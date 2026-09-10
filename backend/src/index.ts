@@ -97,7 +97,7 @@ app.use('/api', (req, res, next) => {
     const secret = process.env.JWT_SECRET;
     const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : '';
     const payload = token && secret ? (jwt.verify(token, secret) as any) : null;
-    if (payload?.role === 'super_admin' || payload?.role === 'admin') { next(); return; }
+    if (['super_admin', 'admin', 'group_admin'].includes(payload?.role)) { next(); return; }
   } catch { /* invalid/expired token falls through to the block below */ }
   res.status(403).json({
     success: false,
