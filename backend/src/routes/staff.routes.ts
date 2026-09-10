@@ -378,7 +378,7 @@ router.put(
               address3, postcode, dateOfBirth, gender, nationality,
               maritalStatus, niNumber, emergencyName, emergencyPhone, emergencyNotes,
               photoUrl, status, isActive, leaveDate, homeId, role: newRoleInput,
-              contractedHours, startDate } = req.body;
+              contractedHours, startDate, leaveHoursTotal, leaveHoursRemaining } = req.body;
 
       const canManage = role === 'group_admin' || role === 'home_manager';
       const newStatus = canManage ? (status || null) : null;
@@ -393,7 +393,19 @@ router.put(
       // rollover — full reset to the new entitlement, no carry-over. Otherwise,
       // preserve however much leave has already been used this year and just
       // adjust the total/remaining by the delta.
-      if (canManage && (contractedHours !== undefined || startDate !== undefined)) {
+      // A direct admin override (the "Edit" button next to leave hours on the
+      // staff profile) takes precedence over the auto-prorate recompute below
+      // — an admin correcting a wrong balance means exactly what they typed,
+      // not a value derived from contracted hours / start date.
+      if (canManage && (leaveHoursTotal !== undefined || leaveHoursRemaining !== undefined)) {
+        const setParts: string[] = [];
+        const vals: unknown[] = [];
+        let idx = 1;
+        if (leaveHoursTotal !== undefined) { setParts.push(`leave_hours_total = $${idx++}`); vals.push(leaveHoursTotal === '' ? null : leaveHoursTotal); }
+        if (leaveHoursRemaining !== undefined) { setParts.push(`leave_hours_remaining = $${idx++}`); vals.push(leaveHoursRemaining === '' ? null : leaveHoursRemaining); }
+        vals.push(targetId);
+        await query(`UPDATE staff SET ${setParts.join(', ')} WHERE id = $${idx}`, vals);
+      } else if (canManage && (contractedHours !== undefined || startDate !== undefined)) {
         const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
         const cur = existing[0] || {};
         const effContractedHours = contractedHours !== undefined ? contractedHours : cur.contracted_hours;

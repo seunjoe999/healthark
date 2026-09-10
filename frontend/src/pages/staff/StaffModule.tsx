@@ -42,6 +42,7 @@ export default function StaffModule() {
   const canCreateStaff = isManager || isRole('recruitment_admin')
   const [staff, setStaff] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
+  const [editLeaveFor, setEditLeaveFor] = useState<any>(null)
   const [tab, setTab] = useState<StaffTab>('profile')
   const [loading, setLoading] = useState(true)
   const [homes, setHomes] = useState<any[]>([])
@@ -243,8 +244,8 @@ export default function StaffModule() {
                                 : initials}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-slate-900 text-sm truncate">{getName(s)}</h3>
-                              <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
+                              <h3 className="inline-block max-w-full font-bold text-black text-sm truncate bg-emerald-100 border border-emerald-200 rounded-lg px-2.5 py-1">{getName(s)}</h3>
+                              <p className="text-xs text-slate-400 capitalize mt-1.5">{(s.role || '').replace(/_/g, ' ')}</p>
                             </div>
                           </div>
                         </button>
@@ -282,18 +283,28 @@ export default function StaffModule() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-slate-900 group-hover:text-purple-900 transition-colors">{getName(selected)}</h2>
-                    <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors" />
+                    <h2 className="inline-block max-w-full font-bold text-black text-xl truncate bg-emerald-100 border border-emerald-200 rounded-lg px-3 py-1">{getName(selected)}</h2>
+                    <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors flex-shrink-0" />
                   </div>
-                  <p className="text-sm text-slate-500 capitalize">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
+                  <p className="text-sm text-slate-500 capitalize mt-1.5">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
                   <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
                     {selected.start_date && <span>Started {format(new Date(selected.start_date), 'd MMM yyyy')}</span>}
                     <span className="text-emerald-600 font-medium">{selected.leave_hours_remaining ?? 210} hrs leave remaining</span>
+                    {isRole('home_manager', 'group_admin', 'admin', 'director', 'registered_manager') && (
+                      <button type="button"
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setEditLeaveFor(selected) }}
+                        className="text-purple-500 hover:text-purple-700 font-medium underline underline-offset-2">
+                        Edit
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>
                 </div>
               </div>
             </Link>
+
+            <EditLeaveModal staff={editLeaveFor} onClose={() => setEditLeaveFor(null)}
+              onSaved={(updated) => { setSelected((p: any) => ({ ...p, ...updated })); setEditLeaveFor(null) }} />
 
             {/* Tabs */}
             <div className="bg-white/5 rounded-2xl border border-white/10 shadow-card mb-5">
@@ -909,6 +920,54 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Save leave record</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+// Admin-only correction for annual leave entitlement/balance — separate from
+// AddLeaveModal (which records a leave request/absence), this directly
+// overrides the stored hours when they're simply wrong, e.g. a new starter
+// stuck showing the 210-hour placeholder because nothing was ever computed.
+function EditLeaveModal({ staff, onClose, onSaved }: { staff: any; onClose: () => void; onSaved: (updated: any) => void }) {
+  const [total, setTotal] = React.useState('')
+  const [remaining, setRemaining] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
+
+  React.useEffect(() => {
+    if (staff) {
+      setTotal(staff.leave_hours_total !== null && staff.leave_hours_total !== undefined ? String(staff.leave_hours_total) : '')
+      setRemaining(staff.leave_hours_remaining !== null && staff.leave_hours_remaining !== undefined ? String(staff.leave_hours_remaining) : '')
+    }
+  }, [staff])
+
+  if (!staff) return null
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const payload = {
+        leaveHoursTotal: total === '' ? null : parseFloat(total),
+        leaveHoursRemaining: remaining === '' ? null : parseFloat(remaining),
+      }
+      await api.put(`/staff/${staff.id}`, payload)
+      toast.success('Annual leave updated')
+      onSaved({ leave_hours_total: payload.leaveHoursTotal, leave_hours_remaining: payload.leaveHoursRemaining })
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update annual leave') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Modal open={!!staff} onClose={onClose} title="Edit annual leave entitlement" size="sm">
+      <form onSubmit={save} className="space-y-4">
+        <p className="text-xs text-slate-500">Correct {staff.first_name}'s annual leave hours directly — use this if the balance is wrong rather than what a leave request/absence would deduct.</p>
+        <Input label="Annual leave entitlement (hours)" type="number" step="0.5" value={total} onChange={e => setTotal(e.target.value)} placeholder="e.g. 210" />
+        <Input label="Hours remaining" type="number" step="0.5" value={remaining} onChange={e => setRemaining(e.target.value)} placeholder="e.g. 175.5" />
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>Save</Button>
         </div>
       </form>
     </Modal>

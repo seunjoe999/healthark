@@ -67,7 +67,7 @@ router.post('/apply', [
 router.use(authenticate);
 
 // GET /api/recruitment?homeId=
-router.get('/', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'recruitment_admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const rows = await query(

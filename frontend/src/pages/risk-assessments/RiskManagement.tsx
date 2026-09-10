@@ -60,7 +60,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
     <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
-      <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
       <p className="text-sm font-medium text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )

@@ -126,9 +126,9 @@ export default function ResidentDiary() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-purple-600" />
-            Residents Health Check
+          <h1 className="text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
+            <Calendar className="w-6 h-6" style={{ color: '#e8b130' }} />
+            RESIDENTS HEALTH CHECK
           </h1>
           <p className="text-slate-500 text-sm mt-1">Track annual health, GP, mental health, dentist, and optician reviews.</p>
         </div>

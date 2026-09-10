@@ -825,9 +825,16 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
 
             {(r.who_is_at_risk || r.what_could_happen || r.risk_before_intervention) && (
               <div className="space-y-3">
-                {r.who_is_at_risk && <InfoRow label="Who is at risk" value={r.who_is_at_risk} />}
-                {r.what_could_happen && <InfoRow label="What could happen" value={r.what_could_happen} />}
-                {r.risk_before_intervention && <InfoRow label="Risk before intervention" value={r.risk_before_intervention} />}
+                {[
+                  { label: 'Who is at risk', value: r.who_is_at_risk },
+                  { label: 'What could happen', value: r.what_could_happen },
+                  { label: 'Risk before intervention', value: r.risk_before_intervention },
+                ].filter(f => f.value).map(f => (
+                  <div key={f.label} className="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{f.label}</p>
+                    <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{f.value}</p>
+                  </div>
+                ))}
               </div>
             )}
 
