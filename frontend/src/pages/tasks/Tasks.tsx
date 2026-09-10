@@ -367,9 +367,9 @@ export default function Tasks() {
               description="All tasks completed for today!"
               action={isRole(...TASK_CREATOR_ROLES) ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button> : undefined} />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filtered.map((task: any) => (
-                <div key={task.id} className={`rounded-2xl border shadow-card p-4 flex items-start gap-4 ${
+                <div key={task.id} className={`rounded-2xl border shadow-card p-5 flex items-start gap-4 ${
                   task.status === 'completed' ? 'bg-white border-emerald-200 opacity-70'
                   : task.category === 'follow_up' ? 'bg-blue-50/60 border-blue-200'
                   : 'bg-white border-slate-100'
@@ -379,30 +379,30 @@ export default function Tasks() {
                     {task.status === 'completed' && <Check className="w-3.5 h-3.5 text-white" />}
                   </button>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className={`font-semibold text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</h3>
+                    <h3 className={`font-semibold text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</h3>
+                    <div className="flex items-center gap-2 flex-wrap mt-2">
                       <span className={`badge text-xs ${priorityColor(task.priority)}`}>{task.priority}</span>
                       {task.status !== 'completed' && task.task_date < today && (
-                        <span className="text-xs text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full font-semibold">Overdue since {format(new Date(task.task_date), 'd MMM')}</span>
+                        <span className="text-xs text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full font-semibold">Overdue since {format(new Date(task.task_date), 'd MMM')}</span>
                       )}
-                      {task.su_name && <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{task.su_name}</span>}
-                      {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
-                      {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">For {task.assigned_staff_name}</span>}
+                      {task.su_name && <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{task.su_name}</span>}
+                      {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
+                      {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">For {task.assigned_staff_name}</span>}
                       {!task.assigned_staff_name && task.visible_team_ids && task.visible_team_ids.length > 0 && (
-                        <span className="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                        <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">
                           Visible to: {task.visible_team_ids.map((id: string) => teams.find(t => t.id === id)?.name || 'team').join(', ')}
                         </span>
                       )}
-                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
-                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">Visible to: All staff</span>}
+                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
+                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">Visible to: All staff</span>}
                     </div>
-                    {task.description && <p className="text-xs text-slate-500 mt-0.5">{task.description}</p>}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                    {task.description && <p className="text-xs text-slate-500 mt-2 leading-relaxed">{task.description}</p>}
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
                       {task.due_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.due_time}</span>}
                       <span className="capitalize">{(task.category || '').replace('_', ' ')}</span>
                       {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium flex items-center gap-0.5"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
                     </div>
-                    {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-500 italic mt-0.5 block">Note: {task.completion_notes}</span>}
+                    {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-500 italic mt-2 block">Note: {task.completion_notes}</span>}
                   </div>
                   {isRole(...TASK_CREATOR_ROLES) && task.category !== 'follow_up' && (
                     <button onClick={() => setEditTaskOpen(task)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors flex-shrink-0">
@@ -427,18 +427,18 @@ export default function Tasks() {
             <EmptyState title="No templates" description="Templates let you auto-generate recurring tasks each day"
               action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add first template</Button> : undefined} />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {templates.map((tmpl: any) => (
-                <div key={tmpl.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-start gap-4">
+                <div key={tmpl.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 flex items-start gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="font-semibold text-sm text-slate-900">{tmpl.title}</h3>
+                    <h3 className="font-semibold text-sm text-slate-900">{tmpl.title}</h3>
+                    <div className="flex items-center gap-2 flex-wrap mt-2">
                       <span className={`badge text-xs ${priorityColor(tmpl.priority)}`}>{tmpl.priority}</span>
-                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full capitalize">{(tmpl.category || '').replace('_', ' ')}</span>
-                      <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full capitalize">{(tmpl.frequency || '').replace('_', ' ')}</span>
+                      <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full capitalize">{(tmpl.category || '').replace('_', ' ')}</span>
+                      <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full capitalize">{(tmpl.frequency || '').replace('_', ' ')}</span>
                     </div>
-                    {tmpl.description && <p className="text-xs text-slate-500 mt-0.5">{tmpl.description}</p>}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
+                    {tmpl.description && <p className="text-xs text-slate-500 mt-2 leading-relaxed">{tmpl.description}</p>}
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
                       {tmpl.due_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{tmpl.due_time}</span>}
                       <span>Visible to: {
                         tmpl.visible_team_ids && tmpl.visible_team_ids.length > 0
@@ -472,13 +472,13 @@ export default function Tasks() {
           ) : medTasks.length === 0 ? (
             <EmptyState title="No medication due" description="No medication rounds are due today for your assigned residents" />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {medTasks.map((m: any, i: number) => {
                 const codeInfo = MAR_CODE_OPTIONS.find(o => o.code === m.status)
                 const isDone = m.status !== 'pending'
                 return (
                   <div key={`${m.medicationId}-${m.scheduledTime}-${i}`}
-                    className={`bg-white rounded-2xl border shadow-card p-4 flex items-center gap-4 ${isDone ? 'border-emerald-100' : 'border-slate-100'}`}>
+                    className={`bg-white rounded-2xl border shadow-card p-5 flex items-center gap-4 ${isDone ? 'border-emerald-100' : 'border-slate-100'}`}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDone ? 'rgba(16,185,129,0.12)' : 'rgba(139,92,246,0.12)' }}>
                       <Pill className="w-5 h-5" style={{ color: isDone ? '#10b981' : '#8b5cf6' }} />
                     </div>
@@ -486,9 +486,9 @@ export default function Tasks() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-sm text-slate-900">{m.medicationName}</h3>
                         {m.dose && <span className="text-xs text-slate-500">{m.dose}</span>}
-                        {m.isControlled && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-semibold">Controlled</span>}
+                        {m.isControlled && <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full font-semibold">Controlled</span>}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{m.suName} · Due {m.scheduledTime}</p>
+                      <p className="text-xs text-slate-500 mt-1.5">{m.suName} · Due {m.scheduledTime}</p>
                     </div>
                     {isDone ? (
                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: codeInfo?.bg, color: codeInfo?.color }}>
