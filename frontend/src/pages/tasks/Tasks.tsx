@@ -385,7 +385,7 @@ export default function Tasks() {
                       {task.status !== 'completed' && task.task_date < today && (
                         <span className="text-xs text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full font-semibold">Overdue since {format(new Date(task.task_date), 'd MMM')}</span>
                       )}
-                      {task.su_name && <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{task.su_name}</span>}
+                      {task.su_name && <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">{task.su_name}</span>}
                       {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
                       {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">For {task.assigned_staff_name}</span>}
                       {!task.assigned_staff_name && task.visible_team_ids && task.visible_team_ids.length > 0 && (
