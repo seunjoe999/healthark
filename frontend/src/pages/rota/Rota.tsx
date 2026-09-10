@@ -184,6 +184,7 @@ export default function Rota() {
   const [detailShift, setDetailShift] = useState<any>(null)
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [coverOpen,   setCoverOpen]   = useState(false)
+  const [patternAssignOpen, setPatternAssignOpen] = useState(false)
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -360,6 +361,9 @@ export default function Rota() {
               </Button>
               <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}>
                 Bulk Operations
+              </Button>
+              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}>
+                Bulk Allocate
               </Button>
               <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
                 onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}>
@@ -804,6 +808,18 @@ export default function Rota() {
         />
       )}
 
+      {patternAssignOpen && (
+        <PatternAssignModal
+          open={patternAssignOpen}
+          onClose={() => setPatternAssignOpen(false)}
+          staffList={staffList}
+          suList={suList}
+          homeId={selectedHome}
+          defaultDate={format(weekStart, 'yyyy-MM-dd')}
+          onSaved={() => { setPatternAssignOpen(false); loadAll() }}
+        />
+      )}
+
       <style>{`
         @media print {
           .no-print { display: none !important }
@@ -858,7 +874,9 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
   }
 
   const save = async () => {
-    if (selectedStaff.length === 0) { toast.error('Allocate at least one staff member'); return }
+    // Staff is optional here on purpose — leaving it unallocated creates open/unfilled shifts
+    // across the whole pattern, so allocation can be done afterwards per-day via Bulk Allocate
+    // or by reallocating individual shifts, rather than forcing one staff member onto every day.
     setSaving(true)
     try {
       const daysOfWeek = form.recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : form.daysOfWeek
@@ -1032,9 +1050,12 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold text-slate-700">
-                Allocate staff <span className="text-slate-400 font-normal">({selectedStaff.length} of {required} required)</span>
+                Allocate staff (optional) <span className="text-slate-400 font-normal">({selectedStaff.length} of {required})</span>
               </p>
             </div>
+            <p className="text-xs text-slate-400 mb-2">
+              Leave this blank to create open/unfilled shifts across every day above — you can then use "Bulk Allocate" to spread different staff across specific days, or reallocate individual shifts later.
+            </p>
 
             {/* Staff search */}
             <div className="relative mb-2">
@@ -1131,7 +1152,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
   }
 
   const save = async () => {
-    if (selectedStaff.length === 0) { toast.error('Allocate at least one staff member'); return }
+    // Staff is optional here on purpose — see note in CreateShiftModal above.
     setSaving(true)
     try {
       const daysOfWeek = form.recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : form.daysOfWeek
@@ -1309,9 +1330,12 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold text-slate-700">
-                Allocate staff <span className="text-slate-400 font-normal">({selectedStaff.length} of {required} required, shared across all selected residents)</span>
+                Allocate staff (optional) <span className="text-slate-400 font-normal">({selectedStaff.length} of {required}, shared across all selected residents)</span>
               </p>
             </div>
+            <p className="text-xs text-slate-400 mb-2">
+              Leave this blank to create open/unfilled shifts for every selected resident — use "Bulk Allocate" afterwards to spread staff across specific days.
+            </p>
 
             <div className="relative mb-2">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -1796,6 +1820,136 @@ function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assig
         </div>
         <div className="flex justify-end pt-1">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Pattern Bulk Allocate Modal ────────────────────────────────────────────────
+// Allocates one staff member to every unfilled shift matching a recurring pattern
+// (specific days of the week, optionally alternating fortnightly, day or night, over
+// a date range) — so a rota created with open/unfilled shifts can be staffed up by
+// pattern instead of clicking every single day, and different staff can cover
+// different days of the same rota rather than one person getting the whole week.
+
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' },
+]
+
+function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultDate, onSaved }: {
+  open: boolean; onClose: () => void
+  staffList: any[]; suList: any[]; homeId: string; defaultDate: string; onSaved: () => void
+}) {
+  const [staffId, setStaffId] = useState('')
+  const [suId, setSuId] = useState('')
+  const [dayOrNight, setDayOrNight] = useState<'any' | 'day' | 'night'>('any')
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5])
+  const [fortnightly, setFortnightly] = useState(false)
+  const [startDate, setStartDate] = useState(defaultDate)
+  const [ongoing, setOngoing] = useState(true)
+  const [endDate, setEndDate] = useState('')
+  const [onlyUnfilled, setOnlyUnfilled] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { if (open) setStartDate(defaultDate) }, [open, defaultDate])
+
+  const toggleDay = (d: number) =>
+    setDaysOfWeek(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort())
+
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
+  const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
+
+  const save = async () => {
+    if (!staffId) { toast.error('Select a staff member'); return }
+    if (daysOfWeek.length === 0) { toast.error('Select at least one day of the week'); return }
+    if (!ongoing && !endDate) { toast.error('Set an end date, or choose "Until I stop it"'); return }
+    setSaving(true)
+    try {
+      const res = await api.post('/shifts/bulk-assign-pattern', {
+        homeId, staffId, suId: suId || null,
+        dayOrNight, daysOfWeek, fortnightly,
+        startDate, endDate: ongoing ? format(addDays(parseISO(startDate), 365), 'yyyy-MM-dd') : endDate,
+        onlyUnfilled,
+      })
+      const assigned = res.data.data?.assigned || 0
+      toast.success(assigned > 0 ? `Allocated ${assigned} shift${assigned !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to bulk allocate') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Bulk Allocate — Recurring Pattern" size="md">
+      <div className="space-y-4">
+        <p className="text-xs text-slate-500">
+          Assign one staff member to every unfilled shift on the days you pick, over a date range — e.g. every Monday, Tuesday and Saturday, every other week, until you stop it. Reallocate an individual shift instead by clicking it directly on the grid.
+        </p>
+
+        <Select label="Staff member *" value={staffId} onChange={e => setStaffId(e.target.value)} options={staffOptions} placeholder="Select staff member" />
+        <Select label="Resident (optional)" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="All residents" />
+
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Day or Night</label>
+          <div className="flex gap-2">
+            {[{ v: 'any', l: 'Any' }, { v: 'day', l: 'Day' }, { v: 'night', l: 'Night' }].map(o => (
+              <button key={o.v} type="button" onClick={() => setDayOrNight(o.v as any)}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${dayOrNight === o.v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Days of the week *</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {WEEKDAY_OPTIONS.map(d => (
+              <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
+                className={`w-11 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${daysOfWeek.includes(d.value) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="fortnightly" checked={fortnightly} onChange={e => setFortnightly(e.target.checked)} className="rounded" />
+          <label htmlFor="fortnightly" className="text-sm text-slate-700">Every other week only (fortnightly, starting the week of the start date below)</label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start date *</label>
+            <input type="date" className="input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End</label>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => setOngoing(true)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
+                Until I stop it
+              </button>
+              <button type="button" onClick={() => setOngoing(false)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${!ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
+                Pick a date
+              </button>
+            </div>
+          </div>
+        </div>
+        {!ongoing && (
+          <input type="date" className="input" value={endDate} onChange={e => setEndDate(e.target.value)} />
+        )}
+
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="onlyUnfilled" checked={onlyUnfilled} onChange={e => setOnlyUnfilled(e.target.checked)} className="rounded" />
+          <label htmlFor="onlyUnfilled" className="text-sm text-slate-700">Only fill currently-unfilled shifts (leave unticked to overwrite existing allocations too)</label>
+        </div>
+
+        <div className="flex gap-3 justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button loading={saving} onClick={save} icon={<Check className="w-4 h-4" />}>Allocate</Button>
         </div>
       </div>
     </Modal>

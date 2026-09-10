@@ -610,6 +610,64 @@ router.put('/:id/status', param('id').isUUID(), body('status').isIn(SHIFT_STATUS
   }
 );
 
+// POST /api/shifts/bulk-assign-pattern — allocate one staff member to every unfilled shift
+// matching a recurring pattern (specific days of the week, optionally fortnightly, day/night,
+// within a date range) instead of requiring staff be picked one-by-one or at shift-creation
+// time (which used to force the same person onto every day of the rota).
+const DAY_SHIFT_TYPES = ['early', 'regular', 'late'];
+const NIGHT_SHIFT_TYPES = ['night', 'waking_night', 'sleep_in'];
+
+router.post('/bulk-assign-pattern', [
+  body('staffId').isUUID(),
+  body('startDate').isDate(),
+  body('endDate').isDate(),
+  body('daysOfWeek').isArray({ min: 1 }),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, dayOrNight, onlyUnfilled } = req.body;
+
+      let typeFilter: string[] | null = null;
+      if (dayOrNight === 'day') typeFilter = DAY_SHIFT_TYPES;
+      else if (dayOrNight === 'night') typeFilter = NIGHT_SHIFT_TYPES;
+
+      const candidates = await query<any>(
+        `SELECT id, shift_date FROM staff_shifts
+         WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
+           AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[])
+           AND ($5::uuid IS NULL OR su_id = $5)
+           AND ($6::text[] IS NULL OR shift_type = ANY($6))
+           AND (NOT $7 OR staff_id IS NULL)
+         ORDER BY shift_date`,
+        [homeId, startDate, endDate, daysOfWeek.map((d: any) => parseInt(d)),
+         suId || null, typeFilter, onlyUnfilled !== false]
+      );
+
+      // Fortnightly: keep only shifts in the same alternating week as startDate.
+      const startWeekIndex = Math.floor((new Date(startDate).getTime()) / (7 * 24 * 3600 * 1000));
+      const matched = fortnightly
+        ? candidates.filter(c => {
+            const weekIndex = Math.floor(new Date(c.shift_date).getTime() / (7 * 24 * 3600 * 1000));
+            return (weekIndex - startWeekIndex) % 2 === 0;
+          })
+        : candidates;
+
+      if (matched.length === 0) {
+        return res.json({ success: true, data: { assigned: 0 } } as ApiResponse);
+      }
+
+      const ids = matched.map(m => m.id);
+      await query(
+        `UPDATE staff_shifts SET staff_id = $1, status = 'filled', updated_at = NOW() WHERE id = ANY($2::uuid[])`,
+        [staffId, ids]
+      );
+
+      res.json({ success: true, data: { assigned: ids.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/shifts/:id/link — create a shadow or double-up shift linked to an existing shift.
 // Copies the parent's date / service user / times by default; caller may override staffId/notes.
 router.post('/:id/link', param('id').isUUID(), body('relation').isIn(SHIFT_RELATIONS), validateRequest,
