@@ -28,7 +28,19 @@ export function useSpeechRecognition(onFinalTranscript: (text: string) => void) 
     // abort any lingering instance
     try { recRef.current?.abort() } catch {}
 
-    const rec = new SR()
+    let rec: any
+    try {
+      rec = new SR()
+    } catch {
+      // Some browsers/contexts (e.g. non-HTTPS-like restrictions, embedded
+      // webviews) throw "Illegal constructor" here even though the API
+      // appeared supported — fail cleanly instead of leaving the caller
+      // stuck with a silently-broken dictate button.
+      toast.error('Voice input isn\'t available in this browser right now')
+      shouldRunRef.current = false
+      setListening(false)
+      return
+    }
     rec.continuous = true
     rec.interimResults = true
     rec.lang = 'en-GB'

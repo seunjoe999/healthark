@@ -55,8 +55,8 @@ router.get('/latest', async (req: Request, res: Response, next: NextFunction) =>
     }
     const rows = await query(`
       SELECT DISTINCT ON (su.id)
-             su.id AS su_id, su.first_name || ' ' || su.last_name AS su_name, su.room_number,
-             mr.*
+             mr.*,
+             su.id AS su_id, su.first_name || ' ' || su.last_name AS su_name, su.room_number
       FROM service_users su
       LEFT JOIN medicine_risk_assessments mr ON mr.su_id = su.id AND mr.home_id = $1
       WHERE su.home_id = $1 AND su.status = 'live'${residentFilter}
