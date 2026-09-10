@@ -55,3 +55,29 @@ export function installChunkErrorReload(): void {
     if (isChunkError(message)) { reloaded = true; window.location.reload() }
   })
 }
+
+// Covers long-running sessions (installed PWA left open for hours/days
+// without a fresh login) that the login-time check and chunk-error fallback
+// don't reach. Polls every 30 minutes; only actually reloads while the tab
+// is backgrounded, so it never interrupts someone mid-task — by the time
+// they come back the page is already current.
+export function installPeriodicVersionCheck(): void {
+  const CHECK_INTERVAL_MS = 30 * 60 * 1000
+  let pending = false
+
+  const check = async () => {
+    if (pending) return
+    if (!(await hasNewVersion())) return
+    if (document.visibilityState === 'hidden') {
+      window.location.reload()
+    } else {
+      pending = true
+    }
+  }
+
+  setInterval(check, CHECK_INTERVAL_MS)
+
+  document.addEventListener('visibilitychange', () => {
+    if (pending && document.visibilityState === 'hidden') window.location.reload()
+  })
+}
