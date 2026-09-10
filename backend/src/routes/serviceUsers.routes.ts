@@ -176,6 +176,9 @@ router.post('/',
       if (dnar === true && !dnarFormUrl) {
         throw new AppError('DNAR form upload is required when Do Not Resuscitate is selected', 400);
       }
+      if (!postcode || !String(postcode).trim()) {
+        throw new AppError('Postcode is required — it sets up the clock-in geofence for this resident', 400);
+      }
 
       const rows = await query(
         `INSERT INTO service_users (
@@ -268,13 +271,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         bathDirections: 'bath_directions', bathPreferredProducts: 'bath_preferred_products',
         mealFrequency: 'meal_frequency', eatDirections: 'eat_directions',
         eatTeamPreference: 'eat_team_preference',
+        geofenceRadius: 'geofence_radius',
       };
 
       const updates: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
 
-      const numericFields = new Set(['heightCm', 'weightKg', 'minFluidMl']);
+      const numericFields = new Set(['heightCm', 'weightKg', 'minFluidMl', 'geofenceRadius']);
       const dateFields = new Set([
         'dateOfBirth', 'admissionDate', 'annualHealthDate', 'gpReviewDate',
         'mentalHealthDate', 'dentistDate', 'carePlanLiveDate',
@@ -306,6 +310,17 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         values
       );
       if (!rows.length) throw new AppError('Service user not found', 404);
+      // Postcode changed — re-geocode so the clock-in geofence tracks the new
+      // address (POST does this on create; edits need the same refresh, or an
+      // admin correcting a typo'd postcode would silently leave the old GPS point).
+      if (req.body.postcode) {
+        const gps = await lookupPostcodeGPS(req.body.postcode);
+        if (gps) {
+          await query('UPDATE service_users SET latitude=$1, longitude=$2 WHERE id=$3', [gps.lat, gps.lng, req.params.id]);
+          (rows[0] as any).latitude = gps.lat;
+          (rows[0] as any).longitude = gps.lng;
+        }
+      }
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

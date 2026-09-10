@@ -48,6 +48,10 @@ export default function AddServiceUser() {
       toast.error('Please fill in first name, last name, date of birth and home')
       return
     }
+    if (!form.postcode.trim()) {
+      toast.error('Postcode is required — it sets up the clock-in geofence for this resident')
+      return
+    }
     if (form.dnar === true && !form.dnarFormUrl) {
       toast.error('DNAR form URL is required when Do Not Resuscitate is selected')
       return
@@ -122,7 +126,7 @@ export default function AddServiceUser() {
             <Input label="Address line 1" value={form.address1} onChange={e => set('address1', e.target.value)} className="md:col-span-2" />
             <Input label="Address line 2" value={form.address2} onChange={e => set('address2', e.target.value)} />
             <div>
-              <Input label="Postcode" value={form.postcode} onChange={e => set('postcode', e.target.value)} hint="Automatically sets the clock-in geofence — staff must be near this postcode to clock in" />
+              <Input label="Postcode *" required value={form.postcode} onChange={e => set('postcode', e.target.value)} hint="Required — automatically sets the clock-in geofence so staff must be near this address to clock in" />
             </div>
           </div>
         </Card>

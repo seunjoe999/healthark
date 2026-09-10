@@ -59,6 +59,7 @@ function normalise(su: any) {
     address1: su.address1 || '',
     address2: su.address2 || '',
     postcode: su.postcode || '',
+    geofenceRadius: su.geofence_radius || su.geofenceRadius || '',
     phone: su.phone || '',
     email: su.email || '',
     needToKnow: su.need_to_know || su.needToKnow || '',
@@ -143,6 +144,10 @@ export default function EditServiceUser() {
     if (!id || !form) return
     if (form.religion === 'other' && !form.religionOther?.trim()) {
       toast.error('Please specify the religion / faith')
+      return
+    }
+    if (!form.postcode?.trim()) {
+      toast.error('Postcode is required — it sets up the clock-in geofence for this resident')
       return
     }
     setSaving(true)
@@ -253,7 +258,10 @@ export default function EditServiceUser() {
             <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             <Input label="Address line 1" value={form.address1} onChange={e => set('address1', e.target.value)} className="md:col-span-2" />
             <Input label="Address line 2" value={form.address2} onChange={e => set('address2', e.target.value)} />
-            <Input label="Postcode" value={form.postcode} onChange={e => set('postcode', e.target.value)} />
+            <Input label="Postcode *" required value={form.postcode} onChange={e => set('postcode', e.target.value)}
+              hint="Required — sets the clock-in geofence for this resident" />
+            <Input label="Clock-in radius (metres)" type="number" value={form.geofenceRadius} onChange={e => set('geofenceRadius', e.target.value)}
+              placeholder="200" hint="How close staff must be to this postcode to clock in — defaults to 200m" />
           </div>
         </div>
       )}
