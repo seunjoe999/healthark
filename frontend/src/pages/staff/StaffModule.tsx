@@ -900,7 +900,7 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
   const [form, setForm] = React.useState({ leaveType: 'annual', startDate: '', endDate: '', hoursPerDay: '', notes: '' })
   const [loading, setLoading] = React.useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
-  const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity leave' }, { value: 'paternity', label: 'Paternity leave' }, { value: 'unpaid', label: 'Unpaid leave' }, { value: 'other', label: 'Other' }]
+  const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'maternity', label: 'Maternity leave' }, { value: 'paternity', label: 'Paternity leave' }, { value: 'unpaid', label: 'Unpaid leave' }, { value: 'other', label: 'Other' }]
 
   const minAnnualDate = React.useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() + 28)
