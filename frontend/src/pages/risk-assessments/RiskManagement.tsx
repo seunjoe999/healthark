@@ -54,12 +54,26 @@ function RiskBadge({ level }: { level: string }) {
   )
 }
 
+// Card-styled field, matching Care Plans' GoldSection pattern — a bordered
+// box with a bold label and dark, readable body text instead of faint gray.
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{value}</p>
+    <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
+      <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-sm font-medium text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
+    </div>
+  )
+}
+
+// "What is the risk" gets its own green, bold treatment per request — it's
+// the headline fact of the assessment and should read first and clearest.
+function GreenSection({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null
+  return (
+    <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
+      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-sm font-bold text-emerald-800 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
 }
@@ -641,8 +655,8 @@ export default function RiskManagement() {
               </div>
 
               <div className="space-y-3">
+                <GreenSection label="What is the risk" value={ra.description} />
                 {[
-                  { label: 'What is the risk', value: ra.description },
                   { label: 'Who is at risk', value: ra.who_is_at_risk },
                   { label: 'What could happen', value: ra.what_could_happen },
                   { label: 'Risk before intervention', value: ra.risk_before_intervention },

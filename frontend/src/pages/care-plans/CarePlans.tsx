@@ -737,7 +737,7 @@ function TemplateDetail({ plan }: { plan: any }) {
   const sec = (label: string, value: string) => value ? (
     <div className="border border-amber-100 rounded-xl p-4 bg-amber-50/30">
       <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
-      <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
+      <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   ) : null
 
@@ -1992,13 +1992,13 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
                     {prnSections.map(s => (
                       <div key={s.key}>
                         <p className="text-xs font-semibold text-rose-600">{s.label}</p>
-                        <p className="text-sm text-slate-700 whitespace-pre-line">{td[s.key]}</p>
+                        <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{td[s.key]}</p>
                       </div>
                     ))}
                     {plan.prn_protocol && (
                       <div>
                         <p className="text-xs font-semibold text-rose-600">General Notes</p>
-                        <p className="text-sm text-slate-700 whitespace-pre-line">{plan.prn_protocol}</p>
+                        <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{plan.prn_protocol}</p>
                       </div>
                     )}
                   </div>
@@ -2029,7 +2029,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
             <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1">
               <Paperclip className="w-3 h-3" /> Attachments / Document Links
             </p>
-            <p className="text-sm text-slate-700 whitespace-pre-line">{plan.attachments_notes}</p>
+            <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{plan.attachments_notes}</p>
           </div>
         )}
 
@@ -2039,7 +2039,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
             <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3" /> Consent
             </p>
-            <p className="text-sm text-slate-700 whitespace-pre-line">{plan.consent_notes}</p>
+            <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{plan.consent_notes}</p>
             {plan.consent_given && (
               <p className="text-xs text-green-700 font-semibold mt-1">
                 ✓ Consent given{plan.consent_date ? ' on ' + format(new Date(plan.consent_date), 'd MMM yyyy') : ''}
@@ -2130,7 +2130,7 @@ function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-sm text-slate-700 whitespace-pre-line">{value}</p>
+      <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
 }
@@ -2140,7 +2140,7 @@ function GoldSection({ label, value }: { label: string; value?: string | null })
   return (
     <div className="border border-amber-100 rounded-xl p-4 bg-amber-50/30">
       <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
-      <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
+      <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
 }

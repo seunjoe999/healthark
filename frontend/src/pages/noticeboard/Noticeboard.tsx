@@ -74,11 +74,11 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
         </div>
 
         {/* Title */}
-        <h3 className="font-bold text-slate-900 text-[15px] leading-snug mb-2">{notice.title}</h3>
+        <h3 className={clsx('text-slate-900 text-[15px] leading-snug mb-2', notice.is_pinned ? 'font-extrabold' : 'font-bold')}>{notice.title}</h3>
 
         {/* Body */}
         {notice.body && (
-          <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-3">{notice.body}</p>
+          <p className={clsx('text-sm leading-relaxed line-clamp-3 mb-3', notice.is_pinned ? 'font-semibold text-slate-800' : 'text-slate-600')}>{notice.body}</p>
         )}
 
         {/* Footer */}
@@ -245,7 +245,7 @@ export default function Noticeboard() {
                 <button onClick={() => completeTask(t.id)}
                   className="w-5 h-5 rounded border-2 border-slate-300 hover:border-amber-400 flex-shrink-0 transition-colors" title="Mark complete" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-800 truncate">{t.title}</p>
+                  <p className="text-sm font-bold text-slate-900 truncate">{t.title}</p>
                   {t.su_name && <p className="text-xs text-slate-500">{t.su_name}</p>}
                 </div>
                 {t.due_time && <span className="text-xs text-slate-500 flex-shrink-0">{t.due_time}</span>}

@@ -500,10 +500,10 @@ export default function MedicineRisk() {
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-amber-400" /> Medication Risk Assessment
+          <h1 className="text-xl sm:text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
+            <ShieldAlert className="w-6 h-6" style={{ color: '#e8b130' }} /> MEDICATION RISK ASSESSMENT
           </h1>
-          <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={openNewForm}>New Assessment</Button>
@@ -816,12 +816,27 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
               <Flag active={!!r.crushing_required} label="Crushing required" />
             </div>
 
+            {r.risk_description && (
+              <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
+                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">What is the risk</p>
+                <p className="text-sm font-bold text-emerald-800 whitespace-pre-line leading-relaxed">{r.risk_description}</p>
+              </div>
+            )}
+
+            {(r.who_is_at_risk || r.what_could_happen || r.risk_before_intervention) && (
+              <div className="space-y-3">
+                {r.who_is_at_risk && <InfoRow label="Who is at risk" value={r.who_is_at_risk} />}
+                {r.what_could_happen && <InfoRow label="What could happen" value={r.what_could_happen} />}
+                {r.risk_before_intervention && <InfoRow label="Risk before intervention" value={r.risk_before_intervention} />}
+              </div>
+            )}
+
             <div className="space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
               <InfoRow label="Administration route" value={r.administration_route} />
               <InfoRow label="Swallowing risk" value={r.swallowing_risk !== 'none' ? r.swallowing_risk : null} />
               {r.swallowing_notes && <InfoRow label="Swallowing notes" value={r.swallowing_notes} />}
               {r.self_medicate_notes && <InfoRow label="Self-medicate notes" value={r.self_medicate_notes} />}
-              {r.known_allergies && <div><p className="text-xs text-slate-500 mb-0.5">Known allergies</p><p className="text-rose-300 text-sm">{r.known_allergies}</p></div>}
+              {r.known_allergies && <div><p className="text-xs font-bold text-rose-700 uppercase tracking-wide mb-0.5">Known allergies</p><p className="text-rose-700 text-sm font-bold">{r.known_allergies}</p></div>}
               <InfoRow label="Storage location" value={r.storage_location} />
             </div>
 
