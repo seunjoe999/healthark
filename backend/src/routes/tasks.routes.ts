@@ -203,15 +203,30 @@ router.post('/generate-daily', async (req: Request, res: Response, next: NextFun
       const templateDow = anchor.getDay();
       const now = new Date();
       const monthsSinceAnchor = (now.getFullYear() - anchor.getFullYear()) * 12 + (now.getMonth() - anchor.getMonth());
+      // Whole days between the template's creation date and today, both
+      // normalised to midnight so a same-day time-of-day difference can't
+      // throw off the day-interval frequencies below by one.
+      const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
       let shouldCreate = false;
       if (freq === 'daily') shouldCreate = true;
       else if (freq === 'weekly' && dayOfWeek === templateDow) shouldCreate = true;
       else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldCreate = true;
       else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldCreate = true;
-      // Every 6 months — recurs on the same day-of-month the template was
-      // created, every 6th month from then on (e.g. created 12 Mar -> fires
-      // again 12 Sep, 12 Mar, ...).
+      // Day-interval frequencies — recur every N days from the template's
+      // creation date.
+      else if (freq === 'fortnightly' && daysSinceAnchor >= 0 && daysSinceAnchor % 14 === 0) shouldCreate = true;
+      else if (freq === 'every_3_weeks' && daysSinceAnchor >= 0 && daysSinceAnchor % 21 === 0) shouldCreate = true;
+      else if (freq === 'every_28_days' && daysSinceAnchor >= 0 && daysSinceAnchor % 28 === 0) shouldCreate = true;
+      // Month-interval frequencies — recur on the same day-of-month the
+      // template was created, every N months from then on (e.g. created
+      // 12 Mar monthly -> fires 12 Apr, 12 May, ...; quarterly -> 12 Jun,
+      // 12 Sep, ...; yearly -> 12 Mar next year).
+      else if (freq === 'monthly' && monthsSinceAnchor >= 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
+      else if (freq === 'quarterly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 3 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
       else if (freq === 'every_6_months' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 6 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
+      else if (freq === 'yearly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 12 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
       
       if (shouldCreate) {
         await query(
