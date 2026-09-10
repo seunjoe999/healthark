@@ -19,6 +19,13 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
+const LEAVE_MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer'];
+function requireLeaveManager(req: Request) {
+  if (!LEAVE_MANAGER_ROLES.includes(fromToken(req, 'role'))) {
+    throw new AppError('Not authorised to manage leave requests', 403);
+  }
+}
+
 // ── Leave management ──────────────────────────────────────────────
 router.get('/leave', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -276,7 +283,8 @@ router.get('/leave/all', async (req: Request, res: Response, next: NextFunction)
     const decoded = token ? jwt.decode(token) as any : {};
     const homeId = (req.query.homeId as string) || decoded?.homeId || '';
     const { from, to, staffId, orderBy } = req.query as Record<string, string>;
-    let sql = `SELECT lr.*, s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role
+    let sql = `SELECT lr.*, s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role,
+                      s.leave_hours_total, s.leave_hours_remaining
                FROM staff_leave lr JOIN staff s ON s.id = lr.staff_id
                WHERE s.home_id = $1`;
     const params: unknown[] = [homeId];
@@ -293,12 +301,14 @@ router.get('/leave/all', async (req: Request, res: Response, next: NextFunction)
 router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      requireLeaveManager(req);
       const token = req.headers.authorization?.substring(7);
       const decoded = token ? jwt.decode(token) as any : {};
       const managerId = decoded?.staffId;
       const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
       if (!rows.length) throw new AppError('Leave not found', 404);
       const leave = rows[0];
+      if (leave.status === 'approved') throw new AppError('This leave is already approved', 400);
       await query('UPDATE staff_leave SET status=$1, approved_by=$2, approved_at=NOW() WHERE id=$3',
         ['approved', managerId, req.params.id]);
       // Calculate hours if not explicitly stored — count weekdays × 7.5h
@@ -332,14 +342,37 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
 router.put('/leave/:id/decline', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      requireLeaveManager(req);
+      const { reason } = req.body;
       const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
       if (!rows.length) throw new AppError('Leave not found', 404);
       const leave = rows[0];
-      await query('UPDATE staff_leave SET status=$1 WHERE id=$2', ['declined', req.params.id]);
+      // Once approved (and hours already deducted), it's locked — a manager
+      // must not be able to silently reverse the decision from here.
+      if (leave.status === 'approved') throw new AppError('Approved leave cannot be declined', 400);
+      await query('UPDATE staff_leave SET status=$1, decline_reason=$2 WHERE id=$3', ['declined', reason || null, req.params.id]);
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-        VALUES ($1,$2,'Leave request declined','Your leave request has been declined. Please speak to your manager.','warning','/holidays')`,
-        [leave.staff_id, leave.home_id]);
+        VALUES ($1,$2,'Leave request declined',$3,'warning','/holidays')`,
+        [leave.staff_id, leave.home_id,
+         reason ? `Your leave request has been declined: ${reason}` : 'Your leave request has been declined. Please speak to your manager.']);
       res.json({ success: true, message: 'Leave declined' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// DELETE /api/staff-hr/leave/:id — remove a leave request entirely. Locked
+// once approved: an approved leave has already deducted hours from the
+// staff member's entitlement, so deleting it here would silently orphan
+// that deduction with no record of why the balance changed.
+router.delete('/leave/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      requireLeaveManager(req);
+      const rows = await query<any>('SELECT * FROM staff_leave WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Leave not found', 404);
+      if (rows[0].status === 'approved') throw new AppError('Approved leave cannot be deleted', 400);
+      await query('DELETE FROM staff_leave WHERE id = $1', [req.params.id]);
+      res.json({ success: true, message: 'Leave request deleted' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

@@ -4,7 +4,7 @@ import { homesApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
-import { CalendarDays, Plus, Check, X, ChevronLeft, ChevronRight, Clock, ListFilter } from 'lucide-react'
+import { CalendarDays, Plus, Check, X, ChevronLeft, ChevronRight, Clock, ListFilter, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const LEAVE_TYPES = [
@@ -31,6 +31,8 @@ export default function Holidays() {
   const [preview, setPreview] = useState<any>(null)
   const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('all')
   const [myBalance, setMyBalance] = useState<{ total: number; remaining: number } | null>(null)
+  const [declineTarget, setDeclineTarget] = useState<any>(null)
+  const [declineReason, setDeclineReason] = useState('')
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -91,15 +93,31 @@ export default function Holidays() {
       await api.put(`/staff-hr/leave/${id}/approve`)
       await Promise.all([load(), loadAllRequests()])
       toast.success('Leave approved')
-    } catch { toast.error('Failed') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
   }
 
-  const decline = async (id: string) => {
+  // Decline requires a reason — opens a small modal instead of firing
+  // immediately (see declineTarget/declineReason state + submitDecline below).
+  const submitDecline = async () => {
+    if (!declineTarget) return
     try {
-      await api.put(`/staff-hr/leave/${id}/decline`)
+      await api.put(`/staff-hr/leave/${declineTarget.id}/decline`, { reason: declineReason.trim() || undefined })
       await Promise.all([load(), loadAllRequests()])
       toast.success('Leave declined')
-    } catch { toast.error('Failed') }
+      setDeclineTarget(null)
+      setDeclineReason('')
+      setPreview(null)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+  }
+
+  const deleteLeave = async (id: string) => {
+    if (!window.confirm('Delete this leave request? This cannot be undone.')) return
+    try {
+      await api.delete(`/staff-hr/leave/${id}`)
+      await Promise.all([load(), loadAllRequests()])
+      toast.success('Leave request deleted')
+      setPreview(null)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete') }
   }
 
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) })
@@ -225,7 +243,14 @@ export default function Holidays() {
                             {l.hours_requested ? ` · ${l.hours_requested}h` : ''}
                           </p>
                           {l.reason && <p className="text-xs text-slate-400 italic mt-1 truncate">{l.reason}</p>}
+                          {l.status === 'declined' && l.decline_reason && <p className="text-xs text-rose-500 italic mt-1 truncate">Declined: {l.decline_reason}</p>}
                           <p className="text-xs text-slate-300 mt-1">Applied {l.created_at ? format(parseISO(l.created_at), 'd MMM yyyy, HH:mm') : '—'}</p>
+                          {isRole('home_manager', 'group_admin', 'senior_carer') && l.leave_hours_total != null && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              Balance: <strong>{l.leave_hours_remaining ?? l.leave_hours_total}h</strong> / {l.leave_hours_total}h remaining
+                              {' · '}{allLeaves.filter(x => x.staff_id === l.staff_id && x.status === 'approved').length} approved to date
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -235,7 +260,7 @@ export default function Holidays() {
                               className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
                               <Check className="w-3.5 h-3.5" /> Approve
                             </button>
-                            <button onClick={() => decline(l.id)}
+                            <button onClick={() => { setDeclineTarget(l); setDeclineReason('') }}
                               className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                               <X className="w-3.5 h-3.5" /> Decline
                             </button>
@@ -243,6 +268,12 @@ export default function Holidays() {
                         )}
                         {l.status !== 'pending' && (
                           <span className={`badge ${badge}`}>{status}</span>
+                        )}
+                        {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                          <button onClick={() => deleteLeave(l.id)} title="Delete this leave request"
+                            className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
                     </div>
@@ -334,6 +365,12 @@ export default function Holidays() {
                   <p className="text-sm text-slate-500 capitalize">{(l.leave_type || '').replace('_', ' ')} · {l.start_date ? format(parseISO(l.start_date), 'd MMM') : ''} – {l.end_date ? format(parseISO(l.end_date), 'd MMM yyyy') : ''}</p>
                   {l.total_hours && <p className="text-xs text-slate-400">{l.total_hours} hours</p>}
                   {l.notes && <p className="text-xs text-slate-400 italic mt-0.5">{l.notes}</p>}
+                  {l.status === 'declined' && l.decline_reason && <p className="text-xs text-rose-500 italic mt-0.5">Declined: {l.decline_reason}</p>}
+                  {isRole('home_manager', 'group_admin', 'senior_carer') && l.leave_hours_total != null && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Balance: <strong>{l.leave_hours_remaining ?? l.leave_hours_total}h</strong> / {l.leave_hours_total}h remaining
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -346,11 +383,17 @@ export default function Holidays() {
                       className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
                       <Check className="w-3.5 h-3.5" /> Approve
                     </button>
-                    <button onClick={() => decline(l.id)}
+                    <button onClick={() => { setDeclineTarget(l); setDeclineReason('') }}
                       className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                       <X className="w-3.5 h-3.5" /> Decline
                     </button>
                   </>
+                )}
+                {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                  <button onClick={() => deleteLeave(l.id)} title="Delete this leave request"
+                    className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
             </div>
@@ -377,18 +420,74 @@ export default function Holidays() {
               {preview.approved_by_name && <div><p className="text-xs text-slate-400">Approved by</p><p className="font-medium text-slate-800">{preview.approved_by_name}</p></div>}
             </div>
             {preview.notes && <div><p className="text-xs text-slate-400 mb-1">Reason / notes</p><p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{preview.notes}</p></div>}
+            {preview.status === 'declined' && preview.decline_reason && (
+              <div><p className="text-xs text-slate-400 mb-1">Decline reason</p><p className="text-sm text-rose-700 bg-rose-50 rounded-lg p-3">{preview.decline_reason}</p></div>
+            )}
+
+            {isRole('home_manager', 'group_admin', 'senior_carer') && preview.leave_hours_total != null && (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-400 mb-1">Annual leave balance</p>
+                <p className="text-sm font-semibold text-slate-800">{preview.leave_hours_remaining ?? preview.leave_hours_total}h remaining of {preview.leave_hours_total}h</p>
+              </div>
+            )}
+
+            {isRole('home_manager', 'group_admin', 'senior_carer') && (() => {
+              const approvedForStaff = allLeaves.filter(x => x.staff_id === preview.staff_id && x.status === 'approved' && x.id !== preview.id)
+              if (!approvedForStaff.length) return null
+              return (
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Previously approved leave ({approvedForStaff.length})</p>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {approvedForStaff.map((a: any) => (
+                      <div key={a.id} className="text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2 flex items-center justify-between">
+                        <span className="capitalize">{(a.leave_type || '').replace('_', ' ')} · {a.start_date ? format(parseISO(a.start_date), 'd MMM') : ''} – {a.end_date ? format(parseISO(a.end_date), 'd MMM yyyy') : ''}</span>
+                        {a.hours_requested && <span className="font-semibold">{a.hours_requested}h</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
             {preview.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
               <div className="flex gap-2 pt-2">
                 <button onClick={async () => { await approve(preview.id); setPreview(null) }}
                   className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600">
                   Approve
                 </button>
-                <button onClick={async () => { await decline(preview.id); setPreview(null) }}
+                <button onClick={() => { setDeclineTarget(preview); setDeclineReason('') }}
                   className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600">
                   Decline
                 </button>
               </div>
             )}
+            {preview.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+              <button onClick={() => deleteLeave(preview.id)}
+                className="w-full py-2 flex items-center justify-center gap-1.5 text-rose-500 rounded-xl text-sm font-semibold hover:bg-rose-50 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" /> Delete this request
+              </button>
+            )}
+            {preview.status === 'approved' && (
+              <p className="text-xs text-slate-400 text-center italic">Approved leave is locked and cannot be cancelled or deleted.</p>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Decline reason modal */}
+      <Modal open={!!declineTarget} onClose={() => setDeclineTarget(null)} title="Decline leave request" size="sm">
+        {declineTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Declining <strong>{declineTarget.staff_name}</strong>'s {(declineTarget.leave_type || '').replace('_', ' ')} request.</p>
+            <div>
+              <label className="label">Reason (shown to the staff member)</label>
+              <textarea className="input" rows={3} value={declineReason} onChange={e => setDeclineReason(e.target.value)}
+                placeholder="Explain why this request is being declined..." />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={() => setDeclineTarget(null)}>Cancel</Button>
+              <Button variant="danger" onClick={submitDecline}>Decline request</Button>
+            </div>
           </div>
         )}
       </Modal>
