@@ -41,13 +41,19 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
   const cfg = catConfig[notice.category] || catConfig.general
   const categoryLabel = CATEGORIES.find(c => c.value === notice.category)?.label || notice.category
 
+  const pinnedDarkStyle = isDark ? {
+    background: 'linear-gradient(135deg, rgba(212,150,26,0.22) 0%, rgba(212,150,26,0.08) 100%)',
+    borderColor: 'rgba(232,177,48,0.4)',
+  } : undefined
+
   return (
     <div
       onClick={() => !notice.is_read && onRead(notice.id)}
+      style={notice.is_pinned ? pinnedDarkStyle : undefined}
       className={clsx(
         'relative rounded-xl border shadow-sm transition-all cursor-pointer group',
         notice.is_pinned
-          ? (isDark ? 'border-amber-500/40 bg-amber-500/10' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white')
+          ? (isDark ? '' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white')
           : 'border-slate-100 bg-white hover:border-slate-200',
         !notice.is_read && !notice.is_pinned && 'border-l-2 border-l-amber-400',
       )}
@@ -64,8 +70,8 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
             {cfg.icon} {categoryLabel}
           </span>
           {notice.is_pinned && (
-            <span className={clsx('inline-flex items-center gap-1 text-xs font-bold', isDark ? 'text-amber-300' : 'text-amber-400')}>
-              <Pin className="w-3 h-3" /> Pinned
+            <span className="inline-flex items-center gap-1 text-xs font-bold" style={isDark ? { color: '#e8b130' } : undefined}>
+              <Pin className="w-3 h-3" style={isDark ? { color: '#e8b130' } : undefined} /> Pinned
             </span>
           )}
           {notice.is_read && (
@@ -79,7 +85,7 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
         <h3 className={clsx(
           'text-[15px] leading-snug mb-2',
           notice.is_pinned ? 'font-extrabold' : 'font-bold',
-          notice.is_pinned && isDark ? 'text-amber-100' : 'text-slate-900',
+          notice.is_pinned ? (isDark ? 'text-white' : 'text-slate-900') : 'text-slate-900',
         )}>{notice.title}</h3>
 
         {/* Body */}
@@ -87,7 +93,7 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
           <p className={clsx(
             'text-sm leading-relaxed line-clamp-3 mb-3',
             notice.is_pinned ? 'font-semibold' : 'text-slate-600',
-            notice.is_pinned && (isDark ? 'text-amber-50/90' : 'text-slate-800'),
+            notice.is_pinned && (isDark ? 'text-slate-100' : 'text-slate-800'),
           )}>{notice.body}</p>
         )}
 
@@ -238,12 +244,16 @@ export default function Noticeboard() {
       </div>
 
       {/* Today's Tasks — always shown here, not collapsible, not tucked under a menu */}
-      <div className={clsx('rounded-xl border p-4 mb-5', theme === 'dark' ? 'border-amber-500/30 bg-amber-500/10' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-white')}>
+      <div className={clsx('rounded-xl border p-4 mb-5', theme === 'dark' ? '' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-white')}
+        style={theme === 'dark' ? { background: 'linear-gradient(135deg, rgba(212,150,26,0.22) 0%, rgba(212,150,26,0.08) 100%)', borderColor: 'rgba(232,177,48,0.4)' } : undefined}>
         <div className="flex items-center gap-2 mb-3">
-          <CheckSquare className={clsx('w-4 h-4', theme === 'dark' ? 'text-amber-300' : 'text-amber-500')} />
-          <p className={clsx('font-bold text-sm', theme === 'dark' ? 'text-amber-100' : 'text-slate-900')}>Today's Tasks</p>
+          <CheckSquare className="w-4 h-4" style={theme === 'dark' ? { color: '#e8b130' } : { color: '#f59e0b' }} />
+          <p className="font-bold text-sm" style={theme === 'dark' ? { color: '#ffffff' } : { color: '#0f172a' }}>Today's Tasks</p>
           {todaysTasks.length > 0 && (
-            <span className={clsx('text-xs px-2 py-0.5 rounded-full font-semibold', theme === 'dark' ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-100 text-amber-700')}>{todaysTasks.length} pending</span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+              style={theme === 'dark' ? { background: 'rgba(232,177,48,0.25)', color: '#e8b130' } : { background: '#fef3c7', color: '#b45309' }}>
+              {todaysTasks.length} pending
+            </span>
           )}
         </div>
         {todaysTasks.length === 0 ? (
