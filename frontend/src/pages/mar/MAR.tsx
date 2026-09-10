@@ -76,9 +76,11 @@ export default function MAR() {
   const [stockData, setStockData] = useState<any[]>([])
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review'>(
-    () => (new URLSearchParams(window.location.search).get('tab') as any) || 'mar'
-  )
+  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review'>(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab')
+    if (requested === 'mar_review' && !isRole('group_admin') && user?.featureFlags?.mar_review === false) return 'mar'
+    return (requested as any) || 'mar'
+  })
   const [marReviews, setMarReviews] = useState<any[]>([])
   const [addMedOpen, setAddMedOpen] = useState(false)
   const [editMedModal, setEditMedModal] = useState<any>(null)
@@ -293,7 +295,7 @@ export default function MAR() {
               { key: 'stock', label: 'Stock Count' },
               { key: 'gp_pharmacy', label: 'GP & Pharmacy' },
               { key: 'mar_review', label: 'MAR Review' },
-            ].map(t => (
+            ].filter(t => t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false).map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
                 className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                 {t.label}

@@ -156,7 +156,7 @@ export default function Tasks() {
   const loadTodaysAppointments = async () => {
     try {
       const res = await api.get('/calendar', { params: { homeId: selectedHome, from: today, to: today } })
-      setTodaysAppointments((res.data.data || []).filter((e: any) => e.event_type === 'appointment'))
+      setTodaysAppointments((res.data.data || []).filter((e: any) => ['appointment', 'review', 'inspection'].includes(e.event_type)))
     } catch (e) { console.error(e) }
   }
 

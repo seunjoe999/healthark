@@ -84,7 +84,7 @@ export default function StaffDashboard() {
         setClockedIn(!!v(clockStatusR)?.data.data?.clockedIn)
         const qrToken = v(homeQrR)?.data.data?.qrToken
         setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
-        setTodaysAppointments((v(calendarR)?.data.data || []).filter((e: any) => e.event_type === 'appointment'))
+        setTodaysAppointments((v(calendarR)?.data.data || []).filter((e: any) => ['appointment', 'review', 'inspection'].includes(e.event_type)))
       } finally {
         setLoading(false)
       }
