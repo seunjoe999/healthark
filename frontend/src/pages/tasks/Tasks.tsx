@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, X as XIcon } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
@@ -348,18 +348,17 @@ export default function Tasks() {
             )}
           </div>
 
-          {/* Search by resident — narrows the list down to one service user, for both management and staff */}
+          {/* Filter by resident — narrows the list down to one service user, for both management and staff */}
           <div className="relative mb-5">
-            <Search className="w-4 h-4 text-slate-300 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input type="text" value={residentSearch} onChange={e => setResidentSearch(e.target.value)}
-              placeholder="Search by resident name..."
-              className="input pl-10 pr-9 w-full" />
-            {residentSearch && (
-              <button type="button" onClick={() => setResidentSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
-                <XIcon className="w-4 h-4" />
-              </button>
-            )}
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+            <select value={residentSearch} onChange={e => setResidentSearch(e.target.value)}
+              className="input pl-10 w-full font-medium text-slate-700 appearance-none">
+              <option value="">All service users</option>
+              {sus.map((s: any) => {
+                const name = `${s.first_name || s.firstName} ${s.last_name || s.lastName}`
+                return <option key={s.id} value={name}>{name}</option>
+              })}
+            </select>
           </div>
 
           {loading ? <Spinner /> : filtered.length === 0 ? (
@@ -372,7 +371,7 @@ export default function Tasks() {
                 <div key={task.id} className={`rounded-2xl border shadow-card p-5 flex items-start gap-4 ${
                   task.status === 'completed' ? 'bg-white border-emerald-200 opacity-70'
                   : task.category === 'follow_up' ? 'bg-blue-50/60 border-blue-200'
-                  : 'bg-white border-slate-100'
+                  : 'bg-amber-50/70 border-amber-200'
                 }`}>
                   <button onClick={() => task.status !== 'completed' && setCompletingTask(task)}
                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-purple-500'}`}>
@@ -396,13 +395,13 @@ export default function Tasks() {
                       {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
                       {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">Visible to: All staff</span>}
                     </div>
-                    {task.description && <p className="text-xs text-slate-500 mt-2 leading-relaxed">{task.description}</p>}
-                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
+                    {task.description && <p className="text-xs text-slate-700 font-medium mt-2 leading-relaxed">{task.description}</p>}
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-600 font-semibold">
                       {task.due_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{task.due_time}</span>}
                       <span className="capitalize">{(task.category || '').replace('_', ' ')}</span>
                       {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 font-medium flex items-center gap-0.5"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
                     </div>
-                    {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-500 italic mt-2 block">Note: {task.completion_notes}</span>}
+                    {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-600 font-medium italic mt-2 block">Note: {task.completion_notes}</span>}
                   </div>
                   {isRole(...TASK_CREATOR_ROLES) && task.category !== 'follow_up' && (
                     <button onClick={() => setEditTaskOpen(task)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors flex-shrink-0">
@@ -437,8 +436,8 @@ export default function Tasks() {
                       <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full capitalize">{(tmpl.category || '').replace('_', ' ')}</span>
                       <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full capitalize">{(tmpl.frequency || '').replace('_', ' ')}</span>
                     </div>
-                    {tmpl.description && <p className="text-xs text-slate-500 mt-2 leading-relaxed">{tmpl.description}</p>}
-                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
+                    {tmpl.description && <p className="text-xs text-slate-700 font-medium mt-2 leading-relaxed">{tmpl.description}</p>}
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-600 font-semibold">
                       {tmpl.due_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{tmpl.due_time}</span>}
                       <span>Visible to: {
                         tmpl.visible_team_ids && tmpl.visible_team_ids.length > 0

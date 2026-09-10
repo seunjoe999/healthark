@@ -193,7 +193,7 @@ export default function ClockIn() {
                   </p>
                 )}
               </div>
-              <button onClick={() => setState('confirming')}
+              <button onClick={() => navigate('/dashboard')}
                 className="w-full py-3 rounded-xl text-sm font-semibold text-slate-400 border border-white/10 hover:bg-white/5 transition-colors">
                 Done
               </button>

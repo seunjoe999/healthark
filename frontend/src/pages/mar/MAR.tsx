@@ -154,8 +154,11 @@ export default function MAR() {
   const su = chartData?.serviceUser || selectedSu
   const suInitials = su ? `${(su.first_name || su.firstName || '?')[0]}${(su.last_name || su.lastName || '?')[0]}` : '?'
 
-  // Care staff / senior carers see medication as a simple task list, not the full MAR grid/history
-  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  // Care staff / senior carers see medication as a simple task list, not the full MAR grid/history.
+  // Matches the management-role set used elsewhere in the app (e.g. task creation, quality gates) —
+  // this used to be a narrower 4-role list that also silently blocked Registered/Service Managers
+  // and Directors from ever reaching the MAR Review tab.
+  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
   if (!isPrivilegedMar) {
     return <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
   }

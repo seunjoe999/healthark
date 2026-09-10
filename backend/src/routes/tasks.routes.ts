@@ -45,7 +45,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        LEFT JOIN staff s ON s.id = t.completed_by
        LEFT JOIN staff a ON a.id = t.assigned_staff_id
        WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))
-       ORDER BY t.due_time, t.priority DESC`;
+       ORDER BY t.due_time NULLS LAST,
+         CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
     let rows = await query<any>(sql, [homeId, date]);
 
     if (!isPrivileged) {
