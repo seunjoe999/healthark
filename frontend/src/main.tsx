@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import './styles/print.css'
+import { installChunkErrorReload } from './utils/versionCheck'
+
+installChunkErrorReload()
 
 class GlobalBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }

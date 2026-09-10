@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { authApi } from '../api'
 import { AuthUser } from '../types'
+import { reloadIfNewVersion } from '../utils/versionCheck'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -212,6 +213,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSession(accessToken, authUser)
     setUser(authUser)
     checkForAppUpdate()
+    // A fresh login is always a safe moment to reload — there's nothing
+    // in-progress to lose — so it's the one place an update applies silently
+    // and automatically rather than just prompting.
+    reloadIfNewVersion()
   }
 
   const loginWithPin = async (email: string, pin: string) => {
@@ -221,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSession(accessToken, authUser)
     setUser(authUser)
     checkForAppUpdate()
+    reloadIfNewVersion()
   }
 
   const logout = () => {
