@@ -60,7 +60,7 @@ export default function ClockIn() {
           if (data.success) {
             setResult(data.data)
             setState('success')
-          } else if (res.status === 403 && data.reason !== 'medication_incomplete') {
+          } else if (res.status === 403 && typeof data.distanceMetres === 'number') {
             setResult(data)
             setState('too_far')
           } else {

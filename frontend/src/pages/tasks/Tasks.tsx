@@ -114,7 +114,9 @@ export default function Tasks() {
   const [editTemplateOpen, setEditTemplateOpen] = useState<any>(null)
   const [editTaskOpen, setEditTaskOpen] = useState<any>(null)
   const [residentSearch, setResidentSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('pending')
+  // Defaults to "all" so a task you just completed stays visible (marked
+  // done) instead of vanishing the instant it leaves the pending filter.
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [pageTab, setPageTab] = useState<'tasks' | 'templates' | 'medication'>('tasks')
   const [sus, setSus] = useState<any[]>([])
   const [generatingDaily, setGeneratingDaily] = useState(false)
@@ -324,10 +326,11 @@ export default function Tasks() {
 
           {/* Medication Count — mandatory at the start of shift, surfaced here so it can't be missed */}
           {stockCount && !stockCount.done && (
-            <a href="/mar?tab=stock" className="block bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-5 hover:bg-rose-100 transition-colors">
+            <a href="/medication-stock" className="block bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-5 hover:bg-rose-100 transition-colors">
               <p className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Pill className="w-3.5 h-3.5" /> Medication Count — do this at the start of your shift
+                <Pill className="w-3.5 h-3.5" /> Medication Count
               </p>
+              <p className="text-sm text-rose-800 mt-1.5 font-medium">Do this at the start of your shift.</p>
               <p className="text-sm text-rose-800 mt-1 font-medium">{stockCount.counted}/{stockCount.total} residents counted today — tap to complete</p>
             </a>
           )}

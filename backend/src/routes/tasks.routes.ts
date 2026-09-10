@@ -44,10 +44,29 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
        LEFT JOIN staff a ON a.id = t.assigned_staff_id
-       WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))
-       ORDER BY t.due_time NULLS LAST,
-         CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
+       WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))`;
     let rows = await query<any>(sql, [homeId, date]);
+
+    // Agenda-style sort: what's coming up next leads the list, not whatever
+    // happens to be earliest in the day. A resident with hourly overnight
+    // "Comfort Check" tasks (00:00, 01:00, 02:00...) would otherwise always
+    // bury the 8am task under a wall of already-passed midnight entries —
+    // tasks due at/after the current time sort first (soonest first), tasks
+    // already due today follow (oldest-passed first), untimed tasks last.
+    const nowHHMM = new Date().toTimeString().slice(0, 5);
+    const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+    rows.sort((a: any, b: any) => {
+      const aHasTime = !!a.due_time, bHasTime = !!b.due_time;
+      if (aHasTime && bHasTime) {
+        const aUpcoming = a.due_time >= nowHHMM, bUpcoming = b.due_time >= nowHHMM;
+        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+        if (a.due_time !== b.due_time) return a.due_time < b.due_time ? -1 : 1;
+      } else if (aHasTime !== bHasTime) {
+        return aHasTime ? -1 : 1;
+      }
+      const ap = priorityRank[a.priority] ?? 4, bp = priorityRank[b.priority] ?? 4;
+      return ap - bp;
+    });
 
     if (!isPrivileged) {
       let myTeamId: string | null = null;

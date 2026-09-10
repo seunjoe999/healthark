@@ -157,6 +157,25 @@ router.post('/event', authenticate,
         return res.status(400).json({ success: false, error: 'You are already clocked in.' });
       }
 
+      // A staff member can belong to — and clock in at — multiple services
+      // (homes), but only where their rota actually has them working today.
+      // Clocking in isn't gated by which service the QR happens to be for;
+      // it's gated by whether today's rota puts them there at all.
+      if (eventType !== 'clock_out') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const shiftRows = await query<any>(
+          `SELECT id FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3 LIMIT 1`,
+          [staffId, homeId, todayStr]
+        );
+        if (!shiftRows.length) {
+          return res.status(403).json({
+            success: false,
+            reason: 'no_shift_today',
+            error: 'You have no shift scheduled here today — check the rota or ask your manager if this looks wrong.',
+          });
+        }
+      }
+
       // Medication due during this shift must be signed off before clocking out — a
       // resident's medication silently going unrecorded because a shift ended is a
       // real safety gap, not just a missed task. Only counts medication whose scheduled

@@ -196,9 +196,12 @@ export default function StaffDashboard() {
         ) : (
           <div>
             {stockCount && !stockCount.done && (
-              <Link to="/mar?tab=stock" className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0 bg-rose-50 hover:bg-rose-100 transition-colors">
+              <Link to="/medication-stock" className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0 bg-rose-50 hover:bg-rose-100 transition-colors">
                 <Pill className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
-                <p className="text-sm text-rose-800 font-semibold flex-1">Medication Count — do this at the start of your shift ({stockCount.counted}/{stockCount.total} residents counted)</p>
+                <div className="flex-1">
+                  <p className="text-sm text-rose-800 font-semibold">Medication Count</p>
+                  <p className="text-xs text-rose-700 mt-0.5">Do this at the start of your shift. {stockCount.counted}/{stockCount.total} residents counted.</p>
+                </div>
                 <ArrowRight className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
               </Link>
             )}
