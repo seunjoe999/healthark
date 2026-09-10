@@ -6,13 +6,24 @@ import { Spinner } from '../../components/ui'
 import { Key, Check, X, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// Every role that can actually be assigned to a staff member (see
+// staff.routes.ts's create/edit role validators) must be listed here, or
+// that role can never be given any feature access at all. super_admin is
+// deliberately excluded — it's never creatable through the app itself.
 const ROLES = [
-  { value: 'care_staff',     label: 'Care Staff',      color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  { value: 'team_leader',    label: 'Team Leader',     color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { value: 'admin',          label: 'Admin',           color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  { value: 'deputy_manager', label: 'Deputy Manager',  color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { value: 'home_manager',   label: 'Manager',         color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  { value: 'group_admin',    label: 'Director',        color: 'bg-rose-100 text-rose-700 border-rose-200' },
+  { value: 'care_staff',        label: 'Care Staff',           color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { value: 'senior_carer',      label: 'Senior Carer',         color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  { value: 'team_leader',       label: 'Team Leader',          color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'supervisor',        label: 'Supervisor',           color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+  { value: 'deputy_manager',    label: 'Deputy Manager',       color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'home_manager',      label: 'Manager',              color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { value: 'registered_manager',label: 'Registered Manager',   color: 'bg-orange-100 text-orange-800 border-orange-200' },
+  { value: 'service_manager',   label: 'Service Manager',      color: 'bg-lime-100 text-lime-700 border-lime-200' },
+  { value: 'admin',             label: 'Admin',                color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { value: 'group_admin',       label: 'Director',             color: 'bg-rose-100 text-rose-700 border-rose-200' },
+  { value: 'director',          label: 'Director (Board)',     color: 'bg-rose-100 text-rose-800 border-rose-200' },
+  { value: 'auditor',           label: 'Auditor',              color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  { value: 'recruitment_admin', label: 'Recruitment Admin',    color: 'bg-pink-100 text-pink-700 border-pink-200' },
 ]
 
 const FEATURES = [
@@ -146,6 +157,8 @@ export default function AccessRights() {
 
   const revokeAll = async (role: string) => {
     if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) return
+    const roleLabel = ROLES.find(r => r.value === role)?.label || role
+    if (!window.confirm(`Remove ALL access for ${roleLabel}? Every staff member with this role will immediately lose access to every section of the app (except group_admin, who always keeps full access). This takes effect the next time they load the app.`)) return
     setSaving(`${role}-all`)
     const allOff: Record<string, boolean> = {}
     for (const f of FEATURES) allOff[f.key] = false

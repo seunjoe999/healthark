@@ -41,11 +41,22 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Deletion is locked org-wide until a super_admin role is created — block it
-// client-side too so the user gets an immediate, clear message instead of a
-// generic network error (the server enforces this regardless).
+// Deletion is locked org-wide until a super_admin role is created — the
+// backend enforces this for real (index.ts's global delete lockdown), this
+// is just an early, clearer client-side message. It must check the current
+// session's own role rather than blocking every DELETE unconditionally —
+// once a super_admin account exists and is logged in, deletion should work.
+function currentStaffRole(): string {
+  try {
+    const t = getToken()
+    if (!t) return ''
+    const payload = JSON.parse(atob(t.split('.')[1] || ''))
+    return payload?.role || ''
+  } catch { return '' }
+}
+
 api.interceptors.request.use((config) => {
-  if ((config.method || '').toLowerCase() === 'delete') {
+  if ((config.method || '').toLowerCase() === 'delete' && currentStaffRole() !== 'super_admin') {
     toast.error('Deletion is currently locked for all accounts until a super admin role is set up.')
     return Promise.reject(new Error('Deletion locked'))
   }

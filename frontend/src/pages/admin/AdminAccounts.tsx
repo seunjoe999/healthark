@@ -376,14 +376,21 @@ function RecruitModal({ open, onClose, homeId, editing, onSaved }: {
   )
 }
 
+// Every role staff.routes.ts's create-account validator accepts must be
+// listed here, or that role can never actually be assigned to a new account.
 const ALL_ROLES = [
   { value: 'group_admin', label: 'Group Admin — full access to all homes' },
+  { value: 'director', label: 'Director (Board)' },
   { value: 'admin', label: 'Admin' },
+  { value: 'registered_manager', label: 'Registered Manager' },
   { value: 'home_manager', label: 'Home Manager — manage a single home' },
+  { value: 'service_manager', label: 'Service Manager' },
   { value: 'deputy_manager', label: 'Deputy Manager' },
   { value: 'team_leader', label: 'Team Leader' },
-  { value: 'senior_carer', label: 'Senior Carer / Supervisor' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'senior_carer', label: 'Senior Carer' },
   { value: 'care_staff', label: 'Care Staff' },
+  { value: 'recruitment_admin', label: 'Recruitment Admin' },
   { value: 'auditor', label: 'Auditor — read-only access' },
 ]
 
@@ -471,6 +478,8 @@ export default function AdminAccounts() {
   const [savingPin, setSavingPin] = useState(false)
   const [created, setCreated] = useState<{ email: string; temporaryPassword: string } | null>(null)
   const [accessModal, setAccessModal] = useState<AdminUser | null>(null)
+  const [superAdminOpen, setSuperAdminOpen] = useState(false)
+  const hasSuperAdmin = admins.some(a => a.role === 'super_admin')
 
   const load = async () => {
     setLoading(true)
@@ -570,10 +579,24 @@ export default function AdminAccounts() {
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">Manage all staff accounts — create, view, and delete</p>
         </div>
-        <Button icon={<UserPlus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
-          Create account
-        </Button>
+        <div className="flex gap-2">
+          {!hasSuperAdmin && (
+            <Button variant="outline" icon={<Shield className="w-4 h-4" />} onClick={() => setSuperAdminOpen(true)}>
+              Set up Super Admin
+            </Button>
+          )}
+          <Button icon={<UserPlus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
+            Create account
+          </Button>
+        </div>
       </div>
+
+      {!hasSuperAdmin && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800">
+          <p className="font-semibold mb-0.5">Account deletion is locked</p>
+          <p>Deleting any account or record is disabled everywhere in the app until a Super Admin account exists — this is a deliberate safeguard against accidental deletion. Click "Set up Super Admin" above to create the one account that can perform deletions, then log in as it when you need to delete something.</p>
+        </div>
+      )}
 
       {/* Accounts list */}
       {loading ? (
@@ -645,6 +668,9 @@ export default function AdminAccounts() {
       {/* Create account modal */}
       <AddAdminModal open={addOpen} onClose={() => setAddOpen(false)} homes={homes}
         onCreated={(creds) => { setAddOpen(false); setCreated(creds); load() }} />
+
+      {/* One-time Super Admin bootstrap */}
+      <SuperAdminModal open={superAdminOpen} onClose={() => setSuperAdminOpen(false)} onCreated={() => { setSuperAdminOpen(false); load() }} />
 
       {/* Show credentials */}
       {created && (
@@ -792,7 +818,7 @@ function AddAdminModal({ open, onClose, homes, onCreated }: {
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.firstName || !form.lastName || !form.email) { toast.error('First name, last name and email are required'); return }
-    if (['home_manager', 'deputy_manager', 'team_leader', 'senior_carer', 'care_staff', 'admin'].includes(form.role) && !form.homeId) { toast.error('Select a home for this account'); return }
+    if (form.role !== 'group_admin' && form.role !== 'auditor' && !form.homeId) { toast.error('Select a home for this account'); return }
     setLoading(true)
     try {
       const payload: any = { firstName: form.firstName, lastName: form.lastName, email: form.email, role: form.role }
@@ -825,6 +851,53 @@ function AddAdminModal({ open, onClose, homes, onCreated }: {
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading} icon={<UserPlus className="w-4 h-4" />}>Create account</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+// One-time bootstrap for the org's single super_admin account — the only
+// role allowed to perform deletions anywhere in the app (see the global
+// delete lockdown in backend/src/index.ts and the matching client-side
+// check in api/index.ts). Calls POST /auth/promote-super-admin, which the
+// backend refuses once a super_admin already exists, so this only ever
+// needs to be used once.
+function SuperAdminModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '' })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.firstName || !form.lastName || !form.email || !form.password) { toast.error('All fields are required'); return }
+    if (form.password.length < 8) { toast.error('Password must be at least 8 characters'); return }
+    setLoading(true)
+    try {
+      await api.post('/auth/promote-super-admin', form)
+      toast.success('Super Admin account created — log in as this account whenever you need to delete something')
+      onCreated()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to create Super Admin account')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Set up Super Admin" size="md">
+      <form onSubmit={save} className="space-y-4">
+        <p className="text-sm text-slate-500">
+          This creates the one account in the whole organisation that can permanently delete accounts and records.
+          It's a one-time setup — once created, this can't be done again from here.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="First name *" required value={form.firstName} onChange={e => set('firstName', e.target.value)} />
+          <Input label="Last name *" required value={form.lastName} onChange={e => set('lastName', e.target.value)} />
+        </div>
+        <Input label="Email address *" type="email" required value={form.email} onChange={e => set('email', e.target.value)} />
+        <Input label="Password *" type="password" required value={form.password} onChange={e => set('password', e.target.value)} hint="At least 8 characters" />
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading} icon={<Shield className="w-4 h-4" />}>Create Super Admin</Button>
         </div>
       </form>
     </Modal>
