@@ -102,6 +102,104 @@ function PictureUploadField({ value, onChange }: { value: string; onChange: (url
   )
 }
 
+// Task descriptions are often typed as a dash-separated checklist
+// ("Check vitals - Give medication - Update notes") but rendered as one
+// run-on line. Split on " - " / " — " and give each part its own line.
+function DashText({ text, className }: { text: string; className?: string }) {
+  const parts = text.split(/\s+[-–—]\s+/).map(p => p.trim()).filter(Boolean)
+  if (parts.length <= 1) return <p className={className}>{text}</p>
+  return (
+    <ul className={`${className || ''} list-disc list-inside space-y-0.5`}>
+      {parts.map((p, i) => <li key={i}>{p}</li>)}
+    </ul>
+  )
+}
+
+function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdit, onDelete }: {
+  task: any; today: string; isRole: (...roles: string[]) => boolean; teams: any[]; priorityColor: (p: string) => string
+  onComplete: (task: any) => void; onEdit: (task: any) => void; onDelete: (id: string) => void
+}) {
+  const isOverdue = task.status !== 'completed' && task.task_date < today
+  return (
+    <div className={`rounded-2xl border shadow-card p-4 sm:p-5 flex items-center gap-4 ${
+      task.status === 'completed' ? 'bg-white border-emerald-200 opacity-70'
+      : task.category === 'follow_up' ? 'bg-blue-50/60 border-blue-200'
+      : 'bg-amber-50/70 border-amber-200'
+    }`}>
+      {/* Task icon — RoundSys-style clipboard icon */}
+      <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 hidden sm:flex">
+        <ClipboardList className="w-5 h-5 text-slate-500" />
+      </div>
+
+      {/* Title / date / status */}
+      <div className="flex-1 min-w-0">
+        <h3 className={`font-bold text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</h3>
+        <p className="text-xs text-slate-600 font-semibold mt-1">
+          {format(new Date(task.task_date), 'd MMM')}{task.due_time ? ` ${task.due_time}` : ''}
+        </p>
+        <p className={`text-xs font-bold uppercase tracking-wide mt-0.5 ${
+          task.status === 'completed' ? 'text-emerald-600' : isOverdue ? 'text-rose-600' : 'text-amber-600'
+        }`}>
+          {task.status === 'completed' ? 'Done' : isOverdue ? `Overdue since ${format(new Date(task.task_date), 'd MMM')}` : 'To-do'}
+        </p>
+
+        <div className="flex items-center gap-2 flex-wrap mt-2">
+          <span className={`badge text-xs ${priorityColor(task.priority)}`}>{task.priority}</span>
+          {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
+          {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">For {task.assigned_staff_name}</span>}
+          {!task.assigned_staff_name && task.visible_team_ids && task.visible_team_ids.length > 0 && (
+            <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">
+              Visible to: {task.visible_team_ids.map((id: string) => teams.find(t => t.id === id)?.name || 'team').join(', ')}
+            </span>
+          )}
+          {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
+          {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">Visible to: All staff</span>}
+        </div>
+        {task.description && <DashText text={task.description} className="text-xs text-slate-700 font-medium mt-2 leading-relaxed" />}
+        <p className="text-xs text-slate-700 font-semibold mt-1.5 capitalize">{(task.category || '').replace('_', ' ')}</p>
+        {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 text-xs font-medium flex items-center gap-0.5 mt-1"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
+        {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-600 font-medium italic mt-2 block">Note: {task.completion_notes}</span>}
+      </div>
+
+      {/* Resident photo + name — RoundSys puts this front and centre on the right */}
+      {task.su_name && (
+        <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16">
+          {task.su_photo ? (
+            <img src={task.su_photo} alt={task.su_name} className="w-12 h-12 rounded-full object-cover border border-white shadow-sm"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = `<div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-sm border border-white shadow-sm" style="background:#e8b130">${task.su_name.charAt(0).toUpperCase()}</div>` }} />
+          ) : (
+            <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-sm border border-white shadow-sm" style={{ background: '#e8b130' }}>
+              {task.su_name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight truncate w-full">{task.su_name.split(' ')[0]}</span>
+        </div>
+      )}
+
+      {/* Checkbox — far right, matching RoundSys */}
+      <button onClick={() => task.status !== 'completed' && onComplete(task)}
+        className={`w-7 h-7 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+          task.status === 'completed' ? 'bg-emerald-500 border-emerald-500'
+          : isOverdue ? 'border-rose-400 hover:border-rose-500'
+          : 'border-slate-300 hover:border-purple-500'
+        }`}>
+        {task.status === 'completed' && <Check className="w-4 h-4 text-white" />}
+      </button>
+
+      {isRole(...TASK_CREATOR_ROLES) && task.category !== 'follow_up' && (
+        <button onClick={() => onEdit(task)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors flex-shrink-0">
+          <Pencil className="w-4 h-4" />
+        </button>
+      )}
+      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+        <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function Tasks() {
   const { user, isRole } = useAuth()
   const [tasks, setTasks] = useState<any[]>([])
@@ -238,6 +336,11 @@ export default function Tasks() {
   const filtered = tasks
     .filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
     .filter(t => !residentSearch.trim() || (t.su_name || '').toLowerCase().includes(residentSearch.trim().toLowerCase()))
+  // On the "All" view, pending and completed get their own sections instead
+  // of one intermixed list — a task you just ticked off should land somewhere
+  // clearly labelled "Completed", not vanish into the middle of the pile.
+  const pendingList = filtered.filter(t => t.status !== 'completed')
+  const completedList = filtered.filter(t => t.status === 'completed')
 
   const printTasks = () => {
     const homeName = homes.find(h => h.id === selectedHome)?.name || ''
@@ -387,88 +490,33 @@ export default function Tasks() {
             <EmptyState title={filter === 'pending' ? 'No pending tasks' : 'No tasks found'}
               description="All tasks completed for today!"
               action={isRole(...TASK_CREATOR_ROLES) ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button> : undefined} />
+          ) : filter === 'all' ? (
+            <>
+              {pendingList.length > 0 && (
+                <div className="space-y-3 mb-6">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">To do ({pendingList.length})</p>
+                  {pendingList.map((task: any) => (
+                    <TaskCard key={task.id} task={task} today={today} isRole={isRole} teams={teams} priorityColor={priorityColor}
+                      onComplete={setCompletingTask} onEdit={setEditTaskOpen} onDelete={deleteTask} />
+                  ))}
+                </div>
+              )}
+              {completedList.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Completed ({completedList.length})</p>
+                  {completedList.map((task: any) => (
+                    <TaskCard key={task.id} task={task} today={today} isRole={isRole} teams={teams} priorityColor={priorityColor}
+                      onComplete={setCompletingTask} onEdit={setEditTaskOpen} onDelete={deleteTask} />
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <div className="space-y-3">
-              {filtered.map((task: any) => {
-                const isOverdue = task.status !== 'completed' && task.task_date < today
-                return (
-                <div key={task.id} className={`rounded-2xl border shadow-card p-4 sm:p-5 flex items-center gap-4 ${
-                  task.status === 'completed' ? 'bg-white border-emerald-200 opacity-70'
-                  : task.category === 'follow_up' ? 'bg-blue-50/60 border-blue-200'
-                  : 'bg-amber-50/70 border-amber-200'
-                }`}>
-                  {/* Task icon — RoundSys-style clipboard icon */}
-                  <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 hidden sm:flex">
-                    <ClipboardList className="w-5 h-5 text-slate-500" />
-                  </div>
-
-                  {/* Title / date / status */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`font-bold text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</h3>
-                    <p className="text-xs text-slate-600 font-semibold mt-1">
-                      {format(new Date(task.task_date), 'd MMM')}{task.due_time ? ` ${task.due_time}` : ''}
-                    </p>
-                    <p className={`text-xs font-bold uppercase tracking-wide mt-0.5 ${
-                      task.status === 'completed' ? 'text-emerald-600' : isOverdue ? 'text-rose-600' : 'text-amber-600'
-                    }`}>
-                      {task.status === 'completed' ? 'Done' : isOverdue ? `Overdue since ${format(new Date(task.task_date), 'd MMM')}` : 'To-do'}
-                    </p>
-
-                    <div className="flex items-center gap-2 flex-wrap mt-2">
-                      <span className={`badge text-xs ${priorityColor(task.priority)}`}>{task.priority}</span>
-                      {task.category === 'follow_up' && <span className="text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1"><Send className="w-3 h-3" /> Follow up</span>}
-                      {task.assigned_staff_name && <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">For {task.assigned_staff_name}</span>}
-                      {!task.assigned_staff_name && task.visible_team_ids && task.visible_team_ids.length > 0 && (
-                        <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">
-                          Visible to: {task.visible_team_ids.map((id: string) => teams.find(t => t.id === id)?.name || 'team').join(', ')}
-                        </span>
-                      )}
-                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
-                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">Visible to: All staff</span>}
-                    </div>
-                    {task.description && <p className="text-xs text-slate-700 font-medium mt-2 leading-relaxed">{task.description}</p>}
-                    <p className="text-xs text-slate-700 font-semibold mt-1.5 capitalize">{(task.category || '').replace('_', ' ')}</p>
-                    {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 text-xs font-medium flex items-center gap-0.5 mt-1"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
-                    {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-600 font-medium italic mt-2 block">Note: {task.completion_notes}</span>}
-                  </div>
-
-                  {/* Resident photo + name — RoundSys puts this front and centre on the right */}
-                  {task.su_name && (
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16">
-                      {task.su_photo ? (
-                        <img src={task.su_photo} alt={task.su_name} className="w-12 h-12 rounded-full object-cover border border-white shadow-sm"
-                          onError={(e) => { (e.target as HTMLImageElement).outerHTML = `<div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-sm border border-white shadow-sm" style="background:#e8b130">${task.su_name.charAt(0).toUpperCase()}</div>` }} />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-sm border border-white shadow-sm" style={{ background: '#e8b130' }}>
-                          {task.su_name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight truncate w-full">{task.su_name.split(' ')[0]}</span>
-                    </div>
-                  )}
-
-                  {/* Checkbox — far right, matching RoundSys */}
-                  <button onClick={() => task.status !== 'completed' && setCompletingTask(task)}
-                    className={`w-7 h-7 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                      task.status === 'completed' ? 'bg-emerald-500 border-emerald-500'
-                      : isOverdue ? 'border-rose-400 hover:border-rose-500'
-                      : 'border-slate-300 hover:border-purple-500'
-                    }`}>
-                    {task.status === 'completed' && <Check className="w-4 h-4 text-white" />}
-                  </button>
-
-                  {isRole(...TASK_CREATOR_ROLES) && task.category !== 'follow_up' && (
-                    <button onClick={() => setEditTaskOpen(task)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors flex-shrink-0">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                  )}
-                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
-                    <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              )})}
+              {filtered.map((task: any) => (
+                <TaskCard key={task.id} task={task} today={today} isRole={isRole} teams={teams} priorityColor={priorityColor}
+                  onComplete={setCompletingTask} onEdit={setEditTaskOpen} onDelete={deleteTask} />
+              ))}
             </div>
           )}
         </>
