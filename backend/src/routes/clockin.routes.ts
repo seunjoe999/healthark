@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import https from 'https';
 import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
+import { getDueTodayTasks } from '../utils/medicationDue';
 
 const router = Router();
 
@@ -155,6 +156,25 @@ router.post('/event', authenticate,
       if (eventType !== 'clock_out' && isClockedIn) {
         return res.status(400).json({ success: false, error: 'You are already clocked in.' });
       }
+
+      // Medication due during this shift must be signed off before clocking out — a
+      // resident's medication silently going unrecorded because a shift ended is a
+      // real safety gap, not just a missed task. Only counts medication whose scheduled
+      // time has already passed (an evening dose isn't "overdue" on an early shift).
+      if (eventType === 'clock_out') {
+        const nowHHMM = new Date().toTimeString().slice(0, 5);
+        const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole);
+        const overdue = dueTasks.filter(t => t.status === 'pending' && t.scheduledTime <= nowHHMM);
+        if (overdue.length > 0) {
+          const residents = Array.from(new Set(overdue.map(t => t.suName)));
+          return res.status(403).json({
+            success: false,
+            reason: 'medication_incomplete',
+            error: `${overdue.length} medication${overdue.length > 1 ? 's are' : ' is'} still due (${residents.join(', ')}). Complete the Medication task before clocking out.`,
+          });
+        }
+      }
+
       const punctuality = 'on_time';
 
       const rows = await query(

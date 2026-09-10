@@ -60,7 +60,7 @@ export default function ClockIn() {
           if (data.success) {
             setResult(data.data)
             setState('success')
-          } else if (res.status === 403) {
+          } else if (res.status === 403 && data.reason !== 'medication_incomplete') {
             setResult(data)
             setState('too_far')
           } else {

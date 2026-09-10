@@ -56,7 +56,19 @@ function riskBorder(level: string) {
   if (level === 'critical') return 'rgba(220,38,38,0.45)'
   if (level === 'high') return 'rgba(239,68,68,0.35)'
   if (level === 'medium' || level === 'moderate') return 'rgba(245,158,11,0.35)'
-  return 'rgba(232,177,48,0.15)'
+  if (level === 'low') return 'rgba(16,185,129,0.4)'
+  return 'rgba(148,163,184,0.25)'
+}
+
+// Background tint for a card/section, keyed to risk level — low risk reads
+// as clearly "safe" (green) rather than sharing the same faint gold used for
+// residents with no assessment recorded at all.
+function riskTint(level: string, theme: string) {
+  const dark = theme === 'dark'
+  if (level === 'critical' || level === 'high') return dark ? 'rgba(239,68,68,0.08)' : '#fef2f2'
+  if (level === 'medium' || level === 'moderate') return dark ? 'rgba(245,158,11,0.08)' : '#fffbeb'
+  if (level === 'low') return dark ? 'rgba(16,185,129,0.08)' : '#f0fdf4'
+  return dark ? '#111111' : '#ffffff'
 }
 
 function Flag({ active, label }: { active: boolean; label: string }) {
@@ -500,8 +512,8 @@ export default function MedicineRisk() {
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
-            <ShieldAlert className="w-6 h-6" style={{ color: '#e8b130' }} /> MEDICATION RISK ASSESSMENT
+          <h1 className="text-2xl sm:text-3xl font-extrabold uppercase flex items-center gap-2 tracking-tight" style={{ color: '#c2410c' }}>
+            <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8" style={{ color: '#c2410c' }} /> MEDICATION RISK ASSESSMENT
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>
         </div>
@@ -529,12 +541,12 @@ export default function MedicineRisk() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {latest.map(r => {
-            const borderColor = r.risk_level ? riskBorder(r.risk_level) : 'rgba(232,177,48,0.15)'
+            const borderColor = r.risk_level ? riskBorder(r.risk_level) : 'rgba(148,163,184,0.25)'
             return (
               <button key={r.su_id}
                 onClick={() => { if (!r.id) { setForm({ ...EMPTY_FORM, suId: r.su_id }); setShowForm(true) } else { setViewRecord(r) } }}
                 className="rounded-2xl flex flex-col gap-3 p-4 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
-                style={{ background: theme === 'dark' ? '#111111' : '#ffffff', border: `1px solid ${borderColor}`, boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(15,23,42,0.06)' }}>
+                style={{ background: riskTint(r.risk_level || '', theme), border: `1.5px solid ${borderColor}`, boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(15,23,42,0.06)' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.su_name}</p>
@@ -829,12 +841,18 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
                   { label: 'Who is at risk', value: r.who_is_at_risk },
                   { label: 'What could happen', value: r.what_could_happen },
                   { label: 'Risk before intervention', value: r.risk_before_intervention },
-                ].filter(f => f.value).map(f => (
-                  <div key={f.label} className="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
-                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{f.label}</p>
-                    <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{f.value}</p>
-                  </div>
-                ))}
+                ].filter(f => f.value).map(f => {
+                  const isLow = r.risk_level === 'low' || !r.risk_level
+                  const isHigh = r.risk_level === 'high' || r.risk_level === 'critical'
+                  const boxCls = isHigh ? 'border-rose-200 bg-rose-50' : isLow ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
+                  const labelCls = isHigh ? 'text-rose-700' : isLow ? 'text-emerald-700' : 'text-amber-700'
+                  return (
+                    <div key={f.label} className={clsx('border rounded-xl p-4', boxCls)}>
+                      <p className={clsx('text-xs font-bold uppercase tracking-wide mb-2', labelCls)}>{f.label}</p>
+                      <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{f.value}</p>
+                    </div>
+                  )
+                })}
               </div>
             )}
 

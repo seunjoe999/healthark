@@ -540,6 +540,18 @@ export default function RiskManagement() {
             </select>
           </div>
         )}
+        {selectedSu && (() => {
+          const suFull = sus.find(s => s.id === selectedSu)
+          const name = suFull ? getName(suFull) : ''
+          return suFull?.photo_url ? (
+            <img src={suFull.photo_url} alt={name} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-slate-200"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = `<div class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm" style="background:#e8b130">${name.charAt(0).toUpperCase()}</div>` }} />
+          ) : (
+            <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm" style={{ background: '#e8b130' }}>
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )
+        })()}
         <div className="flex-1 min-w-[220px]">
           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Service User</label>
           <div className="relative">

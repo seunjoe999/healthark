@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { getDueTodayTasks } from '../utils/medicationDue';
 
 const router = Router();
 
@@ -147,67 +148,7 @@ router.get('/due-today', async (req: Request, res: Response, next: NextFunction)
     if (!homeId) { res.status(400).json({ success: false, error: 'homeId query parameter is required' }); return; }
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
-    const today = new Date().toISOString().split('T')[0];
-
-    let assignedSuIds: string[] | null = null;
-    if (!isPrivileged) {
-      const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [myStaffId]);
-      assignedSuIds = assignments.map((a: any) => a.su_id);
-      if (assignedSuIds.length === 0) { res.json({ success: true, data: [] } as ApiResponse); return; }
-    }
-
-    let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
-                      m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date,
-                      su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
-               FROM su_medications m
-               JOIN service_users su ON su.id = m.su_id
-               WHERE m.home_id = $1 AND m.is_active = true AND m.is_prn = false`;
-    const params: any[] = [homeId];
-    if (assignedSuIds) {
-      sql += ` AND m.su_id = ANY($2)`;
-      params.push(assignedSuIds);
-    }
-    const meds = await query<any>(sql, params);
-
-    // Pull today's existing records to know what's already signed off
-    const recordRows = await query<any>(
-      `SELECT medication_id, scheduled_time, given, refused, mar_code
-       FROM mar_records WHERE home_id = $1 AND record_date = $2`,
-      [homeId, today]
-    );
-    const recordMap = new Map<string, any>();
-    for (const r of recordRows as any[]) recordMap.set(`${r.medication_id}|${r.scheduled_time}`, r);
-
-    // "Weekly" used to render as a single daily slot with no day-of-week logic,
-    // so it appeared in every staff member's to-do list every single day. Anchor
-    // it to the day of the week the medication's start_date falls on instead.
-    const todayDow = new Date().getDay();
-    const tasks: any[] = [];
-    for (const med of meds as any[]) {
-      if (med.frequency === 'weekly' && med.start_date) {
-        const anchorDow = new Date(med.start_date).getDay();
-        if (anchorDow !== todayDow) continue;
-      }
-      const times = getTimeSlots(med.frequency, med.apply_time);
-      for (const t of times) {
-        const existing = recordMap.get(`${med.medication_id}|${t}`);
-        tasks.push({
-          medicationId: med.medication_id,
-          suId: med.su_id,
-          suName: med.su_name,
-          suPhoto: med.su_photo,
-          medicationName: med.medication_name,
-          dose: med.dose,
-          route: med.route,
-          instructions: med.instructions,
-          isControlled: med.is_controlled,
-          scheduledTime: t,
-          status: existing ? (existing.given ? 'given' : existing.refused ? 'refused' : (existing.mar_code || 'logged')) : 'pending',
-        });
-      }
-    }
-    tasks.sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
+    const tasks = await getDueTodayTasks(homeId, myStaffId, role);
     res.json({ success: true, data: tasks } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -441,6 +382,31 @@ router.get('/stock/:suId', param('suId').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
+
+// GET /api/mar/stock-count-status — has today's medication count been done for this home?
+// Used to surface "Medication Count" as a mandatory shift-start task on the staff
+// dashboard/task list, rather than something staff have to remember to go find.
+router.get('/stock-count-status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const [totalRows, countedRows] = await Promise.all([
+      query<any>(
+        `SELECT COUNT(DISTINCT su_id) AS total FROM su_medications sm
+         JOIN service_users su ON su.id = sm.su_id
+         WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true`,
+        [homeId]
+      ),
+      query<any>(
+        `SELECT COUNT(DISTINCT su_id) AS counted FROM medication_stock
+         WHERE home_id = $1 AND updated_at::date = CURRENT_DATE`,
+        [homeId]
+      ),
+    ]);
+    const total = parseInt(totalRows[0]?.total || '0', 10);
+    const counted = parseInt(countedRows[0]?.counted || '0', 10);
+    res.json({ success: true, data: { total, counted, done: total === 0 || counted >= total } } as ApiResponse);
+  } catch (err) { next(err); }
+});
 
 // POST /api/mar/stock/:medicationId/count — update stock count
 router.post('/stock/:medicationId/count', param('medicationId').isUUID(), validateRequest,

@@ -160,6 +160,10 @@ export default function MAR() {
   // and Directors from ever reaching the MAR Review tab.
   const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
   if (!isPrivilegedMar) {
+    // A staff member granted MAR Review access (Settings → Access Rights) should
+    // land on an actual review screen — not the "medication due today" task list
+    // that every other non-privileged visit to /mar shows.
+    if (tab === 'mar_review') return <StaffMarReview homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} sus={sus} />
     return <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
   }
 
@@ -514,6 +518,82 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
   pending: { label: 'To-do', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   given: { label: 'Given', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   refused: { label: 'Refused', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+}
+
+// A standalone review screen for staff granted MAR Review access (via Settings →
+// Access Rights → MAR Review) without giving them the full privileged MAR grid.
+function StaffMarReview({ homes, selectedHome, setSelectedHome, sus }: { homes: any[]; selectedHome: string; setSelectedHome: (v: string) => void; sus: any[] }) {
+  const { theme } = useTheme()
+  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
+  const pageBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
+  const panelBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
+  const [selectedSuId, setSelectedSuId] = useState('')
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!selectedSuId) { setReviews([]); return }
+    setLoading(true)
+    api.get('/assessments', { params: { category: 'service_user', templateKey: 'mar_review', subjectId: selectedSuId } })
+      .then(res => setReviews(res.data.data || []))
+      .catch(() => setReviews([]))
+      .finally(() => setLoading(false))
+  }, [selectedSuId])
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: pageBg }}>
+      <div className={`border-b ${panelBorder} px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2`} style={{ background: panelBg }}>
+        <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
+          <Pill className="w-4 h-4 text-purple-600" /> MAR Review
+        </span>
+        {homes.length > 1 && (
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700"
+            value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelectedSuId('') }}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Service User</label>
+          <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 min-w-[180px]"
+            value={selectedSuId} onChange={e => setSelectedSuId(e.target.value)}>
+            <option value="">— Select resident —</option>
+            {sus.map((s: any) => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto p-4">
+        {!selectedSuId ? (
+          <EmptyState title="Select a resident" description="Choose a resident above to view or add their MAR reviews" />
+        ) : loading ? (
+          <div className="flex justify-center py-12"><Spinner /></div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm text-slate-500">Periodic reviews of this resident's Medication Administration Record.</p>
+              <a href={`/assessments/new?template=mar_review&category=service_user&subjectId=${selectedSuId}&homeId=${selectedHome}`}>
+                <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add MAR Review</Button>
+              </a>
+            </div>
+            {reviews.length === 0 ? (
+              <EmptyState title="No MAR reviews yet" description="Add the first MAR review for this resident" />
+            ) : (
+              reviews.map((r: any) => (
+                <a key={r.id} href={`/assessments/${r.id}`}
+                  className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-purple-300 transition-all">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-slate-800">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'MAR Review'}</p>
+                    {r.answers?.q1 && <span className="text-xs text-slate-400">{r.answers.q1}</span>}
+                  </div>
+                  {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
+                </a>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHome: string; homes: any[]; setSelectedHome: (v: string) => void }) {

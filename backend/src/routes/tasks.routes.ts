@@ -37,7 +37,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // which is how a task can silently vanish for one specific staff member
     // while everyone else on their team sees it fine. So: fetch every task
     // for the home/date range unfiltered, then apply one combined OR check.
-    const sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
+    const sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo,
               s.first_name || ' ' || s.last_name as completed_by_name,
               a.first_name || ' ' || a.last_name as assigned_staff_name
        FROM tasks t

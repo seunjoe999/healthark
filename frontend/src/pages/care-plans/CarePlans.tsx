@@ -1663,6 +1663,16 @@ export default function CarePlans() {
             </select>
           </div>
         )}
+        {selectedSu && (
+          selectedSu.photo_url ? (
+            <img src={selectedSu.photo_url} alt={getName(selectedSu)} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-slate-200"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = `<div class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm" style="background:#e8b130">${getName(selectedSu).charAt(0).toUpperCase()}</div>` }} />
+          ) : (
+            <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm" style={{ background: '#e8b130' }}>
+              {getName(selectedSu).charAt(0).toUpperCase()}
+            </div>
+          )
+        )}
         <div className="flex-1 min-w-[220px]">
           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Service User</label>
           <div className="relative">

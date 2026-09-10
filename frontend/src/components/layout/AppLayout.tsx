@@ -37,7 +37,7 @@ const navSections = [
       { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
       { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
       { label: 'Other Risk Assessment',             to: '/risk-management',     icon: Shield,        roles: [], featureKey: 'risk_management' },
-      { label: 'Medication Administration Record',  to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
+      { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
       { label: 'MAR Review',                        to: '/mar?tab=mar_review',  icon: ClipboardCheck,roles: [], featureKey: 'mar_review' },
       { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
