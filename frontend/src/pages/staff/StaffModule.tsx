@@ -879,26 +879,49 @@ function AddTrainingModal({ open, onClose, staffId, onSaved }: { open: boolean; 
   )
 }
 
+// Weekdays (Mon–Fri) in an inclusive range — matches the fallback the
+// backend uses at approval time, so the total shown here is the total
+// that actually gets deducted from the entitlement.
+function countLeaveWeekdays(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 0
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  if (end < start) return 0
+  let count = 0
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dow = d.getDay()
+    if (dow !== 0 && dow !== 6) count++
+  }
+  return count
+}
+
 function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
-  const [form, setForm] = React.useState({ leaveType: 'annual', startDate: '', endDate: '', totalHours: '', notes: '', status: 'pending' })
+  const [form, setForm] = React.useState({ leaveType: 'annual', startDate: '', endDate: '', hoursPerDay: '', notes: '' })
   const [loading, setLoading] = React.useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity leave' }, { value: 'paternity', label: 'Paternity leave' }, { value: 'unpaid', label: 'Unpaid leave' }, { value: 'other', label: 'Other' }]
-  const STATUSES = [{ value: 'pending', label: 'Pending approval' }, { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' }]
 
   const minAnnualDate = React.useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() + 28)
     return d.toISOString().split('T')[0]
   }, [])
 
+  const dayCount = countLeaveWeekdays(form.startDate, form.endDate)
+  const hoursPerDayNum = parseFloat(form.hoursPerDay) || 0
+  const totalHours = dayCount * hoursPerDayNum
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (form.leaveType === 'annual' && form.startDate < minAnnualDate) {
       toast.error('Annual leave must be requested at least 4 weeks in advance'); return
     }
+    if (!totalHours) { toast.error('Enter hours per day for a date range that includes at least one weekday'); return }
     setLoading(true)
     try {
-      await api.post(`/staff-hr/leave`, { staffId, ...form, totalHours: parseFloat(form.totalHours) || null })
+      await api.post(`/staff-hr/leave`, {
+        staffId, leaveType: form.leaveType, startDate: form.startDate, endDate: form.endDate,
+        notes: form.notes, totalHours,
+      })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
@@ -915,8 +938,13 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
           <Input label="Start date *" type="date" required min={form.leaveType === 'annual' ? minAnnualDate : undefined} value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
         </div>
-        <Input label="Total hours" type="number" step="0.5" value={form.totalHours} onChange={e => set('totalHours', e.target.value)} hint="e.g. 7.5 for one day" />
-        <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)} options={STATUSES} />
+        <Input label="Hours per day *" type="number" step="0.5" required value={form.hoursPerDay} onChange={e => set('hoursPerDay', e.target.value)}
+          hint="e.g. 11 — multiplied automatically by the number of weekdays in the range" />
+        {form.startDate && form.endDate && (
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
+            {dayCount} weekday{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong>
+          </div>
+        )}
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Save leave record</Button>

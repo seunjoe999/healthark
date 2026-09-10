@@ -402,20 +402,45 @@ export default function Holidays() {
   )
 }
 
+// Number of weekdays (Mon–Fri) in an inclusive date range — matches the
+// fallback calculation staff-hr/leave/:id/approve already uses when no
+// explicit hours are stored, so the number shown here is the same number
+// that ends up deducted.
+function countWeekdays(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 0
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  if (end < start) return 0
+  let count = 0
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dow = d.getDay()
+    if (dow !== 0 && dow !== 6) count++
+  }
+  return count
+}
+
 function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId, onSaved }: {
   open: boolean; onClose: () => void; staffList: any[]; homeId: string; defaultStaffId?: string; onSaved: () => void
 }) {
-  const [form, setForm] = useState({ staffId: defaultStaffId || '', leaveType: 'annual', startDate: '', endDate: '', totalHours: '', notes: '' })
+  const [form, setForm] = useState({ staffId: defaultStaffId || '', leaveType: 'annual', startDate: '', endDate: '', hoursPerDay: '', notes: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const options = staffList.map(s => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
 
+  const dayCount = countWeekdays(form.startDate, form.endDate)
+  const hoursPerDayNum = parseFloat(form.hoursPerDay) || 0
+  const totalHours = dayCount * hoursPerDayNum
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.staffId || !form.startDate || !form.endDate) { toast.error('Please fill all required fields'); return }
+    if (!totalHours) { toast.error('Enter hours per day for a date range that includes at least one weekday'); return }
     setLoading(true)
     try {
-      await api.post('/staff-hr/leave', { ...form, homeId, totalHours: parseFloat(form.totalHours) || null })
+      await api.post('/staff-hr/leave', {
+        staffId: form.staffId, leaveType: form.leaveType, startDate: form.startDate, endDate: form.endDate,
+        notes: form.notes, homeId, totalHours: totalHours || null,
+      })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
@@ -430,7 +455,13 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
           <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
         </div>
-        <Input label="Total hours" type="number" step="0.5" value={form.totalHours} onChange={e => set('totalHours', e.target.value)} hint="e.g. 7.5 per day" />
+        <Input label="Hours per day *" type="number" step="0.5" required value={form.hoursPerDay} onChange={e => set('hoursPerDay', e.target.value)}
+          hint="e.g. 11 — the system multiplies this by the number of weekdays in the range" />
+        {form.startDate && form.endDate && (
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
+            {dayCount} weekday{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong> will be deducted from annual leave once approved
+          </div>
+        )}
         <div><label className="label">Notes / reason</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
