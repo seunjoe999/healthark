@@ -35,7 +35,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
        LEFT JOIN staff a ON a.id = t.assigned_staff_id
-       WHERE t.home_id = $1 AND t.task_date = $2`;
+       WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))`;
     const params: any[] = [homeId, date];
     if (!isPrivileged) {
       // A task assigned directly to this staff member is always visible to
