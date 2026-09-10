@@ -90,3 +90,34 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   tasks.sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
   return tasks;
 }
+
+export interface StockCountStatus { total: number; counted: number; done: boolean }
+
+// Medication Count is required at both ends of a shift: a soft reminder from
+// clock-in onward (checked against "today"), and a hard block at clock-out
+// (checked against "since this shift started" — a count done on an earlier
+// shift today doesn't excuse skipping it on this one).
+export async function getStockCountStatus(homeId: string, since?: Date): Promise<StockCountStatus> {
+  const [totalRows, countedRows] = await Promise.all([
+    query<any>(
+      `SELECT COUNT(DISTINCT su_id) AS total FROM su_medications sm
+       JOIN service_users su ON su.id = sm.su_id
+       WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true`,
+      [homeId]
+    ),
+    since
+      ? query<any>(
+          `SELECT COUNT(DISTINCT su_id) AS counted FROM medication_stock
+           WHERE home_id = $1 AND updated_at >= $2`,
+          [homeId, since]
+        )
+      : query<any>(
+          `SELECT COUNT(DISTINCT su_id) AS counted FROM medication_stock
+           WHERE home_id = $1 AND updated_at::date = CURRENT_DATE`,
+          [homeId]
+        ),
+  ]);
+  const total = parseInt(totalRows[0]?.total || '0', 10);
+  const counted = parseInt(countedRows[0]?.counted || '0', 10);
+  return { total, counted, done: total === 0 || counted >= total };
+}

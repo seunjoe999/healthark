@@ -289,7 +289,7 @@ export default function Dashboard() {
       const calendarRes = results[10].status === 'fulfilled' ? results[10].value : null
       const tasksRes     = results[11].status === 'fulfilled' ? results[11].value : null
       const calendarEvents: any[] = calendarRes?.data?.data || []
-      setTodaysAppointments(calendarEvents.filter((e: any) => ['appointment', 'review', 'inspection'].includes(e.event_type)))
+      setTodaysAppointments(calendarEvents.filter((e: any) => ['appointment', 'review', 'inspection', 'training', 'meeting'].includes(e.event_type)))
       const allTasks: any[] = tasksRes?.data?.data || []
       setTodaysTasks(allTasks.filter((t: any) => t.status === 'pending'))
     }).catch(console.error).finally(() => setLoading(false))

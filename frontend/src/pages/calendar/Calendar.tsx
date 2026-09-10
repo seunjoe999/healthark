@@ -83,7 +83,7 @@ export default function CalendarPage() {
     try {
       const from = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
       const to = format(endOfMonth(currentMonth), 'yyyy-MM-dd')
-      const res = await api.get('/calendar', { params: { homeId: selectedHome, from, to } })
+      const res = await api.get('/calendar', { params: { homeId: selectedHome, from, to, audience: 'resident' } })
       setEvents(res.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -113,7 +113,7 @@ export default function CalendarPage() {
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          {canManageCalendar && <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add event</Button>}
+          <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add event</Button>
         </div>
       </div>
 
@@ -187,7 +187,7 @@ export default function CalendarPage() {
               if (shown.length === 0) return (
                 <div className="text-center py-6">
                   <p className="text-sm text-slate-400">{sideTab === 'upcoming' ? 'No upcoming events' : 'No completed events'}</p>
-                  {sideTab === 'upcoming' && canManageCalendar && <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>}
+                  {sideTab === 'upcoming' && <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>}
                 </div>
               )
               return shown.map((e: any) => (
@@ -208,7 +208,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <AddEventModal open={addOpen} onClose={() => setAddOpen(false)} homeId={selectedHome} defaultDate={selectedDay}
+      <AddEventModal open={addOpen} onClose={() => setAddOpen(false)} homeId={selectedHome} defaultDate={selectedDay} canManageCalendar={canManageCalendar}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Event added') }} />
 
       {selectedEvent && (
@@ -344,8 +344,8 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
   )
 }
 
-function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
-  open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; onSaved: () => void
+function AddEventModal({ open, onClose, homeId, defaultDate, canManageCalendar, onSaved }: {
+  open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; canManageCalendar: boolean; onSaved: () => void
 }) {
   const [kind, setKind] = useState<'appointment' | 'event' | 'task'>('appointment')
   const [form, setForm] = useState({
@@ -375,20 +375,26 @@ function AddEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
   return (
     <Modal open={open} onClose={onClose} title="Add to calendar">
       <div className="space-y-4">
-        {/* Kind selector */}
+        {/* Kind selector — Event/Task have no resident attached, so only
+            management can create them (matches the backend gate); care staff
+            booking a resident's own appointment always see that option. */}
         <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
           <button type="button" onClick={() => { setKind('appointment'); set('eventType', 'appointment') }}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'appointment' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}>
             Appointment
           </button>
-          <button type="button" onClick={() => { setKind('event'); set('eventType', 'meeting') }}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'event' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
-            Event
-          </button>
-          <button type="button" onClick={() => { setKind('task'); set('eventType', 'task') }}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'task' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>
-            Task
-          </button>
+          {canManageCalendar && (
+            <>
+              <button type="button" onClick={() => { setKind('event'); set('eventType', 'meeting') }}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'event' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+                Event
+              </button>
+              <button type="button" onClick={() => { setKind('task'); set('eventType', 'task') }}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${kind === 'task' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>
+                Task
+              </button>
+            </>
+          )}
         </div>
         <form onSubmit={save} className="space-y-4">
           <Input label={`${kind === 'appointment' ? 'Appointment' : kind === 'event' ? 'Event' : 'Task'} title *`} required value={form.title} onChange={e => set('title', e.target.value)} placeholder={kind === 'appointment' ? 'e.g. GP appointment, Dental check...' : kind === 'event' ? 'e.g. Fire drill, Staff meeting...' : 'e.g. Order supplies, Follow up with GP...'} autoFocus />

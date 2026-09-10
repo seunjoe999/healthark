@@ -7,7 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
-import { getDueTodayTasks } from '../utils/medicationDue';
+import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 
 const router = Router();
 
@@ -389,22 +389,8 @@ router.get('/stock/:suId', param('suId').isUUID(), validateRequest,
 router.get('/stock-count-status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const [totalRows, countedRows] = await Promise.all([
-      query<any>(
-        `SELECT COUNT(DISTINCT su_id) AS total FROM su_medications sm
-         JOIN service_users su ON su.id = sm.su_id
-         WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true`,
-        [homeId]
-      ),
-      query<any>(
-        `SELECT COUNT(DISTINCT su_id) AS counted FROM medication_stock
-         WHERE home_id = $1 AND updated_at::date = CURRENT_DATE`,
-        [homeId]
-      ),
-    ]);
-    const total = parseInt(totalRows[0]?.total || '0', 10);
-    const counted = parseInt(countedRows[0]?.counted || '0', 10);
-    res.json({ success: true, data: { total, counted, done: total === 0 || counted >= total } } as ApiResponse);
+    const status = await getStockCountStatus(homeId);
+    res.json({ success: true, data: status } as ApiResponse);
   } catch (err) { next(err); }
 });
 

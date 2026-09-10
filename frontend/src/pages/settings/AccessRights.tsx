@@ -61,6 +61,7 @@ const FEATURES = [
   { key: 'timesheets',          label: 'Timesheets',                  group: 'Staff' },
   { key: 'holidays',            label: 'Leave & Holidays',            group: 'Staff' },
   { key: 'staff_assessment',    label: 'Staff Assessment',            group: 'Staff' },
+  { key: 'staff_calendar',      label: 'Staff Calendar',              group: 'Staff' },
   { key: 'tasks',               label: 'Tasks',                       group: 'Operations' },
   { key: 'rota',                label: 'Rota',                        group: 'Operations' },
   { key: 'maintenance',         label: 'Maintenance',                 group: 'Operations' },

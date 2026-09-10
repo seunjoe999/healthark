@@ -74,6 +74,7 @@ const HandoverReport = React.lazy(() => import('./pages/reports/HandoverReport')
 const Training = React.lazy(() => import('./pages/training/Training'))
 const RiskManagement = React.lazy(() => import('./pages/risk-assessments/RiskManagement'))
 const Calendar = React.lazy(() => import('./pages/calendar/Calendar'))
+const StaffCalendar = React.lazy(() => import('./pages/calendar/StaffCalendar'))
 const Compliance = React.lazy(() => import('./pages/compliance/Compliance'))
 const SupervisionAppraisal = React.lazy(() => import('./pages/supervision-appraisal/SupervisionAppraisal'))
 const ClockInAnalytics = React.lazy(() => import('./pages/clockin/ClockInAnalytics'))
@@ -207,6 +208,7 @@ function AppRoutes() {
         <Route path="/training" element={<ProtectedRoute><Training /></ProtectedRoute>} />
         <Route path="/risk-management" element={<ProtectedRoute><RiskManagement /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+        <Route path="/staff-calendar" element={<ProtectedRoute><StaffCalendar /></ProtectedRoute>} />
         <Route path="/compliance" element={<ProtectedRoute><Compliance /></ProtectedRoute>} />
         <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
         <Route path="/clockin-analytics" element={<ProtectedRoute><ClockInAnalytics /></ProtectedRoute>} />

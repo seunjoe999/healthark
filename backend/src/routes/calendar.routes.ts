@@ -29,7 +29,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId || !UUID_RE.test(homeId)) { res.json({ success: true, data: [] } as ApiResponse); return; }
-    const { from, to } = req.query as Record<string, string>;
+    const { from, to, audience } = req.query as Record<string, string>;
     let sql = `SELECT ce.*, s.first_name || ' ' || s.last_name as created_by_name,
       su.first_name || ' ' || su.last_name as su_name
       FROM calendar_events ce
@@ -40,19 +40,34 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     let idx = 2;
     if (from) { sql += ` AND ce.event_date >= $${idx++}`; params.push(from); }
     if (to) { sql += ` AND ce.event_date <= $${idx++}`; params.push(to); }
+    // Two separate calendars share one table: a resident-linked row (su_id set)
+    // is a service-user appointment/review/inspection; a row with no su_id is
+    // a staff-only event (training, meetings) and belongs on the staff calendar,
+    // never mixed into the resident one.
+    if (audience === 'resident') sql += ` AND ce.su_id IS NOT NULL`;
+    else if (audience === 'staff') sql += ` AND ce.su_id IS NULL`;
     sql += ' ORDER BY ce.event_date, ce.start_time';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });
 
-router.post('/', requireRole(...CALENDAR_MANAGE_ROLES), [body('title').notEmpty(), body('eventDate').isDate()], validateRequest,
+router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       if (!homeId || !UUID_RE.test(homeId)) throw new AppError('No care home selected for this event', 400);
       const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff } = req.body;
+      // Any staff member can book/manage a resident's own appointment — only
+      // a staff-only event (no resident attached, e.g. training a manager is
+      // booking for the team) is restricted to management.
+      if (!suId) {
+        const role = fromToken(req, 'role');
+        if (!(CALENDAR_MANAGE_ROLES as readonly string[]).includes(role)) {
+          throw new AppError('Only management can add staff calendar events', 403);
+        }
+      }
       // start_time/end_time are TIMESTAMPTZ, but the client only sends a bare
       // "HH:mm" (from <input type="time">) plus the date separately — combine
       // them into a real timestamp so Postgres doesn't reject the insert.

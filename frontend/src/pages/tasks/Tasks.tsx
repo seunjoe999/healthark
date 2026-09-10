@@ -159,7 +159,7 @@ export default function Tasks() {
   const loadTodaysAppointments = async () => {
     try {
       const res = await api.get('/calendar', { params: { homeId: selectedHome, from: today, to: today } })
-      setTodaysAppointments((res.data.data || []).filter((e: any) => ['appointment', 'review', 'inspection'].includes(e.event_type)))
+      setTodaysAppointments((res.data.data || []).filter((e: any) => ['appointment', 'review', 'inspection', 'training', 'meeting'].includes(e.event_type)))
     } catch (e) { console.error(e) }
   }
 
@@ -268,7 +268,7 @@ export default function Tasks() {
   const priorityColor = (p: string) => {
     if (p === 'urgent') return 'bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20'
     if (p === 'high') return 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20'
-    if (p === 'low') return 'bg-slate-100 text-slate-600'
+    if (p === 'low') return 'bg-slate-100 text-slate-700'
     return 'bg-blue-500/10 text-blue-700 ring-1 ring-blue-500/20'
   }
 
@@ -311,13 +311,13 @@ export default function Tasks() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Total today', value: tasks.length, color: 'text-slate-900' },
-              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-600' },
-              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-600' },
+              { label: 'Total today', value: tasks.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
             ].map(s => (
-              <div key={s.label} className="bg-white rounded-2xl border border-slate-100 shadow-card p-4 text-center">
+              <div key={s.label} className={`rounded-2xl border shadow-card p-4 text-center ${s.bg} ${s.border}`}>
                 <p className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">{s.label}</p>
+                <p className={`text-xs font-bold mt-0.5 ${s.color}`}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -421,10 +421,10 @@ export default function Tasks() {
                         </span>
                       )}
                       {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && task.assigned_role && <span className="text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">Visible to: {task.assigned_role.replace('_', ' ')}</span>}
-                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">Visible to: All staff</span>}
+                      {!task.assigned_staff_name && (!task.visible_team_ids || task.visible_team_ids.length === 0) && !task.assigned_role && <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">Visible to: All staff</span>}
                     </div>
                     {task.description && <p className="text-xs text-slate-700 font-medium mt-2 leading-relaxed">{task.description}</p>}
-                    <p className="text-xs text-slate-500 font-medium mt-1.5 capitalize">{(task.category || '').replace('_', ' ')}</p>
+                    <p className="text-xs text-slate-700 font-semibold mt-1.5 capitalize">{(task.category || '').replace('_', ' ')}</p>
                     {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 text-xs font-medium flex items-center gap-0.5 mt-1"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
                     {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-600 font-medium italic mt-2 block">Note: {task.completion_notes}</span>}
                   </div>
@@ -535,10 +535,10 @@ export default function Tasks() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-sm text-slate-900">{m.medicationName}</h3>
-                        {m.dose && <span className="text-xs text-slate-500">{m.dose}</span>}
+                        {m.dose && <span className="text-xs text-slate-700 font-semibold">{m.dose}</span>}
                         {m.isControlled && <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full font-semibold">Controlled</span>}
                       </div>
-                      <p className="text-xs text-slate-500 mt-1.5">{m.suName} · Due {m.scheduledTime}</p>
+                      <p className="text-xs text-slate-700 font-semibold mt-1.5">{m.suName} · Due {m.scheduledTime}</p>
                     </div>
                     {isDone ? (
                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: codeInfo?.bg, color: codeInfo?.color }}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check, CheckSquare } from 'lucide-react'
+import { Newspaper, Plus, Pin, Trash2, CheckCircle, Clock, AlertCircle, Info, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -8,7 +8,6 @@ import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { openLetterheadPrint, buildLetterheadPage, esc, nl } from '../../utils/letterheadPrint'
-import { getServerTodayStr } from '../../utils/serverTime'
 
 const CATEGORIES = [
   { value: 'general', label: 'General' },
@@ -131,27 +130,8 @@ export default function Noticeboard() {
   const [filterCat, setFilterCat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ title: '', body: '', category: 'general', isPinned: false, expiresAt: '' })
-  const [todaysTasks, setTodaysTasks] = useState<any[]>([])
 
   const canPost = isRole('home_manager', 'group_admin', 'senior_carer')
-
-  async function loadTasks() {
-    const today = await getServerTodayStr()
-    try {
-      const res = await api.get('/tasks', { params: { date: today } })
-      setTodaysTasks((res.data.data || []).filter((t: any) => t.status === 'pending'))
-    } catch { setTodaysTasks([]) }
-  }
-
-  useEffect(() => { loadTasks() }, [])
-
-  async function completeTask(id: string) {
-    try {
-      await api.put(`/tasks/${id}/complete`, { notes: '' })
-      toast.success('Task completed')
-      loadTasks()
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to complete task') }
-  }
 
   async function load() {
     setLoading(true)
@@ -241,38 +221,6 @@ export default function Noticeboard() {
             <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>Post Notice</Button>
           )}
         </div>
-      </div>
-
-      {/* Today's Tasks — always shown here, not collapsible, not tucked under a menu */}
-      <div className={clsx('rounded-xl border p-4 mb-5', theme === 'dark' ? '' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-white')}
-        style={theme === 'dark' ? { background: 'linear-gradient(135deg, rgba(212,150,26,0.22) 0%, rgba(212,150,26,0.08) 100%)', borderColor: 'rgba(232,177,48,0.4)' } : undefined}>
-        <div className="flex items-center gap-2 mb-3">
-          <CheckSquare className="w-4 h-4" style={theme === 'dark' ? { color: '#e8b130' } : { color: '#f59e0b' }} />
-          <p className="font-bold text-sm" style={theme === 'dark' ? { color: '#ffffff' } : { color: '#0f172a' }}>Today's Tasks</p>
-          {todaysTasks.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-              style={theme === 'dark' ? { background: 'rgba(232,177,48,0.25)', color: '#e8b130' } : { background: '#fef3c7', color: '#b45309' }}>
-              {todaysTasks.length} pending
-            </span>
-          )}
-        </div>
-        {todaysTasks.length === 0 ? (
-          <p className="text-sm text-slate-500">No tasks assigned for today.</p>
-        ) : (
-          <div className="space-y-2">
-            {todaysTasks.map((t: any) => (
-              <div key={t.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-lg px-3 py-2.5">
-                <button onClick={() => completeTask(t.id)}
-                  className="w-5 h-5 rounded border-2 border-slate-300 hover:border-amber-400 flex-shrink-0 transition-colors" title="Mark complete" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{t.title}</p>
-                  {t.su_name && <p className="text-xs text-slate-500">{t.su_name}</p>}
-                </div>
-                {t.due_time && <span className="text-xs text-slate-500 flex-shrink-0">{t.due_time}</span>}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Filter */}

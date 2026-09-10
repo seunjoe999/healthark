@@ -8,7 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import https from 'https';
 import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
-import { getDueTodayTasks } from '../utils/medicationDue';
+import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 
 const router = Router();
 
@@ -146,7 +146,7 @@ router.post('/event', authenticate,
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
       const lastEventRows = await query<any>(
-        `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        `SELECT event_type, event_time FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
         [staffId]
       );
       const isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
@@ -171,6 +171,19 @@ router.post('/event', authenticate,
             success: false,
             reason: 'medication_incomplete',
             error: `${overdue.length} medication${overdue.length > 1 ? 's are' : ' is'} still due (${residents.join(', ')}). Complete the Medication task before clocking out.`,
+          });
+        }
+
+        // Medication Count is required at both ends of a shift — a count done
+        // on an earlier shift today doesn't excuse skipping it on this one, so
+        // this checks against the current shift's clock-in time, not just "today".
+        const shiftStart = lastEventRows[0]?.event_time;
+        const stockStatus = await getStockCountStatus(homeId, shiftStart ? new Date(shiftStart) : undefined);
+        if (!stockStatus.done) {
+          return res.status(403).json({
+            success: false,
+            reason: 'medication_incomplete',
+            error: `Medication Count is not done for this shift (${stockStatus.counted}/${stockStatus.total} residents counted). Complete it before clocking out.`,
           });
         }
       }

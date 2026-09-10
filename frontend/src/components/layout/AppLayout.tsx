@@ -67,8 +67,8 @@ const navSections = [
       { label: 'DBS Compliance',         to: '/dbs',                   icon: UserCheck,     roles: [], featureKey: 'dbs' },
       { label: 'Clock In',               to: '/clockin-admin',         icon: QrCode,        roles: [], featureKey: 'clockin' },
       { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
+      { label: 'Calendar',               to: '/staff-calendar',        icon: Calendar,      roles: [], featureKey: 'staff_calendar' },
       { label: 'Comp Care Hub Training', to: '/training',              icon: GraduationCap, roles: [], featureKey: 'training' },
-      { label: 'Calendar',               to: '/calendar',              icon: Calendar,      roles: [], featureKey: 'calendar' },
     ]
   },
   {
