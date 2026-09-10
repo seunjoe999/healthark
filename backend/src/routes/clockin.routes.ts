@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import https from 'https';
+import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
 
 const router = Router();
 
@@ -14,14 +15,6 @@ function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
   return '';
-}
-
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function geocodePostcode(postcode: string): Promise<{ latitude: number; longitude: number } | null> {
@@ -100,18 +93,7 @@ router.post('/event', authenticate,
     try {
       const staffId = fromToken(req, 'staffId');
       const { homeId, staffLat, staffLng, eventType } = req.body;
-
-      // Reject if GPS accuracy is too poor — but never for clock-out, which is
-      // never geofence-blocked (a weak-signal check ahead of that rule used to
-      // block staff from clocking out at all).
       const gpsAccuracy = parseFloat(req.body.accuracy) || null;
-      if (eventType !== 'clock_out' && gpsAccuracy !== null && gpsAccuracy > 300) {
-        return res.status(403).json({
-          success: false,
-          error: `GPS signal too weak (±${Math.round(gpsAccuracy)}m accuracy). Please use a mobile device or move outdoors.`,
-          geofencePassed: false,
-        });
-      }
 
       // Build list of all valid check points: home address + any extra postcodes
       const homeRows = await query<any>(
@@ -126,7 +108,7 @@ router.post('/event', authenticate,
       );
 
       // Primary point = home's own geocoded address
-      const checkPoints: { lat: number; lng: number; label: string; radius: number }[] = [];
+      const checkPoints: GeofenceCheckPoint[] = [];
       if (home?.latitude && home?.longitude) {
         const label = [home.address1, home.postcode].filter(Boolean).join(', ');
         checkPoints.push({ lat: parseFloat(home.latitude), lng: parseFloat(home.longitude), label, radius: home.geofence_radius || 200 });
@@ -138,43 +120,22 @@ router.post('/event', authenticate,
         }
       }
 
-      let geofencePassed = false;
-      let closestDistance: number | null = null;
-      let closestLabel = '';
-
-      // Clock-out is never geofence-blocked — staff can be anywhere when ending a shift
-      if (eventType === 'clock_out') {
-        geofencePassed = true;
-      } else if (checkPoints.length === 0) {
+      const outcome = evaluateGeofence({ eventType, staffLat, staffLng, gpsAccuracy, checkPoints });
+      if (!outcome.geofencePassed) {
+        const messages: Record<string, string> = {
+          weak_gps: `GPS signal too weak (±${gpsAccuracy ? Math.round(gpsAccuracy) : '?'}m accuracy). Please use a mobile device or move outdoors.`,
+          no_location: 'No verified location has been set up for this care home. Ask your manager to set the address in Clock-In Management.',
+          too_far: `You are too far from the care home. You are ${outcome.distanceMetres}m from ${outcome.closestLabel} (must be within ${checkPoints[0]?.radius || 200}m${gpsAccuracy ? `, GPS accuracy ±${Math.round(gpsAccuracy)}m` : ''}).`,
+        };
         return res.status(403).json({
           success: false,
-          error: 'No verified location has been set up for this care home. Ask your manager to set the address in Clock-In Management.',
+          error: messages[outcome.reason],
+          distanceMetres: outcome.distanceMetres,
           geofencePassed: false,
         });
-      } else {
-        // Phone GPS accuracy means the reported position can genuinely be off by
-        // tens/hundreds of metres — comparing raw distance to a fixed radius with
-        // no allowance for that was rejecting staff who were actually on-site.
-        // Give the benefit of the doubt up to the device's own reported uncertainty.
-        const accuracyTolerance = gpsAccuracy !== null ? Math.min(gpsAccuracy, 150) : 0;
-        for (const pt of checkPoints) {
-          const dist = Math.round(haversine(staffLat, staffLng, pt.lat, pt.lng));
-          if (closestDistance === null || dist < closestDistance) {
-            closestDistance = dist;
-            closestLabel = pt.label;
-          }
-          if (dist <= pt.radius + accuracyTolerance) { geofencePassed = true; break; }
-        }
-
-        if (!geofencePassed) {
-          return res.status(403).json({
-            success: false,
-            error: `You are too far from the care home. You are ${closestDistance}m from ${closestLabel} (must be within ${checkPoints[0]?.radius || 200}m${gpsAccuracy ? `, GPS accuracy ±${Math.round(gpsAccuracy)}m` : ''}).`,
-            distanceMetres: closestDistance,
-            geofencePassed: false,
-          });
-        }
       }
+      const geofencePassed = true;
+      const closestDistance = outcome.distanceMetres;
 
       const staffRows = await query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
       const staffRole = staffRows[0]?.role;

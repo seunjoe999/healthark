@@ -274,7 +274,7 @@ export default function RiskManagement() {
 
       <div class="res-head">
         ${ra.su_photo_url
-          ? `<img class="res-photo" src="${ra.su_photo_url}" alt="Resident photo" />`
+          ? `<img class="res-photo" src="${ra.su_photo_url}" alt="Resident photo" onerror="this.outerHTML='<div class=\\'res-photo-fallback\\'>${esc(ra.su_name).charAt(0).toUpperCase()}</div>'" />`
           : `<div class="res-photo-fallback">${esc(ra.su_name).charAt(0).toUpperCase()}</div>`}
         <table class="idtable" style="flex:1">
           <tr>

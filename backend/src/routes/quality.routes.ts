@@ -167,7 +167,7 @@ router.post('/capacity', [body('suId').isUUID(), body('decisionArea').notEmpty()
 );
 
 // GET /api/quality/professionals/:suId
-router.get('/professionals/:suId', param('suId').isUUID(), validateRequest,
+router.get('/professionals/:suId', requireRole(...QUALITY_PRIVILEGED_ROLES), param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(
