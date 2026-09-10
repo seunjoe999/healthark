@@ -3,8 +3,11 @@ import { body, param } from 'express-validator';
 import { authenticate } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const router = Router();
 router.use(authenticate);
@@ -39,7 +42,7 @@ function tok(req: Request, field: string): string {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await ensureTable();
-    const homeId = tok(req, 'homeId');
+    const homeId = tok(req, 'homeId') || (req.query.homeId as string) || '';
     const { suId } = req.query as Record<string, string>;
 
     let sql = `
@@ -65,9 +68,18 @@ router.post('/',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await ensureTable();
-      const homeId = tok(req, 'homeId');
+      // Fall back to a homeId sent explicitly by the frontend if the token's
+      // own homeId is missing — a group_admin/super-admin style account
+      // without a single fixed home would otherwise silently write an empty
+      // string into this NOT NULL uuid column, which Postgres rejects with
+      // an opaque "invalid input syntax for type uuid" that surfaces to the
+      // user as a bare "Internal server error".
+      const homeId = tok(req, 'homeId') || req.body.homeId || '';
       const staffId = tok(req, 'staffId');
       const { suId, recordDate, weightKg, heightCm, notes } = req.body;
+
+      if (!UUID_RE.test(homeId)) throw new AppError('Could not identify your care home from your session — please log out and back in, or select a home first.', 400);
+      if (!UUID_RE.test(staffId)) throw new AppError('Could not identify you from your session — please log out and back in.', 400);
 
       let bmi: number | null = null;
       if (heightCm && parseFloat(heightCm) > 0) {

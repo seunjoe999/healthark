@@ -175,7 +175,7 @@ export default function WeightTracker() {
     if (!selectedSU) { setRecords([]); return; }
     setLoading(true)
     try {
-      const r = await api.get('/weight-tracker', { params: { suId: selectedSU } })
+      const r = await api.get('/weight-tracker', { params: { suId: selectedSU, homeId } })
       setRecords(r.data.data || [])
     } catch {}
     setLoading(false)
@@ -201,6 +201,7 @@ export default function WeightTracker() {
     try {
       await api.post('/weight-tracker', {
         suId: form.suId,
+        homeId,
         recordDate: form.recordDate,
         weightKg: parseFloat(form.weightKg),
         heightCm: form.heightCm ? parseFloat(form.heightCm) : undefined,

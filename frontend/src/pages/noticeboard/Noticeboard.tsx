@@ -36,6 +36,8 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
   onDelete: (id: string) => void
   canDelete: boolean
 }) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const cfg = catConfig[notice.category] || catConfig.general
   const categoryLabel = CATEGORIES.find(c => c.value === notice.category)?.label || notice.category
 
@@ -45,7 +47,7 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
       className={clsx(
         'relative rounded-xl border shadow-sm transition-all cursor-pointer group',
         notice.is_pinned
-          ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-white'
+          ? (isDark ? 'border-amber-500/40 bg-amber-500/10' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white')
           : 'border-slate-100 bg-white hover:border-slate-200',
         !notice.is_read && !notice.is_pinned && 'border-l-2 border-l-amber-400',
       )}
@@ -62,7 +64,7 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
             {cfg.icon} {categoryLabel}
           </span>
           {notice.is_pinned && (
-            <span className="inline-flex items-center gap-1 text-xs text-amber-400 font-bold">
+            <span className={clsx('inline-flex items-center gap-1 text-xs font-bold', isDark ? 'text-amber-300' : 'text-amber-400')}>
               <Pin className="w-3 h-3" /> Pinned
             </span>
           )}
@@ -74,11 +76,19 @@ function NoticeCard({ notice, onRead, onDelete, canDelete }: {
         </div>
 
         {/* Title */}
-        <h3 className={clsx('text-slate-900 text-[15px] leading-snug mb-2', notice.is_pinned ? 'font-extrabold' : 'font-bold')}>{notice.title}</h3>
+        <h3 className={clsx(
+          'text-[15px] leading-snug mb-2',
+          notice.is_pinned ? 'font-extrabold' : 'font-bold',
+          notice.is_pinned && isDark ? 'text-amber-100' : 'text-slate-900',
+        )}>{notice.title}</h3>
 
         {/* Body */}
         {notice.body && (
-          <p className={clsx('text-sm leading-relaxed line-clamp-3 mb-3', notice.is_pinned ? 'font-semibold text-slate-800' : 'text-slate-600')}>{notice.body}</p>
+          <p className={clsx(
+            'text-sm leading-relaxed line-clamp-3 mb-3',
+            notice.is_pinned ? 'font-semibold' : 'text-slate-600',
+            notice.is_pinned && (isDark ? 'text-amber-50/90' : 'text-slate-800'),
+          )}>{notice.body}</p>
         )}
 
         {/* Footer */}
@@ -228,12 +238,12 @@ export default function Noticeboard() {
       </div>
 
       {/* Today's Tasks — always shown here, not collapsible, not tucked under a menu */}
-      <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 mb-5">
+      <div className={clsx('rounded-xl border p-4 mb-5', theme === 'dark' ? 'border-amber-500/30 bg-amber-500/10' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-white')}>
         <div className="flex items-center gap-2 mb-3">
-          <CheckSquare className="w-4 h-4 text-amber-500" />
-          <p className="font-bold text-slate-900 text-sm">Today's Tasks</p>
+          <CheckSquare className={clsx('w-4 h-4', theme === 'dark' ? 'text-amber-300' : 'text-amber-500')} />
+          <p className={clsx('font-bold text-sm', theme === 'dark' ? 'text-amber-100' : 'text-slate-900')}>Today's Tasks</p>
           {todaysTasks.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">{todaysTasks.length} pending</span>
+            <span className={clsx('text-xs px-2 py-0.5 rounded-full font-semibold', theme === 'dark' ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-100 text-amber-700')}>{todaysTasks.length} pending</span>
           )}
         </div>
         {todaysTasks.length === 0 ? (
