@@ -1857,7 +1857,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
 
   return (
     <Modal open={true} onClose={onClose} title={label} size="lg">
-      <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+      <div className="space-y-4">
         {/* Document-style header — matches the printed care plan letterhead */}
         {suName && (
           <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm">

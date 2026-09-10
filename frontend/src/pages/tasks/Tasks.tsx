@@ -350,7 +350,11 @@ export default function Tasks() {
           ) : (
             <div className="space-y-3">
               {filtered.map((task: any) => (
-                <div key={task.id} className={`bg-white rounded-2xl border shadow-card p-4 flex items-start gap-4 ${task.status === 'completed' ? 'border-emerald-200 opacity-70' : 'border-slate-100'}`}>
+                <div key={task.id} className={`rounded-2xl border shadow-card p-4 flex items-start gap-4 ${
+                  task.status === 'completed' ? 'bg-white border-emerald-200 opacity-70'
+                  : task.category === 'follow_up' ? 'bg-blue-50/60 border-blue-200'
+                  : 'bg-white border-slate-100'
+                }`}>
                   <button onClick={() => task.status !== 'completed' && setCompletingTask(task)}
                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-purple-500'}`}>
                     {task.status === 'completed' && <Check className="w-3.5 h-3.5 text-white" />}

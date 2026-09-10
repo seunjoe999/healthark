@@ -55,6 +55,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         myTeamId = staffRows[0]?.team_id || null;
       }
       rows = rows.filter(t => {
+        if (t.created_by === staffId) return true; // creator can always see what they scheduled
         if (t.assigned_staff_id) return t.assigned_staff_id === staffId;
         const hasRoleTarget = !!t.assigned_role;
         const hasTeamTarget = !!(t.visible_team_ids && t.visible_team_ids.length > 0);
@@ -70,7 +71,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // unless the task was assigned directly to them, which always shows.
     if (RESTRICTED_ROLES.includes(role) && staffId) {
       const assignedSuIds = await getAssignedSuIds(staffId);
-      rows = rows.filter(t => t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
+      rows = rows.filter(t => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
     }
 
     res.json({ success: true, data: rows } as ApiResponse);
