@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Modal, Button } from './ui'
+import DashText from './DashText'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
 import { CheckCircle2, Settings, AlarmClock } from 'lucide-react'
@@ -96,7 +97,7 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
           {task.kind === 'medication' && <span className="text-[10px] font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded-full">Medication</span>}
           {overdue && <span className="text-[10px] font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-full flex items-center gap-0.5"><AlarmClock className="w-2.5 h-2.5" /> Overdue</span>}
         </div>
-        {task.description && <p className="text-xs text-slate-600 mt-1">{task.description}</p>}
+        {task.description && <DashText text={task.description} className="text-xs text-slate-600 mt-1 leading-relaxed" />}
         {task.due_time && <p className="text-xs text-slate-500 mt-1">Due: {task.due_time.slice(0, 5)}</p>}
       </div>
       {task.kind !== 'medication' && (
