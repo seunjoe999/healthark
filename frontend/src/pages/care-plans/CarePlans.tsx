@@ -93,7 +93,6 @@ const PLAN_TYPES = [
   { value: 'mental_health', label: 'Mental Health Support Plan' },
   { value: 'medication_support', label: 'Medication Support Plan' },
   { value: 'monthly_progress', label: 'Monthly Progress Report' },
-  { value: 'pbs', label: 'PBS Support Plan' },
   { value: 'about_me', label: 'About Me' },
   { value: 'suicidal_ideation', label: 'Suicidal Ideation & Self Injury Support Plan' },
   { value: 'custom', label: 'Custom / Other' },
@@ -464,7 +463,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
     )
   }
 
-  if (planType === 'pbs') {
+  if (planType === 'pbs' || planType === 'positive_behaviour') {
     const colorBg: Record<string, string> = { green: 'bg-green-50 border-green-200', amber: 'bg-amber-50 border-amber-200', red: 'bg-red-50 border-red-200' }
     return (
       <div className="space-y-3">
@@ -714,6 +713,7 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
         <SpeechTextarea label="List of physical health issues" className="w-full text-sm" rows={3} value={tv('physicalHealthIssues')} onChange={v => set('physicalHealthIssues', v)} />
         <div><label className="label">GP review date</label><input type="date" className="input w-full" value={tv('gpReviewDate')} onChange={e => set('gpReviewDate', e.target.value)} /></div>
         <SpeechTextarea label="My Health Needs" className="w-full text-sm" rows={3} value={tv('whatICanDo')} onChange={v => set('whatICanDo', v)} />
+        <SpeechTextarea label="My Support Needs" className="w-full text-sm" rows={3} value={tv('physicalHealthSupportNeeds')} onChange={v => set('physicalHealthSupportNeeds', v)} />
         <SpeechTextarea label="How You Can Support Me" className="w-full text-sm" rows={3} value={tv('whatYouCanDoToSupportMe')} onChange={v => set('whatYouCanDoToSupportMe', v)} />
       </div>
     )
@@ -802,7 +802,7 @@ function TemplateDetail({ plan }: { plan: any }) {
     )
   }
 
-  if (pt === 'pbs') {
+  if (pt === 'pbs' || pt === 'positive_behaviour') {
     return (
       <div className="space-y-3">
         {PBS_SECTIONS.filter(s => tv(s.key)).map(s => sec(s.label, tv(s.key)))}
@@ -915,6 +915,7 @@ function TemplateDetail({ plan }: { plan: any }) {
         {sec('List of physical health issues', tv('physicalHealthIssues'))}
         {row('GP review date', tv('gpReviewDate') ? format(new Date(tv('gpReviewDate')), 'd MMM yyyy') : '')}
         {sec('My Health Needs', tv('whatICanDo'))}
+        {sec('My Support Needs', tv('physicalHealthSupportNeeds'))}
         {sec('How You Can Support Me', tv('whatYouCanDoToSupportMe'))}
       </div>
     )
@@ -1172,7 +1173,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     return sections
   }
 
-  if (p === 'pbs') {
+  if (p === 'pbs' || p === 'positive_behaviour') {
     PBS_SECTIONS.forEach(s => { if (tv(s.key)) sections.push({ title: s.label, inner: bodyText(tv(s.key)) }) })
     const lightParts = PBS_TRAFFIC_LIGHTS.filter(s => tv(s.key)).map(s => `<h3 class="sub">${s.label}</h3><p class="body-text">${tv(s.key).replace(/\n/g, '<br/>')}</p>`).join('')
     if (lightParts) sections.push({ title: 'PBS Traffic Light System', inner: lightParts })
@@ -1353,6 +1354,7 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
     if (gpRow) sections.push({ title: 'GP Review Date', inner: `<table class="fields">${gpRow}</table>` })
     if (tv('physicalHealthIssues')) sections.push({ title: 'List of Physical Health Issues', inner: bodyText(tv('physicalHealthIssues')) })
     if (tv('whatICanDo')) sections.push({ title: 'My Health Needs', inner: bodyText(tv('whatICanDo')) })
+    if (tv('physicalHealthSupportNeeds')) sections.push({ title: 'My Support Needs', inner: bodyText(tv('physicalHealthSupportNeeds')) })
     if (tv('whatYouCanDoToSupportMe')) sections.push({ title: 'How You Can Support Me', inner: bodyText(tv('whatYouCanDoToSupportMe')) })
     return sections
   }
@@ -2228,7 +2230,7 @@ const EMPTY_ADD_FORM = {
   prnProtocol: '', prnList: '', indicationForUse: '',
 }
 
-const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'crisis', 'about_me',
+const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'positive_behaviour', 'crisis', 'about_me',
   'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life',
   'physical_health', 'learning_disability', 'bowel_management'])
 

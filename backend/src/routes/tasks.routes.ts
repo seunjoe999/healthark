@@ -28,45 +28,51 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = fromToken(req, 'role');
     const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = fromToken(req, 'staffId');
-    let sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
+    // Role-restriction (assigned_role) and team-restriction (visible_team_ids)
+    // are alternative, independent ways to scope a task ("Or restrict by role
+    // instead" in the UI) — a task should be visible if EITHER one includes
+    // the viewer, not only if both happen to. Filtering assigned_role at the
+    // SQL level (as this used to) meant a task scoped to a team the viewer
+    // is on could still be hidden from them if assigned_role wasn't blank,
+    // which is how a task can silently vanish for one specific staff member
+    // while everyone else on their team sees it fine. So: fetch every task
+    // for the home/date range unfiltered, then apply one combined OR check.
+    const sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name,
               s.first_name || ' ' || s.last_name as completed_by_name,
               a.first_name || ' ' || a.last_name as assigned_staff_name
        FROM tasks t
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
        LEFT JOIN staff a ON a.id = t.assigned_staff_id
-       WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))`;
-    const params: any[] = [homeId, date];
+       WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))
+       ORDER BY t.due_time, t.priority DESC`;
+    let rows = await query<any>(sql, [homeId, date]);
+
     if (!isPrivileged) {
-      // A task assigned directly to this staff member is always visible to
-      // them, regardless of role/resident/team scoping below — a direct
-      // assignment is an explicit instruction that must not get filtered out.
-      sql += ` AND (t.assigned_staff_id = $3 OR (t.assigned_staff_id IS NULL AND (t.assigned_role IS NULL OR t.assigned_role = $4)))`;
-      params.push(staffId, role);
+      let myTeamId: string | null = null;
+      if (staffId) {
+        const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
+        myTeamId = staffRows[0]?.team_id || null;
+      }
+      rows = rows.filter(t => {
+        if (t.assigned_staff_id) return t.assigned_staff_id === staffId;
+        const hasRoleTarget = !!t.assigned_role;
+        const hasTeamTarget = !!(t.visible_team_ids && t.visible_team_ids.length > 0);
+        if (!hasRoleTarget && !hasTeamTarget) return true; // general/all-staff task
+        if (hasRoleTarget && t.assigned_role === role) return true;
+        if (hasTeamTarget && myTeamId && t.visible_team_ids.includes(myTeamId)) return true;
+        return false;
+      });
     }
-    sql += ' ORDER BY t.due_time, t.priority DESC';
-    let rows = await query(sql, params);
 
     // Restricted roles only see tasks tied to their own assigned residents (tasks
     // with no resident attached, i.e. general/home-wide tasks, remain visible) —
     // unless the task was assigned directly to them, which always shows.
     if (RESTRICTED_ROLES.includes(role) && staffId) {
       const assignedSuIds = await getAssignedSuIds(staffId);
-      rows = (rows as any[]).filter(t => t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
+      rows = rows.filter(t => t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
     }
 
-    // "Visible to" team targeting — a task with visible_team_ids set is only
-    // shown to staff on one of those teams (management always sees everything,
-    // and a direct staff assignment always shows regardless, handled above).
-    if (!isPrivileged && staffId) {
-      const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
-      const myTeamId = staffRows[0]?.team_id || null;
-      rows = (rows as any[]).filter(t => {
-        if (t.assigned_staff_id === staffId) return true;
-        if (!t.visible_team_ids || t.visible_team_ids.length === 0) return true;
-        return myTeamId && t.visible_team_ids.includes(myTeamId);
-      });
-    }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });
