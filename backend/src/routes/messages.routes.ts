@@ -43,11 +43,11 @@ router.post('/',
     try {
       const staffId = tok(req, 'staffId');
       const homeId = tok(req, 'homeId');
-      const { recipientId, subject, message } = req.body;
+      const { recipientId, subject, message, attachmentUrl, attachmentName } = req.body;
       const rows = await query(
-        `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message)
-         VALUES ($1, $2, $3, $4, $5, $5) RETURNING *`,
-        [staffId, recipientId, homeId || null, subject || null, message]
+        `INSERT INTO staff_messages (sender_id, recipient_id, home_id, subject, body, message, attachment_url, attachment_name)
+         VALUES ($1, $2, $3, $4, $5, $5, $6, $7) RETURNING *`,
+        [staffId, recipientId, homeId || null, subject || null, message, attachmentUrl || null, attachmentName || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

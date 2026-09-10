@@ -27,6 +27,7 @@ const navSections = [
       { label: 'Dashboard',   to: '/dashboard',   icon: LayoutDashboard, roles: [], featureKey: 'dashboard' },
       { label: 'Inbox',       to: '/messages',    icon: MessageSquare,   roles: [], featureKey: 'messages' },
       { label: 'Tasks',       to: '/tasks',       icon: CheckSquare,     roles: ['care_staff', 'team_leader', 'senior_carer'], featureKey: 'tasks' },
+      { label: 'Calendar',    to: '/calendar',    icon: Calendar,        roles: [], featureKey: 'calendar' },
       { label: 'Noticeboard', to: '/noticeboard', icon: Newspaper,       roles: [], featureKey: 'noticeboard' },
     ]
   },
@@ -67,6 +68,7 @@ const navSections = [
       { label: 'Clock In',               to: '/clockin-admin',         icon: QrCode,        roles: [], featureKey: 'clockin' },
       { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
       { label: 'Comp Care Hub Training', to: '/training',              icon: GraduationCap, roles: [], featureKey: 'training' },
+      { label: 'Calendar',               to: '/calendar',              icon: Calendar,      roles: [], featureKey: 'calendar' },
     ]
   },
   {

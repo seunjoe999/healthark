@@ -2022,6 +2022,10 @@ async function ensureColumns() {
     // Ensure staff_messages has a message column (Render DB may have body instead)
     `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS message TEXT`,
     `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS body TEXT`,
+    // Attachments — a photo/document sent with the message (uploaded file or a
+    // camera capture, both land as a normal uploaded file URL).
+    `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)`,
+    `ALTER TABLE staff_messages ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255)`,
     `ALTER TABLE staff_messages ALTER COLUMN body DROP NOT NULL`,
     `ALTER TABLE staff_messages ALTER COLUMN message DROP NOT NULL`,
     // Fix recruitment_candidates missing pipeline_stage

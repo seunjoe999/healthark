@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -20,6 +20,10 @@ function fromToken(req: Request, field: string): string {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Management plans the calendar (appointments, reviews, inspections, training) —
+// care staff view it but don't add to it, same convention used for task creation.
+const CALENDAR_MANAGE_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'] as const;
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -42,7 +46,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validateRequest,
+router.post('/', requireRole(...CALENDAR_MANAGE_ROLES), [body('title').notEmpty(), body('eventDate').isDate()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
@@ -68,7 +72,7 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
   }
 );
 
-router.delete('/:id', param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole(...CALENDAR_MANAGE_ROLES), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = fromToken(req, 'homeId');

@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
-import { MessageSquare, Plus, Send, Inbox, Trash2, Reply, Bell, AlertTriangle, AlertCircle, Info, CheckCircle } from 'lucide-react'
+import { MessageSquare, Plus, Send, Inbox, Trash2, Reply, Bell, AlertTriangle, AlertCircle, Info, CheckCircle, Paperclip, Camera, X, Users2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const NOTIF_ICON: Record<string, any> = {
@@ -19,6 +19,7 @@ export default function Messages() {
   const [messages, setMessages] = useState<any[]>([])
   const [alerts, setAlerts] = useState<any[]>([])
   const [staffList, setStaffList] = useState<any[]>([])
+  const [teamsList, setTeamsList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [composeOpen, setComposeOpen] = useState(false)
   const [selected, setSelected] = useState<any>(null)
@@ -49,19 +50,23 @@ export default function Messages() {
     setLoading(true)
     try {
       if (activeType === 'alerts') {
-        const [notifRes, staffRes] = await Promise.all([
+        const [notifRes, staffRes, teamsRes] = await Promise.all([
           api.get('/notifications'),
           staffApi.list(),
+          api.get('/teams', { params: { homeId: user?.homeId } }).catch(() => ({ data: { data: [] } })),
         ])
         setAlerts(notifRes.data.data || [])
         setStaffList(staffRes.data.data || [])
+        setTeamsList(teamsRes.data.data || [])
       } else {
-        const [msgRes, staffRes] = await Promise.all([
+        const [msgRes, staffRes, teamsRes] = await Promise.all([
           api.get(`/messages?type=${activeType}`),
           staffApi.list(),
+          api.get('/teams', { params: { homeId: user?.homeId } }).catch(() => ({ data: { data: [] } })),
         ])
         setMessages(msgRes.data.data || [])
         setStaffList(staffRes.data.data || [])
+        setTeamsList(teamsRes.data.data || [])
       }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -221,6 +226,13 @@ export default function Messages() {
               {selected.recipient_name && <p className="text-sm text-slate-500 mt-1">To: <span className="font-medium text-slate-300">{selected.recipient_name}</span></p>}
             </div>
             <p className="text-slate-300 whitespace-pre-line leading-relaxed text-sm">{selected.message || selected.body}</p>
+            {selected.attachment_url && (
+              <a href={selected.attachment_url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-4 px-3 py-2 rounded-lg text-sm text-amber-300"
+                style={{ background: 'rgba(232,177,48,0.1)', border: '1px solid rgba(232,177,48,0.25)' }}>
+                <Paperclip className="w-4 h-4" /> {selected.attachment_name || 'Attachment'}
+              </a>
+            )}
             <div className="flex gap-3 mt-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <button onClick={() => reply(selected)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white transition-colors"
@@ -239,7 +251,7 @@ export default function Messages() {
       </div>
 
       <ComposeModal open={composeOpen} onClose={() => { setComposeOpen(false); setReplyDefaults(null) }}
-        staffList={staffList} defaults={replyDefaults}
+        staffList={staffList} teamsList={teamsList} defaults={replyDefaults}
         onSaved={async () => {
           setComposeOpen(false)
           setReplyDefaults(null)
@@ -255,35 +267,66 @@ export default function Messages() {
   )
 }
 
-function ComposeModal({ open, onClose, staffList, onSaved, defaults }: {
-  open: boolean; onClose: () => void; staffList: any[]; onSaved: () => void; defaults?: { recipientId: string; subject: string } | null
+function ComposeModal({ open, onClose, staffList, teamsList, onSaved, defaults }: {
+  open: boolean; onClose: () => void; staffList: any[]; teamsList: any[]; onSaved: () => void; defaults?: { recipientId: string; subject: string } | null
 }) {
   const [recipientIds, setRecipientIds] = useState<string[]>([])
+  const [teamIds, setTeamIds] = useState<string[]>([])
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [attachment, setAttachment] = useState<{ url: string; name: string } | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = React.useRef<HTMLInputElement>(null)
+  const cameraRef = React.useRef<HTMLInputElement>(null)
   const options = staffList.map(s => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
   const filtered = options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
+  const filteredTeams = teamsList.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+  const totalSelected = recipientIds.length + teamIds.length
 
   useEffect(() => {
     if (open) {
       setRecipientIds(defaults?.recipientId ? [defaults.recipientId] : [])
+      setTeamIds([])
       setSubject(defaults?.subject || '')
       setMessage('')
       setSearch('')
+      setAttachment(null)
     }
   }, [open, defaults])
 
   const toggleRecipient = (id: string) =>
     setRecipientIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  const toggleTeam = (id: string) =>
+    setTeamIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setAttachment({ url: res.data?.data?.fileUrl || '', name: file.name })
+    } catch { toast.error('Attachment upload failed') }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; if (cameraRef.current) cameraRef.current.value = '' }
+  }
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (recipientIds.length === 0) { toast.error('Select at least one recipient'); return }
+    if (totalSelected === 0) { toast.error('Select at least one recipient'); return }
     setLoading(true)
     try {
-      await Promise.all(recipientIds.map(recipientId => api.post('/messages', { recipientId, subject, message })))
+      // Teams expand to their member staff IDs at send time, merged with any
+      // individually-picked staff (de-duplicated so nobody gets it twice).
+      const teamMemberIds = (await Promise.all(teamIds.map(id => api.get(`/teams/${id}/members`))))
+        .flatMap(res => (res.data.data || []).map((m: any) => m.id || m.staff_id))
+      const allRecipientIds = Array.from(new Set([...recipientIds, ...teamMemberIds]))
+      await Promise.all(allRecipientIds.map(recipientId => api.post('/messages', {
+        recipientId, subject, message, attachmentUrl: attachment?.url || undefined, attachmentName: attachment?.name || undefined,
+      })))
       onSaved()
     }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to send') }
@@ -294,16 +337,34 @@ function ComposeModal({ open, onClose, staffList, onSaved, defaults }: {
     <Modal open={open} onClose={onClose} title="New message">
       <form onSubmit={save} className="space-y-4">
         <div>
-          <label className="label">To * {recipientIds.length > 0 && <span className="text-purple-600 font-semibold">({recipientIds.length} selected)</span>}</label>
-          <input className="input mb-2 text-sm" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
-          <div className="border border-slate-200 rounded-xl max-h-36 overflow-y-auto">
-            {filtered.map(o => (
-              <label key={o.value} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer">
-                <input type="checkbox" className="rounded accent-purple-600" checked={recipientIds.includes(o.value)} onChange={() => toggleRecipient(o.value)} />
-                <span className="text-sm text-slate-700">{o.label}</span>
-              </label>
-            ))}
-            {filtered.length === 0 && <p className="text-xs text-slate-400 text-center py-3">No staff found</p>}
+          <label className="label">To * {totalSelected > 0 && <span className="text-purple-600 font-semibold">({totalSelected} selected)</span>}</label>
+          <input className="input mb-2 text-sm" placeholder="Search staff or teams..." value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="border border-slate-200 rounded-xl max-h-44 overflow-y-auto">
+            {filteredTeams.length > 0 && (
+              <>
+                <p className="px-3 pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Teams</p>
+                {filteredTeams.map(t => (
+                  <label key={t.id} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                    <input type="checkbox" className="rounded accent-purple-600" checked={teamIds.includes(t.id)} onChange={() => toggleTeam(t.id)} />
+                    <Users2 className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                    <span className="text-sm text-slate-700">{t.name}</span>
+                  </label>
+                ))}
+                <div className="border-t border-slate-100" />
+              </>
+            )}
+            {filtered.length > 0 && (
+              <>
+                {filteredTeams.length > 0 && <p className="px-3 pt-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Staff</p>}
+                {filtered.map(o => (
+                  <label key={o.value} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                    <input type="checkbox" className="rounded accent-purple-600" checked={recipientIds.includes(o.value)} onChange={() => toggleRecipient(o.value)} />
+                    <span className="text-sm text-slate-700">{o.label}</span>
+                  </label>
+                ))}
+              </>
+            )}
+            {filtered.length === 0 && filteredTeams.length === 0 && <p className="text-xs text-slate-400 text-center py-3">No staff or teams found</p>}
           </div>
         </div>
         <div>
@@ -314,10 +375,31 @@ function ComposeModal({ open, onClose, staffList, onSaved, defaults }: {
           <label className="label">Message *</label>
           <textarea required className="input" rows={5} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message here..." />
         </div>
+        <div>
+          <label className="label">Attachment (optional)</label>
+          <input ref={fileRef} type="file" className="hidden" onChange={upload} />
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={upload} />
+          {attachment ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
+              <Paperclip className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <span className="text-sm text-slate-700 truncate flex-1">{attachment.name}</span>
+              <button type="button" onClick={() => setAttachment(null)} className="text-slate-400 hover:text-rose-500 flex-shrink-0"><X className="w-4 h-4" /></button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="outline" icon={<Paperclip className="w-3.5 h-3.5" />} loading={uploading} onClick={() => fileRef.current?.click()}>
+                Attach file
+              </Button>
+              <Button type="button" size="sm" variant="outline" icon={<Camera className="w-3.5 h-3.5" />} loading={uploading} onClick={() => cameraRef.current?.click()}>
+                Take photo
+              </Button>
+            </div>
+          )}
+        </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading} icon={<Send className="w-4 h-4" />}>
-            Send{recipientIds.length > 1 ? ` to ${recipientIds.length}` : ''}
+            Send{totalSelected > 1 ? ` to ${totalSelected}` : ''}
           </Button>
         </div>
       </form>

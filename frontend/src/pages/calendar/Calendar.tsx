@@ -51,8 +51,13 @@ const TYPE_BG: Record<string, string> = {
   task: 'bg-indigo-50 border-indigo-200 text-indigo-800',
 }
 
+// Management plans the calendar; care staff view it but don't add to it —
+// matches the backend gate on POST/DELETE /api/calendar.
+const CALENDAR_MANAGE_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
+
 export default function CalendarPage() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
+  const canManageCalendar = isRole(...CALENDAR_MANAGE_ROLES)
   const [events, setEvents] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
@@ -108,7 +113,7 @@ export default function CalendarPage() {
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add event</Button>
+          {canManageCalendar && <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add event</Button>}
         </div>
       </div>
 
@@ -182,7 +187,7 @@ export default function CalendarPage() {
               if (shown.length === 0) return (
                 <div className="text-center py-6">
                   <p className="text-sm text-slate-400">{sideTab === 'upcoming' ? 'No upcoming events' : 'No completed events'}</p>
-                  {sideTab === 'upcoming' && <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>}
+                  {sideTab === 'upcoming' && canManageCalendar && <button onClick={() => setAddOpen(true)} className="text-sm text-purple-600 hover:underline mt-2 font-medium">Add event</button>}
                 </div>
               )
               return shown.map((e: any) => (
@@ -216,7 +221,8 @@ export default function CalendarPage() {
 }
 
 function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; onClose: () => void; onDeleted: () => void; onSaved: () => void }) {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
+  const canManageCalendar = isRole(...CALENDAR_MANAGE_ROLES)
   const isAppointment = APPOINTMENT_TYPE_VALUES.includes(event.event_type)
   const [notes, setNotes] = useState({ notes: '', actionPoints: '', concerns: '', attendees: '', outcome: '', summary: '' })
   const [signoffs, setSignoffs] = useState<any[]>([])
@@ -319,7 +325,7 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
         )}
 
         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <Button variant="danger" size="sm" onClick={onDeleted}>Delete</Button>
+          {canManageCalendar ? <Button variant="danger" size="sm" onClick={onDeleted}>Delete</Button> : <span />}
           <div className="flex gap-2">
             {isAppointment && event.su_id && (
               <Link to={`/diary?su=${event.su_id}`}>
