@@ -79,7 +79,6 @@ const PLAN_TYPES = [
   { value: 'autism', label: 'Autism Support Plan' },
   { value: 'learning_disability', label: 'Learning Disability Support Plan' },
   { value: 'bowel_management', label: 'Bowel Management Support Plan' },
-  { value: 'pain_assessment', label: 'Pain Assessment' },
   { value: 'personal_evacuation', label: 'Personal Evacuation Support Plan' },
   { value: 'end_of_life', label: 'End Of Life Support Plan' },
   { value: 'house_rules', label: 'House Rules' },

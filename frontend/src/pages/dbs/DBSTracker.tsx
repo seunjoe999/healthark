@@ -1,10 +1,11 @@
-﻿﻿import React, { useState, useEffect } from 'react'
-import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users, Check } from 'lucide-react'
+﻿﻿import React, { useState, useEffect, useRef } from 'react'
+import { ShieldCheck, Plus, AlertTriangle, CheckCircle, Clock, Users, Check, Paperclip, Upload, X } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import api from '../../api'
+import api, { getToken, resolveUploadUrl } from '../../api'
 import clsx from 'clsx'
+import toast from 'react-hot-toast'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 
 const DBS_TYPES = [
@@ -44,6 +45,39 @@ const statusLabel: Record<string, string> = {
 
 type Tab = 'overview' | 'dbs' | 'references' | 'right_to_work'
 
+function AttachmentField({ url, uploading, fileRef, onClear, onFile }: {
+  url: string; uploading: boolean; fileRef: React.RefObject<HTMLInputElement>
+  onClear: () => void; onFile: (f: File) => void
+}) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-slate-400 mb-1.5 flex items-center gap-1">
+        <Paperclip className="w-3.5 h-3.5" /> Attach Document
+      </label>
+      {url ? (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+          <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <a href={resolveUploadUrl(url)} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-400 underline truncate flex-1">
+            View attached document
+          </a>
+          <button type="button" onClick={onClear} className="p-1 rounded hover:bg-white/10">
+            <X className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+        </div>
+      ) : (
+        <label className={clsx('flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
+          uploading ? 'border-amber-400/30 bg-amber-400/5' : 'border-white/12 hover:border-amber-400/30 hover:bg-amber-400/5')}>
+          {uploading ? <Spinner /> : <Upload className="w-4 h-4 text-slate-500" />}
+          <span className="text-sm text-slate-500">{uploading ? 'Uploading…' : 'Click to attach document (PDF, Word, image)'}</span>
+          <input ref={fileRef} type="file" className="hidden" disabled={uploading}
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip"
+            onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
+        </label>
+      )}
+    </div>
+  )
+}
+
 export default function DBSTracker() {
   const { isRole } = useAuth()
   const { theme } = useTheme()
@@ -60,9 +94,34 @@ export default function DBSTracker() {
   const [submitting, setSubmitting] = useState(false)
   const [preview, setPreview] = useState<any>(null)
 
-  const [dbsForm, setDbsForm] = useState({ staffId: '', dbsNumber: '', dbsType: 'enhanced', issueDate: '', expiryDate: '', updateService: false, notes: '' })
-  const [refForm, setRefForm] = useState({ staffId: '', refereeName: '', refereePosition: '', refereeCompany: '', refereeEmail: '', referenceType: 'professional', receivedDate: '', status: 'pending' })
-  const [rtwForm, setRtwForm] = useState({ staffId: '', documentType: '', documentNumber: '', expiryDate: '' })
+  const [dbsForm, setDbsForm] = useState({ staffId: '', dbsNumber: '', dbsType: 'enhanced', issueDate: '', expiryDate: '', updateService: false, notes: '', documentUrl: '' })
+  const [refForm, setRefForm] = useState({ staffId: '', refereeName: '', refereePosition: '', refereeCompany: '', refereeEmail: '', referenceType: 'professional', receivedDate: '', status: 'pending', documentUrl: '' })
+  const [rtwForm, setRtwForm] = useState({ staffId: '', documentType: '', documentNumber: '', expiryDate: '', documentUrl: '' })
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function uploadAttachment(file: File, onDone: (url: string) => void) {
+    setUploadingDoc(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const token = getToken()
+      const res = await fetch('/api/upload/document', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Upload failed')
+      onDone(json.data?.fileUrl)
+      toast.success('Document attached')
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed')
+    } finally {
+      setUploadingDoc(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   async function load() {
     setLoading(true)
@@ -345,6 +404,12 @@ export default function DBSTracker() {
                 {preview.notes && <div className="col-span-2"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-slate-300">{preview.notes}</p></div>}
               </div>
             )}
+            {preview.document_url && (
+              <a href={resolveUploadUrl(preview.document_url)} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-sm text-emerald-400 underline">
+                <Paperclip className="w-3.5 h-3.5" /> View attached document
+              </a>
+            )}
             {preview._type === 'ref' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-xs text-slate-500">Referee</p><p className="text-white">{preview.referee_name}</p></div>
@@ -394,6 +459,9 @@ export default function DBSTracker() {
               <Input label="Expiry Date (if applicable)" type="date" value={dbsForm.expiryDate}
                 onChange={e => setDbsForm(f => ({ ...f, expiryDate: e.target.value }))} />
               <Textarea label="Notes" value={dbsForm.notes} onChange={e => setDbsForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+              <AttachmentField url={dbsForm.documentUrl} uploading={uploadingDoc} fileRef={fileRef}
+                onClear={() => setDbsForm(f => ({ ...f, documentUrl: '' }))}
+                onFile={f => uploadAttachment(f, url => setDbsForm(p => ({ ...p, documentUrl: url })))} />
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
                 <Button type="submit" variant="gold" loading={submitting}>Save DBS Record</Button>
@@ -421,6 +489,9 @@ export default function DBSTracker() {
               </div>
               <Input label="Date Reference Obtained" type="date" value={refForm.receivedDate}
                 onChange={e => setRefForm(f => ({ ...f, receivedDate: e.target.value }))} />
+              <AttachmentField url={refForm.documentUrl} uploading={uploadingDoc} fileRef={fileRef}
+                onClear={() => setRefForm(f => ({ ...f, documentUrl: '' }))}
+                onFile={f => uploadAttachment(f, url => setRefForm(p => ({ ...p, documentUrl: url })))} />
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
                 <Button type="submit" variant="gold" loading={submitting}>Save Reference</Button>
@@ -438,6 +509,9 @@ export default function DBSTracker() {
                 onChange={e => setRtwForm(f => ({ ...f, documentNumber: e.target.value }))} />
               <Input label="Expiry Date (leave blank for indefinite right to work)" type="date" value={rtwForm.expiryDate}
                 onChange={e => setRtwForm(f => ({ ...f, expiryDate: e.target.value }))} />
+              <AttachmentField url={rtwForm.documentUrl} uploading={uploadingDoc} fileRef={fileRef}
+                onClear={() => setRtwForm(f => ({ ...f, documentUrl: '' }))}
+                onFile={f => uploadAttachment(f, url => setRtwForm(p => ({ ...p, documentUrl: url })))} />
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
                 <Button type="submit" variant="gold" loading={submitting}>Save Right to Work Check</Button>
