@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, X as XIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
@@ -111,6 +111,8 @@ export default function Tasks() {
   const [addOpen, setAddOpen] = useState(false)
   const [addTemplateOpen, setAddTemplateOpen] = useState(false)
   const [editTemplateOpen, setEditTemplateOpen] = useState<any>(null)
+  const [editTaskOpen, setEditTaskOpen] = useState<any>(null)
+  const [residentSearch, setResidentSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('pending')
   const [pageTab, setPageTab] = useState<'tasks' | 'templates' | 'medication'>('tasks')
   const [sus, setSus] = useState<any[]>([])
@@ -221,7 +223,9 @@ export default function Tasks() {
     setGeneratingDaily(false)
   }
 
-  const filtered = tasks.filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
+  const filtered = tasks
+    .filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
+    .filter(t => !residentSearch.trim() || (t.su_name || '').toLowerCase().includes(residentSearch.trim().toLowerCase()))
 
   const printTasks = () => {
     const homeName = homes.find(h => h.id === selectedHome)?.name || ''
@@ -327,7 +331,7 @@ export default function Tasks() {
           )}
 
           {/* Filter + generate button */}
-          <div className="flex gap-3 mb-5 items-center">
+          <div className="flex gap-3 mb-3 items-center">
             <div className="flex gap-1 bg-white rounded-2xl border border-slate-100 p-1 flex-1">
               {[{ key: 'pending', label: 'Pending' }, { key: 'completed', label: 'Completed' }, { key: 'all', label: 'All' }].map(f => (
                 <button key={f.key} onClick={() => setFilter(f.key as any)}
@@ -340,6 +344,20 @@ export default function Tasks() {
               <Button size="sm" variant="outline" icon={<Zap className="w-3.5 h-3.5" />} loading={generatingDaily} onClick={generateDaily}>
                 Generate today's tasks
               </Button>
+            )}
+          </div>
+
+          {/* Search by resident — narrows the list down to one service user, for both management and staff */}
+          <div className="relative mb-5">
+            <Search className="w-4 h-4 text-slate-300 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input type="text" value={residentSearch} onChange={e => setResidentSearch(e.target.value)}
+              placeholder="Search by resident name..."
+              className="input pl-10 pr-9 w-full" />
+            {residentSearch && (
+              <button type="button" onClick={() => setResidentSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                <XIcon className="w-4 h-4" />
+              </button>
             )}
           </div>
 
@@ -385,6 +403,11 @@ export default function Tasks() {
                     </div>
                     {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-500 italic mt-0.5 block">Note: {task.completion_notes}</span>}
                   </div>
+                  {isRole(...TASK_CREATOR_ROLES) && task.category !== 'follow_up' && (
+                    <button onClick={() => setEditTaskOpen(task)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors flex-shrink-0">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
                   {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                     <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
                       <Trash2 className="w-4 h-4" />
@@ -493,6 +516,11 @@ export default function Tasks() {
       <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome} staffList={staffList} teams={teams}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Task added') }} />
 
+      {editTaskOpen && (
+        <EditTaskModal task={editTaskOpen} onClose={() => setEditTaskOpen(null)} sus={sus} staffList={staffList} teams={teams}
+          onSaved={async () => { setEditTaskOpen(null); await load(); toast.success('Task updated') }} />
+      )}
+
       <AddFollowUpModal open={addFollowUpOpen} onClose={() => setAddFollowUpOpen(false)} homeId={selectedHome} staffList={staffList}
         onSaved={async () => { setAddFollowUpOpen(false); await load(); toast.success('Follow up scheduled') }} />
 
@@ -569,6 +597,55 @@ function AddTaskModal({ open, onClose, sus, homeId, staffList, teams, onSaved }:
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add task</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function EditTaskModal({ task, onClose, sus, staffList, teams, onSaved }: { task: any; onClose: () => void; sus: any[]; staffList: any[]; teams: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    title: task.title || '', category: task.category || 'general', description: task.description || '',
+    taskDate: task.task_date ? String(task.task_date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+    dueTime: task.due_time || '', priority: task.priority || 'normal', suId: task.su_id || '',
+    assignedRole: task.assigned_role || '', assignedStaffId: task.assigned_staff_id || '',
+    visibleTeamIds: task.visible_team_ids || [],
+  })
+  const [loading, setLoading] = useState(false)
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try { await api.put(`/tasks/${task.id}`, { ...form, suId: form.suId || null, assignedStaffId: form.assignedStaffId || null }); onSaved() }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Edit task">
+      <form onSubmit={save} className="space-y-4">
+        <Input label="Task title *" required value={form.title} onChange={e => set('title', e.target.value)} autoFocus />
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Category" value={form.category} onChange={e => set('category', e.target.value)} options={CATEGORIES} />
+          <Select label="Priority" value={form.priority} onChange={e => set('priority', e.target.value)} options={PRIORITIES} />
+        </div>
+        <Select label="Linked to resident (optional)" value={form.suId} onChange={e => set('suId', e.target.value)}
+          options={suOptions} placeholder="Select resident (optional)" />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Date" type="date" value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
+          <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+        </div>
+        <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
+        <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <Select label="Assign to a specific staff member (optional)" value={form.assignedStaffId} onChange={e => set('assignedStaffId', e.target.value)}
+          options={staffOptions} placeholder="Anyone covered above" />
+        <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={loading}>Save changes</Button>
         </div>
       </form>
     </Modal>

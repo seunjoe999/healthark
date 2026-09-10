@@ -247,6 +247,27 @@ router.put('/templates/:id', requireRole('home_manager', 'group_admin'), param('
   }
 );
 
+// PUT /api/tasks/:id — edit a task's own details (same roles that may create tasks)
+router.put('/:id', requireRole(...TASK_CREATOR_ROLES as any), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = fromToken(req, 'homeId');
+      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, assignedStaffId, visibleTeamIds } = req.body;
+      const teamIds = Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null;
+      const rows = await query(
+        `UPDATE tasks SET title=$1, category=$2, description=$3, task_date=$4, due_time=$5,
+           priority=$6, su_id=$7, assigned_role=$8, assigned_staff_id=$9, visible_team_ids=$10
+         WHERE id=$11 AND home_id=$12 RETURNING id`,
+        [title, category || 'general', description || null, taskDate, dueTime || null,
+         priority || 'normal', suId || null, assignedRole || null, assignedStaffId || null, teamIds,
+         req.params.id, homeId]
+      );
+      if (!rows.length) throw new AppError('Task not found', 404);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

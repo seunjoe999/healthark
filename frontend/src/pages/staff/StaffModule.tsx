@@ -946,6 +946,7 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
             {dayCount} weekday{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong>
           </div>
         )}
+        <div><label className="label">Notes / reason</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="e.g. Flu symptoms, hospital appointment..." /></div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Save leave record</Button>
