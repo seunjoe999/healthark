@@ -19,6 +19,7 @@ import FoodDrinkForm from './forms/FoodDrinkForm'
 import BowelForm from './forms/BowelForm'
 import BehaviourForm from './forms/BehaviourForm'
 import GeneralForm from './forms/GeneralForm'
+import FollowUpForm from './forms/FollowUpForm'
 import SocialActivities from '../social-activities/SocialActivities'
 import BathChart from '../bath-chart/BathChart'
 import BowelChart from '../bowel-chart/BowelChart'
@@ -62,6 +63,7 @@ const RECORD_TYPES = [
   { value: 'vitals_weight', label: 'Weight & MUST', icon: '⚖️' },
   { value: 'body_map', label: 'Body Map / Skin', icon: '🗺️' },
   { value: 'seizure', label: 'Seizure Episode', icon: '⚡' },
+  { value: 'follow_up', label: 'Follow Up', icon: '📌' },
 ]
 
 
@@ -425,6 +427,7 @@ function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; home
       case 'vitals_temp':     return <VitalsForm type="temp" {...p} />
       case 'vitals_oxygen':   return <VitalsForm type="oxygen" {...p} />
       case 'vitals_weight':   return <VitalsForm type="weight" {...p} />
+      case 'follow_up':       return <FollowUpForm suId={suId} homeId={homeId} onSaved={onSaved} />
       default:                return <GeneralForm type={type} {...p} />
     }
   }

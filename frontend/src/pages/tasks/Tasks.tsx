@@ -270,7 +270,7 @@ export default function Tasks() {
         <div className="flex gap-2 items-center">
           <PrintButton onClick={printTasks} />
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          {pageTab === 'tasks' && <Button size="sm" variant="outline" icon={<Send className="w-4 h-4" />} onClick={() => setAddFollowUpOpen(true)}>Follow up</Button>}
+          {pageTab === 'tasks' && isRole(...TASK_CREATOR_ROLES) && <Button size="sm" variant="outline" icon={<Send className="w-4 h-4" />} onClick={() => setAddFollowUpOpen(true)}>Follow up</Button>}
           {pageTab === 'tasks' && isRole(...TASK_CREATOR_ROLES) && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}
           {pageTab === 'templates' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
         </div>
