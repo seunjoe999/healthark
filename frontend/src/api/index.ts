@@ -56,7 +56,7 @@ function currentStaffRole(): string {
 }
 
 api.interceptors.request.use((config) => {
-  if ((config.method || '').toLowerCase() === 'delete' && currentStaffRole() !== 'super_admin') {
+  if ((config.method || '').toLowerCase() === 'delete' && !['super_admin', 'admin'].includes(currentStaffRole())) {
     toast.error('Deletion is currently locked for all accounts until a super admin role is set up.')
     return Promise.reject(new Error('Deletion locked'))
   }
