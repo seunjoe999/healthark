@@ -519,6 +519,7 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [signOffTask, setSignOffTask] = useState<any>(null)
+  const [filterSu, setFilterSu] = useState('')
   const today = format(new Date(), 'yyyy-MM-dd')
 
   const load = () => {
@@ -531,9 +532,16 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
   }
 
   useEffect(() => { load() }, [selectedHome])
+  useEffect(() => { setFilterSu('') }, [selectedHome])
 
-  const pending = tasks.filter(t => t.status === 'pending')
-  const done = tasks.filter(t => t.status !== 'pending')
+  // Deduped resident list from today's tasks, so staff can lock the view to one
+  // resident at a time and avoid mixing up medications between residents.
+  const residents = Array.from(new Map(tasks.map(t => [t.suId, t.suName])).entries())
+    .map(([id, name]) => ({ id, name })) as { id: string; name: string }[]
+
+  const visibleTasks = filterSu ? tasks.filter(t => t.suId === filterSu) : tasks
+  const pending = visibleTasks.filter(t => t.status === 'pending')
+  const done = visibleTasks.filter(t => t.status !== 'pending')
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: pageBg }}>
@@ -542,22 +550,40 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
           <Pill className="w-4 h-4 text-purple-600" /> Medication Tasks
         </span>
         <span className="text-xs text-slate-500">{format(new Date(), 'EEEE, d MMMM yyyy')}</span>
-        {homes.length > 1 && (
+        {residents.length > 0 && (
           <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 ml-auto"
+            value={filterSu} onChange={e => setFilterSu(e.target.value)}>
+            <option value="">All residents</option>
+            {residents.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        )}
+        {homes.length > 1 && (
+          <select className={`border border-slate-300 rounded px-2 py-1 text-sm text-slate-700 ${residents.length > 0 ? '' : 'ml-auto'}`}
             value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
             {homes.map((h: any) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         )}
       </div>
 
+      {filterSu && (
+        <div className="no-print px-4 py-2 bg-purple-500/10 border-b border-purple-500/20 flex items-center gap-2">
+          <Pill className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+          <p className="text-xs font-semibold text-purple-200">
+            Showing only {residents.find(r => r.id === filterSu)?.name} — other residents' medications are hidden to help avoid mix-ups.
+          </p>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? <Spinner /> : tasks.length === 0 ? (
           <EmptyState title="No medication due today" description="Check back later, or select the correct home above" />
+        ) : visibleTasks.length === 0 ? (
+          <EmptyState title="No medication due today for this resident" description="Clear the resident filter above to see everyone due today" />
         ) : (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
-                <p className="text-xl font-bold text-slate-100">{tasks.length}</p>
+                <p className="text-xl font-bold text-slate-100">{visibleTasks.length}</p>
                 <p className="text-xs text-slate-400">Total today</p>
               </div>
               <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">

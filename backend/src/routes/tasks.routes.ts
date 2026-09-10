@@ -114,8 +114,16 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
 // (Matches the StaffRole union; 'director'/'registered_manager'/'service_manager'
 // used for privilege checks elsewhere in this codebase aren't part of that type.)
 
-// POST /api/tasks — create a one-off (or recurring) task
-router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'team_leader'), [body('title').notEmpty()], validateRequest,
+const TASK_CREATOR_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'team_leader'];
+
+// POST /api/tasks — create a one-off (or recurring) task.
+// Any authenticated staff member may create a 'follow_up' (flagging something
+// for a colleague to check on a given day) — everything else stays restricted
+// to management/senior roles who plan the day.
+router.post('/', (req: Request, res: Response, next: NextFunction) => {
+  if (req.body.category === 'follow_up') { next(); return; }
+  requireRole(...TASK_CREATOR_ROLES as any)(req, res, next);
+}, [body('title').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
