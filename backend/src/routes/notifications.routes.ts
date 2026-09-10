@@ -46,14 +46,15 @@ router.put('/read-all', async (req: Request, res: Response, next: NextFunction) 
 router.put('/:id/read', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('UPDATE notifications SET is_read=true, read_at=NOW() WHERE id=$1', [req.params.id]);
+      const staffId = req.staff.staffId;
+      await query('UPDATE notifications SET is_read=true, read_at=NOW() WHERE id=$1 AND recipient_id=$2', [req.params.id, staffId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
 
 // POST /api/notifications/send — send to a specific staff member
-router.post('/send', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/send', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'senior_carer', 'team_leader'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const { recipientId, title, body: msgBody, type, link } = req.body;
@@ -77,7 +78,7 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').is
 );
 
 // POST /api/notifications/broadcast — send to all home staff
-router.post('/broadcast', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/broadcast', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const { title, body: msgBody, type, link } = req.body;

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -15,6 +15,13 @@ function fromToken(req: Request, field: string): string {
   if (token) { const d = jwt.decode(token) as any; return d?.[field] || ''; }
   return '';
 }
+
+// Roles allowed to create/edit/delete rota shifts — matches the frontend's
+// canManage gate in Rota.tsx. Every write endpoint in this file previously
+// had no role check at all, so any authenticated staff member could hit
+// these directly (devtools/curl) to create, edit, delete or bulk-reassign
+// any shift regardless of what the UI showed them.
+const MANAGE_ROLES = ['home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin'] as const;
 
 // Roles allowed to see/set wage & charge rates and funder billing details — these
 // are financial fields and must stay hidden from ordinary care staff.
@@ -195,7 +202,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // POST /api/shifts
-router.post('/', [body('staffId').isUUID(), body('shiftDate').isDate(), body('startTime').notEmpty(), body('endTime').notEmpty()], validateRequest,
+router.post('/', requireRole(...MANAGE_ROLES), [body('staffId').isUUID(), body('shiftDate').isDate(), body('startTime').notEmpty(), body('endTime').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
@@ -227,7 +234,7 @@ router.post('/', [body('staffId').isUUID(), body('shiftDate').isDate(), body('st
 );
 
 // POST /api/shifts/copy-week — copy all shifts from previous week to current week
-router.post('/copy-week', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/copy-week', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const { weekStart } = req.body;
@@ -248,9 +255,10 @@ router.post('/copy-week', async (req: Request, res: Response, next: NextFunction
       d.setUTCDate(d.getUTCDate() + 7);
       try {
         const ins = await query(
-          `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, notes)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING RETURNING id`,
-          [homeId, s.staff_id, s.su_id, d.toISOString().split('T')[0], s.start_time, s.end_time, s.shift_type, s.notes]
+          `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, notes, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT DO NOTHING RETURNING id`,
+          [homeId, s.staff_id, s.su_id, d.toISOString().split('T')[0], s.start_time, s.end_time, s.shift_type, s.notes,
+           s.staff_id ? 'filled' : 'unfilled']
         );
         if ((ins as any[]).length > 0) copied++;
       } catch {}
@@ -279,7 +287,7 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
 });
 
 // POST /api/shifts/leave
-router.post('/leave', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/leave', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const createdBy = fromToken(req, 'staffId');
@@ -302,9 +310,10 @@ router.post('/leave', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 // DELETE /api/shifts/leave/:id
-router.delete('/leave/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/leave/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await query('DELETE FROM staff_leave WHERE id = $1', [req.params.id]);
+    const homeId = fromToken(req, 'homeId');
+    await query('DELETE FROM staff_leave WHERE id = $1 AND home_id = $2', [req.params.id, homeId]);
     res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -363,7 +372,7 @@ router.post('/swaps', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 // PUT /api/shifts/swaps/:id — manager approve or reject
-router.put('/swaps/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/swaps/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, responseNotes } = req.body;
     // Ensure column exists
@@ -437,7 +446,7 @@ router.get('/templates', async (req: Request, res: Response, next: NextFunction)
 });
 
 // POST /api/shifts/service-shift — create service-user-centric recurring shift with staff allocation
-router.post('/service-shift', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const createdBy = fromToken(req, 'staffId');
@@ -504,7 +513,7 @@ router.post('/service-shift', async (req: Request, res: Response, next: NextFunc
 });
 
 // POST /api/shifts/templates — create recurring schedule + generate shifts
-router.post('/templates', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const createdBy = fromToken(req, 'staffId');
@@ -527,7 +536,7 @@ router.post('/templates', async (req: Request, res: Response, next: NextFunction
 });
 
 // DELETE /api/shifts/templates/:id — remove template + future generated shifts
-router.delete('/templates/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/templates/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     await query(`DELETE FROM staff_shifts WHERE template_id=$1 AND shift_date >= $2`, [req.params.id, today]);
@@ -537,7 +546,7 @@ router.delete('/templates/:id', async (req: Request, res: Response, next: NextFu
 });
 
 // PUT /api/shifts/:id — general shift edit (staff assignment, times, size, financial fields, etc.)
-router.put('/:id', param('id').isUUID(), validateRequest,
+router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = fromToken(req, 'role');
@@ -596,7 +605,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
 );
 
 // PUT /api/shifts/:id/status — quick status change (Filled / Cancelled / On Hold / Completed)
-router.put('/:id/status', param('id').isUUID(), body('status').isIn(SHIFT_STATUSES), validateRequest,
+router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), body('status').isIn(SHIFT_STATUSES), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = fromToken(req, 'role');
@@ -617,7 +626,7 @@ router.put('/:id/status', param('id').isUUID(), body('status').isIn(SHIFT_STATUS
 const DAY_SHIFT_TYPES = ['early', 'regular', 'late'];
 const NIGHT_SHIFT_TYPES = ['night', 'waking_night', 'sleep_in'];
 
-router.post('/bulk-assign-pattern', [
+router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
   body('staffId').isUUID(),
   body('startDate').isDate(),
   body('endDate').isDate(),
@@ -670,7 +679,7 @@ router.post('/bulk-assign-pattern', [
 
 // POST /api/shifts/:id/link — create a shadow or double-up shift linked to an existing shift.
 // Copies the parent's date / service user / times by default; caller may override staffId/notes.
-router.post('/:id/link', param('id').isUUID(), body('relation').isIn(SHIFT_RELATIONS), validateRequest,
+router.post('/:id/link', requireRole(...MANAGE_ROLES), param('id').isUUID(), body('relation').isIn(SHIFT_RELATIONS), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = fromToken(req, 'role');
@@ -711,7 +720,7 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
 );
 
 // POST /api/shifts/auto-schedule
-router.post('/auto-schedule', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/auto-schedule', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const { weekStart } = req.body;

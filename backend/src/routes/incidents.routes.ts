@@ -269,6 +269,13 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = fromToken(req, 'staffId');
     const role = fromToken(req, 'role');
+    const homeId = fromToken(req, 'homeId');
+    const ownerRows = await query<any>(
+      `SELECT dr.home_id FROM records_incidents ri JOIN daily_records dr ON dr.id = ri.daily_record_id WHERE ri.id = $1`,
+      [req.params.id]
+    );
+    if (!ownerRows.length) throw new AppError('Incident not found', 404);
+    if (ownerRows[0].home_id !== homeId) throw new AppError('Not found', 404);
     if (role === 'care_staff') {
       const lastEvent = await query<any>(
         `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
@@ -293,7 +300,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // POST /api/incidents/:id/review-note — append a timestamped review note (managers/team leaders)
-router.post('/:id/review-note', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/review-note', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = fromToken(req, 'staffId');
     const { note } = req.body;
@@ -314,6 +321,7 @@ router.post('/:id/signature', async (req: Request, res: Response, next: NextFunc
   try {
     const staffId = fromToken(req, 'staffId');
     const staffRows = await query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
+    if (!staffRows.length) throw new AppError('Staff member not found', 404);
     const s = staffRows[0];
     const sig = { name: `${s.first_name} ${s.last_name}`, role: s.role, timestamp: new Date().toISOString() };
     await query(

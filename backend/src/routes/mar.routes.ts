@@ -48,11 +48,11 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const effectiveHomeId = bodyHomeId || homeId;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescriber, start_date, end_date, notes, is_prn, created_by, medicine_type, apply_time)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+          prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by, medicine_type, apply_time)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
         [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
-         instructions || null, isPrn || false, staffId, medicineType || null, applyTime || null]
+         instructions || null, isPrn || false, isControlled || false, staffId, medicineType || null, applyTime || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -63,7 +63,7 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, medicineType, applyTime } = req.body;
+      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled, medicineType, applyTime } = req.body;
       const updates = [
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
@@ -73,6 +73,7 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'end_date', val: nd(endDate) },
         { field: 'notes', val: instructions },
         { field: 'is_prn', val: isPrn },
+        { field: 'is_controlled', val: isControlled },
         { field: 'medicine_type', val: medicineType },
         { field: 'apply_time', val: applyTime },
       ].filter(u => u.val !== undefined);
@@ -157,7 +158,7 @@ router.get('/due-today', async (req: Request, res: Response, next: NextFunction)
     }
 
     let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
-                      m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time,
+                      m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date,
                       su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
                FROM su_medications m
                JOIN service_users su ON su.id = m.su_id
@@ -178,8 +179,16 @@ router.get('/due-today', async (req: Request, res: Response, next: NextFunction)
     const recordMap = new Map<string, any>();
     for (const r of recordRows as any[]) recordMap.set(`${r.medication_id}|${r.scheduled_time}`, r);
 
+    // "Weekly" used to render as a single daily slot with no day-of-week logic,
+    // so it appeared in every staff member's to-do list every single day. Anchor
+    // it to the day of the week the medication's start_date falls on instead.
+    const todayDow = new Date().getDay();
     const tasks: any[] = [];
     for (const med of meds as any[]) {
+      if (med.frequency === 'weekly' && med.start_date) {
+        const anchorDow = new Date(med.start_date).getDay();
+        if (anchorDow !== todayDow) continue;
+      }
       const times = getTimeSlots(med.frequency, med.apply_time);
       for (const t of times) {
         const existing = recordMap.get(`${med.medication_id}|${t}`);
@@ -407,8 +416,10 @@ router.get('/chart-report/:suId', param('suId').isUUID(), validateRequest,
   }
 );
 
-// DELETE /api/mar/records/:id — delete a MAR record
-router.delete('/records/:id', param('id').isUUID(), validateRequest,
+// DELETE /api/mar/records/:id — delete a MAR record (management only — an admin
+// trail integrity requirement; a wrongly-logged dose should be corrected via a
+// new record, not silently erased by whoever administered it)
+router.delete('/records/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM mar_records WHERE id = $1', [req.params.id]);

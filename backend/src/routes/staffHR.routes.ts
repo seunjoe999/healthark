@@ -75,6 +75,10 @@ router.post('/leave',
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { leaveType, startDate, endDate, hoursRequested, totalHours, reason, notes, status } = req.body;
+      // Only leave managers may submit a request on someone else's behalf —
+      // otherwise any staff member could pass another colleague's staffId and
+      // create leave requests under their name.
+      if (req.body.staffId && req.body.staffId !== staffId) requireLeaveManager(req);
       const targetStaffId = req.body.staffId || staffId;
       // Annual leave must be requested at least 4 weeks in advance.
       if (leaveType === 'annual') {

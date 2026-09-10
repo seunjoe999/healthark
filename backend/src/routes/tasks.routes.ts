@@ -194,12 +194,15 @@ router.post('/generate-daily', async (req: Request, res: Response, next: NextFun
         [homeId, today, tmpl.title]
       );
       if (existing.length > 0) continue;
-      
-      // Check frequency
+
+      // Check frequency — "weekly" recurs on whatever day of the week the
+      // template was first created on (not hardcoded to Monday, which meant
+      // a template created any other day never fired except by coincidence).
       const freq = tmpl.frequency || 'daily';
+      const templateDow = tmpl.created_at ? new Date(tmpl.created_at).getDay() : 1;
       let shouldCreate = false;
       if (freq === 'daily') shouldCreate = true;
-      else if (freq === 'weekly' && dayOfWeek === 1) shouldCreate = true; // Monday
+      else if (freq === 'weekly' && dayOfWeek === templateDow) shouldCreate = true;
       else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldCreate = true;
       else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldCreate = true;
       

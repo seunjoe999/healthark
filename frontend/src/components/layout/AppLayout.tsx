@@ -303,7 +303,8 @@ function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: Sideb
         <NavLink to={user?.id ? `/staff/${user.id}/edit` : '#'}
           className="flex items-center gap-3 mb-3 px-1 py-1.5 rounded-xl hover:bg-white/8 transition-all duration-150 group cursor-pointer">
           {user?.photoUrl ? (
-            <img src={user.photoUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-amber-500/30" />
+            <img src={user.photoUrl} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-amber-500/30"
+              onError={e => { e.currentTarget.outerHTML = `<div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style="background: linear-gradient(135deg, #e8b130, #d4961a)">${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}</div>` }} />
           ) : (
             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm text-slate-900" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
               {user?.firstName?.[0]}{user?.lastName?.[0]}

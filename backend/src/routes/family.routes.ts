@@ -21,7 +21,7 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
               h.name as home_name, h.phone as home_phone, h.address1 as home_address
        FROM service_users su
        JOIN homes h ON h.id = su.home_id
-       WHERE su.qr_token = $1 OR su.id::text = $1`,
+       WHERE su.qr_token = $1`,
       [req.params.token]
     );
     if (!rows.length) throw new AppError('Resident not found', 404);
@@ -65,13 +65,14 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
         [su.id]
       ).catch(() => []),
       query<any>(
-        `SELECT i.id, i.incident_type, i.description, i.outcome, i.severity,
-                i.incident_date, i.location, i.follow_up_required,
+        `SELECT ri.id, ri.incident_type, ri.description, ri.location, ri.incident_time AS incident_date,
+                ri.injuries, ri.medical_needed,
                 s.first_name || ' ' || s.last_name as reported_by
-         FROM incidents i
-         LEFT JOIN staff s ON s.id = i.staff_id
-         WHERE i.su_id = $1
-         ORDER BY i.incident_date DESC LIMIT 50`,
+         FROM records_incidents ri
+         JOIN daily_records dr ON dr.id = ri.daily_record_id
+         LEFT JOIN staff s ON s.id = dr.staff_id
+         WHERE dr.su_id = $1
+         ORDER BY ri.incident_time DESC LIMIT 50`,
         [su.id]
       ).catch(() => []),
       query<any>(
@@ -84,10 +85,10 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
         [su.id]
       ).catch(() => []),
       query<any>(
-        `SELECT review_type, review_date, summary, outcome, next_review_date,
+        `SELECT review_type, review_date, summary, outcomes AS outcome, next_review_date,
                 s.first_name || ' ' || s.last_name as reviewed_by
-         FROM care_reviews cr
-         LEFT JOIN staff s ON s.id = cr.staff_id
+         FROM su_reviews cr
+         LEFT JOIN staff s ON s.id = cr.conducted_by
          WHERE cr.su_id = $1
          ORDER BY cr.review_date DESC LIMIT 20`,
         [su.id]

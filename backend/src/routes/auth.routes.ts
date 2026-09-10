@@ -27,13 +27,11 @@ router.post('/login',
     try {
       const email = (req.body.email as string).toLowerCase().trim();
       const { password } = req.body;
-      console.log('[login] attempt for email:', email);
       // Minimal safe query — only 100% guaranteed columns
       const rows = await query<any>(
         `SELECT id, email, password_hash, role, status, is_active FROM staff WHERE LOWER(email) = $1`,
         [email]
       );
-      console.log('[login] rows found:', rows.length);
       // Fetch extra columns separately
       let extraCols: any = {};
       try {
@@ -41,7 +39,7 @@ router.post('/login',
           `SELECT first_name, last_name, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE LOWER(email) = $1`, [email]
         );
         if (extra.length) extraCols = extra[0];
-      } catch (e: any) { console.log('[login] extra cols error:', e.message); }
+      } catch {}
       if (!rows.length) throw new AppError('Invalid email or password', 401);
       const staff = { ...rows[0], ...extraCols };
       if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
@@ -276,20 +274,6 @@ router.get('/setup-status', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/auth/db-check — diagnostic: count staff and admins (no auth required, temp endpoint)
-router.get('/db-check', async (_req, res, next) => {
-  try {
-    const orgs = await query('SELECT COUNT(*) as count FROM organisations');
-    const staffTotal = await query('SELECT COUNT(*) as count FROM staff');
-    const admins = await query("SELECT COUNT(*) as count FROM staff WHERE role IN ('group_admin','home_manager') AND is_active = true");
-    res.json({ success: true, data: {
-      organisations: Number(orgs[0]?.count || 0),
-      staffTotal: Number(staffTotal[0]?.count || 0),
-      activeAdmins: Number(admins[0]?.count || 0),
-    }});
-  } catch (err) { next(err); }
-});
-
 // POST /api/auth/recover-admin — creates a group_admin ONLY if zero active admins exist
 router.post('/recover-admin',
   [body('email').isEmail(), body('password').isLength({ min: 8 }), body('firstName').notEmpty(), body('lastName').notEmpty()],
@@ -303,6 +287,14 @@ router.post('/recover-admin',
       }
       const { password, firstName, lastName } = req.body;
       const email = (req.body.email as string).toLowerCase().trim();
+      // Guard against hijacking an existing staff member's account — the ON
+      // CONFLICT upsert below would otherwise overwrite ANY matching email's
+      // password/role, not just create a brand-new recovery admin.
+      const existing = await query<any>('SELECT id FROM staff WHERE LOWER(email) = $1', [email]);
+      if (existing.length > 0) {
+        res.status(409).json({ success: false, error: 'That email already belongs to an existing staff account. Use a different email for the recovery admin.' });
+        return;
+      }
       const org = await query<any>('SELECT id FROM organisations LIMIT 1');
       if (!org.length) { res.status(400).json({ success: false, error: 'No organisation found.' }); return; }
       const home = await query<any>('SELECT id FROM homes WHERE organisation_id=$1 LIMIT 1', [org[0].id]);
@@ -310,10 +302,7 @@ router.post('/recover-admin',
       const hash = await bcrypt.hash(password, 12);
       await query(
         `INSERT INTO staff (organisation_id, home_id, email, password_hash, first_name, last_name, role, status, is_active)
-         VALUES ($1,$2,$3,$4,$5,$6,'group_admin','active',true)
-         ON CONFLICT (email) DO UPDATE SET password_hash=$4, status='active', is_active=true, role='group_admin',
-           home_id = COALESCE(staff.home_id, EXCLUDED.home_id),
-           organisation_id = COALESCE(staff.organisation_id, EXCLUDED.organisation_id)`,
+         VALUES ($1,$2,$3,$4,$5,$6,'group_admin','active',true)`,
         [org[0].id, home[0].id, email, hash, firstName, lastName]
       );
       res.json({ success: true, message: 'Admin account created. You can now log in.' });

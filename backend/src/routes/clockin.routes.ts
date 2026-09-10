@@ -101,9 +101,11 @@ router.post('/event', authenticate,
       const staffId = fromToken(req, 'staffId');
       const { homeId, staffLat, staffLng, eventType } = req.body;
 
-      // Reject if GPS accuracy is too poor
+      // Reject if GPS accuracy is too poor — but never for clock-out, which is
+      // never geofence-blocked (a weak-signal check ahead of that rule used to
+      // block staff from clocking out at all).
       const gpsAccuracy = parseFloat(req.body.accuracy) || null;
-      if (gpsAccuracy !== null && gpsAccuracy > 300) {
+      if (eventType !== 'clock_out' && gpsAccuracy !== null && gpsAccuracy > 300) {
         return res.status(403).json({
           success: false,
           error: `GPS signal too weak (±${Math.round(gpsAccuracy)}m accuracy). Please use a mobile device or move outdoors.`,
@@ -551,7 +553,7 @@ router.get('/status', authenticate, async (req: Request, res: Response, next: Ne
   } catch (err) { next(err); }
 });
 
-router.post('/generate-qr', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/generate-qr', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { homeId } = req.body;
     const crypto = require('crypto');

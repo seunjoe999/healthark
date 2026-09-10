@@ -18,6 +18,13 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
+// Matches the isPrivileged check on GET / above — sensitive notes, mental capacity
+// assessments and professional-involvement records are all safeguarding-adjacent
+// and must be as restricted as the main quality-records list, not readable by
+// any authenticated staff member just by knowing a resident's id.
+const QUALITY_PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
+  'director', 'registered_manager', 'service_manager', 'team_leader'] as const;
+
 // GET /api/quality — list QA records
 // Care staff (and other non-privileged roles) can ADD quality/clinical-monitoring
 // records but must not be able to VIEW the list — only management can review what
@@ -73,7 +80,7 @@ router.post('/', [body('recordType').notEmpty()], validateRequest,
 );
 
 // PATCH /api/quality/:id — update a quality record
-router.patch('/:id', param('id').isUUID(), validateRequest,
+router.patch('/:id', requireRole(...QUALITY_PRIVILEGED_ROLES), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { actionTaken, lessonsLearnt, updatesText, status, weDidNotes } = req.body;
@@ -93,7 +100,7 @@ router.patch('/:id', param('id').isUUID(), validateRequest,
 );
 
 // GET /api/quality/sensitive-notes/:suId
-router.get('/sensitive-notes/:suId', param('suId').isUUID(), validateRequest,
+router.get('/sensitive-notes/:suId', requireRole(...QUALITY_PRIVILEGED_ROLES), param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(
@@ -124,7 +131,7 @@ router.post('/sensitive-notes', [body('suId').isUUID(), body('note').notEmpty()]
 );
 
 // GET /api/quality/capacity/:suId
-router.get('/capacity/:suId', param('suId').isUUID(), validateRequest,
+router.get('/capacity/:suId', requireRole(...QUALITY_PRIVILEGED_ROLES), param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(

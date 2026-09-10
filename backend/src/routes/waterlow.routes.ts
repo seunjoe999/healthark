@@ -41,7 +41,8 @@ const initWaterlow = async () => {
     )
   `);
 };
-initWaterlow().catch(() => {});
+let waterlowReady = false;
+async function ensureWaterlowTable() { if (!waterlowReady) { await initWaterlow(); waterlowReady = true; } }
 
 const initRepositioning = async () => {
   await query(`
@@ -58,11 +59,13 @@ const initRepositioning = async () => {
     )
   `);
 };
-initRepositioning().catch(() => {});
+let repositioningReady = false;
+async function ensureRepositioningTable() { if (!repositioningReady) { await initRepositioning(); repositioningReady = true; } }
 
 // ── Waterlow routes ───────────────────────────────────────────────
 router.get('/waterlow/:suId', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureWaterlowTable();
     const rows = await query<any>(
       `SELECT w.*, s.first_name || ' ' || s.last_name as assessed_by_name
        FROM waterlow_scores w LEFT JOIN staff s ON s.id = w.assessed_by
@@ -75,6 +78,7 @@ router.get('/waterlow/:suId', async (req: Request, res: Response, next: NextFunc
 
 router.post('/waterlow', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureWaterlowTable();
     const staffId = fromToken(req, 'staffId');
     const {
       suId, homeId, buildScore, skinScore, sexAgeScore, malnutritionScore,
@@ -104,6 +108,7 @@ router.post('/waterlow', async (req: Request, res: Response, next: NextFunction)
 // ── Repositioning routes ──────────────────────────────────────────
 router.get('/repositioning/:suId', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureRepositioningTable();
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const rows = await query<any>(
       `SELECT r.*, s.first_name || ' ' || s.last_name as staff_name
@@ -117,6 +122,7 @@ router.get('/repositioning/:suId', async (req: Request, res: Response, next: Nex
 
 router.post('/repositioning', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureRepositioningTable();
     const staffId = fromToken(req, 'staffId');
     const { suId, homeId, position, skinIntegrityOk, painFree, notes } = req.body;
     const rows = await query<any>(

@@ -401,25 +401,68 @@ router.get('/:id/detail', param('id').isUUID(), validateRequest,
 );
 
 
-// PUT /api/daily-records/:id — update a record's notes
+// PUT /api/daily-records/:id — update a record's notes, and for vitals records
+// (BP / temperature / oxygen / weight) the actual structured reading too — an
+// edit that only rewrote the display text left records_vitals (and its
+// outside_range/flagged safety check, computed once at creation) permanently
+// stale, so a corrected reading never actually re-triggered the safety flag.
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { notes, description, recordType, ...rest } = req.body;
+      const { notes, description, recordType } = req.body;
       const updateText = notes || description || '';
       const role = getRole(req);
       const staffId = getStaffId(req);
 
+      const existing = await query<any>('SELECT staff_id, record_date, record_type FROM daily_records WHERE id=$1', [req.params.id]);
+      if (!existing.length) throw new AppError('Record not found', 404);
+      const rec = existing[0];
+
       // care_staff can only edit their own records from today
       if (role === 'care_staff') {
-        const existing = await query<any>('SELECT staff_id, record_date FROM daily_records WHERE id=$1', [req.params.id]);
-        if (!existing.length) throw new AppError('Record not found', 404);
-        const rec = existing[0];
         const today = new Date().toISOString().split('T')[0];
         if (rec.staff_id !== staffId) throw new AppError('You can only edit your own records', 403);
         if (rec.record_date?.toISOString?.()?.split('T')[0] !== today && String(rec.record_date) !== today) {
           throw new AppError('Care staff can only edit records from today', 403);
         }
+      }
+
+      const type = recordType || rec.record_type;
+      if (type === 'vitals_bp' && (req.body.systolic !== undefined || req.body.diastolic !== undefined)) {
+        const { systolic, diastolic, pulse, bpPosition } = req.body;
+        const outsideRange = systolic > 180 || systolic < 90 || diastolic > 110 || diastolic < 60;
+        await query(
+          `UPDATE records_vitals SET systolic=$1, diastolic=$2, pulse=$3, bp_position=$4, outside_range=$5
+           WHERE daily_record_id=$6 AND vital_type='bp'`,
+          [systolic, diastolic, pulse ?? null, bpPosition ?? null, outsideRange, req.params.id]
+        );
+        await query(`UPDATE daily_records SET flagged=$1, flag_reason=$2 WHERE id=$3`,
+          [outsideRange, outsideRange ? 'Blood pressure outside safe range' : null, req.params.id]);
+      } else if (type === 'vitals_temp' && req.body.tempCelsius !== undefined) {
+        const { tempCelsius, tempMethod } = req.body;
+        const outside = tempCelsius < 35.0 || tempCelsius > 37.5;
+        await query(
+          `UPDATE records_vitals SET temp_celsius=$1, temp_method=$2, outside_range=$3 WHERE daily_record_id=$4 AND vital_type='temperature'`,
+          [tempCelsius, tempMethod ?? null, outside, req.params.id]
+        );
+        await query(`UPDATE daily_records SET flagged=$1, flag_reason=$2 WHERE id=$3`,
+          [outside, outside ? 'Temperature outside safe range' : null, req.params.id]);
+      } else if (type === 'vitals_oxygen' && req.body.spo2Percent !== undefined) {
+        const { spo2Percent, supplementalO2, o2LitresMin } = req.body;
+        const outside = spo2Percent < 94;
+        await query(
+          `UPDATE records_vitals SET spo2_percent=$1, supplemental_o2=$2, o2_litres_min=$3, outside_range=$4 WHERE daily_record_id=$5 AND vital_type='oxygen'`,
+          [spo2Percent, supplementalO2 || false, o2LitresMin ?? null, outside, req.params.id]
+        );
+        await query(`UPDATE daily_records SET flagged=$1, flag_reason=$2 WHERE id=$3`,
+          [outside, outside ? 'Oxygen saturation below 94%' : null, req.params.id]);
+      } else if (type === 'vitals_weight' && req.body.weightKg !== undefined) {
+        const { weightKg, heightCm } = req.body;
+        const bmi = heightCm ? Math.round((weightKg / Math.pow(heightCm / 100, 2)) * 10) / 10 : null;
+        await query(
+          `UPDATE records_vitals SET weight_kg=$1, height_cm=$2, bmi=$3 WHERE daily_record_id=$4 AND vital_type='weight'`,
+          [weightKg, heightCm ?? null, bmi, req.params.id]
+        );
       }
 
       // Update the parent record notes field (daily_records has no updated_at column)

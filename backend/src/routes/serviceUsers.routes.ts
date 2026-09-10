@@ -383,6 +383,7 @@ router.delete('/:id/contacts/:contactId',
 router.get('/:id/documents', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.id);
       const rows = await query(
         `SELECT sd.*, s.first_name || ' ' || s.last_name as uploaded_by_name
          FROM su_documents sd LEFT JOIN staff s ON s.id = sd.uploaded_by
@@ -398,6 +399,7 @@ router.get('/:id/documents', param('id').isUUID(), validateRequest,
 router.get('/:id/messages', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.id);
       const rows = await query(
         `SELECT m.*, s.first_name || ' ' || s.last_name as sender_name, s.photo_url as sender_photo
          FROM su_messages m JOIN staff s ON s.id = m.sender_id
@@ -413,6 +415,7 @@ router.post('/:id/messages', param('id').isUUID(),
   [body('message').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.id);
       const su = await query<{ home_id: string }>(
         'SELECT home_id FROM service_users WHERE id = $1', [req.params.id]
       );
@@ -435,6 +438,7 @@ router.post('/:id/messages', param('id').isUUID(),
 router.get('/:id/about-me', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.id);
       const rows = await query('SELECT * FROM su_about_me WHERE su_id=$1', [req.params.id]);
       res.json({ success: true, data: rows[0] || {} } as ApiResponse);
     } catch (err) { next(err); }
@@ -513,6 +517,7 @@ router.delete('/assignments',
 router.put('/:id/about-me', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await assertResidentAccess(req, req.params.id);
       const { life_history, important_people, daily_routine, hobbies_interests,
               communication, likes_dislikes, beliefs_values, goals_wishes, support_needs } = req.body;
       await query(

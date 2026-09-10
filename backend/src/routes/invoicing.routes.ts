@@ -37,7 +37,7 @@ router.get('/', requireRole('home_manager', 'group_admin'), validateRequest,
 );
 
 // GET /api/invoicing/:id
-router.get('/:id', param('id').isUUID(), validateRequest,
+router.get('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await dbQuery(
@@ -76,7 +76,7 @@ router.post('/', [
 );
 
 // PATCH /api/invoicing/:id — update invoice
-router.patch('/:id', param('id').isUUID(), validateRequest,
+router.patch('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status, commissionedHours, invoiceAmount, notes } = req.body;
@@ -99,7 +99,7 @@ router.patch('/:id', param('id').isUUID(), validateRequest,
 );
 
 // DELETE /api/invoicing/:id
-router.delete('/:id', param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await dbQuery('DELETE FROM invoices WHERE id = $1', [req.params.id]);
@@ -109,31 +109,36 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
 );
 
 // POST /api/invoicing/generate-monthly — auto-generate monthly invoices
-router.post('/generate-monthly', validateRequest,
+router.post('/generate-monthly', requireRole('home_manager', 'group_admin'), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId as string;
       const monthDate = req.body.monthDate as string;
-      
+
       // Get all active service users and their commissioned hours for the month
       const users = await dbQuery(
         `SELECT DISTINCT su.id, su.first_name, su.last_name FROM service_users su WHERE su.home_id = $1 AND su.status = 'live'`,
         [homeId]
       );
-      
-      // For each user, calculate hours from shifts table
+
+      // For each user, calculate hours AND amount from each shift's own charge_rate —
+      // a flat £15/hr for every resident regardless of their actual commissioned
+      // rate produced wrong invoice totals for anyone not on exactly that rate.
       const invoices = [];
       for (const user of users as any[]) {
         const hours = await dbQuery(
-          `SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))/3600) as total_hours
+          `SELECT
+             SUM(EXTRACT(EPOCH FROM (end_time - start_time))/3600) as total_hours,
+             SUM(EXTRACT(EPOCH FROM (end_time - start_time))/3600 * COALESCE(charge_rate, 0)) as total_amount
            FROM staff_shifts WHERE su_id = $1 AND DATE_TRUNC('month', shift_date) = DATE_TRUNC('month', $2::timestamp)`,
           [user.id, monthDate]
         );
-        
+
         const totalHours = parseFloat(String(hours[0]?.total_hours ?? 0));
+        const totalAmount = parseFloat(String(hours[0]?.total_amount ?? 0));
         if (totalHours > 0) {
-          const invoiceAmount = totalHours * 15; // Default £15/hour, can be customized
+          const invoiceAmount = totalAmount > 0 ? totalAmount : totalHours * 15; // fall back to £15/hr only if no charge_rate was ever set on any shift
           const result = await dbQuery(
             `INSERT INTO invoices (home_id, su_id, month_date, commissioned_hours, invoice_amount, created_by)
              VALUES ($1, $2, $3, $4, $5, $6) 

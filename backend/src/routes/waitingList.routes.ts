@@ -162,6 +162,12 @@ router.put('/:id', [
       preferredRoom, status, notes, assignedTo,
     } = req.body;
 
+    // assigned_to uses a direct SET (not COALESCE) whenever the key is present
+    // in the body — COALESCE couldn't tell "not sent" apart from "explicitly
+    // cleared to unassigned", so once set it could never be cleared back.
+    const assignedToClause = Object.prototype.hasOwnProperty.call(req.body, 'assignedTo')
+      ? `assigned_to = $14` : `assigned_to = assigned_to`;
+
     const rows = await query(
       `UPDATE waiting_list SET
          full_name = COALESCE($1, full_name),
@@ -177,7 +183,7 @@ router.put('/:id', [
          preferred_room = COALESCE($11, preferred_room),
          status = COALESCE($12, status),
          notes = COALESCE($13, notes),
-         assigned_to = COALESCE($14, assigned_to),
+         ${assignedToClause},
          updated_at = NOW()
        WHERE id = $15 AND home_id = $16
        RETURNING *`,

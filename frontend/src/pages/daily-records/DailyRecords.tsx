@@ -489,7 +489,13 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
         notesText = `Bristol type ${form.bristolType}${form.notes ? '. ' + form.notes : ''}`
       }
 
-      await dailyRecordsApi.update(record.id, { notes: notesText })
+      const payload: Record<string, any> = { notes: notesText, recordType: type }
+      if (type === 'vitals_bp') { payload.systolic = parseFloat(form.systolic); payload.diastolic = parseFloat(form.diastolic); payload.pulse = form.pulse ? parseFloat(form.pulse) : null }
+      else if (type === 'vitals_temp') { payload.tempCelsius = parseFloat(form.tempCelsius) }
+      else if (type === 'vitals_oxygen') { payload.spo2Percent = parseFloat(form.spo2Percent); payload.supplementalO2 = form.supplementalO2 }
+      else if (type === 'vitals_weight') { payload.weightKg = parseFloat(form.weightKg) }
+
+      await dailyRecordsApi.update(record.id, payload)
       onSaved()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to update')

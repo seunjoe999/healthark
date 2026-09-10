@@ -78,8 +78,10 @@ router.get('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'ad
   } catch (err) { next(err); }
 });
 
+const RECRUITMENT_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'recruitment_admin'] as const;
+
 // POST /api/recruitment
-router.post('/', [
+router.post('/', requireRole(...RECRUITMENT_ROLES), [
   body('firstName').notEmpty(),
   body('lastName').notEmpty(),
   body('position').notEmpty(),
@@ -97,7 +99,7 @@ router.post('/', [
 });
 
 // PUT /api/recruitment/:id
-router.put('/:id', param('id').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requireRole(...RECRUITMENT_ROLES), param('id').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { firstName, lastName, email, phone, position, appliedDate, status, pipelineStage, interviewDate, notes, dbsCheck, referenceCheck, trainingDone, dbsCleared, referencesDone, fullyCompliant, readyToStart, startDate } = req.body;
     const rows = await query(

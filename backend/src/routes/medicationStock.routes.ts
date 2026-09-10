@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -203,7 +203,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
 );
 
 // DELETE /api/medication-stock/:id
-router.delete('/:id', param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'senior_carer', 'team_leader'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM medication_stock WHERE id = $1', [req.params.id]);

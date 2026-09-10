@@ -77,6 +77,9 @@ app.use(cors({
 // â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api', rateLimit({ windowMs: 900000, max: 1000, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 50, standardHeaders: true, legacyHeaders: false }));
+// pin-login accepts a short numeric PIN (as few as 4 digits — 10,000 combinations),
+// which the general 1000/15min API limit does nothing to stop being brute-forced.
+app.use('/api/auth/pin-login', rateLimit({ windowMs: 900000, max: 20, standardHeaders: true, legacyHeaders: false }));
 
 // â”€â”€ General middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(compression());

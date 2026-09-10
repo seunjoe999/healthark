@@ -131,7 +131,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       const nextReview = new Date();
       nextReview.setDate(nextReview.getDate() + (freqDays[freq] || 30));
 
-      await query(
+      const updatedRows = await query(
         `UPDATE risk_assessments SET
           description                = COALESCE($1,  description),
           current_risk_level         = COALESCE($2,  current_risk_level),
@@ -156,7 +156,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           signed_off_date            = COALESCE($20, signed_off_date),
           risk_update_tracking       = COALESCE($21, risk_update_tracking),
           last_assessed_date         = COALESCE($22, last_assessed_date)
-         WHERE id = $9`,
+         WHERE id = $9
+         RETURNING id`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
          freq, nextReview.toISOString().split('T')[0], staffId, req.params.id,
          historicalContext ?? null, riskRating ?? null,
@@ -165,6 +166,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          signedOff ?? null, signedOffBy ?? null, nd(signedOffDate),
          riskUpdateTracking ?? null, lastAssessedDate ?? null]
       );
+      if (!(updatedRows as any[]).length) throw new AppError('Risk assessment not found', 404);
 
       if (updateNotes) {
         await query(

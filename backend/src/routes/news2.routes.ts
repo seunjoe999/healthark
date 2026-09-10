@@ -41,10 +41,12 @@ const init = async () => {
     )
   `);
 };
-init().catch(() => {});
+let news2Ready = false;
+async function ensureNews2Table() { if (!news2Ready) { await init(); news2Ready = true; } }
 
 router.get('/:suId', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureNews2Table();
     const rows = await query<any>(
       `SELECT n.*, s.first_name || ' ' || s.last_name as assessed_by_name
        FROM news2_scores n LEFT JOIN staff s ON s.id = n.assessed_by
@@ -57,6 +59,7 @@ router.get('/:suId', async (req: Request, res: Response, next: NextFunction) => 
 
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureNews2Table();
     const staffId = fromToken(req, 'staffId');
     const {
       suId, homeId,

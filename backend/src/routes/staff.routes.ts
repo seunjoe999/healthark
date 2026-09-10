@@ -382,7 +382,11 @@ router.put(
 
       const canManage = role === 'group_admin' || role === 'home_manager';
       const newStatus = canManage ? (status || null) : null;
-      const newIsActive = isActive !== undefined ? isActive : (status === 'inactive' || status === 'terminated' ? false : status === 'active' ? true : null);
+      // Derived from newStatus (already gated to canManage), not the raw request
+      // body — a non-manager editing their own profile must not be able to
+      // deactivate their own account just by including a status field.
+      const newIsActive = isActive !== undefined ? (canManage ? isActive : null)
+        : (newStatus === 'inactive' || newStatus === 'terminated' ? false : newStatus === 'active' ? true : null);
       // Only a manager may change someone else's role, and never their own
       // (self-promotion would let anyone escalate their own privileges).
       const newRole = (canManage && !isSelf) ? (newRoleInput || null) : null;
@@ -405,7 +409,8 @@ router.put(
         if (leaveHoursRemaining !== undefined) { setParts.push(`leave_hours_remaining = $${idx++}`); vals.push(leaveHoursRemaining === '' ? null : leaveHoursRemaining); }
         vals.push(targetId);
         await query(`UPDATE staff SET ${setParts.join(', ')} WHERE id = $${idx}`, vals);
-      } else if (canManage && (contractedHours !== undefined || startDate !== undefined)) {
+      }
+      if (canManage && (contractedHours !== undefined || startDate !== undefined)) {
         const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
         const cur = existing[0] || {};
         const effContractedHours = contractedHours !== undefined ? contractedHours : cur.contracted_hours;
