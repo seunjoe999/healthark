@@ -76,7 +76,9 @@ export default function MAR() {
   const [stockData, setStockData] = useState<any[]>([])
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review'>('mar')
+  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review'>(
+    () => (new URLSearchParams(window.location.search).get('tab') as any) || 'mar'
+  )
   const [marReviews, setMarReviews] = useState<any[]>([])
   const [addMedOpen, setAddMedOpen] = useState(false)
   const [editMedModal, setEditMedModal] = useState<any>(null)

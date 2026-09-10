@@ -1727,7 +1727,6 @@ const initBarthelTable = async () => {
     )
   `);
 };
-initBarthelTable().catch(() => {});
 
 const initMUSTTable = async () => {
   await query(`
@@ -1749,11 +1748,22 @@ const initMUSTTable = async () => {
     )
   `);
 };
-initMUSTTable().catch(() => {});
+// Fire once at startup as before, but each route also awaits this so a
+// slow/failed startup init (e.g. DB not yet reachable when this module
+// loaded) can't leave these tables silently missing forever.
+let barthelMustTablesReady = false;
+async function ensureBarthelMustTables() {
+  if (barthelMustTablesReady) return;
+  await initBarthelTable();
+  await initMUSTTable();
+  barthelMustTablesReady = true;
+}
+ensureBarthelMustTables().catch(() => {});
 
 // ── Barthel routes ────────────────────────────────────────────────
 router.get('/barthel/:suId', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureBarthelMustTables();
     const rows = await query<any>(
       `SELECT b.*, s.first_name || ' ' || s.last_name as assessed_by_name
        FROM barthel_assessments b LEFT JOIN staff s ON s.id = b.assessed_by
@@ -1766,6 +1776,7 @@ router.get('/barthel/:suId', async (req: Request, res: Response, next: NextFunct
 
 router.post('/barthel', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureBarthelMustTables();
     const { suId, homeId, feeding, bathing, grooming, dressing, bowel_control, bladder_control,
             toilet_use, transfers, mobility, stairs, totalScore, interpretation, notes, assessedBy } = req.body;
     const conductedBy = assessedBy || (req.staff as any)?.staffId;
@@ -1788,6 +1799,7 @@ router.post('/barthel', async (req: Request, res: Response, next: NextFunction) 
 // ── MUST routes ───────────────────────────────────────────────────
 router.get('/must/:suId', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureBarthelMustTables();
     const rows = await query<any>(
       `SELECT m.*, s.first_name || ' ' || s.last_name as assessed_by_name
        FROM must_scores m LEFT JOIN staff s ON s.id = m.assessed_by
@@ -1800,6 +1812,7 @@ router.get('/must/:suId', async (req: Request, res: Response, next: NextFunction
 
 router.post('/must', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await ensureBarthelMustTables();
     const { suId, homeId, bmiScore, bmi, heightCm, weightKg, weightLossScore,
             acuteDiseaseScore, totalScore, riskLevel, notes, assessedBy } = req.body;
     const conductedBy = assessedBy || (req.staff as any)?.staffId;

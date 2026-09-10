@@ -238,13 +238,28 @@ router.post('/supervisions', [body('staffId').isUUID(), body('supervisionDate').
 );
 
 // ── MUST Score ───────────────────────────────────────────────────
+// must_scores is created by assessments.routes.ts (base columns only: notes,
+// assessed_at). action_plan/next_assessment_date are specific to this
+// endpoint, so add them here idempotently rather than assuming they exist.
+let mustColumnsReady = false;
+async function ensureMustColumns() {
+  if (mustColumnsReady) return;
+  await query(`
+    ALTER TABLE must_scores
+      ADD COLUMN IF NOT EXISTS action_plan TEXT,
+      ADD COLUMN IF NOT EXISTS next_assessment_date DATE
+  `);
+  mustColumnsReady = true;
+}
+
 router.get('/must/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await ensureMustColumns();
       const rows = await query(
         `SELECT ms.*, s.first_name || ' ' || s.last_name as assessed_by_name
          FROM must_scores ms LEFT JOIN staff s ON s.id = ms.assessed_by
-         WHERE ms.su_id = $1 ORDER BY ms.created_at DESC LIMIT 10`,
+         WHERE ms.su_id = $1 ORDER BY ms.assessed_at DESC LIMIT 10`,
         [req.params.suId]
       );
       res.json({ success: true, data: rows } as ApiResponse);
@@ -255,6 +270,7 @@ router.get('/must/:suId', param('suId').isUUID(), validateRequest,
 router.post('/must', [body('suId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      await ensureMustColumns();
       const staffId = fromToken(req, 'staffId');
       const homeId = fromToken(req, 'homeId');
       const { suId, weightKg, heightCm, bmiScore, weightLossScore, acuteDiseaseScore,
