@@ -199,12 +199,19 @@ router.post('/generate-daily', async (req: Request, res: Response, next: NextFun
       // template was first created on (not hardcoded to Monday, which meant
       // a template created any other day never fired except by coincidence).
       const freq = tmpl.frequency || 'daily';
-      const templateDow = tmpl.created_at ? new Date(tmpl.created_at).getDay() : 1;
+      const anchor = tmpl.created_at ? new Date(tmpl.created_at) : new Date();
+      const templateDow = anchor.getDay();
+      const now = new Date();
+      const monthsSinceAnchor = (now.getFullYear() - anchor.getFullYear()) * 12 + (now.getMonth() - anchor.getMonth());
       let shouldCreate = false;
       if (freq === 'daily') shouldCreate = true;
       else if (freq === 'weekly' && dayOfWeek === templateDow) shouldCreate = true;
       else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldCreate = true;
       else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldCreate = true;
+      // Every 6 months — recurs on the same day-of-month the template was
+      // created, every 6th month from then on (e.g. created 12 Mar -> fires
+      // again 12 Sep, 12 Mar, ...).
+      else if (freq === 'every_6_months' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 6 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
       
       if (shouldCreate) {
         await query(

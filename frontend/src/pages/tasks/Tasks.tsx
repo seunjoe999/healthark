@@ -22,6 +22,7 @@ const FREQUENCIES = [
   { value: 'every_28_days', label: 'Every 28 days' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
+  { value: 'every_6_months', label: 'Every 6 months' },
   { value: 'yearly', label: 'Yearly' },
 ]
 
