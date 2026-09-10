@@ -240,7 +240,8 @@ export default function StaffModule() {
                             <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm font-display"
                               style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
                               {(s.photo_url || s.photoUrl)
-                                ? <img src={resolveUploadUrl(s.photo_url || s.photoUrl)} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                ? <img src={resolveUploadUrl(s.photo_url || s.photoUrl)} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                    onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.insertAdjacentText('afterend', initials) }} />
                                 : initials}
                             </div>
                             <div className="flex-1 min-w-0">

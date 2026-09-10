@@ -1879,7 +1879,8 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
             <div className="p-4 bg-white">
               <div className="flex items-start gap-4">
                 {photoUrl ? (
-                  <img src={photoUrl} alt={suName} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  <img src={photoUrl} alt={suName} className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                    onError={e => { e.currentTarget.outerHTML = `<div class="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold bg-teal-50 text-teal-700 flex-shrink-0">${(suName[0] || '?').toUpperCase()}</div>` }} />
                 ) : (
                   <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold bg-teal-50 text-teal-700 flex-shrink-0">
                     {suName[0]?.toUpperCase() || '?'}

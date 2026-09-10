@@ -142,13 +142,17 @@ export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, s
   const [preview, setPreview] = useState<string | null>(currentUrl || null)
   const [uploading, setUploading] = useState(false)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
+  // A photo_url can point at a file that's no longer on disk (e.g. an old
+  // upload predating a since-fixed storage bug) — without this, that shows
+  // as a broken-image icon forever instead of falling back to initials.
+  const [broken, setBroken] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // React reuses this component instance when the parent just swaps props
   // (e.g. clicking from one staff/resident profile to another without a
   // remount) — without this, `preview` stayed stuck on whichever photo was
   // first loaded, so the previous person's picture kept showing.
-  useEffect(() => { setPreview(currentUrl || null) }, [currentUrl])
+  useEffect(() => { setPreview(currentUrl || null); setBroken(false) }, [currentUrl])
 
   const initials = name
     ? name.trim().split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -183,6 +187,7 @@ export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, s
       const data = await res.json()
       if (!data.success) throw new Error(data.error)
       setPreview(data.data.photoUrl)
+      setBroken(false)
       onUploaded(data.data.photoUrl)
       toast.success('Photo updated')
     } catch (err: any) {
@@ -222,8 +227,8 @@ export default function PhotoUpload({ currentUrl, name, uploadUrl, onUploaded, s
   return (
     <>
       <div style={containerStyle} onClick={() => fileRef.current?.click()} className="group">
-        {preview ? (
-          <img src={resolveUploadUrl(preview)} alt={name || ''} style={imgStyle} />
+        {preview && !broken ? (
+          <img src={resolveUploadUrl(preview)} alt={name || ''} style={imgStyle} onError={() => setBroken(true)} />
         ) : (
           <span style={{ fontSize: fs, fontWeight: 700, color: '#151f35', lineHeight: 1, zIndex: 1 }}>
             {initials}

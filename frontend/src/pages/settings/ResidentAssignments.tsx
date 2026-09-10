@@ -213,7 +213,8 @@ export default function ResidentAssignments() {
                 className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 transition-colors text-left"
               >
                 {resident.photo_url ? (
-                  <img src={resident.photo_url} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  <img src={resident.photo_url} className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                    onError={e => { e.currentTarget.outerHTML = `<div class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-slate-600">${resident.first_name[0]}${resident.last_name[0]}</div>` }} />
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-slate-600">
                     {resident.first_name[0]}{resident.last_name[0]}

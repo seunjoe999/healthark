@@ -50,7 +50,8 @@ export default function GlobalSearch() {
                 {results.residents.map((r: any) => (
                   <Link key={r.id} to={`/service-users/${r.id}`} className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 shadow-card p-4 hover:border-purple-200 transition-all">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#151f35' }}>
-                      {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" alt="" /> : `${(r.first_name||'?')[0]}${(r.last_name||'?')[0]}`}
+                      {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" alt=""
+                          onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.insertAdjacentText('afterend', `${(r.first_name||'?')[0]}${(r.last_name||'?')[0]}`) }} /> : `${(r.first_name||'?')[0]}${(r.last_name||'?')[0]}`}
                     </div>
                     <div className="flex-1"><p className="font-semibold text-slate-900">{r.first_name} {r.last_name}</p><p className="text-xs text-slate-400 capitalize">{r.date_of_birth ? `Age ${differenceInYears(new Date(), parseISO(r.date_of_birth))} · ` : ''}{(r.status||'').replace('_',' ')}</p></div>
                     <span className="text-xs text-purple-500 font-semibold">View →</span>
@@ -66,7 +67,8 @@ export default function GlobalSearch() {
                 {results.staff.map((s: any) => (
                   <Link key={s.id} to="/staff" className="flex items-center gap-4 bg-white rounded-2xl border border-slate-100 shadow-card p-4 hover:border-purple-200 transition-all">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 overflow-hidden bg-slate-200 text-slate-600">
-                      {s.photo_url ? <img src={s.photo_url} className="w-full h-full object-cover" alt="" /> : `${(s.first_name||'?')[0]}${(s.last_name||'?')[0]}`}
+                      {s.photo_url ? <img src={s.photo_url} className="w-full h-full object-cover" alt=""
+                          onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.insertAdjacentText('afterend', `${(s.first_name||'?')[0]}${(s.last_name||'?')[0]}`) }} /> : `${(s.first_name||'?')[0]}${(s.last_name||'?')[0]}`}
                     </div>
                     <div className="flex-1"><p className="font-semibold text-slate-900">{s.first_name} {s.last_name}</p><p className="text-xs text-slate-400 capitalize">{(s.role||'').replace(/_/g,' ')} · {s.status}</p></div>
                     <span className="text-xs text-purple-500 font-semibold">View →</span>
