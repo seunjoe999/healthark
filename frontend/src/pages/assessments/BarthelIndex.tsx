@@ -159,7 +159,7 @@ export default function BarthelIndex() {
       await api.post('/assessments/barthel', {
         suId: selectedSu,
         homeId: user?.homeId,
-        scores,
+        ...scores,
         totalScore,
         notes,
         assessedBy: user?.id,
@@ -375,8 +375,8 @@ export default function BarthelIndex() {
                         <div className="px-5 pb-4 bg-slate-50 border-t border-slate-100">
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
                             {DOMAINS.map(d => {
-                              const s = h.scores?.[d.id]
-                              if (s === undefined) return null
+                              const s = h[d.id]
+                              if (s === undefined || s === null) return null
                               return (
                                 <div key={d.id} className="bg-white rounded-lg p-2.5 border border-slate-100">
                                   <p className="text-xs font-semibold text-slate-500">{d.label}</p>
