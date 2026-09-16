@@ -184,10 +184,38 @@ async function checkMissedMedication() {
         const link = `/mar?missed=${med.medicationId}-${med.scheduledTime}-${today}`;
         const already = await query<any>(`SELECT 1 FROM notifications WHERE home_id = $1 AND link = $2 LIMIT 1`, [home.id, link]);
         if (already.length) continue;
-        for (const mgr of managers) {
+
+        // Care staff assigned to this resident, plus whoever is currently
+        // clocked in at the home right now (they're the ones who can still
+        // actually administer it) — not just managers reviewing after the
+        // fact.
+        const assignedStaff = await query<any>(
+          `SELECT DISTINCT s.id FROM staff_service_user_assignments a
+           JOIN staff s ON s.id = a.staff_id AND s.home_id = $1 AND s.is_active = true
+           WHERE a.su_id = $2`,
+          [home.id, med.suId]
+        );
+        const onShiftStaff = await query<any>(
+          `SELECT id FROM (
+             SELECT DISTINCT ON (sce.staff_id) sce.staff_id AS id, sce.event_type
+             FROM staff_clock_events sce
+             JOIN staff s ON s.id = sce.staff_id AND s.home_id = $1 AND s.is_active = true
+             ORDER BY sce.staff_id, sce.event_time DESC
+           ) latest WHERE event_type = 'clock_in'`,
+          [home.id]
+        );
+        const staffRecipients = new Map<string, true>();
+        for (const s of assignedStaff) staffRecipients.set(s.id, true);
+        for (const s of onShiftStaff) staffRecipients.set(s.id, true);
+
+        const recipients = new Map<string, true>();
+        for (const mgr of managers) recipients.set(mgr.id, true);
+        for (const id of staffRecipients.keys()) recipients.set(id, true);
+
+        for (const recipientId of recipients.keys()) {
           await query(
             `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'warning',$5)`,
-            [mgr.id, home.id, `Medication missed — ${med.suName}`,
+            [recipientId, home.id, `Medication missed — ${med.suName}`,
              `${med.medicationName} scheduled for ${med.scheduledTime} was not recorded as given.`, link]
           ).catch(() => {});
         }
