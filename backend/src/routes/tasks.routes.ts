@@ -44,7 +44,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
        LEFT JOIN staff a ON a.id = t.assigned_staff_id
-       WHERE t.home_id = $1 AND (t.task_date = $2 OR (t.task_date < $2 AND t.status != 'completed'))`;
+       WHERE t.home_id = $1 AND (
+         t.task_date = $2
+         OR (t.task_date < $2 AND t.status != 'completed')
+         OR (t.task_date < $2 AND t.status = 'completed' AND t.completed_at::date = $2::date)
+       )`;
     let rows = await query<any>(sql, [homeId, date]);
 
     // Agenda-style sort: what's coming up next leads the list, not whatever
