@@ -804,6 +804,15 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
   record: any; onClose: () => void; onEdit: () => void; onNewAssessment: () => void; onRecordUpdate: () => void
 }) {
   const { theme } = useTheme()
+  const isDark = theme === 'dark'
+  // Sections below used to hardcode light-gray-on-transparent text meant for
+  // a dark backdrop — in light theme (or against the modal's actual light
+  // card background) that was nearly unreadable. Route every plain text
+  // block through these instead, matching the bordered/readable card style
+  // Care Plans already uses (see GoldSection in CarePlans.tsx).
+  const bodyText = isDark ? 'text-slate-300' : 'text-slate-700'
+  const mutedText = isDark ? 'text-slate-500' : 'text-slate-500'
+  const suAge = r.su_date_of_birth ? Math.floor((Date.now() - new Date(r.su_date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
   return (
     <Modal open={true} onClose={onClose} title={r.su_name} size="lg">
       <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
@@ -814,6 +823,29 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
           </div>
         ) : (
           <>
+            {/* Document-style header — mirrors Care Plans' resident header (photo + key facts) */}
+            <div className="rounded-2xl overflow-hidden border" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }}>
+              <div className="flex items-start gap-4 p-4" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fafaf9' }}>
+                {r.su_photo_url ? (
+                  <img src={r.su_photo_url} alt={r.su_name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                    onError={e => { e.currentTarget.outerHTML = `<div class="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold bg-amber-500/15 text-amber-500 flex-shrink-0">${(r.su_name?.[0] || '?').toUpperCase()}</div>` }} />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold bg-amber-500/15 text-amber-500 flex-shrink-0">
+                    {r.su_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className={clsx('font-bold text-base', isDark ? 'text-white' : 'text-slate-900')}>{r.su_name}</p>
+                  <div className="grid sm:grid-cols-2 gap-x-4 gap-y-0.5 mt-1.5">
+                    {r.room_number && <p className={clsx('text-xs', mutedText)}>Room: <span className={clsx('font-medium', isDark ? 'text-slate-200' : 'text-slate-800')}>{r.room_number}</span></p>}
+                    {suAge !== null && <p className={clsx('text-xs', mutedText)}>Age: <span className={clsx('font-medium', isDark ? 'text-slate-200' : 'text-slate-800')}>{suAge} yrs</span></p>}
+                    {r.su_med_allergies && <p className={clsx('text-xs', mutedText)}>Medicine allergies: <span className="font-medium text-rose-500">{r.su_med_allergies}</span></p>}
+                    {r.su_food_allergies && <p className={clsx('text-xs', mutedText)}>Food allergies: <span className="font-medium text-rose-500">{r.su_food_allergies}</span></p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               {r.risk_level && <span className={clsx('px-3 py-1 rounded-full text-xs font-bold border capitalize', riskBadge(r.risk_level))}>{r.risk_level} risk</span>}
               {r.assessed_at && <span className="text-xs text-slate-500">Assessed {format(new Date(r.assessed_at), 'dd MMM yyyy')}</span>}
@@ -866,42 +898,46 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             </div>
 
             {r.controlled_meds && (
-              <div className="p-3 rounded-xl space-y-2" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)' }}>
-                <p className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-3 h-3" /> Controlled Medication</p>
-                {r.controlled_notes && <p className="text-slate-300 text-sm whitespace-pre-line">{r.controlled_notes}</p>}
-                <p className="text-xs text-slate-500 italic">Witness sign-off is recorded per administration in the MAR chart.</p>
+              <div className="p-3 rounded-xl space-y-2" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.3)' }}>
+                <p className="text-xs font-bold text-purple-500 uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-3 h-3" /> Controlled Medication</p>
+                {r.controlled_notes && <p className={clsx('text-sm whitespace-pre-line font-medium', bodyText)}>{r.controlled_notes}</p>}
+                <p className={clsx('text-xs italic', mutedText)}>Witness sign-off is recorded per administration in the MAR chart.</p>
               </div>
             )}
 
-            {r.risk_notes && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
-              <p className="text-xs text-slate-500 mb-1">Risk Management Plan</p>
-              <p className="text-slate-300 text-sm whitespace-pre-line">{r.risk_notes}</p>
-            </div>}
+            {r.risk_notes && (
+              <div className="border rounded-xl p-4" style={{ borderColor: isDark ? 'rgba(232,177,48,0.25)' : '#fde68a', background: isDark ? 'rgba(232,177,48,0.06)' : '#fffbeb' }}>
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2">Risk Management Plan</p>
+                <p className={clsx('text-sm whitespace-pre-line font-medium', bodyText)}>{r.risk_notes}</p>
+              </div>
+            )}
 
             {(r.triggers || r.protective_factors) && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }} className="space-y-2">
               {r.triggers && <InfoRow label="Triggers" value={r.triggers} />}
               {r.protective_factors && <InfoRow label="Protective factors" value={r.protective_factors} />}
             </div>}
 
-            {r.prn_protocol && r.prn_notes && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
-              <p className="text-xs text-amber-400 mb-1 font-semibold uppercase tracking-wider">PRN Protocol</p>
-              <p className="text-slate-300 text-sm whitespace-pre-line">{r.prn_notes}</p>
+            {r.prn_protocol && r.prn_notes && (
+              <div className="p-3 rounded-xl" style={{ background: isDark ? 'rgba(245,158,11,0.08)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : '#fde68a'}` }}>
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">PRN Protocol</p>
+                <p className={clsx('text-sm whitespace-pre-line font-medium', bodyText)}>{r.prn_notes}</p>
+              </div>
+            )}
+
+            {r.covert_meds && r.covert_notes && <div className="p-3 rounded-xl" style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : '#fecaca'}` }}>
+              <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-2">Covert Medication — MCA Details</p>
+              <p className={clsx('text-sm whitespace-pre-line font-medium', bodyText)}>{r.covert_notes}</p>
             </div>}
 
-            {r.covert_meds && r.covert_notes && <div className="p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
-              <p className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2">Covert Medication — MCA Details</p>
-              <p className="text-slate-300 text-sm whitespace-pre-line">{r.covert_notes}</p>
+            {r.document_url && <div className="p-3 rounded-xl" style={{ background: isDark ? 'rgba(232,177,48,0.1)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(232,177,48,0.3)' : '#fde68a'}` }}>
+              <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1"><Paperclip className="w-3 h-3" /> Attached Document</p>
+              <a href={r.document_url} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-600 underline font-semibold">{r.document_name || 'View document'}</a>
+              {r.attachment_notes && <p className={clsx('text-xs mt-1', mutedText)}>{r.attachment_notes}</p>}
             </div>}
 
-            {r.document_url && <div className="p-3 rounded-xl" style={{ background: 'rgba(232,177,48,0.06)', border: '1px solid rgba(232,177,48,0.2)' }}>
-              <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Paperclip className="w-3 h-3" /> Attached Document</p>
-              <a href={r.document_url} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-400 underline">{r.document_name || 'View document'}</a>
-              {r.attachment_notes && <p className="text-slate-400 text-xs mt-1">{r.attachment_notes}</p>}
-            </div>}
-
-            {r.signed_off_by && <div className="p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
-              <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Check className="w-3 h-3" /> Signed Off</p>
-              <p className="text-xs text-slate-400">Signed by: <span className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{r.signed_off_by}</span>{r.signed_off_date && <span> on {format(new Date(r.signed_off_date), 'dd MMM yyyy')}</span>}</p>
+            {r.signed_off_by && <div className="p-3 rounded-xl" style={{ background: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(16,185,129,0.3)' : '#bbf7d0'}` }}>
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2 flex items-center gap-1"><Check className="w-3 h-3" /> Signed Off</p>
+              <p className={clsx('text-xs', mutedText)}>Signed by: <span className={clsx('font-semibold', isDark ? 'text-white' : 'text-slate-900')}>{r.signed_off_by}</span>{r.signed_off_date && <span> on {format(new Date(r.signed_off_date), 'dd MMM yyyy')}</span>}</p>
               {r.staff_signature && <div className="mt-2 border border-emerald-500/30 rounded-xl overflow-hidden bg-white w-64">
                 <img src={r.staff_signature} alt="Assessor signature" className="w-full h-16 object-contain" />
               </div>}

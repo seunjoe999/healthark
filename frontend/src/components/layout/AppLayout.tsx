@@ -110,7 +110,7 @@ const navSections = [
       { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
       { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
       { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
-      { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: [], featureKey: 'management_meeting' },
+      { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: [], featureKey: 'notifications' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
     ]

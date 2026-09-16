@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
 import jwt from 'jsonwebtoken';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -13,7 +13,7 @@ import { assertResidentAccess } from '../utils/residentAccess';
 
 const router = Router();
 
-const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'] as const;
 
 router.use(authenticate);
 
@@ -110,7 +110,10 @@ router.post('/staff', [body('staffId').isUUID(), body('conductedBy').notEmpty()]
 );
 
 // ── Management Meeting (home-wide, not tied to a resident/staff record) ──
-router.get('/management', async (req: Request, res: Response, next: NextFunction) => {
+// Management-only — this covers whatever managers discuss home-wide
+// (HR, safeguarding, disciplinary, etc.), so care staff must not be able
+// to read or write it even by hitting the API directly.
+router.get('/management', requireRole(...MANAGER_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId) { res.json({ success: true, data: [] } as ApiResponse); return; }
@@ -125,7 +128,7 @@ router.get('/management', async (req: Request, res: Response, next: NextFunction
   } catch (err) { next(err); }
 });
 
-router.post('/management', [body('homeId').isUUID(), body('conductedBy').notEmpty()], validateRequest,
+router.post('/management', requireRole(...MANAGER_ROLES), [body('homeId').isUUID(), body('conductedBy').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const createdBy = fromToken(req, 'staffId');
