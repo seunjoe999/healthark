@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { alertsService } from './alerts.service';
 import { logger } from '../config/logger';
+import { getDueTodayTasks } from '../utils/medicationDue';
 
 // ================================================================
 // HEALTHARK SCHEDULED JOBS
@@ -152,6 +153,49 @@ async function checkLowMedicationStock() {
   }
 }
 
+// Every 30 minutes: notify managers about medication that was due and is still
+// unrecorded — uses the same getDueTodayTasks list the staff task view and the
+// clock-out gate already agree on, so "missed" here means exactly what it
+// means everywhere else in the app. Dedupes on the notification's link so a
+// re-run 30 minutes later doesn't spam a second alert for the same dose.
+async function checkMissedMedication() {
+  try {
+    const { query } = await import('../config/database');
+    const homes = await query<any>('SELECT id FROM homes WHERE is_active = true');
+    const today = new Date().toISOString().split('T')[0];
+    const nowHHMM = new Date().toTimeString().slice(0, 5);
+    // A dose isn't "missed" the second the clock ticks past its time — give
+    // staff a reasonable window to actually administer it before alerting.
+    const graceMinutes = 60;
+    const cutoff = new Date(Date.now() - graceMinutes * 60000).toTimeString().slice(0, 5);
+
+    for (const home of homes as any[]) {
+      const tasks = await getDueTodayTasks(home.id, '', 'home_manager');
+      const missed = tasks.filter(t => t.status === 'pending' && t.scheduledTime && t.scheduledTime < cutoff);
+      if (!missed.length) continue;
+
+      const managers = await query<any>(
+        `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager','group_admin','deputy_manager') AND is_active = true`,
+        [home.id]
+      );
+      if (!managers.length) continue;
+
+      for (const med of missed) {
+        const link = `/mar?missed=${med.medicationId}-${med.scheduledTime}-${today}`;
+        const already = await query<any>(`SELECT 1 FROM notifications WHERE home_id = $1 AND link = $2 LIMIT 1`, [home.id, link]);
+        if (already.length) continue;
+        for (const mgr of managers) {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'warning',$5)`,
+            [mgr.id, home.id, `Medication missed — ${med.suName}`,
+             `${med.medicationName} scheduled for ${med.scheduledTime} was not recorded as given.`, link]
+          ).catch(() => {});
+        }
+      }
+    }
+  } catch (err) { logger.error('Missed medication check failed:', err); }
+}
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
@@ -169,6 +213,9 @@ export function startScheduler(): void {
 
   // Every morning at 7am: low medication stock alerts
   cron.schedule('0 7 * * *', checkLowMedicationStock);
+
+  // Every 30 minutes: missed medication alerts to managers
+  cron.schedule('*/30 * * * *', checkMissedMedication);
 
   // Every morning at 8am: training expiry checks
   cron.schedule('0 8 * * *', async () => {

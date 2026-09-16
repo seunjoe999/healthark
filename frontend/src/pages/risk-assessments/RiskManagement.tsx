@@ -80,7 +80,7 @@ function GreenSection({ label, value }: { label: string; value?: string | null }
 
 const BLANK_FORM = {
   riskType: '', customName: '', description: '', riskRating: 'low', currentRiskLevel: 'low',
-  whoIsAtRisk: '', whatCouldHappen: '', triggers: '', protectiveFactors: '',
+  whoIsAtRisk: '', isHistorical: false, whatCouldHappen: '', triggers: '', protectiveFactors: '',
   managementPlan: '', historicalContext: '', reviewFrequency: 'monthly',
   riskBeforeIntervention: '', riskRatingOption: '', riskAfterControls: '',
   riskUpdateTracking: '', lastAssessedDate: '',
@@ -223,6 +223,8 @@ export default function RiskManagement() {
     if (ra.who_is_at_risk) {
       sections.push({ title: 'Who is at Risk', inner: `<p class="body-text">${nl(ra.who_is_at_risk)}</p>` })
     }
+
+    sections.push({ title: 'Is the Risk Historical', inner: `<p class="body-text">${ra.is_historical ? 'Yes' : 'No'}</p>` })
 
     if (ra.what_could_happen) {
       sections.push({ title: 'What Could Happen', inner: `<p class="body-text">${nl(ra.what_could_happen)}</p>` })
@@ -388,7 +390,7 @@ export default function RiskManagement() {
         suId: form.suId, homeId: selectedHome,
         assessmentName, description: form.description,
         riskLevel, currentRiskLevel: riskLevel, riskRating: riskLevel,
-        whoIsAtRisk: form.whoIsAtRisk, whatCouldHappen: form.whatCouldHappen,
+        whoIsAtRisk: form.whoIsAtRisk, isHistorical: form.isHistorical, whatCouldHappen: form.whatCouldHappen,
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
         managementPlan: form.managementPlan, historicalContext: form.historicalContext,
         reviewFrequency: form.reviewFrequency,
@@ -416,6 +418,7 @@ export default function RiskManagement() {
         description: form.description, currentRiskLevel: riskLevel,
         riskRating: riskLevel, managementPlan: form.managementPlan,
         triggers: form.triggers, protectiveFactors: form.protectiveFactors,
+        whoIsAtRisk: form.whoIsAtRisk, isHistorical: form.isHistorical,
         historicalContext: form.historicalContext, reviewFrequency: form.reviewFrequency,
         riskBeforeIntervention: form.riskBeforeIntervention,
         riskRatingOption: form.riskRatingOption,
@@ -477,6 +480,7 @@ export default function RiskManagement() {
       riskRating: ra.risk_rating || ra.current_risk_level || 'low',
       currentRiskLevel: ra.current_risk_level || 'low',
       whoIsAtRisk: ra.who_is_at_risk || '',
+      isHistorical: ra.is_historical || false,
       whatCouldHappen: ra.what_could_happen || '',
       triggers: ra.triggers || '',
       protectiveFactors: ra.protective_factors || '',
@@ -683,6 +687,7 @@ export default function RiskManagement() {
                 {likelihood && <span><span className="font-semibold text-slate-600">Likelihood:</span> {likelihood.label}</span>}
                 {ra.risk_after_controls && <span className="truncate"><span className="font-semibold text-slate-600">After controls:</span> {ra.risk_after_controls}</span>}
                 <span className="flex items-center gap-1.5"><span className="font-semibold text-slate-600">Overall level:</span> <RiskBadge level={ra.risk_rating || ra.current_risk_level || 'low'} /></span>
+                <span><span className="font-semibold text-slate-600">Historical:</span> {ra.is_historical ? 'Yes' : 'No'}</span>
               </div>
 
               {ra.signed_off ? (
@@ -823,6 +828,19 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
         <label className="text-xs font-semibold text-slate-600 block mb-1">Who is at risk?</label>
         <input className="input w-full" placeholder="e.g. Service user, staff, visitors"
           value={form.whoIsAtRisk} onChange={e => setF('whoIsAtRisk', e.target.value)} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block mb-1">Is the risk historical?</label>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setF('isHistorical', true)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${form.isHistorical ? 'bg-amber-100 text-amber-700 border-amber-300' : 'text-slate-500 border-slate-200'}`}>
+            Yes
+          </button>
+          <button type="button" onClick={() => setF('isHistorical', false)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${!form.isHistorical ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'text-slate-500 border-slate-200'}`}>
+            No
+          </button>
+        </div>
       </div>
       <SpeechTextarea label="What could happen?" className="w-full" rows={2} placeholder="Describe the potential harm or consequence..."
         value={form.whatCouldHappen} onChange={v => setF('whatCouldHappen', v)} />

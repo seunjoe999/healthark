@@ -3009,6 +3009,11 @@ async function createNewFeatureTables() {
     `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS fit_note_provided BOOLEAN DEFAULT false`,
     `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS fit_note_end_date DATE`,
     `ALTER TABLE staff_absences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+    // Staff calendar events can be booked for one specific staff member or one
+    // or more teams — null/empty on both means visible to all staff, same
+    // "visible to" convention used on tasks.
+    `ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS visible_team_ids UUID[]`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((e: any) => logger.warn('createNewFeatureTables: ' + e.message));

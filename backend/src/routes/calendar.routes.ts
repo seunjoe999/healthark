@@ -31,10 +31,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (!homeId || !UUID_RE.test(homeId)) { res.json({ success: true, data: [] } as ApiResponse); return; }
     const { from, to, audience } = req.query as Record<string, string>;
     let sql = `SELECT ce.*, s.first_name || ' ' || s.last_name as created_by_name,
-      su.first_name || ' ' || su.last_name as su_name
+      su.first_name || ' ' || su.last_name as su_name,
+      a.first_name || ' ' || a.last_name as assigned_staff_name
       FROM calendar_events ce
       LEFT JOIN staff s ON s.id = ce.created_by
       LEFT JOIN service_users su ON su.id = ce.su_id
+      LEFT JOIN staff a ON a.id = ce.assigned_staff_id
       WHERE ce.home_id = $1`;
     const params: unknown[] = [homeId];
     let idx = 2;
@@ -47,7 +49,29 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (audience === 'resident') sql += ` AND ce.su_id IS NOT NULL`;
     else if (audience === 'staff') sql += ` AND ce.su_id IS NULL`;
     sql += ' ORDER BY ce.event_date, ce.start_time';
-    const rows = await query(sql, params);
+    let rows = await query<any>(sql, params);
+
+    // A staff-only event booked for one specific staff member or one or more
+    // teams is private to them (plus management, who plan the calendar and
+    // need to see everything on it) — same "visible to" convention as tasks.
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    const isPrivileged = (CALENDAR_MANAGE_ROLES as readonly string[]).includes(role);
+    if (!isPrivileged) {
+      let myTeamId: string | null = null;
+      if (staffId) {
+        const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
+        myTeamId = staffRows[0]?.team_id || null;
+      }
+      rows = rows.filter(ev => {
+        if (ev.su_id) return true; // resident-linked events aren't staff-scoped
+        if (ev.created_by === staffId) return true;
+        if (ev.assigned_staff_id) return ev.assigned_staff_id === staffId;
+        const hasTeamTarget = !!(ev.visible_team_ids && ev.visible_team_ids.length > 0);
+        if (!hasTeamTarget) return true; // general/all-staff event
+        return !!(myTeamId && ev.visible_team_ids.includes(myTeamId));
+      });
+    }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -58,7 +82,7 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
       const staffId = fromToken(req, 'staffId');
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       if (!homeId || !UUID_RE.test(homeId)) throw new AppError('No care home selected for this event', 400);
-      const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff } = req.body;
+      const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff, assignedStaffId, visibleTeamIds } = req.body;
       // Any staff member can book/manage a resident's own appointment — only
       // a staff-only event (no resident attached, e.g. training a manager is
       // booking for the team) is restricted to management.
@@ -76,11 +100,12 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
       const startTs = isTimeOnly(startTime) ? `${eventDate}T${startTime}` : (startTime || `${eventDate}T09:00:00`);
       const endTs = isTimeOnly(endTime) ? `${eventDate}T${endTime}` : (endTime || null);
       const rows = await query(
-        `INSERT INTO calendar_events (home_id, created_by, title, event_type, event_date, start_time, end_time, description, location, su_id, all_staff)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        `INSERT INTO calendar_events (home_id, created_by, title, event_type, event_date, start_time, end_time, description, location, su_id, all_staff, assigned_staff_id, visible_team_ids)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
         [homeId, staffId, title, eventType || 'other', eventDate,
          startTs, endTs, description || null,
-         location || null, suId || null, allStaff || false]
+         location || null, suId || null, allStaff || false,
+         assignedStaffId || null, (visibleTeamIds && visibleTeamIds.length > 0) ? visibleTeamIds : null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

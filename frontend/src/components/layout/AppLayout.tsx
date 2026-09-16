@@ -205,12 +205,12 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
   }
   return (
     <form onSubmit={submit} className="px-3 mb-3">
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/8 focus-within:border-amber-500/40 transition-colors">
-        <Search className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/15 focus-within:border-amber-500/50 transition-colors">
+        <Search className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
         <input
           value={q} onChange={e => setQ(e.target.value)}
           placeholder="Search…"
-          className="flex-1 bg-transparent text-sm text-slate-300 placeholder-slate-600 outline-none min-w-0"
+          className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 outline-none min-w-0"
         />
       </div>
     </form>

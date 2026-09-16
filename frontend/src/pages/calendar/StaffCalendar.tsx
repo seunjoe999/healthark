@@ -1,11 +1,40 @@
 import React, { useEffect, useState } from 'react'
-import { homesApi } from '../../api'
+import { homesApi, staffApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isPast } from 'date-fns'
-import { Spinner, Button, Modal, Input } from '../../components/ui'
+import { Spinner, Button, Modal, Input, Select } from '../../components/ui'
 import { GraduationCap, Plus, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// "Who should see this" — multi-select of real Teams when teams have been set
+// up for this home; otherwise falls back to "All staff" only. Mirrors the same
+// picker used for tasks (frontend/src/pages/tasks/Tasks.tsx).
+function TeamVisibilitySelect({ teams, value, onChange }: { teams: any[]; value: string[]; onChange: (ids: string[]) => void }) {
+  const allSelected = value.length === 0
+  const toggle = (id: string) => {
+    if (value.includes(id)) onChange(value.filter(v => v !== id))
+    else onChange([...value, id])
+  }
+  return (
+    <div>
+      <label className="label">Visible to</label>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onChange([])}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${allSelected ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'}`}>
+          All staff
+        </button>
+        {teams.map(t => (
+          <button type="button" key={t.id} onClick={() => toggle(t.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${value.includes(t.id) ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'}`}>
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {teams.length === 0 && <p className="text-xs text-slate-400 mt-1">No teams set up yet under Settings → Teams — everyone can see this, or book it for one specific staff member below.</p>}
+    </div>
+  )
+}
 
 // Staff Calendar is deliberately separate from the resident/service-user
 // calendar — it's purely for things booked for the team (training, staff
@@ -39,6 +68,8 @@ export default function StaffCalendarPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [staffList, setStaffList] = useState<any[]>([])
+  const [teams, setTeams] = useState<any[]>([])
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -49,6 +80,12 @@ export default function StaffCalendarPage() {
   }, [user])
 
   useEffect(() => { if (selectedHome) load() }, [selectedHome, currentMonth])
+
+  useEffect(() => {
+    if (!selectedHome || !canManage) return
+    staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || [])).catch(() => {})
+    api.get('/teams', { params: { homeId: selectedHome } }).then(res => setTeams(res.data.data || [])).catch(() => setTeams([]))
+  }, [selectedHome, canManage])
 
   const load = async () => {
     setLoading(true)
@@ -146,7 +183,7 @@ export default function StaffCalendarPage() {
         </div>
       </div>
 
-      <AddStaffEventModal open={addOpen} onClose={() => setAddOpen(false)} homeId={selectedHome} defaultDate={selectedDay}
+      <AddStaffEventModal open={addOpen} onClose={() => setAddOpen(false)} homeId={selectedHome} defaultDate={selectedDay} staffList={staffList} teams={teams}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Added to staff calendar') }} />
 
       {selectedEvent && (
@@ -155,6 +192,15 @@ export default function StaffCalendarPage() {
             <p className="text-sm text-slate-500 capitalize">{selectedEvent.event_type} · {format(new Date(selectedEvent.event_date), 'd MMMM yyyy')}{selectedEvent.start_time ? ` at ${format(new Date(selectedEvent.start_time), 'HH:mm')}` : ''}</p>
             {selectedEvent.description && <p className="text-sm text-slate-700">{selectedEvent.description}</p>}
             {selectedEvent.location && <p className="text-sm text-slate-500">Location: {selectedEvent.location}</p>}
+            {selectedEvent.assigned_staff_name ? (
+              <p className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full inline-block">Booked for: {selectedEvent.assigned_staff_name}</p>
+            ) : selectedEvent.visible_team_ids && selectedEvent.visible_team_ids.length > 0 ? (
+              <p className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full inline-block">
+                Visible to: {selectedEvent.visible_team_ids.map((id: string) => teams.find(t => t.id === id)?.name || 'team').join(', ')}
+              </p>
+            ) : (
+              <p className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full inline-block">Visible to: All staff</p>
+            )}
             {canManage && (
               <div className="flex justify-end pt-3 border-t border-slate-100">
                 <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />}
@@ -168,16 +214,18 @@ export default function StaffCalendarPage() {
   )
 }
 
-function AddStaffEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
-  open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; onSaved: () => void
+function AddStaffEventModal({ open, onClose, homeId, defaultDate, staffList, teams, onSaved }: {
+  open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; staffList: any[]; teams: any[]; onSaved: () => void
 }) {
   const [form, setForm] = useState({
     title: '', eventType: 'training',
     eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
     startTime: '', endTime: '', description: '', location: '',
+    assignedStaffId: '', visibleTeamIds: [] as string[],
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
   useEffect(() => {
     if (open) setForm(f => ({ ...f, eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : f.eventDate }))
@@ -186,7 +234,10 @@ function AddStaffEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/calendar', { homeId, ...form, allStaff: true }); onSaved() }
+    try {
+      await api.post('/calendar', { homeId, ...form, assignedStaffId: form.assignedStaffId || null, allStaff: true })
+      onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -208,6 +259,13 @@ function AddStaffEventModal({ open, onClose, homeId, defaultDate, onSaved }: {
         </div>
         <Input label="Location" value={form.location} onChange={e => set('location', e.target.value)} placeholder="e.g. Training room" />
         <div><label className="label">Description</label><textarea className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} /></div>
+        <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids, assignedStaffId: ids.length ? '' : p.assignedStaffId }))} />
+        <Select label="Or book for one specific staff member (optional)" value={form.assignedStaffId}
+          onChange={e => setForm(p => ({ ...p, assignedStaffId: e.target.value, visibleTeamIds: e.target.value ? [] : p.visibleTeamIds }))}
+          options={staffOptions} placeholder="Anyone covered above" />
+        {(form.assignedStaffId || form.visibleTeamIds.length > 0) && (
+          <p className="text-xs text-slate-400 -mt-2">Only {form.assignedStaffId ? 'that staff member' : 'staff on the selected team(s)'} (and management) will see this entry on the staff calendar.</p>
+        )}
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading}>Add</Button>

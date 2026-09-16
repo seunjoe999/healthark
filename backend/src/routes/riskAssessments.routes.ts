@@ -125,7 +125,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
               riskBeforeIntervention, riskScore, riskRatingOption,
               evaluationOfRisk, riskAcceptable, riskAfterControls,
               signedOff, signedOffBy, signedOffDate,
-              riskUpdateTracking, lastAssessedDate } = req.body;
+              riskUpdateTracking, lastAssessedDate,
+              whoIsAtRisk, isHistorical } = req.body;
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const freq = reviewFrequency || 'monthly';
       const nextReview = new Date();
@@ -155,7 +156,9 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           signed_off_by              = COALESCE($19, signed_off_by),
           signed_off_date            = COALESCE($20, signed_off_date),
           risk_update_tracking       = COALESCE($21, risk_update_tracking),
-          last_assessed_date         = COALESCE($22, last_assessed_date)
+          last_assessed_date         = COALESCE($22, last_assessed_date),
+          who_is_at_risk             = COALESCE($23, who_is_at_risk),
+          is_historical              = COALESCE($24, is_historical)
          WHERE id = $9
          RETURNING id`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
@@ -164,7 +167,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          riskBeforeIntervention ?? null, riskScore ?? null, riskRatingOption ?? null,
          evaluationOfRisk ?? null, riskAcceptable ?? null, riskAfterControls ?? null,
          signedOff ?? null, signedOffBy ?? null, nd(signedOffDate),
-         riskUpdateTracking ?? null, lastAssessedDate ?? null]
+         riskUpdateTracking ?? null, lastAssessedDate ?? null,
+         whoIsAtRisk ?? null, isHistorical ?? null]
       );
       if (!(updatedRows as any[]).length) throw new AppError('Risk assessment not found', 404);
 

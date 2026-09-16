@@ -328,6 +328,35 @@ router.post('/:id/signature', async (req: Request, res: Response, next: NextFunc
       `UPDATE records_incidents SET signature = $1::jsonb, updated_at = NOW() WHERE id = $2`,
       [JSON.stringify(sig), req.params.id]
     );
+
+    // The signature is what marks an incident report as completed — tell
+    // managers it's done and ready to review, same audience as the
+    // new-incident notification above.
+    try {
+      const ctxRows = await query<any>(
+        `SELECT dr.home_id, su.first_name || ' ' || su.last_name as su_name
+         FROM records_incidents ri JOIN daily_records dr ON dr.id = ri.daily_record_id
+         JOIN service_users su ON su.id = dr.su_id WHERE ri.id = $1`,
+        [req.params.id]
+      );
+      if (ctxRows.length) {
+        const { home_id, su_name } = ctxRows[0];
+        const managers = await query<any>(
+          `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager','deputy_manager','group_admin','admin') AND is_active = true`,
+          [home_id]
+        );
+        for (const m of managers) {
+          if (m.id === staffId) continue;
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'incident',$5)`,
+            [m.id, home_id, `Incident report completed — ${su_name}`,
+             `${sig.name} has signed off the incident report for ${su_name}. Please review it in Incidents.`,
+             `/incidents/${req.params.id}`]
+          ).catch(() => {});
+        }
+      }
+    } catch { /* non-fatal */ }
+
     res.json({ success: true, data: sig } as ApiResponse);
   } catch (err) { next(err); }
 });

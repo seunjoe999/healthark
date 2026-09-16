@@ -599,7 +599,35 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
         `UPDATE staff_shifts SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`,
         values
       );
-      res.json({ success: true, data: stripFinancials(rows[0], role) } as ApiResponse);
+      const updated = rows[0];
+
+      // Tell the affected staff member(s) their rota has changed — a swapped
+      // date/time, a status change (e.g. cancelled), or being (un)assigned
+      // altogether all mean the shift on their rota no longer looks like it
+      // did when they last checked.
+      const oldStaffId = existing[0].staff_id;
+      const newStaffId = updated.staff_id;
+      const timeChanged = shiftDate !== undefined || startTime !== undefined || endTime !== undefined;
+      const statusChanged = status !== undefined && status !== existing[0].status;
+      if (oldStaffId && oldStaffId !== newStaffId) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [oldStaffId, updated.home_id, 'Rota updated', `Your shift on ${existing[0].shift_date} has been reassigned to someone else.`]
+        ).catch(() => {});
+      }
+      if (newStaffId && (newStaffId !== oldStaffId || timeChanged || statusChanged)) {
+        const body = newStaffId !== oldStaffId
+          ? `You've been assigned a shift on ${updated.shift_date} from ${updated.start_time} to ${updated.end_time}.`
+          : statusChanged
+            ? `Your shift on ${updated.shift_date} is now marked ${updated.status.replace('_', ' ')}.`
+            : `Your shift has changed — now ${updated.shift_date} from ${updated.start_time} to ${updated.end_time}.`;
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [newStaffId, updated.home_id, 'Rota updated', body]
+        ).catch(() => {});
+      }
+
+      res.json({ success: true, data: stripFinancials(updated, role) } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
@@ -713,7 +741,14 @@ router.post('/:id/link', requireRole(...MANAGE_ROLES), param('id').isUUID(), bod
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const existing = await query<any>('SELECT staff_id, home_id, shift_date FROM staff_shifts WHERE id = $1', [req.params.id]);
       await query('DELETE FROM staff_shifts WHERE id = $1', [req.params.id]);
+      if (existing[0]?.staff_id) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [existing[0].staff_id, existing[0].home_id, 'Rota updated', `Your shift on ${existing[0].shift_date} has been removed from the rota.`]
+        ).catch(() => {});
+      }
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
