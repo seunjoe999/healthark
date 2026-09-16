@@ -83,15 +83,9 @@ router.post('/', [body('title').notEmpty(), body('eventDate').isDate()], validat
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       if (!homeId || !UUID_RE.test(homeId)) throw new AppError('No care home selected for this event', 400);
       const { title, eventType, eventDate, startTime, endTime, description, location, suId, allStaff, assignedStaffId, visibleTeamIds } = req.body;
-      // Any staff member can book/manage a resident's own appointment — only
-      // a staff-only event (no resident attached, e.g. training a manager is
-      // booking for the team) is restricted to management.
-      if (!suId) {
-        const role = fromToken(req, 'role');
-        if (!(CALENDAR_MANAGE_ROLES as readonly string[]).includes(role)) {
-          throw new AppError('Only management can add staff calendar events', 403);
-        }
-      }
+      // Any staff member can book a resident's own appointment, and any staff
+      // member can now also add their own entry to the staff calendar (e.g.
+      // their own training booking) — only deleting stays management-only.
       // start_time/end_time are TIMESTAMPTZ, but the client only sends a bare
       // "HH:mm" (from <input type="time">) plus the date separately — combine
       // them into a real timestamp so Postgres doesn't reject the insert.

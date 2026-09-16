@@ -11,7 +11,7 @@ function GeofencePostcodeLookup({ currentPostcode, currentRadius, hasCoords, onS
   currentPostcode: string
   currentRadius: number
   hasCoords: boolean
-  onSave: (lat: number, lng: number, radius: number) => void
+  onSave: (lat: number, lng: number, radius: number, postcode: string) => void
 }) {
   const [postcode, setPostcode] = React.useState(currentPostcode)
   const [radius, setRadius] = React.useState(String(currentRadius || 200))
@@ -33,7 +33,7 @@ function GeofencePostcodeLookup({ currentPostcode, currentRadius, hasCoords, onS
         return
       }
       const { latitude, longitude } = data.result
-      onSave(latitude, longitude, parseInt(radius) || 200)
+      onSave(latitude, longitude, parseInt(radius) || 200, clean)
       setFound(true)
       toast.success(`Geofence set for ${clean} — staff must be within ${radius}m`)
     } catch {
@@ -54,7 +54,7 @@ function GeofencePostcodeLookup({ currentPostcode, currentRadius, hasCoords, onS
           <label className="label">Radius (metres)</label>
           <input className="input" type="number" value={radius} onChange={e => setRadius(e.target.value)} />
         </div>
-        <Button type="button" icon={looking ? undefined : <Search className="w-4 h-4" />} loading={looking} onClick={lookup}>
+        <Button type="button" variant="gold" icon={looking ? undefined : <Search className="w-4 h-4" />} loading={looking} onClick={lookup}>
           Set geofence
         </Button>
       </div>
@@ -329,8 +329,8 @@ export default function Settings() {
               currentPostcode={form.postcode || ''}
               currentRadius={form.geofenceRadius || 200}
               hasCoords={!!(form.latitude && form.longitude)}
-              onSave={(lat, lng, radius) => {
-                setForm((p: any) => ({ ...p, latitude: lat, longitude: lng, geofenceRadius: radius }))
+              onSave={(lat, lng, radius, postcode) => {
+                setForm((p: any) => ({ ...p, latitude: lat, longitude: lng, geofenceRadius: radius, postcode }))
               }}
             />
           </div>

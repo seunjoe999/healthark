@@ -82,10 +82,10 @@ export default function StaffCalendarPage() {
   useEffect(() => { if (selectedHome) load() }, [selectedHome, currentMonth])
 
   useEffect(() => {
-    if (!selectedHome || !canManage) return
+    if (!selectedHome) return
     staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || [])).catch(() => {})
     api.get('/teams', { params: { homeId: selectedHome } }).then(res => setTeams(res.data.data || [])).catch(() => setTeams([]))
-  }, [selectedHome, canManage])
+  }, [selectedHome])
 
   const load = async () => {
     setLoading(true)
@@ -126,15 +126,9 @@ export default function StaffCalendarPage() {
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
-          {canManage && <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add training/event</Button>}
+          <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add training/event</Button>
         </div>
       </div>
-
-      {!canManage && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-5 text-sm text-purple-700">
-          This calendar is set up by your manager — training and staff events will appear here and on your task list as they're booked.
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Month grid */}
@@ -217,25 +211,30 @@ export default function StaffCalendarPage() {
 function AddStaffEventModal({ open, onClose, homeId, defaultDate, staffList, teams, onSaved }: {
   open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; staffList: any[]; teams: any[]; onSaved: () => void
 }) {
-  const [form, setForm] = useState({
+  const blankForm = (d: Date | null) => ({
     title: '', eventType: 'training',
-    eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+    eventDate: d ? format(d, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
     startTime: '', endTime: '', description: '', location: '',
     assignedStaffId: '', visibleTeamIds: [] as string[],
   })
+  const [form, setForm] = useState(blankForm(defaultDate))
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
+  // Reopening previously kept the last entry's title/description/visibility
+  // instead of showing a blank form.
   useEffect(() => {
-    if (open) setForm(f => ({ ...f, eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : f.eventDate }))
-  }, [open, defaultDate])
+    if (open) setForm(blankForm(defaultDate))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
       await api.post('/calendar', { homeId, ...form, assignedStaffId: form.assignedStaffId || null, allStaff: true })
+      setForm(blankForm(defaultDate))
       onSaved()
     }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }

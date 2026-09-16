@@ -348,14 +348,23 @@ function AddEventModal({ open, onClose, homeId, defaultDate, canManageCalendar, 
   open: boolean; onClose: () => void; homeId: string; defaultDate: Date | null; canManageCalendar: boolean; onSaved: () => void
 }) {
   const [kind, setKind] = useState<'appointment' | 'event' | 'task'>('appointment')
-  const [form, setForm] = useState({
+  const blankForm = (d: Date | null) => ({
     title: '', eventType: 'appointment', suId: '',
-    eventDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+    eventDate: d ? format(d, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
     startTime: '', endTime: '', description: '', location: ''
   })
+  const [form, setForm] = useState(blankForm(defaultDate))
   const [sus, setSus] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  // Reopening the modal previously kept whatever was left over from the last
+  // appointment (title, description, type...) — this was silently showing
+  // the previous entry's details instead of a blank form.
+  useEffect(() => {
+    if (open) { setForm(blankForm(defaultDate)); setKind('appointment') }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   useEffect(() => {
     if (open && homeId) suApi.list(homeId).then(res => setSus(res.data.data || [])).catch(() => {})
@@ -364,7 +373,11 @@ function AddEventModal({ open, onClose, homeId, defaultDate, canManageCalendar, 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/calendar', { homeId, ...form, suId: form.suId || null }); onSaved() }
+    try {
+      await api.post('/calendar', { homeId, ...form, suId: form.suId || null })
+      setForm(blankForm(defaultDate))
+      onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
