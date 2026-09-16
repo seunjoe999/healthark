@@ -158,7 +158,7 @@ router.get('/stats', async (req: Request, res: Response, next: NextFunction) => 
         `SELECT COUNT(*)::int AS count FROM staff_absences
          WHERE home_id = $1
          AND absence_end IS NOT NULL
-         AND return_completed = false`,
+         AND return_to_work_completed = false`,
         [homeId]
       ).catch(() => []),
     ]);
@@ -200,6 +200,24 @@ router.post('/',
           absenceEnd || null, absenceType, reason || null, notes || null, loggedBy,
         ]
       );
+
+      try {
+        const staffRows = await query<any>('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
+        const staffName = staffRows.length ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'A staff member';
+        const managers = await query<any>(
+          `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager','deputy_manager','group_admin','admin') AND is_active = true`,
+          [homeId]
+        );
+        for (const m of managers) {
+          if (m.id === loggedBy) continue;
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'warning','/staff-absence')`,
+            [m.id, homeId, `Absence recorded — ${staffName}`,
+             `${absenceType.replace(/_/g, ' ')} recorded for ${staffName} from ${absenceStart}.`]
+          ).catch(() => {});
+        }
+      } catch { /* non-fatal */ }
+
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -228,9 +246,9 @@ router.put('/:id',
            absence_type = COALESCE($3, absence_type),
            reason = COALESCE($4, reason),
            notes = COALESCE($5, notes),
-           return_date = COALESCE($6, return_date),
-           return_completed = COALESCE($7, return_completed),
-           return_notes = COALESCE($8, return_notes),
+           return_to_work_date = COALESCE($6, return_to_work_date),
+           return_to_work_completed = COALESCE($7, return_to_work_completed),
+           return_to_work_notes = COALESCE($8, return_to_work_notes),
            updated_at = NOW()
          WHERE id = $9`,
         [
