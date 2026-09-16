@@ -71,7 +71,7 @@ router.get('/staff/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = MANAGER_ROLES.includes(role);
+      const isPrivileged = (MANAGER_ROLES as readonly string[]).includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }
