@@ -6,6 +6,7 @@ import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../compone
 import { Plus, User, Award, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 // ── Burnout questions ──────────────────────────────────────────────────────────
 const BURNOUT_QUESTIONS = [
@@ -303,6 +304,12 @@ function CreateModal({ open, onClose, homeId, type, onSaved }: {
     }
   }, [open, homeId, type])
 
+  const supAppraisalDraftKey = draftKey('supervision-appraisal', type)
+  restoreDraftOnOpen<any>(supAppraisalDraftKey, open,
+    draft => setForm((p: any) => ({ ...p, ...draft })),
+    draft => !!draft.staffId)
+  useDraftAutosave(supAppraisalDraftKey, form, open, !!form.staffId)
+
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }))
 
   const setBurnout = (idx: number, val: number) => {
@@ -368,6 +375,7 @@ function CreateModal({ open, onClose, homeId, type, onSaved }: {
         await api.post('/supervision/appraisal', { homeId, ...form })
       }
       toast.success('Record created')
+      clearDraft(supAppraisalDraftKey)
       onSaved()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed')

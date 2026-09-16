@@ -7,6 +7,7 @@ import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton, S
 import { FileText, Plus, Trash2, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 const REVIEW_TYPES = [
   { value: 'care_review', label: 'Care Review' },
@@ -344,6 +345,12 @@ function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClo
   const loadCustomTypes = () => { api.get('/review-types').then(res => setCustomTypes(res.data.data || [])).catch(() => {}) }
   useEffect(() => { if (open) loadCustomTypes() }, [open])
 
+  const reviewDraftKey = draftKey('review', suId)
+  restoreDraftOnOpen<any>(reviewDraftKey, open,
+    draft => setForm(p => ({ ...p, ...draft })),
+    draft => !!(draft.summary || draft.residentFeedback || draft.familyFeedback || draft.outcomes))
+  useDraftAutosave(reviewDraftKey, form, open, !!(form.summary || form.residentFeedback || form.familyFeedback || form.outcomes))
+
   const addCustomType = async () => {
     if (!newTypeLabel.trim()) return
     setAddingType(true)
@@ -368,7 +375,9 @@ function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClo
     try {
       const { customReviewType, ...rest } = form
       const payload = { suId, ...rest, reviewType: form.reviewType === 'other' ? (customReviewType.trim() || 'other') : form.reviewType }
-      await api.post('/reviews/su', payload); onSaved()
+      await api.post('/reviews/su', payload)
+      clearDraft(reviewDraftKey)
+      onSaved()
     }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }

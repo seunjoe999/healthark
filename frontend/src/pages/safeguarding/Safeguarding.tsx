@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Shield, Trash2, Bell } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 export default function Safeguarding() {
   const { user, isRole } = useAuth()
@@ -166,16 +167,29 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
+const BLANK_SAFEGUARDING = { suId: '', incidentDate: new Date().toISOString().split('T')[0], incidentTime: '', suLocation: '', incidentLocation: '', overview: '', witnesses: '', medicalRequired: false, medicalDetails: '', injuryDetails: '', immediateActions: '', decisionsBReached: '', lessonsLearnt: '', outsideAgency: false, agencyDetails: '', managementRecs: '', preventionActions: '' }
+
 function AddConcernModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; onSaved: () => void }) {
-  const [form, setForm] = useState({ suId: '', incidentDate: new Date().toISOString().split('T')[0], incidentTime: '', suLocation: '', incidentLocation: '', overview: '', witnesses: '', medicalRequired: false, medicalDetails: '', injuryDetails: '', immediateActions: '', decisionsBReached: '', lessonsLearnt: '', outsideAgency: false, agencyDetails: '', managementRecs: '', preventionActions: '' })
+  const [form, setForm] = useState({ ...BLANK_SAFEGUARDING })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
 
+  const safeguardingDraftKey = draftKey('safeguarding')
+  restoreDraftOnOpen<typeof BLANK_SAFEGUARDING>(safeguardingDraftKey, open,
+    draft => setForm({ ...BLANK_SAFEGUARDING, ...draft }),
+    draft => !!(draft.suId || draft.overview))
+  useDraftAutosave(safeguardingDraftKey, form, open, !!(form.suId || form.overview))
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/safeguarding', { ...form, homeId }); onSaved() }
+    try {
+      await api.post('/safeguarding', { ...form, homeId })
+      setForm({ ...BLANK_SAFEGUARDING })
+      clearDraft(safeguardingDraftKey)
+      onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }

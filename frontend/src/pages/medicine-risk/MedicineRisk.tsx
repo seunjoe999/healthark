@@ -8,6 +8,7 @@ import SignaturePad from '../../components/SignaturePad'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 const SWALLOWING_RISK = [
   { value: 'none',   label: 'None' },
@@ -347,6 +348,14 @@ export default function MedicineRisk() {
   const setF = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Autosave — new assessments only (editing an existing record shouldn't
+  // get clobbered by a stale draft from a previous unsaved attempt).
+  const medRiskDraftKey = draftKey('medicine-risk')
+  restoreDraftOnOpen<typeof EMPTY_FORM>(medRiskDraftKey, showForm && !form.id,
+    draft => setForm({ ...EMPTY_FORM, ...draft, id: '' }),
+    draft => !!(draft.suId || draft.riskDescription || draft.riskNotes))
+  useDraftAutosave(medRiskDraftKey, form, showForm && !form.id, !!(form.suId || form.riskDescription || form.riskNotes))
+
   // Risk update tracking — dated log of changes to a resident's medication
   // risk over time (mirrors Risk Management's update-history feature).
   const [updateNotesItem, setUpdateNotesItem] = useState<any>(null)
@@ -496,6 +505,7 @@ export default function MedicineRisk() {
         await api.post('/medicine-risk', payload)
       }
       setShowForm(false)
+      if (!form.id) clearDraft(medRiskDraftKey)
       load()
       toast.success('Assessment saved')
     } catch (err: any) {

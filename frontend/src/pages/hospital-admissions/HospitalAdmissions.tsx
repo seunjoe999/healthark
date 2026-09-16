@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -218,6 +219,12 @@ function NewAdmissionModal({ open, onClose, onSaved, homeId }: NewAdmissionModal
     }
   }, [open, homeId])
 
+  const admissionDraftKey = draftKey('hospital-admission')
+  restoreDraftOnOpen<typeof EMPTY_FORM>(admissionDraftKey, open,
+    draft => setForm({ ...EMPTY_FORM, ...draft }),
+    draft => !!(draft.suId || draft.hospitalName || draft.admissionReason))
+  useDraftAutosave(admissionDraftKey, form, open, !!(form.suId || form.hospitalName || form.admissionReason))
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.suId) { toast.error('Please select a resident'); return }
@@ -228,6 +235,7 @@ function NewAdmissionModal({ open, onClose, onSaved, homeId }: NewAdmissionModal
       await api.post('/hospital-admissions', { ...form, homeId })
       toast.success('Admission recorded')
       setForm(EMPTY_FORM)
+      clearDraft(admissionDraftKey)
       onSaved()
       onClose()
     } catch (err: any) {

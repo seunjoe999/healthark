@@ -7,6 +7,7 @@ import { Spinner, Button, Modal } from '../../components/ui'
 import { MessageSquare, Plus, X, ChevronDown, ChevronUp, CheckCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { SpeechTextarea } from '../../components/ui/SpeechButton'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 const TYPE_OPTIONS = [
   { value: 'compliment', label: 'Compliment' },
@@ -250,6 +251,12 @@ function CreateModal({ open, homeId, onClose, onSaved }: {
     suApi.list(homeId, { status: 'live' }).then(res => setSus(res.data.data || [])).catch(() => {})
   }, [open, homeId])
 
+  const complaintDraftKey = draftKey('complaints-quality')
+  restoreDraftOnOpen<typeof BLANK>(complaintDraftKey, open,
+    draft => setForm(p => ({ ...p, ...draft })),
+    draft => !!(draft.summary || draft.recordType))
+  useDraftAutosave(complaintDraftKey, form, open, !!(form.summary || form.recordType))
+
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim() }))
 
   const save = async (e: React.FormEvent) => {
@@ -272,6 +279,7 @@ function CreateModal({ open, homeId, onClose, onSaved }: {
         suId: form.suId || null,
       })
       toast.success('Record saved')
+      clearDraft(complaintDraftKey)
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
