@@ -255,8 +255,8 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
 export function SectionHeading({ title, description }: { title: string; description?: string }) {
   return (
     <div className="mb-5 pb-4 border-b border-slate-100">
-      <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-      {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
+      <h3 className="text-base font-bold text-slate-900">{title}</h3>
+      {description && <p className="text-xs font-medium text-slate-500 mt-0.5">{description}</p>}
     </div>
   )
 }

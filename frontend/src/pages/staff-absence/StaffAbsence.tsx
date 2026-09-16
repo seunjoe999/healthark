@@ -114,8 +114,8 @@ export default function StaffAbsence() {
             <UserX size={20} className="text-red-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Staff Absence</h1>
-            <p className="text-sm text-gray-400">Absence tracking & Bradford Factor scoring</p>
+            <h1 className="text-2xl font-bold text-slate-900">Staff Absence</h1>
+            <p className="text-sm font-medium text-slate-500">Absence tracking & Bradford Factor scoring</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -138,7 +138,7 @@ export default function StaffAbsence() {
         ].map(s => (
           <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{s.label}</div>
+            <div className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">{s.label}</div>
           </div>
         ))}
       </div>

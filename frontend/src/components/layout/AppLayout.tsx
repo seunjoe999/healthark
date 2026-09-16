@@ -118,10 +118,8 @@ const navSections = [
   {
     label: 'CLINICAL MONITORING', highlight: true,
     items: [
-      { label: 'Fluid Balance',       to: '/fluid-balance',      icon: Droplets,      roles: [], featureKey: 'fluid_balance' },
       { label: 'Weight Tracker',      to: '/weight-tracker',     icon: Activity,      roles: [], featureKey: 'weight_tracker' },
       { label: 'Wound Care',          to: '/wound-care',         icon: Stethoscope,   roles: [], featureKey: 'wound_care' },
-      { label: 'PEEP Plans',          to: '/peep',               icon: Zap,           roles: [], featureKey: 'peep' },
       { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
       { label: 'Barthel Index',       to: '/assessments/barthel', icon: FileCheck,     roles: [], featureKey: 'barthel' },
       { label: 'MUST Score',          to: '/assessments/must',    icon: Scale,         roles: [], featureKey: 'must_score' },
@@ -129,8 +127,6 @@ const navSections = [
       { label: 'Waterlow / Turns',    to: '/clinical/waterlow',       icon: Shield,        roles: [], featureKey: 'waterlow' },
       { label: 'Abbey Pain Scale',    to: '/clinical/abbey-pain',     icon: Brain,         roles: [], featureKey: 'abbey_pain' },
       { label: 'Pain Assessment',     to: '/clinical/pain-assessment',icon: Frown,         roles: [], featureKey: 'pain_assessment_tool' },
-      { label: 'Body Map',            to: '/clinical/body-map',       icon: Stethoscope,   roles: [], featureKey: 'body_map' },
-      { label: 'ABC Behaviour',       to: '/clinical/abc-chart',      icon: AlertCircle,   roles: [], featureKey: 'abc_chart' },
       { label: 'Blood Glucose',       to: '/clinical/blood-glucose',  icon: Droplets,      roles: [], featureKey: 'blood_glucose' },
       { label: 'Oral Hygiene',        to: '/clinical/oral-hygiene',   icon: Thermometer,   roles: [], featureKey: 'oral_hygiene' },
       { label: 'Catheter Care',       to: '/clinical/catheter-care',  icon: Zap,           roles: [], featureKey: 'catheter_care' },
@@ -142,7 +138,7 @@ const navSections = [
     label: 'CAPACITY & OPERATIONS', highlight: true,
     items: [
       { label: 'Bed Occupancy',       to: '/bed-occupancy',      icon: LayoutDashboard, roles: [], featureKey: 'bed_occupancy' },
-      { label: 'Waiting List',        to: '/waiting-list',       icon: Users,           roles: [], featureKey: 'waiting_list' },
+      { label: 'Waiting List',        to: '/waiting-list',       icon: Users,           roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'waiting_list' },
       { label: 'Visitor Log',         to: '/visitor-log',        icon: Users2,          roles: [], featureKey: 'visitor_log' },
       { label: 'Contractor Register', to: '/contractors',        icon: Wrench,          roles: [], featureKey: 'contractors' },
       { label: 'External Contacts',   to: '/external-contacts',  icon: Users,           roles: [], featureKey: 'external_contacts' },

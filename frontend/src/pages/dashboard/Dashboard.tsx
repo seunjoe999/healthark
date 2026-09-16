@@ -146,7 +146,6 @@ export default function Dashboard() {
     alertsList: [],
     dailyRecordsByDay: {},
   })
-  const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
   const [todaysTasks, setTodaysTasks] = useState<any[]>([])
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
@@ -189,8 +188,7 @@ export default function Dashboard() {
       /* 7 */ api.get('/alerts', { params: { homeId: selectedHome, unread: 'true' } }),
       /* 8 */ api.get('/compliance', { params: { homeId: selectedHome } }),
       /* 9 */ api.get('/daily-records', { params: { homeId: selectedHome, from: sevenAgo, to: todayStr } }),
-      /* 10 */ api.get('/calendar', { params: { homeId: selectedHome, from: todayStr, to: todayStr } }),
-      /* 11 */ api.get('/tasks', { params: { homeId: selectedHome, date: todayStr } }),
+      /* 10 */ api.get('/tasks', { params: { homeId: selectedHome, date: todayStr } }),
     ]).then(results => {
       /* ── Existing stats ── */
       const dashRes     = results[0].status === 'fulfilled' ? results[0].value : null
@@ -285,11 +283,8 @@ export default function Dashboard() {
         dailyRecordsByDay: byDay,
       })
 
-      /* ── Today's appointments & tasks (so they're visible on login, not just under Tasks) ── */
-      const calendarRes = results[10].status === 'fulfilled' ? results[10].value : null
-      const tasksRes     = results[11].status === 'fulfilled' ? results[11].value : null
-      const calendarEvents: any[] = calendarRes?.data?.data || []
-      setTodaysAppointments(calendarEvents.filter((e: any) => ['appointment', 'review', 'inspection', 'training', 'meeting'].includes(e.event_type)))
+      /* ── Today's tasks (so they're visible on login, not just under Tasks) ── */
+      const tasksRes = results[10].status === 'fulfilled' ? results[10].value : null
       const allTasks: any[] = tasksRes?.data?.data || []
       setTodaysTasks(allTasks.filter((t: any) => t.status === 'pending'))
     }).catch(console.error).finally(() => setLoading(false))
@@ -500,8 +495,11 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* ── Today's Appointments & Tasks ────────────────────────────── */}
-          {(todaysAppointments.length > 0 || todaysTasks.length > 0) && (
+          {/* ── Today's Tasks ──────────────────────────────────────────────
+              (Appointments dropped from here — the Staff Calendar and each
+              resident's own Calendar already cover that; this dashboard tile
+              was duplicating them.) */}
+          {todaysTasks.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -519,13 +517,6 @@ export default function Dashboard() {
                 </Link>
               </div>
               <div className="space-y-2">
-                {todaysAppointments.map((a: any) => (
-                  <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.08)' }}>
-                    <CalendarClock size={14} className="flex-shrink-0" style={{ color: '#60a5fa' }} />
-                    <p className={`text-sm ${neutralText} flex-1 truncate`}>{a.title}{a.su_name ? ` — ${a.su_name}` : ''}</p>
-                    {a.start_time && <span className="text-xs" style={{ color: '#60a5fa' }}>{a.start_time.slice(0, 5)}</span>}
-                  </div>
-                ))}
                 {todaysTasks.slice(0, 6).map((t: any) => {
                   const overdue = isTimePastDue(t.due_time)
                   return (

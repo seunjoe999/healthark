@@ -138,8 +138,8 @@ export default function CQCInspection() {
             <Shield size={20} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">CQC Mock Inspection</h1>
-            <p className="text-sm text-gray-400">Self-assessment across the 5 key questions</p>
+            <h1 className="text-2xl font-bold text-slate-900">CQC Mock Inspection</h1>
+            <p className="text-sm font-medium text-slate-500">Self-assessment across the 5 key questions</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -153,8 +153,8 @@ export default function CQCInspection() {
       {/* Progress */}
       <div className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-gray-400">Progress</span>
-          <span className={`${neutralText} font-medium`}>{answered}/{total} answered</span>
+          <span className="font-bold text-slate-500">Progress</span>
+          <span className={`${neutralText} font-bold`}>{answered}/{total} answered</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
           <motion.div className="h-full rounded-full" style={{ background: '#e8b130' }}
@@ -165,7 +165,7 @@ export default function CQCInspection() {
       {/* Summary */}
       {showSummary && (
         <div className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
-          <h3 className={`${neutralText} font-medium`}>Overall Assessment</h3>
+          <h3 className={`${neutralText} font-bold`}>Overall Assessment</h3>
           {overallScore() && (
             <div className={`p-3 rounded-lg border ${scoreInfo(overallScore())?.bg} ${scoreInfo(overallScore())?.border}`}>
               <span className={`font-bold text-lg ${scoreInfo(overallScore())?.color}`}>{scoreInfo(overallScore())?.label}</span>
@@ -204,7 +204,7 @@ export default function CQCInspection() {
           const info = scoreInfo(ds);
           return (
             <button key={d.key} onClick={() => setActiveDomain(d.key)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium ${activeDomain === d.key ? 'text-white' : 'text-gray-400'}`}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-bold ${activeDomain === d.key ? 'text-white' : 'text-slate-500'}`}
               style={{ background: activeDomain === d.key ? '#e8b130' : btnGhostBg }}>
               {d.label}
               {info && <span className={`ml-1 text-xs ${info.color}`}>●</span>}
@@ -216,8 +216,8 @@ export default function CQCInspection() {
       {/* Domain questions */}
       <div className="rounded-xl p-5 space-y-5" style={{ background: tileBg, border: tileBorder }}>
         <div>
-          <h3 className={`${neutralText} font-medium`}>{domain.label}</h3>
-          <p className="text-sm text-gray-400 mt-1">{domain.description}</p>
+          <h3 className={`${neutralText} font-bold`}>{domain.label}</h3>
+          <p className="text-sm font-medium text-slate-500 mt-1">{domain.description}</p>
         </div>
         {domain.questions.map((q, i) => {
           const ans = answers[q.id] || { score: '', evidence: '' };

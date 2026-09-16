@@ -97,8 +97,8 @@ export default function VisitorLog() {
             <Users size={20} className="text-green-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Visitor Log</h1>
-            <p className="text-sm text-gray-400">Sign in/out & visitor tracking</p>
+            <h1 className="text-2xl font-bold text-slate-900">Visitor Log</h1>
+            <p className="text-sm font-medium text-slate-500">Sign in/out & visitor tracking</p>
           </div>
         </div>
         <div className="flex gap-2">

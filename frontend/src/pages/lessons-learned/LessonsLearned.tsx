@@ -120,8 +120,8 @@ export default function LessonsLearned() {
             <BookOpen size={20} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Lessons Learned</h1>
-            <p className="text-sm text-gray-400">Incident analysis & continuous improvement</p>
+            <h1 className="text-2xl font-bold text-slate-900">Lessons Learned</h1>
+            <p className="text-sm font-medium text-slate-500">Incident analysis & continuous improvement</p>
           </div>
         </div>
         <div className="flex gap-2">

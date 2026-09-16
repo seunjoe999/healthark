@@ -7,6 +7,7 @@ import { Spinner, EmptyState, Button, PrintButton, Modal, SpeechTextarea } from 
 import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus, Pencil, CheckCircle, MessageSquarePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
+import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
 
 // ── Emotion picker ─────────────────────────────────────────────────
 
@@ -686,6 +687,15 @@ export default function Incidents() {
   const [createForm, setCreateForm] = useState({ ...BLANK_INC })
   const [creating, setCreating] = useState(false)
 
+  // Autosave a draft of this form every minute (and shortly after each edit)
+  // so a session timeout or accidental tab close doesn't lose a half-written
+  // incident report — restored automatically next time the form is opened.
+  const incidentDraftKey = draftKey('incident')
+  restoreDraftOnOpen<typeof BLANK_INC>(incidentDraftKey, createOpen,
+    draft => setCreateForm({ ...BLANK_INC, ...draft }),
+    draft => !!(draft.suId || draft.description))
+  useDraftAutosave(incidentDraftKey, createForm, createOpen, !!(createForm.suId || createForm.description))
+
   // Edit incident state
   const [editOpen, setEditOpen] = useState(false)
   const [editInc, setEditInc] = useState<any>(null)
@@ -755,6 +765,7 @@ export default function Incidents() {
       await api.post('/incidents', payload)
       setCreateOpen(false)
       setCreateForm({ ...BLANK_INC })
+      clearDraft(incidentDraftKey)
       toast.success('Incident logged')
       loadIncidents(selectedHome)
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to log incident') }

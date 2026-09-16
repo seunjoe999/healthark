@@ -238,9 +238,9 @@ export default function ServiceUserProfile() {
       <div className="flex gap-0.5 bg-white/5 rounded-2xl border border-white/10 shadow-card p-1 mb-5 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 ${
               tab === t.key
-                ? 'bg-slate-900 text-white shadow-sm'
+                ? 'bg-purple-600 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}>
             {t.label}

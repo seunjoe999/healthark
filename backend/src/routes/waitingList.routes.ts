@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
@@ -8,6 +8,9 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 router.use(authenticate);
+// Waiting list (prospective admissions/enquiries) is management-only — care
+// staff have no reason to see or edit it.
+router.use(requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'));
 
 function tok(req: Request, field: string): string {
   const t = req.headers.authorization?.substring(7);

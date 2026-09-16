@@ -105,8 +105,8 @@ export default function ExternalContacts() {
             <Phone size={20} className="text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">External Contacts</h1>
-            <p className="text-sm text-gray-400">Healthcare professionals, authorities & key contacts</p>
+            <h1 className="text-2xl font-bold text-slate-900">External Contacts</h1>
+            <p className="text-sm font-medium text-slate-500">Healthcare professionals, authorities & key contacts</p>
           </div>
         </div>
         <div className="flex gap-2">

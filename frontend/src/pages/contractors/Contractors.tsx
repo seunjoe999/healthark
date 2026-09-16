@@ -109,8 +109,8 @@ export default function Contractors() {
             <Wrench size={20} className="text-amber-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Contractor Register</h1>
-            <p className="text-sm text-gray-400">External contractors & compliance documents</p>
+            <h1 className="text-2xl font-bold text-slate-900">Contractor Register</h1>
+            <p className="text-sm font-medium text-slate-500">External contractors & compliance documents</p>
           </div>
         </div>
         <div className="flex gap-2">

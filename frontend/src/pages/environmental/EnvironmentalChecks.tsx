@@ -105,8 +105,8 @@ export default function EnvironmentalChecks() {
             <Thermometer size={20} className="text-sky-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Environmental Checks</h1>
-            <p className="text-sm text-gray-400">Temperature, water safety & facility monitoring</p>
+            <h1 className="text-2xl font-bold text-slate-900">Environmental Checks</h1>
+            <p className="text-sm font-medium text-slate-500">Temperature, water safety & facility monitoring</p>
           </div>
         </div>
         <div className="flex gap-2">

@@ -421,7 +421,7 @@ export default function Tasks() {
               <p className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Pill className="w-3.5 h-3.5" /> Medication Count
               </p>
-              <p className="text-sm text-rose-800 mt-1.5 font-medium">Do this at the start of your shift.</p>
+              <p className="text-sm text-rose-800 mt-1.5 font-medium">Do this at the start and end of your shift.</p>
               <p className="text-sm text-rose-800 mt-1 font-medium">{stockCount.counted}/{stockCount.total} residents counted today — tap to complete</p>
             </a>
           )}
