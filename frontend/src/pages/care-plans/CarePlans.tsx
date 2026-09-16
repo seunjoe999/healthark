@@ -281,6 +281,10 @@ const EVAC_ASSISTANCE_OPTIONS = ['1 person', '2 people', '3 people', '4 people',
 const EVAC_GUIDANCE_OPTIONS = ['The staff will guide me safely out of the facility', 'I am able to safely leave the facility without support']
 const EVAC_EQUIPMENT_OPTIONS = ['No equipment needed — I just need guidance from staff', 'Specialist equipment is required (please specify below)']
 const EVAC_REVIEW_OPTIONS = ['Every 3 months', 'Every 6 months', 'Annually', 'As required due to changes in needs']
+// Mobility/logistics overview — brought over from the old standalone Clinical
+// Monitoring PEEP page and merged into this Support Plan template so there's
+// one PEEP, not two.
+const EVAC_MOBILITY_OPTIONS = ['Independent', '1 staff assist', '2 staff assist', 'Hoist required', 'Bedbound', 'Wheelchair user']
 const PAIN_TREND_OPTIONS = ['The pain is constant', 'The pain comes and goes']
 const EOL_RESUS_OPTIONS = ['Yes — I wish to be resuscitated', 'No — I do not wish to be resuscitated']
 const EOL_PROFESSIONALS_OPTIONS = ['GP', 'Community Nurse', 'Specialist / Key Worker', 'Social Worker', 'Other']
@@ -580,6 +584,17 @@ function TemplateFields({ planType, data, onChange, suName }: { planType: string
       <div className="space-y-4">
         <SpeechTextarea label="Mission statement" className="w-full text-sm" rows={2} value={tv('missionStatement')} onChange={v => set('missionStatement', v)}
           placeholder="e.g. To protect my safety and wellbeing during emergencies through a personalised evacuation plan..." />
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Mobility & Evacuation Requirements</p>
+          <MultiChoiceRow label="Mobility level:" options={EVAC_MOBILITY_OPTIONS} value={tv('evacMobilityLevel')} onChange={v => set('evacMobilityLevel', v)} />
+          <YesNoRow label="Can self-evacuate with verbal prompting only?" value={tv('evacCanSelfEvacuate')} onChange={v => set('evacCanSelfEvacuate', v)} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label className="label">Staff required for evacuation</label><input type="number" min={0} max={5} className="input w-full text-sm" value={tv('evacStaffRequired')} onChange={e => set('evacStaffRequired', e.target.value)} /></div>
+            <div><label className="label">Assembly point</label><input className="input w-full text-sm" placeholder="e.g. Car park A, front garden..." value={tv('evacAssemblyPoint')} onChange={e => set('evacAssemblyPoint', e.target.value)} /></div>
+          </div>
+          <YesNoRow label="Known to fire service?" value={tv('evacKnownToFireService')} onChange={v => set('evacKnownToFireService', v)} />
+          <div><label className="label">Next review date</label><input type="date" className="input w-full text-sm" value={tv('evacNextReviewDate')} onChange={e => set('evacNextReviewDate', e.target.value)} /></div>
+        </div>
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
           <MultiChoiceRow label="I am informed of a fire evacuation by:" options={EVAC_INFORMED_OPTIONS} value={tv('informedBy')} onChange={v => set('informedBy', v)} />
           {tv('informedBy').includes('Other') && (
@@ -894,6 +909,12 @@ function TemplateDetail({ plan }: { plan: any }) {
     return (
       <div className="space-y-3">
         {sec('Mission statement', tv('missionStatement'))}
+        {row('Mobility level', tv('evacMobilityLevel'))}
+        {row('Can self-evacuate', tv('evacCanSelfEvacuate'))}
+        {row('Staff required for evacuation', tv('evacStaffRequired'))}
+        {row('Assembly point', tv('evacAssemblyPoint'))}
+        {row('Known to fire service', tv('evacKnownToFireService'))}
+        {row('Next review date', tv('evacNextReviewDate') ? format(new Date(tv('evacNextReviewDate')), 'd MMM yyyy') : '')}
         {row('Informed of evacuation by', tv('informedBy').includes('Other') && tv('informedByOther') ? `${tv('informedBy')} — ${tv('informedByOther')}` : tv('informedBy'))}
         {row('Assistance required', tv('assistanceRequired'))}
         {sec('Designated assistance', tv('designatedAssistance'))}
@@ -1258,6 +1279,15 @@ function buildTemplateSections(plan: any, su?: any): { title: string; inner: str
   if (p === 'personal_evacuation') {
     if (plan.aims_outcomes && plan.aims_outcomes.trim()) sections.push({ title: 'My Aims / Outcomes', inner: bodyText(plan.aims_outcomes) })
     if (tv('missionStatement')) sections.push({ title: 'Mission Statement', inner: bodyText(tv('missionStatement')) })
+    const mobilityRows = [
+      textRow('Mobility level', tv('evacMobilityLevel')),
+      textRow('Can self-evacuate', tv('evacCanSelfEvacuate')),
+      textRow('Staff required for evacuation', tv('evacStaffRequired')),
+      textRow('Assembly point', tv('evacAssemblyPoint')),
+      textRow('Known to fire service', tv('evacKnownToFireService')),
+      textRow('Next review date', tv('evacNextReviewDate') ? new Date(tv('evacNextReviewDate')).toLocaleDateString('en-GB') : ''),
+    ].filter(Boolean).join('')
+    if (mobilityRows) sections.push({ title: 'Mobility & Evacuation Requirements', inner: `<table class="fields">${mobilityRows}</table>` })
     const rows1 = [textRow('I am informed of a fire evacuation by', tv('informedBy').includes('Other') && tv('informedByOther') ? `${tv('informedBy')} — ${tv('informedByOther')}` : tv('informedBy'))].filter(Boolean).join('')
     if (rows1) sections.push({ title: 'Awareness of Procedure', inner: `<table class="fields">${rows1}</table>` })
     const rows2 = [
