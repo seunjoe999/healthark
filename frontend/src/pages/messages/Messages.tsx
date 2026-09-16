@@ -227,11 +227,18 @@ export default function Messages() {
             </div>
             <p className="text-slate-300 whitespace-pre-line leading-relaxed text-sm">{selected.message || selected.body}</p>
             {selected.attachment_url && (
-              <a href={selected.attachment_url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-4 px-3 py-2 rounded-lg text-sm text-amber-300"
-                style={{ background: 'rgba(232,177,48,0.1)', border: '1px solid rgba(232,177,48,0.25)' }}>
-                <Paperclip className="w-4 h-4" /> {selected.attachment_name || 'Attachment'}
-              </a>
+              /\.(jpe?g|png|webp|gif)$/i.test(selected.attachment_name || selected.attachment_url) ? (
+                <a href={selected.attachment_url} target="_blank" rel="noopener noreferrer" className="block mt-4">
+                  <img src={selected.attachment_url} alt={selected.attachment_name || 'Attachment'}
+                    className="max-w-full max-h-80 rounded-lg border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+                </a>
+              ) : (
+                <a href={selected.attachment_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-4 px-3 py-2 rounded-lg text-sm text-amber-300"
+                  style={{ background: 'rgba(232,177,48,0.1)', border: '1px solid rgba(232,177,48,0.25)' }}>
+                  <Paperclip className="w-4 h-4" /> {selected.attachment_name || 'Attachment'}
+                </a>
+              )
             )}
             <div className="flex gap-3 mt-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <button onClick={() => reply(selected)}

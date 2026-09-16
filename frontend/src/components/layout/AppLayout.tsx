@@ -221,7 +221,23 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
 // thing staff see on login and should never be collapsed by default.
 const COLLAPSIBLE_SECTIONS = new Set(navSections.map(s => s.label).filter(l => l && l !== 'DASHBOARD'))
 
+// NavLink's default active-matching only looks at pathname, ignoring the
+// query string — so "Medication" (/mar) and "MAR Review" (/mar?tab=mar_review)
+// both lit up together any time the URL was under /mar, since both share the
+// same pathname. Compute active state ourselves for any nav item whose `to`
+// carries a query string, and explicitly exclude that query from its plain
+// sibling.
+function isNavItemActive(to: string, location: { pathname: string; search: string }): boolean {
+  const [path, query] = to.split('?')
+  if (query) {
+    return location.pathname === path && new URLSearchParams(location.search).toString() === query
+  }
+  if (path === '/mar' && new URLSearchParams(location.search).get('tab')) return false
+  return location.pathname === path || location.pathname.startsWith(path + '/')
+}
+
 function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: SidebarProps) {
+  const location = useLocation()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(COLLAPSIBLE_SECTIONS))
   const toggleSection = (label: string) => {
     setCollapsed(prev => {
@@ -277,20 +293,17 @@ function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: Sideb
               <div className="space-y-0.5">
                 {visible.map(item => {
                   const Icon = item.icon
+                  const isActive = isNavItemActive(item.to, location)
                   return (
                     <NavLink key={item.to} to={item.to} onClick={onNavClick}
-                      className={({ isActive }) => clsx(
+                      className={clsx(
                         'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group',
                         isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                       )}
-                      style={({ isActive }) => isActive ? { background: 'linear-gradient(135deg, rgba(212,150,26,0.2) 0%, rgba(212,150,26,0.08) 100%)', border: '1px solid rgba(212,150,26,0.25)' } : {}}>
-                      {({ isActive }) => (
-                        <>
-                          <Icon className={clsx('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-gold-400' : 'text-slate-500 group-hover:text-slate-300')} />
-                          <span className="flex-1 text-sm">{item.label}</span>
-                          {isActive && <ChevronRight className="w-3.5 h-3.5 text-gold-400/60" />}
-                        </>
-                      )}
+                      style={isActive ? { background: 'linear-gradient(135deg, rgba(212,150,26,0.2) 0%, rgba(212,150,26,0.08) 100%)', border: '1px solid rgba(212,150,26,0.25)' } : undefined}>
+                      <Icon className={clsx('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-gold-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                      <span className="flex-1 text-sm">{item.label}</span>
+                      {isActive && <ChevronRight className="w-3.5 h-3.5 text-gold-400/60" />}
                     </NavLink>
                   )
                 })}

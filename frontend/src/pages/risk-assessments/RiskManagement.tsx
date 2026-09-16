@@ -609,7 +609,7 @@ export default function RiskManagement() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-slate-900 text-sm leading-snug">{label}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">{ra.su_name}</p>
+                    <p className="text-xs font-bold mt-0.5" style={{ color: '#e8b130' }}>{ra.su_name}</p>
                   </div>
                   {ra.signed_off && <ShieldCheck className="w-4 h-4 text-green-500 flex-shrink-0" />}
                 </div>

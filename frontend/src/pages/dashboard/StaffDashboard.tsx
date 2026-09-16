@@ -133,7 +133,7 @@ export default function StaffDashboard() {
         style={myTodayShift ? { background: 'linear-gradient(135deg, #1e2d4a, #2d4270)' } : {}}>
         <div className="flex items-center gap-3 mb-1">
           <Clock className={`w-5 h-5 ${myTodayShift ? 'text-gold-400' : 'text-slate-400'}`} style={myTodayShift ? { color: '#e8b130' } : {}} />
-          <p className={`text-sm font-semibold ${myTodayShift ? 'text-white/80' : 'text-slate-500'}`}>Today's shift</p>
+          <p className={`text-sm font-extrabold uppercase tracking-wide ${myTodayShift ? 'text-white' : 'text-slate-700'}`}>Today's shift</p>
         </div>
         {myTodayShift ? (
           <div>

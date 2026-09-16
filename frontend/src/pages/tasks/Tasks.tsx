@@ -386,15 +386,15 @@ export default function Tasks() {
       {/* Page tab switcher */}
       <div className="bg-slate-100 rounded-xl p-1 flex gap-1 mb-5 w-fit">
         <button onClick={() => setPageTab('tasks')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${pageTab === 'tasks' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${pageTab === 'tasks' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
           Tasks
         </button>
         <button onClick={() => setPageTab('templates')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${pageTab === 'templates' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'templates' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
           <LayoutTemplate className="w-3.5 h-3.5" /> Templates
         </button>
         <button onClick={() => setPageTab('medication')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${pageTab === 'medication' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'medication' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
           <Pill className="w-3.5 h-3.5" /> Medication{medTasks.filter(m => m.status === 'pending').length > 0 ? ` (${medTasks.filter(m => m.status === 'pending').length})` : ''}
         </button>
       </div>
@@ -449,7 +449,7 @@ export default function Tasks() {
             <div className="flex gap-1 bg-white rounded-2xl border border-slate-100 p-1 flex-1">
               {[{ key: 'pending', label: 'Pending' }, { key: 'completed', label: 'Completed' }, { key: 'all', label: 'All' }].map(f => (
                 <button key={f.key} onClick={() => setFilter(f.key as any)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${filter === f.key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${filter === f.key ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
                   {f.label}
                 </button>
               ))}
@@ -611,7 +611,7 @@ export default function Tasks() {
           onSaved={async () => { setEditTaskOpen(null); await load(); toast.success('Task updated') }} />
       )}
 
-      <AddFollowUpModal open={addFollowUpOpen} onClose={() => setAddFollowUpOpen(false)} homeId={selectedHome} staffList={staffList}
+      <AddFollowUpModal open={addFollowUpOpen} onClose={() => setAddFollowUpOpen(false)} homeId={selectedHome} staffList={staffList} teams={teams}
         onSaved={async () => { setAddFollowUpOpen(false); await load(); toast.success('Follow up scheduled') }} />
 
       <AddTemplateModal open={addTemplateOpen} onClose={() => setAddTemplateOpen(false)} homeId={selectedHome} teams={teams}
@@ -742,20 +742,20 @@ function EditTaskModal({ task, onClose, sus, staffList, teams, onSaved }: { task
   )
 }
 
-function AddFollowUpModal({ open, onClose, homeId, staffList, onSaved }: { open: boolean; onClose: () => void; homeId: string; staffList: any[]; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', assignedStaffId: '' })
+function AddFollowUpModal({ open, onClose, homeId, staffList, teams, onSaved }: { open: boolean; onClose: () => void; homeId: string; staffList: any[]; teams: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState({ title: '', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', assignedStaffId: '', visibleTeamIds: [] as string[] })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.assignedStaffId) { toast.error('Select who this follow up is for'); return }
+    if (!form.assignedStaffId && form.visibleTeamIds.length === 0) { toast.error('Select who this follow up is for — a staff member or a team'); return }
     setLoading(true)
     try {
       await api.post('/tasks', { homeId, ...form, category: 'follow_up', priority: 'normal' })
       onSaved()
-      setForm({ title: '', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', assignedStaffId: '' })
+      setForm({ title: '', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', assignedStaffId: '', visibleTeamIds: [] })
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -763,11 +763,14 @@ function AddFollowUpModal({ open, onClose, homeId, staffList, onSaved }: { open:
   return (
     <Modal open={open} onClose={onClose} title="Follow up">
       <form onSubmit={save} className="space-y-4">
-        <p className="text-sm text-slate-500">Ask a colleague to follow up on something on a specific day — e.g. checking a medication order arrived. It'll pop up as a task for them on the date and time you set.</p>
+        <p className="text-sm text-slate-500">Ask a colleague (or a whole team, where more than one person could be doing it) to follow up on something on a specific day — e.g. checking a medication order arrived. It'll pop up as a task on the date and time you set.</p>
         <Input label="Title *" required value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Check medication order arrived" autoFocus />
         <div><label className="label">Message *</label><textarea required className="input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Details for whoever follows this up..." /></div>
-        <Select label="Follow up with *" required value={form.assignedStaffId} onChange={e => set('assignedStaffId', e.target.value)}
+        <Select label="Follow up with a specific staff member" value={form.assignedStaffId}
+          onChange={e => setForm(p => ({ ...p, assignedStaffId: e.target.value, visibleTeamIds: e.target.value ? [] : p.visibleTeamIds }))}
           options={staffOptions} placeholder="Select staff member" />
+        <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids, assignedStaffId: ids.length ? '' : p.assignedStaffId }))} />
+        {form.visibleTeamIds.length > 0 && <p className="text-xs text-slate-400 -mt-2">Everyone on the selected team(s) will see this follow up.</p>}
         <div className="grid grid-cols-2 gap-3">
           <Input label="Date *" type="date" required value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
           <Input label="Time *" type="time" required value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />

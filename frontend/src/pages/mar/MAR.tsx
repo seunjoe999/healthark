@@ -598,9 +598,21 @@ function StaffMarReview({ homes, selectedHome, setSelectedHome, sus }: { homes: 
 
 function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHome: string; homes: any[]; setSelectedHome: (v: string) => void }) {
   const { theme } = useTheme()
-  const panelBg = theme === 'dark' ? '#111' : '#ffffff'
-  const pageBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
-  const panelBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
+  const isDark = theme === 'dark'
+  const panelBg = isDark ? '#111' : '#ffffff'
+  const pageBg = isDark ? '#0a0a0a' : '#f8f7fb'
+  const panelBorder = isDark ? 'border-white/10' : 'border-slate-200'
+  // The stat cards and task cards below were authored dark-only (bg-white/5,
+  // text-slate-100) — invisible in light mode, where the near-white text sat
+  // on a near-white card on a near-white page. Make them follow the theme
+  // like panelBg/pageBg above already do.
+  const cardBg = isDark ? 'bg-white/5' : 'bg-white'
+  const cardBorder = isDark ? 'border-white/10' : 'border-slate-200'
+  const doneCardBorder = isDark ? 'border-emerald-500/20' : 'border-emerald-200'
+  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900'
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500'
+  const textTertiary = isDark ? 'text-slate-500' : 'text-slate-400'
+  const checkboxBorder = isDark ? 'border-slate-500 hover:border-purple-400' : 'border-slate-300 hover:border-purple-500'
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [signOffTask, setSignOffTask] = useState<any>(null)
@@ -667,17 +679,17 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
         ) : (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
-                <p className="text-xl font-bold text-slate-100">{visibleTasks.length}</p>
-                <p className="text-xs text-slate-400">Total today</p>
+              <div className={`${cardBg} rounded-xl border ${cardBorder} p-3 text-center shadow-sm`}>
+                <p className={`text-xl font-bold ${textPrimary}`}>{visibleTasks.length}</p>
+                <p className={`text-xs font-semibold ${textSecondary}`}>Total today</p>
               </div>
-              <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
-                <p className="text-xl font-bold text-amber-400">{pending.length}</p>
-                <p className="text-xs text-slate-400">To-do</p>
+              <div className={`${cardBg} rounded-xl border ${cardBorder} p-3 text-center shadow-sm`}>
+                <p className="text-xl font-bold text-amber-500">{pending.length}</p>
+                <p className={`text-xs font-semibold ${textSecondary}`}>To-do</p>
               </div>
-              <div className="bg-white/5 rounded-xl border border-white/10 p-3 text-center">
-                <p className="text-xl font-bold text-emerald-400">{done.length}</p>
-                <p className="text-xs text-slate-400">Completed</p>
+              <div className={`${cardBg} rounded-xl border ${cardBorder} p-3 text-center shadow-sm`}>
+                <p className="text-xl font-bold text-emerald-500">{done.length}</p>
+                <p className={`text-xs font-semibold ${textSecondary}`}>Completed</p>
               </div>
             </div>
 
@@ -686,26 +698,26 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
               const isPending = t.status === 'pending'
               return (
                 <div key={`${t.medicationId}-${t.scheduledTime}-${i}`}
-                  className={`bg-white/5 rounded-2xl border p-4 flex items-center gap-4 ${isPending ? 'border-white/10' : 'border-emerald-500/20 opacity-70'}`}>
+                  className={`${cardBg} rounded-2xl border shadow-sm p-4 flex items-center gap-4 ${isPending ? cardBorder : `${doneCardBorder} opacity-70`}`}>
                   <button onClick={() => isPending && setSignOffTask(t)}
                     disabled={!isPending}
-                    className={`w-9 h-9 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isPending ? 'border-slate-500 hover:border-purple-400' : 'bg-emerald-500 border-emerald-500'}`}>
+                    className={`w-9 h-9 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isPending ? checkboxBorder : 'bg-emerald-500 border-emerald-500'}`}>
                     {!isPending && <Check className="w-4 h-4 text-white" />}
                   </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-sm text-slate-100">{t.medicationName}</h3>
-                      {t.dose && <span className="text-xs text-slate-400">{t.dose}</span>}
-                      {t.isControlled && <span className="flex items-center gap-1 text-xs bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full"><Shield className="w-3 h-3" /> Controlled</span>}
+                      <h3 className={`font-semibold text-sm ${textPrimary}`}>{t.medicationName}</h3>
+                      {t.dose && <span className={`text-xs ${textSecondary}`}>{t.dose}</span>}
+                      {t.isControlled && <span className="flex items-center gap-1 text-xs bg-purple-500/10 text-purple-500 px-2 py-0.5 rounded-full font-semibold"><Shield className="w-3 h-3" /> Controlled</span>}
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">{t.suName} · {t.scheduledTime}</p>
-                    {t.instructions && <p className="text-xs text-slate-500 mt-1">{t.instructions}</p>}
+                    <p className={`text-xs font-medium mt-0.5 ${textSecondary}`}>{t.suName} · {t.scheduledTime}</p>
+                    {t.instructions && <p className={`text-xs mt-1 ${textTertiary}`}>{t.instructions}</p>}
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: style.color, background: style.bg }}>
                     {style.label}
                   </span>
                   {isPending && (
-                    <Button size="sm" onClick={() => setSignOffTask(t)}>Sign off</Button>
+                    <Button size="sm" variant="gold" onClick={() => setSignOffTask(t)}>Sign off</Button>
                   )}
                 </div>
               )

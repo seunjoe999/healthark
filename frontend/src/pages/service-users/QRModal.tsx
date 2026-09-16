@@ -82,7 +82,7 @@ export function QRModal({ open, onClose, suId, suName }: { open: boolean; onClos
   const saveLocation = async () => {
     if (!lat || !lng) { toast.error('Please look up a postcode first'); return }
     try {
-      await api.put(`/clockin/location/${suId}`, { latitude: parseFloat(lat), longitude: parseFloat(lng), geofenceRadius: parseInt(radius) })
+      await api.put(`/clockin/resident-location/${suId}`, { latitude: parseFloat(lat), longitude: parseFloat(lng), geofenceRadius: parseInt(radius) })
       toast.success('Location saved — staff must now be within ' + radius + 'm to clock in')
       setSettingLocation(false)
       const res = await api.get(`/clockin/generate/${suId}`)
