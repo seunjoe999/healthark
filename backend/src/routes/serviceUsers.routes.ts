@@ -281,7 +281,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       const numericFields = new Set(['heightCm', 'weightKg', 'minFluidMl', 'geofenceRadius']);
       const dateFields = new Set([
         'dateOfBirth', 'admissionDate', 'annualHealthDate', 'gpReviewDate',
-        'mentalHealthDate', 'dentistDate', 'carePlanLiveDate',
+        'mentalHealthDate', 'dentistDate', 'opticianDate', 'carePlanLiveDate',
         'dolsStartDate', 'dolsEndDate',
       ]);
       for (const [camel, snake] of Object.entries(fieldMap)) {
