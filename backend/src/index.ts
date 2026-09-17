@@ -1151,6 +1151,17 @@ async function createCoreTables() {
       notes           TEXT
     )` },
 
+    { label: 'table records_calls', sql: `CREATE TABLE IF NOT EXISTS records_calls (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+      direction       VARCHAR(10),
+      caller_name     VARCHAR(255),
+      relationship    VARCHAR(100),
+      reason          TEXT,
+      outcome         TEXT,
+      notes           TEXT
+    )` },
+
     { label: 'table records_visits', sql: `CREATE TABLE IF NOT EXISTS records_visits (
       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,

@@ -260,6 +260,15 @@ router.post('/', [
           );
           break;
         }
+        case 'telephone_call': {
+          const { direction, callerName, relationship, reason, outcome } = req.body;
+          await client.query(
+            `INSERT INTO records_calls (daily_record_id, direction, caller_name, relationship, reason, outcome, notes)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [dr.id, direction || null, callerName || null, relationship || null, reason || null, outcome || null, notes || null]
+          );
+          break;
+        }
         case 'visit': {
           const { visitType, visitorName, relationship, location, timeArrived, timeLeft, suResponse } = req.body;
           await client.query(
@@ -387,6 +396,7 @@ router.get('/:id/detail', param('id').isUUID(), validateRequest,
         social_activity: 'records_social_activity', visit: 'records_visits',
         incident: 'records_incidents', prn_medication: 'records_prn_medication',
         welfare_check: 'records_welfare_check', handover: 'records_handover',
+        telephone_call: 'records_calls',
       };
 
       const childTable = childTableMap[dr.record_type as string];

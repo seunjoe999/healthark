@@ -51,6 +51,7 @@ const RECORD_TYPES = [
   { value: 'social_activity', label: 'Social Activity', icon: '🎮' },
   { value: 'social_visit', label: 'Social Visit', icon: '👥' },
   { value: 'family_visit', label: 'Family Visit', icon: '👨‍👩‍👧' },
+  { value: 'telephone_call', label: 'Telephone Call', icon: '📞' },
   { value: 'incident', label: 'Incident', icon: '⚠️' },
   { value: 'prn_medication', label: 'PRN Medication', icon: '💊' },
   { value: 'handover', label: 'Handover Note', icon: '📝' },

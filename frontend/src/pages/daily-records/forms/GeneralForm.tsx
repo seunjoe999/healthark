@@ -6,6 +6,7 @@ import { SpeechTextarea } from '../../../components/ui/SpeechButton'
 const ENGAGEMENT = [{ value: 'good', label: 'Good' }, { value: 'limited', label: 'Limited' }, { value: 'refused', label: 'Refused' }, { value: 'other', label: 'Other' }]
 const VISIT_TYPES = [{ value: 'social', label: 'Social visit' }, { value: 'family', label: 'Family visit' }, { value: 'community', label: 'Community access' }]
 const COMMS_MODES = [{ value: 'verbal', label: 'Verbal' }, { value: 'makaton', label: 'Makaton' }, { value: 'pecs', label: 'PECS' }, { value: 'written', label: 'Written' }, { value: 'eye_gaze', label: 'Eye gaze' }, { value: 'other', label: 'Other' }]
+const CALL_DIRECTIONS = [{ value: 'incoming', label: 'Incoming — they called us' }, { value: 'outgoing', label: 'Outgoing — we called them' }]
 
 export default function GeneralForm({ type, suId, onSaved }: { type: string; suId: string; onSaved: () => void }) {
   const [form, setForm] = useState<Record<string, any>>({ notes: '' })
@@ -42,6 +43,14 @@ export default function GeneralForm({ type, suId, onSaved }: { type: string; suI
         <Select label="Engagement" value={form.engagement || ''} onChange={e => set('engagement', e.target.value)}
           options={[{ value: 'fully_engaged', label: 'Fully engaged' }, { value: 'partially', label: 'Partially engaged' }, { value: 'observed', label: 'Observed only' }, { value: 'declined', label: 'Declined' }]} placeholder="Select level" />
         <Select label="Did they enjoy it?" value={form.enjoyed || ''} onChange={e => set('enjoyed', e.target.value)} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unsure', label: 'Unsure' }]} placeholder="Select" />
+      </>)}
+
+      {type === 'telephone_call' && (<>
+        <Select label="Direction" value={form.direction || 'incoming'} onChange={e => set('direction', e.target.value)} options={CALL_DIRECTIONS} />
+        <Input label="Caller / contact name" value={form.callerName || ''} onChange={e => set('callerName', e.target.value)} placeholder="Full name of the person on the call..." />
+        <Input label="Relationship" value={form.relationship || ''} onChange={e => set('relationship', e.target.value)} placeholder="e.g. Daughter, GP, social worker..." />
+        <div><label className="label">Reason for call</label><textarea className="input" rows={2} value={form.reason || ''} onChange={e => set('reason', e.target.value)} placeholder="What was the call about..." /></div>
+        <Input label="Outcome" value={form.outcome || ''} onChange={e => set('outcome', e.target.value)} placeholder="e.g. Call returned, information passed on, callback arranged..." />
       </>)}
 
       {type === 'visit' && (<>
