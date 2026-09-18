@@ -90,7 +90,7 @@ function InfoRow({ label, value, className }: { label: string; value: any; class
   return (
     <div className={className}>
       <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}</p>
+      <p className={`text-sm whitespace-pre-line ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}</p>
     </div>
   )
 }
@@ -880,9 +880,9 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             </div>
 
             {r.risk_description && (
-              <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
-                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">What is the risk</p>
-                <p className="text-sm font-bold text-emerald-800 whitespace-pre-line leading-relaxed">{r.risk_description}</p>
+              <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>What is the risk</p>
+                <p className="text-sm font-bold text-slate-800 whitespace-pre-line leading-relaxed">{r.risk_description}</p>
               </div>
             )}
 
@@ -892,18 +892,12 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
                   { label: 'Who is at risk', value: r.who_is_at_risk },
                   { label: 'What could happen', value: r.what_could_happen },
                   { label: 'Risk before intervention', value: r.risk_before_intervention },
-                ].filter(f => f.value).map(f => {
-                  const isLow = r.risk_level === 'low' || !r.risk_level
-                  const isHigh = r.risk_level === 'high' || r.risk_level === 'critical'
-                  const boxCls = isHigh ? 'border-rose-200 bg-rose-50' : isLow ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
-                  const labelCls = isHigh ? 'text-rose-700' : isLow ? 'text-emerald-700' : 'text-amber-700'
-                  return (
-                    <div key={f.label} className={clsx('border rounded-xl p-4', boxCls)}>
-                      <p className={clsx('text-xs font-bold uppercase tracking-wide mb-2', labelCls)}>{f.label}</p>
-                      <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{f.value}</p>
-                    </div>
-                  )
-                })}
+                ].filter(f => f.value).map(f => (
+                  <div key={f.label} className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                    <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>{f.label}</p>
+                    <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{f.value}</p>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -925,9 +919,9 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             )}
 
             {r.risk_notes && (
-              <div className="border rounded-xl p-4" style={{ borderColor: isDark ? 'rgba(232,177,48,0.25)' : '#fde68a', background: isDark ? 'rgba(232,177,48,0.06)' : '#fffbeb' }}>
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2">Risk Management Plan</p>
-                <p className={clsx('text-sm whitespace-pre-line font-medium', bodyText)}>{r.risk_notes}</p>
+              <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Risk Management Plan</p>
+                <p className="text-sm whitespace-pre-line font-medium text-slate-800">{r.risk_notes}</p>
               </div>
             )}
 
