@@ -50,6 +50,7 @@ export default function ClockIn() {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
             body: JSON.stringify({
               homeId: suInfo.homeId,
+              suId: isHomeBased ? undefined : suInfo.suId,
               staffLat: pos.coords.latitude,
               staffLng: pos.coords.longitude,
               accuracy: pos.coords.accuracy,

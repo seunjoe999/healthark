@@ -93,40 +93,53 @@ router.post('/event', authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { homeId, staffLat, staffLng, eventType } = req.body;
+      const { homeId, suId, staffLat, staffLng, eventType } = req.body;
       const gpsAccuracy = parseFloat(req.body.accuracy) || null;
 
-      // Build list of all valid check points: home address + any extra postcodes
-      const homeRows = await query<any>(
-        'SELECT address1, postcode, latitude, longitude, geofence_radius FROM homes WHERE id = $1',
-        [homeId]
-      );
-      const home = homeRows[0];
-
-      const extraPostcodes = await query<any>(
-        'SELECT postcode, label, latitude, longitude, radius FROM home_postcodes WHERE home_id = $1',
-        [homeId]
-      );
-
-      // Primary point = home's own geocoded address
+      // Build list of valid check points. Clocking in against a resident's QR
+      // must be checked against THAT resident's own location, not the office —
+      // the office and each resident's apartment are separate geofences.
       const checkPoints: GeofenceCheckPoint[] = [];
-      if (home?.latitude && home?.longitude) {
-        const label = [home.address1, home.postcode].filter(Boolean).join(', ');
-        checkPoints.push({ lat: parseFloat(home.latitude), lng: parseFloat(home.longitude), label, radius: home.geofence_radius || 200 });
-      }
-      // Additional points = extra postcodes configured in Clock-In Admin
-      for (const pc of extraPostcodes) {
-        if (pc.latitude && pc.longitude) {
-          checkPoints.push({ lat: parseFloat(pc.latitude), lng: parseFloat(pc.longitude), label: pc.label || pc.postcode, radius: pc.radius || 200 });
+
+      if (suId) {
+        const suRows = await query<any>(
+          'SELECT first_name, last_name, room_number, latitude, longitude, geofence_radius FROM service_users WHERE id = $1 AND home_id = $2',
+          [suId, homeId]
+        );
+        const su = suRows[0];
+        if (su?.latitude && su?.longitude) {
+          const label = [`${su.first_name} ${su.last_name}`, su.room_number].filter(Boolean).join(', ');
+          checkPoints.push({ lat: parseFloat(su.latitude), lng: parseFloat(su.longitude), label, radius: su.geofence_radius || 200 });
+        }
+      } else {
+        // Home-based QR: check against home address + any extra postcodes configured in Clock-In Admin
+        const homeRows = await query<any>(
+          'SELECT address1, postcode, latitude, longitude, geofence_radius FROM homes WHERE id = $1',
+          [homeId]
+        );
+        const home = homeRows[0];
+        if (home?.latitude && home?.longitude) {
+          const label = [home.address1, home.postcode].filter(Boolean).join(', ');
+          checkPoints.push({ lat: parseFloat(home.latitude), lng: parseFloat(home.longitude), label, radius: home.geofence_radius || 200 });
+        }
+        const extraPostcodes = await query<any>(
+          'SELECT postcode, label, latitude, longitude, radius FROM home_postcodes WHERE home_id = $1',
+          [homeId]
+        );
+        for (const pc of extraPostcodes) {
+          if (pc.latitude && pc.longitude) {
+            checkPoints.push({ lat: parseFloat(pc.latitude), lng: parseFloat(pc.longitude), label: pc.label || pc.postcode, radius: pc.radius || 200 });
+          }
         }
       }
 
       const outcome = evaluateGeofence({ eventType, staffLat, staffLng, gpsAccuracy, checkPoints });
       if (!outcome.geofencePassed) {
+        const placeLabel = suId ? 'this resident' : 'the care home';
         const messages: Record<string, string> = {
           weak_gps: `GPS signal too weak (±${gpsAccuracy ? Math.round(gpsAccuracy) : '?'}m accuracy). Please use a mobile device or move outdoors.`,
-          no_location: 'No verified location has been set up for this care home. Ask your manager to set the address in Clock-In Management.',
-          too_far: `You are too far from the care home. You are ${outcome.distanceMetres}m from ${outcome.closestLabel} (must be within ${checkPoints[0]?.radius || 200}m${gpsAccuracy ? `, GPS accuracy ±${Math.round(gpsAccuracy)}m` : ''}).`,
+          no_location: `No verified location has been set up for ${placeLabel}. Ask your manager to set it in Clock-In Management.`,
+          too_far: `You are too far from ${placeLabel}. You are ${outcome.distanceMetres}m from ${outcome.closestLabel} (must be within ${checkPoints[0]?.radius || 200}m${gpsAccuracy ? `, GPS accuracy ±${Math.round(gpsAccuracy)}m` : ''}).`,
         };
         return res.status(403).json({
           success: false,
