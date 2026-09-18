@@ -58,14 +58,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         [organisationId]
       );
     } else {
+      // staff_home_access grants EXTRA homes beyond a staff member's own — it
+      // was never meant to gate their own assigned home too, but every
+      // non-admin account had zero rows there, so this LEFT JOIN'd OR
+      // previously came back completely empty for every one of them (their
+      // own home included) unless someone had separately been granted access.
       rows = await query(
         `SELECT h.*,
                 (SELECT COUNT(*) FROM service_users su WHERE su.home_id = h.id AND su.status = 'live') AS su_count
          FROM homes h
-         JOIN staff_home_access sha ON sha.home_id = h.id AND sha.staff_id = $1
-         WHERE h.organisation_id = $2
+         LEFT JOIN staff_home_access sha ON sha.home_id = h.id AND sha.staff_id = $1
+         WHERE h.organisation_id = $2 AND (sha.staff_id IS NOT NULL OR h.id = $3)
          ORDER BY h.name`,
-        [staffId, organisationId]
+        [staffId, organisationId, homeId || null]
       );
     }
 
