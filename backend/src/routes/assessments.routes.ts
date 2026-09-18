@@ -1327,6 +1327,8 @@ const TEMPLATES: Template[] = [
     sections: [{
       id: 's1', title: 'Lone Working Risk Assessment',
       questions: [
+        txt('last_assessed', 'Last assessed'),
+        sel('review_frequency', 'Review frequency', ['Monthly', 'Quarterly', '6-monthly', 'Annually', 'Following any incident or significant change']),
         txt('q1', 'What is the hazard?'),
         txt('q2', 'Who might be harmed?'),
         txt('q3', 'How might staff be harmed?'),
