@@ -433,7 +433,7 @@ export default function Tasks() {
             ].map(s => (
               <div key={s.label} className={`rounded-2xl border shadow-card p-4 text-center ${s.bg} ${s.border}`}>
                 <p className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</p>
-                <p className={`text-xs font-bold mt-0.5 ${s.color}`}>{s.label}</p>
+                <p className={`text-xs font-extrabold mt-0.5 ${s.color}`}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -472,7 +472,7 @@ export default function Tasks() {
             <div className="flex gap-1 bg-white rounded-2xl border border-slate-100 p-1 flex-1">
               {[{ key: 'pending', label: 'Pending' }, { key: 'completed', label: 'Completed' }, { key: 'all', label: 'All' }].map(f => (
                 <button key={f.key} onClick={() => setFilter(f.key as any)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${filter === f.key ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  className={`flex-1 py-2 rounded-xl text-sm font-extrabold transition-all ${filter === f.key ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
                   {f.label}
                 </button>
               ))}
@@ -505,7 +505,7 @@ export default function Tasks() {
             <>
               {pendingList.length > 0 && (
                 <div className="space-y-3 mb-6">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">To do ({pendingList.length})</p>
+                  <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">To do ({pendingList.length})</p>
                   {pendingList.map((task: any) => (
                     <TaskCard key={task.id} task={task} today={today} isRole={isRole} teams={teams} priorityColor={priorityColor}
                       onComplete={setCompletingTask} onEdit={setEditTaskOpen} onDelete={deleteTask} />
@@ -514,7 +514,7 @@ export default function Tasks() {
               )}
               {completedList.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Completed ({completedList.length})</p>
+                  <p className="text-xs font-extrabold text-emerald-600 uppercase tracking-wider">Completed ({completedList.length})</p>
                   {completedList.map((task: any) => (
                     <TaskCard key={task.id} task={task} today={today} isRole={isRole} teams={teams} priorityColor={priorityColor}
                       onComplete={setCompletingTask} onEdit={setEditTaskOpen} onDelete={deleteTask} />
@@ -624,13 +624,13 @@ export default function Tasks() {
                   <>
                     {pendingMeds.length > 0 && (
                       <div className="space-y-3 mb-6">
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">To do ({pendingMeds.length})</p>
+                        <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">To do ({pendingMeds.length})</p>
                         <div className="space-y-4">{pendingMeds.map(renderCard)}</div>
                       </div>
                     )}
                     {completedMeds.length > 0 && (
                       <div className="space-y-3">
-                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Completed ({completedMeds.length})</p>
+                        <p className="text-xs font-extrabold text-emerald-600 uppercase tracking-wider">Completed ({completedMeds.length})</p>
                         <div className="space-y-4">{completedMeds.map(renderCard)}</div>
                       </div>
                     )}
