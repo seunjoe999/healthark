@@ -2774,6 +2774,12 @@ async function ensureColumns() {
        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_tasks_home_date ON tasks(home_id, task_date DESC)`,
+    // Attempted-but-not-done tracking — staff can log that they tried a task
+    // (e.g. resident refused support) without marking it complete, so it
+    // stays visible on the to-do list for another attempt later in the shift.
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS last_attempted_by UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS last_attempted_at TIMESTAMPTZ`,
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS attempt_notes TEXT`,
     // ── medication_stock — columns used by medicationStock.routes.ts but missing
     //    when the table was first created by the older, sparser schema above ────
     `ALTER TABLE medication_stock ADD COLUMN IF NOT EXISTS medication_id UUID REFERENCES su_medications(id) ON DELETE CASCADE`,

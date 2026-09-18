@@ -1331,7 +1331,13 @@ export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }:
             {MAR_CODE_OPTIONS.map(opt => {
               const isSelected = selectedCode === opt.code
               return (
-                <button key={opt.code} onClick={() => setSelectedCode(opt.code)}
+                <button key={opt.code} onClick={() => {
+                  setSelectedCode(opt.code)
+                  // "Attempted" means staff tried but the dose wasn't actually given —
+                  // default it to not-completed so it stays on the to-do list for a
+                  // retry later in the shift, instead of silently disappearing.
+                  setCompleted(opt.code !== 'A')
+                }}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all text-center"
                   style={{
                     background: isSelected ? opt.bg : (theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc'),
@@ -1436,8 +1442,11 @@ export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }:
           <label className="label">Completed</label>
           <select className="input text-sm" value={completed ? 'yes' : 'no'} onChange={e => setCompleted(e.target.value === 'yes')}>
             <option value="yes">Yes</option>
-            <option value="no">No</option>
+            <option value="no">No — try again later this shift</option>
           </select>
+          {!completed && (
+            <p className="text-xs text-amber-600 mt-1">This dose will stay on the medication to-do list so it doesn't get missed.</p>
+          )}
         </div>
 
         <div>

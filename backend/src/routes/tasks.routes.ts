@@ -39,11 +39,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // for the home/date range unfiltered, then apply one combined OR check.
     const sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo,
               s.first_name || ' ' || s.last_name as completed_by_name,
-              a.first_name || ' ' || a.last_name as assigned_staff_name
+              a.first_name || ' ' || a.last_name as assigned_staff_name,
+              att.first_name || ' ' || att.last_name as last_attempted_by_name
        FROM tasks t
        LEFT JOIN service_users su ON su.id = t.su_id
        LEFT JOIN staff s ON s.id = t.completed_by
        LEFT JOIN staff a ON a.id = t.assigned_staff_id
+       LEFT JOIN staff att ON att.id = t.last_attempted_by
        WHERE t.home_id = $1 AND (
          t.task_date = $2
          OR (t.task_date < $2 AND t.status != 'completed')
@@ -192,6 +194,23 @@ router.put('/:id/complete', param('id').isUUID(), validateRequest,
         [staffId, req.body.notes || null, req.params.id]
       );
       res.json({ success: true, message: 'Task completed' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/tasks/:id/attempt — log an attempt without completing the task
+// (e.g. resident refused support) — stays on the to-do list so it isn't
+// forgotten, but the notes/timestamp tell the next staff member it was
+// already tried once today.
+router.put('/:id/attempt', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      await query(
+        `UPDATE tasks SET status='pending', last_attempted_by=$1, last_attempted_at=NOW(), attempt_notes=$2 WHERE id=$3`,
+        [staffId, req.body.notes || null, req.params.id]
+      );
+      res.json({ success: true, message: 'Attempt logged' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

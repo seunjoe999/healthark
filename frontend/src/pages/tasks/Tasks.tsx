@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, ClipboardList } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, ClipboardList, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
@@ -147,6 +147,12 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
         <p className="text-xs text-slate-700 font-semibold mt-1.5 capitalize">{(task.category || '').replace('_', ' ')}</p>
         {task.status === 'completed' && task.completed_by_name && <span className="text-emerald-600 text-xs font-medium flex items-center gap-0.5 mt-1"><Check className="w-3 h-3" /> {task.completed_by_name}</span>}
         {task.status === 'completed' && task.completion_notes && <span className="text-xs text-slate-600 font-medium italic mt-2 block">Note: {task.completion_notes}</span>}
+        {task.status !== 'completed' && task.last_attempted_at && (
+          <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 text-xs font-medium flex items-center gap-1 mt-2 w-fit">
+            <RotateCcw className="w-3 h-3 flex-shrink-0" />
+            Attempted {format(new Date(task.last_attempted_at), 'HH:mm')}{task.last_attempted_by_name ? ` by ${task.last_attempted_by_name}` : ''}{task.attempt_notes ? ` — ${task.attempt_notes}` : ''}
+          </span>
+        )}
       </div>
 
       {/* Resident photo + name — RoundSys puts this front and centre on the right */}
@@ -288,6 +294,14 @@ export default function Tasks() {
       await api.put(`/tasks/${taskId}/complete`, { notes })
       await load()
       toast.success('Task completed')
+    } catch { toast.error('Failed') }
+  }
+
+  const logAttempt = async (taskId: string, notes = '') => {
+    try {
+      await api.put(`/tasks/${taskId}/attempt`, { notes })
+      await load()
+      toast('Attempt logged — stays on the to-do list', { icon: '🔁' })
     } catch { toast.error('Failed') }
   }
 
@@ -625,13 +639,18 @@ export default function Tasks() {
       {completingTask && (
         <Modal open={!!completingTask} onClose={() => { setCompletingTask(null); setCompletionNote('') }} title="Complete task">
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Mark <strong>{completingTask.title}</strong> as complete?</p>
+            <p className="text-sm text-slate-600">Mark <strong>{completingTask.title}</strong> as complete, or log an attempt if it couldn't be finished (e.g. resident refused) — an attempt stays on the to-do list for later.</p>
             <div>
               <label className="label">Notes (optional)</label>
-              <textarea className="input" rows={3} value={completionNote} onChange={e => setCompletionNote(e.target.value)} placeholder="Any notes about completion..." autoFocus />
+              <textarea className="input" rows={3} value={completionNote} onChange={e => setCompletionNote(e.target.value)} placeholder="Any notes..." autoFocus />
             </div>
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end flex-wrap">
               <Button type="button" variant="outline" onClick={() => { setCompletingTask(null); setCompletionNote('') }}>Cancel</Button>
+              <Button type="button" variant="secondary" icon={<RotateCcw className="w-4 h-4" />} onClick={async () => {
+                await logAttempt(completingTask.id, completionNote)
+                setCompletingTask(null)
+                setCompletionNote('')
+              }}>Attempted — try again later</Button>
               <Button icon={<Check className="w-4 h-4" />} onClick={async () => {
                 await complete(completingTask.id, completionNote)
                 setCompletingTask(null)

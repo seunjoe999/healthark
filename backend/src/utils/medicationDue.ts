@@ -61,9 +61,13 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   }
   const meds = await query<any>(sql, params);
 
+  // Ordered oldest-first so the Map below keeps the LATEST entry per slot —
+  // e.g. an "Attempted" (completed=false) logged at 08:05 followed by a
+  // successful "Given" at 08:20 for the same dose must resolve to "given",
+  // not get stuck on the earlier attempt.
   const recordRows = await query<any>(
-    `SELECT medication_id, scheduled_time, given, refused, mar_code
-     FROM mar_records WHERE home_id = $1 AND record_date = $2`,
+    `SELECT medication_id, scheduled_time, given, refused, mar_code, completed
+     FROM mar_records WHERE home_id = $1 AND record_date = $2 ORDER BY created_at ASC`,
     [homeId, today]
   );
   const recordMap = new Map<string, any>();
@@ -79,11 +83,15 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
     const times = getTimeSlots(med.frequency, med.apply_time);
     for (const t of times) {
       const existing = recordMap.get(`${med.medication_id}|${t}`);
+      // completed=false (e.g. an "Attempted" outcome — resident refused but
+      // staff plan to try again) keeps this on the pending task list instead
+      // of being treated as resolved, so it doesn't silently drop off.
+      const unresolved = existing && existing.completed === false;
       tasks.push({
         medicationId: med.medication_id, suId: med.su_id, suName: med.su_name, suPhoto: med.su_photo,
         medicationName: med.medication_name, dose: med.dose, route: med.route, instructions: med.instructions,
         isControlled: med.is_controlled, scheduledTime: t,
-        status: existing ? (existing.given ? 'given' : existing.refused ? 'refused' : (existing.mar_code || 'logged')) : 'pending',
+        status: (!existing || unresolved) ? 'pending' : (existing.given ? 'given' : existing.refused ? 'refused' : (existing.mar_code || 'logged')),
       });
     }
   }
