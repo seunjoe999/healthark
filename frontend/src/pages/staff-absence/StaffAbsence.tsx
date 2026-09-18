@@ -42,6 +42,14 @@ export default function StaffAbsence() {
   const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
   const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  // Dropdown lists (the native popup a <select> opens) don't reliably honour a
+  // translucent background like inputBg — many browsers fall back to a plain
+  // white popup, which then renders our white dark-mode text invisibly faint.
+  // A solid colour here, plus matching <option> styling, fixes that everywhere
+  // this page opens a staff/absence-type dropdown.
+  const selectBg = theme === 'dark' ? '#1a1a1a' : '#ffffff';
+  const selectFg = theme === 'dark' ? '#f5f0e8' : '#0f172a';
+  const optionStyle = { background: selectBg, color: selectFg };
   const canAmend = isRole(...PRIVILEGED_ROLES);
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [bradford, setBradford] = useState<Bradford[]>([]);
@@ -156,9 +164,9 @@ export default function StaffAbsence() {
         </div>
         {tab === 'absences' && (
           <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)}
-            className={`px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-            <option value="">All staff</option>
-            {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+            className={`px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
+            <option value="" style={optionStyle}>All staff</option>
+            {staffList.map(s => <option key={s.id} value={s.id} style={optionStyle}>{s.first_name} {s.last_name}</option>)}
           </select>
         )}
       </div>
@@ -172,16 +180,16 @@ export default function StaffAbsence() {
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Staff Member</label>
               <select value={form.staff_id} onChange={e => setForm(p => ({ ...p, staff_id: e.target.value }))} required
-                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-                <option value="">Select staff...</option>
-                {staffList.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
+                <option value="" style={optionStyle}>Select staff...</option>
+                {staffList.map(s => <option key={s.id} value={s.id} style={optionStyle}>{s.first_name} {s.last_name}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Absence Type</label>
               <select value={form.absence_type} onChange={e => setForm(p => ({ ...p, absence_type: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-                {ABSENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
+                {ABSENCE_TYPES.map(t => <option key={t} value={t} style={optionStyle}>{t}</option>)}
               </select>
             </div>
             <div>
@@ -197,8 +205,8 @@ export default function StaffAbsence() {
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Reason</label>
               <select value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-                {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
+                {REASONS.map(r => <option key={r} value={r} style={optionStyle}>{r}</option>)}
               </select>
             </div>
             <div>
@@ -276,6 +284,9 @@ function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onC
   const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
   const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const selectBg = theme === 'dark' ? '#1a1a1a' : '#ffffff';
+  const selectFg = theme === 'dark' ? '#f5f0e8' : '#0f172a';
+  const optionStyle = { background: selectBg, color: selectFg };
   const [form, setForm] = useState({
     absence_type: Object.keys(ABSENCE_TYPE_MAP).find(k => ABSENCE_TYPE_MAP[k] === absence.absence_type) || 'Other',
     start_date: absence.absence_start ? absence.absence_start.slice(0, 10) : '',
@@ -317,15 +328,15 @@ function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onC
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Absence Type</label>
             <select value={form.absence_type} onChange={e => set('absence_type', e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-              {ABSENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
+              {ABSENCE_TYPES.map(t => <option key={t} value={t} style={optionStyle}>{t}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Reason</label>
             <select value={form.reason} onChange={e => set('reason', e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-              {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+              className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
+              {REASONS.map(r => <option key={r} value={r} style={optionStyle}>{r}</option>)}
             </select>
           </div>
           <div>
