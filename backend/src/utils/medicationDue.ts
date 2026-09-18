@@ -32,6 +32,7 @@ export interface DueMedicationTask {
   medicationId: string; suId: string; suName: string; suPhoto: string | null;
   medicationName: string; dose: string; route: string; instructions: string;
   isControlled: boolean; scheduledTime: string; status: string;
+  recordId?: string; givenBy?: string;
 }
 
 // Medication due-today as a per-staff task list — shared by the /mar/due-today endpoint
@@ -66,7 +67,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   // successful "Given" at 08:20 for the same dose must resolve to "given",
   // not get stuck on the earlier attempt.
   const recordRows = await query<any>(
-    `SELECT medication_id, scheduled_time, given, refused, mar_code, completed
+    `SELECT id, medication_id, scheduled_time, given, refused, mar_code, completed, given_by
      FROM mar_records WHERE home_id = $1 AND record_date = $2 ORDER BY created_at ASC`,
     [homeId, today]
   );
@@ -92,6 +93,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
         medicationName: med.medication_name, dose: med.dose, route: med.route, instructions: med.instructions,
         isControlled: med.is_controlled, scheduledTime: t,
         status: (!existing || unresolved) ? 'pending' : (existing.given ? 'given' : existing.refused ? 'refused' : (existing.mar_code || 'logged')),
+        recordId: existing?.id, givenBy: existing?.given_by,
       });
     }
   }

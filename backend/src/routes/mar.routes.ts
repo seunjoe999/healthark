@@ -176,6 +176,17 @@ router.get('/records/today', async (req: Request, res: Response, next: NextFunct
   } catch (err) { next(err); }
 });
 
+// GET /api/mar/records/single/:id — full record detail, used to pre-fill the amend form
+router.get('/records/single/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query('SELECT * FROM mar_records WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('MAR record not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/mar/records/:suId?date=2026-05-11
 router.get('/records/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -257,6 +268,56 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       }
 
       res.status(201).json({ success: true, data: record } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PATCH /api/mar/records/:id — amend a MAR entry you logged, only while your rota
+// shift for that home is still running today. Once the shift ends, it locks —
+// this is a same-shift correction tool, not open-ended editing of the record.
+router.patch('/records/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const homeId = fromToken(req, 'homeId');
+
+      const existingRows = await query<any>(
+        'SELECT given_by, home_id, record_date FROM mar_records WHERE id = $1', [req.params.id]
+      );
+      if (!existingRows.length) throw new AppError('MAR record not found', 404);
+      const record = existingRows[0];
+      if (record.given_by !== staffId) {
+        throw new AppError('Only the staff member who logged this can amend it.', 403);
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const nowHHMMSS = new Date().toTimeString().slice(0, 8);
+      const shiftRows = await query<any>(
+        `SELECT end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3
+         ORDER BY end_time DESC LIMIT 1`,
+        [staffId, record.home_id, todayStr]
+      );
+      const onShift = shiftRows.length && nowHHMMSS <= shiftRows[0].end_time;
+      if (!onShift) {
+        throw new AppError('Your shift has ended — this record can no longer be amended.', 403);
+      }
+
+      const { given, refused, reason, notes, marCode, amountTaken, amountUnit,
+              sideEffects, sideEffectsNotes, emotion } = req.body;
+      const updated = await query(
+        `UPDATE mar_records SET
+           given = COALESCE($1, given), refused = COALESCE($2, refused),
+           refused_reason = COALESCE($3, refused_reason), notes = COALESCE($4, notes),
+           mar_code = COALESCE($5, mar_code), amount_taken = COALESCE($6, amount_taken),
+           amount_unit = COALESCE($7, amount_unit),
+           side_effects = COALESCE($8, side_effects), side_effects_notes = COALESCE($9, side_effects_notes),
+           emotion = COALESCE($10, emotion)
+         WHERE id = $11 RETURNING *`,
+        [given ?? null, refused ?? null, reason || null, notes || null, marCode || null,
+         amountTaken || null, amountUnit || null, sideEffects ?? null, sideEffectsNotes || null,
+         emotion || null, req.params.id]
+      );
+      res.json({ success: true, data: updated[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

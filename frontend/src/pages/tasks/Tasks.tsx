@@ -217,6 +217,15 @@ export default function Tasks() {
   const [medTasks, setMedTasks] = useState<any[]>([])
   const [medTasksLoading, setMedTasksLoading] = useState(false)
   const [logMedTarget, setLogMedTarget] = useState<any>(null)
+  const [amendRecord, setAmendRecord] = useState<any>(null)
+  const amendMed = async (m: any) => {
+    if (!m.recordId) return
+    try {
+      const res = await api.get(`/mar/records/single/${m.recordId}`)
+      setAmendRecord(res.data.data)
+      setLogMedTarget(m)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not load record') }
+  }
   const [staffList, setStaffList] = useState<any[]>([])
   const [addFollowUpOpen, setAddFollowUpOpen] = useState(false)
   const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
@@ -575,35 +584,60 @@ export default function Tasks() {
           ) : medTasks.length === 0 ? (
             <EmptyState title="No medication due" description="No medication rounds are due today for your assigned residents" />
           ) : (
-            <div className="space-y-4">
-              {medTasks.map((m: any, i: number) => {
-                const codeInfo = MAR_CODE_OPTIONS.find(o => o.code === m.status)
-                const isDone = m.status !== 'pending'
-                return (
-                  <div key={`${m.medicationId}-${m.scheduledTime}-${i}`}
-                    className={`bg-white rounded-2xl border shadow-card p-5 flex items-center gap-4 ${isDone ? 'border-emerald-100' : 'border-slate-100'}`}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDone ? 'rgba(16,185,129,0.12)' : 'rgba(139,92,246,0.12)' }}>
-                      <Pill className="w-5 h-5" style={{ color: isDone ? '#10b981' : '#8b5cf6' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-sm text-slate-900">{m.medicationName}</h3>
-                        {m.dose && <span className="text-xs text-slate-700 font-semibold">{m.dose}</span>}
-                        {m.isControlled && <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full font-semibold">Controlled</span>}
+            <>
+              {(() => {
+                const pendingMeds = medTasks.filter((m: any) => m.status === 'pending')
+                const completedMeds = medTasks.filter((m: any) => m.status !== 'pending')
+                const renderCard = (m: any, i: number) => {
+                  const codeInfo = MAR_CODE_OPTIONS.find(o => o.code === m.status)
+                  const isDone = m.status !== 'pending'
+                  return (
+                    <div key={`${m.medicationId}-${m.scheduledTime}-${i}`}
+                      className={`bg-white rounded-2xl border shadow-card p-5 flex items-center gap-4 ${isDone ? 'border-emerald-100' : 'border-slate-100'}`}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDone ? 'rgba(16,185,129,0.12)' : 'rgba(139,92,246,0.12)' }}>
+                        <Pill className="w-5 h-5" style={{ color: isDone ? '#10b981' : '#8b5cf6' }} />
                       </div>
-                      <p className="text-xs text-slate-700 font-semibold mt-1.5">{m.suName} · Due {m.scheduledTime}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-sm text-slate-900">{m.medicationName}</h3>
+                          {m.dose && <span className="text-xs text-slate-700 font-semibold">{m.dose}</span>}
+                          {m.isControlled && <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full font-semibold">Controlled</span>}
+                        </div>
+                        <p className="text-xs text-slate-700 font-semibold mt-1.5">{m.suName} · Due {m.scheduledTime}</p>
+                      </div>
+                      {isDone ? (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: codeInfo?.bg, color: codeInfo?.color }}>
+                            {codeInfo?.label || 'Done'}
+                          </span>
+                          {m.givenBy === user?.id && (
+                            <Button size="sm" variant="outline" onClick={() => amendMed(m)}>Amend</Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Button size="sm" icon={<Check className="w-3.5 h-3.5" />} onClick={() => setLogMedTarget(m)}>Complete</Button>
+                      )}
                     </div>
-                    {isDone ? (
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: codeInfo?.bg, color: codeInfo?.color }}>
-                        {codeInfo?.label || 'Done'}
-                      </span>
-                    ) : (
-                      <Button size="sm" icon={<Check className="w-3.5 h-3.5" />} onClick={() => setLogMedTarget(m)}>Complete</Button>
+                  )
+                }
+                return (
+                  <>
+                    {pendingMeds.length > 0 && (
+                      <div className="space-y-3 mb-6">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">To do ({pendingMeds.length})</p>
+                        <div className="space-y-4">{pendingMeds.map(renderCard)}</div>
+                      </div>
                     )}
-                  </div>
+                    {completedMeds.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Completed ({completedMeds.length})</p>
+                        <div className="space-y-4">{completedMeds.map(renderCard)}</div>
+                      </div>
+                    )}
+                  </>
                 )
-              })}
-            </div>
+              })()}
+            </>
           )}
         </>
       )}
@@ -612,8 +646,14 @@ export default function Tasks() {
         <LogMARModal
           med={{ id: logMedTarget.medicationId, medication_name: logMedTarget.medicationName, is_controlled: logMedTarget.isControlled }}
           date={today} slot={logMedTarget.scheduledTime} suId={logMedTarget.suId} homeId={selectedHome}
-          onClose={() => setLogMedTarget(null)}
-          onSaved={async () => { setLogMedTarget(null); await loadMedTasks(); toast.success('Medication recorded on MAR') }}
+          existingRecord={amendRecord}
+          onClose={() => { setLogMedTarget(null); setAmendRecord(null) }}
+          onSaved={async () => {
+            const wasAmend = !!amendRecord
+            setLogMedTarget(null); setAmendRecord(null)
+            await loadMedTasks()
+            toast.success(wasAmend ? 'Medication record amended' : 'Medication recorded on MAR')
+          }}
         />
       )}
 

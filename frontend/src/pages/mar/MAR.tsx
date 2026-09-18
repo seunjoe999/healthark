@@ -357,7 +357,7 @@ export default function MAR() {
                           {med.is_controlled && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Shield className="w-3 h-3" />CD</span>}
                         </div>
                         <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
-                        {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Prescribed by: {med.prescribed_by}</p>}
+                        {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Reason for prescription: {med.prescribed_by}</p>}
                         {med.start_date && <p className="text-xs text-slate-400">Started: {format(new Date(med.start_date), 'd MMM yyyy')}</p>}
                         {med.instructions && (
                           <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mt-1.5">{med.instructions}</p>
@@ -1088,7 +1088,7 @@ function CellDetailModal({ data, currentUser, onClose, onRefresh }: { data: any;
               ['Frequency', (med.frequency || '').replace(/_/g, ' ')],
               ['Is PRN?', med.is_prn ? 'Yes' : 'No'],
               ['Directions', med.instructions || '—'],
-              ['Prescribed by', med.prescribed_by || '—'],
+              ['Reason for prescription', med.prescribed_by || '—'],
               ...(rec?.notes ? [['Notes', rec.notes]] : []),
             ].map(([label, val]) => (
               <tr key={label} className="border-b border-slate-100">
@@ -1227,22 +1227,23 @@ export const MAR_CODE_OPTIONS = [
   { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
 ]
 
-export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }: {
-  med: any; date: string; slot: string; suId: string; homeId?: string; onClose: () => void; onSaved: () => void
+export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onClose, onSaved }: {
+  med: any; date: string; slot: string; suId: string; homeId?: string; existingRecord?: any; onClose: () => void; onSaved: () => void
 }) {
   const { theme } = useTheme()
-  const [selectedCode, setSelectedCode] = useState<string | null>(null)
-  const [notes, setNotes] = useState('')
-  const [reason, setReason] = useState('')
+  const isAmend = !!existingRecord
+  const [selectedCode, setSelectedCode] = useState<string | null>(existingRecord?.mar_code ?? null)
+  const [notes, setNotes] = useState(existingRecord?.notes || '')
+  const [reason, setReason] = useState(existingRecord?.refused_reason || '')
   const [loading, setLoading] = useState(false)
   const [staffList, setStaffList] = useState<any[]>([])
   const [witnessId, setWitnessId] = useState('')
   const [witnessName, setWitnessName] = useState('')
-  const [amountTaken, setAmountTaken] = useState('')
-  const [amountUnit, setAmountUnit] = useState('')
-  const [sideEffects, setSideEffects] = useState(false)
-  const [sideEffectsNotes, setSideEffectsNotes] = useState('')
-  const [emotion, setEmotion] = useState<'red' | 'yellow' | 'green' | ''>('')
+  const [amountTaken, setAmountTaken] = useState(existingRecord?.amount_taken || '')
+  const [amountUnit, setAmountUnit] = useState(existingRecord?.amount_unit || '')
+  const [sideEffects, setSideEffects] = useState(!!existingRecord?.side_effects)
+  const [sideEffectsNotes, setSideEffectsNotes] = useState(existingRecord?.side_effects_notes || '')
+  const [emotion, setEmotion] = useState<'red' | 'yellow' | 'green' | ''>(existingRecord?.emotion || '')
   const [completed, setCompleted] = useState(true)
   const [signoffId, setSignoffId] = useState('')
   const [signoffName, setSignoffName] = useState('')
@@ -1265,6 +1266,22 @@ export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }:
     }
     setLoading(true)
     try {
+      if (isAmend) {
+        await api.patch(`/mar/records/${existingRecord.id}`, {
+          given: selected?.given ?? false,
+          refused: selected?.refused ?? false,
+          marCode: selectedCode,
+          notes: notes || undefined,
+          reason: reason || undefined,
+          amountTaken: amountTaken || undefined,
+          amountUnit: amountUnit || undefined,
+          sideEffects,
+          sideEffectsNotes: sideEffects ? (sideEffectsNotes || undefined) : undefined,
+          emotion: emotion || undefined,
+        })
+        onSaved()
+        return
+      }
       const payload: any = {
         suId, homeId, medicationId: med.id,
         given: selected?.given ?? false,
@@ -1294,7 +1311,7 @@ export function LogMARModal({ med, date, slot, suId, homeId, onClose, onSaved }:
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="lg">
+    <Modal open={true} onClose={onClose} title={`${isAmend ? 'Amend' : 'Log'} — ${med.medication_name}`} size="lg">
       <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div className="flex items-center gap-2">
           <p className="text-xs text-slate-400">{format(parseISO(date), 'EEEE, d MMMM yyyy')} · {slot}</p>
@@ -1484,6 +1501,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
     if (!form.medicationName.trim()) { toast.error('Medication name is required'); return }
     if (!suId) { toast.error('No service user selected'); return }
     if (!form.frequency) { toast.error('Frequency is required'); return }
+    if (!form.prescribedBy.trim()) { toast.error('Reason for prescription is required'); return }
     // Apply time is required (except for PRN, which has no fixed schedule) — without it every
     // medication silently defaulted to 08:00 on the MAR regardless of when it's actually due.
     if (!form.applyTime && !form.isPrn) { toast.error('Apply time is required'); return }
@@ -1520,7 +1538,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
         </div>
-        <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
+        <Input label="Reason for prescription *" required value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="Why has this medication been prescribed..." />
         <div>
           <label className="label flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Access code</label>
           <textarea className="input" rows={2} value={form.locationAccessCode} onChange={e => set('locationAccessCode', e.target.value)} placeholder="Where is the medication stored? Any access instructions..." />
@@ -1589,6 +1607,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     e.preventDefault()
     if (!form.frequency) { toast.error('Frequency is required'); return }
     if (!form.applyTime && !form.isPrn) { toast.error('Apply time is required'); return }
+    if (!form.prescribedBy.trim()) { toast.error('Reason for prescription is required'); return }
     setLoading(true)
     try { await api.patch(`/mar/medications/${med.id}`, form); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
@@ -1617,7 +1636,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
         </div>
-        <Input label="Prescribed by" value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="GP or consultant name" />
+        <Input label="Reason for prescription *" required value={form.prescribedBy} onChange={e => set('prescribedBy', e.target.value)} placeholder="Why has this medication been prescribed..." />
         <div>
           <label className="label flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Access code</label>
           <textarea className="input" rows={2} value={form.locationAccessCode} onChange={e => set('locationAccessCode', e.target.value)} placeholder="Where is the medication stored? Any access instructions..." />
