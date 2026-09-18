@@ -332,10 +332,13 @@ function printMedRiskAssessment(r: any) {
 }
 
 export default function MedicineRisk() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const { theme } = useTheme()
   const flagBg = theme === 'dark' ? '#1a1a1a' : '#f8fafc'
   const homeId = user?.homeId || ''
+  // Medication risk assessments are a clinical/management document —
+  // frontline staff can read but only managers may add or edit.
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
 
   const [latest, setLatest] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
@@ -527,9 +530,11 @@ export default function MedicineRisk() {
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Medication administration risk for each resident</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={openNewForm}>New Assessment</Button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={openNewForm}>New Assessment</Button>
+          </div>
+        )}
       </div>
 
       {/* Summary bar */}
@@ -547,14 +552,14 @@ export default function MedicineRisk() {
       )}
 
       {loading ? <Spinner /> : latest.length === 0 ? (
-        <EmptyState title="No assessments yet" description="Use 'New Assessment' to add a medicine risk assessment" />
+        <EmptyState title="No assessments yet" description={canManage ? "Use 'New Assessment' to add a medicine risk assessment" : 'No medicine risk assessments have been added yet'} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {latest.map(r => {
             const borderColor = r.risk_level ? riskBorder(r.risk_level) : 'rgba(148,163,184,0.25)'
             return (
               <button key={r.su_id}
-                onClick={() => { if (!r.id) { setForm({ ...EMPTY_FORM, suId: r.su_id }); setShowForm(true) } else { setViewRecord(r) } }}
+                onClick={() => { if (!r.id) { if (canManage) { setForm({ ...EMPTY_FORM, suId: r.su_id }); setShowForm(true) } } else { setViewRecord(r) } }}
                 className="rounded-2xl flex flex-col gap-3 p-4 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
                 style={{ background: riskTint(r.risk_level || '', theme), border: `1.5px solid ${borderColor}`, boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(15,23,42,0.06)' }}>
                 <div className="flex items-start justify-between gap-2">
@@ -580,8 +585,10 @@ export default function MedicineRisk() {
                 {r.assessed_at && (
                   <p className="text-xs text-slate-600">Assessed {format(new Date(r.assessed_at), 'dd MMM yyyy')}{r.review_date && <span> · Review {format(new Date(r.review_date), 'dd MMM yyyy')}</span>}</p>
                 )}
-                {!r.id && <p className="text-xs text-slate-500 italic">No assessment recorded yet — click to add one</p>}
-                <div className="flex items-center gap-1 text-xs text-slate-500 mt-auto"><Eye className="w-3 h-3" /><span>{r.id ? 'Click to view full assessment' : 'Click to add assessment'}</span></div>
+                {!r.id && <p className="text-xs text-slate-500 italic">{canManage ? 'No assessment recorded yet — click to add one' : 'No assessment recorded yet'}</p>}
+                {(r.id || canManage) && (
+                  <div className="flex items-center gap-1 text-xs text-slate-500 mt-auto"><Eye className="w-3 h-3" /><span>{r.id ? 'Click to view full assessment' : 'Click to add assessment'}</span></div>
+                )}
               </button>
             )
           })}
@@ -814,6 +821,8 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
   record: any; onClose: () => void; onEdit: () => void; onNewAssessment: () => void; onRecordUpdate: () => void
 }) {
   const { theme } = useTheme()
+  const { isRole } = useAuth()
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
   const isDark = theme === 'dark'
   // Sections below used to hardcode light-gray-on-transparent text meant for
   // a dark backdrop — in light theme (or against the modal's actual light
@@ -954,10 +963,10 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             </div>}
 
             <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <Button variant="gold" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Assessment</Button>
-              <Button variant="ghost" icon={<History className="w-3.5 h-3.5" />} onClick={onRecordUpdate}>Record Update</Button>
+              {canManage && <Button variant="gold" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Assessment</Button>}
+              {canManage && <Button variant="ghost" icon={<History className="w-3.5 h-3.5" />} onClick={onRecordUpdate}>Record Update</Button>}
               <Button variant="ghost" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => printMedRiskAssessment(r)}>Print</Button>
-              <Button variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={onNewAssessment}>New Assessment</Button>
+              {canManage && <Button variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={onNewAssessment}>New Assessment</Button>}
             </div>
 
             {/* Risk update tracking — dated history of changes to this risk */}

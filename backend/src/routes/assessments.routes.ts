@@ -1925,6 +1925,12 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const template = TEMPLATES.find(t => t.key === templateKey);
     if (!template) return res.status(400).json({ success: false, error: 'Invalid template key' } as ApiResponse);
 
+    // MAR Review is management sign-off, not a frontline task — staff can view
+    // past reviews but only managers may record a new one.
+    if (templateKey === 'mar_review' && !ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '')) {
+      return res.status(403).json({ success: false, error: 'Only managers can record a MAR Review' } as ApiResponse);
+    }
+
     const { totalScore, maxScore, scorePct, riskLevel } = calcScore(template, answers || {});
 
     const rows = await query(
@@ -1955,6 +1961,10 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const existing = await query('SELECT * FROM assessments WHERE id = $1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
     const ex = existing[0] as any;
+
+    if (ex.template_key === 'mar_review' && !ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '')) {
+      return res.status(403).json({ success: false, error: 'Only managers can amend a MAR Review' } as ApiResponse);
+    }
 
     const template = TEMPLATES.find(t => t.key === ex.template_key);
     const { totalScore, maxScore, scorePct, riskLevel } = template

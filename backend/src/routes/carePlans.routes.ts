@@ -120,8 +120,14 @@ router.get('/:id', param('id').isUUID(), validateRequest,
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Support plans are a clinical/management document — frontline staff can
+// read them (they need to know how to support someone) but only managers
+// may write them.
+const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+
 // POST /api/care-plans
 router.post('/',
+  requireRole(...MANAGER_ROLES as any),
   [body('planType').notEmpty().withMessage('planType is required')],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -176,16 +182,14 @@ router.post('/',
 );
 
 // PUT /api/care-plans/:id
-// Care staff may only read/complete a care plan — editing requires team_leader
-// or above, and only while currently clocked in to the shift (legal/audit-trail
-// requirement). Team leaders and above are unaffected.
+// Frontline staff may only read a support plan — editing requires a manager.
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
       const role = fromToken(req, 'role');
-      if (role === 'care_staff') {
-        throw new AppError('Care staff cannot edit care plans — this requires a team leader or above.', 403);
+      if (!MANAGER_ROLES.includes(role)) {
+        throw new AppError('Only managers can edit support plans.', 403);
       }
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
               reviewFrequency, updateNotes, attachmentsNotes, templateData, suSignOff, staffSignOff,

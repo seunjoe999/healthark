@@ -92,8 +92,10 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
-// POST /api/medicine-risk
-router.post('/', [body('suId').isUUID()], validateRequest,
+const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+
+// POST /api/medicine-risk — staff can read, only managers can write
+router.post('/', requireRole(...MANAGER_ROLES as any), [body('suId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = tok(req, 'homeId');
@@ -142,8 +144,9 @@ router.post('/', [body('suId').isUUID()], validateRequest,
   }
 );
 
-// PUT /api/medicine-risk/:id — update existing assessment
-router.put('/:id', param('id').isUUID(), validateRequest,
+// PUT /api/medicine-risk/:id — update existing assessment (also used for the
+// lightweight "Record Update" risk-level log entry) — managers only
+router.put('/:id', requireRole(...MANAGER_ROLES as any), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = tok(req, 'staffId');

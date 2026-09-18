@@ -60,7 +60,11 @@ router.get('/:id', param('id').isUUID(), validateRequest,
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Frontline staff are read-only on risk assessments — only managers may write.
+const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+
 router.post('/',
+  requireRole(...MANAGER_ROLES as any),
   [body('assessmentName').notEmpty().withMessage('assessmentName is required')],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -109,15 +113,14 @@ router.post('/',
   }
 );
 
-// Care staff are read-only on risk assessments — editing requires team_leader
-// or above (voice-note legal/audit requirement).
+// Frontline staff are read-only on risk assessments — editing requires a manager.
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
       const role = fromToken(req, 'role');
-      if (role === 'care_staff') {
-        throw new AppError('Care staff cannot edit risk assessments — this requires a team leader or above.', 403);
+      if (!MANAGER_ROLES.includes(role)) {
+        throw new AppError('Only managers can edit risk assessments.', 403);
       }
       const { description, currentRiskLevel, managementPlan, updateNotes,
               triggers, protectiveFactors, reviewFrequency,

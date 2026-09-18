@@ -1537,6 +1537,9 @@ function buildPrintHtml(plan: any, su: any, reads: any[]): string {
 
 export default function CarePlans() {
   const { user, isRole } = useAuth()
+  // Support plans are a clinical/management document — frontline staff can
+  // read them but only managers may add or edit (backend enforces the same).
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [plans, setPlans] = useState<any[]>([])
@@ -1717,7 +1720,7 @@ export default function CarePlans() {
         {selectedSu && (
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={printAll}>Print all</Button>
-            <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>
+            {canManage && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>}
           </div>
         )}
       </div>
@@ -1750,8 +1753,8 @@ export default function CarePlans() {
       ) : loading ? (
         <Spinner />
       ) : plans.length === 0 ? (
-        <EmptyState title="No support plans yet" description="Add the first support plan for this service user"
-          action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>} />
+        <EmptyState title="No support plans yet" description={canManage ? 'Add the first support plan for this service user' : 'No support plans have been added yet'}
+          action={canManage ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button> : undefined} />
       ) : visiblePlans.length === 0 ? (
         <EmptyState title="No matching plans" description="Try a different search term" />
       ) : (
@@ -1808,6 +1811,7 @@ export default function CarePlans() {
           su={selectedSu}
           reads={planReads[viewPlan.id] || []}
           canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
+          canEdit={canManage}
           onClose={() => setViewPlan(null)}
           onEdit={() => { setEditPlan(viewPlan); setViewPlan(null) }}
           onDelete={async () => { await deletePlan(viewPlan.id) }}
@@ -1862,8 +1866,8 @@ export default function CarePlans() {
   )
 }
 
-function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete, onPrint }: {
-  plan: any; su?: any; reads: any[]; canDelete: boolean;
+function PlanDetailModal({ plan, su, reads, canDelete, canEdit, onClose, onEdit, onDelete, onPrint }: {
+  plan: any; su?: any; reads: any[]; canDelete: boolean; canEdit: boolean;
   onClose: () => void; onEdit: () => void; onDelete: () => void; onPrint: () => void
 }) {
   const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
@@ -2158,7 +2162,9 @@ function PlanDetailModal({ plan, su, reads, canDelete, onClose, onEdit, onDelete
 
         <div className="flex gap-2 pt-3 border-t border-slate-100 flex-wrap">
           <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={onPrint}>Print</Button>
-          <Button size="sm" variant="secondary" icon={<Edit className="w-3.5 h-3.5" />} onClick={onEdit}>Edit & review</Button>
+          {canEdit && (
+            <Button size="sm" variant="secondary" icon={<Edit className="w-3.5 h-3.5" />} onClick={onEdit}>Edit & review</Button>
+          )}
           {canDelete && (
             <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={onDelete}>Delete</Button>
           )}

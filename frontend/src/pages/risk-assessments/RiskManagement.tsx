@@ -102,7 +102,10 @@ function clearRiskDraft() {
 
 export default function RiskManagement() {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer')
+  // Frontline staff (including senior_carer/team_leader) are read-only here —
+  // backend enforces the same, this just keeps the UI from offering a
+  // control that would 403.
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
 
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
