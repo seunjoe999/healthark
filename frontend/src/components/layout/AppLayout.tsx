@@ -27,7 +27,6 @@ const navSections = [
       { label: 'Dashboard',   to: '/dashboard',   icon: LayoutDashboard, roles: [], featureKey: 'dashboard' },
       { label: 'Inbox',       to: '/messages',    icon: MessageSquare,   roles: [], featureKey: 'messages' },
       { label: 'Tasks',       to: '/tasks',       icon: CheckSquare,     roles: ['care_staff', 'team_leader', 'senior_carer'], featureKey: 'tasks' },
-      { label: 'Calendar',    to: '/calendar',    icon: Calendar,        roles: [], featureKey: 'calendar' },
       { label: 'Noticeboard', to: '/noticeboard', icon: Newspaper,       roles: [], featureKey: 'noticeboard' },
     ]
   },

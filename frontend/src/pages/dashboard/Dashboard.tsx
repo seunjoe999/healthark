@@ -419,10 +419,10 @@ export default function Dashboard() {
                       className="w-full h-full flex flex-col items-center justify-center rounded-2xl p-4 lg:p-6 text-center transition-all duration-200 min-h-[140px] lg:min-h-[180px]"
                       style={{
                         background: tileBg,
-                        border: `1px solid ${showBirthdays ? card.color + '40' : tileBorderColor}`,
+                        border: `1px solid ${card.color}${showBirthdays ? '40' : '25'}`,
                       }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = card.color + '40'; e.currentTarget.style.background = tileHoverBg }}
-                      onMouseLeave={e => { if (!showBirthdays) { e.currentTarget.style.background = tileBg; e.currentTarget.style.borderColor = tileBorderColor } }}
+                      onMouseLeave={e => { if (!showBirthdays) { e.currentTarget.style.background = tileBg; e.currentTarget.style.borderColor = card.color + '25' } }}
                     >
                       <card.icon size={22} style={{ color: card.color }} className="mb-3 opacity-80" />
                       <p className="text-xs font-semibold leading-snug mb-3" style={{ color: card.color }}>
@@ -473,9 +473,9 @@ export default function Dashboard() {
                   <Link
                     to={card.to as string}
                     className="flex flex-col items-center justify-center rounded-2xl p-4 lg:p-6 text-center transition-all duration-200 min-h-[140px] lg:min-h-[180px] h-full"
-                    style={{ background: tileBg, border: `1px solid ${card.urgent ? card.color + '30' : tileBorderColor}` }}
-                    onMouseEnter={e => { e.currentTarget.style.background = tileHoverBg; e.currentTarget.style.borderColor = card.color + '40' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = tileBg; e.currentTarget.style.borderColor = card.urgent ? card.color + '30' : tileBorderColor }}
+                    style={{ background: tileBg, border: `1px solid ${card.color}${card.urgent ? '50' : '25'}` }}
+                    onMouseEnter={e => { e.currentTarget.style.background = tileHoverBg; e.currentTarget.style.borderColor = card.color + '60' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = tileBg; e.currentTarget.style.borderColor = `${card.color}${card.urgent ? '50' : '25'}` }}
                   >
                     <card.icon size={22} style={{ color: card.color }} className="mb-3 opacity-80" />
                     <p className="text-xs font-semibold leading-snug mb-3" style={{ color: card.color }}>
