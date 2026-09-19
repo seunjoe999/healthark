@@ -121,11 +121,11 @@ export default function Dashboard() {
   const { user, isRole } = useAuth()
   // Dashboard boxes always stay dark navy — kept fixed regardless of the
   // app-wide light/dark toggle, per explicit request.
-  const panelBg = '#152238'
-  const tileBg = '#132a4f'
-  const tileBorder = '1px solid rgba(255,255,255,0.08)'
-  const tileBorderColor = 'rgba(255,255,255,0.08)'
-  const tileHoverBg = '#1a3660'
+  const panelBg = '#12182a'
+  const tileBg = '#141b2e'
+  const tileBorder = '1px solid rgba(255,255,255,0.06)'
+  const tileBorderColor = 'rgba(255,255,255,0.06)'
+  const tileHoverBg = '#1a2338'
   const neutralText = 'text-white'
   const softPanelBg = 'rgba(255,255,255,0.03)'
   const [homes, setHomes]               = useState<any[]>([])
