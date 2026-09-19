@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { homesApi, suApi, staffApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -169,15 +170,18 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
         </div>
       )}
 
-      {/* Checkbox — far right, matching RoundSys */}
-      <button onClick={() => task.status !== 'completed' && onComplete(task)}
-        className={`w-7 h-7 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-          task.status === 'completed' ? 'bg-emerald-500 border-emerald-500'
-          : isOverdue ? 'border-rose-400 hover:border-rose-500'
-          : 'border-slate-300 hover:border-purple-500'
-        }`}>
-        {task.status === 'completed' && <Check className="w-4 h-4 text-white" />}
-      </button>
+      {/* Complete button — a plain small checkbox was too easy to miss/mis-tap
+          on mobile, so pending tasks get a clearly labelled button instead. */}
+      {task.status === 'completed' ? (
+        <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+          <Check className="w-5 h-5 text-white" />
+        </div>
+      ) : (
+        <Button size="sm" variant={isOverdue ? 'danger' : 'primary'} icon={<Check className="w-4 h-4" />}
+          onClick={() => onComplete(task)} className="flex-shrink-0">
+          Complete
+        </Button>
+      )}
 
       {isRole(...TASK_CREATOR_ROLES) && task.category !== 'follow_up' && (
         <button onClick={() => onEdit(task)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors flex-shrink-0">
@@ -195,6 +199,7 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
 
 export default function Tasks() {
   const { user, isRole } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tasks, setTasks] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
@@ -258,6 +263,17 @@ export default function Tasks() {
       setStockCount(res.data.data || null)
     } catch (e) { console.error(e) }
   }
+
+  // Deep-link from the task reminder pop-up ("...clicking the task takes you
+  // to where you complete it") — opens the complete-task modal directly once
+  // the task list has loaded, then cleans the URL so a refresh doesn't reopen it.
+  useEffect(() => {
+    const completeId = searchParams.get('complete')
+    if (!completeId || tasks.length === 0) return
+    const target = tasks.find((t: any) => t.id === completeId)
+    if (target && target.status !== 'completed') setCompletingTask(target)
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('complete'); return p }, { replace: true })
+  }, [tasks, searchParams])
 
   const load = async () => {
     setLoading(true)
@@ -397,17 +413,18 @@ export default function Tasks() {
 
       {pageTab === 'tasks' && (
         <>
-          {/* Stats */}
+          {/* Stats — clickable, each one jumps straight to that filter */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Total today', value: tasks.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
-              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+              { label: 'Total today', value: tasks.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', ring: 'ring-blue-400', filterValue: 'all' as const },
+              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', ring: 'ring-amber-400', filterValue: 'pending' as const },
+              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: 'ring-emerald-400', filterValue: 'completed' as const },
             ].map(s => (
-              <div key={s.label} className={`rounded-2xl border shadow-card p-4 text-center ${s.bg} ${s.border}`}>
+              <button key={s.label} type="button" onClick={() => setFilter(s.filterValue)}
+                className={`rounded-2xl border shadow-card p-4 text-center transition-transform hover:scale-[1.02] ${s.bg} ${s.border} ${filter === s.filterValue ? `ring-2 ring-offset-1 ${s.ring}` : ''}`}>
                 <p className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</p>
                 <p className={`text-xs font-extrabold mt-0.5 ${s.color}`}>{s.label}</p>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -578,12 +595,12 @@ export default function Tasks() {
             </div>
             <div className="flex gap-3 justify-end flex-wrap">
               <Button type="button" variant="outline" onClick={() => { setCompletingTask(null); setCompletionNote('') }}>Cancel</Button>
-              <Button type="button" variant="secondary" icon={<RotateCcw className="w-4 h-4" />} onClick={async () => {
+              <Button type="button" variant="gold" icon={<RotateCcw className="w-4 h-4" />} onClick={async () => {
                 await logAttempt(completingTask.id, completionNote)
                 setCompletingTask(null)
                 setCompletionNote('')
               }}>Attempted — try again later</Button>
-              <Button icon={<Check className="w-4 h-4" />} onClick={async () => {
+              <Button variant="teal" icon={<Check className="w-4 h-4" />} onClick={async () => {
                 await complete(completingTask.id, completionNote)
                 setCompletingTask(null)
                 setCompletionNote('')

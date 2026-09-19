@@ -15,6 +15,7 @@ export default function ClockIn() {
   const [suInfo, setSuInfo] = useState<any>(null)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState('')
+  const [errorReason, setErrorReason] = useState('')
   const [eventType, setEventType] = useState<'clock_in' | 'clock_out'>('clock_in')
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function ClockIn() {
             setState('too_far')
           } else {
             setError(data.error || 'Clock-in failed')
+            setErrorReason(data.reason || '')
             setState('error')
           }
         } catch {
@@ -227,11 +229,26 @@ export default function ClockIn() {
               <div className="w-16 h-16 rounded-full bg-rose-500/15 border-2 border-rose-500/30 flex items-center justify-center mx-auto mb-4">
                 <XCircle className="w-8 h-8 text-rose-400" />
               </div>
-              <h2 className="text-white font-display text-xl mb-2">Something went wrong</h2>
+              <h2 className="text-white font-display text-xl mb-2">
+                {errorReason === 'medication_incomplete' ? 'Medication not finished yet' : 'Something went wrong'}
+              </h2>
               <p className="text-slate-400 text-sm mb-6">{error}</p>
+              {errorReason === 'medication_incomplete' && (
+                <button onClick={() => navigate('/mar')}
+                  className="w-full py-3 rounded-xl font-semibold text-slate-900 mb-3"
+                  style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                  Go complete it now
+                </button>
+              )}
+              {errorReason === 'no_shift_today' && (
+                <button onClick={() => navigate('/rota')}
+                  className="w-full py-3 rounded-xl font-semibold text-slate-900 mb-3"
+                  style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                  View the rota
+                </button>
+              )}
               <button onClick={() => window.location.reload()}
-                className="w-full py-3 rounded-xl font-semibold text-slate-900"
-                style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                className="w-full py-3 rounded-xl font-semibold text-slate-300 border border-white/15 hover:bg-white/5 transition-colors">
                 Try again
               </button>
             </div>

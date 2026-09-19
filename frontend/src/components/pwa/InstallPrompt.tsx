@@ -8,7 +8,8 @@ interface BeforeInstallPromptEvent extends Event {
 
 const DISMISS_KEY = 'pwa_install_dismissed_at'
 const INSTALLED_KEY = 'pwa_installed'
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+// Nags every 5 minutes until installed — deliberately aggressive, per explicit request.
+const RENAG_MS = 5 * 60 * 1000
 const INITIAL_DELAY_MS = 10_000
 
 function isIOS() {
@@ -26,7 +27,7 @@ function shouldShowPrompt(): boolean {
   if (localStorage.getItem(INSTALLED_KEY) === '1') return false
   const dismissedAt = localStorage.getItem(DISMISS_KEY)
   if (!dismissedAt) return true
-  return Date.now() - parseInt(dismissedAt, 10) > SEVEN_DAYS_MS
+  return Date.now() - parseInt(dismissedAt, 10) > RENAG_MS
 }
 
 export default function InstallPrompt() {
@@ -54,11 +55,13 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     if (isInStandalone()) return
-    if (!shouldShowPrompt()) return
 
     if (isIOS()) {
-      const t = setTimeout(() => show('ios'), INITIAL_DELAY_MS)
-      return () => clearTimeout(t)
+      if (shouldShowPrompt()) {
+        const t = setTimeout(() => show('ios'), INITIAL_DELAY_MS)
+        return () => clearTimeout(t)
+      }
+      return
     }
 
     let capturedPrompt: BeforeInstallPromptEvent | null = null
@@ -74,6 +77,18 @@ export default function InstallPrompt() {
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
+
+  // Re-nag every 5 minutes while the app stays open on one page, not just on reload.
+  useEffect(() => {
+    if (isInStandalone()) return
+    const interval = setInterval(() => {
+      if (visible) return
+      if (!shouldShowPrompt()) return
+      if (isIOS()) show('ios')
+      else if (deferredPrompt) show('android')
+    }, RENAG_MS)
+    return () => clearInterval(interval)
+  }, [visible, deferredPrompt])
 
   async function install() {
     if (!deferredPrompt) return
