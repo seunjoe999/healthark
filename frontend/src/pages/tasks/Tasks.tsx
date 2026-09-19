@@ -6,7 +6,6 @@ import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
 import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, ClipboardList, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { LogMARModal, MAR_CODE_OPTIONS } from '../mar/MAR'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 import { getServerTodayStr } from '../../utils/serverTime'
 import DashText from '../../components/DashText'
@@ -209,23 +208,11 @@ export default function Tasks() {
   // Defaults to "all" so a task you just completed stays visible (marked
   // done) instead of vanishing the instant it leaves the pending filter.
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
-  const [pageTab, setPageTab] = useState<'tasks' | 'templates' | 'medication'>('tasks')
+  const [pageTab, setPageTab] = useState<'tasks' | 'templates'>('tasks')
   const [sus, setSus] = useState<any[]>([])
   const [generatingDaily, setGeneratingDaily] = useState(false)
   const [completingTask, setCompletingTask] = useState<any>(null)
   const [completionNote, setCompletionNote] = useState('')
-  const [medTasks, setMedTasks] = useState<any[]>([])
-  const [medTasksLoading, setMedTasksLoading] = useState(false)
-  const [logMedTarget, setLogMedTarget] = useState<any>(null)
-  const [amendRecord, setAmendRecord] = useState<any>(null)
-  const amendMed = async (m: any) => {
-    if (!m.recordId) return
-    try {
-      const res = await api.get(`/mar/records/single/${m.recordId}`)
-      setAmendRecord(res.data.data)
-      setLogMedTarget(m)
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not load record') }
-  }
   const [staffList, setStaffList] = useState<any[]>([])
   const [addFollowUpOpen, setAddFollowUpOpen] = useState(false)
   const [todaysAppointments, setTodaysAppointments] = useState<any[]>([])
@@ -254,7 +241,6 @@ export default function Tasks() {
     api.get('/teams', { params: { homeId: selectedHome } }).then(res => setTeams(res.data.data || [])).catch(() => setTeams([]))
     load()
     loadTemplates()
-    loadMedTasks()
     loadTodaysAppointments()
     loadStockCountStatus()
   }, [selectedHome, today])
@@ -287,15 +273,6 @@ export default function Tasks() {
       const res = await api.get('/tasks/templates', { params: { homeId: selectedHome } })
       setTemplates(res.data.data || [])
     } catch (e) { console.error(e) }
-  }
-
-  const loadMedTasks = async () => {
-    setMedTasksLoading(true)
-    try {
-      const res = await api.get('/mar/due-today', { params: { homeId: selectedHome } })
-      setMedTasks(res.data.data || [])
-    } catch (e) { console.error(e) }
-    finally { setMedTasksLoading(false) }
   }
 
   const complete = async (taskId: string, notes = '') => {
@@ -415,10 +392,6 @@ export default function Tasks() {
         <button onClick={() => setPageTab('templates')}
           className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'templates' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
           <LayoutTemplate className="w-3.5 h-3.5" /> Templates
-        </button>
-        <button onClick={() => setPageTab('medication')}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'medication' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          <Pill className="w-3.5 h-3.5" /> Medication{medTasks.filter(m => m.status === 'pending').length > 0 ? ` (${medTasks.filter(m => m.status === 'pending').length})` : ''}
         </button>
       </div>
 
@@ -574,87 +547,6 @@ export default function Tasks() {
             </div>
           )}
         </>
-      )}
-
-      {pageTab === 'medication' && (
-        <>
-          <p className="text-sm text-slate-500 mb-4">Medication due today for your residents. Complete each round here — it's recorded on the MAR automatically with your name and time.</p>
-          {medTasksLoading ? (
-            <div className="flex justify-center py-12"><Spinner /></div>
-          ) : medTasks.length === 0 ? (
-            <EmptyState title="No medication due" description="No medication rounds are due today for your assigned residents" />
-          ) : (
-            <>
-              {(() => {
-                const pendingMeds = medTasks.filter((m: any) => m.status === 'pending')
-                const completedMeds = medTasks.filter((m: any) => m.status !== 'pending')
-                const renderCard = (m: any, i: number) => {
-                  const codeInfo = MAR_CODE_OPTIONS.find(o => o.code === m.status)
-                  const isDone = m.status !== 'pending'
-                  return (
-                    <div key={`${m.medicationId}-${m.scheduledTime}-${i}`}
-                      className={`bg-white rounded-2xl border shadow-card p-5 flex items-center gap-4 ${isDone ? 'border-emerald-100' : 'border-slate-100'}`}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDone ? 'rgba(16,185,129,0.12)' : 'rgba(139,92,246,0.12)' }}>
-                        <Pill className="w-5 h-5" style={{ color: isDone ? '#10b981' : '#8b5cf6' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-sm text-slate-900">{m.medicationName}</h3>
-                          {m.dose && <span className="text-xs text-slate-700 font-semibold">{m.dose}</span>}
-                          {m.isControlled && <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full font-semibold">Controlled</span>}
-                        </div>
-                        <p className="text-xs text-slate-700 font-semibold mt-1.5">{m.suName} · Due {m.scheduledTime}</p>
-                      </div>
-                      {isDone ? (
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: codeInfo?.bg, color: codeInfo?.color }}>
-                            {codeInfo?.label || 'Done'}
-                          </span>
-                          {m.givenBy === user?.id && (
-                            <Button size="sm" variant="outline" onClick={() => amendMed(m)}>Amend</Button>
-                          )}
-                        </div>
-                      ) : (
-                        <Button size="sm" icon={<Check className="w-3.5 h-3.5" />} onClick={() => setLogMedTarget(m)}>Complete</Button>
-                      )}
-                    </div>
-                  )
-                }
-                return (
-                  <>
-                    {pendingMeds.length > 0 && (
-                      <div className="space-y-3 mb-6">
-                        <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">To do ({pendingMeds.length})</p>
-                        <div className="space-y-4">{pendingMeds.map(renderCard)}</div>
-                      </div>
-                    )}
-                    {completedMeds.length > 0 && (
-                      <div className="space-y-3">
-                        <p className="text-xs font-extrabold text-emerald-600 uppercase tracking-wider">Completed ({completedMeds.length})</p>
-                        <div className="space-y-4">{completedMeds.map(renderCard)}</div>
-                      </div>
-                    )}
-                  </>
-                )
-              })()}
-            </>
-          )}
-        </>
-      )}
-
-      {logMedTarget && (
-        <LogMARModal
-          med={{ id: logMedTarget.medicationId, medication_name: logMedTarget.medicationName, is_controlled: logMedTarget.isControlled }}
-          date={today} slot={logMedTarget.scheduledTime} suId={logMedTarget.suId} homeId={selectedHome}
-          existingRecord={amendRecord}
-          onClose={() => { setLogMedTarget(null); setAmendRecord(null) }}
-          onSaved={async () => {
-            const wasAmend = !!amendRecord
-            setLogMedTarget(null); setAmendRecord(null)
-            await loadMedTasks()
-            toast.success(wasAmend ? 'Medication record amended' : 'Medication recorded on MAR')
-          }}
-        />
       )}
 
       <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome} staffList={staffList} teams={teams}

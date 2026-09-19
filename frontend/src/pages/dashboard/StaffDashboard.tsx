@@ -27,6 +27,7 @@ export default function StaffDashboard() {
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInUrl, setClockInUrl] = useState<string | null>(null)
   const [stockCount, setStockCount] = useState<{ total: number; counted: number; done: boolean } | null>(null)
+  const [medDueToday, setMedDueToday] = useState<{ total: number; pending: number }>({ total: 0, pending: 0 })
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -59,7 +60,7 @@ export default function StaffDashboard() {
     const load = async () => {
       try {
         const todayStr = await getServerTodayStr()
-        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, stockR] = await Promise.allSettled([
+        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, stockR, medDueR] = await Promise.allSettled([
           api.get('/shifts', { params: { homeId: user.homeId, date: todayStr } }),
           api.get('/tasks', { params: { homeId: user.homeId, date: todayStr } }),
           api.get('/staff-hr/leave', { params: { staffId: user.id } }),
@@ -69,6 +70,7 @@ export default function StaffDashboard() {
           api.get('/clockin/status'),
           user.homeId ? api.get(`/clockin/home-qr/${user.homeId}`) : Promise.resolve(null),
           api.get('/mar/stock-count-status', { params: { homeId: user.homeId } }),
+          api.get('/mar/due-today', { params: { homeId: user.homeId } }),
         ])
         const v = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null
         const profileData = v(profileR)?.data.data
@@ -85,6 +87,8 @@ export default function StaffDashboard() {
         const qrToken = v(homeQrR)?.data.data?.qrToken
         setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
         setStockCount(v(stockR)?.data.data || null)
+        const medTasks = v(medDueR)?.data.data || []
+        setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
       } finally {
         setLoading(false)
       }
@@ -158,7 +162,7 @@ export default function StaffDashboard() {
       <div className="grid grid-cols-2 gap-3 mb-5">
         {[
           { label: 'Daily records', to: '/daily-records', icon: <ClipboardList className="w-5 h-5" />, color: '#8b5cf6', desc: 'Log care activities' },
-          { label: 'Medication Administration Record', to: '/mar', icon: <Pill className="w-5 h-5" />, color: '#3b82f6', desc: 'Log medications' },
+          { label: 'Medication Administration Record', to: '/mar', icon: <Pill className="w-5 h-5" />, color: '#3b82f6', desc: medDueToday.total > 0 ? `${medDueToday.pending}/${medDueToday.total} due today` : 'Log medications' },
           { label: 'Request leave', to: '/holidays', icon: <Calendar className="w-5 h-5" />, color: '#10b981', desc: `${pendingLeave.length} pending` },
           { label: 'My training', to: '/training', icon: <BookOpen className="w-5 h-5" />, color: '#f59e0b', desc: 'Complete modules' },
           { label: 'Clock in/out', to: clockInUrl || '/clockin-analytics', icon: <Clock className="w-5 h-5" />, color: '#6366f1', desc: clockedIn ? 'Clock out' : 'Clock in' },

@@ -66,8 +66,12 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   // e.g. an "Attempted" (completed=false) logged at 08:05 followed by a
   // successful "Given" at 08:20 for the same dose must resolve to "given",
   // not get stuck on the earlier attempt.
+  // scheduled_time is a TIME column and comes back as "HH:MM:SS" — trim to "HH:MM"
+  // so it matches the slot keys from getTimeSlots() below, or a logged record can
+  // never be matched back to its slot and the task looks permanently unresolved.
   const recordRows = await query<any>(
-    `SELECT id, medication_id, scheduled_time, given, refused, mar_code, completed, given_by
+    `SELECT id, medication_id, LEFT(scheduled_time::text, 5) as scheduled_time,
+            given, refused, mar_code, completed, given_by
      FROM mar_records WHERE home_id = $1 AND record_date = $2 ORDER BY created_at ASC`,
     [homeId, today]
   );

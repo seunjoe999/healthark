@@ -224,6 +224,58 @@ async function checkMissedMedication() {
   } catch (err) { logger.error('Missed medication check failed:', err); }
 }
 
+// Every 30 minutes: notify all managers about general tasks (not medication —
+// that's checkMissedMedication above) that are still pending well past their
+// due time or from a previous day. Dedupes on the notification's link so a
+// re-run doesn't spam a second alert for the same task.
+async function checkOverdueTasks() {
+  try {
+    const { query } = await import('../config/database');
+    const today = new Date().toISOString().split('T')[0];
+    const graceMinutes = 60;
+    const cutoffHHMM = new Date(Date.now() - graceMinutes * 60000).toTimeString().slice(0, 5);
+
+    const overdue = await query<any>(
+      `SELECT t.id, t.home_id, t.title, t.task_date, t.due_time
+       FROM tasks t
+       WHERE t.status = 'pending'
+         AND (t.task_date < $1 OR (t.task_date = $1 AND t.due_time IS NOT NULL AND t.due_time <> '' AND t.due_time < $2))
+       LIMIT 200`,
+      [today, cutoffHHMM]
+    );
+    if (!overdue.length) return;
+
+    const byHome = new Map<string, any[]>();
+    for (const t of overdue as any[]) {
+      if (!byHome.has(t.home_id)) byHome.set(t.home_id, []);
+      byHome.get(t.home_id)!.push(t);
+    }
+
+    for (const [homeId, tasksForHome] of byHome) {
+      const managers = await query<any>(
+        `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager','group_admin','deputy_manager') AND is_active = true`,
+        [homeId]
+      );
+      if (!managers.length) continue;
+
+      for (const t of tasksForHome) {
+        const link = `/tasks?overdue=${t.id}`;
+        const already = await query<any>(`SELECT 1 FROM notifications WHERE home_id = $1 AND link = $2 LIMIT 1`, [homeId, link]);
+        if (already.length) continue;
+
+        const label = t.task_date < today ? `missed (was due ${t.task_date})` : `overdue (was due ${t.due_time})`;
+        for (const mgr of managers) {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'warning',$5)`,
+            [mgr.id, homeId, `Task ${label} — ${t.title}`,
+             `"${t.title}" has not been completed by staff.`, link]
+          ).catch(() => {});
+        }
+      }
+    }
+  } catch (err) { logger.error('Overdue task check failed:', err); }
+}
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
@@ -244,6 +296,9 @@ export function startScheduler(): void {
 
   // Every 30 minutes: missed medication alerts to managers
   cron.schedule('*/30 * * * *', checkMissedMedication);
+
+  // Every 30 minutes: overdue/missed general task alerts to managers
+  cron.schedule('*/30 * * * *', checkOverdueTasks);
 
   // Every morning at 8am: training expiry checks
   cron.schedule('0 8 * * *', async () => {
