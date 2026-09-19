@@ -356,18 +356,21 @@ export default function Rota() {
               <Button variant="outline" icon={<Plus className="w-4 h-4" />} onClick={() => setStandbyOpen(true)}>
                 Create Standby Shift
               </Button>
-              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setServiceRotaOpen(true)}>
-                Create Rota for Service
+              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setServiceRotaOpen(true)}
+                title="Staff is optional — creates an unfilled rota for a resident that you can assign staff to later">
+                Create Rota for Service <span className="ml-1 font-normal opacity-70">(staff optional)</span>
               </Button>
               <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}>
                 Bulk Operations
               </Button>
-              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}>
-                Bulk Allocate
+              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}
+                title="Assign a staff member across a day-of-week pattern and date range, without clicking individual shifts">
+                Bulk Allocate by Pattern
               </Button>
               <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
-                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}>
-                {selectMode ? `${selectedShiftIds.size} selected` : 'Select shifts'}
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                title="Click shifts on the grid to select them, then assign a staff member or delete them">
+                {selectMode ? `${selectedShiftIds.size} selected` : 'Select Shifts to Assign'}
               </Button>
               <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
                 Report Absence + Find Cover
@@ -451,7 +454,9 @@ export default function Rota() {
       {selectMode && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-blue-100 bg-blue-50 flex-wrap">
           <p className="text-sm font-semibold text-blue-800">
-            {selectedShiftIds.size === 0 ? 'Click shifts on the grid to select them' : `${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected`}
+            {selectedShiftIds.size === 0
+              ? 'Tap one or more shifts on the grid below (including gray "Unfilled" ones) to select them'
+              : `${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — assign staff to all of them, or delete them`}
           </p>
           <div className="ml-auto flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={selectedShiftIds.size === 0 || bulkDeleting}
