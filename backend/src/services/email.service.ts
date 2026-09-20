@@ -180,3 +180,18 @@ export function rejectionEmail(candidate: { first_name: string; last_name: strin
 export function customEmail(candidate: { first_name: string; last_name: string }, messageHtml: string) {
   return wrap(`<p>Dear ${candidate.first_name} ${candidate.last_name},</p>${messageHtml}<p>Kind regards,<br/>The Recruitment Team</p>`);
 }
+
+export function invoiceEmail(invoice: { first_name: string; last_name: string; month_date: string; commissioned_hours?: number | null; invoice_amount: number; notes?: string | null }, homeName: string) {
+  const monthLabel = new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  return wrap(`
+    <p>Please find below the invoice details for <strong>${invoice.first_name} ${invoice.last_name}</strong> for <strong>${monthLabel}</strong>.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0">
+      <tr><td style="padding:8px 0;color:#64748b">Resident</td><td style="padding:8px 0;text-align:right;font-weight:600">${invoice.first_name} ${invoice.last_name}</td></tr>
+      <tr><td style="padding:8px 0;color:#64748b">Month</td><td style="padding:8px 0;text-align:right;font-weight:600">${monthLabel}</td></tr>
+      ${invoice.commissioned_hours ? `<tr><td style="padding:8px 0;color:#64748b">Commissioned hours</td><td style="padding:8px 0;text-align:right;font-weight:600">${parseFloat(String(invoice.commissioned_hours)).toFixed(1)}</td></tr>` : ''}
+      <tr><td style="padding:12px 0;color:#64748b;border-top:2px solid #e2e8f0;font-size:16px">Total due</td><td style="padding:12px 0;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;font-size:18px">£${parseFloat(String(invoice.invoice_amount || 0)).toFixed(2)}</td></tr>
+    </table>
+    ${invoice.notes ? `<p><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
+    <p>Kind regards,<br/><strong>${homeName}</strong></p>
+  `);
+}

@@ -6,6 +6,7 @@ import { query as dbQuery } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { sendEmail, invoiceEmail } from '../services/email.service';
 
 const router = Router();
 
@@ -94,6 +95,43 @@ router.patch('/:id', requireRole('home_manager', 'group_admin'), param('id').isU
       const vals = Object.values(updates);
       const rows = await dbQuery(`UPDATE invoices SET ${setClauses}, updated_at=NOW() WHERE id=$${vals.length + 1} RETURNING *`, [...vals, req.params.id]);
       res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/invoicing/:id/send — email the invoice out to one or more recipients
+// (e.g. the funder/local authority) before it's marked approved/paid.
+router.post('/:id/send', requireRole('home_manager', 'group_admin'), [
+  param('id').isUUID(),
+  body('emails').isArray({ min: 1 }),
+  body('emails.*').isEmail(),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const emails: string[] = req.body.emails;
+      const rows = await dbQuery<any>(
+        `SELECT i.*, su.first_name, su.last_name, h.name as home_name FROM invoices i
+         JOIN service_users su ON su.id = i.su_id
+         JOIN homes h ON h.id = i.home_id
+         WHERE i.id = $1`,
+        [req.params.id]
+      );
+      if (!rows.length) throw new AppError('Invoice not found', 404);
+      const invoice = rows[0];
+
+      const result = await sendEmail({
+        to: emails.join(','),
+        subject: `Invoice — ${invoice.first_name} ${invoice.last_name} — ${new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`,
+        html: invoiceEmail(invoice, invoice.home_name),
+      });
+      if (!result.ok) throw new AppError(result.error || 'Failed to send invoice email', 502);
+
+      const updated = await dbQuery(
+        `UPDATE invoices SET sent_to = $1, sent_at = NOW(), sent_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [emails.join(', '), staffId, req.params.id]
+      );
+      res.json({ success: true, data: updated[0], message: `Invoice sent to ${emails.join(', ')}` } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

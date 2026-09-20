@@ -2816,6 +2816,12 @@ async function ensureColumns() {
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS su_ids UUID[]`,
     // Backfill status from existing staff_id / is_standby data so pre-existing rows aren't stuck as 'unfilled'
     `UPDATE staff_shifts SET status = 'filled' WHERE staff_id IS NOT NULL AND status = 'unfilled'`,
+    // Invoices — send-by-email tracking (recipient list, last sent time/by whom) so an
+    // invoice can be emailed out to the funder before it's marked approved/paid, instead
+    // of only supporting status changes with no way to actually dispatch the invoice.
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_to   TEXT`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_at   TIMESTAMPTZ`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_by   UUID REFERENCES staff(id) ON DELETE SET NULL`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

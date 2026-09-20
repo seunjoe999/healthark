@@ -17,6 +17,8 @@ interface Invoice {
   status: 'pending' | 'approved' | 'rejected' | 'paid'
   notes?: string
   created_at: string
+  sent_to?: string | null
+  sent_at?: string | null
 }
 
 export default function Invoicing() {
@@ -116,6 +118,11 @@ export default function Invoicing() {
                     <div className="flex items-center gap-3 mb-1">
                       <p className="font-semibold text-slate-800">{inv.first_name} {inv.last_name}</p>
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusColor(inv.status)}`}>{inv.status}</span>
+                      {inv.sent_at && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
+                          Sent {new Date(inv.sent_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500">Month: {new Date(inv.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</p>
                   </div>
@@ -147,7 +154,9 @@ export default function Invoicing() {
       {/* ── Modals ── */}
       <CreateInvoiceModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} homeId={user?.homeId || ''} onSaved={loadInvoices} />
       <GenerateMonthlyModal open={generateModalOpen} onClose={() => setGenerateModalOpen(false)} homeId={user?.homeId || ''} onGenerated={loadInvoices} />
-      {detailModal && <InvoiceDetailModal invoice={detailModal} onClose={() => setDetailModal(null)} onStatusChange={(status) => { handleStatusChange(detailModal.id, status); setDetailModal(null); }} />}
+      {detailModal && <InvoiceDetailModal invoice={detailModal} onClose={() => setDetailModal(null)}
+        onStatusChange={(status) => { handleStatusChange(detailModal.id, status); setDetailModal(null); }}
+        onSent={() => { loadInvoices(); setDetailModal(null); }} />}
     </div>
   )
 }
@@ -232,7 +241,28 @@ function GenerateMonthlyModal({ open, onClose, homeId, onGenerated }: { open: bo
   )
 }
 
-function InvoiceDetailModal({ invoice, onClose, onStatusChange }: { invoice: Invoice; onClose: () => void; onStatusChange: (status: string) => void }) {
+function InvoiceDetailModal({ invoice, onClose, onStatusChange, onSent }: { invoice: Invoice; onClose: () => void; onStatusChange: (status: string) => void; onSent: () => void }) {
+  const [sending, setSending] = useState(false)
+  const [emailInput, setEmailInput] = useState(invoice.sent_to || '')
+  const [showSendForm, setShowSendForm] = useState(false)
+
+  const sendInvoice = async () => {
+    const emails = emailInput.split(',').map(e => e.trim()).filter(Boolean)
+    if (emails.length === 0) { toast.error('Enter at least one recipient email'); return }
+    const invalid = emails.find(e => !/^\S+@\S+\.\S+$/.test(e))
+    if (invalid) { toast.error(`Invalid email: ${invalid}`); return }
+    setSending(true)
+    try {
+      const res = await api.post(`/invoicing/${invoice.id}/send`, { emails })
+      toast.success(res.data.message || 'Invoice sent')
+      onSent()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to send invoice')
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <Modal open={true} onClose={onClose} title={`Invoice - ${invoice.first_name} ${invoice.last_name}`} size="sm">
       <div className="space-y-4">
@@ -260,6 +290,25 @@ function InvoiceDetailModal({ invoice, onClose, onStatusChange }: { invoice: Inv
             <p className="text-sm text-blue-600">{invoice.notes}</p>
           </div>
         )}
+
+        {/* Send invoice by email */}
+        <div className="p-3 bg-purple-50 rounded border border-purple-200">
+          {invoice.sent_at && !showSendForm ? (
+            <p className="text-sm text-purple-700">
+              Sent to <strong>{invoice.sent_to}</strong> on {new Date(invoice.sent_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              <button onClick={() => setShowSendForm(true)} className="ml-2 text-xs font-semibold text-purple-700 underline">Send again</button>
+            </p>
+          ) : showSendForm || !invoice.sent_at ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-purple-700">Send this invoice by email</p>
+              <input className="input text-sm" placeholder="funder@example.com, other@example.com"
+                value={emailInput} onChange={e => setEmailInput(e.target.value)} />
+              <p className="text-[11px] text-purple-500">Separate multiple recipients with a comma</p>
+              <Button size="sm" loading={sending} onClick={sendInvoice} className="w-full">Send Invoice</Button>
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex gap-2">
           <button onClick={() => onStatusChange('approved')} className="flex-1 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-medium text-sm transition-colors">Approve</button>
           <button onClick={() => onStatusChange('paid')} className="flex-1 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded font-medium text-sm transition-colors">Mark Paid</button>
