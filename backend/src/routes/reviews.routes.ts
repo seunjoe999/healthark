@@ -133,13 +133,15 @@ router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()]
     try {
       const createdBy = fromToken(req, 'staffId');
       const homeId = fromToken(req, 'homeId');
-      const { staffId, cautionType, overview, strengths, weaknesses, actionPoints, reviewDate } = req.body;
+      const { staffId, cautionType, overview, outcome, strengths, weaknesses, actionPoints, reviewDate,
+              cautionDate, documentUrl, documentName } = req.body;
       const rows = await query(
-        `INSERT INTO staff_cautions (staff_id, home_id, created_by, caution_type, overview,
-          strengths, weaknesses, action_points, review_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [staffId, homeId, createdBy, cautionType || 'verbal', overview,
-         strengths || null, weaknesses || null, actionPoints || null, nd(reviewDate)]
+        `INSERT INTO staff_cautions (staff_id, home_id, created_by, caution_type, caution_date, overview,
+          outcome, strengths, weaknesses, action_points, review_date, document_url, document_name)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+        [staffId, homeId, createdBy, cautionType || 'verbal', nd(cautionDate) || new Date().toISOString().split('T')[0], overview,
+         outcome || null, strengths || null, weaknesses || null, actionPoints || null, nd(reviewDate),
+         documentUrl || null, documentName || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

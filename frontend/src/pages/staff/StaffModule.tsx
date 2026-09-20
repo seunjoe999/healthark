@@ -161,7 +161,7 @@ export default function StaffModule() {
     { key: 'onboarding', label: 'Onboarding' },
     { key: 'clock', label: 'Clock history' },
     { key: 'documents', label: 'Documents' },
-    { key: 'cautions', label: 'Cautions' },
+    { key: 'cautions', label: 'Disciplinary' },
     { key: 'supervisions', label: 'Supervision & Appraisal' },
     { key: 'sensitive', label: `Sensitive Info (${sensitiveNotes.length})` },
     { key: 'meetings', label: 'Staff Meeting' },
@@ -594,12 +594,12 @@ export default function StaffModule() {
             {tab === 'cautions' && (
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-slate-800">Cautions & Disciplinary ({cautions.length})</h3>
-                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>
+                  <h3 className="font-semibold text-slate-800">Disciplinary ({cautions.length})</h3>
+                  <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddCautionOpen(true)}>Add Disciplinary</Button>
                 </div>
                 {cautions.length === 0 ? (
-                  <EmptyState title="No cautions recorded" description="Record verbal warnings, written warnings or disciplinary actions"
-                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddCautionOpen(true)}>Add caution</Button>} />
+                  <EmptyState title="No disciplinary records" description="Record verbal warnings, written warnings or disciplinary actions"
+                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddCautionOpen(true)}>Add Disciplinary</Button>} />
                 ) : (
                   <div className="space-y-3">
                     {cautions.map((c: any) => (
@@ -607,15 +607,15 @@ export default function StaffModule() {
                         <div className="flex items-start justify-between mb-3">
                           <span className="badge badge-warning capitalize">{(c.caution_type || '').replace('_', ' ')}</span>
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-slate-400">{c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : ''}</p>
+                            <p className="text-xs text-slate-400">{c.caution_date ? format(new Date(c.caution_date), 'd MMM yyyy') : (c.created_at ? format(new Date(c.created_at), 'd MMM yyyy') : '')}</p>
                             {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                               <button onClick={async () => {
-                                if (!window.confirm('Delete this caution?')) return
+                                if (!window.confirm('Delete this record?')) return
                                 try {
                                   await api.delete(`/reviews/cautions/${c.id}`)
                                   const res = await api.get(`/reviews/cautions/${selected.id}`)
                                   setCautions(res.data.data || [])
-                                  toast.success('Caution deleted')
+                                  toast.success('Record deleted')
                                 } catch { toast.error('Failed to delete') }
                               }} className="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -624,10 +624,20 @@ export default function StaffModule() {
                           </div>
                         </div>
                         <div className="space-y-2 text-sm">
-                          <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overview</p><p className="text-slate-700 mt-0.5">{c.overview}</p></div>
+                          <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Discussion</p><p className="text-slate-700 mt-0.5 whitespace-pre-line">{c.overview}</p></div>
+                          {c.outcome && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Outcome</p><p className="text-slate-700 mt-0.5 whitespace-pre-line">{c.outcome}</p></div>}
+                          {c.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agreements</p><p className="text-slate-700 mt-0.5 whitespace-pre-line">{c.action_points}</p></div>}
                           {c.strengths && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Strengths</p><p className="text-slate-700 mt-0.5">{c.strengths}</p></div>}
                           {c.weaknesses && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Areas for improvement</p><p className="text-slate-700 mt-0.5">{c.weaknesses}</p></div>}
-                          {c.action_points && <div><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Action points</p><p className="text-slate-700 mt-0.5">{c.action_points}</p></div>}
+                          {c.document_url && (
+                            <div>
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Attachment</p>
+                              <a href={resolveUploadUrl(c.document_url)} target="_blank" rel="noopener noreferrer"
+                                className="mt-1 inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline">
+                                <FileText className="w-3.5 h-3.5" /> {c.document_name || 'View attachment'}
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -635,7 +645,7 @@ export default function StaffModule() {
                 )}
                 {addCautionOpen && selected && (
                   <AddCautionModalInline staffId={selected.id} onClose={() => setAddCautionOpen(false)}
-                    onSaved={async () => { setAddCautionOpen(false); const res = await api.get(`/reviews/cautions/${selected.id}`); setCautions(res.data.data || []); toast.success('Caution recorded') }} />
+                    onSaved={async () => { setAddCautionOpen(false); const res = await api.get(`/reviews/cautions/${selected.id}`); setCautions(res.data.data || []); toast.success('Disciplinary record saved') }} />
                 )}
               </div>
             )}
@@ -792,13 +802,36 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
 }
 
 function AddCautionModalInline({ staffId, onClose, onSaved }: { staffId: string; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = React.useState({ cautionType: 'verbal', overview: '', strengths: '', weaknesses: '', actionPoints: '', reviewDate: '' })
+  const [form, setForm] = React.useState({
+    cautionType: 'verbal',
+    cautionDate: format(new Date(), 'yyyy-MM-dd'),
+    overview: '', outcome: '', actionPoints: '', reviewDate: '',
+    documentUrl: '', documentName: '',
+  })
   const [loading, setLoading] = React.useState(false)
+  const [uploading, setUploading] = React.useState(false)
+  const fileRef = React.useRef<HTMLInputElement>(null)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const CAUTION_TYPES = [{ value: 'verbal', label: 'Verbal warning' }, { value: 'written', label: 'Written warning' }, { value: 'final_written', label: 'Final written warning' }, { value: 'performance_plan', label: 'Performance improvement plan' }]
 
+  const uploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post('/upload/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      set('documentUrl', res.data?.data?.fileUrl || '')
+      set('documentName', file.name)
+      toast.success('Attachment uploaded')
+    } catch { toast.error('Attachment upload failed') }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.overview.trim()) { toast.error('Discussion is required'); return }
     setLoading(true)
     try { await api.post('/reviews/cautions', { staffId, ...form }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
@@ -806,15 +839,34 @@ function AddCautionModalInline({ staffId, onClose, onSaved }: { staffId: string;
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="Record caution" size="lg">
+    <Modal open={true} onClose={onClose} title="Add Disciplinary" size="lg">
       <form onSubmit={save} className="space-y-4">
-        <Select label="Caution type *" required value={form.cautionType} onChange={e => set('cautionType', e.target.value)} options={CAUTION_TYPES} />
-        <div><label className="label">Overview *</label><textarea required className="input" rows={3} value={form.overview} onChange={e => set('overview', e.target.value)} placeholder="Overview of the issue or incident..." /></div>
-        <div><label className="label">Strengths</label><textarea className="input" rows={2} value={form.strengths} onChange={e => set('strengths', e.target.value)} /></div>
-        <div><label className="label">Weaknesses / Areas for improvement</label><textarea className="input" rows={2} value={form.weaknesses} onChange={e => set('weaknesses', e.target.value)} /></div>
-        <div><label className="label">Action points</label><textarea className="input" rows={2} value={form.actionPoints} onChange={e => set('actionPoints', e.target.value)} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Date *" type="date" required value={form.cautionDate} onChange={e => set('cautionDate', e.target.value)} />
+          <Select label="Type" value={form.cautionType} onChange={e => set('cautionType', e.target.value)} options={CAUTION_TYPES} />
+        </div>
+        <div><label className="label">Discussion *</label><textarea required className="input" rows={4} value={form.overview} onChange={e => set('overview', e.target.value)} placeholder="What was discussed..." /></div>
+        <div><label className="label">Outcome</label><textarea className="input" rows={4} value={form.outcome} onChange={e => set('outcome', e.target.value)} placeholder="Outcome of the discussion..." /></div>
+        <div><label className="label">Agreements</label><textarea className="input" rows={3} value={form.actionPoints} onChange={e => set('actionPoints', e.target.value)} placeholder="What was agreed going forward..." /></div>
         <Input label="Review date" type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} />
-        <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save caution</Button></div>
+        <div>
+          <label className="label">Attachment</label>
+          {form.documentUrl ? (
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+              <FileText className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span className="text-sm text-emerald-600 truncate flex-1">{form.documentName}</span>
+              <button type="button" onClick={() => { set('documentUrl', ''); set('documentName', '') }} className="p-1 rounded hover:bg-white/10">
+                <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            </div>
+          ) : (
+            <Button type="button" size="sm" variant="outline" icon={<Upload className="w-3.5 h-3.5" />} loading={uploading} onClick={() => fileRef.current?.click()}>
+              Attach file
+            </Button>
+          )}
+          <input ref={fileRef} type="file" className="hidden" onChange={uploadAttachment} />
+        </div>
+        <div className="flex gap-3 justify-end pt-2 border-t border-white/10"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save</Button></div>
       </form>
     </Modal>
   )

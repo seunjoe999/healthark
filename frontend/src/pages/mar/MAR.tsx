@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO, startOfWeek, startOfMonth, endOfMonth, addDays, differenceInCalendarDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck } from 'lucide-react'
+import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQ_TIMES: Record<string, string[]> = {
@@ -1251,6 +1251,20 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
   const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
   const isControlled = med.is_controlled
 
+  // Staff shouldn't be able to administer/log a scheduled dose before its due time —
+  // administering early is a genuine clinical safety issue. PRN doses are passed in
+  // with the current time as their "slot" (see the cell-click handler), so they're
+  // never in the future and never hit this. Amending an already-logged record is
+  // exempt — that already happened. This is a UX guard only; the real enforcement
+  // is server-side in POST /mar/records, immune to a manipulated device clock.
+  const [nowHHMM, setNowHHMM] = useState(() => new Date().toTimeString().slice(0, 5))
+  useEffect(() => {
+    const t = setInterval(() => setNowHHMM(new Date().toTimeString().slice(0, 5)), 15000)
+    return () => clearInterval(t)
+  }, [])
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+  const isEarly = !isAmend && date === todayStr && slot > nowHHMM
+
   useEffect(() => {
     if (homeId) {
       api.get('/staff', { params: { homeId } }).then(res => {
@@ -1308,6 +1322,23 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
+  }
+
+  if (isEarly) {
+    return (
+      <Modal open={true} onClose={onClose} title={`Log — ${med.medication_name}`} size="lg">
+        <div className="text-center py-6 space-y-3">
+          <div className="w-14 h-14 rounded-full bg-amber-500/15 border-2 border-amber-500/30 flex items-center justify-center mx-auto">
+            <Clock className="w-7 h-7 text-amber-500" />
+          </div>
+          <h3 className="font-semibold text-slate-800 text-lg">Not due yet</h3>
+          <p className="text-sm text-slate-500 max-w-xs mx-auto">
+            {med.medication_name} isn't due until <span className="font-semibold">{slot}</span> — it can't be recorded before then. Come back at the scheduled time.
+          </p>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </div>
+      </Modal>
+    )
   }
 
   return (

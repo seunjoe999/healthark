@@ -218,6 +218,22 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
               controlledWitnessId, controlledWitnessName,
               amountTaken, amountUnit, sideEffects, sideEffectsNotes, emotion, completed,
               signoffRequestedBy, signoffRequestedName } = req.body;
+
+      // A dose can't be recorded before it's actually due — administering early is a real
+      // clinical safety issue, not just a data-entry nicety. PRN (as-required) doses are
+      // logged with the current time as their "scheduled" slot by the frontend, so they're
+      // never in the future and this never blocks them. Only checked for today's date —
+      // a manager back-filling an earlier day's record has scheduledTime in the past anyway.
+      if (scheduledTime && recordDate) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (recordDate === todayStr) {
+          const nowHHMM = new Date().toTimeString().slice(0, 5);
+          if (scheduledTime.slice(0, 5) > nowHHMM) {
+            throw new AppError(`This medication isn't due until ${scheduledTime.slice(0, 5)} — it can't be recorded early.`, 403);
+          }
+        }
+      }
+
       const rows = await query(
         `INSERT INTO mar_records (su_id, home_id, medication_id, given_by, given, refused,
           refused_reason, notes, scheduled_time, record_date, mar_code,

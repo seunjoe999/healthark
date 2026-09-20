@@ -2657,6 +2657,8 @@ async function ensureColumns() {
     `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS created_by   UUID REFERENCES staff(id) ON DELETE SET NULL`,
     `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS caution_type VARCHAR(50) NOT NULL DEFAULT 'verbal'`,
     `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS review_date  DATE`,
+    `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS outcome      TEXT`,
+    `ALTER TABLE staff_cautions ADD COLUMN IF NOT EXISTS document_name VARCHAR(255)`,
     // ── staff_supervisions — columns used in reviews.routes.ts INSERT but missing from 003_new_features ──
     `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS conducted_by         UUID REFERENCES staff(id) ON DELETE SET NULL`,
     `ALTER TABLE staff_supervisions ADD COLUMN IF NOT EXISTS action_points        TEXT`,
