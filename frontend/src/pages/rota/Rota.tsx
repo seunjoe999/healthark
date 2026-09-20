@@ -1546,6 +1546,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [reallocating, setReallocating] = useState(false)
   const [reallocateTo, setReallocateTo] = useState('')
   const [savingReallocate, setSavingReallocate] = useState(false)
+  const [unassigning, setUnassigning] = useState(false)
 
   const saveTimes = async () => {
     if (!editDate || !editStart || !editEnd) { toast.error('Date, start and finish times are required'); return }
@@ -1570,6 +1571,17 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
       onLinked() // closes the modal and reloads shifts so the new staff name/role join comes through
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to reallocate shift') }
     finally { setSavingReallocate(false) }
+  }
+
+  const unassignStaff = async () => {
+    if (!window.confirm('Unassign this staff member? The shift will go back to unfilled.')) return
+    setUnassigning(true)
+    try {
+      await api.put(`/shifts/${shift.id}`, { staffId: null })
+      toast.success('Staff unassigned — shift is unfilled')
+      onLinked() // closes the modal and reloads shifts
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to unassign') }
+    finally { setUnassigning(false) }
   }
 
   const changeStatus = async (newStatus: string) => {
@@ -1744,6 +1756,12 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             <button onClick={() => setReallocating(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors">
               <ArrowLeftRight className="w-3.5 h-3.5" /> Reallocate shift
+            </button>
+          )}
+          {canManage && shift.staff_id && (
+            <button onClick={unassignStaff} disabled={unassigning}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-amber-600 border border-amber-200 hover:bg-amber-50 transition-colors disabled:opacity-50">
+              <X className="w-3.5 h-3.5" /> {unassigning ? 'Unassigning…' : 'Unassign staff'}
             </button>
           )}
           {shift.staff_id && (
