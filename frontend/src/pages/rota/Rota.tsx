@@ -634,7 +634,7 @@ export default function Rota() {
 
                     return (
                       <button key={shift.id} onClick={() => selectMode ? toggleShiftSelected(shift.id) : setDetailShift(shift)}
-                        className="absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
+                        className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
                           top: top + 1,
                           height: Math.max(height - 2, 32),
@@ -649,6 +649,15 @@ export default function Rota() {
                           <div className={`absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center border ${selected ? 'bg-blue-600 border-blue-600' : 'bg-white/80 border-slate-300'}`}>
                             {selected && <Check className="w-3 h-3 text-white" />}
                           </div>
+                        )}
+                        {!selectMode && canManage && (
+                          <span
+                            role="button"
+                            title="Delete this shift"
+                            onClick={(e) => { e.stopPropagation(); deleteShift(shift.id) }}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/70 text-rose-500 opacity-0 hover:opacity-100 hover:bg-rose-50 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <Trash2 className="w-3 h-3" />
+                          </span>
                         )}
                         <div className="px-2 py-1.5 h-full flex flex-col">
                           <p className="text-[12px] font-extrabold leading-tight truncate">
@@ -797,9 +806,10 @@ export default function Rota() {
           open={bulkOpen}
           onClose={() => setBulkOpen(false)}
           staffList={staffList}
+          suList={suList}
           homeId={selectedHome}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
-          onSaved={() => { setBulkOpen(false); loadAll(); toast.success('Bulk shifts created') }}
+          onSaved={() => { setBulkOpen(false); loadAll() }}
         />
       )}
 
@@ -2076,10 +2086,11 @@ function SwapModal({ shift, staffList, homeId, onClose, onSaved }: {
 
 // ── Bulk Operations Modal ─────────────────────────────────────────────────────
 
-function BulkOperationsModal({ open, onClose, staffList, homeId, defaultDate, onSaved }: {
+function BulkOperationsModal({ open, onClose, staffList, suList, homeId, defaultDate, onSaved }: {
   open: boolean; onClose: () => void
-  staffList: any[]; homeId: string; defaultDate: string; onSaved: () => void
+  staffList: any[]; suList: any[]; homeId: string; defaultDate: string; onSaved: () => void
 }) {
+  const [mode, setMode] = useState<'create' | 'delete'>('create')
   const [form, setForm] = useState({
     staffId: '', startDate: defaultDate,
     pattern: 'weekly',          // weekly | biweekly | daily
@@ -2088,13 +2099,27 @@ function BulkOperationsModal({ open, onClose, staffList, homeId, defaultDate, on
     breakMins: '30',
     shiftType: 'regular', weeks: '12',
   })
+  const [delForm, setDelForm] = useState({
+    staffId: '', suId: '', dayOrNight: 'any' as 'any' | 'day' | 'night',
+    daysOfWeek: [1, 2, 3, 4, 5] as number[], fortnightly: false,
+    startDate: defaultDate, endDate: '',
+  })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  const setDel = (k: string, v: any) => setDelForm(p => ({ ...p, [k]: v }))
 
-  useEffect(() => { if (open) setForm(f => ({ ...f, startDate: defaultDate })) }, [open, defaultDate])
+  useEffect(() => {
+    if (open) {
+      setForm(f => ({ ...f, startDate: defaultDate }))
+      setDelForm(f => ({ ...f, startDate: defaultDate }))
+    }
+  }, [open, defaultDate])
 
   const toggleDay = (d: number) =>
     setForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
+  const toggleDelDay = (d: number) =>
+    setDelForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -2120,16 +2145,109 @@ function BulkOperationsModal({ open, onClose, staffList, homeId, defaultDate, on
         breakMins: parseInt(form.breakMins) || 0,
         weeks: parseInt(form.weeks) || 12,
       })
+      toast.success('Bulk shifts created')
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setSaving(false) }
   }
 
+  const bulkDelete = async () => {
+    if (delForm.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
+    if (!delForm.endDate) { toast.error('Set an end date for the range to delete'); return }
+    if (!window.confirm('Delete every shift matching this pattern? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      const res = await api.post('/shifts/bulk-delete-pattern', {
+        homeId,
+        staffId: delForm.staffId || null, suId: delForm.suId || null,
+        dayOrNight: delForm.dayOrNight, daysOfWeek: delForm.daysOfWeek, fortnightly: delForm.fortnightly,
+        startDate: delForm.startDate, endDate: delForm.endDate,
+      })
+      const deleted = res.data.data?.deleted || 0
+      toast.success(deleted > 0 ? `Deleted ${deleted} shift${deleted !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to bulk delete') }
+    finally { setDeleting(false) }
+  }
+
   const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
+  const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
+
+  if (mode === 'delete') {
+    return (
+      <Modal open={open} onClose={onClose} title="Bulk Operations — Delete Shifts" size="md">
+        <div className="space-y-4">
+          <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+            {[{ v: 'create', l: 'Create' }, { v: 'delete', l: 'Delete' }].map(o => (
+              <button key={o.v} type="button" onClick={() => setMode(o.v as any)}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${mode === o.v ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-rose-600 bg-rose-50 rounded-lg p-3 border border-rose-100">
+            Removes every shift matching this pattern within the date range — e.g. all of one staff member's Monday night shifts. This cannot be undone.
+          </p>
+
+          <Select label="Staff member (optional)" value={delForm.staffId} onChange={e => setDel('staffId', e.target.value)}
+            options={staffOptions} placeholder="Any staff" />
+          <Select label="Resident (optional)" value={delForm.suId} onChange={e => setDel('suId', e.target.value)}
+            options={suOptions} placeholder="Any resident" />
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Day or Night</label>
+            <div className="flex gap-2">
+              {[{ v: 'any', l: 'Any' }, { v: 'day', l: 'Day' }, { v: 'night', l: 'Night' }].map(o => (
+                <button key={o.v} type="button" onClick={() => setDel('dayOrNight', o.v)}
+                  className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${delForm.dayOrNight === o.v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                  {o.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Days of the week *</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {WEEKDAY_OPTIONS.map(d => (
+                <button key={d.value} type="button" onClick={() => toggleDelDay(d.value)}
+                  className={`w-11 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${delForm.daysOfWeek.includes(d.value) ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="delFortnightly" checked={delForm.fortnightly} onChange={e => setDel('fortnightly', e.target.checked)} className="rounded" />
+            <label htmlFor="delFortnightly" className="text-sm text-slate-700">Every other week only (fortnightly, starting the week of the start date below)</label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Start date *" type="date" required value={delForm.startDate} onChange={e => setDel('startDate', e.target.value)} />
+            <Input label="End date *" type="date" required value={delForm.endDate} onChange={e => setDel('endDate', e.target.value)} />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button variant="danger" loading={deleting} onClick={bulkDelete} icon={<Trash2 className="w-4 h-4" />}>Delete matching shifts</Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
 
   return (
     <Modal open={open} onClose={onClose} title="Bulk Operations — Recurring Shifts" size="md">
       <form onSubmit={save} className="space-y-4">
+        <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+          {[{ v: 'create', l: 'Create' }, { v: 'delete', l: 'Delete' }].map(o => (
+            <button key={o.v} type="button" onClick={() => setMode(o.v as any)}
+              className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${mode === o.v ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+              {o.l}
+            </button>
+          ))}
+        </div>
         <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 border border-slate-100">
           Assign a staff member to work on a recurring schedule. This generates individual shifts for the selected period.
         </p>

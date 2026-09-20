@@ -719,6 +719,55 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
   }
 );
 
+// POST /api/shifts/bulk-delete-pattern — remove every shift matching a recurring pattern
+// (specific days of the week, optionally fortnightly, day/night, staff and/or resident,
+// within a date range) instead of requiring each one be selected and deleted by hand.
+router.post('/bulk-delete-pattern', requireRole(...MANAGE_ROLES), [
+  body('startDate').isDate(),
+  body('endDate').isDate(),
+  body('daysOfWeek').isArray({ min: 1 }),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, dayOrNight } = req.body;
+
+      let typeFilter: string[] | null = null;
+      if (dayOrNight === 'day') typeFilter = DAY_SHIFT_TYPES;
+      else if (dayOrNight === 'night') typeFilter = NIGHT_SHIFT_TYPES;
+
+      const candidates = await query<any>(
+        `SELECT id, shift_date FROM staff_shifts
+         WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
+           AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[])
+           AND ($5::uuid IS NULL OR staff_id = $5)
+           AND ($6::uuid IS NULL OR su_id = $6)
+           AND ($7::text[] IS NULL OR shift_type = ANY($7))
+         ORDER BY shift_date`,
+        [homeId, startDate, endDate, daysOfWeek.map((d: any) => parseInt(d)),
+         staffId || null, suId || null, typeFilter]
+      );
+
+      const startWeekIndex = Math.floor((new Date(startDate).getTime()) / (7 * 24 * 3600 * 1000));
+      const matched = fortnightly
+        ? candidates.filter(c => {
+            const weekIndex = Math.floor(new Date(c.shift_date).getTime() / (7 * 24 * 3600 * 1000));
+            return (weekIndex - startWeekIndex) % 2 === 0;
+          })
+        : candidates;
+
+      if (matched.length === 0) {
+        return res.json({ success: true, data: { deleted: 0 } } as ApiResponse);
+      }
+
+      const ids = matched.map(m => m.id);
+      await query(`DELETE FROM staff_shifts WHERE id = ANY($1::uuid[])`, [ids]);
+
+      res.json({ success: true, data: { deleted: ids.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/shifts/:id/link — create a shadow or double-up shift linked to an existing shift.
 // Copies the parent's date / service user / times by default; caller may override staffId/notes.
 router.post('/:id/link', requireRole(...MANAGE_ROLES), param('id').isUUID(), body('relation').isIn(SHIFT_RELATIONS), validateRequest,
