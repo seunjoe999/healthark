@@ -317,7 +317,7 @@ function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} onClick={e => e.stopPropagation()}
         className="w-full max-w-lg rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
         <div className="flex items-center justify-between">

@@ -66,8 +66,8 @@ function ExpiryBadge({ date }: { date: string | null }) {
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const { theme } = useTheme()
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="rounded-2xl shadow-xl w-full max-w-lg max-h-[90dvh] flex flex-col"
         style={{ background: theme === 'dark' ? '#111111' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.1)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: theme === 'dark' ? '1px solid rgba(232,177,48,0.12)' : '1px solid rgba(15,23,42,0.08)' }}>
           <h2 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{title}</h2>

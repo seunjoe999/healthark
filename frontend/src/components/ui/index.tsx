@@ -232,10 +232,13 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
     : { background: '#ffffff', border: '1px solid rgba(15,23,42,0.1)' }
   const headerBorder = theme === 'dark' ? { borderBottom: '1px solid rgba(255,255,255,0.08)' } : { borderBottom: '1px solid rgba(15,23,42,0.08)' }
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-end sm:items-center justify-center p-0 sm:p-4">
+    // z-[60] — strictly above the mobile bottom nav bar's z-50 (AppLayout.tsx),
+    // otherwise the two tie and the nav bar can render on top of the modal,
+    // physically covering content (e.g. a form's Save button) near the bottom.
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex min-h-[100dvh] items-end sm:items-center justify-center p-0 sm:p-4">
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-        <div className={clsx('relative rounded-t-2xl sm:rounded-2xl shadow-modal w-full mx-0 sm:mx-4 max-h-[92vh] flex flex-col animate-slide-up', sizes[size])}
+        <div className={clsx('relative rounded-t-2xl sm:rounded-2xl shadow-modal w-full mx-0 sm:mx-4 max-h-[92dvh] flex flex-col animate-slide-up', sizes[size])}
           style={cardStyle}>
           <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={headerBorder}>
             <h2 className={clsx('text-base font-semibold', theme === 'dark' ? 'text-white' : 'text-slate-900')}>{title}</h2>
@@ -244,7 +247,13 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-5 overflow-y-auto flex-1">{children}</div>
+          {/* dvh (not vh) so this is bounded by what's actually visible on
+              mobile, not the full page height hidden behind browser/app
+              chrome — otherwise Save buttons at the end of a long form can
+              render below the fold with no way to scroll down to them.
+              pb-safe adds extra bottom clearance past the home indicator /
+              app's own bottom nav bar so the last field + Save are always reachable. */}
+          <div className="p-5 pb-safe overflow-y-auto flex-1 overscroll-contain">{children}</div>
         </div>
       </div>
     </div>

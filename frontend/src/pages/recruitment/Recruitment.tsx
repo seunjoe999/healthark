@@ -407,7 +407,7 @@ function CandidateModal({ open, onClose, candidate, homeId, onSaved }: {
 
   return (
     <Modal open={open} onClose={onClose} title={candidate ? 'Edit Candidate' : 'Add Candidate'}>
-      <form onSubmit={save} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <form onSubmit={save} className="space-y-4 max-h-[70dvh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">First Name *</label>
@@ -473,8 +473,8 @@ function DetailModal({ candidate, onClose, onUpdateCompliance, onMoveStage, onEd
   const stageColor = getStageColor(candidate.pipeline_stage)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85dvh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-800">{candidate.first_name} {candidate.last_name}</h2>
@@ -769,7 +769,7 @@ function GlobalHistoryModal({ candidates, onClose }: { candidates: Candidate[]; 
 
   return (
     <Modal open={true} onClose={onClose} title="Global Email History">
-      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+      <div className="space-y-3 max-h-[60dvh] overflow-y-auto pr-2">
         {allLogs.length === 0 ? (
           <div className="text-center py-8">
             <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />

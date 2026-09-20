@@ -114,7 +114,7 @@ function InfoGrid({ items }: { items: { label: string; value?: string | null | b
 function NoteModal({ note, onClose }: { note: any; onClose: () => void }) {
   const cfg = RECORD_LABELS[note.record_type] || { label: note.record_type?.replace(/_/g, ' ') || 'Note', color: '#475569' }
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}>
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden"
@@ -146,10 +146,10 @@ function CarePlanModal({ plan, onClose }: { plan: any; onClose: () => void }) {
   const isOverdue = plan.next_review_date && new Date(plan.next_review_date) < new Date()
   const isDueSoon = !isOverdue && plan.next_review_date && new Date(plan.next_review_date) < new Date(Date.now() + 14 * 86400000)
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden max-h-[90dvh] flex flex-col"
         onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 flex-shrink-0"
           style={{ background: BRAND }}>

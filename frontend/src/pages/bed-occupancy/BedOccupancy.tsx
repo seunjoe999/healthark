@@ -227,7 +227,7 @@ export default function BedOccupancy() {
 
       {/* Set Total Beds Modal */}
       {showBedsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: modalBg, border: modalBorder }}>
             <div className="flex items-center justify-between">
               <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Set Total Beds</h2>
@@ -254,7 +254,7 @@ export default function BedOccupancy() {
 
       {/* Room Status Modal */}
       {showRoomModal && selectedRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="rounded-2xl p-6 w-full max-w-sm space-y-4" style={{ background: modalBg, border: modalBorder }}>
             <div className="flex items-center justify-between">
               <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Update {selectedRoom.roomNumber}</h2>

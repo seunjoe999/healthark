@@ -138,7 +138,7 @@ function AreaModal({ areaKey, data, onClose, onFix }: { areaKey: string; data: A
   const link = AREA_LINKS[areaKey] || '/'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="rounded-2xl shadow-2xl w-full max-w-lg" style={{ background: theme === 'dark' ? '#111' : '#ffffff', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.1)' }}>
         <div className={`rounded-t-2xl p-5 ${rag.bg}`} style={{ borderBottom: theme === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(15,23,42,0.06)' }}>
           <div className="flex items-start justify-between">
@@ -499,8 +499,8 @@ function ComplianceAIFixModal({ homeId, dashboardData, onClose, onRefresh }: {
   const doneTotal = allKeys.filter(k => statuses[k] === 'done').length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-purple-600" />

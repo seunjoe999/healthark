@@ -251,8 +251,8 @@ export default function Reviews() {
 function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: string; onClose: () => void }) {
   const typeLabel = REVIEW_TYPES.find(t => t.value === review.review_type)?.label || review.review_type
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -385,7 +385,7 @@ function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClo
 
   return (
     <Modal open={open} onClose={onClose} title="Record review / feedback" size="lg">
-      <form onSubmit={save} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <form onSubmit={save} className="space-y-4 max-h-[70dvh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Select label="Review type *" required value={form.reviewType} onChange={e => set('reviewType', e.target.value)} options={typeOptions} />
