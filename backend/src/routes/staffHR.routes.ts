@@ -80,8 +80,10 @@ router.post('/leave',
       // create leave requests under their name.
       if (req.body.staffId && req.body.staffId !== staffId) requireLeaveManager(req);
       const targetStaffId = req.body.staffId || staffId;
-      // Annual leave must be requested at least 4 weeks in advance.
-      if (leaveType === 'annual') {
+      // Annual leave must be requested at least 4 weeks in advance —
+      // except for managers/admins, who can book it for any date.
+      const isLeaveManager = LEAVE_MANAGER_ROLES.includes(fromToken(req, 'role'));
+      if (leaveType === 'annual' && !isLeaveManager) {
         const minDate = new Date(); minDate.setHours(0, 0, 0, 0); minDate.setDate(minDate.getDate() + 28);
         if (new Date(startDate) < minDate) {
           throw new AppError('Annual leave must be requested at least 4 weeks in advance', 400);
