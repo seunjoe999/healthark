@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 
 export default function StaffDashboard() {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
   const [myShifts, setMyShifts] = useState<any[]>([])
   const [myTasks, setMyTasks] = useState<any[]>([])
   const [myLeave, setMyLeave] = useState<any[]>([])
@@ -32,15 +32,21 @@ export default function StaffDashboard() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
+  // Task reminder pop-up — only care staff and team leaders actually complete
+  // tasks, so managers landing on this dashboard (deputy/service/registered
+  // manager, director, etc.) don't get nagged about work that isn't theirs.
+  const wantsTaskReminders = isRole('care_staff', 'team_leader')
+
   useEffect(() => {
-    if (user?.id) setShowTaskPopup(shouldShowTaskPopup(user.id))
-  }, [user?.id])
+    if (user?.id && wantsTaskReminders) setShowTaskPopup(shouldShowTaskPopup(user.id))
+  }, [user?.id, wantsTaskReminders])
 
   // Time-based due check — on top of the frequency-based pop-up above, poll every
   // 5 minutes for tasks whose due_time has now passed and are still pending, so
   // a task doesn't just sit silently on a list once it's overdue.
   const overdueNotifiedRef = React.useRef<Set<string>>(new Set())
   useEffect(() => {
+    if (!wantsTaskReminders) return
     const checkOverdue = () => {
       const overdue = myTasks.filter(t => t.status === 'pending' && isTimePastDue(t.due_time))
       const newlyOverdue = overdue.filter(t => !overdueNotifiedRef.current.has(t.id))
@@ -53,7 +59,7 @@ export default function StaffDashboard() {
     checkOverdue()
     const interval = setInterval(checkOverdue, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [myTasks])
+  }, [myTasks, wantsTaskReminders])
 
   useEffect(() => {
     if (!user) return

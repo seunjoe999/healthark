@@ -322,7 +322,7 @@ export default function Rota() {
 
   const getDayShifts = (day: Date) => {
     let r = shifts.filter(s => { try { return isSameDay(parseISO(s.shift_date), day) } catch { return false } })
-    if (filterSu)    r = r.filter(s => s.su_id    === filterSu)
+    if (filterSu)    r = r.filter(s => s.su_id === filterSu || (Array.isArray(s.su_ids) && s.su_ids.includes(filterSu)))
     if (filterStaff) r = r.filter(s => s.staff_id === filterStaff)
     if (filterType)  r = r.filter(s => s.shift_type === filterType)
     return r
@@ -656,8 +656,8 @@ export default function Rota() {
                               ? 'Unfilled'
                               : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
                           </p>
-                          {height > 40 && shift.su_name && (
-                            <p className="text-[10.5px] leading-tight truncate font-medium opacity-80">{shift.su_name}</p>
+                          {height > 40 && (shift.su_names || shift.su_name) && (
+                            <p className="text-[10.5px] leading-tight truncate font-medium opacity-80">{shift.su_names || shift.su_name}</p>
                           )}
                           {height > 54 && (
                             <p className="text-[10px] leading-tight opacity-70">{st}–{et}</p>
@@ -1158,28 +1158,24 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
 
   const save = async () => {
     // Staff is optional here on purpose — see note in CreateShiftModal above.
+    // One request for every selected resident together — the number of shift
+    // LINES created is driven by totalStaffRequired (one per staff slot), not
+    // by how many residents are selected, so 2 residents needing 1 staff member
+    // produces a single shared shift line, not one duplicate line per resident.
     setSaving(true)
     try {
       const daysOfWeek = form.recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : form.daysOfWeek
-      const results = await Promise.allSettled(selectedSus.map(suId =>
-        api.post('/shifts/service-shift', {
-          homeId, ...form, suId,
-          staffIds: selectedStaff,
-          daysOfWeek,
-          totalStaffRequired: parseInt(form.totalStaffRequired) || 1,
-          breakMins: parseInt(form.breakMins) || 0,
-        })
-      ))
-      const failed = results.filter(r => r.status === 'rejected').length
-      if (failed === 0) {
-        toast.success(`Rota created for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}`)
-      } else if (failed < results.length) {
-        toast.error(`${failed} of ${results.length} residents failed — the rest were created`)
-      } else {
-        toast.error('Failed to create rota')
-        return
-      }
+      await api.post('/shifts/service-shift', {
+        homeId, ...form, suIds: selectedSus,
+        staffIds: selectedStaff,
+        daysOfWeek,
+        totalStaffRequired: parseInt(form.totalStaffRequired) || 1,
+        breakMins: parseInt(form.breakMins) || 0,
+      })
+      toast.success(`Rota created for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}`)
       onSaved()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to create rota')
     } finally { setSaving(false) }
   }
 
@@ -1682,10 +1678,12 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         )}
 
         <div className="grid grid-cols-2 gap-3 text-sm">
-          {shift.su_name && (
+          {(shift.su_names || shift.su_name) && (
             <div className="col-span-2">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Service User</p>
-              <p className="text-slate-800 font-medium">{shift.su_name}</p>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">
+                {shift.su_ids && shift.su_ids.length > 1 ? 'Service Users' : 'Service User'}
+              </p>
+              <p className="text-slate-800 font-medium">{shift.su_names || shift.su_name}</p>
             </div>
           )}
           {shift.is_standby && (

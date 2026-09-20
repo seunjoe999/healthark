@@ -53,19 +53,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        )`;
     let rows = await query<any>(sql, [homeId, date]);
 
-    // Agenda-style sort: what's coming up next leads the list, not whatever
-    // happens to be earliest in the day. A resident with hourly overnight
-    // "Comfort Check" tasks (00:00, 01:00, 02:00...) would otherwise always
-    // bury the 8am task under a wall of already-passed midnight entries —
-    // tasks due at/after the current time sort first (soonest first), tasks
-    // already due today follow (oldest-passed first), untimed tasks last.
-    const nowHHMM = new Date().toTimeString().slice(0, 5);
+    // Strict chronological order: date first (oldest/overdue first), then
+    // time-of-day 00:00→23:00 within each date, untimed tasks last on that
+    // date. The list mixes today's tasks with carried-over overdue ones from
+    // earlier dates (see the WHERE clause above), so sorting by time alone —
+    // without ever comparing task_date — interleaved different days' tasks
+    // together with no visible grouping ("mixed up with different dates").
     const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
     rows.sort((a: any, b: any) => {
+      const aDate = a.task_date instanceof Date ? a.task_date.toISOString().split('T')[0] : String(a.task_date).split('T')[0];
+      const bDate = b.task_date instanceof Date ? b.task_date.toISOString().split('T')[0] : String(b.task_date).split('T')[0];
+      if (aDate !== bDate) return aDate < bDate ? -1 : 1;
       const aHasTime = !!a.due_time, bHasTime = !!b.due_time;
       if (aHasTime && bHasTime) {
-        const aUpcoming = a.due_time >= nowHHMM, bUpcoming = b.due_time >= nowHHMM;
-        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
         if (a.due_time !== b.due_time) return a.due_time < b.due_time ? -1 : 1;
       } else if (aHasTime !== bHasTime) {
         return aHasTime ? -1 : 1;

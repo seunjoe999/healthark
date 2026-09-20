@@ -91,7 +91,7 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
 
   // One bulk multi-row INSERT for every remaining date.
   const cols = [
-    'home_id', 'staff_id', 'su_id', 'shift_date', 'start_time', 'end_time', 'shift_type', 'break_minutes', 'template_id',
+    'home_id', 'staff_id', 'su_id', 'su_ids', 'shift_date', 'start_time', 'end_time', 'shift_type', 'break_minutes', 'template_id',
     'notes_for_carers', 'notes_for_managers', 'is_standby', 'status', 'total_staff_required',
     'funder_name', 'funder_cost_notes', 'wage_rate', 'charge_rate', 'charge_bank_holiday_rate',
     'time_critical', 'shift_run',
@@ -100,7 +100,8 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
   const valueRows: string[] = [];
   for (const dateStr of toInsert) {
     const row = [
-      homeId, tmpl.staff_id || null, tmpl.su_id || null, dateStr,
+      homeId, tmpl.staff_id || null, tmpl.su_id || null,
+      Array.isArray(tmpl.su_ids) && tmpl.su_ids.length ? tmpl.su_ids : null, dateStr,
       tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
       tmpl.break_minutes || 0, tmpl.id,
       tmpl.notes_for_carers || null, tmpl.notes_for_managers || null,
@@ -174,7 +175,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     let sql = `SELECT sh.*,
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
-      su.first_name || ' ' || su.last_name as su_name
+      su.first_name || ' ' || su.last_name as su_name,
+      (SELECT string_agg(su2.first_name || ' ' || su2.last_name, ', ' ORDER BY su2.first_name)
+       FROM service_users su2 WHERE su2.id = ANY(COALESCE(sh.su_ids, ARRAY[sh.su_id]))) as su_names
       FROM staff_shifts sh
       LEFT JOIN staff s ON s.id = sh.staff_id
       LEFT JOIN service_users su ON su.id = sh.su_id
@@ -452,7 +455,7 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
     const createdBy = fromToken(req, 'staffId');
     const role = fromToken(req, 'role');
     const {
-      suId, startDate, isOngoing, endDate, recurrence, daysOfWeek,
+      suId, suIds, startDate, isOngoing, endDate, recurrence, daysOfWeek,
       startTime, endTime, shiftType, totalStaffRequired, staffIds,
       notesForCarers, notesForManagers, isStandby, standbyWorkDetails,
       breakMins, weeks: weeksParam,
@@ -470,16 +473,23 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
     const templates: any[] = [];
     let totalGenerated = 0;
 
+    // Several residents sharing one staff requirement (e.g. 2 residents in the same
+    // house, 1 staff required) must produce ONE shift line per staff slot, not one
+    // per resident — su_id stays the first resident (existing filters/display), su_ids
+    // carries the full set so the tile can show everyone it covers.
+    const allSuIds: string[] = Array.isArray(suIds) && suIds.length ? suIds : (suId ? [suId] : []);
+    const primarySuId = allSuIds[0] || null;
+
     const effectiveDays = recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : (daysOfWeek || [1]);
 
     for (const staffId of staffToCreate) {
       const rows = await query<any>(
         `INSERT INTO shift_templates
-          (home_id, staff_id, su_id, shift_type, start_time, end_time, break_minutes,
+          (home_id, staff_id, su_id, su_ids, shift_type, start_time, end_time, break_minutes,
            recurrence, days_of_week, start_date, staff_count, is_ongoing,
            notes_for_carers, notes_for_managers, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
-        [homeId, staffId || null, suId, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+        [homeId, staffId || null, primarySuId, allSuIds.length ? allSuIds : null, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
          recurrence || 'daily', effectiveDays,
          startDate || new Date().toISOString().split('T')[0],
          totalStaffRequired || 1, isOngoing || false,

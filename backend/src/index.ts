@@ -2806,6 +2806,12 @@ async function ensureColumns() {
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS total_staff_required INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS parent_shift_id UUID REFERENCES staff_shifts(id) ON DELETE SET NULL`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS shift_relation VARCHAR(20)`,
+    // su_ids — a "Create Rota for Service" shift can cover several residents sharing one
+    // staff requirement (e.g. 2 residents in the same house, 1 staff required = 1 shift
+    // line, not one per resident). su_id stays as the first resident for backward-compat
+    // filtering; su_ids holds the full set.
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS su_ids UUID[]`,
+    `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS su_ids UUID[]`,
     // Backfill status from existing staff_id / is_standby data so pre-existing rows aren't stuck as 'unfilled'
     `UPDATE staff_shifts SET status = 'filled' WHERE staff_id IS NOT NULL AND status = 'unfilled'`,
   ];

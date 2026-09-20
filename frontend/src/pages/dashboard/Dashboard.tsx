@@ -6,7 +6,6 @@ import api from '../../api'
 import { Spinner } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, endOfWeek, subDays, parseISO } from 'date-fns'
-import TaskPopup from '../../components/TaskPopup'
 import { isTimePastDue } from '../../utils/taskReminder'
 import { getServerTodayStr } from '../../utils/serverTime'
 import toast from 'react-hot-toast'
@@ -150,11 +149,7 @@ export default function Dashboard() {
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
-  const [showTaskPopup, setShowTaskPopup] = useState(() => {
-    return localStorage.getItem('taskPopupDismissed') !== today
-  })
   const bdRef = useRef<HTMLDivElement>(null)
-  const overdueNotifiedRef = useRef<Set<string>>(new Set())
 
   if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
 
@@ -290,24 +285,6 @@ export default function Dashboard() {
     }).catch(console.error).finally(() => setLoading(false))
     })()
   }, [selectedHome])
-
-  // Time-based due check — in addition to the frequency-based pop-up, poll every
-  // 5 minutes for tasks whose due_time has now passed and are still pending, so
-  // it surfaces the moment it's overdue rather than only on the next visit.
-  useEffect(() => {
-    const checkOverdue = () => {
-      const overdue = todaysTasks.filter(t => isTimePastDue(t.due_time))
-      const newlyOverdue = overdue.filter(t => !overdueNotifiedRef.current.has(t.id))
-      if (newlyOverdue.length > 0) {
-        newlyOverdue.forEach(t => overdueNotifiedRef.current.add(t.id))
-        toast(`${newlyOverdue.length} task${newlyOverdue.length > 1 ? 's are' : ' is'} now overdue`, { icon: '⏰' })
-        setShowTaskPopup(true)
-      }
-    }
-    checkOverdue()
-    const interval = setInterval(checkOverdue, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [todaysTasks])
 
   const stats     = data?.stats     || {}
   const birthdays = data?.birthdays || []
@@ -642,10 +619,6 @@ export default function Dashboard() {
         </>
       )}
 
-      <TaskPopup open={showTaskPopup} onClose={() => {
-        localStorage.setItem('taskPopupDismissed', today)
-        setShowTaskPopup(false)
-      }} />
     </div>
   )
 }
