@@ -360,12 +360,13 @@ export default function Rota() {
                 title="Staff is optional — creates an unfilled rota for a resident that you can assign staff to later">
                 Create Rota for Service <span className="ml-1 font-normal opacity-70">(staff optional)</span>
               </Button>
-              <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}>
-                Bulk Operations
+              <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}
+                title="Create a brand new recurring shift pattern, or delete shifts matching a pattern — this does NOT assign staff to shifts that already exist">
+                Bulk Create / Delete Shifts
               </Button>
               <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}
-                title="Assign a staff member across a day-of-week pattern and date range, without clicking individual shifts">
-                Bulk Allocate by Pattern
+                title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern — use this to fill in a rota someone already created">
+                Bulk Assign Staff to Shifts
               </Button>
               <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
                 onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
@@ -1557,6 +1558,20 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [reallocateTo, setReallocateTo] = useState('')
   const [savingReallocate, setSavingReallocate] = useState(false)
   const [unassigning, setUnassigning] = useState(false)
+  const [editingNotes, setEditingNotes] = useState(false)
+  const [editNotesForCarers, setEditNotesForCarers] = useState(shift.notes_for_carers || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+
+  const saveNotes = async () => {
+    setSavingNotes(true)
+    try {
+      const res = await api.put(`/shifts/${shift.id}`, { notesForCarers: editNotesForCarers })
+      onUpdated(res.data.data)
+      toast.success('Notes updated')
+      setEditingNotes(false)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update notes') }
+    finally { setSavingNotes(false) }
+  }
 
   const saveTimes = async () => {
     if (!editDate || !editStart || !editEnd) { toast.error('Date, start and finish times are required'); return }
@@ -1720,10 +1735,31 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           )}
         </div>
 
-        {shift.notes_for_carers && (
+        {(shift.notes_for_carers || canManage) && (
           <div>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Notes for carers</p>
-            <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-100">{shift.notes_for_carers}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Notes for carers</p>
+              {canManage && !editingNotes && (
+                <button type="button" onClick={() => { setEditNotesForCarers(shift.notes_for_carers || ''); setEditingNotes(true) }}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                  Edit
+                </button>
+              )}
+            </div>
+            {editingNotes ? (
+              <div className="space-y-2">
+                <textarea className="input text-sm" rows={2} value={editNotesForCarers} onChange={e => setEditNotesForCarers(e.target.value)}
+                  placeholder="Instructions visible to care staff..." />
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="outline" onClick={() => setEditingNotes(false)}>Cancel</Button>
+                  <Button size="sm" loading={savingNotes} onClick={saveNotes}>Save</Button>
+                </div>
+              </div>
+            ) : (
+              shift.notes_for_carers
+                ? <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-100">{shift.notes_for_carers}</p>
+                : <p className="text-sm text-slate-400 italic">No notes</p>
+            )}
           </div>
         )}
         {shift.notes_for_managers && (
@@ -2102,7 +2138,7 @@ function BulkOperationsModal({ open, onClose, staffList, suList, homeId, default
   const [delForm, setDelForm] = useState({
     staffId: '', suId: '', dayOrNight: 'any' as 'any' | 'day' | 'night',
     daysOfWeek: [1, 2, 3, 4, 5] as number[], fortnightly: false,
-    startDate: defaultDate, endDate: '',
+    startDate: defaultDate, endDate: '', ongoing: true,
   })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -2153,7 +2189,7 @@ function BulkOperationsModal({ open, onClose, staffList, suList, homeId, default
 
   const bulkDelete = async () => {
     if (delForm.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
-    if (!delForm.endDate) { toast.error('Set an end date for the range to delete'); return }
+    if (!delForm.ongoing && !delForm.endDate) { toast.error('Set an end date, or choose "Until I stop it"'); return }
     if (!window.confirm('Delete every shift matching this pattern? This cannot be undone.')) return
     setDeleting(true)
     try {
@@ -2161,7 +2197,8 @@ function BulkOperationsModal({ open, onClose, staffList, suList, homeId, default
         homeId,
         staffId: delForm.staffId || null, suId: delForm.suId || null,
         dayOrNight: delForm.dayOrNight, daysOfWeek: delForm.daysOfWeek, fortnightly: delForm.fortnightly,
-        startDate: delForm.startDate, endDate: delForm.endDate,
+        startDate: delForm.startDate,
+        endDate: delForm.ongoing ? format(addDays(parseISO(delForm.startDate), 365), 'yyyy-MM-dd') : delForm.endDate,
       })
       const deleted = res.data.data?.deleted || 0
       toast.success(deleted > 0 ? `Deleted ${deleted} shift${deleted !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
@@ -2224,9 +2261,27 @@ function BulkOperationsModal({ open, onClose, staffList, suList, homeId, default
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Start date *" type="date" required value={delForm.startDate} onChange={e => setDel('startDate', e.target.value)} />
-            <Input label="End date *" type="date" required value={delForm.endDate} onChange={e => setDel('endDate', e.target.value)} />
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start date *</label>
+              <input type="date" className="input" value={delForm.startDate} onChange={e => setDel('startDate', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End</label>
+              <div className="flex gap-1.5">
+                <button type="button" onClick={() => setDel('ongoing', true)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${delForm.ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
+                  Every matching shift
+                </button>
+                <button type="button" onClick={() => setDel('ongoing', false)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${!delForm.ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
+                  Pick a date
+                </button>
+              </div>
+            </div>
           </div>
+          {!delForm.ongoing && (
+            <Input label="End date *" type="date" required value={delForm.endDate} onChange={e => setDel('endDate', e.target.value)} />
+          )}
 
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

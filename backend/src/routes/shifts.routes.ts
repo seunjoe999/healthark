@@ -665,8 +665,13 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
 // matching a recurring pattern (specific days of the week, optionally fortnightly, day/night,
 // within a date range) instead of requiring staff be picked one-by-one or at shift-creation
 // time (which used to force the same person onto every day of the rota).
-const DAY_SHIFT_TYPES = ['early', 'regular', 'late'];
-const NIGHT_SHIFT_TYPES = ['night', 'waking_night', 'sleep_in'];
+//
+// Day/night is matched off the shift's actual start_time, NOT the shift_type label — shifts
+// created via "Create Rota for Service" all default shift_type to 'regular' unless the manager
+// explicitly changes the dropdown, so two rota entries (an 08:00 day slot and a 20:00 night
+// slot) commonly end up with the identical shift_type. Filtering by that label made "Day only"
+// silently match the night shifts too. Time-of-day is always accurate regardless of the label.
+// Night = starts 20:00–05:59; Day = starts 06:00–19:59.
 
 router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
   body('staffId').isUUID(),
@@ -679,20 +684,20 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, dayOrNight, onlyUnfilled } = req.body;
 
-      let typeFilter: string[] | null = null;
-      if (dayOrNight === 'day') typeFilter = DAY_SHIFT_TYPES;
-      else if (dayOrNight === 'night') typeFilter = NIGHT_SHIFT_TYPES;
-
       const candidates = await query<any>(
         `SELECT id, shift_date FROM staff_shifts
          WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
            AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[])
            AND ($5::uuid IS NULL OR su_id = $5)
-           AND ($6::text[] IS NULL OR shift_type = ANY($6))
+           AND (
+             $6::text IS NULL
+             OR ($6 = 'day'   AND start_time >= '06:00'::time AND start_time < '20:00'::time)
+             OR ($6 = 'night' AND (start_time >= '20:00'::time OR start_time < '06:00'::time))
+           )
            AND (NOT $7 OR staff_id IS NULL)
          ORDER BY shift_date`,
         [homeId, startDate, endDate, daysOfWeek.map((d: any) => parseInt(d)),
-         suId || null, typeFilter, onlyUnfilled !== false]
+         suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null, onlyUnfilled !== false]
       );
 
       // Fortnightly: keep only shifts in the same alternating week as startDate.
@@ -732,20 +737,20 @@ router.post('/bulk-delete-pattern', requireRole(...MANAGE_ROLES), [
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, dayOrNight } = req.body;
 
-      let typeFilter: string[] | null = null;
-      if (dayOrNight === 'day') typeFilter = DAY_SHIFT_TYPES;
-      else if (dayOrNight === 'night') typeFilter = NIGHT_SHIFT_TYPES;
-
       const candidates = await query<any>(
         `SELECT id, shift_date FROM staff_shifts
          WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
            AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[])
            AND ($5::uuid IS NULL OR staff_id = $5)
            AND ($6::uuid IS NULL OR su_id = $6)
-           AND ($7::text[] IS NULL OR shift_type = ANY($7))
+           AND (
+             $7::text IS NULL
+             OR ($7 = 'day'   AND start_time >= '06:00'::time AND start_time < '20:00'::time)
+             OR ($7 = 'night' AND (start_time >= '20:00'::time OR start_time < '06:00'::time))
+           )
          ORDER BY shift_date`,
         [homeId, startDate, endDate, daysOfWeek.map((d: any) => parseInt(d)),
-         staffId || null, suId || null, typeFilter]
+         staffId || null, suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null]
       );
 
       const startWeekIndex = Math.floor((new Date(startDate).getTime()) / (7 * 24 * 3600 * 1000));
