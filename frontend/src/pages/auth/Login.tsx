@@ -123,6 +123,7 @@ export default function Login() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email address</label>
                     <input type="email" className={inputClass} placeholder="your@compcarehub.co.uk"
+                      autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username"
                       value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
                   </div>
                   {useLoginPin ? (
@@ -136,6 +137,7 @@ export default function Login() {
                       <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
                       <div className="relative">
                         <input type={showPw ? 'text' : 'password'} className={inputClass + ' pr-11'}
+                          autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="current-password"
                           placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
                         <button type="button" onClick={() => setShowPw(v => !v)}
                           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">

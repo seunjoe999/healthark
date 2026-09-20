@@ -702,6 +702,7 @@ export default function AdminAccounts() {
           <div className="space-y-4">
             <div className="relative">
               <Input label="New password (min. 8 chars)" type={showPwd ? 'text' : 'password'}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="new-password"
                 value={newPassword} onChange={e => setNewPassword(e.target.value)} />
               <button type="button" onClick={() => setShowPwd(v => !v)}
                 className="absolute right-3 top-8 text-slate-400 hover:text-slate-700">
@@ -846,7 +847,9 @@ function AddAdminModal({ open, onClose, homes, onCreated }: {
           <Select label="Assigned home *" value={form.homeId} onChange={e => set('homeId', e.target.value)}
             options={homes.map(h => ({ value: h.id, label: h.name }))} placeholder="Select home..." />
         )}
-        <Input label="Password (optional — auto-generated if blank)" type="password" value={form.password}
+        <Input label="Password (optional — auto-generated if blank)" type="password"
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="new-password"
+          value={form.password}
           onChange={e => set('password', e.target.value)} hint="Leave blank to auto-generate a temporary password" />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -894,7 +897,9 @@ function SuperAdminModal({ open, onClose, onCreated }: { open: boolean; onClose:
           <Input label="Last name *" required value={form.lastName} onChange={e => set('lastName', e.target.value)} />
         </div>
         <Input label="Email address *" type="email" required value={form.email} onChange={e => set('email', e.target.value)} />
-        <Input label="Password *" type="password" required value={form.password} onChange={e => set('password', e.target.value)} hint="At least 8 characters" />
+        <Input label="Password *" type="password" required
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="new-password"
+          value={form.password} onChange={e => set('password', e.target.value)} hint="At least 8 characters" />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={loading} icon={<Shield className="w-4 h-4" />}>Create Super Admin</Button>
