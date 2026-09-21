@@ -46,6 +46,7 @@ const RECORD_TYPES = [
   { value: 'bowel_movement', label: 'Bowel Movement', icon: '📋' },
   { value: 'behaviour', label: 'Behavior Record (ABC)', icon: '💭' },
   { value: 'welfare_check', label: 'Welfare Check', icon: '✅' },
+  { value: 'comfort_check', label: 'Comfort Check', icon: '🛋️' },
   { value: 'repositioning', label: 'Repositioning', icon: '🔄' },
   { value: 'one_to_one', label: '1-to-1 Conversation', icon: '💬' },
   { value: 'social_activity', label: 'Social Activity', icon: '🎮' },
