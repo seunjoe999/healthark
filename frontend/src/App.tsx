@@ -79,6 +79,7 @@ const Compliance = React.lazy(() => import('./pages/compliance/Compliance'))
 const SupervisionAppraisal = React.lazy(() => import('./pages/supervision-appraisal/SupervisionAppraisal'))
 const ClockInAnalytics = React.lazy(() => import('./pages/clockin/ClockInAnalytics'))
 const NotificationsManager = React.lazy(() => import('./pages/notifications/NotificationsManager'))
+const InstallApp = React.lazy(() => import('./pages/install/InstallApp'))
 const AssessmentForm = React.lazy(() => import('./pages/assessments/AssessmentForm'))
 const AssessmentView = React.lazy(() => import('./pages/assessments/AssessmentView'))
 const Confidential = React.lazy(() => import('./pages/confidential/Confidential'))
@@ -213,6 +214,7 @@ function AppRoutes() {
         <Route path="/supervision-appraisal" element={<ProtectedRoute><SupervisionAppraisal /></ProtectedRoute>} />
         <Route path="/clockin-analytics" element={<ProtectedRoute><ClockInAnalytics /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><NotificationsManager /></ProtectedRoute>} />
+        <Route path="/install" element={<ProtectedRoute><InstallApp /></ProtectedRoute>} />
         <Route path="/confidential" element={<ProtectedRoute><Confidential /></ProtectedRoute>} />
         <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
         <Route path="/fluid-balance" element={<ProtectedRoute><FluidBalance /></ProtectedRoute>} />

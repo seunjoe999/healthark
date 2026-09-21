@@ -18,7 +18,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown
+  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown, Download
 } from 'lucide-react'
 
 const navSections = [
@@ -113,6 +113,7 @@ const navSections = [
       { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: [], featureKey: 'notifications' },
+      { label: 'Download App',       to: '/install',           icon: Download,      roles: [], featureKey: 'install_app' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
     ]
   },
