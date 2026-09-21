@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Share, Download, CheckCircle2, MoreVertical } from 'lucide-react'
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
+import { getInstallPrompt, subscribeInstallPrompt, triggerInstall } from '../../utils/installPrompt'
 
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -24,31 +20,23 @@ function isInStandalone() {
 // install instructions. This page is linked from the sidebar under Notifications
 // and always shows something actionable regardless of platform/browser state.
 export default function InstallApp() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState(getInstallPrompt())
   const [installed, setInstalled] = useState(isInStandalone())
   const ios = isIOS()
 
   useEffect(() => {
     if (installed) return
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    const onInstalled = () => setInstalled(true)
-    window.addEventListener('appinstalled', onInstalled)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler)
-      window.removeEventListener('appinstalled', onInstalled)
-    }
+    // Picks up an already-captured event immediately (the common case: the
+    // browser offered install well before the user ever navigated to this
+    // page), and stays subscribed in case it fires later on this page too.
+    const unsubscribe = subscribeInstallPrompt(() => setDeferredPrompt(getInstallPrompt()))
+    return unsubscribe
   }, [installed])
 
   async function install() {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    setDeferredPrompt(null)
+    const outcome = await triggerInstall()
     if (outcome === 'accepted') setInstalled(true)
+    if (outcome !== 'unavailable') setDeferredPrompt(null)
   }
 
   // Everything lives inside one white card, deliberately independent of the

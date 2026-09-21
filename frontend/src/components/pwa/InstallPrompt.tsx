@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Share } from 'lucide-react'
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
+import { getInstallPrompt, subscribeInstallPrompt, triggerInstall } from '../../utils/installPrompt'
 
 const DISMISS_KEY = 'pwa_install_dismissed_at'
 const INSTALLED_KEY = 'pwa_installed'
@@ -31,7 +27,7 @@ function shouldShowPrompt(): boolean {
 }
 
 export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState(getInstallPrompt())
   const [visible, setVisible] = useState(false)
   const [animateIn, setAnimateIn] = useState(false)
   const [platform, setPlatform] = useState<'android' | 'ios' | null>(null)
@@ -64,18 +60,21 @@ export default function InstallPrompt() {
       return
     }
 
-    let capturedPrompt: BeforeInstallPromptEvent | null = null
+    // Already captured before this component mounted (e.g. fired during the
+    // very first page load, before React finished rendering) — don't wait
+    // for a second event that will never come.
+    if (getInstallPrompt() && shouldShowPrompt()) {
+      setTimeout(() => show('android'), INITIAL_DELAY_MS)
+    }
 
-    const handler = (e: Event) => {
-      e.preventDefault()
-      capturedPrompt = e as BeforeInstallPromptEvent
-      setDeferredPrompt(capturedPrompt)
-      if (shouldShowPrompt()) {
+    const unsubscribe = subscribeInstallPrompt(() => {
+      const prompt = getInstallPrompt()
+      setDeferredPrompt(prompt)
+      if (prompt && shouldShowPrompt()) {
         setTimeout(() => show('android'), INITIAL_DELAY_MS)
       }
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    })
+    return unsubscribe
   }, [])
 
   // Re-nag every 5 minutes while the app stays open on one page, not just on reload.
@@ -91,9 +90,8 @@ export default function InstallPrompt() {
   }, [visible, deferredPrompt])
 
   async function install() {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
+    const outcome = await triggerInstall()
+    if (outcome === 'unavailable') return
     setDeferredPrompt(null)
     if (outcome === 'accepted') {
       localStorage.setItem(INSTALLED_KEY, '1')

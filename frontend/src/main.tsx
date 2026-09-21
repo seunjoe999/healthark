@@ -4,6 +4,10 @@ import App from './App'
 import './index.css'
 import './styles/print.css'
 import { installChunkErrorReload, installPeriodicVersionCheck } from './utils/versionCheck'
+// Imported first, before anything else runs, so its module-level
+// beforeinstallprompt listener is attached as early as physically possible —
+// see utils/installPrompt.ts for why this can't just live inside a component.
+import './utils/installPrompt'
 
 installChunkErrorReload()
 installPeriodicVersionCheck()
