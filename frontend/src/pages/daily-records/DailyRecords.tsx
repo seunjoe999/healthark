@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { suApi, homesApi, dailyRecordsApi } from '../../api'
+import api, { suApi, homesApi, dailyRecordsApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, subDays, parseISO } from 'date-fns'
@@ -85,6 +85,13 @@ export default function DailyRecords() {
   const [editingRecord, setEditingRecord] = useState<any>(null)
   const [editNotes, setEditNotes] = useState('')
   const [activeTab, setActiveTab] = useState('daily_records')
+  const [clockedIn, setClockedIn] = useState(false)
+
+  useEffect(() => {
+    if (user?.role === 'care_staff') {
+      api.get('/clockin/status').then(res => setClockedIn(!!res.data.data?.clockedIn)).catch(() => {})
+    }
+  }, [user])
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -268,10 +275,12 @@ export default function DailyRecords() {
                                   {(() => {
                                     const isCareStaff = user?.role === 'care_staff'
                                     const isOwn = r.staff_id === user?.id
-                                    // Care staff can edit their own entries any time, not just same-day —
-                                    // was blocking a genuine same-day-only typo fix from ever being corrected
-                                    // once the day rolled over. Still never someone else's record.
-                                    const canEdit = !isCareStaff || isOwn
+                                    // Care staff can edit their own entries for as long as they're still
+                                    // clocked in — was previously locked to the same calendar day, which
+                                    // both cut a shift short right at midnight (nights) and left it open
+                                    // long after a day shift had ended. Once they clock out, it locks.
+                                    // Never someone else's record, regardless.
+                                    const canEdit = !isCareStaff || (isOwn && clockedIn)
                                     return canEdit ? (
                                       <button onClick={() => setEditingRecord(r)}
                                         className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"

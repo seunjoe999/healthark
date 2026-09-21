@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
+import { isStaffClockedIn } from '../utils/clockStatus';
 
 const router = Router();
 
@@ -193,6 +194,33 @@ router.put('/:id/complete', param('id').isUUID(), validateRequest,
         [staffId, req.body.notes || null, req.params.id]
       );
       res.json({ success: true, message: 'Task completed' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/tasks/:id/reopen — undo a mistaken "Complete" tap, back to pending.
+// Only the staff member who completed it can reopen it, and only while
+// they're still clocked in for their shift — once they clock out (or it's
+// someone else's completion) it's locked, same rule as editing Daily Records.
+router.put('/:id/reopen', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
+      const rows = await query<any>('SELECT completed_by FROM tasks WHERE id = $1', [req.params.id]);
+      if (!rows.length) throw new AppError('Task not found', 404);
+      const isPrivileged = TASK_CREATOR_ROLES.includes(role);
+      if (!isPrivileged) {
+        if (rows[0].completed_by !== staffId) throw new AppError('You can only reopen a task you completed yourself', 403);
+        if (!(await isStaffClockedIn(staffId))) {
+          throw new AppError('You can only reopen a task while still clocked in for your shift', 403);
+        }
+      }
+      await query(
+        `UPDATE tasks SET status='pending', completed_by=NULL, completed_at=NULL, completion_notes=NULL WHERE id=$1`,
+        [req.params.id]
+      );
+      res.json({ success: true, message: 'Task reopened' } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

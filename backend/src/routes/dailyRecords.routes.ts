@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isStaffClockedIn } from '../utils/clockStatus';
 
 const router = Router();
 
@@ -428,12 +429,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       if (!existing.length) throw new AppError('Record not found', 404);
       const rec = existing[0];
 
-      // care_staff can only edit their own records from today
+      // care_staff can only edit their own records, and only while still
+      // clocked in — was previously locked to the same calendar day, which
+      // cut a night shift's editing window short right at midnight. Once
+      // they clock out, the record locks.
       if (role === 'care_staff') {
-        const today = new Date().toISOString().split('T')[0];
         if (rec.staff_id !== staffId) throw new AppError('You can only edit your own records', 403);
-        if (rec.record_date?.toISOString?.()?.split('T')[0] !== today && String(rec.record_date) !== today) {
-          throw new AppError('Care staff can only edit records from today', 403);
+        if (!(await isStaffClockedIn(staffId))) {
+          throw new AppError('You can only edit your own records while still clocked in for your shift', 403);
         }
       }
 
