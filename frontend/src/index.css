@@ -405,7 +405,10 @@
 .app-shell:not(.theme-dark) .input:hover { border-color: rgba(15,23,42,0.25) !important; }
 .app-shell:not(.theme-dark) .input:focus { border-color: #e8b130 !important; box-shadow: 0 0 0 3px rgba(232,177,48,0.15) !important; }
 .app-shell:not(.theme-dark) select.input option { background: #ffffff !important; color: #1e293b !important; }
-.app-shell:not(.theme-dark) .label { color: #b8960a !important; }
+/* #b8960a (the dark-theme gold) is readable on the dark theme's near-black
+   background but fails contrast on light theme's white — same as the
+   .btn-secondary fix just below. Darkened to match. */
+.app-shell:not(.theme-dark) .label { color: #92700f !important; }
 
 /* .btn-secondary is also hardcoded dark (#1a1a1a) — same class of bug. */
 .app-shell:not(.theme-dark) .btn-secondary {
