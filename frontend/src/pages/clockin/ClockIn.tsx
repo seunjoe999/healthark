@@ -230,7 +230,9 @@ export default function ClockIn() {
                 <XCircle className="w-8 h-8 text-rose-400" />
               </div>
               <h2 className="text-white font-display text-xl mb-2">
-                {errorReason === 'medication_incomplete' ? 'Medication not finished yet' : 'Something went wrong'}
+                {errorReason === 'medication_incomplete' ? 'Medication not finished yet'
+                  : errorReason === 'tasks_incomplete' ? 'Tasks not finished yet'
+                  : 'Something went wrong'}
               </h2>
               <p className="text-slate-400 text-sm mb-6">{error}</p>
               {errorReason === 'medication_incomplete' && (
@@ -238,6 +240,13 @@ export default function ClockIn() {
                   className="w-full py-3 rounded-xl font-semibold text-slate-900 mb-3"
                   style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
                   Go complete it now
+                </button>
+              )}
+              {errorReason === 'tasks_incomplete' && (
+                <button onClick={() => navigate('/tasks')}
+                  className="w-full py-3 rounded-xl font-semibold text-slate-900 mb-3"
+                  style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                  Go complete them now
                 </button>
               )}
               {errorReason === 'no_shift_today' && (

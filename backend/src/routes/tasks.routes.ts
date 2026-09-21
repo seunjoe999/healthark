@@ -53,17 +53,16 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
        )`;
     let rows = await query<any>(sql, [homeId, date]);
 
-    // Strict chronological order: date first (oldest/overdue first), then
-    // time-of-day 00:00→23:00 within each date, untimed tasks last on that
-    // date. The list mixes today's tasks with carried-over overdue ones from
-    // earlier dates (see the WHERE clause above), so sorting by time alone —
-    // without ever comparing task_date — interleaved different days' tasks
-    // together with no visible grouping ("mixed up with different dates").
+    // Today's freshly generated tasks first, then time-of-day 00:00→23:00
+    // within each date, untimed tasks last on that date. Carried-over tasks
+    // from earlier dates that are still not completed sink BELOW today's list
+    // instead of leading it — the list "refreshes" each day, with yesterday's
+    // unfinished business at the bottom rather than burying today's tasks.
     const priorityRank: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
     rows.sort((a: any, b: any) => {
       const aDate = a.task_date instanceof Date ? a.task_date.toISOString().split('T')[0] : String(a.task_date).split('T')[0];
       const bDate = b.task_date instanceof Date ? b.task_date.toISOString().split('T')[0] : String(b.task_date).split('T')[0];
-      if (aDate !== bDate) return aDate < bDate ? -1 : 1;
+      if (aDate !== bDate) return aDate < bDate ? 1 : -1;
       const aHasTime = !!a.due_time, bHasTime = !!b.due_time;
       if (aHasTime && bHasTime) {
         if (a.due_time !== b.due_time) return a.due_time < b.due_time ? -1 : 1;

@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import https from 'https';
 import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
+import { getMyPendingTasksToday } from '../utils/taskDue';
 
 const router = Router();
 
@@ -241,6 +242,22 @@ router.post('/event', authenticate,
             success: false,
             reason: 'medication_incomplete',
             error: `Medication Count is not done for this shift (${stockStatus.counted}/${stockStatus.total} residents counted). Complete it before clocking out.`,
+          });
+        }
+
+        // General (non-medication) tasks due today that are still pending also
+        // block clock-out — same principle as medication: a task not silently
+        // becoming nobody's problem just because the shift ended. Only tasks
+        // this staff member would actually see on their own task list count
+        // (see getMyPendingTasksToday), so this never blocks someone over a
+        // task they were never shown.
+        const pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole);
+        if (pendingTasks.length > 0) {
+          const titles = pendingTasks.slice(0, 3).map(t => t.title).join(', ');
+          return res.status(403).json({
+            success: false,
+            reason: 'tasks_incomplete',
+            error: `${pendingTasks.length} task${pendingTasks.length > 1 ? 's are' : ' is'} still not completed (${titles}${pendingTasks.length > 3 ? ', …' : ''}). Complete them before clocking out.`,
           });
         }
       }
