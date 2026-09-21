@@ -66,9 +66,13 @@ function riskBorder(level: string) {
 // residents with no assessment recorded at all.
 function riskTint(level: string, theme: string) {
   const dark = theme === 'dark'
-  if (level === 'critical' || level === 'high') return dark ? 'rgba(239,68,68,0.08)' : '#fef2f2'
-  if (level === 'medium' || level === 'moderate') return dark ? 'rgba(245,158,11,0.08)' : '#fffbeb'
-  if (level === 'low') return dark ? 'rgba(16,185,129,0.08)' : '#f0fdf4'
+  // Dark theme previously used the same 8% tint for every level, which reads
+  // as essentially invisible against a near-black card (staff on the dark
+  // theme default couldn't see the high-risk pink/red highlight admin saw on
+  // light theme). Bumped enough to actually read as tinted, not just noise.
+  if (level === 'critical' || level === 'high') return dark ? 'rgba(239,68,68,0.18)' : '#fef2f2'
+  if (level === 'medium' || level === 'moderate') return dark ? 'rgba(245,158,11,0.16)' : '#fffbeb'
+  if (level === 'low') return dark ? 'rgba(16,185,129,0.14)' : '#f0fdf4'
   return dark ? '#111111' : '#ffffff'
 }
 
