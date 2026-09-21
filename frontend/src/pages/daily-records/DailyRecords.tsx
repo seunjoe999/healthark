@@ -56,6 +56,7 @@ const RECORD_TYPES = [
   { value: 'prn_medication', label: 'PRN Medication', icon: '💊' },
   { value: 'handover', label: 'Handover Note', icon: '📝' },
   { value: 'general_support', label: 'General Support', icon: '🤝' },
+  { value: 'housekeeping', label: 'Housekeeping', icon: '🧹' },
   { value: 'communication', label: 'Communication', icon: '📣' },
   { value: 'vitals_bp', label: 'Blood Pressure', icon: '❤️' },
   { value: 'vitals_temp', label: 'Temperature', icon: '🌡️' },

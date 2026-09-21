@@ -594,10 +594,9 @@ export default function Tasks() {
         <Modal open={!!completingTask} onClose={() => { setCompletingTask(null); setCompletionNote('') }} title="Complete task">
           <div className="space-y-4">
             <p className="text-sm text-slate-600">Mark <strong>{completingTask.title}</strong> as complete, or log an attempt if it couldn't be finished (e.g. resident refused) — an attempt stays on the to-do list for later.</p>
-            <div>
-              <label className="label">Notes (optional)</label>
-              <textarea className="input" rows={3} value={completionNote} onChange={e => setCompletionNote(e.target.value)} placeholder="Any notes..." autoFocus />
-            </div>
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              This task is a reminder only — it does not save a record. Before confirming, make sure you've documented what you did on the resident's <strong>Daily Record</strong>, under the relevant section (e.g. Housekeeping, Comfort Check).
+            </p>
             <div className="flex gap-3 justify-end flex-wrap">
               <Button type="button" variant="outline" onClick={() => { setCompletingTask(null); setCompletionNote('') }}>Cancel</Button>
               <Button type="button" variant="gold" icon={<RotateCcw className="w-4 h-4" />} onClick={async () => {
