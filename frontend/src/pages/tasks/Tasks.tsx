@@ -5,7 +5,20 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, ClipboardList, RotateCcw } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench } from 'lucide-react'
+
+// One icon per task category so the list is scannable at a glance, instead of
+// every task (medication, housekeeping, comfort check, ...) showing the same
+// generic clipboard icon.
+const CATEGORY_ICONS: Record<string, any> = {
+  housekeeping: Sparkles,
+  medication: Pill,
+  social_visit: Users,
+  personal_care: HeartHandshake,
+  health_check: Stethoscope,
+  maintenance: Wrench,
+  follow_up: Send,
+}
 import toast from 'react-hot-toast'
 import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 import { getServerTodayStr } from '../../utils/serverTime'
@@ -115,9 +128,11 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
       : task.category === 'follow_up' ? 'bg-blue-50/60 border-blue-200'
       : 'bg-amber-50/70 border-amber-200'
     }`}>
-      {/* Task icon — RoundSys-style clipboard icon */}
-      <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 hidden sm:flex">
-        <ClipboardList className="w-5 h-5 text-slate-500" />
+      {/* Task icon — one per category so the list is scannable at a glance.
+          Shown on all screen sizes, including mobile (was hidden below the
+          sm breakpoint, so it never appeared on the phones staff mostly use). */}
+      <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+        {(() => { const Icon = CATEGORY_ICONS[task.category] || ClipboardList; return <Icon className="w-5 h-5 text-slate-500" /> })()}
       </div>
 
       {/* Title / date / status */}
