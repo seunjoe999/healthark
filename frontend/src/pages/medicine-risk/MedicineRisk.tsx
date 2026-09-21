@@ -66,13 +66,13 @@ function riskBorder(level: string) {
 // residents with no assessment recorded at all.
 function riskTint(level: string, theme: string) {
   const dark = theme === 'dark'
-  // Dark theme previously used the same 8% tint for every level, which reads
-  // as essentially invisible against a near-black card (staff on the dark
-  // theme default couldn't see the high-risk pink/red highlight admin saw on
-  // light theme). Bumped enough to actually read as tinted, not just noise.
-  if (level === 'critical' || level === 'high') return dark ? 'rgba(239,68,68,0.18)' : '#fef2f2'
-  if (level === 'medium' || level === 'moderate') return dark ? 'rgba(245,158,11,0.16)' : '#fffbeb'
-  if (level === 'low') return dark ? 'rgba(16,185,129,0.14)' : '#f0fdf4'
+  // A risk-level card always uses the same solid pale colour regardless of
+  // theme — this is a safety highlight, not decorative styling, so a staff
+  // member on dark theme needs to see exactly the same pink/amber/green card
+  // an admin sees on light theme, not a dimmed-down "dark mode" version of it.
+  if (level === 'critical' || level === 'high') return '#fef2f2'
+  if (level === 'medium' || level === 'moderate') return '#fffbeb'
+  if (level === 'low') return '#f0fdf4'
   return dark ? '#111111' : '#ffffff'
 }
 
@@ -568,7 +568,10 @@ export default function MedicineRisk() {
                 style={{ background: riskTint(r.risk_level || '', theme), border: `1.5px solid ${borderColor}`, boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(15,23,42,0.06)' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.su_name}</p>
+                    {/* Card background is always pale (see riskTint) when a risk level is set,
+                        so the name must stay dark text even on dark theme — white-on-pale-pink
+                        would be unreadable. */}
+                    <p className={`font-semibold ${r.risk_level || theme !== 'dark' ? 'text-slate-900' : 'text-white'}`}>{r.su_name}</p>
                     {r.room_number && <p className="text-xs text-slate-500">Room {r.room_number}</p>}
                   </div>
                   {r.risk_level ? (
