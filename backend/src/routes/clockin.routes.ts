@@ -96,23 +96,49 @@ router.post('/event', authenticate,
       const { homeId, suId, staffLat, staffLng, eventType } = req.body;
       const gpsAccuracy = parseFloat(req.body.accuracy) || null;
 
-      // Build list of valid check points. Clocking in against a resident's QR
-      // must be checked against THAT resident's own location, not the office —
-      // the office and each resident's apartment are separate geofences.
+      // Build list of valid check points. Which QR the staff member happened to
+      // scan does NOT decide where they must be — the rota does. If today's rota
+      // has them assigned to a specific resident (a supported-living/outreach
+      // placement, say), they must clock in at THAT resident's address, even if
+      // they scanned the general home QR because that's the only one they have.
+      // Only when the rota has no resident tied to today's shift do we fall back
+      // to the office/home address (and any extra postcodes configured in
+      // Clock-In Admin). The suId the client sends (from a resident-specific QR)
+      // is still honoured as an extra check point, never as the sole source of
+      // truth, so scanning the "right" QR is never required to pass — only to be
+      // physically in the right place.
       const checkPoints: GeofenceCheckPoint[] = [];
+      const suIdsChecked = new Set<string>();
 
-      if (suId) {
+      const addServiceUserCheckPoint = async (id: string) => {
+        if (!id || suIdsChecked.has(id)) return;
+        suIdsChecked.add(id);
         const suRows = await query<any>(
           'SELECT first_name, last_name, room_number, latitude, longitude, geofence_radius FROM service_users WHERE id = $1 AND home_id = $2',
-          [suId, homeId]
+          [id, homeId]
         );
         const su = suRows[0];
         if (su?.latitude && su?.longitude) {
           const label = [`${su.first_name} ${su.last_name}`, su.room_number].filter(Boolean).join(', ');
           checkPoints.push({ lat: parseFloat(su.latitude), lng: parseFloat(su.longitude), label, radius: su.geofence_radius || 200 });
         }
-      } else {
-        // Home-based QR: check against home address + any extra postcodes configured in Clock-In Admin
+      };
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const rotaShifts = await query<any>(
+        `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        [staffId, homeId, todayStr]
+      );
+      for (const sh of rotaShifts) {
+        if (sh.su_id) await addServiceUserCheckPoint(sh.su_id);
+        if (Array.isArray(sh.su_ids)) for (const id of sh.su_ids) await addServiceUserCheckPoint(id);
+      }
+      if (suId) await addServiceUserCheckPoint(suId);
+      const usingResidentCheckpoints = checkPoints.length > 0;
+
+      if (checkPoints.length === 0) {
+        // No resident tied to today's rota shift (or no shift found yet) —
+        // check against the office/home address + any extra postcodes instead.
         const homeRows = await query<any>(
           'SELECT address1, postcode, latitude, longitude, geofence_radius FROM homes WHERE id = $1',
           [homeId]
@@ -135,7 +161,7 @@ router.post('/event', authenticate,
 
       const outcome = evaluateGeofence({ eventType, staffLat, staffLng, gpsAccuracy, checkPoints });
       if (!outcome.geofencePassed) {
-        const placeLabel = suId ? 'this resident' : 'the care home';
+        const placeLabel = usingResidentCheckpoints ? "today's assigned resident" : 'the care home';
         const messages: Record<string, string> = {
           weak_gps: `GPS signal too weak (±${gpsAccuracy ? Math.round(gpsAccuracy) : '?'}m accuracy). Please use a mobile device or move outdoors.`,
           no_location: `No verified location has been set up for ${placeLabel}. Ask your manager to set it in Clock-In Management.`,
@@ -175,14 +201,11 @@ router.post('/event', authenticate,
       // A staff member can belong to — and clock in at — multiple services
       // (homes), but only where their rota actually has them working today.
       // Clocking in isn't gated by which service the QR happens to be for;
-      // it's gated by whether today's rota puts them there at all.
+      // it's gated by whether today's rota puts them there at all. (rotaShifts
+      // was already fetched above, for the same staffId/homeId/today, to
+      // resolve the geofence check points — reused here instead of re-querying.)
       if (eventType !== 'clock_out') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const shiftRows = await query<any>(
-          `SELECT id FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3 LIMIT 1`,
-          [staffId, homeId, todayStr]
-        );
-        if (!shiftRows.length) {
+        if (!rotaShifts.length) {
           return res.status(403).json({
             success: false,
             reason: 'no_shift_today',
