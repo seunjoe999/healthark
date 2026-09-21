@@ -622,7 +622,9 @@ export default function Tasks() {
           <div className="space-y-4">
             <p className="text-sm text-slate-600">Mark <strong>{completingTask.title}</strong> as complete, or log an attempt if it couldn't be finished (e.g. resident refused) — an attempt stays on the to-do list for later.</p>
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-              This task is a reminder only — it does not save a record. Before confirming, make sure you've documented what you did on the resident's <strong>Daily Record</strong>, under the relevant section (e.g. Housekeeping, Comfort Check).
+              {completingTask.category === 'medication'
+                ? <>This task is a reminder only — it does not save a record. Before confirming, make sure you've recorded the count in <strong>Medication Stock</strong> (time, medication name, strength, quantity administered, quantity remaining). If you find any discrepancy, note it there and follow the escalation protocol.</>
+                : <>This task is a reminder only — it does not save a record. Before confirming, make sure you've documented what you did on the resident's <strong>Daily Record</strong>, under the relevant section (e.g. Housekeeping, Comfort Check).</>}
             </p>
             <div className="flex gap-3 justify-end flex-wrap">
               <Button type="button" variant="outline" onClick={() => { setCompletingTask(null); setCompletionNote('') }}>Cancel</Button>
