@@ -276,6 +276,64 @@ async function checkOverdueTasks() {
   } catch (err) { logger.error('Overdue task check failed:', err); }
 }
 
+// Every 15 minutes: notify managers about staff who are late for (or have
+// entirely missed) a shift they're rota'd on today — no clock_in event found
+// for that staff member since midnight, more than 15 minutes after the shift's
+// start_time. Dedupes on the notification's link so a re-run doesn't spam a
+// second alert for the same shift.
+async function checkLateOrMissedShifts() {
+  try {
+    const { query } = await import('../config/database');
+    const late = await query<any>(
+      `SELECT ss.id, ss.home_id, ss.staff_id, ss.start_time,
+              s.first_name || ' ' || s.last_name as staff_name
+       FROM staff_shifts ss
+       JOIN staff s ON s.id = ss.staff_id AND s.is_active = true
+       WHERE ss.shift_date = CURRENT_DATE
+         AND ss.staff_id IS NOT NULL
+         AND ss.status NOT IN ('cancelled')
+         AND ss.start_time IS NOT NULL
+         AND CURRENT_TIME > ss.start_time + INTERVAL '15 minutes'
+         AND CURRENT_TIME < ss.start_time + INTERVAL '6 hours'
+         AND NOT EXISTS (
+           SELECT 1 FROM staff_clock_events ce
+           WHERE ce.staff_id = ss.staff_id AND ce.event_type = 'clock_in'
+             AND ce.event_time >= CURRENT_DATE
+         )
+       LIMIT 200`
+    );
+    if (!late.length) return;
+
+    const byHome = new Map<string, any[]>();
+    for (const row of late as any[]) {
+      if (!byHome.has(row.home_id)) byHome.set(row.home_id, []);
+      byHome.get(row.home_id)!.push(row);
+    }
+
+    for (const [homeId, shiftsForHome] of byHome) {
+      const managers = await query<any>(
+        `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager','group_admin','deputy_manager') AND is_active = true`,
+        [homeId]
+      );
+      if (!managers.length) continue;
+
+      for (const sh of shiftsForHome) {
+        const link = `/rota?late=${sh.id}`;
+        const already = await query<any>(`SELECT 1 FROM notifications WHERE home_id = $1 AND link = $2 LIMIT 1`, [homeId, link]);
+        if (already.length) continue;
+
+        for (const mgr of managers) {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'warning',$5)`,
+            [mgr.id, homeId, `Shift not clocked in — ${sh.staff_name}`,
+             `${sh.staff_name} was due to start their shift at ${sh.start_time?.substring(0, 5)} and has not clocked in.`, link]
+          ).catch(() => {});
+        }
+      }
+    }
+  } catch (err) { logger.error('Late/missed shift check failed:', err); }
+}
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
@@ -299,6 +357,9 @@ export function startScheduler(): void {
 
   // Every 30 minutes: overdue/missed general task alerts to managers
   cron.schedule('*/30 * * * *', checkOverdueTasks);
+
+  // Every 15 minutes: late/no-show shift alerts to managers
+  cron.schedule('*/15 * * * *', checkLateOrMissedShifts);
 
   // Every morning at 8am: training expiry checks
   cron.schedule('0 8 * * *', async () => {

@@ -32,10 +32,13 @@ export default function StaffDashboard() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
-  // Task reminder pop-up — only care staff and team leaders actually complete
-  // tasks, so managers landing on this dashboard (deputy/service/registered
-  // manager, director, etc.) don't get nagged about work that isn't theirs.
-  const wantsTaskReminders = isRole('care_staff', 'team_leader')
+  // Task reminder pop-up — management landing on this dashboard (deputy/service/
+  // registered manager, director, home_manager, group_admin, admin) don't get
+  // nagged about tasks that aren't theirs to complete. Everyone else who can land
+  // on the staff dashboard (care_staff, team_leader, senior_carer, nurse, etc.)
+  // still gets reminded — this was previously allowlisted to just care_staff/
+  // team_leader, which accidentally silenced reminders for every other staff role.
+  const wantsTaskReminders = !isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
 
   useEffect(() => {
     if (user?.id && wantsTaskReminders) setShowTaskPopup(shouldShowTaskPopup(user.id))

@@ -54,6 +54,23 @@ export function installChunkErrorReload(): void {
     const message = e.reason?.message || String(e.reason || '')
     if (isChunkError(message)) { reloaded = true; window.location.reload() }
   })
+
+  // Resource-load errors (a <script>/<link> tag 404ing) don't produce a
+  // message the two listeners above can see and don't bubble, so they need
+  // their own capturing listener — otherwise a lazy-loaded route chunk that
+  // 404s silently leaves the page half-broken until the 30-minute periodic
+  // check or the user manually reloads (seen in production logs: a page
+  // stuck on a 404'd chunk for ~90 seconds before self-healing).
+  window.addEventListener('error', (e) => {
+    if (reloaded) return
+    const target = e.target as HTMLElement | null
+    if (!target) return
+    const src = (target as HTMLScriptElement).src || (target as HTMLLinkElement).href
+    if ((target.tagName === 'SCRIPT' || target.tagName === 'LINK') && src?.includes('/assets/')) {
+      reloaded = true
+      window.location.reload()
+    }
+  }, true)
 }
 
 // Covers long-running sessions (installed PWA left open for hours/days

@@ -282,10 +282,12 @@ app.use('/api/seed', seedRoutes);
 import waterlowRoutes from './routes/waterlow.routes';
 import cqcRoutes from './routes/cqc.routes';
 import clinicalRoutes from './routes/clinical.routes';
+import pushRoutes from './routes/push.routes';
 // news2Routes is imported & mounted earlier (before the general /api/assessments router)
 app.use('/api/assessments', waterlowRoutes);
 app.use('/api/cqc', cqcRoutes);
 app.use('/api/clinical', clinicalRoutes);
+app.use('/api/push', pushRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
@@ -2822,6 +2824,18 @@ async function ensureColumns() {
     `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_to   TEXT`,
     `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_at   TIMESTAMPTZ`,
     `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_by   UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    // Browser push subscriptions — lets staff get an instant phone notification
+    // (even app closed) when their rota changes, instead of only the in-app bell.
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       endpoint   TEXT NOT NULL UNIQUE,
+       p256dh     TEXT NOT NULL,
+       auth       TEXT NOT NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_push_subscriptions_staff ON push_subscriptions(staff_id)`,
   ];
   for (const sql of stmts) {
     await pool.query(sql).catch((err: any) => {

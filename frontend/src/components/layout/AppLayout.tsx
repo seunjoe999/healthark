@@ -4,6 +4,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { useTaskReminders } from '../../hooks/useTaskReminders'
+import { usePushNotifications } from '../../hooks/usePushNotifications'
 import { useTheme } from '../../context/ThemeContext'
 import type { AppTheme } from '../../context/ThemeContext'
 import api from '../../api'
@@ -504,6 +505,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   useTaskReminders(!!user)
+  usePushNotifications(!!user)
 
   // Managers/admins don't clock in via QR, so they aren't gated on shift status.
   const mustClockOutBeforeSignOut = !isRole('home_manager', 'group_admin')

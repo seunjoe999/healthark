@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { sendPushToStaffMany } from '../services/push.service';
 async function callGroq(prompt: string, maxTokens = 1200): Promise<string> {
   const key = process.env.GROQ_API_KEY || '';
   if (!key || key === 'placeholder') throw Object.assign(new Error('GROQ_API_KEY not configured on this server'), { isKeyMissing: true });
@@ -243,6 +244,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       const subject = 'New Incident Report';
       const body = `A new incident has been reported for ${residentName} at ${homeName}. Please review it in the Incidents section.`;
 
+      const recipientIds: string[] = [];
       for (const staff of staffToNotify) {
         if (staff.id !== staffId) {
           await query(
@@ -250,8 +252,14 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
              VALUES ($1, $2, $3, $4, $5, $5)`,
             [staffId, staff.id, homeId, subject, body]
           );
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'incident','/incidents')`,
+            [staff.id, homeId, subject, body]
+          );
+          recipientIds.push(staff.id);
         }
       }
+      sendPushToStaffMany(recipientIds, { title: subject, body, url: '/incidents' }).catch(() => {});
     } catch (notifyErr) {
       console.error('[incidents] Failed to send incident notifications:', notifyErr);
     }

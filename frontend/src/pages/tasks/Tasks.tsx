@@ -536,7 +536,7 @@ export default function Tasks() {
                     <h3 className="font-semibold text-sm text-slate-900">{tmpl.title}</h3>
                     <div className="flex items-center gap-2 flex-wrap mt-2">
                       <span className={`badge text-xs ${priorityColor(tmpl.priority)}`}>{tmpl.priority}</span>
-                      <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full capitalize">{(tmpl.category || '').replace('_', ' ')}</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full capitalize ${tmpl.category === 'follow_up' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{(tmpl.category || '').replace('_', ' ')}</span>
                       <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full capitalize">{(tmpl.frequency || '').replace('_', ' ')}</span>
                     </div>
                     {tmpl.description && <p className="text-xs text-slate-700 font-medium mt-2 leading-relaxed">{tmpl.description}</p>}

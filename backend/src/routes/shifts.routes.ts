@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { sendPushToStaff } from '../services/push.service';
 
 const router = Router();
 
@@ -226,11 +227,15 @@ router.post('/', requireRole(...MANAGE_ROLES), [body('staffId').isUUID(), body('
          financial.wageRate || null, financial.chargeRate || null, financial.chargeBankHolidayRate || null,
          !!req.body.timeCritical, req.body.shiftRun || null, parseInt(req.body.totalStaffRequired) || 1]
       );
-      await query(
-        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-         VALUES ($1,$2,$3,$4,'shift','/rota')`,
-        [staffId, homeId, 'New shift assigned', `You have been assigned a shift on ${shiftDate} from ${startTime} to ${endTime}`]
-      );
+      if (staffId) {
+        const body = `You have been assigned a shift on ${shiftDate} from ${startTime} to ${endTime}`;
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+           VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [staffId, homeId, 'New shift assigned', body]
+        );
+        sendPushToStaff(staffId, { title: 'New shift assigned', body, url: '/rota' }).catch(() => {});
+      }
       res.status(201).json({ success: true, data: stripFinancials(rows[0] as any, role) } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -624,10 +629,12 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
       const timeChanged = shiftDate !== undefined || startTime !== undefined || endTime !== undefined;
       const statusChanged = status !== undefined && status !== existing[0].status;
       if (oldStaffId && oldStaffId !== newStaffId) {
+        const removedBody = `Your shift on ${fmtDate(existing[0].shift_date)} has been reassigned to someone else.`;
         await query(
           `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
-          [oldStaffId, updated.home_id, 'Rota updated', `Your shift on ${fmtDate(existing[0].shift_date)} has been reassigned to someone else.`]
+          [oldStaffId, updated.home_id, 'Rota updated', removedBody]
         ).catch(() => {});
+        sendPushToStaff(oldStaffId, { title: 'Rota updated', body: removedBody, url: '/rota' }).catch(() => {});
       }
       if (newStaffId && (newStaffId !== oldStaffId || timeChanged || statusChanged)) {
         const body = newStaffId !== oldStaffId
@@ -639,6 +646,7 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
           `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
           [newStaffId, updated.home_id, 'Rota updated', body]
         ).catch(() => {});
+        sendPushToStaff(newStaffId, { title: 'Rota updated', body, url: '/rota' }).catch(() => {});
       }
 
       res.json({ success: true, data: stripFinancials(updated, role) } as ApiResponse);
@@ -718,6 +726,12 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
         `UPDATE staff_shifts SET staff_id = $1, status = 'filled', updated_at = NOW() WHERE id = ANY($2::uuid[])`,
         [staffId, ids]
       );
+
+      sendPushToStaff(staffId, {
+        title: 'Rota updated',
+        body: `You've been assigned ${ids.length} new shift${ids.length !== 1 ? 's' : ''} on the rota.`,
+        url: '/rota',
+      }).catch(() => {});
 
       res.json({ success: true, data: { assigned: ids.length } } as ApiResponse);
     } catch (err) { next(err); }
@@ -815,10 +829,12 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
         const shiftDateStr = existing[0].shift_date instanceof Date
           ? existing[0].shift_date.toISOString().split('T')[0]
           : String(existing[0].shift_date).split('T')[0];
+        const body = `Your shift on ${shiftDateStr} has been removed from the rota.`;
         await query(
           `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
-          [existing[0].staff_id, existing[0].home_id, 'Rota updated', `Your shift on ${shiftDateStr} has been removed from the rota.`]
+          [existing[0].staff_id, existing[0].home_id, 'Rota updated', body]
         ).catch(() => {});
+        sendPushToStaff(existing[0].staff_id, { title: 'Rota updated', body, url: '/rota' }).catch(() => {});
       }
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
