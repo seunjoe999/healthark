@@ -267,9 +267,11 @@ export default function DailyRecords() {
                                 <div className="flex gap-1 mt-1 justify-end">
                                   {(() => {
                                     const isCareStaff = user?.role === 'care_staff'
-                                    const isToday = r.record_date === format(viewDate, 'yyyy-MM-dd') && format(viewDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                                     const isOwn = r.staff_id === user?.id
-                                    const canEdit = !isCareStaff || (isToday && isOwn)
+                                    // Care staff can edit their own entries any time, not just same-day —
+                                    // was blocking a genuine same-day-only typo fix from ever being corrected
+                                    // once the day rolled over. Still never someone else's record.
+                                    const canEdit = !isCareStaff || isOwn
                                     return canEdit ? (
                                       <button onClick={() => setEditingRecord(r)}
                                         className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"

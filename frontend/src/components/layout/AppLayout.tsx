@@ -82,6 +82,7 @@ const navSections = [
     items: [
       { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: [], featureKey: 'compliance' },
       { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: [], featureKey: 'complaints' },
+      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: [], featureKey: 'audits' },
       { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: [], featureKey: 'audit_trail' },
       { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: [], featureKey: 'reports' },
       { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: [], featureKey: 'cqc_notifications' },
