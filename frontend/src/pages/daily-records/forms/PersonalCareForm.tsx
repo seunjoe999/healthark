@@ -5,7 +5,7 @@ import { Button, Select, Input } from '../../../components/ui'
 const CARE_OPTIONS = ['Wash', 'Shower', 'Bath', 'Hair wash', 'Shave', 'Nail care', 'Other']
 const ASSIST_LEVELS = [{ value: 'independent', label: 'Independent' }, { value: 'prompted', label: 'Prompted' }, { value: 'assisted', label: 'Assisted' }, { value: 'full_assist', label: 'Full assist' }]
 
-export default function PersonalCareForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
+export default function PersonalCareForm({ suId, onSaved, recordedAt }: { suId: string; onSaved: () => void; recordedAt?: string }) {
   const [careTypes, setCareTypes] = useState<string[]>([])
   const [form, setForm] = useState({ assistanceLevel: '', continenceCare: false, continenceNotes: '', skinCondition: '', notes: '' })
   const [loading, setLoading] = useState(false)
@@ -16,7 +16,7 @@ export default function PersonalCareForm({ suId, onSaved }: { suId: string; onSa
     e.preventDefault()
     setLoading(true)
     try {
-      await dailyRecordsApi.create({ suId, recordType: 'personal_care', careTypes, ...form })
+      await dailyRecordsApi.create({ suId, recordType: 'personal_care', careTypes, recordedAt, ...form })
       onSaved()
     } catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }

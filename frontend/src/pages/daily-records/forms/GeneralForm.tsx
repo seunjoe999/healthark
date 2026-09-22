@@ -8,7 +8,7 @@ const VISIT_TYPES = [{ value: 'social', label: 'Social visit' }, { value: 'famil
 const COMMS_MODES = [{ value: 'verbal', label: 'Verbal' }, { value: 'makaton', label: 'Makaton' }, { value: 'pecs', label: 'PECS' }, { value: 'written', label: 'Written' }, { value: 'eye_gaze', label: 'Eye gaze' }, { value: 'other', label: 'Other' }]
 const CALL_DIRECTIONS = [{ value: 'incoming', label: 'Incoming — they called us' }, { value: 'outgoing', label: 'Outgoing — we called them' }]
 
-export default function GeneralForm({ type, suId, onSaved }: { type: string; suId: string; onSaved: () => void }) {
+export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type: string; suId: string; onSaved: () => void; recordedAt?: string }) {
   const [form, setForm] = useState<Record<string, any>>({ notes: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -16,7 +16,7 @@ export default function GeneralForm({ type, suId, onSaved }: { type: string; suI
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await dailyRecordsApi.create({ suId, recordType: type, ...form }); onSaved() }
+    try { await dailyRecordsApi.create({ suId, recordType: type, recordedAt, ...form }); onSaved() }
     catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -78,9 +78,9 @@ export default function GeneralForm({ type, suId, onSaved }: { type: string; suI
       </>)}
 
       {type === 'general_support' ? (
-        <SpeechTextarea label="Describe the support provided *" required rows={4} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="What support did you give and how did the resident respond..." />
+        <SpeechTextarea label="Describe the support provided *" required rows={7} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="What support did you give and how did the resident respond...&#10;&#10;Tip: press Enter to start a new paragraph for each separate point — it'll display clearly spaced out, not jammed together." />
       ) : (
-        <SpeechTextarea label="Notes" rows={3} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="Any additional notes..." />
+        <SpeechTextarea label="Notes" rows={4} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="Any additional notes..." />
       )}
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>

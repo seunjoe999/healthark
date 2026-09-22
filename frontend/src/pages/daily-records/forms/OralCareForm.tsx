@@ -4,7 +4,7 @@ import { Button, Select, SpeechTextarea } from '../../../components/ui'
 
 const CARE_TYPES = ['Teeth brushed', 'Dentures cleaned', 'Mouthwash', 'Oral swab']
 
-export default function OralCareForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
+export default function OralCareForm({ suId, onSaved, recordedAt }: { suId: string; onSaved: () => void; recordedAt?: string }) {
   const [careTypes, setCareTypes] = useState<string[]>([])
   const [form, setForm] = useState({ mouthCondition: '', hasDentures: false, dentureType: '', notes: '' })
   const [loading, setLoading] = useState(false)
@@ -13,7 +13,7 @@ export default function OralCareForm({ suId, onSaved }: { suId: string; onSaved:
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await dailyRecordsApi.create({ suId, recordType: 'oral_care', careTypes, ...form }); onSaved() }
+    try { await dailyRecordsApi.create({ suId, recordType: 'oral_care', careTypes, recordedAt, ...form }); onSaved() }
     catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }

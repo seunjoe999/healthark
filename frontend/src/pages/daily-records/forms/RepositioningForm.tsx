@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
 import { Button, Select, Input } from '../../../components/ui'
 
-export default function RepositioningForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
+export default function RepositioningForm({ suId, onSaved, recordedAt }: { suId: string; onSaved: () => void; recordedAt?: string }) {
   const [form, setForm] = useState({ position: '', skinChecked: false, skinConcerns: '', notes: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -10,7 +10,7 @@ export default function RepositioningForm({ suId, onSaved }: { suId: string; onS
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await dailyRecordsApi.create({ suId, recordType: 'repositioning', ...form }); onSaved() }
+    try { await dailyRecordsApi.create({ suId, recordType: 'repositioning', recordedAt, ...form }); onSaved() }
     catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }

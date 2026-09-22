@@ -4,7 +4,7 @@ import { Button, Select, SpeechTextarea } from '../../../components/ui'
 
 const MOODS = [{ value: 'happy', label: '😊 Happy' }, { value: 'calm', label: '😌 Calm' }, { value: 'anxious', label: '😟 Anxious' }, { value: 'agitated', label: '😤 Agitated' }, { value: 'distressed', label: '😢 Distressed' }, { value: 'withdrawn', label: '😶 Withdrawn' }, { value: 'other', label: 'Other' }]
 
-export default function BehaviourForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
+export default function BehaviourForm({ suId, onSaved, recordedAt }: { suId: string; onSaved: () => void; recordedAt?: string }) {
   const [form, setForm] = useState({
     mood: '', behaviourTime: '',
     triggersNoted: '', behaviourNoted: '', actionTaken: '',
@@ -16,7 +16,7 @@ export default function BehaviourForm({ suId, onSaved }: { suId: string; onSaved
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await dailyRecordsApi.create({ suId, recordType: 'behaviour', ...form }); onSaved() }
+    try { await dailyRecordsApi.create({ suId, recordType: 'behaviour', recordedAt, ...form }); onSaved() }
     catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }

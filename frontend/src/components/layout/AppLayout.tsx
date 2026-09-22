@@ -21,6 +21,16 @@ import {
   FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown, Download
 } from 'lucide-react'
 
+// Every assignable role (see AccessRights.tsx's ROLES list) except care_staff —
+// used to hard-exclude frontline staff from sections that are never appropriate
+// for them (e.g. Quality Assurance), regardless of any per-org feature-flag
+// toggle, which only fine-tunes access among roles already allowed here.
+const NOT_CARE_STAFF = [
+  'senior_carer', 'team_leader', 'supervisor', 'deputy_manager', 'home_manager',
+  'registered_manager', 'service_manager', 'admin', 'group_admin', 'director',
+  'auditor', 'recruitment_admin',
+]
+
 const navSections = [
   {
     label: 'DASHBOARD', highlight: true,
@@ -78,14 +88,17 @@ const navSections = [
     ]
   },
   {
+    // Quality Assurance is not for care_staff at all — everything below is
+    // scoped to senior_carer and up, so plain frontline staff never see this
+    // section (they get their own view of complaints etc. elsewhere if needed).
     label: 'QUALITY ASSURANCE', highlight: true,
     items: [
-      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: [], featureKey: 'compliance' },
-      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: [], featureKey: 'complaints' },
-      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: [], featureKey: 'audits' },
-      { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: [], featureKey: 'audit_trail' },
-      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: [], featureKey: 'reports' },
-      { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: [], featureKey: 'cqc_notifications' },
+      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: NOT_CARE_STAFF, featureKey: 'compliance' },
+      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: NOT_CARE_STAFF, featureKey: 'complaints' },
+      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: NOT_CARE_STAFF, featureKey: 'audits' },
+      { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: NOT_CARE_STAFF, featureKey: 'audit_trail' },
+      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: NOT_CARE_STAFF, featureKey: 'reports' },
+      { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: NOT_CARE_STAFF, featureKey: 'cqc_notifications' },
     ]
   },
   {

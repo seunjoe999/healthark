@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
 import { Button, Input, Select } from '../../../components/ui'
 
-export default function FoodDrinkForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
+export default function FoodDrinkForm({ suId, onSaved, recordedAt }: { suId: string; onSaved: () => void; recordedAt?: string }) {
   const [entryType, setEntryType] = useState<'food' | 'drink'>('drink')
   const [form, setForm] = useState({ mealType: '', description: '', amountEaten: '', volumeMl: '', assisted: false, notes: '' })
   const [loading, setLoading] = useState(false)
@@ -12,7 +12,7 @@ export default function FoodDrinkForm({ suId, onSaved }: { suId: string; onSaved
     setLoading(true)
     try {
       await dailyRecordsApi.create({
-        suId, recordType: 'food_drink', entryType,
+        suId, recordType: 'food_drink', entryType, recordedAt,
         mealType: form.mealType || null,
         description: form.description,
         amountEaten: form.amountEaten || null,

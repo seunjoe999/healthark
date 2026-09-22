@@ -262,15 +262,15 @@ export default function DailyRecords() {
                         <h3 className="font-semibold text-slate-800 text-sm">{typeInfo?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</h3>
                         <span className="text-xs text-slate-400 ml-auto">{(typeRecords as any[]).length} record{(typeRecords as any[]).length > 1 ? 's' : ''}</span>
                       </div>
-                      <div className="divide-y divide-slate-50">
+                      <div className="divide-y divide-slate-100">
                         {(typeRecords as any[]).map((r: any) => (
-                          <div key={r.id} className="px-5 py-3">
+                          <div key={r.id} className="px-5 py-4">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
                                 <RecordSummary record={r} />
                               </div>
                               <div className="text-right flex-shrink-0">
-                                <p className="text-xs text-slate-400">{r.created_at ? format(new Date(r.created_at), 'HH:mm') : ''}</p>
+                                <p className="text-xs text-slate-400">{r.recorded_at ? format(new Date(r.recorded_at), 'HH:mm') : ''}</p>
                                 <p className="text-xs text-slate-400">{r.staff_name || ''}</p>
                                 <div className="flex gap-1 mt-1 justify-end">
                                   {(() => {
@@ -353,7 +353,7 @@ function buildDailyRecordsPrintHtml(suName: string, viewDateLabel: string, group
     const label = typeInfo?.label || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     const rows = (typeRecords as any[]).map(r => `
       <tr>
-        <td>${r.created_at ? new Date(r.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+        <td>${r.recorded_at ? new Date(r.recorded_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
         <td>${nl(summarizeRecordText(r))}</td>
         <td>${esc(r.staff_name)}</td>
       </tr>
@@ -413,16 +413,33 @@ function RecordSummary({ record: r }: { record: any }) {
   if (type === 'vitals_oxygen') return <p className="text-sm text-slate-700">SpO2: <strong>{r.spo2_percent}%</strong>{r.supplemental_o2 ? ' (on O₂)' : ''}</p>
   if (type === 'vitals_weight') return <p className="text-sm text-slate-700">Weight: <strong>{r.weight_kg}kg</strong>{r.bmi ? ` · BMI: ${r.bmi}` : ''}</p>
   if (type === 'bowel_movement') return <p className="text-sm text-slate-700">Bristol type {r.bristol_type || '—'}{r.notes ? ` · ${r.notes}` : ''}</p>
-  if (type === 'behaviour') return <p className="text-sm text-slate-700">{r.notes || 'Behaviour recorded'}</p>
-  if (type === 'prn_medication') return <p className="text-sm text-slate-700">{r.notes || 'PRN medication administered'}</p>
-  return <p className="text-sm text-slate-700">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p>
+  // whitespace-pre-wrap preserves the line breaks/paragraphs staff typed —
+  // without it the browser collapses them into one dense run of text, which
+  // is what staff were describing as everything being "jammed pack(ed)" together.
+  if (type === 'behaviour') return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'Behaviour recorded'}</p>
+  if (type === 'prn_medication') return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'PRN medication administered'}</p>
+  return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p>
+}
+
+// Local datetime-local string ("YYYY-MM-DDTHH:mm") for right now, used to seed
+// the "Recorded time" field below.
+function nowLocalInput(): string {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
 }
 
 function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; homeId: string; onClose: () => void; onSaved: () => void }) {
   const [type, setType] = useState('personal_care')
+  // Staff often document after the fact — back from a community visit, or
+  // catching up at the end of a shift — so records need to reflect when the
+  // task actually happened, not just when it was typed up, otherwise entries
+  // sort by save time and end up scattered out of chronological order.
+  const [recordedAtInput, setRecordedAtInput] = useState(nowLocalInput())
+  const recordedAt = recordedAtInput ? new Date(recordedAtInput).toISOString() : undefined
 
   const renderForm = () => {
-    const p = { suId, onSaved }
+    const p = { suId, onSaved, recordedAt }
     switch (type) {
       case 'body_map':        return <BodyMap suId={suId} onSaved={onSaved} />
       case 'incident':        return <IncidentForm suId={suId} onSaved={onSaved} />
@@ -449,6 +466,12 @@ function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; home
       <div className="space-y-4 pr-1">
         <Select label="Record type" value={type} onChange={e => setType(e.target.value)}
           options={RECORD_TYPES.map(r => ({ value: r.value, label: `${r.icon} ${r.label}` }))} />
+        <div>
+          <label className="label">Time this actually happened</label>
+          <input type="datetime-local" className="input w-full" value={recordedAtInput}
+            max={nowLocalInput()} onChange={e => setRecordedAtInput(e.target.value)} />
+          <p className="text-xs text-slate-400 mt-1">Defaults to now — change this if you're documenting something that happened earlier.</p>
+        </div>
         {renderForm()}
       </div>
     </Modal>
@@ -476,6 +499,11 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
       supplementalO2: record.supplemental_o2 || false,
     }
   })
+  const [recordedAtInput, setRecordedAtInput] = useState(() => {
+    const d = record.recorded_at ? new Date(record.recorded_at) : new Date()
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+    return d.toISOString().slice(0, 16)
+  })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
@@ -501,7 +529,10 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
         notesText = `Bristol type ${form.bristolType}${form.notes ? '. ' + form.notes : ''}`
       }
 
-      const payload: Record<string, any> = { notes: notesText, recordType: type }
+      const payload: Record<string, any> = {
+        notes: notesText, recordType: type,
+        recordedAt: recordedAtInput ? new Date(recordedAtInput).toISOString() : undefined,
+      }
       if (type === 'vitals_bp') { payload.systolic = parseFloat(form.systolic); payload.diastolic = parseFloat(form.diastolic); payload.pulse = form.pulse ? parseFloat(form.pulse) : null }
       else if (type === 'vitals_temp') { payload.tempCelsius = parseFloat(form.tempCelsius) }
       else if (type === 'vitals_oxygen') { payload.spo2Percent = parseFloat(form.spo2Percent); payload.supplementalO2 = form.supplementalO2 }
@@ -520,8 +551,12 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
   return (
     <Modal open={true} onClose={onClose} title={`Edit — ${typeInfo?.label || type?.replace(/_/g, ' ')}`} size="md">
       <div className="space-y-4">
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
-          Recorded at {record.created_at ? format(new Date(record.created_at), 'HH:mm, d MMM yyyy') : ''}{record.staff_name ? ` by ${record.staff_name}` : ''}
+        <div>
+          <label className="label">Time this actually happened</label>
+          <input type="datetime-local" className="input w-full" value={recordedAtInput}
+            max={(() => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16) })()}
+            onChange={e => setRecordedAtInput(e.target.value)} />
+          {record.staff_name && <p className="text-xs text-slate-400 mt-1">Originally recorded by {record.staff_name}</p>}
         </div>
 
         {/* Show appropriate fields based on type */}

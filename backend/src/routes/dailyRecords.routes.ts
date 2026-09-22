@@ -7,7 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
-import { isStaffClockedIn } from '../utils/clockStatus';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 
@@ -52,7 +52,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (homeId) { sql += ` AND dr.home_id = $${idx++}`; params.push(homeId); }
     if (date) { sql += ` AND dr.record_date = $${idx++}`; params.push(date); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
-    sql += ' ORDER BY dr.record_date DESC, dr.id DESC';
+    sql += ' ORDER BY dr.record_date DESC, dr.recorded_at DESC';
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
@@ -67,10 +67,25 @@ router.post('/', [
   try {
     const staffId = getStaffId(req);
     const homeId = req.body.homeId || getHomeId(req);
-    const { suId, recordType, shift, notes } = req.body;
+    const { suId, recordType, shift, notes, recordedAt } = req.body;
 
     if (!staffId) throw new AppError('Could not identify staff from token', 401);
     if (!homeId) throw new AppError('homeId required', 400);
+
+    // Staff often document late (e.g. back from a community visit) and need the
+    // record to reflect when the task actually happened, not when it was typed
+    // up — otherwise entries sort by save time and appear scattered out of
+    // order. Accept a staff-chosen time, but never in the future and never more
+    // than 48 hours in the past, so this can't be used to fabricate old records.
+    let effectiveRecordedAt: string | null = null;
+    if (recordedAt) {
+      const parsed = new Date(recordedAt);
+      if (isNaN(parsed.getTime())) throw new AppError('Invalid recordedAt', 400);
+      const now = Date.now();
+      if (parsed.getTime() > now + 5 * 60000) throw new AppError('Recorded time cannot be in the future', 400);
+      if (parsed.getTime() < now - 48 * 3600000) throw new AppError('Recorded time cannot be more than 48 hours ago', 400);
+      effectiveRecordedAt = parsed.toISOString();
+    }
 
     // Normalise frontend type names to backend switch cases
     const typeAliases: Record<string, string> = {
@@ -85,9 +100,9 @@ router.post('/', [
     const result = await transaction(async (client) => {
       // Create parent record (keep original type string for display)
       const drRows = await client.query(
-        `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, shift, notes)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-        [suId, homeId, staffId, recordType, shift || null, notes || null]
+        `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, shift, notes, recorded_at)
+         VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7, now())) RETURNING *`,
+        [suId, homeId, staffId, recordType, shift || null, notes || null, effectiveRecordedAt]
       );
       const dr = drRows.rows[0];
 
@@ -430,13 +445,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       const rec = existing[0];
 
       // care_staff can only edit their own records, and only while still
-      // clocked in — was previously locked to the same calendar day, which
-      // cut a night shift's editing window short right at midnight. Once
-      // they clock out, the record locks.
+      // clocked in or within 24 hours of clocking out — e.g. a night shift
+      // ends in the morning and an issue is spotted later that day, they
+      // shouldn't be locked out the instant they clock out. Locks fully once
+      // 24 hours have passed since their last clock-out.
       if (role === 'care_staff') {
         if (rec.staff_id !== staffId) throw new AppError('You can only edit your own records', 403);
-        if (!(await isStaffClockedIn(staffId))) {
-          throw new AppError('You can only edit your own records while still clocked in for your shift', 403);
+        if (!(await isWithinAmendWindow(staffId))) {
+          throw new AppError('You can only edit your own records for up to 24 hours after your shift ends', 403);
         }
       }
 
@@ -478,10 +494,23 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         );
       }
 
+      // Lets staff correct the recorded time itself, e.g. they picked "now"
+      // when first saving but actually meant an hour earlier — same bounds as
+      // creating a record (not future, not more than 48h in the past).
+      let recordedAtUpdate: string | null = null;
+      if (req.body.recordedAt) {
+        const parsed = new Date(req.body.recordedAt);
+        if (isNaN(parsed.getTime())) throw new AppError('Invalid recordedAt', 400);
+        const now = Date.now();
+        if (parsed.getTime() > now + 5 * 60000) throw new AppError('Recorded time cannot be in the future', 400);
+        if (parsed.getTime() < now - 48 * 3600000) throw new AppError('Recorded time cannot be more than 48 hours ago', 400);
+        recordedAtUpdate = parsed.toISOString();
+      }
+
       // Update the parent record notes field (daily_records has no updated_at column)
       const rows = await query(
-        `UPDATE daily_records SET notes=$1 WHERE id=$2 RETURNING *`,
-        [updateText, req.params.id]
+        `UPDATE daily_records SET notes=$1, recorded_at=COALESCE($2, recorded_at) WHERE id=$3 RETURNING *`,
+        [updateText, recordedAtUpdate, req.params.id]
       );
       if (!rows.length) throw new AppError('Record not found', 404);
       res.json({ success: true, data: rows[0] } as ApiResponse);

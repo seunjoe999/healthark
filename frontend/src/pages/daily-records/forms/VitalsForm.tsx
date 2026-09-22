@@ -5,7 +5,7 @@ import { Button, Input, Select } from '../../../components/ui'
 
 type VitalType = 'bp' | 'temp' | 'oxygen' | 'weight'
 
-export default function VitalsForm({ type, suId, onSaved }: { type: VitalType; suId: string; onSaved: () => void }) {
+export default function VitalsForm({ type, suId, onSaved, recordedAt }: { type: VitalType; suId: string; onSaved: () => void; recordedAt?: string }) {
   const [form, setForm] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(false)
   // MUST score fields
@@ -22,7 +22,7 @@ export default function VitalsForm({ type, suId, onSaved }: { type: VitalType; s
     setLoading(true)
     try {
       const recordType = `vitals_${type}`
-      await dailyRecordsApi.create({ suId, recordType, ...form })
+      await dailyRecordsApi.create({ suId, recordType, recordedAt, ...form })
       onSaved()
     } catch (err: any) { alert(err?.response?.data?.error || 'Failed to save') }
     finally { setLoading(false) }

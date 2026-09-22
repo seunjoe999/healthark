@@ -12,7 +12,7 @@ const BRISTOL = [
   { value: '7', label: 'Type 7 — Liquid with no solid pieces (diarrhoea)' },
 ]
 
-export default function BowelForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
+export default function BowelForm({ suId, onSaved, recordedAt }: { suId: string; onSaved: () => void; recordedAt?: string }) {
   const [form, setForm] = useState({ bristolType: '', frequencyToday: '1', colour: '', consistencyNotes: '', laxativeGiven: false })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -21,7 +21,7 @@ export default function BowelForm({ suId, onSaved }: { suId: string; onSaved: ()
     e.preventDefault()
     setLoading(true)
     try {
-      await dailyRecordsApi.create({ suId, recordType: 'bowel', bristolType: parseInt(form.bristolType), frequencyToday: parseInt(form.frequencyToday), colour: form.colour, consistencyNotes: form.consistencyNotes, laxativeGiven: form.laxativeGiven })
+      await dailyRecordsApi.create({ suId, recordType: 'bowel', recordedAt, bristolType: parseInt(form.bristolType), frequencyToday: parseInt(form.frequencyToday), colour: form.colour, consistencyNotes: form.consistencyNotes, laxativeGiven: form.laxativeGiven })
       onSaved()
     } catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }

@@ -570,10 +570,13 @@ function StaffMarReview({ homes, selectedHome, setSelectedHome, sus }: { homes: 
         ) : (
           <div className="space-y-3">
             <div className="flex justify-between items-center mb-2">
-              <p className="text-sm text-slate-500">Periodic reviews of this resident's Medication Administration Record — recorded by a manager.</p>
+              <p className="text-sm text-slate-500">Periodic reviews of this resident's Medication Administration Record.</p>
+              <a href={`/assessments/new?template=mar_review&category=service_user&subjectId=${selectedSuId}&homeId=${selectedHome}`}>
+                <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add MAR Review</Button>
+              </a>
             </div>
             {reviews.length === 0 ? (
-              <EmptyState title="No MAR reviews yet" description="A manager hasn't recorded one for this resident yet" />
+              <EmptyState title="No MAR reviews yet" description="Add the first MAR review for this resident" />
             ) : (
               reviews.map((r: any) => (
                 <a key={r.id} href={`/assessments/${r.id}`}
