@@ -49,7 +49,7 @@ const navSections = [
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
       { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
       { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
-      { label: 'Capacity & Professionals',          to: '/capacity-professionals', icon: Brain,      roles: [], featureKey: 'capacity_professionals' },
+      { label: 'Capacity & Professionals',          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
       { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
     ]
   },
