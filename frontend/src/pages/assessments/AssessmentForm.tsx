@@ -258,16 +258,19 @@ export default function AssessmentForm() {
             If the staff member isn't present to sign now, save the assessment and they can add their signature later from the assessment record.
           </p>
         </div>
-      </form>
 
-      {/* Sticky save bar — offset above the mobile bottom nav bar (which is
-          fixed bottom-0 at z-50) so it doesn't sit hidden/unclickable behind
-          it on phones. Long forms like Medication Audit made this the only
-          way to reach Save at all on mobile. */}
-      <div className="fixed bottom-[calc(60px+env(safe-area-inset-bottom,12px))] md:bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-lg px-6 py-1.5 flex justify-end gap-3 lg:left-64">
-        <Button type="button" variant="outline" onClick={() => navigate('/assessments')}>Cancel</Button>
-        <Button onClick={save} loading={saving}>Save assessment</Button>
-      </div>
+        {/* Save/Cancel used to be a fixed bar pinned to the bottom of the screen, offset
+            above the mobile nav bar by a hardcoded height. That worked in a regular mobile
+            browser but not reliably in the installed app, where the nav bar's actual height
+            and safe-area varies — the bar ended up hidden below the visible area with no way
+            to scroll down to it. Putting the buttons in normal document flow at the end of
+            the form means they're always reachable exactly like any other content: scroll to
+            the end, they're there, on every device and every app shell. */}
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mt-4 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => navigate('/assessments')}>Cancel</Button>
+          <Button onClick={save} loading={saving}>Save assessment</Button>
+        </div>
+      </form>
     </div>
   )
 }
