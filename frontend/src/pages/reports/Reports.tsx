@@ -34,16 +34,23 @@ const DAILY_RECORD_TYPES = [
   { value: 'bowel_movement', label: 'Bowel Movement' },
   { value: 'behaviour', label: 'Behavior Record (ABC)' },
   { value: 'welfare_check', label: 'Welfare Check' },
+  { value: 'comfort_check', label: 'Comfort Check' },
   { value: 'repositioning', label: 'Repositioning' },
   { value: 'oral_care', label: 'Oral Care' },
   { value: 'one_to_one', label: '1-to-1 Conversation' },
   { value: 'social_activity', label: 'Social Activity' },
   { value: 'social_visit', label: 'Social Visit' },
   { value: 'family_visit', label: 'Family Visit' },
+  { value: 'telephone_call', label: 'Telephone Call' },
   { value: 'incident', label: 'Incident' },
   { value: 'prn_medication', label: 'PRN Medication' },
+  { value: 'medication_stock_count', label: 'Medication Stock Count' },
+  { value: 'medication_disposed', label: 'Medication Disposed' },
+  { value: 'medication_received', label: 'Medication Received' },
+  { value: 'medication_ordered', label: 'Medication Ordered' },
   { value: 'handover', label: 'Handover Note' },
   { value: 'general_support', label: 'General Support' },
+  { value: 'housekeeping', label: 'Housekeeping' },
   { value: 'communication', label: 'Communication' },
   { value: 'vitals_bp', label: 'Blood Pressure' },
   { value: 'vitals_temp', label: 'Temperature' },
@@ -51,6 +58,7 @@ const DAILY_RECORD_TYPES = [
   { value: 'vitals_weight', label: 'Weight & MUST' },
   { value: 'body_map', label: 'Body Map / Skin' },
   { value: 'seizure', label: 'Seizure Episode' },
+  { value: 'follow_up', label: 'Follow Up' },
 ]
 
 export default function Reports() {
@@ -200,9 +208,59 @@ export default function Reports() {
             <GenericTable data={Array.isArray(data) ? data : []} reportType={reportType} />
           </div>
         </div>
+      ) : reportType === 'daily-records' ? (
+        <DailyRecordsReport data={Array.isArray(data) ? data : []} />
       ) : (
         <GenericTable data={Array.isArray(data) ? data : []} reportType={reportType} />
       )}
+    </div>
+  )
+}
+
+// Turns a row of raw daily_records columns into the same readable narrative text
+// staff actually wrote — mirrors RecordSummary in pages/daily-records/DailyRecords.tsx.
+// Without this the report showed bare column names and ISO timestamps instead of
+// what staff recorded, which is what this report is for (sent to social workers/families).
+function recordNarrative(r: any): string {
+  const type = r.record_type || ''
+  if (type === 'fluid_intake') return `${r.fluid_type || 'Fluid'} — ${r.amount_ml ?? '—'}ml${r.notes ? `. ${r.notes}` : ''}`
+  if (type === 'food_intake') return `${r.meal_type || 'Meal'}: ${r.amount_eaten || '—'}${r.food_description ? ` · ${r.food_description}` : ''}${r.notes ? `. ${r.notes}` : ''}`
+  if (type === 'vitals_bp') return `BP: ${r.systolic}/${r.diastolic} mmHg${r.pulse ? ` · Pulse: ${r.pulse}bpm` : ''}${r.notes ? `. ${r.notes}` : ''}`
+  if (type === 'vitals_temp') return `Temp: ${r.temp_celsius}°C${r.notes ? `. ${r.notes}` : ''}`
+  if (type === 'vitals_oxygen') return `SpO2: ${r.spo2_percent}%${r.supplemental_o2 ? ' (on O₂)' : ''}${r.notes ? `. ${r.notes}` : ''}`
+  if (type === 'vitals_weight') return `Weight: ${r.weight_kg}kg${r.bmi ? ` · BMI: ${r.bmi}` : ''}${r.notes ? `. ${r.notes}` : ''}`
+  if (type === 'bowel_movement') return `Bristol type ${r.bristol_type || '—'}${r.notes ? ` · ${r.notes}` : ''}`
+  return r.notes || r.description || (type ? type.replace(/_/g, ' ') : '—')
+}
+
+function DailyRecordsReport({ data }: { data: any[] }) {
+  if (!data.length) return <EmptyState title="No records found" description="No daily records found for this date range" />
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-3 border-b border-slate-100">
+        <p className="text-sm font-medium text-slate-700">{data.length} record{data.length !== 1 ? 's' : ''}</p>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {data.map((r: any, i: number) => {
+          const typeInfo = DAILY_RECORD_TYPES.find(t => t.value === r.record_type)
+          const when = r.recorded_at || r.record_date
+          return (
+            <div key={r.id ?? i} className="px-5 py-4">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                  {typeInfo?.label || (r.record_type || '').replace(/_/g, ' ')}
+                </span>
+                <span className="text-sm font-medium text-slate-900">{r.su_name}</span>
+                <span className="text-xs text-slate-400">
+                  {when ? format(new Date(when), 'd MMM yyyy, HH:mm') : '—'}
+                </span>
+                {r.staff_name && <span className="text-xs text-slate-400">· recorded by {r.staff_name}</span>}
+              </div>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{recordNarrative(r)}</p>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
