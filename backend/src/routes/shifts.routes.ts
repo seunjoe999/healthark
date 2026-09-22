@@ -178,7 +178,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
       su.first_name || ' ' || su.last_name as su_name,
       (SELECT string_agg(su2.first_name || ' ' || su2.last_name, ', ' ORDER BY su2.first_name)
-       FROM service_users su2 WHERE su2.id = ANY(COALESCE(sh.su_ids, ARRAY[sh.su_id]))) as su_names
+       FROM service_users su2 WHERE su2.id = ANY(COALESCE(sh.su_ids, ARRAY[sh.su_id]))) as su_names,
+      (SELECT MIN(ce.event_time) FROM staff_clock_events ce
+       WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in' AND ce.event_time::date = sh.shift_date) as clock_in_time,
+      (SELECT MAX(ce.event_time) FROM staff_clock_events ce
+       WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_out' AND ce.event_time::date = sh.shift_date) as clock_out_time
       FROM staff_shifts sh
       LEFT JOIN staff s ON s.id = sh.staff_id
       LEFT JOIN service_users su ON su.id = sh.su_id

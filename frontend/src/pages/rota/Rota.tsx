@@ -63,6 +63,36 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string; 
   cancelled: { bg: '#fee2e2', border: '#fca5a5', text: '#991b1b', dot: '#f87171' },
   on_hold:   { bg: '#fef3c7', border: '#fbbf24', text: '#92400e', dot: '#f59e0b' },
   completed: { bg: '#dbeafe', border: '#93c5fd', text: '#1e40af', dot: '#60a5fa' },
+  clocked_in: { bg: '#bbf7d0', border: '#22c55e', text: '#14532d', dot: '#16a34a' },
+  late:       { bg: '#fed7aa', border: '#f97316', text: '#7c2d12', dot: '#ea580c' },
+  missed:     { bg: '#fecaca', border: '#dc2626', text: '#7f1d1d', dot: '#b91c1c' },
+}
+
+// Grace period before a not-yet-clocked-in shift is flagged late.
+const LATE_GRACE_MINS = 10
+
+// Derives an at-a-glance display status from the shift's clock-in/out events —
+// RoundSys-style: staff who clocked in show green, late clock-ins show amber,
+// and shifts nobody ever clocked into (once their end time has passed) show red.
+// Only overrides the manager-set 'filled' status — cancelled/on_hold/completed/
+// unfilled are left exactly as the manager set them.
+function getDisplayStatus(shift: any, now: Date): string {
+  const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
+  if (status !== 'filled' || !shift.staff_id) return status
+
+  const st = shift.start_time?.substring(0, 5) || '08:00'
+  const et = shift.end_time?.substring(0, 5) || '09:00'
+  const shiftStart = new Date(`${shift.shift_date}T${st}:00`)
+  let shiftEnd = new Date(`${shift.shift_date}T${et}:00`)
+  if (shiftEnd <= shiftStart) shiftEnd = new Date(shiftEnd.getTime() + 24 * 60 * 60 * 1000)
+
+  if (shift.clock_in_time) {
+    const lateByMins = (new Date(shift.clock_in_time).getTime() - shiftStart.getTime()) / 60000
+    return lateByMins > LATE_GRACE_MINS ? 'late' : 'clocked_in'
+  }
+  if (now.getTime() > shiftEnd.getTime()) return 'missed'
+  if (now.getTime() > shiftStart.getTime() + LATE_GRACE_MINS * 60000) return 'late'
+  return 'filled'
 }
 const SHIFT_RELATIONS: Record<string, { label: string; bg: string; text: string }> = {
   shadow:     { label: 'Shadow shift',     bg: '#ede9fe', text: '#5b21b6' },
@@ -185,6 +215,15 @@ export default function Rota() {
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
+
+  // Drives clock-in/late/missed shift colouring — re-evaluated every minute so a
+  // shift flips from "on time" to "late" (and a green block flips to red once its
+  // end time passes with no clock-in) without needing a page reload.
+  const [nowTick, setNowTick] = useState(new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(new Date()), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -625,7 +664,7 @@ export default function Rota() {
                     const et = shift.end_time?.substring(0, 5)   || '09:00'
                     const top    = shiftTopPx(st)
                     const height = shiftHeightPx(st, et)
-                    const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
+                    const status = getDisplayStatus(shift, nowTick)
                     const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
                     const relation = SHIFT_RELATIONS[shift.shift_relation]
                     const selected = selectedShiftIds.has(shift.id)
@@ -661,7 +700,9 @@ export default function Rota() {
                           </span>
                         )}
                         <div className="px-2 py-1.5 h-full flex flex-col">
-                          <p className="text-[12px] font-extrabold leading-tight truncate">
+                          <p className="text-[12px] font-extrabold leading-tight truncate flex items-center gap-1">
+                            {status === 'clocked_in' && <CheckCircle className="w-3 h-3 flex-shrink-0" />}
+                            {(status === 'late' || status === 'missed') && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
                             {status === 'unfilled'
                               ? 'Unfilled'
                               : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
@@ -706,6 +747,15 @@ export default function Rota() {
             {s.label}
           </span>
         ))}
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS.clocked_in.dot }} />Clocked in
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS.late.dot }} />Late clock-in
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS.missed.dot }} />Missed clock-in
+        </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#fb7185' }} />Leave
         </span>
