@@ -15,8 +15,29 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (['medication_disposed', 'medication_received', 'medication_ordered'].includes(type) && !form.medicationName?.trim()) {
+      alert('Medication name is required'); return
+    }
     setLoading(true)
-    try { await dailyRecordsApi.create({ suId, recordType: type, recordedAt, ...form }); onSaved() }
+    try {
+      // These medication-logistics types have no dedicated backend table —
+      // like several other simple record types, their structured fields are
+      // composed into notes so they're actually saved and displayed, rather
+      // than silently dropped by daily-records' generic insert.
+      let notes = form.notes || ''
+      if (type === 'medication_disposed') {
+        notes = [`Medication: ${form.medicationName}`, form.quantity && `Quantity disposed: ${form.quantity}`,
+          form.reason && `Reason: ${form.reason}`, form.witnessedBy && `Witnessed by: ${form.witnessedBy}`, notes].filter(Boolean).join('\n')
+      } else if (type === 'medication_received') {
+        notes = [`Medication: ${form.medicationName}`, form.quantity && `Quantity received: ${form.quantity}`,
+          form.receivedFrom && `Received from: ${form.receivedFrom}`, form.witnessedBy && `Received by: ${form.witnessedBy}`, notes].filter(Boolean).join('\n')
+      } else if (type === 'medication_ordered') {
+        notes = [`Medication: ${form.medicationName}`, form.quantity && `Quantity ordered: ${form.quantity}`,
+          form.receivedFrom && `Ordered from: ${form.receivedFrom}`, form.expectedDate && `Expected delivery: ${form.expectedDate}`, notes].filter(Boolean).join('\n')
+      }
+      await dailyRecordsApi.create({ suId, recordType: type, recordedAt, ...form, notes })
+      onSaved()
+    }
     catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -69,6 +90,27 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <Input label="Dose" value={form.dose || ''} onChange={e => set('dose', e.target.value)} placeholder="e.g. 500mg, 2 tablets..." />
         <div><label className="label">Reason for giving *</label><textarea required className="input" rows={2} value={form.reason || ''} onChange={e => set('reason', e.target.value)} placeholder="Why was this medication needed..." /></div>
         <Input label="Witnessed by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Name of witness..." />
+      </>)}
+
+      {type === 'medication_disposed' && (<>
+        <Input label="Medication name *" required value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="Name of medication disposed of..." />
+        <Input label="Quantity disposed" value={form.quantity || ''} onChange={e => set('quantity', e.target.value)} placeholder="e.g. 12 tablets, 50ml..." />
+        <Input label="Reason for disposal" value={form.reason || ''} onChange={e => set('reason', e.target.value)} placeholder="e.g. Discontinued, expired, damaged..." />
+        <Input label="Witnessed by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Name of witness..." />
+      </>)}
+
+      {type === 'medication_received' && (<>
+        <Input label="Medication name *" required value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="Name of medication received..." />
+        <Input label="Quantity received" value={form.quantity || ''} onChange={e => set('quantity', e.target.value)} placeholder="e.g. 28 tablets, box of 56..." />
+        <Input label="Received from" value={form.receivedFrom || ''} onChange={e => set('receivedFrom', e.target.value)} placeholder="e.g. Pharmacy name..." />
+        <Input label="Received by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Staff who checked the delivery in..." />
+      </>)}
+
+      {type === 'medication_ordered' && (<>
+        <Input label="Medication name *" required value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="Name of medication ordered..." />
+        <Input label="Quantity ordered" value={form.quantity || ''} onChange={e => set('quantity', e.target.value)} placeholder="e.g. 28 tablets..." />
+        <Input label="Ordered from" value={form.receivedFrom || ''} onChange={e => set('receivedFrom', e.target.value)} placeholder="e.g. Pharmacy name..." />
+        <Input label="Expected delivery date" type="date" value={form.expectedDate || ''} onChange={e => set('expectedDate', e.target.value)} />
       </>)}
 
       {type === 'handover' && (<>

@@ -307,7 +307,10 @@ export default function MAR() {
           </div>
 
           {/* ── Tabs ───────────────────────────────────────────────── */}
-          <div className={`no-print border-b ${marColors.border} px-4 flex gap-0 overflow-x-auto`} style={{ background: marColors.panel, WebkitOverflowScrolling: 'touch' }}>
+          {/* Every tab gets a solid background pill, not just a thin underline
+              on the active one — a plain-text tab with no background reads as
+              greyed-out/disabled to staff, not as a clickable section. */}
+          <div className={`no-print border-b ${marColors.border} px-3 py-2 flex gap-2 flex-wrap`} style={{ background: marColors.panel, WebkitOverflowScrolling: 'touch' }}>
             {[
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
@@ -318,7 +321,7 @@ export default function MAR() {
               { key: 'mar_review', label: 'MAR Review' },
             ].filter(t => t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false).map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
-                className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === t.key ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'}`}>
                 {t.label}
               </button>
             ))}
@@ -640,7 +643,7 @@ function StaffAssessmentReview({ homes, selectedHome, setSelectedHome, sus, tool
           <div className="flex gap-1">
             {tools.map(t => (
               <button key={t.key} onClick={() => setActiveTemplateKey(t.key)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${t.key === active.key ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${t.key === active.key ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'}`}>
                 {t.label}
               </button>
             ))}
