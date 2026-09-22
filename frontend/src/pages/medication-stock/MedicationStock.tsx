@@ -207,14 +207,24 @@ function AddEditModal({
 
 // ─── Adjust modal ─────────────────────────────────────────────────────────────
 
+// Mirrors the exact "Medication Team Count" template staff already know from
+// their daily countdown task (TIME/DATE/STAFF NAME/MEDICATION NAME/STRENGTH/
+// QUANTITY AT HAND/QUANTITY ADMINISTERED/QUANTITY REMAINING/IDENTIFIED ISSUE)
+// so the count screen looks like the form they're used to, instead of a
+// generic "adjust quantity" dialog. "Quantity at hand" is what's currently on
+// record (the count before this administration); "Quantity remaining" is
+// computed live as they type, matching the paper/RoundSys workflow.
 function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () => void; onSaved: () => void }) {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const [adjustmentType, setAdjustmentType] = useState('administered')
   const [quantityChange, setQuantityChange] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
   const isReceived = adjustmentType === 'received'
+  const isCount = adjustmentType === 'administered'
+  const staffName = `${(user as any)?.firstName || ''} ${(user as any)?.lastName || ''}`.trim() || (user as any)?.name || ''
 
   const handleAdjust = async () => {
     const rawQty = parseFloat(quantityChange)
@@ -244,32 +254,56 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
     return Math.max(0, item.quantity_remaining + change)
   })()
 
+  const rowLabelCls = "text-xs font-semibold text-slate-400 uppercase tracking-wider w-40 flex-shrink-0"
+
   return (
-    <Modal title={`Adjust Stock — ${item.medication_name}`} onClose={onClose}>
+    <Modal title={`Medication Count — ${item.medication_name}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="rounded-xl p-3 text-center" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.08)' }}>
-          <p className="text-xs text-slate-500">Current quantity</p>
-          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
-        </div>
         <Field label="Reason">
           <select className={inputCls} value={adjustmentType} onChange={e => setAdjustmentType(e.target.value)}>
             {ADJUSTMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </Field>
-        <Field label={isReceived ? 'Quantity received' : 'Quantity to deduct'}>
-          <input
-            type="number" min="0" step="0.5" className={inputCls}
-            value={quantityChange} onChange={e => setQuantityChange(e.target.value)}
-            placeholder="0"
-          />
-        </Field>
-        {preview !== null && (
-          <div className="text-center text-sm">
-            New quantity will be: <span className={`font-bold ${preview <= item.reorder_threshold ? 'text-amber-600' : 'text-emerald-600'}`}>{preview} {item.unit}</span>
+
+        {isCount ? (
+          <div className="rounded-xl p-4 space-y-2.5" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.08)' }}>
+            <div className="flex items-center gap-3"><span className={rowLabelCls}>Time</span><span className="text-sm">{format(new Date(), 'HH:mm')}</span></div>
+            <div className="flex items-center gap-3"><span className={rowLabelCls}>Date</span><span className="text-sm">{format(new Date(), 'dd/MM/yyyy')}</span></div>
+            <div className="flex items-center gap-3"><span className={rowLabelCls}>Staff Name</span><span className="text-sm">{staffName || '—'}</span></div>
+            <div className="flex items-center gap-3"><span className={rowLabelCls}>Medication Name</span><span className="text-sm">{item.medication_name}</span></div>
+            <div className="flex items-center gap-3"><span className={rowLabelCls}>Strength</span><span className="text-sm">{item.strength || '—'}</span></div>
+            <div className="flex items-center gap-3"><span className={rowLabelCls}>Quantity At Hand</span><span className="text-sm font-semibold">{formatQty(item.quantity_remaining)} {item.unit}</span></div>
+            <div className="flex items-center gap-3">
+              <span className={rowLabelCls}>Quantity Administered</span>
+              <input type="number" min="0" step="0.5" className={inputCls} value={quantityChange} onChange={e => setQuantityChange(e.target.value)} placeholder="0" />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={rowLabelCls}>Quantity Remaining</span>
+              <span className={`text-sm font-bold ${preview !== null && preview <= item.reorder_threshold ? 'text-amber-500' : ''}`}>
+                {preview !== null ? `${formatQty(preview)} ${item.unit}` : '—'}
+              </span>
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="rounded-xl p-3 text-center" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.08)' }}>
+              <p className="text-xs text-slate-500">Current quantity</p>
+              <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
+            </div>
+            <Field label={isReceived ? 'Quantity received' : 'Quantity to deduct'}>
+              <input type="number" min="0" step="0.5" className={inputCls} value={quantityChange} onChange={e => setQuantityChange(e.target.value)} placeholder="0" />
+            </Field>
+            {preview !== null && (
+              <div className="text-center text-sm">
+                New quantity will be: <span className={`font-bold ${preview <= item.reorder_threshold ? 'text-amber-600' : 'text-emerald-600'}`}>{preview} {item.unit}</span>
+              </div>
+            )}
+          </>
         )}
-        <Field label="Notes (optional)">
-          <textarea className={inputCls} rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Administered to patient at 09:00..." />
+
+        <Field label={isCount ? 'Identified Issue (optional)' : 'Notes (optional)'}>
+          <textarea className={inputCls} rows={2} value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder={isCount ? 'Describe any discrepancy identified and follow the escalation protocol...' : 'Administered to patient at 09:00...'} />
         </Field>
         <div className="flex justify-end gap-2 pt-2">
           <button className="btn-ghost" onClick={onClose}>Cancel</button>

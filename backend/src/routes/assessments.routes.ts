@@ -141,6 +141,56 @@ const TEMPLATES: Template[] = [
   },
 
   {
+    key: 'medication_audit', name: 'Medication Audit', category: 'service_user',
+    description: 'Audit of medication stock, ordering, and administration compliance.',
+    reviewFrequency: 'Every six months or 26 weeks',
+    sections: [{
+      id: 's1', title: 'Medication Audit',
+      questions: [
+        yn('q1', 'Have all discontinued medications been removed from MAR/System, and stocks returned to the pharmacy?'),
+        yn('q2', 'Are the quantities of residents\' medication checked prior to ordering to ensure appropriate stock holding of medication?'),
+        yn('q3', 'Are all Opened Medications dated and liquids with use by date?'),
+        ynBox('q4', 'Are there any gaps on the countdown sheet?', 'If so what date is missing and action taken?'),
+        yn('q5', 'Does the list of current stock medications accurately reflect the list of medications on the Care plan and Mar?'),
+        ynBox('q6', 'Has medication stock count been completed on each shift?', 'If not why?'),
+        ynBox('q7', 'Are there any Mistakes/Counting errors on the Count Down Sheet?', 'If why?'),
+        ynBox('q8', 'Does the number of tablets left match the balance expected?', 'If not pls report this immediately.'),
+        yn('q9', 'Is there at least 7 days medication supply?', ),
+        yn('q10', 'Are regular refusals of medicines raised with the GP, Social worker and Management?'),
+        yn('q11', 'Has the manager been informed if PRN medicines are being given regularly?'),
+        txt('q12', 'Has the GP reviewed all the medication in the last 6 months? Pls enter GP last review date.'),
+        yn('q13', 'Have identified issues been escalated?'),
+        txt('q14', 'If yes, who did you report to?'),
+      ]
+    }]
+  },
+
+  {
+    key: 'mar_chart_audit', name: 'Mar Chart Audit', category: 'service_user',
+    description: 'Audit of MAR chart accuracy, completion, and administration recording.',
+    reviewFrequency: 'Every six months or 26 weeks',
+    sections: [{
+      id: 's1', title: 'Mar Chart Audit',
+      questions: [
+        yn('q1', 'Are medication allergies or "No known allergies" details on the Mar?'),
+        yn('q2', 'Were any discrepancies identified on the Mar Chart?'),
+        ynBox('q3', 'Are there any gaps on the Mar?', 'If so what date is missing?'),
+        ynBox('q4', 'Are regular refusals of medicines raised with the GP, Social worker and Management?', 'If so what date?'),
+        yn('q5', 'Has the manager been informed if PRN medicines are being administered regularly?'),
+        yn('q6', 'Where CDs administration witnessed, were MARs signed by two members of staff?'),
+        ynBox('q7', 'Are there any gaps in signature/initials on the Mar Chart?'),
+        yn('q8', 'Were all medications entered correctly on the Mar?'),
+        ynBox('q9', 'Were medications administered at the right time?', 'If not was reason documented?'),
+        yn('q10', 'Were medications signed by staff on shift using their login?'),
+        yn('q11', 'Are correct/appropriate codes recorded when medication has not been required or refused, and cross-referenced to give a reason/further explanation?'),
+        yn('q12', 'Was the appropriate medication type/form selected during recording?'),
+        yn('q13', 'Have identified issues been escalated?'),
+        txt('q14', 'Name of Manager issues were escalated to, and time of escalation.'),
+      ]
+    }]
+  },
+
+  {
     key: 'mar_review', name: 'MAR Review', category: 'service_user',
     description: 'Periodic review of a service user\'s Medication Administration Record.',
     sections: [{
@@ -1864,6 +1914,13 @@ router.get('/templates/:key', (req: Request, res: Response) => {
 // records and must not be browsable by other frontline staff.
 const ASSESSMENT_MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
+// team_leader can be explicitly granted MAR Review access via Settings → Access
+// Rights (the 'mar_review' feature flag) — when they have been, they must
+// actually be able to record one, not just view past ones the flag would
+// otherwise be pointless. This is scoped to mar_review only; every other
+// manager-gated assessment/review type stays restricted to ASSESSMENT_MANAGER_ROLES.
+const MAR_REVIEW_WRITE_ROLES = [...ASSESSMENT_MANAGER_ROLES, 'team_leader'];
+
 // GET /api/assessments
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -1927,7 +1984,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 
     // MAR Review is management sign-off, not a frontline task — staff can view
     // past reviews but only managers may record a new one.
-    if (templateKey === 'mar_review' && !ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '')) {
+    if (templateKey === 'mar_review' && !MAR_REVIEW_WRITE_ROLES.includes(req.staff?.role || '')) {
       return res.status(403).json({ success: false, error: 'Only managers can record a MAR Review' } as ApiResponse);
     }
 
@@ -1962,7 +2019,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     if (!existing.length) return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
     const ex = existing[0] as any;
 
-    if (ex.template_key === 'mar_review' && !ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '')) {
+    if (ex.template_key === 'mar_review' && !MAR_REVIEW_WRITE_ROLES.includes(req.staff?.role || '')) {
       return res.status(403).json({ success: false, error: 'Only managers can amend a MAR Review' } as ApiResponse);
     }
 

@@ -267,7 +267,7 @@ export default function DailyRecords() {
                           <div key={r.id} className="px-5 py-4">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
-                                <RecordSummary record={r} />
+                                <RecordSummary record={r} suName={selectedSu ? getName(selectedSu) : ''} />
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <p className="text-xs text-slate-400">{r.recorded_at ? format(new Date(r.recorded_at), 'HH:mm') : ''}</p>
@@ -404,7 +404,23 @@ function buildDailyRecordsPrintHtml(suName: string, viewDateLabel: string, group
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Daily Records</title><style>${LETTERHEAD_PRINT_CSS}${logCss}</style></head><body>${body}</body></html>`
 }
 
-function RecordSummary({ record: r }: { record: any }) {
+// Matches the Date / Staff on Duty / Service User / Time header staff asked
+// for (shown to them as an example from another system's daily notes) — shown
+// above the free-text narrative so those details are visible in the record
+// itself, not just as small metadata off to the side.
+function RecordHeader({ record: r, suName }: { record: any; suName?: string }) {
+  const recordedAt = r.recorded_at ? new Date(r.recorded_at) : null
+  return (
+    <div className="text-xs text-slate-500 mb-1.5 space-y-0.5">
+      {recordedAt && <p><span className="font-semibold text-slate-600">Date:</span> {format(recordedAt, 'dd/MM/yyyy')}</p>}
+      {r.staff_name && <p><span className="font-semibold text-slate-600">Staff on Duty:</span> {r.staff_name}</p>}
+      {suName && <p><span className="font-semibold text-slate-600">Service User:</span> {suName}</p>}
+      {recordedAt && <p><span className="font-semibold text-slate-600">Time:</span> {format(recordedAt, 'HH:mm')}</p>}
+    </div>
+  )
+}
+
+function RecordSummary({ record: r, suName }: { record: any; suName?: string }) {
   const type = r.record_type || ''
   if (type === 'fluid_intake') return <p className="text-sm text-slate-700">{r.fluid_type || 'Fluid'} — <strong>{r.amount_ml}ml</strong></p>
   if (type === 'food_intake') return <p className="text-sm text-slate-700">{r.meal_type || 'Meal'}: <strong>{r.amount_eaten || '—'}</strong>{r.food_description ? ` · ${r.food_description}` : ''}</p>
@@ -416,9 +432,9 @@ function RecordSummary({ record: r }: { record: any }) {
   // whitespace-pre-wrap preserves the line breaks/paragraphs staff typed —
   // without it the browser collapses them into one dense run of text, which
   // is what staff were describing as everything being "jammed pack(ed)" together.
-  if (type === 'behaviour') return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'Behaviour recorded'}</p>
-  if (type === 'prn_medication') return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'PRN medication administered'}</p>
-  return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p>
+  if (type === 'behaviour') return <><RecordHeader record={r} suName={suName} /><p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'Behaviour recorded'}</p></>
+  if (type === 'prn_medication') return <><RecordHeader record={r} suName={suName} /><p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'PRN medication administered'}</p></>
+  return <><RecordHeader record={r} suName={suName} /><p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p></>
 }
 
 // Local datetime-local string ("YYYY-MM-DDTHH:mm") for right now, used to seed

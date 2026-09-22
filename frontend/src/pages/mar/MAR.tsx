@@ -76,12 +76,14 @@ export default function MAR() {
   const [stockData, setStockData] = useState<any[]>([])
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review'>(() => {
+  const [tab, setTab] = useState<'mar' | 'medications' | 'stock' | 'gp_pharmacy' | 'mar_review' | 'medication_audit' | 'mar_chart_audit'>(() => {
     const requested = new URLSearchParams(window.location.search).get('tab')
     if (requested === 'mar_review' && !isRole('group_admin') && user?.featureFlags?.mar_review === false) return 'mar'
     return (requested as any) || 'mar'
   })
   const [marReviews, setMarReviews] = useState<any[]>([])
+  const [medicationAudits, setMedicationAudits] = useState<any[]>([])
+  const [marChartAudits, setMarChartAudits] = useState<any[]>([])
   const [addMedOpen, setAddMedOpen] = useState(false)
   const [editMedModal, setEditMedModal] = useState<any>(null)
   const [stockModalMed, setStockModalMed] = useState<any>(null)
@@ -118,16 +120,20 @@ export default function MAR() {
     if (!su) return
     setLoading(true)
     try {
-      const [chartRes, medRes, stockRes, marReviewRes] = await Promise.all([
+      const [chartRes, medRes, stockRes, marReviewRes, medAuditRes, marChartAuditRes] = await Promise.all([
         api.get(`/mar/chart-report/${su.id}`, { params: { startDate, endDate } }),
         api.get(`/mar/medications/${su.id}`),
         api.get(`/mar/stock/${su.id}`),
         api.get('/assessments', { params: { category: 'service_user', templateKey: 'mar_review', subjectId: su.id } }),
+        api.get('/assessments', { params: { category: 'service_user', templateKey: 'medication_audit', subjectId: su.id } }),
+        api.get('/assessments', { params: { category: 'service_user', templateKey: 'mar_chart_audit', subjectId: su.id } }),
       ])
       setChartData(chartRes.data.data || null)
       setMedications(medRes.data.data || [])
       setStockData(stockRes.data.data || [])
       setMarReviews(marReviewRes.data.data || [])
+      setMedicationAudits(medAuditRes.data.data || [])
+      setMarChartAudits(marChartAuditRes.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [startDate, endDate])
@@ -160,10 +166,16 @@ export default function MAR() {
   // and Directors from ever reaching the MAR Review tab.
   const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
   if (!isPrivilegedMar) {
-    // A staff member granted MAR Review access (Settings → Access Rights) should
-    // land on an actual review screen — not the "medication due today" task list
-    // that every other non-privileged visit to /mar shows.
-    if (tab === 'mar_review') return <StaffMarReview homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} sus={sus} />
+    // A staff member granted MAR Review / Medication Audit / Mar Chart Audit
+    // access (Settings → Access Rights) should land on an actual review/audit
+    // screen — not the "medication due today" task list that every other
+    // non-privileged visit to /mar shows. Team leaders are the main audience:
+    // they run these audits but aren't privileged enough for the full MAR tabs.
+    const grantedTools = STAFF_MAR_TOOLS.filter(t => user?.featureFlags?.[t.flagKey] === true)
+    if (grantedTools.length > 0) {
+      return <StaffAssessmentReviewGated homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} sus={sus}
+        tools={grantedTools} initialKey={grantedTools.find(t => t.key === tab)?.key || grantedTools[0].key} />
+    }
     return <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
   }
 
@@ -301,10 +313,12 @@ export default function MAR() {
               { key: 'medications', label: 'Medications' },
               { key: 'stock', label: 'Stock Count' },
               { key: 'gp_pharmacy', label: 'GP & Pharmacy' },
+              { key: 'medication_audit', label: 'Medication Audit' },
+              { key: 'mar_chart_audit', label: 'Mar Chart Audit' },
               { key: 'mar_review', label: 'MAR Review' },
             ].filter(t => t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false).map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
-                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${tab === t.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                 {t.label}
               </button>
             ))}
@@ -400,6 +414,56 @@ export default function MAR() {
               </div>
             ) : tab === 'gp_pharmacy' ? (
               <GPPharmacyTab su={su} medications={medications} />
+            ) : tab === 'medication_audit' ? (
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-slate-500">Medication stock, ordering and administration compliance audit for this resident.</p>
+                  <a href={`/assessments/new?template=medication_audit&category=service_user&subjectId=${su.id}&homeId=${selectedHome}`}>
+                    <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add Medication Audit</Button>
+                  </a>
+                </div>
+                {medicationAudits.length === 0 ? (
+                  <EmptyState title="No medication audits yet" description="Add the first medication audit for this resident" />
+                ) : (
+                  <div className="space-y-2">
+                    {medicationAudits.map((r: any) => (
+                      <a key={r.id} href={`/assessments/${r.id}`}
+                        className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Medication Audit'}</p>
+                          {r.risk_level && <span className="text-xs text-slate-400">{r.risk_level}</span>}
+                        </div>
+                        {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : tab === 'mar_chart_audit' ? (
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-slate-500">MAR chart accuracy, completion and recording audit for this resident.</p>
+                  <a href={`/assessments/new?template=mar_chart_audit&category=service_user&subjectId=${su.id}&homeId=${selectedHome}`}>
+                    <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add Mar Chart Audit</Button>
+                  </a>
+                </div>
+                {marChartAudits.length === 0 ? (
+                  <EmptyState title="No Mar Chart audits yet" description="Add the first Mar Chart audit for this resident" />
+                ) : (
+                  <div className="space-y-2">
+                    {marChartAudits.map((r: any) => (
+                      <a key={r.id} href={`/assessments/${r.id}`}
+                        className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Mar Chart Audit'}</p>
+                          {r.risk_level && <span className="text-xs text-slate-400">{r.risk_level}</span>}
+                        </div>
+                        {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : tab === 'mar_review' ? (
               <div className="p-4 space-y-3">
                 <div className="flex justify-between items-center mb-2">
@@ -522,7 +586,32 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
 
 // A standalone review screen for staff granted MAR Review access (via Settings →
 // Access Rights → MAR Review) without giving them the full privileged MAR grid.
-function StaffMarReview({ homes, selectedHome, setSelectedHome, sus }: { homes: any[]; selectedHome: string; setSelectedHome: (v: string) => void; sus: any[] }) {
+const STAFF_MAR_TOOLS = [
+  { key: 'mar_review', label: 'MAR Review', flagKey: 'mar_review' },
+  { key: 'medication_audit', label: 'Medication Audit', flagKey: 'medication_audit' },
+  { key: 'mar_chart_audit', label: 'Mar Chart Audit', flagKey: 'mar_chart_audit' },
+]
+
+// Owns the tab-switch state so the parent MAR component (which conditionally
+// returns before its own render) doesn't need a hook for this.
+function StaffAssessmentReviewGated({ homes, selectedHome, setSelectedHome, sus, tools, initialKey }: {
+  homes: any[]; selectedHome: string; setSelectedHome: (v: string) => void; sus: any[]
+  tools: typeof STAFF_MAR_TOOLS; initialKey: string
+}) {
+  const [activeTemplateKey, setActiveTemplateKey] = useState(initialKey)
+  return <StaffAssessmentReview homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} sus={sus}
+    tools={tools} activeTemplateKey={activeTemplateKey} setActiveTemplateKey={setActiveTemplateKey} />
+}
+
+// Shared by MAR Review, Medication Audit and Mar Chart Audit for staff who've
+// been granted one or more of these via Settings → Access Rights but aren't
+// privileged enough for the full MAR tab bar (team leaders, mainly — they're
+// the ones who actually run these audits day to day). Shows a small tab
+// switcher across whichever of the three the staff member's flags allow.
+function StaffAssessmentReview({ homes, selectedHome, setSelectedHome, sus, tools, activeTemplateKey, setActiveTemplateKey }: {
+  homes: any[]; selectedHome: string; setSelectedHome: (v: string) => void; sus: any[]
+  tools: typeof STAFF_MAR_TOOLS; activeTemplateKey: string; setActiveTemplateKey: (v: string) => void
+}) {
   const { theme } = useTheme()
   const panelBg = theme === 'dark' ? '#111' : '#ffffff'
   const pageBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
@@ -530,22 +619,33 @@ function StaffMarReview({ homes, selectedHome, setSelectedHome, sus }: { homes: 
   const [selectedSuId, setSelectedSuId] = useState('')
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const active = tools.find(t => t.key === activeTemplateKey) || tools[0]
 
   useEffect(() => {
     if (!selectedSuId) { setReviews([]); return }
     setLoading(true)
-    api.get('/assessments', { params: { category: 'service_user', templateKey: 'mar_review', subjectId: selectedSuId } })
+    api.get('/assessments', { params: { category: 'service_user', templateKey: active.key, subjectId: selectedSuId } })
       .then(res => setReviews(res.data.data || []))
       .catch(() => setReviews([]))
       .finally(() => setLoading(false))
-  }, [selectedSuId])
+  }, [selectedSuId, active.key])
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: pageBg }}>
       <div className={`border-b ${panelBorder} px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2`} style={{ background: panelBg }}>
         <span className="font-bold text-slate-800 text-sm flex items-center gap-1.5 flex-shrink-0">
-          <Pill className="w-4 h-4 text-purple-600" /> MAR Review
+          <Pill className="w-4 h-4 text-purple-600" /> {active.label}
         </span>
+        {tools.length > 1 && (
+          <div className="flex gap-1">
+            {tools.map(t => (
+              <button key={t.key} onClick={() => setActiveTemplateKey(t.key)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${t.key === active.key ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
         {homes.length > 1 && (
           <select className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-700"
             value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setSelectedSuId('') }}>
@@ -564,25 +664,25 @@ function StaffMarReview({ homes, selectedHome, setSelectedHome, sus }: { homes: 
 
       <div className="flex-1 overflow-auto p-4">
         {!selectedSuId ? (
-          <EmptyState title="Select a resident" description="Choose a resident above to view or add their MAR reviews" />
+          <EmptyState title="Select a resident" description={`Choose a resident above to view or add their ${active.label.toLowerCase()}`} />
         ) : loading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
         ) : (
           <div className="space-y-3">
             <div className="flex justify-between items-center mb-2">
-              <p className="text-sm text-slate-500">Periodic reviews of this resident's Medication Administration Record.</p>
-              <a href={`/assessments/new?template=mar_review&category=service_user&subjectId=${selectedSuId}&homeId=${selectedHome}`}>
-                <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add MAR Review</Button>
+              <p className="text-sm text-slate-500">{active.label} for this resident.</p>
+              <a href={`/assessments/new?template=${active.key}&category=service_user&subjectId=${selectedSuId}&homeId=${selectedHome}`}>
+                <Button size="sm" icon={<Plus className="w-4 h-4" />}>Add {active.label}</Button>
               </a>
             </div>
             {reviews.length === 0 ? (
-              <EmptyState title="No MAR reviews yet" description="Add the first MAR review for this resident" />
+              <EmptyState title={`No ${active.label.toLowerCase()} yet`} description={`Add the first ${active.label.toLowerCase()} for this resident`} />
             ) : (
               reviews.map((r: any) => (
                 <a key={r.id} href={`/assessments/${r.id}`}
                   className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-purple-300 transition-all">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-slate-800">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'MAR Review'}</p>
+                    <p className="font-semibold text-slate-800">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : active.label}</p>
                     {r.answers?.q1 && <span className="text-xs text-slate-400">{r.answers.q1}</span>}
                   </div>
                   {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}

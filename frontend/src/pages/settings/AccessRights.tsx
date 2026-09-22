@@ -36,6 +36,8 @@ const FEATURES = [
   { key: 'care_plans',          label: 'Support Plans',               group: 'Residents' },
   { key: 'mar',                 label: 'Medication (MAR)',             group: 'Residents' },
   { key: 'mar_review',          label: 'MAR Review',                  group: 'Residents' },
+  { key: 'medication_audit',    label: 'Medication Audit',            group: 'Residents' },
+  { key: 'mar_chart_audit',     label: 'Mar Chart Audit',             group: 'Residents' },
   { key: 'medicine_risk',       label: 'Medication Risk Assessment',  group: 'Residents' },
   { key: 'risk_management',     label: 'Other Risk Assessment',       group: 'Residents' },
   { key: 'outcomes',            label: 'Care Outcomes',               group: 'Residents' },

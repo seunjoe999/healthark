@@ -1816,6 +1816,14 @@ export default function CarePlans() {
           onEdit={() => { setEditPlan(viewPlan); setViewPlan(null) }}
           onDelete={async () => { await deletePlan(viewPlan.id) }}
           onPrint={() => printPlan(viewPlan)}
+          onReview={async () => {
+            try {
+              await api.post(`/care-plans/${viewPlan.id}/mark-reviewed`)
+              toast.success('Marked as reviewed')
+              setViewPlan(null)
+              await refreshPlans()
+            } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to mark as reviewed') }
+          }}
         />
       )}
 
@@ -1866,10 +1874,11 @@ export default function CarePlans() {
   )
 }
 
-function PlanDetailModal({ plan, su, reads, canDelete, canEdit, onClose, onEdit, onDelete, onPrint }: {
+function PlanDetailModal({ plan, su, reads, canDelete, canEdit, onClose, onEdit, onDelete, onPrint, onReview }: {
   plan: any; su?: any; reads: any[]; canDelete: boolean; canEdit: boolean;
-  onClose: () => void; onEdit: () => void; onDelete: () => void; onPrint: () => void
+  onClose: () => void; onEdit: () => void; onDelete: () => void; onPrint: () => void; onReview: () => void
 }) {
+  const [reviewing, setReviewing] = useState(false)
   const label = plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type
   const isMed = plan.plan_type === 'medication_support'
   const isTemplatedPlan = TEMPLATED_TYPES.has(plan.plan_type)
@@ -2162,8 +2171,13 @@ function PlanDetailModal({ plan, su, reads, canDelete, canEdit, onClose, onEdit,
 
         <div className="flex gap-2 pt-3 border-t border-slate-100 flex-wrap">
           <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={onPrint}>Print</Button>
+          <Button size="sm" variant="secondary" icon={<CheckCircle className="w-3.5 h-3.5" />} loading={reviewing}
+            title="Confirm you've read this in full and nothing needs changing — logs the review without opening the edit form"
+            onClick={async () => { setReviewing(true); try { await onReview() } finally { setReviewing(false) } }}>
+            Review
+          </Button>
           {canEdit && (
-            <Button size="sm" variant="secondary" icon={<Edit className="w-3.5 h-3.5" />} onClick={onEdit}>Edit & review</Button>
+            <Button size="sm" variant="secondary" icon={<Edit className="w-3.5 h-3.5" />} onClick={onEdit}>Edit</Button>
           )}
           {canDelete && (
             <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={onDelete}>Delete</Button>

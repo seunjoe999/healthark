@@ -77,7 +77,11 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'is_prn', val: isPrn },
         { field: 'is_controlled', val: isControlled },
         { field: 'medicine_type', val: medicineType },
-        { field: 'apply_time', val: applyTime },
+        // apply_time is a Postgres `time` column — toggling a medication to PRN
+        // clears the apply-time field in the UI to '', which Postgres rejects
+        // outright ("invalid input syntax for type time"), 500ing the whole
+        // request. Empty string must become NULL, same as the date fields below.
+        { field: 'apply_time', val: applyTime !== undefined ? nd(applyTime) : undefined },
       ].filter(u => u.val !== undefined);
       if (!updates.length) { res.status(400).json({ success: false, error: 'No fields to update' }); return; }
       const setClauses = updates.map((u, i) => `${u.field}=$${i + 1}`).join(', ');

@@ -287,6 +287,41 @@ router.post('/:id/read', param('id').isUUID(), validateRequest,
   }
 );
 
+// POST /api/care-plans/:id/mark-reviewed — quick "I've read this, nothing to
+// change" confirmation for staff who don't have full edit rights. Unlike the
+// full PUT above (managers only, changes content), this only stamps the
+// review date/next-review date forward and logs who confirmed it — it can't
+// alter the plan itself, so it's safe to open to any staff who can view it.
+router.post('/:id/mark-reviewed', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      if (!staffId) throw new AppError('Could not identify staff from token', 401);
+
+      const existing = await query<any>('SELECT review_frequency FROM care_plans WHERE id = $1', [req.params.id]);
+      if (!existing.length) throw new AppError('Care plan not found', 404);
+
+      const freqDays: Record<string, number> = {
+        weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365
+      };
+      const days = freqDays[existing[0].review_frequency || 'monthly'] || 30;
+      const nextReview = new Date();
+      nextReview.setDate(nextReview.getDate() + days);
+
+      const rows = await query(
+        `UPDATE care_plans SET last_review_date = CURRENT_DATE, next_review_date = $1,
+           reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [nextReview.toISOString().split('T')[0], staffId, req.params.id]
+      );
+      await query(
+        'INSERT INTO care_plan_updates (care_plan_id, update_notes, updated_by) VALUES ($1,$2,$3)',
+        [req.params.id, 'Reviewed — read in full, no changes required.', staffId]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/care-plans/:id/reads — recent reads for a plan
 router.get('/:id/reads', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
