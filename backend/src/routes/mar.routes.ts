@@ -257,6 +257,41 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       );
       const record = rows[0] as any;
 
+      // Medication Stock now tracks itself automatically off actual administration
+      // instead of relying on a manual "administered" adjustment on the Stock page
+      // (which staff kept forgetting to do, or double-counted against the separate
+      // paper/task-based count). Only decrements for codes that mean medication
+      // actually left the packet (given=true) — refused/omitted/etc. never touch
+      // stock. Quantity per dose is parsed from the medication's `dose` field
+      // (e.g. "2 tablets" -> 2), defaulting to 1 when it can't be parsed. Wrapped
+      // so a stock-table issue never blocks the MAR record itself from saving.
+      if (given) {
+        try {
+          const stockRows = await query<any>(
+            'SELECT id, current_stock FROM medication_stock WHERE su_id = $1 AND medication_id = $2',
+            [suId, medicationId]
+          );
+          if (stockRows.length) {
+            const stock = stockRows[0];
+            const doseRows = await query<any>('SELECT dose FROM su_medications WHERE id = $1', [medicationId]);
+            const doseMatch = String(doseRows[0]?.dose || '').match(/^(\d+(\.\d+)?)/);
+            const qtyPerDose = doseMatch ? parseFloat(doseMatch[1]) : 1;
+            const before = parseFloat(stock.current_stock);
+            const after = Math.max(0, before - qtyPerDose);
+            await query(
+              'UPDATE medication_stock SET current_stock = $1, last_updated_by = $2, updated_at = NOW() WHERE id = $3',
+              [after, staffId || null, stock.id]
+            );
+            await query(
+              `INSERT INTO medication_stock_log
+                 (stock_id, adjusted_by, adjustment_type, quantity_change, quantity_before, quantity_after, notes)
+               VALUES ($1,$2,'administered',$3,$4,$5,$6)`,
+              [stock.id, staffId || null, -qtyPerDose, before, after, `Auto-deducted from MAR administration on ${recordDate || ukDateStr()}`]
+            );
+          }
+        } catch (stockErr) { /* non-fatal — MAR record already saved */ }
+      }
+
       // Notify staff member asked to sign off this record (separate from controlled-drug witness)
       if (signoffRequestedBy) {
         try {

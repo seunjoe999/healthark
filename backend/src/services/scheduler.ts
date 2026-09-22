@@ -123,27 +123,30 @@ async function checkExpiringTraining() {
 async function checkLowMedicationStock() {
   try {
     const { query } = await import('../config/database');
+    // Was querying current_quantity/minimum_quantity/is_active — none of which
+    // exist on medication_stock (the real columns are current_stock and
+    // reorder_threshold, and there's no soft-delete flag on this table) — so
+    // this check has been silently no-op'ing on every run since it always hit
+    // a column-does-not-exist error, caught below. Now matches the real schema.
     const rows = await query<any>(
-      `SELECT ms.id, ms.medication_name, ms.current_quantity, ms.minimum_quantity,
+      `SELECT ms.id, ms.medication_name, ms.current_stock, ms.reorder_threshold,
               ms.unit, ms.home_id,
               mgr.id as manager_id
        FROM medication_stock ms
        JOIN staff mgr ON mgr.home_id = ms.home_id
            AND mgr.role IN ('home_manager','group_admin') AND mgr.is_active = true
-       WHERE ms.current_quantity <= ms.minimum_quantity
-         AND ms.is_active = true
+       WHERE ms.current_stock <= ms.reorder_threshold
        LIMIT 100`
     );
     for (const row of rows) {
       await query(
         `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-         VALUES ($1,$2,$3,$4,'warning','/medication-stock')
-         ON CONFLICT DO NOTHING`,
+         VALUES ($1,$2,$3,$4,'warning','/medication-stock')`,
         [
           row.manager_id,
           row.home_id,
           `Low medication stock — ${row.medication_name}`,
-          `Current stock: ${row.current_quantity} ${row.unit}. Minimum threshold: ${row.minimum_quantity} ${row.unit}. Please reorder.`,
+          `Current stock: ${row.current_stock} ${row.unit}. Reorder threshold: ${row.reorder_threshold} ${row.unit}. Please reorder.`,
         ]
       );
     }

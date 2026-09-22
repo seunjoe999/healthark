@@ -1095,45 +1095,16 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
           <span className="text-slate-400">|</span>
           <span className="text-slate-500 italic">Click any past cell to log or view record</span>
         </div>
+        {/* Generated directly from MAR_CODE_OPTIONS so this key can never drift
+            out of sync with the actual codes staff pick from again — it
+            previously hardcoded a stale, contradictory duplicate list. */}
         <div className="font-mono text-slate-300 bg-white/5 border border-white/10 rounded px-3 py-1.5 leading-relaxed">
-          <span className="font-bold text-slate-800">Attempted codes:</span>{' '}
-          {['A','D','DC','E','F','H','L','MR','N','NR','NT','O','R','S','SM'].map((code, i, arr) => (
-            <span key={code}>
-              <span className="font-bold text-slate-900">{code}</span>
-              {i < arr.length - 1 && <span className="text-slate-400">, </span>}
+          {MAR_CODE_OPTIONS.map((o, i) => (
+            <span key={o.code}>
+              <span className="font-bold text-slate-800">{o.code}</span> = {o.label}
+              {i < MAR_CODE_OPTIONS.length - 1 && <span className="mx-1 text-slate-300">|</span>}
             </span>
           ))}
-          {' '}<span className="text-slate-500">= Attempted</span>
-          <span className="mx-3 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">A</span> = Administered
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">D</span> = Disposed
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">DC</span> = Discontinued
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">E</span> = Exempt
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">F</span> = Further Supply Needed
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">H</span> = Held
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">L</span> = Late
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">MR</span> = Medicine Refused
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">N</span> = Not Available
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">NR</span> = Not Required
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">NT</span> = Not Taken
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">O</span> = Omitted
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">R</span> = Refused
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">S</span> = Self-Medicated / Success
-          <span className="mx-1 text-slate-300">|</span>
-          <span className="font-bold text-slate-800">SM</span> = Self-Medicated
         </div>
       </div>
     </div>
@@ -1313,11 +1284,11 @@ function WitnessSignOffModal({ recordId, onClose }: { recordId: string; onClose:
 /* ─── Log MAR Modal ────────────────────────────────────────────────────── */
 export const MAR_CODE_OPTIONS = [
   { code: 'G',  label: 'Given',          desc: 'Administered',          color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.4)',  given: true,  refused: false },
-  { code: 'SM', label: 'Assisted',       desc: 'Prompted/assisted',     color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.4)',   given: true,  refused: false },
+  { code: 'A',  label: 'Assisted',       desc: 'Prompted/assisted',     color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.4)',   given: true,  refused: false },
   { code: 'S',  label: 'Self-med',       desc: 'Self-medicated',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.4)',  given: true,  refused: false },
   { code: 'R',  label: 'Refused',        desc: 'Resident refused',      color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.4)',   given: false, refused: true  },
-  { code: 'MR', label: 'Med refused',    desc: 'Medicine refused',      color: '#f97316', bg: 'rgba(249,115,22,0.12)',  border: 'rgba(249,115,22,0.4)',  given: false, refused: true  },
-  { code: 'A',  label: 'Attempted',      desc: 'Attempt made',          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.4)',  given: false, refused: false },
+  { code: 'MA', label: 'Not Available',  desc: 'Medication not available to administer', color: '#f97316', bg: 'rgba(249,115,22,0.12)',  border: 'rgba(249,115,22,0.4)',  given: false, refused: false },
+  { code: 'AT', label: 'Attempted',      desc: 'Attempt made',          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.4)',  given: false, refused: false },
   { code: 'D',  label: 'Early',          desc: 'Dosed early',           color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.4)',  given: false, refused: false },
   { code: 'L',  label: 'Late',           desc: 'Administered late',     color: '#6366f1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.4)',  given: false, refused: false },
   { code: 'N',  label: 'Not available',  desc: 'Stock not available',   color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.4)', given: false, refused: false },
@@ -1325,7 +1296,7 @@ export const MAR_CODE_OPTIONS = [
   { code: 'NT', label: 'Not taken',      desc: 'Resident did not take', color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',   border: 'rgba(244,63,94,0.4)',  given: false, refused: false },
   { code: 'NR', label: 'Not required',   desc: 'Not required today',    color: '#64748b', bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.4)', given: false, refused: false },
   { code: 'F',  label: 'Fasted',         desc: 'Fasted/withheld',       color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.4)', given: false, refused: false },
-  { code: 'H',  label: 'On hold',        desc: 'Medication on hold',    color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)',  border: 'rgba(14,165,233,0.4)',  given: false, refused: false },
+  { code: 'H',  label: 'Hold/Hospital',  desc: 'Medication on hold, or resident in hospital', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)',  border: 'rgba(14,165,233,0.4)',  given: false, refused: false },
   { code: 'DC', label: 'Discontinued',   desc: 'Discontinued',          color: '#78716c', bg: 'rgba(120,113,108,0.12)', border: 'rgba(120,113,108,0.4)', given: false, refused: false },
   { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
 ]
@@ -1533,7 +1504,7 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
           </div>
         )}
 
-        {(selected?.refused || selectedCode === 'A' || selectedCode === 'F' || selectedCode === 'H' || selectedCode === 'O' || selectedCode === 'E') && (
+        {(selected?.refused || selectedCode === 'AT' || selectedCode === 'MA' || selectedCode === 'F' || selectedCode === 'H' || selectedCode === 'O' || selectedCode === 'E') && (
           <Input label="Reason / notes" value={reason} onChange={e => setReason(e.target.value)} placeholder="Enter reason..." />
         )}
 

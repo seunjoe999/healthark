@@ -20,6 +20,7 @@ import BowelForm from './forms/BowelForm'
 import BehaviourForm from './forms/BehaviourForm'
 import GeneralForm from './forms/GeneralForm'
 import FollowUpForm from './forms/FollowUpForm'
+import MedicationCountForm from './forms/MedicationCountForm'
 import SocialActivities from '../social-activities/SocialActivities'
 import BathChart from '../bath-chart/BathChart'
 import BowelChart from '../bowel-chart/BowelChart'
@@ -55,6 +56,7 @@ const RECORD_TYPES = [
   { value: 'telephone_call', label: 'Telephone Call', icon: '📞' },
   { value: 'incident', label: 'Incident', icon: '⚠️' },
   { value: 'prn_medication', label: 'PRN Medication', icon: '💊' },
+  { value: 'medication_stock_count', label: 'Medication Stock Count', icon: '💊' },
   { value: 'handover', label: 'Handover Note', icon: '📝' },
   { value: 'general_support', label: 'General Support', icon: '🤝' },
   { value: 'housekeeping', label: 'Housekeeping', icon: '🧹' },
@@ -473,6 +475,7 @@ function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; home
       case 'vitals_oxygen':   return <VitalsForm type="oxygen" {...p} />
       case 'vitals_weight':   return <VitalsForm type="weight" {...p} />
       case 'follow_up':       return <FollowUpForm suId={suId} homeId={homeId} onSaved={onSaved} />
+      case 'medication_stock_count': return <MedicationCountForm {...p} />
       default:                return <GeneralForm type={type} {...p} />
     }
   }
