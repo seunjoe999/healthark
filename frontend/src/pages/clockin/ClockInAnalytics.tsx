@@ -103,14 +103,30 @@ export default function ClockInAnalytics() {
   }, [user])
 
   // Load analytics
-  useEffect(() => {
+  const loadAnalytics = () => {
     if (!selectedHome) return
     setLoading(true)
     api.get('/clockin/analytics', { params: { homeId: selectedHome, startDate, endDate } })
       .then(res => setData(res.data.data))
       .catch(() => toast.error('Failed to load analytics'))
       .finally(() => setLoading(false))
-  }, [selectedHome, startDate, endDate])
+  }
+  useEffect(loadAnalytics, [selectedHome, startDate, endDate])
+
+  const [forcingOut, setForcingOut] = useState<string | null>(null)
+  const forceClockOut = async (staffId: string, staffName: string) => {
+    if (!window.confirm(`Clock ${staffName} out now? Use this when they're stuck clocked in and can't clock out themselves.`)) return
+    setForcingOut(staffId)
+    try {
+      await api.post(`/clockin/force-clockout/${staffId}`, { homeId: selectedHome })
+      toast.success(`${staffName} clocked out`)
+      loadAnalytics()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to clock out')
+    } finally {
+      setForcingOut(null)
+    }
+  }
 
   // Build a full week of day labels so we always show Mon–Sun even if no data
   const weekDays = useMemo(() => {
@@ -273,6 +289,7 @@ export default function ClockInAnalytics() {
                       <th className="text-center px-4 py-3">Clock-outs</th>
                       <th className="text-left px-4 py-3">Last event</th>
                       <th className="text-left px-4 py-3">Status</th>
+                      <th className="text-left px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -297,10 +314,22 @@ export default function ClockInAnalytics() {
                             {row.last_event ? formatTime(row.last_event) : '—'}
                           </td>
                           <td className="px-4 py-3">
-                            {isActiveToday ? (
+                            {row.currently_clocked_in ? (
+                              <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Clocked in now</span>
+                            ) : isActiveToday ? (
                               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Active today</span>
                             ) : (
                               <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">Not today</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {row.currently_clocked_in && (
+                              <button
+                                onClick={() => forceClockOut(row.staff_id, row.staff_name)}
+                                disabled={forcingOut === row.staff_id}
+                                className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors">
+                                {forcingOut === row.staff_id ? 'Clocking out…' : 'Force clock out'}
+                              </button>
                             )}
                           </td>
                         </tr>

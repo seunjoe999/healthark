@@ -38,5 +38,36 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
     visible = visible.filter((t: any) => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
   }
 
+  // Only tasks due within the staff member's own shift(s) today block them from
+  // clocking out — a general "all staff" task due during the NEXT shift is that
+  // shift's responsibility, not theirs. Previously this counted every pending
+  // task for the whole day regardless of who was on shift when, so staff could
+  // never clock out: the next shift's tasks always showed as still outstanding.
+  // A task with no due_time can't be matched to a shift, so it's left in
+  // (same as before) rather than silently exempting it.
+  if (staffId) {
+    const shiftRows = await query<any>(
+      `SELECT start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+      [staffId, homeId, todayStr]
+    );
+    if (shiftRows.length) {
+      const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+      const windows = shiftRows.map((s: any) => {
+        const start = toMin(String(s.start_time).slice(0, 5));
+        let end = toMin(String(s.end_time).slice(0, 5));
+        if (end <= start) end += 1440; // overnight shift
+        return { start, end };
+      });
+      visible = visible.filter((t: any) => {
+        if (!t.due_time) return true;
+        const raw = toMin(String(t.due_time).slice(0, 5));
+        return windows.some(w => {
+          const due = raw < w.start ? raw + 1440 : raw;
+          return due >= w.start && due <= w.end;
+        });
+      });
+    }
+  }
+
   return visible.map((t: any) => ({ id: t.id, title: t.title, dueTime: t.due_time || null }));
 }

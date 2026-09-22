@@ -15,12 +15,14 @@ const SHIFT_TIMES: Record<string, string> = {
   early: '07:00 – 14:00',
   late: '14:00 – 22:00',
   night: '22:00 – 07:00',
+  long_day: '08:00 – 20:00',
 }
 
 const SHIFT_LABELS: Record<string, string> = {
   early: 'Early',
   late: 'Late',
   night: 'Night',
+  long_day: 'Long Day',
 }
 
 function SignOffSection({ homeId, shiftDate, shiftType }: { homeId: string; shiftDate: string; shiftType: string }) {
@@ -202,7 +204,7 @@ export default function HandoverReport() {
   const [homes, setHomes] = useState<any[]>([])
   const [sus, setSus] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
-  const [shift, setShift] = useState<'early' | 'late' | 'night'>('early')
+  const [shift, setShift] = useState<'early' | 'late' | 'night' | 'long_day'>('early')
   const [residentNotes, setResidentNotes] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [savedAt, setSavedAt] = useState<Record<string, number>>({})
@@ -341,6 +343,7 @@ export default function HandoverReport() {
               { value: 'early', label: 'Early (07:00–14:00)' },
               { value: 'late', label: 'Late (14:00–22:00)' },
               { value: 'night', label: 'Night (22:00–07:00)' },
+              { value: 'long_day', label: 'Long Day (08:00–20:00)' },
             ]} />
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Filter by resident</label>

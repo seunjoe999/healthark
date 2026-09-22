@@ -260,8 +260,11 @@ export default function AssessmentForm() {
         </div>
       </form>
 
-      {/* Sticky save bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-lg px-6 py-1.5 flex justify-end gap-3 lg:left-64">
+      {/* Sticky save bar — offset above the mobile bottom nav bar (which is
+          fixed bottom-0 at z-50) so it doesn't sit hidden/unclickable behind
+          it on phones. Long forms like Medication Audit made this the only
+          way to reach Save at all on mobile. */}
+      <div className="fixed bottom-[calc(60px+env(safe-area-inset-bottom,12px))] md:bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-lg px-6 py-1.5 flex justify-end gap-3 lg:left-64">
         <Button type="button" variant="outline" onClick={() => navigate('/assessments')}>Cancel</Button>
         <Button onClick={save} loading={saving}>Save assessment</Button>
       </div>

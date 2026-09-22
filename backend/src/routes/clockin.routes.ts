@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -303,14 +303,18 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
       [homeId, startDate, endDate]
     );
 
-    // By staff
+    // By staff — includes currently_clocked_in (their most recent event overall,
+    // not just within this date range) so managers can spot and force-clock-out
+    // anyone stuck clocked in from a shift where they couldn't complete/save a
+    // task and the app wouldn't let them clock out.
     const byStaffRows = await query<any>(
       `SELECT ce.staff_id,
          s.first_name || ' ' || s.last_name as staff_name,
          COUNT(*) FILTER (WHERE ce.event_type='clock_in') as clock_ins,
          COUNT(*) FILTER (WHERE ce.event_type='clock_out') as clock_outs,
          COUNT(*) as total_events,
-         MAX(ce.event_time) as last_event
+         MAX(ce.event_time) as last_event,
+         (SELECT ce2.event_type FROM staff_clock_events ce2 WHERE ce2.staff_id = ce.staff_id ORDER BY ce2.event_time DESC LIMIT 1) = 'clock_in' as currently_clocked_in
        FROM staff_clock_events ce
        JOIN staff s ON s.id = ce.staff_id
        WHERE ce.home_id = $1 AND ce.event_time::date BETWEEN $2 AND $3
@@ -381,6 +385,39 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
     } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+// POST /api/clockin/force-clockout/:staffId — manager override for staff stuck
+// clocked in because the app's normal clock-out gate (complete all pending
+// tasks) couldn't be satisfied — e.g. a task/handover form that wouldn't save,
+// or a task from the next shift still showing as theirs. Bypasses that gate
+// entirely; this is a deliberate escape hatch, not a fix for the underlying
+// task-completion bug, which is handled separately.
+router.post('/force-clockout/:staffId', authenticate,
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  param('staffId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const staffRows = await query<any>('SELECT id FROM staff WHERE id = $1 AND home_id = $2', [req.params.staffId, homeId]);
+      if (!staffRows.length) throw new AppError('Staff member not found', 404);
+
+      const lastEvent = await query<any>(
+        `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        [req.params.staffId]
+      );
+      if (lastEvent[0]?.event_type !== 'clock_in') {
+        throw new AppError('This staff member is not currently clocked in', 400);
+      }
+
+      await query(
+        `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality)
+         VALUES ($1,$2,'clock_out',NOW(),true,'on_time')`,
+        [req.params.staffId, homeId]
+      );
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // GET /api/clockin/postcodes/:homeId — list postcodes for a home
 router.get('/postcodes/:homeId', authenticate, param('homeId').isUUID(), validateRequest,
