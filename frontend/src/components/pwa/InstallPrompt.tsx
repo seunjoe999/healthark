@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Share } from 'lucide-react'
+import { Share, AlertTriangle, Copy } from 'lucide-react'
 import { getInstallPrompt, subscribeInstallPrompt, triggerInstall } from '../../utils/installPrompt'
 import toast from 'react-hot-toast'
 
@@ -11,6 +11,20 @@ const INITIAL_DELAY_MS = 10_000
 
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
+}
+
+// See InstallApp.tsx for why this matters — Apple restricts home-screen install
+// to Safari itself, so Chrome/Firefox/Edge on iOS need to be told to switch,
+// not shown steps that will silently fail to do anything in their browser.
+function isNonSafariIOSBrowser() {
+  return /CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent)
+}
+
+function copyLink() {
+  navigator.clipboard?.writeText(window.location.origin).then(
+    () => toast.success('Link copied — paste it into Safari\'s address bar'),
+    () => toast.error('Could not copy — type compcarehub.co.uk into Safari manually')
+  )
 }
 
 function isInStandalone() {
@@ -195,6 +209,20 @@ export default function InstallPrompt() {
                 className="rounded-2xl p-4 mb-4"
                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
+                {isNonSafariIOSBrowser() && (
+                  <div className="mb-4 p-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)' }}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#f59e0b' }} />
+                      <p className="text-sm font-bold" style={{ color: '#fbbf24' }}>You're using Chrome — switch to Safari first</p>
+                    </div>
+                    <p className="text-xs mb-2.5" style={{ color: '#d1d5db' }}>Apple only allows Safari to install apps on iPhone/iPad.</p>
+                    <button onClick={copyLink}
+                      className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5"
+                      style={{ background: '#f59e0b', color: '#0a0a0a' }}>
+                      <Copy className="w-3.5 h-3.5" /> Copy link to paste into Safari
+                    </button>
+                  </div>
+                )}
                 <p className="text-slate-300 text-sm font-medium mb-3">How to install on iPhone / iPad:</p>
                 <div className="space-y-3">
                   {[

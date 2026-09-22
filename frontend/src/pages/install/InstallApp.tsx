@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from 'react'
-import { Share, Download, CheckCircle2, MoreVertical } from 'lucide-react'
+import { Share, Download, CheckCircle2, MoreVertical, AlertTriangle, Copy } from 'lucide-react'
 import { getInstallPrompt, subscribeInstallPrompt, triggerInstall } from '../../utils/installPrompt'
 import toast from 'react-hot-toast'
 
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
+}
+
+// Apple only lets Safari itself install a home-screen app — Chrome, Firefox and
+// Edge on iOS are all still WebKit under the hood (Apple requires it) but Apple
+// withholds the "Add to Home Screen" install capability from them specifically.
+// Staff opening this page in Chrome on an iPhone would previously just see the
+// Safari steps with an easy-to-miss footnote explaining why they don't apply —
+// this makes "you're in the wrong browser" the headline instead.
+function isNonSafariIOSBrowser() {
+  return /CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent)
 }
 
 function isInStandalone() {
@@ -24,6 +34,14 @@ export default function InstallApp() {
   const [deferredPrompt, setDeferredPrompt] = useState(getInstallPrompt())
   const [installed, setInstalled] = useState(isInStandalone())
   const ios = isIOS()
+  const wrongIOSBrowser = ios && isNonSafariIOSBrowser()
+
+  function copyLink() {
+    navigator.clipboard?.writeText(window.location.origin).then(
+      () => toast.success('Link copied — paste it into Safari\'s address bar'),
+      () => toast.error('Could not copy — type compcarehub.co.uk into Safari manually')
+    )
+  }
 
   useEffect(() => {
     if (installed) return
@@ -71,6 +89,19 @@ export default function InstallApp() {
         </div>
       ) : ios ? (
         <div className="rounded-2xl p-5 bg-white border border-slate-200 shadow-sm">
+          {wrongIOSBrowser && (
+            <div className="mb-5 p-4 rounded-2xl bg-amber-50 border-2 border-amber-300">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <p className="text-sm font-bold text-amber-900">You're using Chrome — switch to Safari first</p>
+              </div>
+              <p className="text-xs text-amber-800 mb-3">Apple only allows Safari to install apps to the Home Screen on iPhone/iPad. Open this same page in Safari, then follow the steps below.</p>
+              <button onClick={copyLink}
+                className="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-amber-600 text-white hover:bg-amber-700 transition-colors">
+                <Copy className="w-4 h-4" /> Copy link to paste into Safari
+              </button>
+            </div>
+          )}
           <p className="text-sm font-semibold text-slate-700 mb-4">How to install on iPhone / iPad:</p>
           <div className="space-y-4">
             {[
