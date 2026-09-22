@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { alertsService } from './alerts.service';
 import { logger } from '../config/logger';
 import { getDueTodayTasks } from '../utils/medicationDue';
+import { ukDateStr, ukTimeHHMM, ukDayOfWeek } from '../utils/ukTime';
 
 // ================================================================
 // HEALTHARK SCHEDULED JOBS
@@ -42,8 +43,8 @@ async function generateDailyTasks() {
     const { query } = await import('../config/database');
     // Get all active homes
     const homes = await query<any>('SELECT id FROM homes WHERE is_active = true');
-    const today = new Date().toISOString().split('T')[0];
-    const dayOfWeek = new Date().getDay();
+    const today = ukDateStr();
+    const dayOfWeek = ukDayOfWeek();
 
     for (const home of homes) {
       const templates = await query<any>(
@@ -162,12 +163,12 @@ async function checkMissedMedication() {
   try {
     const { query } = await import('../config/database');
     const homes = await query<any>('SELECT id FROM homes WHERE is_active = true');
-    const today = new Date().toISOString().split('T')[0];
-    const nowHHMM = new Date().toTimeString().slice(0, 5);
+    const today = ukDateStr();
+    const nowHHMM = ukTimeHHMM();
     // A dose isn't "missed" the second the clock ticks past its time — give
     // staff a reasonable window to actually administer it before alerting.
     const graceMinutes = 60;
-    const cutoff = new Date(Date.now() - graceMinutes * 60000).toTimeString().slice(0, 5);
+    const cutoff = ukTimeHHMM(new Date(Date.now() - graceMinutes * 60000));
 
     for (const home of homes as any[]) {
       const tasks = await getDueTodayTasks(home.id, '', 'home_manager');
@@ -231,9 +232,9 @@ async function checkMissedMedication() {
 async function checkOverdueTasks() {
   try {
     const { query } = await import('../config/database');
-    const today = new Date().toISOString().split('T')[0];
+    const today = ukDateStr();
     const graceMinutes = 60;
-    const cutoffHHMM = new Date(Date.now() - graceMinutes * 60000).toTimeString().slice(0, 5);
+    const cutoffHHMM = ukTimeHHMM(new Date(Date.now() - graceMinutes * 60000));
 
     const overdue = await query<any>(
       `SELECT t.id, t.home_id, t.title, t.task_date, t.due_time
@@ -334,6 +335,13 @@ async function checkLateOrMissedShifts() {
   } catch (err) { logger.error('Late/missed shift check failed:', err); }
 }
 
+// The server runs in UTC, but every one of these "at Nam" jobs means UK wall-clock
+// time — without this, they silently fire an hour late (or early) for half the
+// year, whenever the UK is on BST instead of GMT. This is the same root cause as
+// the MAR "not due yet" bug (see utils/ukTime.ts): server-local time drifting
+// from the UK time the business actually runs on.
+const UK_TZ = { timezone: 'Europe/London' };
+
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
@@ -341,46 +349,46 @@ export function startScheduler(): void {
   cron.schedule('0 * * * *', async () => {
     logger.info('Scheduler: checking fluid intake');
     await alertsService.checkFluidIntake();
-  });
+  }, UK_TZ);
 
   // Every 2 hours: check for missed tasks
   cron.schedule('0 */2 * * *', async () => {
     logger.info('Scheduler: checking care plan reviews');
     await alertsService.checkCarePlanReviews();
-  });
+  }, UK_TZ);
 
   // Every morning at 7am: low medication stock alerts
-  cron.schedule('0 7 * * *', checkLowMedicationStock);
+  cron.schedule('0 7 * * *', checkLowMedicationStock, UK_TZ);
 
   // Every 30 minutes: missed medication alerts to managers
-  cron.schedule('*/30 * * * *', checkMissedMedication);
+  cron.schedule('*/30 * * * *', checkMissedMedication, UK_TZ);
 
   // Every 30 minutes: overdue/missed general task alerts to managers
-  cron.schedule('*/30 * * * *', checkOverdueTasks);
+  cron.schedule('*/30 * * * *', checkOverdueTasks, UK_TZ);
 
   // Every 15 minutes: late/no-show shift alerts to managers
-  cron.schedule('*/15 * * * *', checkLateOrMissedShifts);
+  cron.schedule('*/15 * * * *', checkLateOrMissedShifts, UK_TZ);
 
   // Every morning at 8am: training expiry checks
   cron.schedule('0 8 * * *', async () => {
     logger.info('Scheduler: checking training expiry');
     await alertsService.checkTrainingExpiry();
-  });
+  }, UK_TZ);
 
   // Every morning at 8am: expiring training notifications
-  cron.schedule('0 8 * * *', checkExpiringTraining);
+  cron.schedule('0 8 * * *', checkExpiringTraining, UK_TZ);
 
   // Every morning at 9am: unreviewed incidents
   cron.schedule('0 9 * * *', async () => {
     logger.info('Scheduler: checking incident reviews');
     await alertsService.checkIncidentReviews();
-  });
+  }, UK_TZ);
 
   // Monthly report: 1st of each month at 6am
   cron.schedule('0 6 1 * *', async () => {
     logger.info('Scheduler: generating monthly reports');
     // AI monthly report generation - wired in Phase 5
-  });
+  }, UK_TZ);
 
   // Every morning at 6am: generate today's recurring task instances. Uncompleted
   // tasks from previous days are no longer duplicated forward — the task list
@@ -389,7 +397,7 @@ export function startScheduler(): void {
   cron.schedule('0 6 * * *', async () => {
     logger.info('Scheduler: generating daily tasks');
     await generateDailyTasks();
-  });
+  }, UK_TZ);
 
   logger.info('Scheduler started — all jobs registered');
 }

@@ -1,4 +1,5 @@
 import { query } from '../config/database';
+import { ukDateStr, ukDayOfWeek } from './ukTime';
 
 const FREQ_TIMES: Record<string, string[]> = {
   once_daily: ['08:00'],
@@ -40,7 +41,7 @@ export interface DueMedicationTask {
 // (what blocks clocking out), so the two can never silently disagree about what's due.
 export async function getDueTodayTasks(homeId: string, staffId: string, role: string): Promise<DueMedicationTask[]> {
   const isPrivileged = PRIVILEGED_MAR_ROLES.includes(role);
-  const today = new Date().toISOString().split('T')[0];
+  const today = ukDateStr();
 
   let assignedSuIds: string[] | null = null;
   if (!isPrivileged) {
@@ -78,7 +79,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   const recordMap = new Map<string, any>();
   for (const r of recordRows as any[]) recordMap.set(`${r.medication_id}|${r.scheduled_time}`, r);
 
-  const todayDow = new Date().getDay();
+  const todayDow = ukDayOfWeek();
   const tasks: DueMedicationTask[] = [];
   for (const med of meds as any[]) {
     if (med.frequency === 'weekly' && med.start_date) {

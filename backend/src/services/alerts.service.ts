@@ -1,5 +1,6 @@
 import { query } from '../config/database';
 import { logger } from '../config/logger';
+import { ukDateStr } from '../utils/ukTime';
 
 // Central service for creating business alerts
 // Called by AI engine, triggers, and manual processes
@@ -33,7 +34,7 @@ export async function createAlert(params: {
 // Check all homes for overdue care plans and raise alerts
 export async function checkCarePlanReviews(): Promise<void> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = ukDateStr();
     const overdue = await query<{
       id: string; home_id: string; su_id: string;
       plan_type: string; next_review_date: string;
@@ -72,7 +73,7 @@ export async function checkCarePlanReviews(): Promise<void> {
 // Check fluid intake below threshold
 export async function checkFluidIntake(): Promise<void> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = ukDateStr();
     const flagged = await query<{
       su_id: string; home_id: string; total_ml: number;
       first_name: string; last_name: string; min_fluid_ml: number;

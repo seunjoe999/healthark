@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
+import { ukDateStr, ukTimeHHMM, ukTimeHHMMSS } from '../utils/ukTime';
 
 const router = Router();
 
@@ -161,7 +162,7 @@ router.get('/records/today', async (req: Request, res: Response, next: NextFunct
       res.status(400).json({ success: false, error: 'homeId query parameter is required' });
       return;
     }
-    const today = new Date().toISOString().split('T')[0];
+    const today = ukDateStr();
     // Count total scheduled doses and given doses for today across the home
     const rows = await query<any>(
       `SELECT
@@ -191,7 +192,7 @@ router.get('/records/single/:id', param('id').isUUID(), validateRequest,
 router.get('/records/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+      const date = (req.query.date as string) || ukDateStr();
       const rows = await query(
         `SELECT mr.*, m.medication_name, m.dose, m.frequency, m.route,
                 m.notes AS instructions, m.is_prn,
@@ -225,9 +226,9 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       // never in the future and this never blocks them. Only checked for today's date —
       // a manager back-filling an earlier day's record has scheduledTime in the past anyway.
       if (scheduledTime && recordDate) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = ukDateStr();
         if (recordDate === todayStr) {
-          const nowHHMM = new Date().toTimeString().slice(0, 5);
+          const nowHHMM = ukTimeHHMM();
           if (scheduledTime.slice(0, 5) > nowHHMM) {
             throw new AppError(`This medication isn't due until ${scheduledTime.slice(0, 5)} — it can't be recorded early.`, 403);
           }
@@ -243,7 +244,7 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
         [suId, homeId, medicationId, staffId, given ?? null, refused || false,
          reason || null, notes || null, scheduledTime || null,
-         recordDate || new Date().toISOString().split('T')[0],
+         recordDate || ukDateStr(),
          marCode || null,
          controlledWitnessId || null, controlledWitnessName || null,
          amountTaken || null, amountUnit || null, sideEffects || false, sideEffectsNotes || null,
@@ -276,7 +277,7 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
             'INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,$5,$6)',
             [controlledWitnessId, homeId,
              'Controlled Medication — Witness Sign-Off Required',
-             `${adminName} administered ${medName} on ${recordDate || new Date().toISOString().split('T')[0]} and selected you as a witness. Please sign off.`,
+             `${adminName} administered ${medName} on ${recordDate || ukDateStr()} and selected you as a witness. Please sign off.`,
              'controlled_med_witness',
              `/mar?witnessRecord=${record.id}`]
           );
@@ -306,8 +307,8 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
         throw new AppError('Only the staff member who logged this can amend it.', 403);
       }
 
-      const todayStr = new Date().toISOString().split('T')[0];
-      const nowHHMMSS = new Date().toTimeString().slice(0, 8);
+      const todayStr = ukDateStr();
+      const nowHHMMSS = ukTimeHHMMSS();
       const shiftRows = await query<any>(
         `SELECT end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3
          ORDER BY end_time DESC LIMIT 1`,
