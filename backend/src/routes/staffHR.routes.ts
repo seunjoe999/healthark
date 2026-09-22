@@ -335,17 +335,17 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
       if (leave.status === 'approved') throw new AppError('This leave is already approved', 400);
       await query('UPDATE staff_leave SET status=$1, approved_by=$2, approved_at=NOW() WHERE id=$3',
         ['approved', managerId, req.params.id]);
-      // Calculate hours if not explicitly stored — count weekdays × 7.5h
+      // Calculate hours if not explicitly stored — count all calendar days × 7.5h.
+      // Previously skipped weekends here (matching the old frontend restriction
+      // that blocked weekend-only requests entirely) — staff can now request
+      // weekends, so this fallback must count them too or an approved weekend
+      // leave request would silently deduct 0 hours.
       let hoursToDeduct = parseFloat(String(leave.hours_requested || 0));
       if (!hoursToDeduct && leave.start_date && leave.end_date) {
         const start = new Date(leave.start_date);
         const end = new Date(leave.end_date);
-        let weekdays = 0;
-        for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dow = d.getDay();
-          if (dow !== 0 && dow !== 6) weekdays++;
-        }
-        hoursToDeduct = weekdays * 7.5;
+        const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+        hoursToDeduct = Math.max(0, days) * 7.5;
       }
       if (hoursToDeduct > 0) {
         await query(

@@ -528,21 +528,18 @@ export default function Holidays() {
   )
 }
 
-// Number of weekdays (Mon–Fri) in an inclusive date range — matches the
-// fallback calculation staff-hr/leave/:id/approve already uses when no
-// explicit hours are stored, so the number shown here is the same number
-// that ends up deducted.
+// Number of calendar days (inclusive) in a date range. Used to previously
+// exclude weekends entirely, which blocked staff from even submitting a
+// weekend-only leave request ("select another day of the week") — staff can
+// now request any days, including weekends; management decides at approval
+// time whether it's actually grantable. Matches the same all-days fallback
+// staff-hr/leave/:id/approve now uses when no explicit hours are stored.
 function countWeekdays(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 0
   const start = new Date(startDate)
   const end = new Date(endDate)
   if (end < start) return 0
-  let count = 0
-  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dow = d.getDay()
-    if (dow !== 0 && dow !== 6) count++
-  }
-  return count
+  return Math.round((end.getTime() - start.getTime()) / 86400000) + 1
 }
 
 function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId, onSaved }: {
@@ -560,7 +557,7 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.staffId || !form.startDate || !form.endDate) { toast.error('Please fill all required fields'); return }
-    if (!totalHours) { toast.error('Enter hours per day for a date range that includes at least one weekday'); return }
+    if (!totalHours) { toast.error('Enter hours per day'); return }
     setLoading(true)
     try {
       await api.post('/staff-hr/leave', {
@@ -582,10 +579,10 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
         </div>
         <Input label="Hours per day *" type="number" step="0.5" required value={form.hoursPerDay} onChange={e => set('hoursPerDay', e.target.value)}
-          hint="e.g. 11 — the system multiplies this by the number of weekdays in the range" />
+          hint="e.g. 11 — the system multiplies this by the number of days in the range" />
         {form.startDate && form.endDate && (
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
-            {dayCount} weekday{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong> will be deducted from annual leave once approved
+            {dayCount} day{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong> will be deducted from annual leave once approved
           </div>
         )}
         <div><label className="label">Notes / reason</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
