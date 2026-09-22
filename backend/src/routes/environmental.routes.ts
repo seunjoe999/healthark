@@ -22,11 +22,7 @@ async function ensureTable() {
       recorded_by UUID NOT NULL,
       check_date DATE NOT NULL DEFAULT CURRENT_DATE,
       check_time TIME,
-      check_type TEXT NOT NULL CHECK (check_type IN (
-        'fridge_temp','freezer_temp','room_temp','water_temp',
-        'legionella_flush','fire_alarm_test','emergency_lighting',
-        'hoist_check','window_restrictor','other'
-      )),
+      check_type TEXT NOT NULL,
       location TEXT NOT NULL,
       reading_value TEXT,
       unit TEXT,
@@ -36,6 +32,28 @@ async function ensureTable() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `, []);
+  // Existing installs: drop the old fixed-enum CHECK constraint on check_type
+  // so staff can record checks that aren't in the preset list — "customize it"
+  // for whatever checks the home actually does that weren't anticipated here.
+  try {
+    await query(`
+      DO $$
+      DECLARE c text;
+      BEGIN
+        SELECT conname INTO c FROM pg_constraint
+          WHERE conrelid = 'environmental_checks'::regclass AND contype = 'c'
+          AND pg_get_constraintdef(oid) LIKE '%check_type%';
+        IF c IS NOT NULL THEN
+          EXECUTE 'ALTER TABLE environmental_checks DROP CONSTRAINT ' || quote_ident(c);
+        END IF;
+      END $$;
+    `, []);
+  } catch (_) { /* already dropped, or no permission — non-fatal */ }
+  // su_id: which resident this check is for (single-occupancy/supported-living
+  // placements) — left null when the check is for the home/service generally
+  // (shared, multi-occupancy). Lets staff see at a glance which service a
+  // check belongs to instead of having to infer it from who's logged in.
+  try { await query(`ALTER TABLE environmental_checks ADD COLUMN IF NOT EXISTS su_id UUID REFERENCES service_users(id)`, []); } catch (_) {}
 }
 
 router.use(async (_req, _res, next) => {
@@ -52,9 +70,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     let sql = `
       SELECT
         ec.*,
-        s.first_name || ' ' || s.last_name AS recorded_by_name
+        s.first_name || ' ' || s.last_name AS recorded_by_name,
+        su.first_name || ' ' || su.last_name AS su_name,
+        h.name AS home_name
       FROM environmental_checks ec
       LEFT JOIN staff s ON s.id = ec.recorded_by
+      LEFT JOIN service_users su ON su.id = ec.su_id
+      LEFT JOIN homes h ON h.id = ec.home_id
       WHERE ec.home_id = $1
     `;
     const params: any[] = [homeId];
@@ -140,7 +162,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const recordedBy = fromToken(req, 'staffId');
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const {
-      checkDate, checkTime, checkType, location,
+      checkDate, checkTime, checkType, location, suId,
       readingValue, unit, result, actionTaken, notes
     } = req.body;
 
@@ -151,8 +173,8 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const rows = await query(`
       INSERT INTO environmental_checks
         (home_id, recorded_by, check_date, check_time, check_type, location,
-         reading_value, unit, result, action_taken, notes)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         reading_value, unit, result, action_taken, notes, su_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING *
     `, [
       homeId, recordedBy,
@@ -163,7 +185,8 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       unit || null,
       result,
       actionTaken || null,
-      notes || null
+      notes || null,
+      suId || null
     ]);
 
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);

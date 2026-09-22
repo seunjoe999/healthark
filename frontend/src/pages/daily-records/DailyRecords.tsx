@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, subDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
-import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check, Music, Thermometer, Stethoscope, ArrowLeftRight, BookOpen } from 'lucide-react'
+import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check, Music, Thermometer, Stethoscope, ArrowLeftRight, BookOpen, Users2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 import BodyMap from './forms/BodyMap'
@@ -26,6 +26,7 @@ import BathChart from '../bath-chart/BathChart'
 import BowelChart from '../bowel-chart/BowelChart'
 import Observations from '../observations/Observations'
 import ProfessionalVisits from '../professional-visits/ProfessionalVisits'
+import VisitorLog from '../visitor-log/VisitorLog'
 import HandoverReport from '../reports/HandoverReport'
 import ResidentDiary from '../diary/ResidentDiary'
 
@@ -36,6 +37,7 @@ const DR_TABS = [
   { key: 'bowel_chart',         label: 'Bowel Chart',         icon: Droplets },
   { key: 'observations',        label: 'Observations',        icon: Thermometer },
   { key: 'professional_visits', label: 'Professional Visits', icon: Stethoscope },
+  { key: 'visitor_log',         label: 'Visitor Log',         icon: Users2 },
   { key: 'handover',            label: 'Handover',            icon: ArrowLeftRight },
   { key: 'health_check',        label: 'Health Check',        icon: BookOpen },
 ]
@@ -178,6 +180,7 @@ export default function DailyRecords() {
           {activeTab === 'bowel_chart'          && <BowelChart />}
           {activeTab === 'observations'         && <Observations />}
           {activeTab === 'professional_visits'  && <ProfessionalVisits />}
+          {activeTab === 'visitor_log'           && <VisitorLog />}
           {activeTab === 'handover'             && <HandoverReport />}
           {activeTab === 'health_check'         && <ResidentDiary />}
         </div>

@@ -164,7 +164,7 @@ export default function MAR() {
   // Matches the management-role set used elsewhere in the app (e.g. task creation, quality gates) —
   // this used to be a narrower 4-role list that also silently blocked Registered/Service Managers
   // and Directors from ever reaching the MAR Review tab.
-  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'team_leader')
   if (!isPrivilegedMar) {
     // A staff member granted MAR Review / Medication Audit / Mar Chart Audit
     // access (Settings → Access Rights) should land on an actual review/audit

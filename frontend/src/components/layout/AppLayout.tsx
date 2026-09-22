@@ -49,7 +49,6 @@ const navSections = [
       { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
       { label: 'Other Risk Assessment',             to: '/risk-management',     icon: Shield,        roles: [], featureKey: 'risk_management' },
       { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
-      { label: 'MAR Review',                        to: '/mar?tab=mar_review',  icon: ClipboardCheck,roles: [], featureKey: 'mar_review' },
       { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
       { label: 'Care Reviews',                      to: '/reviews',             icon: ClipboardCheck,roles: [], featureKey: 'reviews' },
@@ -59,7 +58,7 @@ const navSections = [
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
       { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
       { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
-      { label: 'Capacity & Professionals',          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
+      { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
       { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
     ]
   },
@@ -154,7 +153,6 @@ const navSections = [
     items: [
       { label: 'Bed Occupancy',       to: '/bed-occupancy',      icon: LayoutDashboard, roles: [], featureKey: 'bed_occupancy' },
       { label: 'Waiting List',        to: '/waiting-list',       icon: Users,           roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'waiting_list' },
-      { label: 'Visitor Log',         to: '/visitor-log',        icon: Users2,          roles: [], featureKey: 'visitor_log' },
       { label: 'Contractor Register', to: '/contractors',        icon: Wrench,          roles: [], featureKey: 'contractors' },
       { label: 'External Contacts',   to: '/external-contacts',  icon: Users,           roles: [], featureKey: 'external_contacts' },
       { label: 'Environmental Checks',to: '/environmental-checks',icon: Thermometer,    roles: [], featureKey: 'environmental' },

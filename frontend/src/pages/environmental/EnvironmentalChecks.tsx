@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Thermometer, Plus, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
-import api from '../../api';
+import api, { homesApi, suApi } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { Button, Input, Select, Textarea } from '../../components/ui';
 
 interface EnvCheck {
   id: number;
@@ -17,6 +18,8 @@ interface EnvCheck {
   result: 'pass' | 'fail' | 'action_required';
   notes: string;
   recorded_by_name: string;
+  su_name?: string | null;
+  home_name?: string | null;
 }
 
 interface Summary { total: number; passed: number; failed: number; warnings: number; }
@@ -31,32 +34,55 @@ const CHECK_TYPES = [
   { value: 'emergency_lighting', label: 'Emergency Lighting' },
   { value: 'hoist_check', label: 'Hoist Check' },
   { value: 'window_restrictor', label: 'Window Restrictor' },
-  { value: 'other', label: 'Other' },
 ];
+// Custom check-type names typed in previously by this home, so they show up
+// as pickable options again instead of everyone re-typing the same custom
+// check from scratch — "customize it" per the request, without a separate
+// admin screen to manage a list.
+const CUSTOM_OPTION = '__custom__';
+
+const emptyForm = { check_type: 'room_temp', customType: '', su_id: '', location: '', reading_value: '', unit: '°C', result: 'pass', notes: '' };
 
 export default function EnvironmentalChecks() {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
-  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
-  const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
-  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
-  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
-  const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
-  const inputTextCls = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const isDark = theme === 'dark';
+  const tileBg = isDark ? '#111111' : '#ffffff';
+  const tileBorder = isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.08)';
+  const btnGhostBg = isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const headingText = isDark ? 'text-white' : 'text-slate-900';
+  const mutedText = isDark ? 'text-slate-400' : 'text-slate-500';
   const [checks, setChecks] = useState<EnvCheck[]>([]);
   const [summary, setSummary] = useState<Summary>({ total: 0, passed: 0, failed: 0, warnings: 0 });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('7');
-  const [form, setForm] = useState({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', result: 'pass', notes: '' });
+  const [homes, setHomes] = useState<any[]>([]);
+  const [selectedHome, setSelectedHome] = useState('');
+  const [residents, setResidents] = useState<any[]>([]);
+  const [customTypeNames, setCustomTypeNames] = useState<string[]>([]);
+  const [form, setForm] = useState(emptyForm);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    homesApi.list().then(res => {
+      const h = res.data.data || [];
+      setHomes(h);
+      setSelectedHome(user?.homeId || h[0]?.id || '');
+    }).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!selectedHome) return;
+    suApi.list(selectedHome, { status: 'live' }).then(res => setResidents(res.data.data || [])).catch(() => {});
+  }, [selectedHome]);
+
+  const fetchData = useCallback(async () => {
+    if (!selectedHome) return;
+    setLoading(true);
     try {
-      const hParams = user?.homeId ? { homeId: user.homeId } : {};
       const [checksRes, summaryRes] = await Promise.all([
-        api.get('/environmental', { params: { days: filter, ...hParams } }),
-        api.get('/environmental/summary', { params: hParams }),
+        api.get('/environmental', { params: { days: filter, homeId: selectedHome } }),
+        api.get('/environmental/summary', { params: { homeId: selectedHome } }),
       ]);
       const checksData = checksRes.data.data || [];
       setChecks(checksData);
@@ -64,18 +90,29 @@ export default function EnvironmentalChecks() {
       const warnings = checksData.filter((c: any) => c.result === 'warning').length;
       const passed = checksData.length - failed - warnings;
       setSummary({ total: checksData.length, passed, failed, warnings });
+      // Surface any custom check-type names already used at this home so they
+      // reappear as pickable options for next time.
+      const known = new Set(CHECK_TYPES.map(t => t.value));
+      const custom = Array.from(new Set(
+        checksData.map((c: any) => c.check_type).filter((t: string) => t && !known.has(t))
+      )) as string[];
+      setCustomTypeNames(custom);
     } catch { toast.error('Failed to load checks'); }
     finally { setLoading(false); }
-  };
+  }, [filter, selectedHome]);
 
-  useEffect(() => { fetchData(); }, [filter]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const checkType = form.check_type === CUSTOM_OPTION ? form.customType.trim() : form.check_type;
+    if (!checkType) { toast.error('Enter a name for the custom check'); return; }
     try {
       await api.post('/environmental', {
-        checkType: form.check_type,
+        homeId: selectedHome,
+        checkType,
         location: form.location,
+        suId: form.su_id || null,
         readingValue: form.reading_value,
         unit: form.unit,
         result: form.result,
@@ -83,53 +120,63 @@ export default function EnvironmentalChecks() {
       });
       toast.success('Check recorded');
       setShowForm(false);
-      setForm({ check_type: 'room_temp', location: '', reading_value: '', unit: '°C', result: 'pass', notes: '' });
+      setForm({ ...emptyForm });
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
 
   const statusIcon = (s: string) => {
-    if (s === 'pass') return <CheckCircle size={16} className="text-green-400" />;
-    if (s === 'fail') return <XCircle size={16} className="text-red-400" />;
-    return <AlertTriangle size={16} className="text-yellow-400" />;
+    if (s === 'pass') return <CheckCircle size={16} className="text-emerald-500" />;
+    if (s === 'fail') return <XCircle size={16} className="text-rose-500" />;
+    return <AlertTriangle size={16} className="text-amber-500" />;
   };
 
-  const statusColor = (s: string) => s === 'pass' ? 'text-green-400' : s === 'fail' ? 'text-red-400' : 'text-yellow-400';
+  const statusColor = (s: string) => s === 'pass' ? 'text-emerald-500' : s === 'fail' ? 'text-rose-500' : 'text-amber-500';
   const resultLabel = (s: string) => s === 'action_required' ? 'Action Required' : s.charAt(0).toUpperCase() + s.slice(1);
+  const typeLabel = (t: string) => CHECK_TYPES.find(ct => ct.value === t)?.label || t;
+  const typeOptions = [
+    ...CHECK_TYPES,
+    ...customTypeNames.map(t => ({ value: t, label: `${t} (custom)` })),
+    { value: CUSTOM_OPTION, label: '+ Add a new custom check type...' },
+  ];
+  const residentOptions = residents.map(r => ({ value: r.id, label: `${r.first_name} ${r.last_name}` }));
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(14,165,233,0.15)' }}>
-            <Thermometer size={20} className="text-sky-400" />
+            <Thermometer size={20} className="text-sky-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Environmental Checks</h1>
-            <p className="text-sm font-medium text-slate-500">Temperature, water safety & facility monitoring</p>
+            <h1 className={`text-2xl font-bold ${headingText}`}>Environmental Checks</h1>
+            <p className={`text-sm font-medium ${mutedText}`}>Temperature, water safety & facility monitoring</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
+        <div className="flex gap-2 items-center">
+          {homes.length > 1 && (
+            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+          <button onClick={fetchData} className={mutedText + " p-2 rounded-lg hover:opacity-70"} style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
-            <Plus size={16} /> Add Check
-          </button>
+          <Button variant="gold" icon={<Plus size={16} />} onClick={() => setShowForm(true)}>Add Check</Button>
         </div>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: summary.total, color: neutralText },
-          { label: 'Passed', value: summary.passed, color: 'text-green-400' },
-          { label: 'Failed', value: summary.failed, color: 'text-red-400' },
-          { label: 'Warnings', value: summary.warnings, color: 'text-yellow-400' },
+          { label: 'Total', value: summary.total, color: headingText },
+          { label: 'Passed', value: summary.passed, color: 'text-emerald-500' },
+          { label: 'Failed', value: summary.failed, color: 'text-rose-500' },
+          { label: 'Warnings', value: summary.warnings, color: 'text-amber-500' },
         ].map(s => (
           <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{s.label}</div>
+            <div className={`text-xs mt-1 font-semibold uppercase tracking-wide ${mutedText}`}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -138,7 +185,7 @@ export default function EnvironmentalChecks() {
       <div className="flex gap-2">
         {['7', '14', '30', '90'].map(d => (
           <button key={d} onClick={() => setFilter(d)}
-            className={`px-3 py-1.5 rounded-lg text-sm ${filter === d ? 'text-white font-medium' : 'text-gray-400'}`}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${filter === d ? 'text-white' : mutedText}`}
             style={{ background: filter === d ? '#e8b130' : btnGhostBg }}>
             {d}d
           </button>
@@ -149,46 +196,43 @@ export default function EnvironmentalChecks() {
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
-          <h3 className={`${neutralText} font-medium`}>Record Environmental Check</h3>
+          <h3 className={`${headingText} font-bold`}>Record Environmental Check</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select label="Check Type" value={form.check_type}
+              onChange={e => setForm(p => ({ ...p, check_type: e.target.value }))}
+              options={typeOptions} />
+            {form.check_type === CUSTOM_OPTION && (
+              <Input label="New check type name *" required value={form.customType}
+                onChange={e => setForm(p => ({ ...p, customType: e.target.value }))}
+                placeholder="e.g. Fob Battery Check" />
+            )}
+            <Select label="Service User (optional)" value={form.su_id}
+              onChange={e => setForm(p => ({ ...p, su_id: e.target.value }))}
+              options={residentOptions} placeholder="— Whole service, not one resident —" />
+            <Input label="Location *" required value={form.location}
+              onChange={e => setForm(p => ({ ...p, location: e.target.value }))}
+              placeholder="e.g. Kitchen, Room 3" />
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Check Type</label>
-              <select value={form.check_type} onChange={e => setForm(p => ({ ...p, check_type: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-                {CHECK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Location</label>
-              <input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} required
-                placeholder="e.g. Kitchen, Room 3" className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Reading Value</label>
+              <label className="label">Reading Value</label>
               <div className="flex gap-2">
-                <input value={form.reading_value} onChange={e => setForm(p => ({ ...p, reading_value: e.target.value }))} required
-                  placeholder="e.g. 5.2" className={`flex-1 px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
+                <input value={form.reading_value} onChange={e => setForm(p => ({ ...p, reading_value: e.target.value }))}
+                  placeholder="e.g. 5.2" className="input flex-1" />
                 <input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
-                  placeholder="unit" className={`w-20 px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }} />
+                  placeholder="unit" className="input w-20" />
               </div>
             </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Status</label>
-              <select value={form.result} onChange={e => setForm(p => ({ ...p, result: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: inputBg, border: inputBorder }}>
-                <option value="pass">Pass</option>
-                <option value="action_required">Action Required</option>
-                <option value="fail">Fail</option>
-              </select>
-            </div>
+            <Select label="Status" value={form.result} onChange={e => setForm(p => ({ ...p, result: e.target.value }))}
+              options={[
+                { value: 'pass', label: 'Pass' },
+                { value: 'action_required', label: 'Action Required' },
+                { value: 'fail', label: 'Fail' },
+              ]} />
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 mb-1 block">Notes</label>
-              <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
-                className={`w-full px-3 py-2 rounded-lg ${inputTextCls} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
+              <Textarea label="Notes" rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
             </div>
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Save Check</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
+              <Button type="submit" variant="gold">Save Check</Button>
+              <Button type="button" variant="ghost" onClick={() => { setShowForm(false); setForm({ ...emptyForm }) }}>Cancel</Button>
             </div>
           </form>
         </motion.div>
@@ -196,9 +240,9 @@ export default function EnvironmentalChecks() {
 
       {/* Checks list */}
       {loading ? (
-        <div className="text-center text-gray-400 py-12">Loading...</div>
+        <div className={`text-center py-12 ${mutedText}`}>Loading...</div>
       ) : checks.length === 0 ? (
-        <div className="text-center text-gray-400 py-12">No checks recorded for this period</div>
+        <div className={`text-center py-12 ${mutedText}`}>No checks recorded for this period</div>
       ) : (
         <div className="space-y-2">
           {checks.map(c => (
@@ -206,18 +250,21 @@ export default function EnvironmentalChecks() {
               className="flex items-center gap-4 p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex-shrink-0">{statusIcon(c.result)}</div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className={`${neutralText} text-sm font-medium`}>{CHECK_TYPES.find(t => t.value === c.check_type)?.label || c.check_type}</span>
-                  <span className="text-gray-500 text-xs">— {c.location}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`${headingText} text-sm font-bold`}>{typeLabel(c.check_type)}</span>
+                  <span className={`text-xs ${mutedText}`}>— {c.location}</span>
                   <span className={`text-xs font-semibold ${statusColor(c.result)}`}>{resultLabel(c.result)}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-500">
+                    {c.su_name || c.home_name || 'Service'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-xs text-gray-400">{format(new Date(String(c.check_date).includes('T') ? c.check_date : c.check_date + 'T12:00:00'), 'dd MMM yyyy')}</span>
+                  <span className={`text-xs ${mutedText}`}>{format(new Date(String(c.check_date).includes('T') ? c.check_date : c.check_date + 'T12:00:00'), 'dd MMM yyyy')}</span>
                   <span className={`text-xs font-medium ${statusColor(c.result)}`}>{c.reading_value} {c.unit}</span>
-                  {c.notes && <span className="text-xs text-gray-500 truncate">{c.notes}</span>}
+                  {c.notes && <span className={`text-xs truncate ${mutedText}`}>{c.notes}</span>}
                 </div>
               </div>
-              <div className="text-xs text-gray-500 flex-shrink-0">{c.recorded_by_name}</div>
+              <div className={`text-xs flex-shrink-0 ${mutedText}`}>{c.recorded_by_name}</div>
             </motion.div>
           ))}
         </div>

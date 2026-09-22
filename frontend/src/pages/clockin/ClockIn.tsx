@@ -76,7 +76,7 @@ export default function ClockIn() {
         }
       },
       (err) => {
-        if (err.code === 1) setError('Location access denied. Please allow location access in your browser settings and try again.')
+        if (err.code === 1) setError('Location access denied. This is a device/browser setting, not a fault in the app — on iPhone: Settings → Safari (or Chrome) → Location → Ask/Allow. On Android: Chrome menu (⋮) → Settings → Site settings → Location → allow for this site, or check the phone\'s own Location toggle is on. Then reopen this page and try again.')
         else if (err.code === 2) setError('Could not determine your location. Make sure you are outdoors or near a window.')
         else setError('Location timed out. Please try again.')
         setState('error')
