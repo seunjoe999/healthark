@@ -73,7 +73,7 @@ router.get('/:id', param('id').isUUID(), validateRequest,
     try {
       const rows = await query(
         `SELECT mr.*, s.first_name || ' ' || s.last_name AS assessed_by_name,
-                su.first_name || ' ' || su.last_name AS su_name
+                su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo_url
          FROM medicine_risk_assessments mr
          JOIN staff s ON s.id = mr.assessed_by
          JOIN service_users su ON su.id = mr.su_id

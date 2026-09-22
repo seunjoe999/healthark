@@ -136,7 +136,12 @@ const MED_RISK_PRINT_CSS = `
   .doc-title{text-align:center;margin:20px 0 4px;font-size:19px;font-weight:700;letter-spacing:.02em}
   .doc-subtitle{text-align:center;font-size:10px;color:#555;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:18px}
 
-  /* Resident identity block */
+  /* Resident identity block — matches Care Plans / other clinical print
+     templates so this one carries the resident photo over too. */
+  .res-photo{width:58px;height:72px;object-fit:cover;border:1px solid #999;flex-shrink:0}
+  .res-photo-fallback{width:58px;height:72px;border:1px solid #999;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#666;font-family:Arial,sans-serif;flex-shrink:0;background:#f2f2f0}
+  .res-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:14px 0 4px}
+
   table.idtable{width:100%;border-collapse:collapse;margin-bottom:20px;font-family:Arial,sans-serif;font-size:10.5px}
   table.idtable td{border:1px solid #999;padding:6px 10px;vertical-align:top}
   table.idtable td.lbl{width:19%;background:#f2f2f0;font-weight:700;text-transform:uppercase;font-size:8.5px;letter-spacing:.05em;color:#333}
@@ -308,12 +313,19 @@ function buildMedRiskPrintBody(r: any): string {
     <div class="doc-title">Medication Risk Assessment</div>
     <div class="doc-subtitle">Individual resident record</div>
 
-    <table class="idtable">
-      <tr>
-        <td class="lbl">Resident</td><td class="val">${esc(r.su_name)}</td>
-        <td class="lbl">Room</td><td class="val">${esc(r.room_number)}</td>
-      </tr>
-    </table>
+    <div class="res-head">
+      ${r.su_photo_url
+        ? `<img class="res-photo" src="${r.su_photo_url}" alt="Resident photo" />`
+        : `<div class="res-photo-fallback">${esc(r.su_name).charAt(0).toUpperCase()}</div>`}
+      <div style="flex:1">
+        <table class="idtable">
+          <tr>
+            <td class="lbl">Resident</td><td class="val">${esc(r.su_name)}</td>
+            <td class="lbl">Room</td><td class="val">${esc(r.room_number)}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
 
     ${sectionsHtml}
 
@@ -909,7 +921,12 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             )}
 
             <div className="space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
-              <InfoRow label="Administration route" value={r.administration_route} />
+              {r.administration_route && (
+                <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                  <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Administration Route</p>
+                  <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{r.administration_route}</p>
+                </div>
+              )}
               <InfoRow label="Swallowing risk" value={r.swallowing_risk !== 'none' ? r.swallowing_risk : null} />
               {r.swallowing_notes && <InfoRow label="Swallowing notes" value={r.swallowing_notes} />}
               {r.self_medicate_notes && <InfoRow label="Self-medicate notes" value={r.self_medicate_notes} />}
@@ -932,9 +949,19 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
               </div>
             )}
 
-            {(r.triggers || r.protective_factors) && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }} className="space-y-2">
-              {r.triggers && <InfoRow label="Triggers" value={r.triggers} />}
-              {r.protective_factors && <InfoRow label="Protective factors" value={r.protective_factors} />}
+            {(r.triggers || r.protective_factors) && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }} className="space-y-3">
+              {r.triggers && (
+                <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                  <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Triggers</p>
+                  <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{r.triggers}</p>
+                </div>
+              )}
+              {r.protective_factors && (
+                <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                  <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Protective Factors</p>
+                  <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{r.protective_factors}</p>
+                </div>
+              )}
             </div>}
 
             {r.prn_protocol && r.prn_notes && (

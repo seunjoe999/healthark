@@ -1427,6 +1427,16 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
           )}
         </div>
 
+        <div className="flex items-start gap-2 text-xs bg-blue-50 text-blue-800 rounded-lg px-3 py-2">
+          <Pill className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>
+            <span className="font-semibold">Prescription:</span> {med.dose || '—'}
+            {med.frequency && `, ${med.frequency.replace(/_/g, ' ')}`}
+            {med.route && ` — ${med.route}`}
+            {med.is_prn && ' (PRN — as required)'}
+          </span>
+        </div>
+
         {(med.location_access_code || med.medicine_warning) && (
           <div className="space-y-1.5">
             {med.location_access_code && (
@@ -1455,7 +1465,7 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
                   // "Attempted" means staff tried but the dose wasn't actually given —
                   // default it to not-completed so it stays on the to-do list for a
                   // retry later in the shift, instead of silently disappearing.
-                  setCompleted(opt.code !== 'A')
+                  setCompleted(opt.code !== 'AT')
                 }}
                   className="flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all text-center"
                   style={{
