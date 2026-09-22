@@ -215,6 +215,10 @@ export default function Rota() {
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
+  // Pre-fills Bulk Assign — Recurring Pattern when opened from a specific shift's
+  // detail modal ("Bulk assign like this"), so staff don't have to re-pick the
+  // resident/day-or-night that's already obvious from the shift they clicked.
+  const [patternSeed, setPatternSeed] = useState<{ suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[] } | null>(null)
 
   // Drives clock-in/late/missed shift colouring — re-evaluated every minute so a
   // shift flips from "on time" to "late" (and a green block flips to red once its
@@ -695,7 +699,7 @@ export default function Rota() {
                             role="button"
                             title="Delete this shift"
                             onClick={(e) => { e.stopPropagation(); deleteShift(shift.id) }}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/70 text-rose-500 opacity-0 hover:opacity-100 hover:bg-rose-50 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            className="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/80 text-rose-500 opacity-70 hover:opacity-100 hover:bg-rose-50 transition-opacity cursor-pointer">
                             <Trash2 className="w-3 h-3" />
                           </span>
                         )}
@@ -827,6 +831,14 @@ export default function Rota() {
             setShifts(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))
           }}
           onLinked={() => { setDetailShift(null); loadAll() }}
+          onBulkAssign={() => {
+            const st = detailShift.start_time?.substring(0, 5) || '08:00'
+            const dayOrNight: 'day' | 'night' = st >= '06:00' && st < '20:00' ? 'day' : 'night'
+            const dow = parseISO(detailShift.shift_date).getDay()
+            setPatternSeed({ suId: detailShift.su_id || undefined, dayOrNight, daysOfWeek: [dow] })
+            setDetailShift(null)
+            setPatternAssignOpen(true)
+          }}
           staffList={staffList}
         />
       )}
@@ -877,12 +889,13 @@ export default function Rota() {
       {patternAssignOpen && (
         <PatternAssignModal
           open={patternAssignOpen}
-          onClose={() => setPatternAssignOpen(false)}
+          onClose={() => { setPatternAssignOpen(false); setPatternSeed(null) }}
           staffList={staffList}
           suList={suList}
           homeId={selectedHome}
           defaultDate={format(weekStart, 'yyyy-MM-dd')}
-          onSaved={() => { setPatternAssignOpen(false); loadAll() }}
+          seed={patternSeed}
+          onSaved={() => { setPatternAssignOpen(false); setPatternSeed(null); loadAll() }}
         />
       )}
 
@@ -1588,10 +1601,10 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, defaultDate, onS
 
 // ── Shift Detail Modal ────────────────────────────────────────────────────────
 
-function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onDeleteSeries, onSwap, onUpdated, onLinked, staffList }: {
+function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onDeleteSeries, onSwap, onUpdated, onLinked, onBulkAssign, staffList }: {
   shift: any; canManage: boolean; canSeeFinancials: boolean; onClose: () => void
   onDelete: () => void; onDeleteSeries: () => void; onSwap: () => void
-  onUpdated: (updated: any) => void; onLinked: () => void
+  onUpdated: (updated: any) => void; onLinked: () => void; onBulkAssign: () => void
   staffList: any[]
 }) {
   const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
@@ -1854,6 +1867,13 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               <ArrowLeftRight className="w-3.5 h-3.5" /> Reallocate shift
             </button>
           )}
+          {canManage && (
+            <button onClick={onBulkAssign}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-emerald-600 border border-emerald-200 hover:bg-emerald-50 transition-colors"
+              title="Open Bulk Assign pre-filled with this shift's resident and day/night — pick which days of the week to repeat it on">
+              <Users className="w-3.5 h-3.5" /> Bulk assign like this
+            </button>
+          )}
           {canManage && shift.staff_id && (
             <button onClick={unassignStaff} disabled={unassigning}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-amber-600 border border-amber-200 hover:bg-amber-50 transition-colors disabled:opacity-50">
@@ -1955,14 +1975,16 @@ const WEEKDAY_OPTIONS = [
   { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' },
 ]
 
-function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultDate, onSaved }: {
+function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultDate, seed, onSaved }: {
   open: boolean; onClose: () => void
-  staffList: any[]; suList: any[]; homeId: string; defaultDate: string; onSaved: () => void
+  staffList: any[]; suList: any[]; homeId: string; defaultDate: string
+  seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[] } | null
+  onSaved: () => void
 }) {
   const [staffId, setStaffId] = useState('')
-  const [suId, setSuId] = useState('')
-  const [dayOrNight, setDayOrNight] = useState<'any' | 'day' | 'night'>('any')
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5])
+  const [suId, setSuId] = useState(seed?.suId || '')
+  const [dayOrNight, setDayOrNight] = useState<'any' | 'day' | 'night'>(seed?.dayOrNight || 'any')
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(seed?.daysOfWeek?.length ? seed.daysOfWeek : [1, 2, 3, 4, 5])
   const [fortnightly, setFortnightly] = useState(false)
   const [startDate, setStartDate] = useState(defaultDate)
   const [ongoing, setOngoing] = useState(true)
