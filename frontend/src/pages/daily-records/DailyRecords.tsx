@@ -58,7 +58,7 @@ const RECORD_TYPES = [
   { value: 'telephone_call', label: 'Telephone Call', icon: '📞' },
   { value: 'incident', label: 'Incident', icon: '⚠️' },
   { value: 'prn_medication', label: 'PRN Medication', icon: '💊' },
-  { value: 'medication_stock_count', label: 'Medication Stock Count', icon: '💊' },
+  { value: 'medication_stock_count', label: 'Medication Team Count', icon: '💊' },
   { value: 'medication_disposed', label: 'Medication Disposed', icon: '🗑️' },
   { value: 'medication_received', label: 'Medication Received', icon: '📦' },
   { value: 'medication_ordered', label: 'Medication Ordered', icon: '📋' },

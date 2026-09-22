@@ -44,7 +44,7 @@ const DAILY_RECORD_TYPES = [
   { value: 'telephone_call', label: 'Telephone Call' },
   { value: 'incident', label: 'Incident' },
   { value: 'prn_medication', label: 'PRN Medication' },
-  { value: 'medication_stock_count', label: 'Medication Stock Count' },
+  { value: 'medication_stock_count', label: 'Medication Team Count' },
   { value: 'medication_disposed', label: 'Medication Disposed' },
   { value: 'medication_received', label: 'Medication Received' },
   { value: 'medication_ordered', label: 'Medication Ordered' },
