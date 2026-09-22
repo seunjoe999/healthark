@@ -63,7 +63,7 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string; 
   cancelled: { bg: '#fee2e2', border: '#fca5a5', text: '#991b1b', dot: '#f87171' },
   on_hold:   { bg: '#fef3c7', border: '#fbbf24', text: '#92400e', dot: '#f59e0b' },
   completed: { bg: '#dbeafe', border: '#93c5fd', text: '#1e40af', dot: '#60a5fa' },
-  clocked_in: { bg: '#bbf7d0', border: '#22c55e', text: '#14532d', dot: '#16a34a' },
+  clocked_in: { bg: '#4ade80', border: '#15803d', text: '#052e16', dot: '#15803d' },
   late:       { bg: '#fed7aa', border: '#f97316', text: '#7c2d12', dot: '#ea580c' },
   missed:     { bg: '#fecaca', border: '#dc2626', text: '#7f1d1d', dot: '#b91c1c' },
 }
