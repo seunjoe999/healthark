@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Share, Download, CheckCircle2, MoreVertical } from 'lucide-react'
 import { getInstallPrompt, subscribeInstallPrompt, triggerInstall } from '../../utils/installPrompt'
+import toast from 'react-hot-toast'
 
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -34,9 +35,17 @@ export default function InstallApp() {
   }, [installed])
 
   async function install() {
-    const outcome = await triggerInstall()
-    if (outcome === 'accepted') setInstalled(true)
-    if (outcome !== 'unavailable') setDeferredPrompt(null)
+    try {
+      const outcome = await triggerInstall()
+      if (outcome === 'accepted') setInstalled(true)
+      if (outcome === 'unavailable') {
+        toast.error('Install option is no longer available — use your browser menu instead.')
+      }
+      setDeferredPrompt(null)
+    } catch (err: any) {
+      setDeferredPrompt(null)
+      toast.error(`Couldn't install automatically (${err?.message || err?.name || 'unknown error'}). Use your browser's menu → "Install app" or "Add to Home screen" instead.`)
+    }
   }
 
   // Everything lives inside one white card, deliberately independent of the

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Share } from 'lucide-react'
 import { getInstallPrompt, subscribeInstallPrompt, triggerInstall } from '../../utils/installPrompt'
+import toast from 'react-hot-toast'
 
 const DISMISS_KEY = 'pwa_install_dismissed_at'
 const INSTALLED_KEY = 'pwa_installed'
@@ -90,16 +91,22 @@ export default function InstallPrompt() {
   }, [visible, deferredPrompt])
 
   async function install() {
-    const outcome = await triggerInstall()
-    if (outcome === 'unavailable') return
-    setDeferredPrompt(null)
-    if (outcome === 'accepted') {
-      localStorage.setItem(INSTALLED_KEY, '1')
-    } else {
-      // User cancelled native dialog — treat same as dismiss
-      localStorage.setItem(DISMISS_KEY, String(Date.now()))
+    try {
+      const outcome = await triggerInstall()
+      if (outcome === 'unavailable') return
+      setDeferredPrompt(null)
+      if (outcome === 'accepted') {
+        localStorage.setItem(INSTALLED_KEY, '1')
+      } else {
+        // User cancelled native dialog — treat same as dismiss
+        localStorage.setItem(DISMISS_KEY, String(Date.now()))
+      }
+      hide()
+    } catch (err: any) {
+      setDeferredPrompt(null)
+      toast.error(`Couldn't install automatically (${err?.message || err?.name || 'unknown error'}). Try Download App in the menu instead.`)
+      hide()
     }
-    hide()
   }
 
   if (!visible) return null
