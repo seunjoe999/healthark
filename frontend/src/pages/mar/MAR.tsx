@@ -1620,9 +1620,37 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
   )
 }
 
+// One independently-editable time input per dose for the selected frequency — not a
+// single "apply time" that then gets evenly offset across the day. Real prescriptions
+// are often NOT evenly spaced (e.g. 06:00/12:00/18:00/22:00), and forcing them into an
+// evenly-spaced template meant staff couldn't log doses at the medication's actual
+// prescribed times. Manager asked for this to be removed in favour of setting each
+// time directly.
+function TimeSlotsField({ frequency, value, onChange }: { frequency: string; value: string[]; onChange: (v: string[]) => void }) {
+  if (frequency === 'as_required' || !frequency) return null
+  const count = (FREQ_TIMES[frequency] || ['08:00']).length
+  const slots = Array.from({ length: count }, (_, i) => value[i] || FREQ_TIMES[frequency]?.[i] || '')
+  const setSlot = (i: number, v: string) => {
+    const next = [...slots]
+    next[i] = v
+    onChange(next)
+  }
+  return (
+    <div>
+      <label className="label">Administration time{count > 1 ? 's' : ''} *</label>
+      <div className={`grid gap-3 ${count > 2 ? 'grid-cols-4' : count === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {slots.map((s, i) => (
+          <input key={i} type="time" required className="input" value={s} onChange={e => setSlot(i, e.target.value)} />
+        ))}
+      </div>
+      <p className="text-xs text-slate-400 mt-1">Each dose's own real time — set exactly when this medication is actually due, not an evenly-spaced guess.</p>
+    </div>
+  )
+}
+
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
-  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', applyTime: '', prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '' }
+  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', timeSlots: [] as string[], prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '' }
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -1633,12 +1661,13 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
     if (!suId) { toast.error('No service user selected'); return }
     if (!form.frequency) { toast.error('Frequency is required'); return }
     if (!form.prescribedBy.trim()) { toast.error('Reason for prescription is required'); return }
-    // Apply time is required (except for PRN, which has no fixed schedule) — without it every
-    // medication silently defaulted to 08:00 on the MAR regardless of when it's actually due.
-    if (!form.applyTime && !form.isPrn) { toast.error('Apply time is required'); return }
+    // Administration times are required (except for PRN, which has no fixed schedule) —
+    // without them every medication silently defaulted to 08:00 on the MAR.
+    const cleanSlots = form.timeSlots.filter(Boolean)
+    if (!form.isPrn && cleanSlots.length < (FREQ_TIMES[form.frequency]?.length || 1)) { toast.error('Set a time for every dose'); return }
     setLoading(true)
     try {
-      await api.post('/mar/medications', { suId, homeId, ...form })
+      await api.post('/mar/medications', { suId, homeId, ...form, timeSlots: cleanSlots, applyTime: cleanSlots[0] || '' })
       setForm(BLANK)
       onSaved()
     }
@@ -1650,11 +1679,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
     <Modal open={open} onClose={onClose} title="Add medication" size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <Input label="Medication name *" required value={form.medicationName} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Amlodipine, Paracetamol..." />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          <Input label={`Apply time${form.isPrn ? '' : ' *'}`} type="time" required={!form.isPrn} value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
-        </div>
-        {!form.isPrn && <p className="text-xs text-slate-400 -mt-2">Set the exact time this medication is due — it drives when it shows up on the MAR, not a fixed 08:00 default.</p>}
+        <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
           <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
             options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
@@ -1665,6 +1690,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
           <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
         </div>
+        {!form.isPrn && <TimeSlotsField frequency={form.frequency} value={form.timeSlots} onChange={v => set('timeSlots', v)} />}
         <div>
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />
@@ -1718,7 +1744,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     frequency: med.frequency || '',
     route: med.route || '',
     medicineType: med.medicine_type || '',
-    applyTime: med.apply_time || '',
+    timeSlots: (med.time_slots && med.time_slots.length ? med.time_slots : (med.apply_time ? [String(med.apply_time).slice(0, 5)] : [])) as string[],
     prescribedBy: med.prescribed_by || '',
     startDate: med.start_date ? med.start_date.split('T')[0] : '',
     instructions: med.instructions || '',
@@ -1737,10 +1763,11 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.frequency) { toast.error('Frequency is required'); return }
-    if (!form.applyTime && !form.isPrn) { toast.error('Apply time is required'); return }
+    const cleanSlots = form.timeSlots.filter(Boolean)
+    if (!form.isPrn && cleanSlots.length < (FREQ_TIMES[form.frequency]?.length || 1)) { toast.error('Set a time for every dose'); return }
     if (!form.prescribedBy.trim()) { toast.error('Reason for prescription is required'); return }
     setLoading(true)
-    try { await api.patch(`/mar/medications/${med.id}`, form); onSaved() }
+    try { await api.patch(`/mar/medications/${med.id}`, { ...form, timeSlots: cleanSlots, applyTime: cleanSlots[0] || '' }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -1748,11 +1775,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
   return (
     <Modal open={true} onClose={onClose} title={`Edit — ${med.medication_name}`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          <Input label={`Apply time${form.isPrn ? '' : ' *'}`} type="time" required={!form.isPrn} value={form.applyTime} onChange={e => set('applyTime', e.target.value)} />
-        </div>
-        {!form.isPrn && <p className="text-xs text-slate-400 -mt-2">Set the exact time this medication is due — it drives when it shows up on the MAR, not a fixed 08:00 default.</p>}
+        <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
           <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
             options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
@@ -1763,6 +1786,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
           <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
         </div>
+        {!form.isPrn && <TimeSlotsField frequency={form.frequency} value={form.timeSlots} onChange={v => set('timeSlots', v)} />}
         <div>
           <label className="label">Directions / Instructions</label>
           <textarea className="input" rows={2} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="e.g. Take ONE 5ml spoonful twice daily after food..." />

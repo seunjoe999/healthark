@@ -1936,6 +1936,12 @@ async function ensureColumns() {
     `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type VARCHAR(30)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS apply_time TIME`,
+    // Explicit, individually-set administration times (e.g. ['06:00','12:00','18:00','22:00'])
+    // as chosen by the manager for THIS medication — not derived by evenly offsetting a
+    // generic frequency template from a single apply_time, which forced real prescriptions
+    // with uneven gaps into an artificial evenly-spaced pattern and caused staff to be unable
+    // to log doses at the medication's actual prescribed times.
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS time_slots TEXT[]`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS review_frequency VARCHAR(30) DEFAULT 'every_4_weeks'`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS auditor_name VARCHAR(255)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checklist_answers JSONB`,

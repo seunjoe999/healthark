@@ -652,21 +652,36 @@ function ComplianceToggle({ label, done, onChange }: { label: string; done: bool
 
 /* ─── Email Modal ─── */
 function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candidate; onClose: () => void; emailConfigured: boolean }) {
+  const { user } = useAuth()
   const [emailType, setEmailType] = useState('interview_invite')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [interviewDate, setInterviewDate] = useState('')
   const [interviewTime, setInterviewTime] = useState('')
   const [location, setLocation] = useState('')
+  // A reference request needs to go to the REFEREE, not the candidate — this field
+  // never existed before, so every "Reference Request" silently sent to the
+  // candidate's own email instead (the backend falls back to candidate.email
+  // whenever refereeEmail is missing from the request).
+  const [refereeName, setRefereeName] = useState('')
+  const [refereeEmail, setRefereeEmail] = useState('')
+  // Every email sent from here used "no-reply@compcarehub.co.uk" as the effective
+  // reply-to (contactEmail was never actually sent by this form), so candidates,
+  // referees and anyone else had no working address to reply to. Default it to
+  // the sending manager's own login email so replies land somewhere real, but
+  // let them override it.
+  const [contactName, setContactName] = useState(`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Recruitment Team')
+  const [contactEmail, setContactEmail] = useState(user?.email || '')
   const [sending, setSending] = useState(false)
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault()
     // if (!emailConfigured) { toast.error('Email is not configured. Set SMTP_USER and SMTP_PASS in your backend .env file.'); return }
     if (!candidate.email) { toast.error('Candidate has no email address'); return }
+    if (emailType === 'reference_request' && !refereeEmail.trim()) { toast.error("Enter the referee's email address"); return }
     setSending(true)
     try {
-      const payload: any = { type: emailType, subject: subject || undefined }
+      const payload: any = { type: emailType, subject: subject || undefined, contactName, contactEmail: contactEmail || undefined }
       if (emailType === 'interview_invite') {
         payload.interviewDate = interviewDate || 'TBC'
         payload.interviewTime = interviewTime || 'TBC'
@@ -674,10 +689,11 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
       } else if (emailType === 'custom') {
         payload.message = message
       } else if (emailType === 'reference_request') {
-        payload.refereeName = 'Sir/Madam'
+        payload.refereeName = refereeName || 'Sir/Madam'
+        payload.refereeEmail = refereeEmail.trim()
       }
       await api.post(`/recruitment/${candidate.id}/email`, payload)
-      toast.success('Email sent successfully')
+      toast.success(emailType === 'reference_request' ? `Reference request sent to ${refereeEmail}` : 'Email sent successfully')
       onClose()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to send email')
@@ -692,10 +708,6 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
     <Modal open={true} onClose={onClose} title={`Email ${candidate.first_name} ${candidate.last_name}`}>
       <form onSubmit={send} className="space-y-4">
         <div>
-          <label className="label">To</label>
-          <input className="input bg-slate-50" value={candidate.email || ''} disabled />
-        </div>
-        <div>
           <label className="label">Email Type</label>
           <select className="input" value={emailType} onChange={e => setEmailType(e.target.value)}>
             <option value="interview_invite">Interview Invitation</option>
@@ -706,6 +718,27 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
             <option value="custom">Custom Message</option>
           </select>
         </div>
+
+        {/* Reference requests go to the REFEREE, not the candidate — a separate
+            "To" input, not the candidate's own (disabled) email shown below. */}
+        {emailType === 'reference_request' ? (
+          <div className="space-y-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700 font-medium">This goes to the referee, not {candidate.first_name} — enter their details:</p>
+            <div>
+              <label className="label">Referee Name</label>
+              <input className="input" value={refereeName} onChange={e => setRefereeName(e.target.value)} placeholder="e.g. Dr Sarah Williams" />
+            </div>
+            <div>
+              <label className="label">Referee Email *</label>
+              <input className="input" type="email" required value={refereeEmail} onChange={e => setRefereeEmail(e.target.value)} placeholder="referee@example.com" />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="label">To</label>
+            <input className="input bg-slate-50" value={candidate.email || ''} disabled />
+          </div>
+        )}
 
         {emailType === 'interview_invite' && (
           <div className="space-y-3">
@@ -734,6 +767,16 @@ function EmailModal({ candidate, onClose, emailConfigured }: { candidate: Candid
             <textarea className="input" rows={4} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message..." required />
           </div>
         )}
+
+        {/* Emails send from no-reply@compcarehub.co.uk, which nobody reads — without a
+            real reply-to, candidates/referees have no way to actually respond. */}
+        <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+          <p className="text-xs text-slate-500 font-medium">Replies to this email go to:</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input className="input text-sm" value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Your name" />
+            <input className="input text-sm" type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="your.email@example.com" />
+          </div>
+        </div>
 
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
