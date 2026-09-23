@@ -44,14 +44,28 @@ const ROLE_LABELS: Record<string, string> = {
   group_admin: 'Director',
 }
 
+// Kept in sync with NOT_CARE_STAFF in components/layout/AppLayout.tsx — this page
+// used to hard-block everyone except group_admin/admin regardless of what the owner
+// set in Access Rights, since the nav item lived under Settings (group_admin only)
+// and this component re-checked role independently. Now it honours the same
+// role-baseline + featureFlag opt-out the nav item and Access Rights page use, so
+// granting access to e.g. a deputy manager or a named "office" role actually works.
+const NOT_CARE_STAFF = [
+  'senior_carer', 'team_leader', 'supervisor', 'deputy_manager', 'home_manager',
+  'registered_manager', 'service_manager', 'admin', 'group_admin', 'director',
+  'auditor', 'recruitment_admin',
+]
+
 export default function ResidentAssignments() {
   const { user, isRole } = useAuth()
   const homeId = (user as any)?.homeId || ''
 
-  if (!isRole('group_admin', 'admin')) {
+  const hasAccess = NOT_CARE_STAFF.includes(user?.role || '')
+    && (isRole('group_admin') || (user as any)?.featureFlags?.resident_assignments !== false)
+  if (!hasAccess) {
     return (
       <div className="p-8 text-center text-slate-400">
-        <p className="text-sm">Only admins can assign staff to residents.</p>
+        <p className="text-sm">You don't have access to Resident Assignments — ask your manager to grant it in Access Rights.</p>
       </div>
     )
   }

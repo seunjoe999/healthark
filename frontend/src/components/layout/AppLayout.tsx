@@ -78,6 +78,13 @@ const navSections = [
       { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
       { label: 'Calendar',               to: '/staff-calendar',        icon: Calendar,      roles: [], featureKey: 'staff_calendar' },
       { label: 'Comp Care Hub Training', to: '/training',              icon: GraduationCap, roles: [], featureKey: 'training' },
+      // Previously only reachable via Settings, which is hard-restricted to group_admin —
+      // meaning nobody else could ever be given access no matter what Access Rights said.
+      // Standalone nav items here use the same broad non-care-staff baseline as the rest
+      // of this section, so the owner can grant/revoke access per role from Access Rights
+      // the normal way instead of it being all-or-nothing.
+      { label: 'Resident Assignments',   to: '/settings/resident-assignments', icon: UserCheck, roles: NOT_CARE_STAFF, featureKey: 'resident_assignments' },
+      { label: 'Teams',                  to: '/settings/teams',        icon: Users2,        roles: NOT_CARE_STAFF, featureKey: 'teams' },
     ]
   },
   {

@@ -355,7 +355,7 @@ export default function Settings() {
           </div>
 
           <div className="flex justify-end mt-4">
-            <Button icon={<Save className="w-4 h-4" />} loading={saving} onClick={saveHome}>Save home settings</Button>
+            <Button variant="gold" icon={<Save className="w-4 h-4" />} loading={saving} onClick={saveHome}>Save home settings</Button>
           </div>
         </Card>
 
@@ -367,7 +367,7 @@ export default function Settings() {
             <Input label="New password" type="password" required value={pw.new} onChange={e => setPw(p => ({ ...p, new: e.target.value }))} hint="Min. 8 characters" />
             <Input label="Confirm new password" type="password" required value={pw.confirm} onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))} />
             <div className="flex justify-end">
-              <Button type="submit" loading={changingPw} icon={<Key className="w-4 h-4" />}>Change password</Button>
+              <Button type="submit" variant="gold" loading={changingPw} icon={<Key className="w-4 h-4" />}>Change password</Button>
             </div>
           </form>
         </Card>

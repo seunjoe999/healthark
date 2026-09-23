@@ -64,6 +64,8 @@ const FEATURES = [
   { key: 'holidays',            label: 'Leave & Holidays',            group: 'Staff' },
   { key: 'staff_assessment',    label: 'Staff Assessment',            group: 'Staff' },
   { key: 'staff_calendar',      label: 'Staff Calendar',              group: 'Staff' },
+  { key: 'resident_assignments', label: 'Resident Assignments',       group: 'Staff' },
+  { key: 'teams',               label: 'Teams',                       group: 'Staff' },
   { key: 'tasks',               label: 'Tasks',                       group: 'Operations' },
   { key: 'rota',                label: 'Rota',                        group: 'Operations' },
   { key: 'maintenance',         label: 'Maintenance',                 group: 'Operations' },

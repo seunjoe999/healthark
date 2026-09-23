@@ -9,7 +9,16 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 router.use(authenticate);
 
-const MANAGE_ROLES: StaffRole[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
+// Broadened to match the frontend's NOT_CARE_STAFF baseline (components/layout/AppLayout.tsx)
+// — the Teams page is now reachable by any of these roles if the owner grants it via Access
+// Rights, but write actions (create/edit team, move members) were still hard-limited to the
+// original 4 manager roles here, so anyone else granted access could see the page but get a
+// confusing 403 the moment they tried to actually do anything with it.
+const MANAGE_ROLES: StaffRole[] = [
+  'senior_carer', 'team_leader', 'supervisor', 'deputy_manager', 'home_manager',
+  'registered_manager', 'service_manager', 'admin', 'group_admin', 'director',
+  'auditor', 'recruitment_admin',
+];
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);

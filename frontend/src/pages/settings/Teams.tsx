@@ -33,14 +33,25 @@ const ROLE_LABELS: Record<string, string> = {
   group_admin: 'Director',
 }
 
+// Kept in sync with NOT_CARE_STAFF in components/layout/AppLayout.tsx — see the
+// matching comment in ResidentAssignments.tsx for why this replaced a hardcoded
+// manager-only role check.
+const NOT_CARE_STAFF = [
+  'senior_carer', 'team_leader', 'supervisor', 'deputy_manager', 'home_manager',
+  'registered_manager', 'service_manager', 'admin', 'group_admin', 'director',
+  'auditor', 'recruitment_admin',
+]
+
 export default function Teams() {
   const { user, isRole } = useAuth()
   const homeId = (user as any)?.homeId || ''
 
-  if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) {
+  const hasAccess = NOT_CARE_STAFF.includes(user?.role || '')
+    && (isRole('group_admin') || (user as any)?.featureFlags?.teams !== false)
+  if (!hasAccess) {
     return (
       <div className="p-8 text-center text-slate-400">
-        <p className="text-sm">Only managers and admins can manage teams.</p>
+        <p className="text-sm">You don't have access to Teams — ask your manager to grant it in Access Rights.</p>
       </div>
     )
   }
@@ -175,14 +186,14 @@ export default function Teams() {
             <input
               value={newName} onChange={e => setNewName(e.target.value)}
               placeholder="e.g. Ground Floor Team"
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              className="input mt-1 font-semibold"
             />
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Team leader (optional)</label>
             <select
               value={newLeaderId} onChange={e => setNewLeaderId(e.target.value)}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+              className="input mt-1">
               <option value="">No leader yet</option>
               {potentialLeaders.map(s => (
                 <option key={s.id} value={s.id}>
@@ -206,7 +217,7 @@ export default function Teams() {
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search teams…"
-          className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+          className="input pl-9"
         />
       </div>
 
@@ -261,7 +272,7 @@ export default function Teams() {
                     <select
                       value={team.leader_staff_id || ''}
                       onChange={e => setLeader(team.id, e.target.value)}
-                      className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+                      className="input mt-1">
                       <option value="">No leader</option>
                       {potentialLeaders.map(s => (
                         <option key={s.id} value={s.id}>
