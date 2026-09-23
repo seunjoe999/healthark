@@ -32,8 +32,8 @@ export async function authenticate(
     const payload = jwt.verify(token, secret) as JwtPayload;
 
     // Verify staff still active in database (not terminated/suspended since token issued)
-    const rows = await query<{ is_active: boolean; status: string; organisation_id: string }>(
-      'SELECT is_active, status, organisation_id FROM staff WHERE id = $1',
+    const rows = await query<{ is_active: boolean; status: string; organisation_id: string; role: string }>(
+      'SELECT is_active, status, organisation_id, role FROM staff WHERE id = $1',
       [payload.staffId]
     );
 
@@ -45,6 +45,17 @@ export async function authenticate(
     // Keep organisationId in payload in sync with DB (handles migration edge cases)
     if (rows[0].organisation_id && !payload.organisationId) {
       payload.organisationId = rows[0].organisation_id;
+    }
+
+    // Keep role in sync with DB on every request — a manager promoting/changing
+    // someone's role previously had no effect until that staff member fully
+    // logged out and back in, since the JWT's role claim was trusted as-is for
+    // the token's whole lifetime. Clocking in/out re-uses the same token, so a
+    // just-promoted team leader kept seeing care_staff-scoped tasks and a stale
+    // role in the app until a full re-login — this makes role changes live
+    // immediately instead.
+    if (rows[0].role && rows[0].role !== payload.role) {
+      payload.role = rows[0].role as StaffRole;
     }
 
     req.staff = payload;

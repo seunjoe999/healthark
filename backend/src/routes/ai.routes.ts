@@ -16,7 +16,13 @@ async function callAI(prompt: string, maxTokens = 900): Promise<string> {
     throw Object.assign(new Error('GROQ_API_KEY not configured'), { isKeyMissing: true });
   }
 
-  const MAX_RETRIES = 3;
+  // Busy periods (e.g. shift-change mornings, when many homes generate handover
+  // summaries and audits within the same few minutes) can burn through 3 retries
+  // of Groq's rate limit before it clears, silently dropping to the plain-text
+  // fallback even though the request would have succeeded a few seconds later.
+  // 5 retries with a capped per-attempt wait gives a longer overall budget
+  // without letting any single wait run unreasonably long.
+  const MAX_RETRIES = 5;
   let lastErr: any;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -35,7 +41,7 @@ async function callAI(prompt: string, maxTokens = 900): Promise<string> {
     });
 
     if (res.status === 429) {
-      const retryAfter = parseFloat(res.headers.get('retry-after') || '12');
+      const retryAfter = Math.min(parseFloat(res.headers.get('retry-after') || '12'), 15);
       const waitMs = Math.ceil(retryAfter * 1000) + 500;
       console.log(`Groq rate limit hit, waiting ${waitMs}ms before retry ${attempt + 1}/${MAX_RETRIES}`);
       await new Promise(r => setTimeout(r, waitMs));
