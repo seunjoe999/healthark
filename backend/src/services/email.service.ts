@@ -80,36 +80,38 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; 
 
 // Branded like the rest of the app's printed documents (care plans, invoices) — the
 // actual CompCare Hub logo plus the gold/near-black palette used everywhere else in
-// the product, not a generic purple notification card. Manager specifically asked
-// for this after recruitment emails were landing looking too plain/basic.
+// the product, not a generic purple notification card.
+//
+// Everything below is deliberately built as nested <table>s with every style written
+// inline on the element itself, not as CSS classes in a <style> block. A received
+// invoice email came back completely unstyled — Gmail (particularly its mobile app,
+// which is what staff actually read mail in) strips <style> blocks from HTML email
+// entirely and only reliably honours inline `style="..."` attributes. Inheritance
+// from an inline-styled ancestor still works normally, so the body text default
+// (colour/line-height/font) is set once on the content cell rather than on every
+// single <p>/<li> the template functions below generate.
 function wrap(body: string): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:Arial,sans-serif;background:#f1f5f9;margin:0;padding:0}
-    .card{background:#fff;max-width:600px;margin:32px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.1)}
-    .header{background:#0d1526;padding:24px 32px}
-    .header img{width:44px;height:44px;border-radius:10px;background:#fff;padding:3px;display:block}
-    .header h1{color:#e8b130;margin:0;font-size:20px;font-weight:700;font-family:Georgia,serif}
-    .header p{color:#a8a29e;margin:2px 0 0;font-size:12px}
-    .accent{height:4px;background:linear-gradient(90deg,#e8b130,#d4961a)}
-    .body{padding:32px}
-    .body p{color:#374151;line-height:1.6;margin:0 0 14px}
-    .body ul{color:#374151;line-height:1.7;padding-left:20px}
-    .footer{background:#f8fafc;padding:20px 32px;font-size:12px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0}
-    .btn{display:inline-block;background:linear-gradient(135deg,#e8b130,#d4961a);color:#0a0a0a;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;margin:16px 0}
-  </style></head><body><div class="card">
-    <div class="header">
-      <!-- table, not flexbox, for the logo+title row — Outlook's rendering engine
-           (Word) ignores flexbox entirely, so a table is the only layout that
-           reliably lines these up across every mail client. -->
-      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-        <td style="padding-right:14px"><img src="https://compcarehub.co.uk/pwa-192.png" alt="CompCare Hub" /></td>
-        <td><h1>CompCare Hub</h1><p>Care Home Management System</p></td>
-      </tr></table>
-    </div>
-    <div class="accent"></div>
-    <div class="body">${body}</div>
-    <div class="footer">This email was sent via CompCare Hub. Please do not reply directly.</div>
-  </div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9">
+      <tr><td align="center" style="padding:32px 16px">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.1)">
+          <tr><td style="background:#0d1526;padding:24px 32px">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td style="padding-right:14px"><img src="https://compcarehub.co.uk/pwa-192.png" width="44" height="44" alt="CompCare Hub" style="width:44px;height:44px;border-radius:10px;background:#ffffff;padding:3px;display:block" /></td>
+              <td>
+                <div style="color:#e8b130;font-size:20px;font-weight:700;font-family:Georgia,serif">CompCare Hub</div>
+                <div style="color:#a8a29e;font-size:12px;margin-top:2px">Care Home Management System</div>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="height:4px;background:#e8b130;line-height:4px;font-size:4px">&nbsp;</td></tr>
+          <tr><td style="padding:32px;color:#374151;font-size:14px;line-height:1.6;font-family:Arial,Helvetica,sans-serif">${body}</td></tr>
+          <tr><td style="background:#f8fafc;padding:20px 32px;font-size:12px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0">This email was sent via CompCare Hub. Please do not reply directly.</td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body></html>`;
 }
 
 export function interviewInviteEmail(candidate: { first_name: string; last_name: string; position: string }, details: { date: string; time: string; location: string; contactName: string; contactEmail: string }) {
@@ -213,50 +215,65 @@ export function invoiceEmail(
   const total = parseFloat(String(invoice.invoice_amount || 0));
   const homeAddress = [home.address1, home.address2, home.address3, home.postcode].filter(Boolean).join(', ');
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:Arial,sans-serif;background:#f1f5f9;margin:0;padding:0;color:#1e293b}
-    .card{background:#fff;max-width:600px;margin:32px auto;padding:40px;border-radius:8px}
-    .title{font-size:32px;letter-spacing:2px;font-weight:700;color:#0f172a;margin:0}
-    .meta{text-align:right;font-size:13px;color:#64748b}
-    .cols{display:table;width:100%;margin:28px 0}
-    .col{display:table-cell;width:50%;vertical-align:top;font-size:13px;line-height:1.6}
-    .col strong{display:block;font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px}
-    table.items{width:100%;border-collapse:collapse;margin:24px 0;font-size:13px}
-    table.items th{background:#1e293b;color:#fff;text-align:left;padding:10px 12px;font-size:11px;letter-spacing:0.5px}
-    table.items th.r,table.items td.r{text-align:right}
-    table.items td{padding:10px 12px;border-bottom:1px solid #e2e8f0}
-    .totals{width:60%;margin-left:auto;font-size:13px}
-    .totals tr td{padding:6px 12px}
-    .totals tr.due td{background:#1e293b;color:#fff;font-weight:700;font-size:15px}
-    .thanks{text-align:center;font-size:26px;font-style:italic;color:#1e293b;margin:32px 0 8px}
-    .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:24px}
-  </style></head><body><div class="card">
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:18px"><tr>
-      <td><img src="https://compcarehub.co.uk/pwa-192.png" alt="CompCare Hub" width="40" height="40" style="border-radius:9px;display:block" /></td>
-    </tr></table>
-    <div class="cols">
-      <div class="col"><p class="title">INVOICE</p></div>
-      <div class="col meta">Invoice No: ${invoiceNo}<br/>Date: ${issueDate}</div>
-    </div>
-    <div class="cols">
-      <div class="col"><strong>Bill To</strong>${invoice.first_name} ${invoice.last_name}</div>
-      <div class="col"><strong>From</strong>${home.name}${homeAddress ? `<br/>${homeAddress}` : ''}${home.phone ? `<br/>${home.phone}` : ''}${home.email ? `<br/>${home.email}` : ''}</div>
-    </div>
-    <table class="items">
-      <tr><th>Description</th><th class="r">Rate</th><th class="r">Hours</th><th class="r">Total</th></tr>
-      <tr>
-        <td>Care services — ${monthLabel}</td>
-        <td class="r">${rate ? `£${rate.toFixed(2)}/hr` : '—'}</td>
-        <td class="r">${hours ? hours.toFixed(1) : '—'}</td>
-        <td class="r">£${total.toFixed(2)}</td>
-      </tr>
+  // Same reasoning as wrap() above — a received copy of this exact invoice came back
+  // from Gmail with none of its styling applied, because Gmail strips <style> blocks.
+  // Rebuilt as nested tables with every style inline so the layout, colours and
+  // borders actually survive being read in Gmail (web or mobile app).
+  const td = 'padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:13px';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#1e293b">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9">
+      <tr><td align="center" style="padding:32px 16px">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px">
+          <tr><td style="padding:40px">
+
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:18px"><tr>
+              <td><img src="https://compcarehub.co.uk/pwa-192.png" alt="CompCare Hub" width="40" height="40" style="border-radius:9px;display:block" /></td>
+            </tr></table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px"><tr>
+              <td style="font-size:32px;letter-spacing:2px;font-weight:700;color:#0f172a">INVOICE</td>
+              <td align="right" style="font-size:13px;color:#64748b;vertical-align:top">Invoice No: ${invoiceNo}<br/>Date: ${issueDate}</td>
+            </tr></table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr>
+              <td width="50%" style="font-size:13px;line-height:1.6;vertical-align:top">
+                <div style="font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px">BILL TO</div>
+                ${invoice.first_name} ${invoice.last_name}
+              </td>
+              <td width="50%" style="font-size:13px;line-height:1.6;vertical-align:top">
+                <div style="font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px">FROM</div>
+                ${home.name}${homeAddress ? `<br/>${homeAddress}` : ''}${home.phone ? `<br/>${home.phone}` : ''}${home.email ? `<br/>${home.email}` : ''}
+              </td>
+            </tr></table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:24px 0">
+              <tr>
+                <td style="background:#1e293b;color:#fff;text-align:left;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Description</td>
+                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Rate</td>
+                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Hours</td>
+                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Total</td>
+              </tr>
+              <tr>
+                <td style="${td}">Care services — ${monthLabel}</td>
+                <td style="${td}text-align:right">${rate ? `£${rate.toFixed(2)}/hr` : '—'}</td>
+                <td style="${td}text-align:right">${hours ? hours.toFixed(1) : '—'}</td>
+                <td style="${td}text-align:right">£${total.toFixed(2)}</td>
+              </tr>
+            </table>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:60%;margin-left:auto;font-size:13px">
+              <tr><td style="padding:6px 12px">Subtotal</td><td align="right" style="padding:6px 12px">£${total.toFixed(2)}</td></tr>
+              <tr><td style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">Amount Due</td><td align="right" style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">£${total.toFixed(2)}</td></tr>
+            </table>
+
+            ${invoice.notes ? `<p style="font-size:13px;margin-top:20px"><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
+            <p style="text-align:center;font-size:26px;font-style:italic;color:#1e293b;margin:32px 0 8px">Thank You!</p>
+            <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:24px">This invoice was sent via CompCare Hub on behalf of ${home.name}.</div>
+
+          </td></tr>
+        </table>
+      </td></tr>
     </table>
-    <table class="totals">
-      <tr><td>Subtotal</td><td class="r">£${total.toFixed(2)}</td></tr>
-      <tr class="due"><td>Amount Due</td><td class="r">£${total.toFixed(2)}</td></tr>
-    </table>
-    ${invoice.notes ? `<p style="font-size:13px;margin-top:20px"><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
-    <p class="thanks">Thank You!</p>
-    <div class="footer">This invoice was sent via CompCare Hub on behalf of ${home.name}.</div>
-  </div></body></html>`;
+  </body></html>`;
 }
