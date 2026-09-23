@@ -347,7 +347,7 @@ function CandidateCard({ candidate, onEdit, onDelete, onView, onEmail, onMoveSta
                   <button
                     key={stage.key}
                     onClick={() => { onMoveStage(stage.key); setShowStageMenu(false) }}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 transition-colors">
+                    className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
                     {stage.label}
                   </button>
                 ))}

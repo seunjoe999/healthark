@@ -20,7 +20,7 @@ const TYPE_DOT: Record<string, string> = {
   info: 'bg-slate-400',
 }
 
-export default function NotificationsBell({ align = 'right' }: { align?: 'left' | 'right' }) {
+export default function NotificationsBell({ align = 'right', viewportAnchored = false }: { align?: 'left' | 'right'; viewportAnchored?: boolean }) {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
@@ -81,8 +81,20 @@ export default function NotificationsBell({ align = 'right' }: { align?: 'left' 
         <div className="fixed inset-0 z-40 sm:hidden" onClick={() => setOpen(false)} />
       )}
       {open && (
-        <div className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl shadow-2xl z-50 overflow-hidden`}
-          style={{ background: '#151515', border: '1px solid rgba(232,177,48,0.25)' }}>
+        // The mobile top header packs the bell in among the search/avatar/sign-out
+        // buttons rather than flush against the screen edge, so a panel positioned
+        // relative to the bell itself (the old `absolute right-0`) had its left edge
+        // land off-screen — the bell's right edge sits well short of the viewport's
+        // right edge, and the panel's ~340px width overshot past the left side of
+        // the phone entirely. Anchoring to the viewport instead of the trigger
+        // button guarantees it always fits, regardless of where the bell sits.
+        <div className={viewportAnchored
+          ? 'fixed right-4 w-[min(340px,calc(100vw-2rem))] rounded-2xl shadow-2xl z-50 overflow-hidden'
+          : `absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl shadow-2xl z-50 overflow-hidden`}
+          style={{
+            background: '#151515', border: '1px solid rgba(232,177,48,0.25)',
+            ...(viewportAnchored ? { top: 'calc(56px + env(safe-area-inset-top, 0px) + 8px)' } : {}),
+          }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(232,177,48,0.15)' }}>
             <h3 className="text-white font-semibold text-sm">Notifications</h3>

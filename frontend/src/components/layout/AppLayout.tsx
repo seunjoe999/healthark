@@ -625,7 +625,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
           {/* Notifications bell */}
           <div className="flex-shrink-0">
-            <NotificationsBell />
+            <NotificationsBell viewportAnchored />
           </div>
 
           {/* User avatar initials */}

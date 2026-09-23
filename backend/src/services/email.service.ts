@@ -78,20 +78,35 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; 
 
 // ── Email templates ────────────────────────────────────────────────────────────
 
+// Branded like the rest of the app's printed documents (care plans, invoices) — the
+// actual CompCare Hub logo plus the gold/near-black palette used everywhere else in
+// the product, not a generic purple notification card. Manager specifically asked
+// for this after recruitment emails were landing looking too plain/basic.
 function wrap(body: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:Arial,sans-serif;background:#f8fafc;margin:0;padding:0}
-    .card{background:#fff;max-width:600px;margin:32px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-    .header{background:#7c3aed;padding:28px 32px}
-    .header h1{color:#fff;margin:0;font-size:20px;font-weight:700}
-    .header p{color:#e9d5ff;margin:4px 0 0;font-size:13px}
+    body{font-family:Arial,sans-serif;background:#f1f5f9;margin:0;padding:0}
+    .card{background:#fff;max-width:600px;margin:32px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.1)}
+    .header{background:#0d1526;padding:24px 32px}
+    .header img{width:44px;height:44px;border-radius:10px;background:#fff;padding:3px;display:block}
+    .header h1{color:#e8b130;margin:0;font-size:20px;font-weight:700;font-family:Georgia,serif}
+    .header p{color:#a8a29e;margin:2px 0 0;font-size:12px}
+    .accent{height:4px;background:linear-gradient(90deg,#e8b130,#d4961a)}
     .body{padding:32px}
     .body p{color:#374151;line-height:1.6;margin:0 0 14px}
     .body ul{color:#374151;line-height:1.7;padding-left:20px}
-    .footer{background:#f1f5f9;padding:20px 32px;font-size:12px;color:#94a3b8;text-align:center}
-    .btn{display:inline-block;background:#7c3aed;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0}
+    .footer{background:#f8fafc;padding:20px 32px;font-size:12px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0}
+    .btn{display:inline-block;background:linear-gradient(135deg,#e8b130,#d4961a);color:#0a0a0a;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;margin:16px 0}
   </style></head><body><div class="card">
-    <div class="header"><h1>CompCare Hub</h1><p>Care Home Management System</p></div>
+    <div class="header">
+      <!-- table, not flexbox, for the logo+title row — Outlook's rendering engine
+           (Word) ignores flexbox entirely, so a table is the only layout that
+           reliably lines these up across every mail client. -->
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td style="padding-right:14px"><img src="https://compcarehub.co.uk/pwa-192.png" alt="CompCare Hub" /></td>
+        <td><h1>CompCare Hub</h1><p>Care Home Management System</p></td>
+      </tr></table>
+    </div>
+    <div class="accent"></div>
     <div class="body">${body}</div>
     <div class="footer">This email was sent via CompCare Hub. Please do not reply directly.</div>
   </div></body></html>`;
@@ -216,6 +231,9 @@ export function invoiceEmail(
     .thanks{text-align:center;font-size:26px;font-style:italic;color:#1e293b;margin:32px 0 8px}
     .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:24px}
   </style></head><body><div class="card">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:18px"><tr>
+      <td><img src="https://compcarehub.co.uk/pwa-192.png" alt="CompCare Hub" width="40" height="40" style="border-radius:9px;display:block" /></td>
+    </tr></table>
     <div class="cols">
       <div class="col"><p class="title">INVOICE</p></div>
       <div class="col meta">Invoice No: ${invoiceNo}<br/>Date: ${issueDate}</div>

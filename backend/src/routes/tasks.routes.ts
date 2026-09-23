@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
 import { isStaffClockedIn } from '../utils/clockStatus';
+import { ukDateStr, ukDayOfWeek } from '../utils/ukTime';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ function fromToken(req: Request, field: string): string {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const date = (req.query.date as string) || ukDateStr();
     const role = fromToken(req, 'role');
     const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = fromToken(req, 'staffId');
@@ -162,7 +163,7 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
           task_date, due_time, priority, assigned_role, picture_url, assigned_staff_id, visible_team_ids)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
         [homeId, suId || null, createdBy, title, category || 'general',
-         description || null, taskDate || new Date().toISOString().split('T')[0],
+         description || null, taskDate || ukDateStr(),
          dueTime || null, priority || 'normal', assignedRole || null, pictureUrl || null, assignedStaffId || null,
          teamIds]
       );
@@ -247,8 +248,12 @@ router.put('/:id/attempt', param('id').isUUID(), validateRequest,
 router.post('/generate-daily', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
-    const today = new Date().toISOString().split('T')[0];
-    const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon...
+    // UK time, not the server's own UTC clock — during BST (UTC+1) the server's
+    // UTC date is still "yesterday" for up to an hour after midnight in the UK,
+    // so this used to generate the day's tasks under yesterday's date, which is
+    // exactly what staff reported as "we only see yesterday's tasks".
+    const today = ukDateStr();
+    const dayOfWeek = ukDayOfWeek(); // 0=Sun, 1=Mon...
     
     // Get active templates
     const templates = await query(
