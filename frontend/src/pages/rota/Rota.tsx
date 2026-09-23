@@ -8,7 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, AlertTriangle, CheckCircle, Phone, Users,
+  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -215,6 +215,7 @@ export default function Rota() {
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
+  const [unassignOpen, setUnassignOpen] = useState(false)
   // Pre-fills Bulk Assign — Recurring Pattern when opened from a specific shift's
   // detail modal ("Bulk assign like this"), so staff don't have to re-pick the
   // resident/day-or-night that's already obvious from the shift they clicked.
@@ -410,6 +411,10 @@ export default function Rota() {
               <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}
                 title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern — use this to fill in a rota someone already created">
                 Bulk Assign Staff to Shifts
+              </Button>
+              <Button variant="outline" icon={<UserMinus className="w-4 h-4" />} onClick={() => setUnassignOpen(true)}
+                title="Remove a staff member from all of their current and future shifts (today onwards) — the shifts stay on the rota as unfilled, ready to reassign">
+                Unassign
               </Button>
               <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
                 onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
@@ -896,6 +901,17 @@ export default function Rota() {
           defaultDate={format(weekStart, 'yyyy-MM-dd')}
           seed={patternSeed}
           onSaved={() => { setPatternAssignOpen(false); setPatternSeed(null); loadAll() }}
+        />
+      )}
+
+      {unassignOpen && (
+        <UnassignModal
+          open={unassignOpen}
+          onClose={() => setUnassignOpen(false)}
+          staffList={staffList}
+          suList={suList}
+          homeId={selectedHome}
+          onSaved={() => { setUnassignOpen(false); loadAll() }}
         />
       )}
 
@@ -2006,6 +2022,11 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
 
   const save = async () => {
     if (!staffId) { toast.error('Select a staff member'); return }
+    // Resident used to be optional and, left blank, matched EVERY resident's shifts
+    // in the date range — a staff member picked for one resident's pattern could
+    // silently get allocated onto other residents' shifts too. Now required so a
+    // bulk allocation only ever touches the resident it was meant for.
+    if (!suId) { toast.error('Select a resident — bulk allocation only applies to that resident\'s shifts'); return }
     if (repeatMode !== 'monthly' && daysOfWeek.length === 0) { toast.error('Select at least one day of the week'); return }
     if (endPreset === 'custom' && !endDate) { toast.error('Set an end date, or pick one of the quick options'); return }
     // "This week / 2 weeks / 4 weeks" are counted from the start date, not the calendar
@@ -2040,7 +2061,7 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
         </p>
 
         <Select label="Staff member *" value={staffId} onChange={e => setStaffId(e.target.value)} options={staffOptions} placeholder="Select staff member" />
-        <Select label="Resident (optional)" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="All residents" />
+        <Select label="Resident *" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="Select resident" />
 
         <div>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Day or Night</label>
@@ -2125,6 +2146,56 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
         <div className="flex gap-3 justify-end pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button loading={saving} onClick={save} icon={<Check className="w-4 h-4" />}>Allocate</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Unassign Modal ────────────────────────────────────────────────────────────
+// The counterpart to "Bulk Assign Staff to Shifts" — removes a staff member from
+// all of their shifts from today onwards in one action, instead of opening every
+// shift individually. Un-fills the shift (goes back to unfilled) rather than
+// deleting it, so the rota slot is still there to cover.
+
+function UnassignModal({ open, onClose, staffList, suList, homeId, onSaved }: {
+  open: boolean; onClose: () => void
+  staffList: any[]; suList: any[]; homeId: string; onSaved: () => void
+}) {
+  const [staffId, setStaffId] = useState('')
+  const [suId, setSuId] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
+  const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
+  const staffName = staffList.find(s => s.id === staffId) ? getName(staffList.find(s => s.id === staffId)) : ''
+
+  const save = async () => {
+    if (!staffId) { toast.error('Select a staff member'); return }
+    if (!window.confirm(`Remove ${staffName} from all their current and future shifts${suId ? ' for this resident' : ''}? Past shifts are kept for the record. This cannot be undone.`)) return
+    setSaving(true)
+    try {
+      const res = await api.post('/shifts/bulk-unassign', { homeId, staffId, suId: suId || null })
+      const unassigned = res.data.data?.unassigned || 0
+      toast.success(unassigned > 0 ? `Unassigned from ${unassigned} shift${unassigned !== 1 ? 's' : ''}` : 'No current or future shifts found for this staff member')
+      onSaved()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to unassign') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Unassign Staff from Shifts" size="md">
+      <div className="space-y-4">
+        <p className="text-xs text-slate-500">
+          Removes this staff member from every shift they're on today or in the future — the shifts stay on the rota as unfilled, ready to reassign. Past shifts are left alone.
+        </p>
+
+        <Select label="Staff member *" value={staffId} onChange={e => setStaffId(e.target.value)} options={staffOptions} placeholder="Select staff member" />
+        <Select label="Resident (optional)" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="All residents — every shift, not just one" />
+
+        <div className="flex gap-3 justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="danger" loading={saving} onClick={save} icon={<UserMinus className="w-4 h-4" />}>Unassign</Button>
         </div>
       </div>
     </Modal>

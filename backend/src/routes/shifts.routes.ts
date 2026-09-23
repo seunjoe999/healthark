@@ -687,6 +687,9 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
 
 router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
   body('staffId').isUUID(),
+  // Required — left optional this used to silently match every resident's shifts
+  // in the date range, not just the one the manager meant to allocate for.
+  body('suId').isUUID(),
   body('startDate').isDate(),
   body('endDate').isDate(),
   // Monthly mode matches by day-of-month (derived from startDate) instead of days of
@@ -744,6 +747,33 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       }).catch(() => {});
 
       res.json({ success: true, data: { assigned: ids.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/shifts/bulk-unassign — remove a staff member from all of their current and
+// future shifts (today onwards; past shifts are left alone as a historical record),
+// optionally narrowed to one resident. This un-fills the shift (staff_id -> NULL,
+// status -> 'unfilled') rather than deleting it, so the rota slot still exists and
+// needs covering — the counterpart to "Bulk Assign Staff to Shifts".
+router.post('/bulk-unassign', requireRole(...MANAGE_ROLES), [
+  body('staffId').isUUID(),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const { staffId, suId } = req.body;
+      const today = new Date().toISOString().split('T')[0];
+
+      const rows = await query<any>(
+        `UPDATE staff_shifts SET staff_id = NULL, status = 'unfilled', updated_at = NOW()
+         WHERE home_id = $1 AND staff_id = $2 AND shift_date >= $3
+           AND ($4::uuid IS NULL OR su_id = $4)
+         RETURNING id`,
+        [homeId, staffId, today, suId || null]
+      );
+
+      res.json({ success: true, data: { unassigned: rows.length } } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
