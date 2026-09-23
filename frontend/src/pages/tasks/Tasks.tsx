@@ -457,20 +457,25 @@ export default function Tasks() {
 
       {pageTab === 'tasks' && (
         <>
-          {/* Stats — clickable, each one jumps straight to that filter */}
+          {/* Stats — act as sort/filter buttons, like the Pending/Completed/All
+              pills below: the active one gets a solid fill so it's obvious
+              which filter is currently applied, not just a faint outline. */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Total today', value: tasks.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', ring: 'ring-blue-400', filterValue: 'all' as const },
-              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', ring: 'ring-amber-400', filterValue: 'pending' as const },
-              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: 'ring-emerald-400', filterValue: 'completed' as const },
-            ].map(s => (
-              <button key={s.label} type="button" onClick={() => setFilter(s.filterValue)}
-                className={`rounded-2xl border shadow-card p-4 text-center cursor-pointer active:scale-95 transition-transform hover:scale-[1.02] ${s.bg} ${s.border} ${filter === s.filterValue ? `ring-2 ring-offset-1 ${s.ring}` : ''}`}>
-                <p className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</p>
-                <p className={`text-xs font-extrabold mt-0.5 ${s.color}`}>{s.label}</p>
-                <p className={`text-[10px] font-semibold mt-0.5 opacity-60 ${s.color}`}>Tap to view</p>
-              </button>
-            ))}
+              { label: 'Total today', value: tasks.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', solid: 'bg-blue-600 border-blue-600', filterValue: 'all' as const },
+              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', solid: 'bg-amber-600 border-amber-600', filterValue: 'pending' as const },
+              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', solid: 'bg-emerald-600 border-emerald-600', filterValue: 'completed' as const },
+            ].map(s => {
+              const active = filter === s.filterValue
+              return (
+                <button key={s.label} type="button" onClick={() => setFilter(s.filterValue)}
+                  className={`rounded-2xl border shadow-card p-4 text-center cursor-pointer active:scale-95 transition-all hover:scale-[1.02] ${active ? s.solid : `${s.bg} ${s.border}`}`}>
+                  <p className={`text-2xl font-bold font-display ${active ? 'text-white' : s.color}`}>{s.value}</p>
+                  <p className={`text-xs font-extrabold mt-0.5 ${active ? 'text-white' : s.color}`}>{s.label}</p>
+                  <p className={`text-[10px] font-semibold mt-0.5 ${active ? 'text-white/80' : `opacity-60 ${s.color}`}`}>{active ? 'Showing' : 'Tap to view'}</p>
+                </button>
+              )
+            })}
           </div>
 
           {/* Medication Count — mandatory at the start of shift, surfaced here so it can't be missed.
