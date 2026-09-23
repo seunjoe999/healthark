@@ -278,16 +278,35 @@ export default function AssessmentView() {
             {section.questions.map((q: any, qi: number) => {
               const ans = assessment.answers?.[q.id]
               const note = q.detail ? assessment.answers?.[`${q.id}__notes`] : null
+              // Free-text (and multi-line) answers used to sit in the same
+              // right-aligned, width-capped column as short Yes/No badges —
+              // fine for "YES" but squeezed a whole paragraph into 320px and
+              // right-justified it, which read as pushed-over and badly
+              // wrapped. Long-form answers now sit left-aligned, full width,
+              // below the question — short answers keep the compact
+              // side-by-side layout since that reads fine at a glance.
+              const isLongForm = q.type === 'text' || Array.isArray(ans)
               return (
                 <div key={q.id} className={`${qi > 0 ? 'pt-3 border-t border-slate-50' : ''}`}>
-                  <div className="flex gap-4">
-                    <p className="flex-1 text-sm text-slate-700 leading-snug">
-                      <span className="text-slate-400 mr-1">{qi + 1}.</span>{q.text}
-                    </p>
-                    <div className="flex-shrink-0 text-right max-w-xs">
-                      <AnswerDisplay q={q} value={ans} />
+                  {isLongForm ? (
+                    <div>
+                      <p className="text-sm text-slate-700 leading-snug">
+                        <span className="text-slate-400 mr-1">{qi + 1}.</span>{q.text}
+                      </p>
+                      <div className="mt-1.5 text-left">
+                        <AnswerDisplay q={q} value={ans} />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex gap-4">
+                      <p className="flex-1 text-sm text-slate-700 leading-snug">
+                        <span className="text-slate-400 mr-1">{qi + 1}.</span>{q.text}
+                      </p>
+                      <div className="flex-shrink-0 text-right max-w-xs">
+                        <AnswerDisplay q={q} value={ans} />
+                      </div>
+                    </div>
+                  )}
                   {note && <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 mt-1.5 whitespace-pre-line">{note}</p>}
                 </div>
               )

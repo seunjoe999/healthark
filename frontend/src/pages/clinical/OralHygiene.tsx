@@ -251,7 +251,9 @@ export default function OralHygiene() {
           {loading ? <div className="flex justify-center py-8"><Spinner /></div>
             : history.length > 0 && (
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100"><h2 className="font-semibold text-slate-800">Recent Records</h2></div>
+                <div className="px-5 py-4 border-b border-slate-100">
+                  <h2 className="font-bold text-sm uppercase tracking-wide px-2.5 py-1.5 rounded-lg inline-block" style={{ color: '#0369a1', background: 'rgba(14,165,233,0.1)' }}>Recent Records</h2>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
@@ -270,7 +272,7 @@ export default function OralHygiene() {
                           <td className="px-4 py-2.5">{h.session}</td>
                           <td className="px-4 py-2.5 text-slate-600">{h.refused ? <span className="text-red-600 font-bold">Refused</span> : (h.mouth_conditions || []).join(', ') || '—'}</td>
                           <td className="px-4 py-2.5">{h.assistance}</td>
-                          <td className="px-4 py-2.5 text-slate-400">{h.staff_name}</td>
+                          <td className="px-4 py-2.5 font-semibold text-slate-700">{h.staff_name}</td>
                         </tr>
                       ))}
                     </tbody>

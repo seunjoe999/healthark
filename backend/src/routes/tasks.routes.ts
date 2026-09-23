@@ -7,7 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
-import { isStaffClockedIn } from '../utils/clockStatus';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr, ukDayOfWeek } from '../utils/ukTime';
 
 const router = Router();
@@ -199,10 +199,12 @@ router.put('/:id/complete', param('id').isUUID(), validateRequest,
   }
 );
 
-// PUT /api/tasks/:id/reopen — undo a mistaken "Complete" tap, back to pending.
-// Only the staff member who completed it can reopen it, and only while
-// they're still clocked in for their shift — once they clock out (or it's
-// someone else's completion) it's locked, same rule as editing Daily Records.
+// PUT /api/tasks/:id/reopen — undo a mistaken "Complete" tap, back to pending
+// so it can be re-completed with corrected notes. Only the staff member who
+// completed it can reopen it, and only within the standard 24-hour amend
+// window (same grace period as Daily Records/MAR) rather than requiring them
+// to still be clocked in — a mistake noticed after shift end must still be
+// fixable, not locked forever the moment they clock out.
 router.put('/:id/reopen', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -213,8 +215,8 @@ router.put('/:id/reopen', param('id').isUUID(), validateRequest,
       const isPrivileged = TASK_CREATOR_ROLES.includes(role);
       if (!isPrivileged) {
         if (rows[0].completed_by !== staffId) throw new AppError('You can only reopen a task you completed yourself', 403);
-        if (!(await isStaffClockedIn(staffId))) {
-          throw new AppError('You can only reopen a task while still clocked in for your shift', 403);
+        if (!(await isWithinAmendWindow(staffId))) {
+          throw new AppError('You can only reopen a task within 24 hours of your shift ending', 403);
         }
       }
       await query(

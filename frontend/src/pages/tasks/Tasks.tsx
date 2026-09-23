@@ -193,8 +193,8 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
           <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center">
             <Check className="w-5 h-5 text-white" />
           </div>
-          {(isRole(...TASK_CREATOR_ROLES) || (task.completed_by === userId && clockedIn)) && (
-            <button onClick={() => onReopen(task.id)} title="Reopen — undo completion"
+          {(isRole(...TASK_CREATOR_ROLES) || task.completed_by === userId) && (
+            <button onClick={() => onReopen(task.id)} title="Reopen — undo completion, e.g. to fix a mistake (within 24 hours of your shift ending)"
               className="text-[10px] font-semibold text-slate-400 hover:text-amber-600 flex items-center gap-0.5">
               <RotateCcw className="w-3 h-3" /> Undo
             </button>
@@ -465,9 +465,10 @@ export default function Tasks() {
               { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: 'ring-emerald-400', filterValue: 'completed' as const },
             ].map(s => (
               <button key={s.label} type="button" onClick={() => setFilter(s.filterValue)}
-                className={`rounded-2xl border shadow-card p-4 text-center transition-transform hover:scale-[1.02] ${s.bg} ${s.border} ${filter === s.filterValue ? `ring-2 ring-offset-1 ${s.ring}` : ''}`}>
+                className={`rounded-2xl border shadow-card p-4 text-center cursor-pointer active:scale-95 transition-transform hover:scale-[1.02] ${s.bg} ${s.border} ${filter === s.filterValue ? `ring-2 ring-offset-1 ${s.ring}` : ''}`}>
                 <p className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</p>
                 <p className={`text-xs font-extrabold mt-0.5 ${s.color}`}>{s.label}</p>
+                <p className={`text-[10px] font-semibold mt-0.5 opacity-60 ${s.color}`}>Tap to view</p>
               </button>
             ))}
           </div>
