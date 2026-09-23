@@ -194,6 +194,10 @@ export default function Rota() {
   const [filterSu,    setFilterSu]    = useState('')
   const [filterStaff, setFilterStaff] = useState('')
   const [filterType,  setFilterType]  = useState('')
+  // Individual = each resident's own rota (no service label). Service = shared-service
+  // rota entries created via "Create Rota for Service" (has a label). "All" shows both
+  // mixed together, which is how the grid behaved before this switch existed.
+  const [rotaMode, setRotaMode] = useState<'all' | 'individual' | 'service'>('all')
 
   // swap requests
   const [swapRequests, setSwapRequests] = useState<any[]>([])
@@ -366,6 +370,8 @@ export default function Rota() {
 
   const getDayShifts = (day: Date) => {
     let r = shifts.filter(s => { try { return isSameDay(parseISO(s.shift_date), day) } catch { return false } })
+    if (rotaMode === 'individual') r = r.filter(s => !s.label)
+    if (rotaMode === 'service')    r = r.filter(s => !!s.label)
     if (filterSu)    r = r.filter(s => s.su_id === filterSu || (Array.isArray(s.su_ids) && s.su_ids.includes(filterSu)))
     if (filterStaff) r = r.filter(s => s.staff_id === filterStaff)
     if (filterType)  r = r.filter(s => s.shift_type === filterType)
@@ -472,6 +478,18 @@ export default function Rota() {
 
       {/* ── Filters ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 flex-wrap bg-slate-50/80">
+        {/* Individual / Service switch — Individual is each resident's own rota
+            (created via Create Shift / Bulk Create), Service is a shared-service
+            rota entry (created via Create Rota for Service, shows its service
+            name instead of residents' names). All shows both together. */}
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-sm flex-shrink-0">
+          {([{ v: 'all', l: 'All' }, { v: 'individual', l: 'Individual' }, { v: 'service', l: 'Services' }] as const).map(o => (
+            <button key={o.v} onClick={() => setRotaMode(o.v)}
+              className={`px-2.5 py-1 font-semibold transition-colors ${rotaMode === o.v ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+              {o.l}
+            </button>
+          ))}
+        </div>
         <Filter className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterSu} onChange={e => setFilterSu(e.target.value)}>
