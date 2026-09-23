@@ -1257,14 +1257,23 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
     setSaving(true)
     try {
       const daysOfWeek = form.recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : form.daysOfWeek
-      await api.post('/shifts/service-shift', {
+      const res = await api.post('/shifts/service-shift', {
         homeId, ...form, suIds: selectedSus,
         staffIds: selectedStaff,
         daysOfWeek,
         totalStaffRequired: parseInt(form.totalStaffRequired) || 1,
         breakMins: parseInt(form.breakMins) || 0,
       })
-      toast.success(`Rota created for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}`)
+      // Report what was actually generated, not just that the request succeeded —
+      // a request can come back 201 having created the template but generated zero
+      // shifts (e.g. every candidate date already had a matching shift), which used
+      // to show a plain "success" message while nothing appeared on the grid.
+      const generated = res.data.data?.generated ?? 0
+      if (generated > 0) {
+        toast.success(`Rota created — ${generated} shift${generated !== 1 ? 's' : ''} added for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}`)
+      } else {
+        toast.error('No shifts were generated — check the dates and recurrence, then try again')
+      }
       onSaved()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to create rota')

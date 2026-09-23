@@ -77,15 +77,19 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
   if (!dateStrs.length) return 0;
 
   // One bulk existence check for every candidate date, instead of one query per date.
-  const existing = tmpl.staff_id
-    ? await query<any>(
-        `SELECT shift_date::text FROM staff_shifts WHERE staff_id=$1 AND shift_date = ANY($2::date[]) AND start_time=$3::time`,
-        [tmpl.staff_id, dateStrs, tmpl.start_time]
-      )
-    : await query<any>(
-        `SELECT shift_date::text FROM staff_shifts WHERE su_id=$1 AND shift_date = ANY($2::date[]) AND start_time=$3::time AND staff_id IS NULL`,
-        [tmpl.su_id, dateStrs, tmpl.start_time]
-      );
+  // Scoped to THIS template only (tmpl.id is always freshly generated moments before
+  // this call, so it can never already have shifts unless this function genuinely ran
+  // for it twice). Previously this matched ANY existing shift for the same staff/
+  // resident/date/time regardless of which template it came from — so a resident who
+  // already had one rota entry at, say, 08:00-20:00 would silently get ZERO shifts
+  // generated for a second, unrelated service at that same time (a "Create Rota for
+  // Service" submission that reported success but created nothing), and likewise a
+  // staff member already scheduled at a given time elsewhere would block a new
+  // recurring shift from ever being generated for them.
+  const existing = await query<any>(
+    `SELECT shift_date::text FROM staff_shifts WHERE template_id=$1 AND shift_date = ANY($2::date[]) AND start_time=$3::time`,
+    [tmpl.id, dateStrs, tmpl.start_time]
+  );
   const existingSet = new Set(existing.map((r: any) => r.shift_date));
   const toInsert = dateStrs.filter(d => !existingSet.has(d));
   if (!toInsert.length) return 0;
