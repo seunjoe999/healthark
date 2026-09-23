@@ -689,17 +689,22 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
   body('staffId').isUUID(),
   body('startDate').isDate(),
   body('endDate').isDate(),
-  body('daysOfWeek').isArray({ min: 1 }),
+  // Monthly mode matches by day-of-month (derived from startDate) instead of days of
+  // the week, so daysOfWeek isn't meaningful there — only require it otherwise.
+  body('daysOfWeek').if((_, { req }) => !req.body.monthly).isArray({ min: 1 }),
 ], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, dayOrNight, onlyUnfilled } = req.body;
+      const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, monthly, dayOrNight, onlyUnfilled } = req.body;
 
       const candidates = await query<any>(
         `SELECT id, shift_date FROM staff_shifts
          WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
-           AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[])
+           AND (
+             ($8 AND EXTRACT(DAY FROM shift_date)::int = EXTRACT(DAY FROM $2::date)::int)
+             OR (NOT $8 AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[]))
+           )
            AND ($5::uuid IS NULL OR su_id = $5)
            AND (
              $6::text IS NULL
@@ -708,8 +713,9 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
            )
            AND (NOT $7 OR staff_id IS NULL)
          ORDER BY shift_date`,
-        [homeId, startDate, endDate, daysOfWeek.map((d: any) => parseInt(d)),
-         suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null, onlyUnfilled !== false]
+        [homeId, startDate, endDate, (daysOfWeek || []).map((d: any) => parseInt(d)),
+         suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null, onlyUnfilled !== false,
+         !!monthly]
       );
 
       // Fortnightly: keep only shifts in the same alternating week as startDate.

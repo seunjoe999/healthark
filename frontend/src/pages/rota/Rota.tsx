@@ -1985,9 +1985,13 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
   const [suId, setSuId] = useState(seed?.suId || '')
   const [dayOrNight, setDayOrNight] = useState<'any' | 'day' | 'night'>(seed?.dayOrNight || 'any')
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(seed?.daysOfWeek?.length ? seed.daysOfWeek : [1, 2, 3, 4, 5])
-  const [fortnightly, setFortnightly] = useState(false)
+  // Weekly/fortnightly still match by the days-of-week picker below; daily is just
+  // weekly with every day selected (same backend logic, no special case needed);
+  // monthly is a different mechanic entirely — same day-of-month as the start date,
+  // handled server-side since it doesn't use daysOfWeek at all.
+  const [repeatMode, setRepeatMode] = useState<'weekly' | 'fortnightly' | 'daily' | 'monthly'>('weekly')
   const [startDate, setStartDate] = useState(defaultDate)
-  const [ongoing, setOngoing] = useState(true)
+  const [endPreset, setEndPreset] = useState<'1w' | '2w' | '4w' | 'ongoing' | 'custom'>('ongoing')
   const [endDate, setEndDate] = useState('')
   const [onlyUnfilled, setOnlyUnfilled] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -2002,14 +2006,23 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
 
   const save = async () => {
     if (!staffId) { toast.error('Select a staff member'); return }
-    if (daysOfWeek.length === 0) { toast.error('Select at least one day of the week'); return }
-    if (!ongoing && !endDate) { toast.error('Set an end date, or choose "Until I stop it"'); return }
+    if (repeatMode !== 'monthly' && daysOfWeek.length === 0) { toast.error('Select at least one day of the week'); return }
+    if (endPreset === 'custom' && !endDate) { toast.error('Set an end date, or pick one of the quick options'); return }
+    // "This week / 2 weeks / 4 weeks" are counted from the start date, not the calendar
+    // week — e.g. starting Wednesday + "2 weeks" covers 14 days from that Wednesday,
+    // which is what "the week I assigned and the next week" means in practice.
+    const presetDays: Record<string, number> = { '1w': 6, '2w': 13, '4w': 27 }
+    const effectiveEndDate = endPreset === 'ongoing' ? format(addDays(parseISO(startDate), 365), 'yyyy-MM-dd')
+      : endPreset === 'custom' ? endDate
+      : format(addDays(parseISO(startDate), presetDays[endPreset]), 'yyyy-MM-dd')
+    const effectiveDaysOfWeek = repeatMode === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : daysOfWeek
     setSaving(true)
     try {
       const res = await api.post('/shifts/bulk-assign-pattern', {
         homeId, staffId, suId: suId || null,
-        dayOrNight, daysOfWeek, fortnightly,
-        startDate, endDate: ongoing ? format(addDays(parseISO(startDate), 365), 'yyyy-MM-dd') : endDate,
+        dayOrNight, daysOfWeek: effectiveDaysOfWeek,
+        fortnightly: repeatMode === 'fortnightly', monthly: repeatMode === 'monthly',
+        startDate, endDate: effectiveEndDate,
         onlyUnfilled,
       })
       const assigned = res.data.data?.assigned || 0
@@ -2042,42 +2055,65 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Days of the week *</label>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Repeat</label>
           <div className="flex gap-1.5 flex-wrap">
-            {WEEKDAY_OPTIONS.map(d => (
-              <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
-                className={`w-11 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${daysOfWeek.includes(d.value) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
-                {d.label}
+            {[
+              { v: 'weekly', l: 'Weekly' }, { v: 'fortnightly', l: 'Fortnightly' },
+              { v: 'daily', l: 'Daily' }, { v: 'monthly', l: 'Monthly' },
+            ].map(o => (
+              <button key={o.v} type="button" onClick={() => setRepeatMode(o.v as any)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${repeatMode === o.v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                {o.l}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="fortnightly" checked={fortnightly} onChange={e => setFortnightly(e.target.checked)} className="rounded" />
-          <label htmlFor="fortnightly" className="text-sm text-slate-700">Every other week only (fortnightly, starting the week of the start date below)</label>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
+        {repeatMode === 'monthly' ? (
+          <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+            Assigns the same day-of-month as the start date below, once a month — e.g. starting 15 September assigns the 15th of every month in range.
+          </p>
+        ) : repeatMode === 'daily' ? (
+          <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2.5">Assigns every day in the date range below.</p>
+        ) : (
           <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start date *</label>
-            <input type="date" className="input" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End</label>
-            <div className="flex gap-1.5">
-              <button type="button" onClick={() => setOngoing(true)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
-                Until I stop it
-              </button>
-              <button type="button" onClick={() => setOngoing(false)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${!ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
-                Pick a date
-              </button>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Days of the week *</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {WEEKDAY_OPTIONS.map(d => (
+                <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
+                  className={`w-11 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${daysOfWeek.includes(d.value) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
+                  {d.label}
+                </button>
+              ))}
             </div>
+            {repeatMode === 'fortnightly' && <p className="text-xs text-slate-400 mt-1">Only the alternating week starting from the start date below.</p>}
           </div>
+        )}
+
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start date *</label>
+          <input type="date" className="input" value={startDate} onChange={e => setStartDate(e.target.value)} />
         </div>
-        {!ongoing && (
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Until</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {[
+              { v: '1w', l: 'This week' }, { v: '2w', l: '2 weeks' }, { v: '4w', l: '4 weeks' },
+              { v: 'ongoing', l: 'Until I stop it' }, { v: 'custom', l: 'Pick a date' },
+            ].map(o => (
+              <button key={o.v} type="button" onClick={() => setEndPreset(o.v as any)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${endPreset === o.v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+          {/* "2 weeks" = the week containing the start date, plus the following week —
+              i.e. 14 days from wherever the start date falls, not aligned to a calendar
+              week boundary. This is what staff meant by "the week I assigned and the
+              next week" when a single week's worth of manual selection was tedious to
+              repeat for a second week. */}
+        </div>
+        {endPreset === 'custom' && (
           <input type="date" className="input" value={endDate} onChange={e => setEndDate(e.target.value)} />
         )}
 
