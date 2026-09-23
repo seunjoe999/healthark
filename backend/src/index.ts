@@ -2729,6 +2729,11 @@ async function ensureColumns() {
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS is_standby BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS notes TEXT`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    // Service name (e.g. "Day Centre", "Domiciliary Team A") set on "Create Rota for
+    // Service" — shown on the rota grid instead of the covered residents' names, so a
+    // shared-service shift reads as its service, while an individual resident's own
+    // shift (no label) still shows their name as before.
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS label VARCHAR(255)`,
     // ── shift_templates — columns used in service-shift route but may be missing in prod ──────
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS is_ongoing BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS notes_for_carers TEXT`,

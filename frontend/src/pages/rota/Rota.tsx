@@ -716,8 +716,8 @@ export default function Rota() {
                               ? 'Unfilled'
                               : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
                           </p>
-                          {height > 40 && (shift.su_names || shift.su_name) && (
-                            <p className="text-[10.5px] leading-tight truncate font-medium opacity-80">{shift.su_names || shift.su_name}</p>
+                          {height > 40 && (shift.label || shift.su_names || shift.su_name) && (
+                            <p className="text-[10.5px] leading-tight truncate font-medium opacity-80">{shift.label || shift.su_names || shift.su_name}</p>
                           )}
                           {height > 54 && (
                             <p className="text-[10px] leading-tight opacity-70">{st}–{et}</p>
@@ -1209,6 +1209,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [form, setForm] = useState({
+    label: '',
     startDate: defaultDate, isOngoing: true, endDate: '',
     recurrence: 'daily', daysOfWeek: [1, 2, 3, 4, 5],
     startTime: '08:00', endTime: '20:00',
@@ -1241,6 +1242,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
 
   const next = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.label.trim()) { toast.error('Enter a name for this service'); return }
     if (selectedSus.length === 0) { toast.error('Select at least one resident'); return }
     if (form.recurrence !== 'daily' && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
     setStep(2)
@@ -1277,6 +1279,13 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
     <Modal open={open} onClose={onClose} title="Create Rota for Service" size="md">
       {step === 1 ? (
         <form onSubmit={next} className="space-y-4">
+          {/* Service name — shown on the rota grid instead of the residents'
+              names, e.g. "Day Centre", "Domiciliary Team A" — a rota entry
+              covering several residents under one shared service, rather than
+              one resident's own individual rota. */}
+          <Input label="Service name *" required value={form.label} onChange={e => set('label', e.target.value)}
+            placeholder="e.g. Day Centre, Domiciliary Team A..." />
+
           {/* Residents (multi-select) */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
@@ -1411,7 +1420,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
         <div className="space-y-4">
           {/* Summary */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
-            <p className="font-semibold">{selectedSus.length} resident{selectedSus.length !== 1 ? 's' : ''} selected</p>
+            <p className="font-semibold">{form.label} — {selectedSus.length} resident{selectedSus.length !== 1 ? 's' : ''} selected</p>
             <p className="text-xs text-blue-600 mt-0.5">
               {form.startDate} · {form.isOngoing ? 'Ongoing' : form.endDate} · {form.startTime}–{form.endTime} ·{' '}
               {form.recurrence === 'daily' ? 'Every day' : form.daysOfWeek.map(d => DAY_SHORT[d]).join(', ')}
@@ -1794,10 +1803,16 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         )}
 
         <div className="grid grid-cols-2 gap-3 text-sm">
+          {shift.label && (
+            <div className="col-span-2">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Service</p>
+              <p className="text-slate-800 font-medium">{shift.label}</p>
+            </div>
+          )}
           {(shift.su_names || shift.su_name) && (
             <div className="col-span-2">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">
-                {shift.su_ids && shift.su_ids.length > 1 ? 'Service Users' : 'Service User'}
+                {shift.label ? 'Covers' : shift.su_ids && shift.su_ids.length > 1 ? 'Service Users' : 'Service User'}
               </p>
               <p className="text-slate-800 font-medium">{shift.su_names || shift.su_name}</p>
             </div>

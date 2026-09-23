@@ -92,7 +92,7 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
 
   // One bulk multi-row INSERT for every remaining date.
   const cols = [
-    'home_id', 'staff_id', 'su_id', 'su_ids', 'shift_date', 'start_time', 'end_time', 'shift_type', 'break_minutes', 'template_id',
+    'home_id', 'label', 'staff_id', 'su_id', 'su_ids', 'shift_date', 'start_time', 'end_time', 'shift_type', 'break_minutes', 'template_id',
     'notes_for_carers', 'notes_for_managers', 'is_standby', 'status', 'total_staff_required',
     'funder_name', 'funder_cost_notes', 'wage_rate', 'charge_rate', 'charge_bank_holiday_rate',
     'time_critical', 'shift_run',
@@ -101,7 +101,7 @@ async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Prom
   const valueRows: string[] = [];
   for (const dateStr of toInsert) {
     const row = [
-      homeId, tmpl.staff_id || null, tmpl.su_id || null,
+      homeId, tmpl.label || null, tmpl.staff_id || null, tmpl.su_id || null,
       Array.isArray(tmpl.su_ids) && tmpl.su_ids.length ? tmpl.su_ids : null, dateStr,
       tmpl.start_time, tmpl.end_time, tmpl.shift_type || 'regular',
       tmpl.break_minutes || 0, tmpl.id,
@@ -464,6 +464,7 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
     const createdBy = fromToken(req, 'staffId');
     const role = fromToken(req, 'role');
     const {
+      label,
       suId, suIds, startDate, isOngoing, endDate, recurrence, daysOfWeek,
       startTime, endTime, shiftType, totalStaffRequired, staffIds,
       notesForCarers, notesForManagers, isStandby, standbyWorkDetails,
@@ -494,11 +495,11 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
     for (const staffId of staffToCreate) {
       const rows = await query<any>(
         `INSERT INTO shift_templates
-          (home_id, staff_id, su_id, su_ids, shift_type, start_time, end_time, break_minutes,
+          (home_id, label, staff_id, su_id, su_ids, shift_type, start_time, end_time, break_minutes,
            recurrence, days_of_week, start_date, staff_count, is_ongoing,
            notes_for_carers, notes_for_managers, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
-        [homeId, staffId || null, primarySuId, allSuIds.length ? allSuIds : null, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+        [homeId, label || null, staffId || null, primarySuId, allSuIds.length ? allSuIds : null, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
          recurrence || 'daily', effectiveDays,
          startDate || new Date().toISOString().split('T')[0],
          totalStaffRequired || 1, isOngoing || false,
