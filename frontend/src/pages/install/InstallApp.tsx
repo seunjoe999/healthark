@@ -102,10 +102,24 @@ export default function InstallApp() {
               </button>
             </div>
           )}
-          <p className="text-sm font-semibold text-slate-700 mb-4">How to install on iPhone / iPad:</p>
+          {/* iOS has no JS API to trigger "Add to Home Screen" — Apple withholds
+              it from every website, on every browser, for everyone. There is no
+              button we can build that does this in one tap; the only path is
+              Safari's own Share icon. This big pulsing callout exists because
+              staff kept missing that first tap — step 1 is the one that actually
+              needs finding, steps 2-3 are inside a menu they've now opened. */}
+          <div className="mb-5 p-4 rounded-2xl border-2 border-blue-300 bg-blue-50 text-center">
+            <p className="text-sm font-bold text-blue-900 mb-2">Step 1 — look at the very bottom of your screen right now</p>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-14 h-14 rounded-2xl bg-white border-2 border-blue-400 shadow-md flex items-center justify-center animate-bounce">
+                <Share className="w-7 h-7 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-sm text-blue-800">That square with the <strong>up arrow ⬆️</strong> — tap it now</p>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-4">Then:</p>
           <div className="space-y-4">
             {[
-              { step: '1', icon: <Share className="w-4 h-4 text-blue-500 flex-shrink-0" />, text: <>Tap the <strong>Share</strong> button at the bottom of Safari</> },
               { step: '2', icon: <span className="text-lg leading-none flex-shrink-0">⊕</span>, text: <>Scroll down and tap <strong>"Add to Home Screen"</strong></> },
               { step: '3', icon: <span className="text-lg leading-none flex-shrink-0">✓</span>, text: <>Tap <strong>Add</strong> in the top-right corner</> },
             ].map(({ step, icon, text }) => (
@@ -116,7 +130,7 @@ export default function InstallApp() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 mt-4">Note: this only works in Safari — Chrome and other browsers on iPhone/iPad can't install apps to the Home Screen.</p>
+          <p className="text-xs text-slate-400 mt-4">Note: this only works in Safari — Chrome and other browsers on iPhone/iPad can't install apps to the Home Screen. This is an Apple restriction that applies to every app like this one, not something specific to CompCare Hub.</p>
         </div>
       ) : deferredPrompt ? (
         <div className="rounded-2xl p-5 bg-white border border-slate-200 shadow-sm text-center">
