@@ -94,6 +94,17 @@ export default function DailyRecords() {
   const [editNotes, setEditNotes] = useState('')
   const [activeTab, setActiveTab] = useState('daily_records')
   const [clockedIn, setClockedIn] = useState(false)
+  // Dashboard's "Medication Count" task used to link to the old, separate Medication
+  // Stock page — staff kept landing on the wrong screen entirely after that stock
+  // tracking moved under Daily Records as its own record type. Reads ?type=... so
+  // that link (and anything similar) can deep-link straight to the right record type
+  // instead of dropping someone on the default Personal Care form.
+  const deepLinkType = new URLSearchParams(window.location.search).get('type')
+  const [pendingDeepLink, setPendingDeepLink] = useState(!!deepLinkType)
+
+  useEffect(() => {
+    if (deepLinkType) setRecordType(deepLinkType)
+  }, [])
 
   useEffect(() => {
     if (user?.role === 'care_staff') {
@@ -117,6 +128,7 @@ export default function DailyRecords() {
   const selectSu = async (su: any) => {
     setSelectedSu(su)
     await loadRecords(su.id, viewDate)
+    if (pendingDeepLink) { setAddOpen(true); setPendingDeepLink(false) }
   }
 
   const loadRecords = async (suId: string, date: Date) => {
@@ -328,7 +340,7 @@ export default function DailyRecords() {
 
       {/* Add record modal */}
       {addOpen && selectedSu && (
-        <AddRecordModal suId={selectedSu.id} homeId={selectedHome} onClose={() => setAddOpen(false)}
+        <AddRecordModal suId={selectedSu.id} homeId={selectedHome} onClose={() => setAddOpen(false)} initialType={recordType}
           onSaved={async () => { setAddOpen(false); await loadRecords(selectedSu.id, viewDate); toast.success('Record saved') }} />
       )}
 
@@ -453,8 +465,8 @@ function nowLocalInput(): string {
   return d.toISOString().slice(0, 16)
 }
 
-function AddRecordModal({ suId, homeId, onClose, onSaved }: { suId: string; homeId: string; onClose: () => void; onSaved: () => void }) {
-  const [type, setType] = useState('personal_care')
+function AddRecordModal({ suId, homeId, onClose, onSaved, initialType }: { suId: string; homeId: string; onClose: () => void; onSaved: () => void; initialType?: string }) {
+  const [type, setType] = useState(initialType || 'personal_care')
   // Staff often document after the fact — back from a community visit, or
   // catching up at the end of a shift — so records need to reflect when the
   // task actually happened, not just when it was typed up, otherwise entries

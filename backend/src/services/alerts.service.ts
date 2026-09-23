@@ -104,6 +104,46 @@ export async function checkFluidIntake(): Promise<void> {
   }
 }
 
+// Check for medication stock at/below its reorder threshold. This was only ever
+// surfaced as a notification to managers (checkLowMedicationStock in scheduler.ts) —
+// manager asked for it to also appear as a dashboard alert, visible to everyone,
+// the same way the other "things to do today" items do.
+export async function checkLowMedicationStock(): Promise<void> {
+  try {
+    const today = ukDateStr();
+    const lowStock = await query<{
+      id: string; home_id: string; medication_name: string;
+      current_stock: number; reorder_threshold: number; unit: string; su_id: string | null;
+    }>(
+      `SELECT ms.id, ms.home_id, ms.medication_name, ms.current_stock, ms.reorder_threshold, ms.unit, ms.su_id
+       FROM medication_stock ms
+       WHERE ms.current_stock <= ms.reorder_threshold
+         AND NOT EXISTS (
+           SELECT 1 FROM business_alerts ba
+           WHERE ba.record_id = ms.id AND ba.alert_type = 'medication_stock_low'
+             AND DATE(ba.created_at) = $1 AND ba.is_resolved = FALSE
+         )`,
+      [today]
+    );
+
+    for (const row of lowStock) {
+      await createAlert({
+        homeId: row.home_id,
+        alertType: 'medication_stock_low',
+        severity: 'warning',
+        title: `Low medication stock: ${row.medication_name}`,
+        description: `Current stock: ${row.current_stock} ${row.unit}. Reorder threshold: ${row.reorder_threshold} ${row.unit}. Please reorder.`,
+        suId: row.su_id || undefined,
+        recordId: row.id,
+        recordType: 'medication_stock',
+      });
+    }
+    if (lowStock.length) logger.info(`Created ${lowStock.length} low medication stock alerts`);
+  } catch (err) {
+    logger.warn('checkLowMedicationStock skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
 // Check training expiry (60 / 30 / 7 days)
 export async function checkTrainingExpiry(): Promise<void> {
   try {
@@ -188,4 +228,5 @@ export const alertsService = {
   checkFluidIntake,
   checkTrainingExpiry,
   checkIncidentReviews,
+  checkLowMedicationStock,
 };

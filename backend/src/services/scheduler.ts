@@ -360,8 +360,13 @@ export function startScheduler(): void {
     await alertsService.checkCarePlanReviews();
   }, UK_TZ);
 
-  // Every morning at 7am: low medication stock alerts
-  cron.schedule('0 7 * * *', checkLowMedicationStock, UK_TZ);
+  // Every morning at 7am: low medication stock — notifies managers directly, and
+  // separately raises a dashboard alert visible to everyone (alertsService's version),
+  // matching how every other "things to do today" item surfaces on the dashboard.
+  cron.schedule('0 7 * * *', async () => {
+    await checkLowMedicationStock();
+    await alertsService.checkLowMedicationStock();
+  }, UK_TZ);
 
   // Every 30 minutes: missed medication alerts to managers
   cron.schedule('*/30 * * * *', checkMissedMedication, UK_TZ);

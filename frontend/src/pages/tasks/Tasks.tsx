@@ -5,7 +5,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, Search, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown } from 'lucide-react'
 
 // One icon per task category so the list is scannable at a glance, instead of
 // every task (medication, housekeeping, comfort check, ...) showing the same
@@ -472,9 +472,12 @@ export default function Tasks() {
             ))}
           </div>
 
-          {/* Medication Count — mandatory at the start of shift, surfaced here so it can't be missed */}
+          {/* Medication Count — mandatory at the start of shift, surfaced here so it can't be missed.
+              Links into Daily Records' Medication Team Count, not the old standalone Medication
+              Stock page — stock tracking moved under Daily Records as its own record type, but this
+              link kept sending staff to the page it replaced. */}
           {stockCount && !stockCount.done && (
-            <a href="/medication-stock" className="block bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-5 hover:bg-rose-100 transition-colors">
+            <a href="/daily-records?type=medication_stock_count" className="block bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-5 hover:bg-rose-100 transition-colors">
               <p className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Pill className="w-3.5 h-3.5" /> Medication Count
               </p>
@@ -518,17 +521,22 @@ export default function Tasks() {
             )}
           </div>
 
-          {/* Filter by resident — narrows the list down to one service user, for both management and staff */}
+          {/* Filter by resident — narrows the list down to one service user, for both management and staff.
+              This is a <select>, not a search box — it previously had a magnifying-glass icon and no
+              visible dropdown arrow (appearance-none removes the native one), so it looked exactly like
+              a text search field with nothing to type into. Swapped for a chevron on the right (the
+              standard dropdown affordance) and a light purple tint so it reads as its own distinct,
+              clickable control rather than blending into the page. */}
           <div className="relative mb-5">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
             <select value={residentSearch} onChange={e => setResidentSearch(e.target.value)}
-              className="input pl-10 w-full font-medium text-slate-700 appearance-none">
+              className="w-full appearance-none rounded-xl border border-purple-200 bg-purple-50 pl-4 pr-10 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 transition-all">
               <option value="">All service users</option>
               {sus.map((s: any) => {
                 const name = `${s.first_name || s.firstName} ${s.last_name || s.lastName}`
                 return <option key={s.id} value={name}>{name}</option>
               })}
             </select>
+            <ChevronDown className="w-4 h-4 text-purple-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {loading ? <Spinner /> : filtered.length === 0 ? (

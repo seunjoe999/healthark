@@ -355,9 +355,15 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
           {latest.notes && <p className={`text-xs ${secondaryText}`}><span className="text-slate-500">Notes:</span> {latest.notes}</p>}
         </div>
 
-        {/* Assessment history timeline */}
+        {/* Assessment history timeline — heading was text-slate-400 regardless of theme,
+            which read as "greyed out" on a white background (looked like disabled/stale
+            content rather than the actual completed record it is). Manager asked for
+            headings like this to be bold and pronounced, with a background highlight. */}
         <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Assessment history ({history.length})</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3 px-2.5 py-1.5 rounded-lg inline-block"
+            style={{ color: '#7c3aed', background: 'rgba(124,58,237,0.1)' }}>
+            Assessment history ({history.length})
+          </p>
           <div className="space-y-3">
             {history.map((a, i) => (
               <div key={a.id} className={clsx('rounded-xl p-3', i === 0 ? 'border-l-2 border-amber-500/60' : 'border-l-2 border-white/10')}

@@ -295,7 +295,7 @@ export default function EditStaff() {
             <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
             <Input label="Leave date" type="date" value={form.leaveDate} onChange={e => set('leaveDate', e.target.value)} hint="Only fill if staff has left" />
             <Input label="Contracted hours / week" type="number" step="0.01" value={String(form.contractedHours)} onChange={e => set('contractedHours', e.target.value)} hint="e.g. 37.5 (full-time) or 36 — annual leave is calculated and prorated from this and the start date" />
-            <Input label="Annual leave hours" type="number" value={String(form.leaveHoursTotal)} onChange={e => set('leaveHoursTotal', parseInt(e.target.value))} hint="Auto-calculated from contracted hours; override only if needed" />
+            <Input label="Annual leave entitlement (total hours)" type="number" value={String(form.leaveHoursTotal)} onChange={e => set('leaveHoursTotal', parseInt(e.target.value))} hint="This is the TOTAL for the year, not what's left — hours already used stay used. Auto-calculated from contracted hours; override only if needed" />
           </div>
           <div className="mt-3 flex items-center gap-3">
             <input type="checkbox" id="active" checked={form.isActive} onChange={e => set('isActive', e.target.checked)} className="rounded" />

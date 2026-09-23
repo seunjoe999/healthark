@@ -421,7 +421,18 @@ router.put(
         vals.push(targetId);
         await query(`UPDATE staff SET ${setParts.join(', ')} WHERE id = $${idx}`, vals);
       }
-      if (canManage && (contractedHours !== undefined || startDate !== undefined)) {
+      // Only auto-recompute when the request DIDN'T also send an explicit leave
+      // override — the comment above already documented this precedence, but
+      // the condition never actually enforced it. EditStaff.tsx's "Save changes"
+      // sends the whole form in one PUT, which always includes contractedHours
+      // (an ordinary field on that page) alongside leaveHoursTotal whenever a
+      // manager edited the leave hours field there — so this block was firing
+      // right after the admin-override block above and silently recomputing
+      // leave_hours_total from contracted hours/start date, discarding whatever
+      // the manager had just manually typed in. This is why "annual leave is
+      // not calculating properly": the edit visibly failed to stick because a
+      // second calculation immediately overwrote it in the same request.
+      if (canManage && (contractedHours !== undefined || startDate !== undefined) && leaveHoursTotal === undefined && leaveHoursRemaining === undefined) {
         const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
         const cur = existing[0] || {};
         const effContractedHours = contractedHours !== undefined ? contractedHours : cur.contracted_hours;

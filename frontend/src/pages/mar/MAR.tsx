@@ -364,12 +364,12 @@ export default function MAR() {
                   <EmptyState title="No medications" description="Add medications for this resident"
                     action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>} />
                 ) : medications.map((med: any) => (
-                  <div key={med.id} className="bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm">
+                  <div key={med.id} className={`rounded-xl border p-4 shadow-sm ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-purple-50 border-purple-200'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Pill className="w-4 h-4 text-purple-500 shrink-0" />
-                          <h3 className="font-semibold text-white">{med.medication_name}</h3>
+                          <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{med.medication_name}</h3>
                           {med.is_prn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRN</span>}
                           {med.is_controlled && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Shield className="w-3 h-3" />CD</span>}
                         </div>
@@ -431,9 +431,9 @@ export default function MAR() {
                   <div className="space-y-2">
                     {medicationAudits.map((r: any) => (
                       <a key={r.id} href={`/assessments/${r.id}`}
-                        className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
+                        className={`block rounded-xl border p-4 shadow-sm transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-purple-400/40' : 'bg-purple-50 border-purple-200 hover:border-purple-300'}`}>
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Medication Audit'}</p>
+                          <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Medication Audit'}</p>
                           {r.risk_level && <span className="text-xs text-slate-400">{r.risk_level}</span>}
                         </div>
                         {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
@@ -456,9 +456,9 @@ export default function MAR() {
                   <div className="space-y-2">
                     {marChartAudits.map((r: any) => (
                       <a key={r.id} href={`/assessments/${r.id}`}
-                        className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
+                        className={`block rounded-xl border p-4 shadow-sm transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-purple-400/40' : 'bg-purple-50 border-purple-200 hover:border-purple-300'}`}>
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Mar Chart Audit'}</p>
+                          <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Mar Chart Audit'}</p>
                           {r.risk_level && <span className="text-xs text-slate-400">{r.risk_level}</span>}
                         </div>
                         {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
@@ -481,9 +481,9 @@ export default function MAR() {
                   <div className="space-y-2">
                     {marReviews.map((r: any) => (
                       <a key={r.id} href={`/assessments/${r.id}`}
-                        className="block bg-white/5 rounded-xl border border-white/10 p-4 shadow-sm hover:border-purple-400/40 transition-all">
+                        className={`block rounded-xl border p-4 shadow-sm transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-purple-400/40' : 'bg-purple-50 border-purple-200 hover:border-purple-300'}`}>
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold text-white">{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'MAR Review'}</p>
+                          <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'MAR Review'}</p>
                           {r.answers?.q1 && <span className="text-xs text-slate-400">{r.answers.q1}</span>}
                         </div>
                         {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
@@ -498,9 +498,9 @@ export default function MAR() {
                 {medications.map((med: any) => {
                   const stock = stockData.find((s: any) => s.medication_id === med.id)
                   return (
-                    <div key={med.id} className="bg-white/5 rounded-xl border border-white/10 p-4 flex items-center justify-between shadow-sm">
+                    <div key={med.id} className={`rounded-xl border p-4 flex items-center justify-between shadow-sm ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-purple-50 border-purple-200'}`}>
                       <div>
-                        <p className="font-semibold text-white">{med.medication_name}</p>
+                        <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{med.medication_name}</p>
                         <p className="text-sm text-slate-500">{med.dose}</p>
                         {stock && <p className="text-xs text-slate-400 mt-1">Last count: {stock.current_count} · {stock.last_counted_at ? format(new Date(stock.last_counted_at), 'd MMM, HH:mm') : 'Never'}</p>}
                       </div>
