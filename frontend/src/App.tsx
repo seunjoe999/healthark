@@ -274,7 +274,11 @@ export default function App() {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
             <NotificationsProvider>
-              <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
+              {/* containerStyle top offset clears the iPhone notch/status bar — react-hot-toast's
+                  default 8px top offset doesn't know about safe-area-inset-top, so on iOS this
+                  banner was rendering right on top of the status bar/notch instead of below it. */}
+              <Toaster position="top-right" containerStyle={{ top: 'max(16px, env(safe-area-inset-top))' }}
+                toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
               <AppRoutes />
               <InstallPrompt />
             </NotificationsProvider>

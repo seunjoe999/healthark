@@ -413,9 +413,9 @@ function MobileBottomNav({ menuOpen, onMenuToggle }: MobileBottomNavProps) {
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch"
       style={{
-        background: 'rgba(13, 21, 38, 0.97)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        // Solid colour, not translucent+blur — see the matching comment on the
+        // mobile top header above for why (iOS standalone PWA rendering bug).
+        background: '#0d1526',
         borderTop: '1px solid rgba(255,255,255,0.08)',
         paddingBottom: 'env(safe-area-inset-bottom, 12px)',
       }}
@@ -580,15 +580,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile top header — fixed, 56px tall */}
+        {/* Mobile top header — fixed, 56px tall.
+            Background is a fully opaque solid colour, not translucent+blur — a fixed-position
+            element with backdrop-filter sitting above a separately scrolling container
+            (the <main> below) is a known iOS Safari standalone-PWA rendering bug: the
+            header can fail to paint its own background and the page content underneath
+            shows through instead, which is exactly what was reported ("not appearing well
+            at all" — a white bar where this header should be dark). Solid colour sidesteps
+            that compositing path entirely. */}
         <header
           className="no-print md:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-4 gap-3"
           style={{
             height: '56px',
             paddingTop: 'env(safe-area-inset-top, 0px)',
-            background: 'rgba(13, 21, 38, 0.97)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
+            background: '#0d1526',
             borderBottom: '1px solid rgba(232,177,48,0.2)',
           }}
         >
