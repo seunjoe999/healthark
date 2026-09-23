@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, parseISO, startOfWeek, startOfMonth, endOfMonth, addDays, differenceInCalendarDays } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck, Clock } from 'lucide-react'
+import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck, Clock, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FREQ_TIMES: Record<string, string[]> = {
@@ -555,17 +555,18 @@ export default function MAR() {
 
       {cellDetail && (
         <CellDetailModal data={cellDetail} currentUser={user} onClose={() => setCellDetail(null)}
-          onRefresh={() => fetchAll(selectedSu)} />
+          onRefresh={() => fetchAll(selectedSu)}
+          onAmend={(rec) => { setCellDetail(null); setLogModal({ med: cellDetail.med, date: cellDetail.date, slot: rec.scheduled_time || 'PRN', existingRecord: rec }) }} />
       )}
 
       {logModal && selectedSu && (
         <LogMARModal med={logModal.med} date={logModal.date} slot={logModal.slot} suId={selectedSu.id}
-          homeId={selectedHome}
+          homeId={selectedHome} existingRecord={logModal.existingRecord}
           onClose={() => setLogModal(null)}
           onSaved={async () => {
             setLogModal(null)
             await fetchAll(selectedSu)
-            toast.success('Recorded')
+            toast.success(logModal.existingRecord ? 'Amended' : 'Recorded')
           }} />
       )}
 
@@ -1128,11 +1129,15 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
 }
 
 /* ─── Cell Detail Modal ────────────────────────────────────────────────── */
-function CellDetailModal({ data, currentUser, onClose, onRefresh }: { data: any; currentUser: any; onClose: () => void; onRefresh: () => void }) {
+function CellDetailModal({ data, currentUser, onClose, onRefresh, onAmend }: { data: any; currentUser: any; onClose: () => void; onRefresh: () => void; onAmend: (rec: any) => void }) {
   const { med, date, records } = data
   const rec = records[0]
   const [signingOff, setSigningOff] = useState(false)
   const isManager = currentUser?.role === 'home_manager' || currentUser?.role === 'group_admin'
+  // Backend enforces the actual 24h-since-clock-out cutoff (matching daily records/
+  // tasks elsewhere) and rejects with a clear error once it's passed — this button
+  // just needs to be offered to the person who logged it in the first place.
+  const canAmend = rec && rec.given_by === currentUser?.id
 
   const signOffMgmt = async () => {
     if (!rec) return
@@ -1247,7 +1252,12 @@ function CellDetailModal({ data, currentUser, onClose, onRefresh }: { data: any;
             </div>
           </div>
         )}
-        <div className="flex justify-end pt-1">
+        <div className="flex justify-end gap-2 pt-1">
+          {canAmend && (
+            <Button variant="outline" icon={<Pencil className="w-3.5 h-3.5" />} onClick={() => onAmend(rec)}>
+              Amend
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>Close</Button>
         </div>
       </div>

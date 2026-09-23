@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { ukDateStr, ukTimeHHMM, ukTimeHHMMSS } from '../utils/ukTime';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 
@@ -354,16 +355,13 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
         throw new AppError('Only the staff member who logged this can amend it.', 403);
       }
 
-      const todayStr = ukDateStr();
-      const nowHHMMSS = ukTimeHHMMSS();
-      const shiftRows = await query<any>(
-        `SELECT end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3
-         ORDER BY end_time DESC LIMIT 1`,
-        [staffId, record.home_id, todayStr]
-      );
-      const onShift = shiftRows.length && nowHHMMSS <= shiftRows[0].end_time;
-      if (!onShift) {
-        throw new AppError('Your shift has ended — this record can no longer be amended.', 403);
+      // Was previously gated on "still on shift right now" — the moment a staff
+      // member clocked out, they lost the ability to fix a mistake, with no grace
+      // period at all (unlike daily records/tasks elsewhere, which allow amending
+      // for 24h after clock-out). Aligned with the same shared 24h amend window so
+      // medication records follow the same rule as the rest of the system.
+      if (!(await isWithinAmendWindow(staffId))) {
+        throw new AppError('The 24-hour window to amend this record has passed.', 403);
       }
 
       const { given, refused, reason, notes, marCode, amountTaken, amountUnit,

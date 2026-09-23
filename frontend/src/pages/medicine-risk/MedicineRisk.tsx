@@ -263,10 +263,12 @@ function buildMedRiskPrintBody(r: any): string {
   if (r.covert_meds && r.covert_notes) clinicalParts.push(`<h3 class="sub">Covert Medication — Mental Capacity Act Details</h3><p class="body-text">${esc(r.covert_notes)}</p>`)
   if (clinicalParts.length) sections.push({ title: 'Clinical Notes', inner: clinicalParts.join('') })
 
+  // Triggers/protective factors come before the management plan — the plan is the
+  // response to what's already been identified, so it reads correctly last.
   const riskParts: string[] = []
-  if (r.risk_notes) riskParts.push(`<h3 class="sub">Management Plan</h3><p class="body-text">${esc(r.risk_notes)}</p>`)
   if (r.triggers) riskParts.push(`<h3 class="sub">Known Triggers</h3><p class="body-text">${esc(r.triggers)}</p>`)
   if (r.protective_factors) riskParts.push(`<h3 class="sub">Protective Factors</h3><p class="body-text">${esc(r.protective_factors)}</p>`)
+  if (r.risk_notes) riskParts.push(`<h3 class="sub">Management Plan</h3><p class="body-text">${esc(r.risk_notes)}</p>`)
   if (riskParts.length) sections.push({ title: 'Risk Management Plan', inner: riskParts.join('') })
 
   if (r.signed_off_by) {
@@ -771,14 +773,14 @@ export default function MedicineRisk() {
             ))}
           </div>
 
-          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Risk Management Plan</label>
-            <textarea className="input" rows={3} value={form.riskNotes} onChange={e => setF('riskNotes', e.target.value)} placeholder="Describe the risk management plan..." /></div>
-
           <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Triggers</label>
             <textarea className="input" rows={2} value={form.triggers} onChange={e => setF('triggers', e.target.value)} placeholder="What situations may trigger a risk incident..." /></div>
 
           <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Protective Factors</label>
             <textarea className="input" rows={2} value={form.protectiveFactors} onChange={e => setF('protectiveFactors', e.target.value)} placeholder="What measures help mitigate the risk..." /></div>
+
+          <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Risk Management Plan</label>
+            <textarea className="input" rows={3} value={form.riskNotes} onChange={e => setF('riskNotes', e.target.value)} placeholder="Describe the risk management plan..." /></div>
 
           <div><label className="text-xs font-medium text-slate-400 block mb-1.5">Review date</label>
             <input type="date" className="input w-48" value={form.reviewDate} onChange={e => setF('reviewDate', e.target.value)} /></div>
@@ -942,13 +944,8 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
               </div>
             )}
 
-            {r.risk_notes && (
-              <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
-                <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Risk Management Plan</p>
-                <p className="text-sm whitespace-pre-line font-medium text-slate-800">{r.risk_notes}</p>
-              </div>
-            )}
-
+            {/* Triggers/protective factors before the management plan — the plan
+                responds to what's already been identified, so it reads last. */}
             {(r.triggers || r.protective_factors) && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }} className="space-y-3">
               {r.triggers && (
                 <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
@@ -963,6 +960,13 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
                 </div>
               )}
             </div>}
+
+            {r.risk_notes && (
+              <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Risk Management Plan</p>
+                <p className="text-sm whitespace-pre-line font-medium text-slate-800">{r.risk_notes}</p>
+              </div>
+            )}
 
             {r.prn_protocol && r.prn_notes && (
               <div className="p-3 rounded-xl" style={{ background: isDark ? 'rgba(245,158,11,0.08)' : '#fffbeb', border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : '#fde68a'}` }}>

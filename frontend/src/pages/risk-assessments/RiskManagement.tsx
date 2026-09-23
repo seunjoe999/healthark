@@ -78,6 +78,20 @@ function GreenSection({ label, value }: { label: string; value?: string | null }
   )
 }
 
+// Matches Medicine Risk Assessment's amber-highlighted treatment for triggers/
+// protective factors/management plan — manager asked for every risk assessment
+// template to share one consistent look, and these three are the ones that got
+// that distinct highlight there rather than the plain Field styling.
+function AmberSection({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null
+  return (
+    <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+      <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>{label}</p>
+      <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
+    </div>
+  )
+}
+
 const BLANK_FORM = {
   riskType: '', customName: '', description: '', riskRating: 'low', currentRiskLevel: 'low',
   whoIsAtRisk: '', isHistorical: false, whatCouldHappen: '', triggers: '', protectiveFactors: '',
@@ -679,11 +693,13 @@ export default function RiskManagement() {
                   { label: 'Who is at risk', value: ra.who_is_at_risk },
                   { label: 'What could happen', value: ra.what_could_happen },
                   { label: 'Risk before intervention', value: ra.risk_before_intervention },
-                  { label: 'Triggers', value: ra.triggers },
-                  { label: 'Protective factors', value: ra.protective_factors },
-                  { label: 'Risk Management Plan', value: ra.management_plan },
-                  { label: 'Update tracking', value: ra.risk_update_tracking },
                 ].map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                {/* Triggers/protective factors before the management plan — the plan is
+                    the response to what's already been identified, so it reads last. */}
+                <AmberSection label="Triggers" value={ra.triggers} />
+                <AmberSection label="Protective factors" value={ra.protective_factors} />
+                <AmberSection label="Risk Management Plan" value={ra.management_plan} />
+                <Field label="Update tracking" value={ra.risk_update_tracking} />
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 items-center text-xs text-slate-500 pt-3 border-t border-slate-100">
