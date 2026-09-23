@@ -483,7 +483,18 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
     if (!startTime || !endTime) return res.status(400).json({ success: false, error: 'startTime and endTime required' } as any);
 
     const WEEKS = isOngoing ? 52 : (parseInt(weeksParam) || 12);
-    const staffToCreate: (string | null)[] = staffIds && staffIds.length > 0 ? staffIds : [null];
+    // One row/line generated per required staff slot, not one row carrying a "requires
+    // N" count with a single staff_id column — a column can only ever hold one person,
+    // so "shift size 2" with only 1 (or 0) staff explicitly picked used to leave no
+    // second row for anyone else to ever be assigned into, silently capping the shift
+    // at whoever filled the first slot. Explicitly-picked staff fill the first rows;
+    // any remaining required slots are generated unfilled, ready for Bulk Assign or a
+    // direct pick later — matching how RoundSys generates one rota line per person.
+    const explicitStaffIds: string[] = Array.isArray(staffIds) ? staffIds.filter(Boolean) : [];
+    const requiredSlots = Math.max(parseInt(totalStaffRequired) || 1, explicitStaffIds.length, 1);
+    const staffToCreate: (string | null)[] = explicitStaffIds.length > 0
+      ? [...explicitStaffIds, ...Array(requiredSlots - explicitStaffIds.length).fill(null)]
+      : Array(requiredSlots).fill(null);
     const templates: any[] = [];
     let totalGenerated = 0;
 
@@ -506,7 +517,10 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
         [homeId, label || null, staffId || null, primarySuId, allSuIds.length ? allSuIds : null, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
          recurrence || 'daily', effectiveDays,
          startDate || new Date().toISOString().split('T')[0],
-         totalStaffRequired || 1, isOngoing || false,
+         // 1, not the original totalStaffRequired — each row generated here is now its
+         // OWN slot (see staffToCreate above), so "how many staff does this row need"
+         // is always 1; the original required count only decided how many rows to make.
+         1, isOngoing || false,
          notesForCarers || null, notesForManagers || null, createdBy]
       );
       const tmpl = {
@@ -581,7 +595,7 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
         staffId, suId, shiftDate, startTime, endTime, shiftType, totalStaffRequired,
         notesForCarers, notesForManagers, status,
         funderName, funderCostNotes, wageRate, chargeRate, chargeBankHolidayRate,
-        timeCritical, shiftRun,
+        timeCritical, shiftRun, applyToFuture,
       } = req.body;
 
       const fields: string[] = [];
@@ -624,15 +638,44 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
         values
       );
       const updated = rows[0];
+      // shift_date comes back from pg as a JS Date object, not a string — interpolating
+      // it directly produces the full "Fri Dec 25 2026 00:00:00 GMT+0000 (...)" toString().
+      const fmtDate = (d: unknown) => (d instanceof Date ? d.toISOString().split('T')[0] : String(d).split('T')[0]);
+
+      // "Apply changes to future shifts" — cascades a start/end time change to every
+      // later occurrence of the same recurring shift, instead of the manager having
+      // to open and edit each future date by hand. Only the time fields carry over;
+      // date, staff assignment, status etc. stay whatever each individual occurrence
+      // already has. Only applies to shifts generated from a template — a one-off
+      // shift has no "future occurrences" to cascade to.
+      if (applyToFuture && updated.template_id && (startTime !== undefined || endTime !== undefined)) {
+        const futureFields: string[] = [];
+        const futureValues: unknown[] = [];
+        const setFuture = (col: string, val: unknown) => { futureFields.push(`${col} = $${futureFields.length + 1}`); futureValues.push(val); };
+        if (startTime !== undefined) setFuture('start_time', startTime);
+        if (endTime !== undefined) setFuture('end_time', endTime);
+        futureValues.push(updated.template_id, updated.id, fmtDate(updated.shift_date));
+        await query(
+          `UPDATE staff_shifts SET ${futureFields.join(', ')}, updated_at = NOW()
+           WHERE template_id = $${futureValues.length - 2} AND id != $${futureValues.length - 1} AND shift_date > $${futureValues.length}`,
+          futureValues
+        );
+        // Keep the template itself in sync too, so shifts generated from it later
+        // (e.g. extending the date range) use the new time, not the old one.
+        const templateFields: string[] = [];
+        const templateValues: unknown[] = [];
+        const setTemplate = (col: string, val: unknown) => { templateFields.push(`${col} = $${templateFields.length + 1}`); templateValues.push(val); };
+        if (startTime !== undefined) setTemplate('start_time', startTime);
+        if (endTime !== undefined) setTemplate('end_time', endTime);
+        templateValues.push(updated.template_id);
+        await query(`UPDATE shift_templates SET ${templateFields.join(', ')} WHERE id = $${templateValues.length}`, templateValues)
+          .catch(() => {});
+      }
 
       // Tell the affected staff member(s) their rota has changed — a swapped
       // date/time, a status change (e.g. cancelled), or being (un)assigned
       // altogether all mean the shift on their rota no longer looks like it
-      // did when they last checked. shift_date comes back from pg as a JS
-      // Date object, not a string — interpolating it directly produces the
-      // full "Fri Dec 25 2026 00:00:00 GMT+0000 (...)" toString(), so format
-      // it explicitly first.
-      const fmtDate = (d: unknown) => (d instanceof Date ? d.toISOString().split('T')[0] : String(d).split('T')[0]);
+      // did when they last checked.
       const oldStaffId = existing[0].staff_id;
       const newStaffId = updated.staff_id;
       const timeChanged = shiftDate !== undefined || startTime !== undefined || endTime !== undefined;

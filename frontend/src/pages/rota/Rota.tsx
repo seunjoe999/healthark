@@ -125,10 +125,24 @@ function getName(p: any) {
   return `${p?.first_name || p?.firstName || ''} ${p?.last_name || p?.lastName || ''}`.trim()
 }
 
+// "Hawthorn Road Service" -> "HS" — keeps the shift tile readable at small
+// widths without truncating the service name into something unrecognisable.
+// The full name is always still shown in the shift detail modal and as a
+// title/tooltip on the tile itself.
+function serviceInitials(label: string): string {
+  const words = label.trim().split(/\s+/).filter(Boolean)
+  if (words.length <= 1) return label.slice(0, 3).toUpperCase()
+  return words.map(w => w[0]).join('').slice(0, 3).toUpperCase()
+}
+
 // Assigns each shift a lane (col) and lane count (cols) so overlapping shifts on the
 // same day render side-by-side instead of stacking on top of each other full-width —
-// without this, two shifts at the same time hide one another entirely.
-function layoutShiftLanes(dayShifts: any[]): Map<string, { col: number; cols: number }> {
+// without this, two shifts at the same time hide one another entirely. Also returns
+// the day's overall max simultaneous lane count, so the day column can be sized wide
+// enough that a multi-staff shift (e.g. 3 people on at once) doesn't get squeezed down
+// to an unreadable sliver — RoundSys keeps every lane a fixed, legible width and lets
+// the whole rota scroll horizontally instead of shrinking blocks to fit.
+function layoutShiftLanes(dayShifts: any[]): { layout: Map<string, { col: number; cols: number }>; maxCols: number } {
   const layout = new Map<string, { col: number; cols: number }>()
   const sorted = [...dayShifts].sort((a, b) => {
     const as = timeToMins(a.start_time?.substring(0, 5) || '08:00')
@@ -138,12 +152,14 @@ function layoutShiftLanes(dayShifts: any[]): Map<string, { col: number; cols: nu
   let open: { id: string; end: number; col: number }[] = []
   let cluster: string[] = []
   let clusterMaxCols = 0
+  let dayMaxCols = 1
 
   const finalizeCluster = () => {
     for (const id of cluster) {
       const entry = layout.get(id)
       if (entry) entry.cols = clusterMaxCols
     }
+    dayMaxCols = Math.max(dayMaxCols, clusterMaxCols)
     cluster = []
     clusterMaxCols = 0
   }
@@ -166,8 +182,14 @@ function layoutShiftLanes(dayShifts: any[]): Map<string, { col: number; cols: nu
     layout.set(shift.id, { col, cols: 1 })
   }
   finalizeCluster()
-  return layout
+  return { layout, maxCols: dayMaxCols }
 }
+
+// Minimum pixel width per simultaneous shift lane, and per day column overall — fixed
+// regardless of how many staff are on at once, so blocks stay readable; the grid
+// scrolls horizontally instead (see layoutShiftLanes above).
+const LANE_MIN_WIDTH = 130
+const DAY_MIN_WIDTH = 210
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
@@ -193,6 +215,7 @@ export default function Rota() {
   // filters
   const [filterSu,    setFilterSu]    = useState('')
   const [filterStaff, setFilterStaff] = useState('')
+  const [filterLabel, setFilterLabel] = useState('')
   const [filterType,  setFilterType]  = useState('')
   // Individual = each resident's own rota (no service label). Service = shared-service
   // rota entries created via "Create Rota for Service" (has a label). "All" shows both
@@ -368,17 +391,33 @@ export default function Rota() {
     ? Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
     : [dayDate]
 
+  // Distinct service names in the currently loaded shifts, for the unified
+  // staff/service filter dropdown below.
+  const serviceLabels = Array.from(new Set(shifts.map((s: any) => s.label).filter(Boolean))).sort()
+
   const getDayShifts = (day: Date) => {
     let r = shifts.filter(s => { try { return isSameDay(parseISO(s.shift_date), day) } catch { return false } })
     if (rotaMode === 'individual') r = r.filter(s => !s.label)
     if (rotaMode === 'service')    r = r.filter(s => !!s.label)
     if (filterSu)    r = r.filter(s => s.su_id === filterSu || (Array.isArray(s.su_ids) && s.su_ids.includes(filterSu)))
     if (filterStaff) r = r.filter(s => s.staff_id === filterStaff)
+    if (filterLabel) r = r.filter(s => s.label === filterLabel)
     if (filterType)  r = r.filter(s => s.shift_type === filterType)
     return r
   }
   const getDayLeaves = (day: Date) =>
     leaves.filter(l => { try { return isSameDay(parseISO(l.leave_date), day) } catch { return false } })
+
+  // Computed once per render and shared by both the sticky day headers and the grid
+  // columns below, so a day's width (driven by how many staff are on at once) stays
+  // identical in both places instead of drifting out of alignment.
+  const dayData = days.map(day => {
+    const dayShifts = getDayShifts(day)
+    const dayLeaves = getDayLeaves(day)
+    const { layout: shiftLanes, maxCols } = layoutShiftLanes(dayShifts)
+    const width = Math.max(DAY_MIN_WIDTH, maxCols * LANE_MIN_WIDTH)
+    return { day, dayShifts, dayLeaves, shiftLanes, width }
+  })
 
   const nav = (dir: 1 | -1) => {
     if (view === 'week') setWeekStart(d => addDays(d, dir * 7))
@@ -496,18 +535,35 @@ export default function Rota() {
           <option value="">All Service Users</option>
           {suList.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
         </select>
+        {/* Unified staff + service filter — one dropdown so the user can jump
+            straight to a single service (instead of every service lumped
+            together) or a single staff member, without hunting through two
+            separate lists. */}
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
-          value={filterStaff} onChange={e => setFilterStaff(e.target.value)}>
-          <option value="">All Staff</option>
-          {staffList.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
+          value={filterStaff ? `staff:${filterStaff}` : filterLabel ? `service:${filterLabel}` : ''}
+          onChange={e => {
+            const v = e.target.value
+            if (v.startsWith('staff:')) { setFilterStaff(v.slice(6)); setFilterLabel('') }
+            else if (v.startsWith('service:')) { setFilterLabel(v.slice(8)); setFilterStaff('') }
+            else { setFilterStaff(''); setFilterLabel('') }
+          }}>
+          <option value="">All Staff &amp; Services</option>
+          {serviceLabels.length > 0 && (
+            <optgroup label="Services">
+              {serviceLabels.map(l => <option key={l} value={`service:${l}`}>{l}</option>)}
+            </optgroup>
+          )}
+          <optgroup label="Staff">
+            {staffList.map(s => <option key={s.id} value={`staff:${s.id}`}>{getName(s)}</option>)}
+          </optgroup>
         </select>
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">All Shift Types</option>
           {SHIFT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        {(filterSu || filterStaff || filterType) && (
-          <button onClick={() => { setFilterSu(''); setFilterStaff(''); setFilterType('') }}
+        {(filterSu || filterStaff || filterLabel || filterType) && (
+          <button onClick={() => { setFilterSu(''); setFilterStaff(''); setFilterLabel(''); setFilterType('') }}
             className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100">
             <X className="w-3 h-3" /> Clear
           </button>
@@ -603,19 +659,19 @@ export default function Rota() {
         {/* Day headers — sticky */}
         <div className="flex sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
           <div className="w-14 flex-shrink-0 border-r border-slate-100" />
-          {days.map(day => {
+          {dayData.map(({ day, dayShifts, dayLeaves, width }) => {
             const isToday = isSameDay(day, today)
-            const count = getDayShifts(day).length + getDayLeaves(day).length
+            const count = dayShifts.length + dayLeaves.length
             return (
-              <div key={day.toString()}
-                className={`flex-1 text-center py-2 border-l border-slate-100 ${isToday ? 'bg-blue-50/60' : ''}`}>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{format(day, 'EEE')}</p>
-                <p className={`text-xl font-bold leading-tight ${isToday ? 'text-blue-600' : 'text-slate-700'}`}>
+              <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0 }}
+                className={`text-center py-2 border-l border-slate-100 ${isToday ? 'bg-indigo-600' : ''}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-400'}`}>{format(day, 'EEE')}</p>
+                <p className={`text-xl font-bold leading-tight ${isToday ? 'text-white' : 'text-slate-700'}`}>
                   {format(day, 'd')}
                 </p>
-                <p className="text-[10px] text-slate-400">{format(day, 'MMM')}</p>
+                <p className={`text-[10px] ${isToday ? 'text-indigo-100' : 'text-slate-400'}`}>{format(day, 'MMM')}</p>
                 {count > 0 && (
-                  <div className={`mx-auto mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isToday ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                  <div className={`mx-auto mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isToday ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
                     {count}
                   </div>
                 )}
@@ -640,17 +696,16 @@ export default function Rota() {
               ))}
             </div>
 
-            {/* Day columns */}
-            {days.map(day => {
+            {/* Day columns — fixed width driven by the day's busiest overlap (see
+                LANE_MIN_WIDTH/DAY_MIN_WIDTH above), not shrunk to fit; the outer
+                Timeline container scrolls horizontally when the total width of all
+                days exceeds the viewport. */}
+            {dayData.map(({ day, dayShifts, dayLeaves, shiftLanes, width }) => {
               const isToday  = isSameDay(day, today)
-              const dayShifts = getDayShifts(day)
-              const dayLeaves = getDayLeaves(day)
-              const shiftLanes = layoutShiftLanes(dayShifts)
 
               return (
-                <div key={day.toString()}
-                  className={`flex-1 relative border-l border-slate-100 ${isToday ? 'bg-blue-50/20' : ''}`}
-                  style={{ height: TOTAL_HEIGHT }}>
+                <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0, height: TOTAL_HEIGHT }}
+                  className={`relative border-l ${isToday ? 'bg-indigo-50 border-l-2 border-indigo-300' : 'border-slate-100'}`}>
 
                   {/* Hour gridlines */}
                   {HOURS.map((h, i) => (
@@ -735,7 +790,9 @@ export default function Rota() {
                               : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
                           </p>
                           {height > 40 && (shift.label || shift.su_names || shift.su_name) && (
-                            <p className="text-[10.5px] leading-tight truncate font-medium opacity-80">{shift.label || shift.su_names || shift.su_name}</p>
+                            <p className="text-[10.5px] leading-tight truncate font-bold" title={shift.label || shift.su_names || shift.su_name}>
+                              {shift.label ? serviceInitials(shift.label) : (shift.su_names || shift.su_name)}
+                            </p>
                           )}
                           {height > 54 && (
                             <p className="text-[10px] leading-tight opacity-70">{st}–{et}</p>
@@ -1668,6 +1725,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [editDate, setEditDate] = useState(shift.shift_date ? shift.shift_date.substring(0, 10) : '')
   const [editStart, setEditStart] = useState(shift.start_time?.substring(0, 5) || '')
   const [editEnd, setEditEnd] = useState(shift.end_time?.substring(0, 5) || '')
+  const [applyToFuture, setApplyToFuture] = useState(false)
   const [savingTimes, setSavingTimes] = useState(false)
   const [reallocating, setReallocating] = useState(false)
   const [reallocateTo, setReallocateTo] = useState('')
@@ -1692,10 +1750,14 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     if (!editDate || !editStart || !editEnd) { toast.error('Date, start and finish times are required'); return }
     setSavingTimes(true)
     try {
-      const res = await api.put(`/shifts/${shift.id}`, { shiftDate: editDate, startTime: editStart, endTime: editEnd })
+      const res = await api.put(`/shifts/${shift.id}`, {
+        shiftDate: editDate, startTime: editStart, endTime: editEnd,
+        applyToFuture,
+      })
       onUpdated(res.data.data)
-      toast.success('Shift times updated')
+      toast.success(applyToFuture ? 'Shift times updated for this and every future occurrence' : 'Shift times updated')
       setEditingTimes(false)
+      setApplyToFuture(false)
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update shift times') }
     finally { setSavingTimes(false) }
   }
@@ -1801,8 +1863,17 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
                 <input type="time" className="input text-sm" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
               </div>
             </div>
+            {shift.template_id && (
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={applyToFuture} onChange={e => setApplyToFuture(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 mt-0.5" />
+                <span className="text-xs text-slate-600">
+                  Apply changes to future shifts <span className="text-slate-400">— also update the start/finish time on every later occurrence of this recurring shift. Leave unticked to change only this one.</span>
+                </span>
+              </label>
+            )}
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="outline" onClick={() => setEditingTimes(false)}>Cancel</Button>
+              <Button size="sm" variant="outline" onClick={() => { setEditingTimes(false); setApplyToFuture(false) }}>Cancel</Button>
               <Button size="sm" loading={savingTimes} onClick={saveTimes}>Save</Button>
             </div>
           </div>
