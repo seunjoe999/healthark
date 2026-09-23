@@ -65,11 +65,27 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           timeout: 60s
           command_timeout: 5m
+          envs: DEPLOY_SMTP_PASS,DEPLOY_SMTP_FROM
           script: |
             set -e
+            # Keep /opt/healthark/.env's SMTP_PASS/SMTP_FROM in sync with the GitHub secrets
+            # on every deploy, so email sending (invoices, recruitment) never depends on
+            # someone having manually edited a file on this server — this is the only place
+            # those credentials get written.
+            if [ -n "$DEPLOY_SMTP_PASS" ]; then
+              grep -q '^SMTP_PASS=' /opt/healthark/.env 2>/dev/null \
+                && sed -i "s|^SMTP_PASS=.*|SMTP_PASS=${DEPLOY_SMTP_PASS}|" /opt/healthark/.env \
+                || echo "SMTP_PASS=${DEPLOY_SMTP_PASS}" >> /opt/healthark/.env
+              grep -q '^SMTP_FROM=' /opt/healthark/.env 2>/dev/null \
+                && sed -i "s|^SMTP_FROM=.*|SMTP_FROM=${DEPLOY_SMTP_FROM}|" /opt/healthark/.env \
+                || echo "SMTP_FROM=${DEPLOY_SMTP_FROM}" >> /opt/healthark/.env
+            fi
             docker pull ghcr.io/seunjoe999/healthark:latest
             docker stop healthark_app || true
             docker rm healthark_app || true
             docker run -d --name healthark_app --restart always --network host --env-file /opt/healthark/.env -v healthark_uploads:/app/backend/uploads ghcr.io/seunjoe999/healthark:latest
             docker image prune -f
             echo "Deploy complete"
+        env:
+          DEPLOY_SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          DEPLOY_SMTP_FROM: ${{ secrets.SMTP_FROM }}

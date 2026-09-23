@@ -181,17 +181,64 @@ export function customEmail(candidate: { first_name: string; last_name: string }
   return wrap(`<p>Dear ${candidate.first_name} ${candidate.last_name},</p>${messageHtml}<p>Kind regards,<br/>The Recruitment Team</p>`);
 }
 
-export function invoiceEmail(invoice: { first_name: string; last_name: string; month_date: string; commissioned_hours?: number | null; invoice_amount: number; notes?: string | null }, homeName: string) {
+// Standalone invoice document layout (not the generic `wrap()` notification card) —
+// mirrors the header/Bill-To-From/itemised-table/Thank-You structure the manager
+// asked for from a reference template, adapted to what this app actually tracks
+// (a single monthly care-services line, not a multi-item cart): resident is the
+// "Bill To", the issuing home is the "From", and hours × rate is the one line item.
+export function invoiceEmail(
+  invoice: { id: string; first_name: string; last_name: string; month_date: string; commissioned_hours?: number | null; hourly_rate?: number | null; invoice_amount: number; notes?: string | null; created_at?: string },
+  home: { name: string; address1?: string | null; address2?: string | null; address3?: string | null; postcode?: string | null; phone?: string | null; email?: string | null }
+) {
   const monthLabel = new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-  return wrap(`
-    <p>Please find below the invoice details for <strong>${invoice.first_name} ${invoice.last_name}</strong> for <strong>${monthLabel}</strong>.</p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0">
-      <tr><td style="padding:8px 0;color:#64748b">Resident</td><td style="padding:8px 0;text-align:right;font-weight:600">${invoice.first_name} ${invoice.last_name}</td></tr>
-      <tr><td style="padding:8px 0;color:#64748b">Month</td><td style="padding:8px 0;text-align:right;font-weight:600">${monthLabel}</td></tr>
-      ${invoice.commissioned_hours ? `<tr><td style="padding:8px 0;color:#64748b">Commissioned hours</td><td style="padding:8px 0;text-align:right;font-weight:600">${parseFloat(String(invoice.commissioned_hours)).toFixed(1)}</td></tr>` : ''}
-      <tr><td style="padding:12px 0;color:#64748b;border-top:2px solid #e2e8f0;font-size:16px">Total due</td><td style="padding:12px 0;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;font-size:18px">£${parseFloat(String(invoice.invoice_amount || 0)).toFixed(2)}</td></tr>
+  const invoiceNo = invoice.id.slice(0, 8).toUpperCase();
+  const issueDate = new Date(invoice.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const hours = invoice.commissioned_hours ? parseFloat(String(invoice.commissioned_hours)) : null;
+  const rate = invoice.hourly_rate ? parseFloat(String(invoice.hourly_rate)) : null;
+  const total = parseFloat(String(invoice.invoice_amount || 0));
+  const homeAddress = [home.address1, home.address2, home.address3, home.postcode].filter(Boolean).join(', ');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{font-family:Arial,sans-serif;background:#f1f5f9;margin:0;padding:0;color:#1e293b}
+    .card{background:#fff;max-width:600px;margin:32px auto;padding:40px;border-radius:8px}
+    .title{font-size:32px;letter-spacing:2px;font-weight:700;color:#0f172a;margin:0}
+    .meta{text-align:right;font-size:13px;color:#64748b}
+    .cols{display:table;width:100%;margin:28px 0}
+    .col{display:table-cell;width:50%;vertical-align:top;font-size:13px;line-height:1.6}
+    .col strong{display:block;font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px}
+    table.items{width:100%;border-collapse:collapse;margin:24px 0;font-size:13px}
+    table.items th{background:#1e293b;color:#fff;text-align:left;padding:10px 12px;font-size:11px;letter-spacing:0.5px}
+    table.items th.r,table.items td.r{text-align:right}
+    table.items td{padding:10px 12px;border-bottom:1px solid #e2e8f0}
+    .totals{width:60%;margin-left:auto;font-size:13px}
+    .totals tr td{padding:6px 12px}
+    .totals tr.due td{background:#1e293b;color:#fff;font-weight:700;font-size:15px}
+    .thanks{text-align:center;font-size:26px;font-style:italic;color:#1e293b;margin:32px 0 8px}
+    .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:24px}
+  </style></head><body><div class="card">
+    <div class="cols">
+      <div class="col"><p class="title">INVOICE</p></div>
+      <div class="col meta">Invoice No: ${invoiceNo}<br/>Date: ${issueDate}</div>
+    </div>
+    <div class="cols">
+      <div class="col"><strong>Bill To</strong>${invoice.first_name} ${invoice.last_name}</div>
+      <div class="col"><strong>From</strong>${home.name}${homeAddress ? `<br/>${homeAddress}` : ''}${home.phone ? `<br/>${home.phone}` : ''}${home.email ? `<br/>${home.email}` : ''}</div>
+    </div>
+    <table class="items">
+      <tr><th>Description</th><th class="r">Rate</th><th class="r">Hours</th><th class="r">Total</th></tr>
+      <tr>
+        <td>Care services — ${monthLabel}</td>
+        <td class="r">${rate ? `£${rate.toFixed(2)}/hr` : '—'}</td>
+        <td class="r">${hours ? hours.toFixed(1) : '—'}</td>
+        <td class="r">£${total.toFixed(2)}</td>
+      </tr>
     </table>
-    ${invoice.notes ? `<p><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
-    <p>Kind regards,<br/><strong>${homeName}</strong></p>
-  `);
+    <table class="totals">
+      <tr><td>Subtotal</td><td class="r">£${total.toFixed(2)}</td></tr>
+      <tr class="due"><td>Amount Due</td><td class="r">£${total.toFixed(2)}</td></tr>
+    </table>
+    ${invoice.notes ? `<p style="font-size:13px;margin-top:20px"><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
+    <p class="thanks">Thank You!</p>
+    <div class="footer">This invoice was sent via CompCare Hub on behalf of ${home.name}.</div>
+  </div></body></html>`;
 }

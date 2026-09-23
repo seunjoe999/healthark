@@ -111,7 +111,9 @@ router.post('/:id/send', requireRole('home_manager', 'group_admin'), [
       const staffId = fromToken(req, 'staffId');
       const emails: string[] = req.body.emails;
       const rows = await dbQuery<any>(
-        `SELECT i.*, su.first_name, su.last_name, h.name as home_name FROM invoices i
+        `SELECT i.*, su.first_name, su.last_name, h.name as home_name,
+                h.address1, h.address2, h.address3, h.postcode, h.phone, h.email as home_email
+         FROM invoices i
          JOIN service_users su ON su.id = i.su_id
          JOIN homes h ON h.id = i.home_id
          WHERE i.id = $1`,
@@ -123,7 +125,11 @@ router.post('/:id/send', requireRole('home_manager', 'group_admin'), [
       const result = await sendEmail({
         to: emails.join(','),
         subject: `Invoice — ${invoice.first_name} ${invoice.last_name} — ${new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`,
-        html: invoiceEmail(invoice, invoice.home_name),
+        html: invoiceEmail(invoice, {
+          name: invoice.home_name,
+          address1: invoice.address1, address2: invoice.address2, address3: invoice.address3,
+          postcode: invoice.postcode, phone: invoice.phone, email: invoice.home_email,
+        }),
       });
       if (!result.ok) throw new AppError(result.error || 'Failed to send invoice email', 502);
 
