@@ -88,7 +88,14 @@ export default function SignaturePad({ onSave, label, savedSignature, disabled }
       {label && <p className="text-sm font-semibold text-slate-600">{label}</p>}
 
       {saved ? (
-        <div className="relative border-2 border-emerald-500/30 rounded-xl overflow-hidden bg-white/5">
+        // The signature is drawn in off-white ink (#f5f0e8, matching the dark drawing
+        // canvas below) and saved as a PNG with a transparent background — that ink
+        // colour is baked into the saved image permanently. bg-white/5 is effectively
+        // white on the light theme, so the signature was invisible ("it says signed,
+        // but we can't see it") even though it genuinely was captured. Giving this
+        // preview box the same dark background the ink was drawn for fixes it without
+        // needing to touch already-saved signatures.
+        <div className="relative border-2 border-emerald-500/30 rounded-xl overflow-hidden" style={{ background: '#1a1a1a' }}>
           <img src={saved} alt="Signature" className="w-full h-24 object-contain" />
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1">
             <Check className="w-3.5 h-3.5 text-emerald-600" />

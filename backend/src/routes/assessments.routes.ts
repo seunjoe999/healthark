@@ -52,7 +52,7 @@ initTable().catch(() => {});
 
 // ── Template definitions ─────────────────────────────────────────
 type QType = 'yes_no' | 'text' | 'scale' | 'multiselect' | 'select';
-interface Q { id: string; text: string; type: QType; scored: boolean; helpText?: string; options?: string[]; detail?: boolean }
+interface Q { id: string; text: string; type: QType; scored: boolean; helpText?: string; options?: string[]; detail?: boolean; reverseScored?: boolean }
 interface Section { id: string; title: string; questions: Q[] }
 interface Template {
   key: string; name: string; category: 'service_user' | 'staff';
@@ -67,6 +67,14 @@ const yn = (id: string, text: string, help?: string): Q => ({ id, text, type: 'y
 // buttons — for templates (e.g. Medication Competency) where every question
 // needs supporting evidence, not just a tick.
 const ynBox = (id: string, text: string, help?: string): Q => ({ id, text, type: 'yes_no', scored: true, helpText: help, detail: true });
+// For negatively-phrased questions — "Are there any gaps/mistakes/discrepancies?" —
+// where "No" is the compliant answer, not "Yes". calcScore() below flips its
+// yes/no interpretation for any question marked reverseScored. Without this,
+// a correct "No, there are no gaps" answer scored as 0/wrong, which is exactly
+// the audit-scoring bug a manager reported (a genuinely clean audit still came
+// out at 64% because every "No, that's not a problem" answer was marked down).
+const ynNeg = (id: string, text: string, help?: string): Q => ({ id, text, type: 'yes_no', scored: true, helpText: help, reverseScored: true });
+const ynBoxNeg = (id: string, text: string, help?: string): Q => ({ id, text, type: 'yes_no', scored: true, helpText: help, detail: true, reverseScored: true });
 const txt = (id: string, text: string): Q => ({ id, text, type: 'text', scored: false });
 const scale = (id: string, text: string): Q => ({ id, text, type: 'scale', scored: true, options: ['Not at All = 0', 'Rarely = 1', 'Sometimes = 2', 'Often = 3', 'Very Often = 4'] });
 const sel = (id: string, text: string, options: string[]): Q => ({ id, text, type: 'select', scored: false, options });
@@ -123,10 +131,10 @@ const TEMPLATES: Template[] = [
         yn('q1', 'Have all discontinued medications been removed from MAR/System, and stocks returned to the pharmacy?'),
         yn('q2', 'Are the quantities of residents\' medication checked prior to ordering to ensure appropriate stock holding of medication?'),
         yn('q3', 'Are all Opened Medications dated and liquids with use by date?'),
-        yn('q4', 'Are there any gaps on the countdown sheet? If so what date is missing and action taken?'),
+        ynNeg('q4', 'Are there any gaps on the countdown sheet? If so what date is missing and action taken?'),
         yn('q5', 'Does the list of current stock medications accurately reflect the list of medications on the Care plan and MAR?'),
         yn('q6', 'Has medication stock count been completed on each shift?'),
-        yn('q7', 'Are there any Mistakes/Counting errors on the Count Down Sheet?'),
+        ynNeg('q7', 'Are there any Mistakes/Counting errors on the Count Down Sheet?'),
         yn('q8', 'Does the number of tablets left match the balance expected?'),
         yn('q9', 'Is there at least 7 days medication supply?'),
         yn('q10', 'Are regular refusals of medicines raised with the GP, Social worker and Management?'),
@@ -150,10 +158,10 @@ const TEMPLATES: Template[] = [
         yn('q1', 'Have all discontinued medications been removed from MAR/System, and stocks returned to the pharmacy?'),
         yn('q2', 'Are the quantities of residents\' medication checked prior to ordering to ensure appropriate stock holding of medication?'),
         yn('q3', 'Are all Opened Medications dated and liquids with use by date?'),
-        ynBox('q4', 'Are there any gaps on the countdown sheet?', 'If so what date is missing and action taken?'),
+        ynBoxNeg('q4', 'Are there any gaps on the countdown sheet?', 'If so what date is missing and action taken?'),
         yn('q5', 'Does the list of current stock medications accurately reflect the list of medications on the Care plan and Mar?'),
         ynBox('q6', 'Has medication stock count been completed on each shift?', 'If not why?'),
-        ynBox('q7', 'Are there any Mistakes/Counting errors on the Count Down Sheet?', 'If why?'),
+        ynBoxNeg('q7', 'Are there any Mistakes/Counting errors on the Count Down Sheet?', 'If why?'),
         ynBox('q8', 'Does the number of tablets left match the balance expected?', 'If not pls report this immediately.'),
         yn('q9', 'Is there at least 7 days medication supply?', ),
         yn('q10', 'Are regular refusals of medicines raised with the GP, Social worker and Management?'),
@@ -173,12 +181,12 @@ const TEMPLATES: Template[] = [
       id: 's1', title: 'Mar Chart Audit',
       questions: [
         yn('q1', 'Are medication allergies or "No known allergies" details on the Mar?'),
-        yn('q2', 'Were any discrepancies identified on the Mar Chart?'),
-        ynBox('q3', 'Are there any gaps on the Mar?', 'If so what date is missing?'),
+        ynNeg('q2', 'Were any discrepancies identified on the Mar Chart?'),
+        ynBoxNeg('q3', 'Are there any gaps on the Mar?', 'If so what date is missing?'),
         ynBox('q4', 'Are regular refusals of medicines raised with the GP, Social worker and Management?', 'If so what date?'),
         yn('q5', 'Has the manager been informed if PRN medicines are being administered regularly?'),
         yn('q6', 'Where CDs administration witnessed, were MARs signed by two members of staff?'),
-        ynBox('q7', 'Are there any gaps in signature/initials on the Mar Chart?'),
+        ynBoxNeg('q7', 'Are there any gaps in signature/initials on the Mar Chart?'),
         yn('q8', 'Were all medications entered correctly on the Mar?'),
         ynBox('q9', 'Were medications administered at the right time?', 'If not was reason documented?'),
         yn('q10', 'Were medications signed by staff on shift using their login?'),
@@ -1733,7 +1741,12 @@ function calcScore(template: Template, answers: Record<string, any>) {
   const maxScore = scoredQs.length;
   const totalScore = scoredQs.reduce((sum, q) => {
     const ans = answers[q.id];
-    return sum + (ans === 'yes' || ans === true ? 1 : 0);
+    // An unanswered question must never count as compliant just because reverse
+    // scoring inverts "no" into the good answer — only an explicit "no" does.
+    const compliant = q.reverseScored
+      ? (ans === 'no' || ans === false)
+      : (ans === 'yes' || ans === true);
+    return sum + (compliant ? 1 : 0);
   }, 0);
   const scorePct = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
 
