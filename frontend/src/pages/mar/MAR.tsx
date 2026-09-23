@@ -1015,9 +1015,15 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                 {/* Day cells */}
                 {dates.map((d: string) => {
                   const dayRecs: any[] = med.records?.[d] || []
+                  // The "one unscheduled record" fallback only makes sense for a medication
+                  // with a single time slot — for anything four-times-daily etc., matching it
+                  // to whichever slot happens to be rendering meant the day's first dose (e.g.
+                  // the 8am one) showed as "already given" in every other slot too (12/16/20),
+                  // blocking staff from logging those doses at all. Gate it on slots.length===1
+                  // so it can't bleed across slots that are genuinely different times.
                   const rec = slot === 'PRN'
                     ? dayRecs[0]
-                    : dayRecs.find((r: any) => r.scheduled_time === slot) || (dayRecs.length === 1 && !dayRecs[0].scheduled_time ? dayRecs[0] : undefined)
+                    : dayRecs.find((r: any) => r.scheduled_time === slot) || (slots.length === 1 && dayRecs.length === 1 && !dayRecs[0].scheduled_time ? dayRecs[0] : undefined)
                   const isToday = d === today
                   const isFuture = d > today
 
@@ -1043,7 +1049,14 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                   }
 
                   return (
-                    <td key={d} onClick={() => onCellClick(med, d, dayRecs, slot)}
+                    // Pass only this slot's own record (if any), not every record logged for
+                    // the whole day — onCellClick opens the "already recorded" detail view
+                    // when it receives a non-empty array, and CellDetailModal reads records[0]
+                    // as THE record for the cell you clicked. Passing dayRecs meant clicking an
+                    // empty 12:00/16:00/20:00 slot on a day where only the 8am dose had been
+                    // given still showed that 8am record and blocked logging the later dose —
+                    // exactly the "clicking 12:00 takes me back to 8am" bug reported.
+                    <td key={d} onClick={() => onCellClick(med, d, rec ? [rec] : [], slot)}
                       style={{
                         border: `1px solid ${isToday ? '#fbbf24' : '#e2e8f0'}`,
                         textAlign: 'center',
@@ -1850,7 +1863,10 @@ function buildMarPrintBody(su: any, medications: any[], dates: string[], startDa
               <td style="font-weight:700">${slot}</td>
               ${week.dates.map((d: string) => {
                 const dayRecs: any[] = med.records?.[d] || []
-                const rec = slot === 'PRN' ? dayRecs[0] : dayRecs.find((r: any) => r.scheduled_time === slot) || (dayRecs.length === 1 && !dayRecs[0]?.scheduled_time ? dayRecs[0] : undefined)
+                // See matching comment on the live MAR grid — this fallback must only apply
+                // to single-slot medications, otherwise one unscheduled record gets printed
+                // into every time slot for the day.
+                const rec = slot === 'PRN' ? dayRecs[0] : dayRecs.find((r: any) => r.scheduled_time === slot) || (slots.length === 1 && dayRecs.length === 1 && !dayRecs[0]?.scheduled_time ? dayRecs[0] : undefined)
                 const bg = rec ? (rec.given ? '#d1fae5' : rec.refused ? '#fee2e2' : '#fef9c3') : '#fff'
                 const code = rec ? (rec.mar_code || (rec.given ? 'G' : rec.refused ? 'R' : 'O')) : ''
                 return `<td style="background:${bg}">${code}</td>`
