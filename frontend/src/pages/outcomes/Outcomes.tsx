@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText, Edit2 } from 'lucide-react'
+import { Target, Plus, CheckCircle, Clock, TrendingUp, FileText, Edit2, Download, Printer } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import { ukDateStr } from '../../utils/ukDate'
@@ -192,7 +192,7 @@ export default function Outcomes() {
   const [showAdd, setShowAdd] = useState(false)
   const [showReview, setShowReview] = useState<any>(null)
   const [showEdit, setShowEdit] = useState<any>(null)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [showDetail, setShowDetail] = useState<any>(null)
   const [reviews, setReviews] = useState<Record<string, any[]>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -232,13 +232,16 @@ export default function Outcomes() {
 
   useEffect(() => { load() }, [filterSU])
 
-  async function toggleExpand(id: string) {
-    if (expanded === id) { setExpanded(null); return }
-    setExpanded(id)
-    if (!reviews[id]) {
+  // Was an inline accordion that expanded within the page — the manager
+  // explicitly asked for goals/reports to open in a dedicated document-style
+  // view instead (like the Care Plan viewer), with its own download/print,
+  // so a monthly report can be pulled out and sent to families each month.
+  async function openDetail(o: any) {
+    setShowDetail(o)
+    if (!reviews[o.id]) {
       try {
-        const res = await api.get(`/outcomes/${id}/reviews`)
-        setReviews(r => ({ ...r, [id]: res.data.data }))
+        const res = await api.get(`/outcomes/${o.id}/reviews`)
+        setReviews(r => ({ ...r, [o.id]: res.data.data }))
       } catch {}
     }
   }
@@ -388,7 +391,7 @@ export default function Outcomes() {
               <div className="space-y-2">
                 {items.map(o => (
                   <div key={o.id} className="card overflow-hidden">
-                    <div className="p-4 cursor-pointer" onClick={() => toggleExpand(o.id)}>
+                    <div className="p-4 cursor-pointer" onClick={() => openDetail(o)}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -415,53 +418,10 @@ export default function Outcomes() {
                         <div className="text-right text-xs text-slate-400 flex-shrink-0">
                           {o.target_date && <div>Target: {new Date(o.target_date).toLocaleDateString('en-GB')}</div>}
                           <div className="mt-1">{o.created_by_name}</div>
-                          <ChevronDown className={clsx('w-4 h-4 ml-auto mt-1 transition-transform', expanded === o.id && 'rotate-180')} />
+                          <FileText className="w-4 h-4 ml-auto mt-1 opacity-60" />
                         </div>
                       </div>
                     </div>
-                    {expanded === o.id && (
-                      <div className="border-t border-white/5 p-4 space-y-3" style={{ background: theme === 'dark' ? '#0a0a0a' : '#f8fafc' }}>
-                        {o.description && (
-                          <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p>
-                            <FormattedDescription text={o.description} theme={theme} />
-                          </div>
-                        )}
-                        {o.progress_notes && (
-                          <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Progress Notes</p>
-                            <p className={`text-sm whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.progress_notes}</p>
-                          </div>
-                        )}
-                        {reviews[o.id]?.length > 0 && (
-                          <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Review History</p>
-                            {reviews[o.id].map(r => (
-                              <div key={r.id} className="flex gap-3 mb-2 p-2 rounded-lg" style={{ background: theme === 'dark' ? '#111' : '#ffffff' }}>
-                                <div className="text-xs text-slate-400 w-20 flex-shrink-0">{new Date(r.review_date).toLocaleDateString('en-GB')}</div>
-                                <div className="flex-1">
-                                  <span className={clsx('badge text-xs', statusConfig[r.status]?.badge)}>{STATUSES.find(s => s.value === r.status)?.label}</span>
-                                  <p className={`text-sm mt-1 whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.notes}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex gap-2 pt-1">
-                          <Button size="sm" variant="outline"
-                            icon={<Edit2 className="w-3.5 h-3.5" />}
-                            onClick={() => {
-                              setEditForm({ goal: o.goal || '', description: o.description || '', targetDate: o.target_date ? o.target_date.split('T')[0] : '', status: o.status || 'ongoing' })
-                              setShowEdit(o)
-                            }}>
-                            Edit
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: ukDateStr() }) }}>
-                            Add Review
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -576,6 +536,88 @@ export default function Outcomes() {
             <Button type="submit" variant="gold" loading={submitting}>Save</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Detail view — document-style, like the Care Plan viewer, with its own
+          download/print so a monthly report or individual goal can be pulled
+          out and sent to the service user/family. */}
+      <Modal open={!!showDetail} onClose={() => setShowDetail(null)} title={showDetail?.su_name || 'Outcome'} size="lg">
+        {showDetail && (() => {
+          const o = showDetail
+          const statusLabel = STATUSES.find(s => s.value === o.status)?.label || o.status
+          return (
+            <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+              {/* Document header — resident photo + key facts, matching the Care Plan viewer */}
+              <div className="rounded-2xl overflow-hidden border border-slate-200">
+                <div className="flex items-start gap-4 p-4 bg-slate-50">
+                  {o.su_photo ? (
+                    <img src={o.su_photo} alt={o.su_name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold bg-amber-500/15 text-amber-600 flex-shrink-0">
+                      {o.su_name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-base text-slate-900">{o.su_name}</p>
+                    <p className="text-sm text-slate-600 mt-1 font-semibold">{o.goal}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className={clsx('badge', statusConfig[o.status]?.badge)}>{statusLabel}</span>
+                      {o.target_date && <span className="text-xs text-slate-500">Target: {new Date(o.target_date).toLocaleDateString('en-GB')}</span>}
+                      {o.created_by_name && <span className="text-xs text-slate-500">Recorded by {o.created_by_name}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />}
+                  onClick={() => openLetterheadPrint(o.goal, buildOutcomePrintPage(o, o.su_name || ''))}>
+                  Print
+                </Button>
+                <Button size="sm" variant="outline" icon={<Download className="w-3.5 h-3.5" />}
+                  onClick={() => openLetterheadPrint(o.goal, buildOutcomePrintPage(o, o.su_name || ''))}>
+                  Download
+                </Button>
+                <Button size="sm" variant="outline" icon={<Edit2 className="w-3.5 h-3.5" />}
+                  onClick={() => {
+                    setEditForm({ goal: o.goal || '', description: o.description || '', targetDate: o.target_date ? o.target_date.split('T')[0] : '', status: o.status || 'ongoing' })
+                    setShowEdit(o)
+                    setShowDetail(null)
+                  }}>
+                  Edit
+                </Button>
+                <Button size="sm" variant="gold" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: ukDateStr() }); setShowDetail(null) }}>
+                  Add Review
+                </Button>
+              </div>
+
+              {o.description && (
+                <div className="border-t border-slate-100 pt-3">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p>
+                  <FormattedDescription text={o.description} theme={theme} />
+                </div>
+              )}
+              {o.progress_notes && (
+                <div className="border-t border-slate-100 pt-3">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Progress Notes</p>
+                  <p className={`text-sm whitespace-pre-line ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{o.progress_notes}</p>
+                </div>
+              )}
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Review History</p>
+                {reviews[o.id]?.length > 0 ? reviews[o.id].map((r: any) => (
+                  <div key={r.id} className="flex gap-3 mb-2 p-2 rounded-lg bg-slate-50">
+                    <div className="text-xs text-slate-400 w-20 flex-shrink-0">{new Date(r.review_date).toLocaleDateString('en-GB')}</div>
+                    <div className="flex-1">
+                      <span className={clsx('badge text-xs', statusConfig[r.status]?.badge)}>{STATUSES.find(s => s.value === r.status)?.label}</span>
+                      <p className="text-sm mt-1 whitespace-pre-line text-slate-700">{r.notes}</p>
+                    </div>
+                  </div>
+                )) : <p className="text-sm text-slate-400">No reviews recorded yet.</p>}
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
 
       {/* Edit Outcome Modal */}

@@ -462,7 +462,7 @@ export default function TrainingMatrix() {
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <th
                     className="text-left px-4 py-3 text-xs font-semibold text-slate-400 sticky left-0"
-                    style={{ background: tileBg, minWidth: 180 }}
+                    style={{ background: tileBg, minWidth: 180, zIndex: 2, boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}
                   >
                     Staff Member
                   </th>
@@ -493,7 +493,7 @@ export default function TrainingMatrix() {
                       {/* Staff name cell */}
                       <td
                         className="px-4 py-2.5 sticky left-0"
-                        style={{ background: tileBg }}
+                        style={{ background: tileBg, zIndex: 1, boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}
                       >
                         <div>
                           <p className={`text-sm font-medium ${neutralText} leading-tight`}>{s.name}</p>

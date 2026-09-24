@@ -163,11 +163,12 @@ export default function StaffAbsence() {
           ))}
         </div>
         {tab === 'absences' && (
-          <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)}
-            className={`px-3 py-2 rounded-lg ${inputTextCls} text-sm`} style={{ background: selectBg, border: inputBorder }}>
-            <option value="" style={optionStyle}>All staff</option>
-            {staffList.map(s => <option key={s.id} value={s.id} style={optionStyle}>{s.first_name} {s.last_name}</option>)}
-          </select>
+          <StaffSearchFilter
+            staffList={staffList}
+            value={staffFilter}
+            onChange={setStaffFilter}
+            selectBg={selectBg} selectFg={selectFg} inputBorder={inputBorder} inputTextCls={inputTextCls} optionStyle={optionStyle}
+          />
         )}
       </div>
 
@@ -366,6 +367,52 @@ function EditAbsenceModal({ absence, onClose, onSaved }: { absence: Absence; onC
           <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+// Previously a bare native <select> with no visible label — reported as "an
+// unlabeled, entirely blank input box" that just opens a long unsearchable
+// list. Now a labelled, type-to-search field, matching the request to be
+// able to type and locate a staff member instead of scrolling.
+function StaffSearchFilter({ staffList, value, onChange, selectBg, selectFg, inputBorder, inputTextCls, optionStyle }: {
+  staffList: any[]; value: string; onChange: (id: string) => void
+  selectBg: string; selectFg: string; inputBorder: string; inputTextCls: string; optionStyle: { background: string; color: string }
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const selected = staffList.find(s => s.id === value);
+  const filtered = staffList.filter(s => `${s.first_name} ${s.last_name}`.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div className="relative">
+      <label className="text-xs text-gray-400 mb-1 block">Staff Member</label>
+      <div className="relative">
+        <input
+          value={open ? query : (selected ? `${selected.first_name} ${selected.last_name}` : 'All staff')}
+          onChange={e => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => { setQuery(''); setOpen(true) }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Select staff member..."
+          className={`px-3 py-2 rounded-lg ${inputTextCls} text-sm w-56`}
+          style={{ background: selectBg, border: inputBorder }}
+        />
+        {open && (
+          <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-lg shadow-lg" style={optionStyle}>
+            <button type="button" onMouseDown={e => { e.preventDefault(); onChange(''); setQuery(''); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-black/10" style={{ color: selectFg }}>
+              All staff
+            </button>
+            {filtered.map(s => (
+              <button key={s.id} type="button" onMouseDown={e => { e.preventDefault(); onChange(s.id); setQuery(''); setOpen(false) }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-black/10" style={{ color: selectFg }}>
+                {s.first_name} {s.last_name}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-3 py-2 text-sm opacity-60">No staff found</p>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
