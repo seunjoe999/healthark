@@ -8,7 +8,8 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
-import { ukDateStr, ukDayOfWeek } from '../utils/ukTime';
+import { ukDateStr } from '../utils/ukTime';
+import { generateTasksForHome } from '../utils/taskGeneration';
 
 const router = Router();
 
@@ -250,72 +251,7 @@ router.put('/:id/attempt', param('id').isUUID(), validateRequest,
 router.post('/generate-daily', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
-    // UK time, not the server's own UTC clock — during BST (UTC+1) the server's
-    // UTC date is still "yesterday" for up to an hour after midnight in the UK,
-    // so this used to generate the day's tasks under yesterday's date, which is
-    // exactly what staff reported as "we only see yesterday's tasks".
-    const today = ukDateStr();
-    const dayOfWeek = ukDayOfWeek(); // 0=Sun, 1=Mon...
-    
-    // Get active templates
-    const templates = await query(
-      `SELECT * FROM task_templates WHERE home_id = $1 AND is_active = true`,
-      [homeId]
-    );
-    
-    let created = 0;
-    for (const tmpl of templates as any[]) {
-      // Check if task already exists for today
-      const existing = await query(
-        `SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3`,
-        [homeId, today, tmpl.title]
-      );
-      if (existing.length > 0) continue;
-
-      // Check frequency — "weekly" recurs on whatever day of the week the
-      // template was first created on (not hardcoded to Monday, which meant
-      // a template created any other day never fired except by coincidence).
-      const freq = tmpl.frequency || 'daily';
-      const anchor = tmpl.created_at ? new Date(tmpl.created_at) : new Date();
-      const templateDow = anchor.getDay();
-      const now = new Date();
-      const monthsSinceAnchor = (now.getFullYear() - anchor.getFullYear()) * 12 + (now.getMonth() - anchor.getMonth());
-      // Whole days between the template's creation date and today, both
-      // normalised to midnight so a same-day time-of-day difference can't
-      // throw off the day-interval frequencies below by one.
-      const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
-      let shouldCreate = false;
-      if (freq === 'daily') shouldCreate = true;
-      else if (freq === 'weekly' && dayOfWeek === templateDow) shouldCreate = true;
-      else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldCreate = true;
-      else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldCreate = true;
-      // Day-interval frequencies — recur every N days from the template's
-      // creation date.
-      else if (freq === 'fortnightly' && daysSinceAnchor >= 0 && daysSinceAnchor % 14 === 0) shouldCreate = true;
-      else if (freq === 'every_3_weeks' && daysSinceAnchor >= 0 && daysSinceAnchor % 21 === 0) shouldCreate = true;
-      else if (freq === 'every_28_days' && daysSinceAnchor >= 0 && daysSinceAnchor % 28 === 0) shouldCreate = true;
-      // Month-interval frequencies — recur on the same day-of-month the
-      // template was created, every N months from then on (e.g. created
-      // 12 Mar monthly -> fires 12 Apr, 12 May, ...; quarterly -> 12 Jun,
-      // 12 Sep, ...; yearly -> 12 Mar next year).
-      else if (freq === 'monthly' && monthsSinceAnchor >= 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-      else if (freq === 'quarterly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 3 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-      else if (freq === 'every_6_months' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 6 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-      else if (freq === 'yearly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 12 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-      
-      if (shouldCreate) {
-        await query(
-          `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status, visible_team_ids)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10)`,
-          [homeId, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
-           tmpl.description || null, today, tmpl.due_time || null,
-           tmpl.priority || 'normal', tmpl.assigned_role || null, tmpl.visible_team_ids || null]
-        );
-        created++;
-      }
-    }
+    const created = await generateTasksForHome(homeId);
     res.json({ success: true, message: `${created} tasks generated for today` } as ApiResponse);
   } catch (err) { next(err); }
 });

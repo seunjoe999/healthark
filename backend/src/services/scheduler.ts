@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { alertsService } from './alerts.service';
 import { logger } from '../config/logger';
 import { getDueTodayTasks } from '../utils/medicationDue';
-import { ukDateStr, ukTimeHHMM, ukDayOfWeek } from '../utils/ukTime';
+import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 
 // ================================================================
 // HEALTHARK SCHEDULED JOBS
@@ -37,48 +37,23 @@ async function checkOverdueCarePlans() {
 }
 
 
-// Daily at midnight: generate recurring tasks for all homes
+// Daily at 6am UK time: generate recurring tasks for all homes. Delegates to
+// the same generateTasksForHome() the manual "Generate today's tasks" button
+// uses (utils/taskGeneration.ts) — this used to be a separately-maintained
+// copy of that logic that had drifted: missing several frequency types
+// (including "rota_days", which had a dropdown option on the template form
+// but no matching generation logic anywhere, so it silently never fired) and
+// a "weekly" check hardcoded to only ever fire on a Monday.
 async function generateDailyTasks() {
   try {
     const { query } = await import('../config/database');
-    // Get all active homes
+    const { generateTasksForHome } = await import('../utils/taskGeneration');
     const homes = await query<any>('SELECT id FROM homes WHERE is_active = true');
-    const today = ukDateStr();
-    const dayOfWeek = ukDayOfWeek();
-
+    let totalCreated = 0;
     for (const home of homes) {
-      const templates = await query<any>(
-        'SELECT * FROM task_templates WHERE home_id = $1 AND is_active = true',
-        [home.id]
-      );
-
-      for (const tmpl of templates) {
-        // Check if already exists today
-        const existing = await query(
-          'SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3',
-          [home.id, today, tmpl.title]
-        );
-        if (existing.length > 0) continue;
-
-        const freq = tmpl.frequency || 'daily';
-        let create = false;
-        if (freq === 'daily') create = true;
-        else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) create = true;
-        else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) create = true;
-        else if (freq === 'weekly' && dayOfWeek === 1) create = true;
-
-        if (create) {
-          await query(
-            `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')`,
-            [home.id, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
-             tmpl.description || null, today, tmpl.due_time || null,
-             tmpl.priority || 'normal', tmpl.assigned_role || null]
-          );
-        }
-      }
+      totalCreated += await generateTasksForHome(home.id);
     }
-    logger.info('Daily tasks generated successfully');
+    logger.info(`Daily tasks generated successfully (${totalCreated} created across ${homes.length} home(s))`);
   } catch (err) { logger.error('Daily task generation failed:', err); }
 }
 
