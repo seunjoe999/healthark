@@ -52,7 +52,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   }
 
   let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
-                    m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date,
+                    m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date, m.time_slots,
                     su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
              FROM su_medications m
              JOIN service_users su ON su.id = m.su_id
@@ -95,7 +95,12 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
       const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
       if (daysSinceAnchor < 0 || daysSinceAnchor % 3 !== 0) continue;
     }
-    const times = getTimeSlots(med.frequency, med.apply_time);
+    // Prefer the manager's own explicitly-set time_slots (each dose independently
+    // timed, e.g. morning 08:00 / evening 18:30) over the evenly-offset default —
+    // matches the MAR grid's logic. Without this, a medication with real,
+    // unevenly-spaced dose times had its later doses silently recomputed to the
+    // wrong time and never surfaced as due, so they never popped up as a task.
+    const times = (med.time_slots && med.time_slots.length) ? med.time_slots : getTimeSlots(med.frequency, med.apply_time);
     for (const t of times) {
       const existing = recordMap.get(`${med.medication_id}|${t}`);
       // completed=false (e.g. an "Attempted" outcome — resident refused but

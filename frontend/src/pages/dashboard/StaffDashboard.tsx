@@ -28,6 +28,7 @@ export default function StaffDashboard() {
   const [clockInUrl, setClockInUrl] = useState<string | null>(null)
   const [stockCount, setStockCount] = useState<{ total: number; counted: number; done: boolean } | null>(null)
   const [medDueToday, setMedDueToday] = useState<{ total: number; pending: number }>({ total: 0, pending: 0 })
+  const [myMeds, setMyMeds] = useState<any[]>([])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -44,25 +45,50 @@ export default function StaffDashboard() {
     if (user?.id && wantsTaskReminders) setShowTaskPopup(shouldShowTaskPopup(user.id))
   }, [user?.id, wantsTaskReminders])
 
+  // Refetch due-today medications every 5 minutes — the initial load() only
+  // runs once on mount, so a medication scheduled later in the day (e.g. an
+  // evening dose) would never appear in myMeds/medDueToday until a full page
+  // reload, and would therefore never get picked up by the overdue check below.
+  useEffect(() => {
+    if (!user?.homeId) return
+    const refreshMeds = async () => {
+      try {
+        const res = await api.get('/mar/due-today', { params: { homeId: user.homeId } })
+        const medTasks = res.data?.data || []
+        setMyMeds(medTasks)
+        setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
+      } catch { /* keep last known state on a transient failure */ }
+    }
+    const interval = setInterval(refreshMeds, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [user?.homeId])
+
   // Time-based due check — on top of the frequency-based pop-up above, poll every
-  // 5 minutes for tasks whose due_time has now passed and are still pending, so
-  // a task doesn't just sit silently on a list once it's overdue.
+  // 5 minutes for tasks AND medications whose due time has now passed and are
+  // still pending, so nothing just sits silently on a list once it's overdue.
+  // Medications must be included here (not just regular tasks) so a later dose
+  // (e.g. an evening one after a morning dose already popped up) still triggers
+  // a fresh pop-up instead of staying silent for the rest of the shift.
   const overdueNotifiedRef = React.useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!wantsTaskReminders) return
     const checkOverdue = () => {
-      const overdue = myTasks.filter(t => t.status === 'pending' && isTimePastDue(t.due_time))
-      const newlyOverdue = overdue.filter(t => !overdueNotifiedRef.current.has(t.id))
-      if (newlyOverdue.length > 0) {
-        newlyOverdue.forEach(t => overdueNotifiedRef.current.add(t.id))
-        toast(`${newlyOverdue.length} task${newlyOverdue.length > 1 ? 's are' : ' is'} now overdue`, { icon: '⏰' })
+      const overdueTasks = myTasks.filter(t => t.status === 'pending' && isTimePastDue(t.due_time))
+      const overdueMeds = myMeds.filter((m: any) => m.status === 'pending' && isTimePastDue(m.scheduledTime))
+      const newlyOverdueTasks = overdueTasks.filter(t => !overdueNotifiedRef.current.has(t.id))
+      const newlyOverdueMeds = overdueMeds.filter((m: any) => !overdueNotifiedRef.current.has(`med-${m.medicationId}-${m.scheduledTime}`))
+      const newlyOverdueCount = newlyOverdueTasks.length + newlyOverdueMeds.length
+      if (newlyOverdueCount > 0) {
+        newlyOverdueTasks.forEach(t => overdueNotifiedRef.current.add(t.id))
+        newlyOverdueMeds.forEach((m: any) => overdueNotifiedRef.current.add(`med-${m.medicationId}-${m.scheduledTime}`))
+        toast(`${newlyOverdueCount} task${newlyOverdueCount > 1 ? 's are' : ' is'} now overdue`, { icon: '⏰' })
         setShowTaskPopup(true)
       }
     }
     checkOverdue()
     const interval = setInterval(checkOverdue, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [myTasks, wantsTaskReminders])
+  }, [myTasks, myMeds, wantsTaskReminders])
 
   useEffect(() => {
     if (!user) return
@@ -97,6 +123,7 @@ export default function StaffDashboard() {
         setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
         setStockCount(v(stockR)?.data.data || null)
         const medTasks = v(medDueR)?.data.data || []
+        setMyMeds(medTasks)
         setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
       } finally {
         setLoading(false)
