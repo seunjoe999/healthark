@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { homesApi, staffApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isPast } from 'date-fns'
 import { Spinner, Button, Modal, Input, Select } from '../../components/ui'
 import { GraduationCap, Plus, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react'
@@ -213,7 +214,7 @@ function AddStaffEventModal({ open, onClose, homeId, defaultDate, staffList, tea
 }) {
   const blankForm = (d: Date | null) => ({
     title: '', eventType: 'training',
-    eventDate: d ? format(d, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+    eventDate: d ? format(d, 'yyyy-MM-dd') : ukDateStr(),
     startTime: '', endTime: '', description: '', location: '',
     assignedStaffId: '', visibleTeamIds: [] as string[],
   })

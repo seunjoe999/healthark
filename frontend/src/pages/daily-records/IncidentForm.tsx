@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { dailyRecordsApi } from '../../api'
+import { ukDateStr } from '../../utils/ukDate'
 import { Button, Input, Select, Toggle } from '../../components/ui'
 import { AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -119,7 +120,7 @@ function BodyMap({ selected, onChange }: { selected: string[]; onChange: (v: str
 export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
   const [form, setForm] = useState({
     incidentType: '',
-    incidentDate: new Date().toISOString().split('T')[0],
+    incidentDate: ukDateStr(),
     incidentTime: new Date().toTimeString().substring(0, 5),
     location: '',
     description: '',

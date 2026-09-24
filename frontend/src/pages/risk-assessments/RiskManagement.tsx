@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, SpeechTextarea } from '../../components/ui'
 import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck, Search } from 'lucide-react'
@@ -474,7 +475,7 @@ export default function RiskManagement() {
       await api.put(`/risk-assessments/${signOffItem.id}`, {
         signedOff: true,
         signedOffBy: signOffForm.signedOffBy,
-        signedOffDate: signOffForm.signedOffDate || new Date().toISOString().split('T')[0],
+        signedOffDate: signOffForm.signedOffDate || ukDateStr(),
       })
       toast.success('Assessment signed off')
       setSignOffItem(null)
@@ -722,7 +723,7 @@ export default function RiskManagement() {
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-500">Not yet signed off</p>
                   <Button size="sm" variant="outline" icon={<ShieldCheck className="w-3.5 h-3.5" />}
-                    onClick={() => { setSignOffItem(ra); setSignOffForm({ signedOffBy: '', signedOffDate: new Date().toISOString().split('T')[0] }) }}>
+                    onClick={() => { setSignOffItem(ra); setSignOffForm({ signedOffBy: '', signedOffDate: ukDateStr() }) }}>
                     Sign Off
                   </Button>
                 </div>

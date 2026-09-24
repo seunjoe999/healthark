@@ -2,6 +2,7 @@
 import { homesApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Shield, Trash2, Bell } from 'lucide-react'
@@ -167,7 +168,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-const BLANK_SAFEGUARDING = { suId: '', incidentDate: new Date().toISOString().split('T')[0], incidentTime: '', suLocation: '', incidentLocation: '', overview: '', witnesses: '', medicalRequired: false, medicalDetails: '', injuryDetails: '', immediateActions: '', decisionsBReached: '', lessonsLearnt: '', outsideAgency: false, agencyDetails: '', managementRecs: '', preventionActions: '' }
+const BLANK_SAFEGUARDING = { suId: '', incidentDate: ukDateStr(), incidentTime: '', suLocation: '', incidentLocation: '', overview: '', witnesses: '', medicalRequired: false, medicalDetails: '', injuryDetails: '', immediateActions: '', decisionsBReached: '', lessonsLearnt: '', outsideAgency: false, agencyDetails: '', managementRecs: '', preventionActions: '' }
 
 function AddConcernModal({ open, onClose, sus, homeId, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; onSaved: () => void }) {
   const [form, setForm] = useState({ ...BLANK_SAFEGUARDING })

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isPast } from 'date-fns'
 import { Spinner, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
 import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Clock, CheckCircle2, BookOpen } from 'lucide-react'
@@ -350,7 +351,7 @@ function AddEventModal({ open, onClose, homeId, defaultDate, canManageCalendar, 
   const [kind, setKind] = useState<'appointment' | 'event' | 'task'>('appointment')
   const blankForm = (d: Date | null) => ({
     title: '', eventType: 'appointment', suId: '',
-    eventDate: d ? format(d, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+    eventDate: d ? format(d, 'yyyy-MM-dd') : ukDateStr(),
     startTime: '', endTime: '', description: '', location: ''
   })
   const [form, setForm] = useState(blankForm(defaultDate))

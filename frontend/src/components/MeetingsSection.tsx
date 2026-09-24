@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import api from '../api'
 import { useAuth } from '../context/AuthContext'
 import { format } from 'date-fns'
+import { ukDateStr } from '../utils/ukDate'
 import { Spinner, Button, Modal, EmptyState } from './ui'
 import { SpeechTextarea } from './ui/SpeechButton'
 import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react'
@@ -20,7 +21,7 @@ interface MeetingsSectionProps {
 }
 
 const BLANK = {
-  conductedBy: '', meetingDate: new Date().toISOString().split('T')[0],
+  conductedBy: '', meetingDate: ukDateStr(),
   attendees: '', serviceLocation: '', notes: '', actionPlan: '',
 }
 
@@ -68,7 +69,7 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
     try {
       await api.put(`/meetings/${signOffItem.id}/sign-off`, {
         signedOffBy: signOffForm.signedOffBy,
-        signedOffDate: signOffForm.signedOffDate || new Date().toISOString().split('T')[0],
+        signedOffDate: signOffForm.signedOffDate || ukDateStr(),
       })
       toast.success('Meeting signed off')
       setSignOffItem(null)
@@ -136,7 +137,7 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                         <p className="text-xs text-slate-500">Not yet signed off</p>
                         <Button size="sm" variant="outline" icon={<ShieldCheck className="w-3.5 h-3.5" />}
-                          onClick={() => { setSignOffItem(m); setSignOffForm({ signedOffBy: '', signedOffDate: new Date().toISOString().split('T')[0] }) }}>
+                          onClick={() => { setSignOffItem(m); setSignOffForm({ signedOffBy: '', signedOffDate: ukDateStr() }) }}>
                           Sign Off
                         </Button>
                       </div>
@@ -206,7 +207,7 @@ function CreateModal({ open, meetingType, parentId, homeId, label, defaultConduc
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
-    if (open) setForm({ ...BLANK, conductedBy: defaultConductedBy, meetingDate: new Date().toISOString().split('T')[0] })
+    if (open) setForm({ ...BLANK, conductedBy: defaultConductedBy, meetingDate: ukDateStr() })
   }, [open, defaultConductedBy])
 
   const save = async (e: React.FormEvent) => {

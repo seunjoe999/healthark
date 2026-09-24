@@ -2,6 +2,7 @@
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Spinner, EmptyState, Button, PrintButton, Modal, SpeechTextarea } from '../../components/ui'
 import { AlertTriangle, ChevronDown, ChevronUp, Search, Filter, Trash2, Sparkles, X, Plus, Pencil, CheckCircle, MessageSquarePlus } from 'lucide-react'
@@ -364,7 +365,7 @@ function nowMinute() { return String(Math.floor(new Date().getMinutes() / 5) * 5
 
 const BLANK_INC = {
   suId: '',
-  incidentDate: new Date().toISOString().split('T')[0],
+  incidentDate: ukDateStr(),
   incidentHour: nowHour(),
   incidentMinute: nowMinute(),
   incidentType: '',
@@ -381,7 +382,7 @@ const BLANK_INC = {
   residentProvideInfo: 'Yes',
   residentActivity: '',
   description: '',
-  reportedToSeniorDate: new Date().toISOString().split('T')[0],
+  reportedToSeniorDate: ukDateStr(),
   reportedToSeniorHour: nowHour(),
   reportedToSeniorMinute: nowMinute(),
   equipmentInvolved: 'No',

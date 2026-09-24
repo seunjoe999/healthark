@@ -4,6 +4,7 @@
 // clock) should compute "today" from this, not the device's local clock — a
 // device and the server can otherwise disagree on what day it is.
 import api from '../api'
+import { ukDateStr } from './ukDate'
 
 let cachedOffsetMs: number | null = null
 let pending: Promise<number> | null = null
@@ -28,5 +29,5 @@ export async function getServerNow(): Promise<Date> {
 
 export async function getServerTodayStr(): Promise<string> {
   const now = await getServerNow()
-  return now.toISOString().split('T')[0]
+  return ukDateStr(now)
 }

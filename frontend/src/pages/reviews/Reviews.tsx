@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton, SpeechTextarea } from '../../components/ui'
 import { FileText, Plus, Trash2, Eye, X, Calendar, Users, ClipboardList } from 'lucide-react'
@@ -334,7 +335,7 @@ function ReviewPreviewModal({ review, suName, onClose }: { review: any; suName: 
 function AddReviewModal({ open, onClose, suId, onSaved }: { open: boolean; onClose: () => void; suId?: string; onSaved: () => void }) {
   const { isRole } = useAuth()
   const canManageTypes = isRole('home_manager', 'group_admin')
-  const [form, setForm] = useState({ reviewType: 'monthly_review', customReviewType: '', reviewDate: new Date().toISOString().split('T')[0], summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', monthlyProgress: '', nextReviewDate: '', attendees: '' })
+  const [form, setForm] = useState({ reviewType: 'monthly_review', customReviewType: '', reviewDate: ukDateStr(), summary: '', residentFeedback: '', familyFeedback: '', outcomes: '', monthlyProgress: '', nextReviewDate: '', attendees: '' })
   const [loading, setLoading] = useState(false)
   const [customTypes, setCustomTypes] = useState<{ id: string; value: string; label: string }[]>([])
   const [manageOpen, setManageOpen] = useState(false)

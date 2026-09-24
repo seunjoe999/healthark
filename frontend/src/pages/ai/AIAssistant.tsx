@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import api, { suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import {
   Brain,
   Sparkles,
@@ -429,7 +430,7 @@ function IncidentTab({ suList }: { suList: ServiceUser[] }) {
   const [suId, setSuId] = useState('')
   const [staffNote, setStaffNote] = useState('')
   const [incidentType, setIncidentType] = useState('fall')
-  const [incidentDate, setIncidentDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [incidentDate, setIncidentDate] = useState(() => ukDateStr())
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<IncidentDraftResult | null>(null)
   const [error, setError] = useState('')

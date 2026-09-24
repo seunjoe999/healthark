@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Thermometer, Plus, AlertTriangle, TrendingUp, Activity } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import api from '../../api'
+import { ukDateStr } from '../../utils/ukDate'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
@@ -143,7 +144,7 @@ export default function Observations() {
   const [dateFrom, setDateFrom] = useState('')
 
   const [form, setForm] = useState({
-    suId: '', obsType: 'temperature', observedAt: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().substring(0, 5),
+    suId: '', obsType: 'temperature', observedAt: ukDateStr() + 'T' + new Date().toTimeString().substring(0, 5),
     tempCelsius: '', tempMethod: 'tympanic', systolic: '', diastolic: '', pulse: '', spo2: '', o2Litres: '', weight: '', bloodGlucose: '', notes: '',
   })
 

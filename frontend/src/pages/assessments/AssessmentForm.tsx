@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { assessmentsApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { Spinner, Button } from '../../components/ui'
 import { ChevronLeft, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -90,7 +91,7 @@ export default function AssessmentForm() {
   const [subjectName, setSubjectName] = useState('')
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [actionsIdentified, setActionsIdentified] = useState('')
-  const [assessmentDate, setAssessmentDate] = useState(new Date().toISOString().split('T')[0])
+  const [assessmentDate, setAssessmentDate] = useState(ukDateStr())
   const [nextReviewDate, setNextReviewDate] = useState('')
   const [notes, setNotes] = useState('')
   const [assessorSignature, setAssessorSignature] = useState('')
@@ -135,7 +136,7 @@ export default function AssessmentForm() {
         actionsIdentified,
         nextReviewDate: nextReviewDate || null,
         notes,
-        assessmentDate: assessmentDate || new Date().toISOString().split('T')[0],
+        assessmentDate: assessmentDate || ukDateStr(),
         assessorSignature: assessorSignature || null,
         staffSignature: staffSignature || null,
       })
@@ -200,7 +201,7 @@ export default function AssessmentForm() {
         <div className="max-w-xs">
           <label className="label">Date completed</label>
           <input type="date" className="input w-auto" value={assessmentDate}
-            max={new Date().toISOString().split('T')[0]}
+            max={ukDateStr()}
             onChange={e => setAssessmentDate(e.target.value)} />
           <p className="text-xs text-slate-400 mt-1">Defaults to today — change this if you're logging an assessment that was completed in the past.</p>
         </div>

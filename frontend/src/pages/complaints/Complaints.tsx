@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, Button, Modal } from '../../components/ui'
 import { MessageSquare, Plus, X, ChevronDown, ChevronUp, CheckCircle, Clock } from 'lucide-react'
@@ -33,7 +34,7 @@ const TYPE_COLORS: Record<string, string> = {
 const BLANK: Record<string, any> = {
   recordType: 'compliment', fromType: '', fromName: '', aboutStaff: '',
   summary: '', actionTaken: '', lessonsLearnt: '', updatesText: '',
-  status: 'open', entryDate: new Date().toISOString().split('T')[0], suId: '',
+  status: 'open', entryDate: ukDateStr(), suId: '',
 }
 
 function TypeBadge({ type }: { type: string }) {
@@ -244,7 +245,7 @@ function CreateModal({ open, homeId, onClose, onSaved }: {
   const [sus, setSus] = useState<any[]>([])
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
-  useEffect(() => { if (open) setForm({ ...BLANK, entryDate: new Date().toISOString().split('T')[0] }) }, [open])
+  useEffect(() => { if (open) setForm({ ...BLANK, entryDate: ukDateStr() }) }, [open])
 
   useEffect(() => {
     if (!open || !homeId) return

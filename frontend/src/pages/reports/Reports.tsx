@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
 import { BarChart3, Search, AlertTriangle, CheckCircle, User, Brain, TrendingUp } from 'lucide-react'
@@ -68,7 +69,7 @@ export default function Reports() {
   const [searchParams] = window.location.search ? [new URLSearchParams(window.location.search)] : [new URLSearchParams()];
   const [reportType, setReportType] = useState(searchParams.get('type') || 'daily-records')
   const [from, setFrom] = useState(() => new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0])
-  const [to, setTo] = useState(() => new Date().toISOString().split('T')[0])
+  const [to, setTo] = useState(() => ukDateStr())
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [suList, setSuList] = useState<any[]>([])

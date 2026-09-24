@@ -2,6 +2,7 @@
 import { Droplets, Plus, Calendar, Users, Check } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
+import { ukDateStr } from '../../utils/ukDate'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
@@ -116,7 +117,7 @@ export default function BathChart() {
   const [selectedSU, setSelectedSU] = useState('')
 
   const [form, setForm] = useState({
-    suId: '', bathDate: new Date().toISOString().split('T')[0], bathTime: '',
+    suId: '', bathDate: ukDateStr(), bathTime: '',
     bathType: 'shower', assistanceLevel: 'moderate',
     hairWashed: false, nailsCut: false, shaved: false,
     skinCondition: '', notes: '',
@@ -153,7 +154,7 @@ export default function BathChart() {
     try {
       await api.post('/bath-chart', form)
       setShowAdd(false)
-      setForm({ suId: '', bathDate: new Date().toISOString().split('T')[0], bathTime: '', bathType: 'shower', assistanceLevel: 'moderate', hairWashed: false, nailsCut: false, shaved: false, skinCondition: '', notes: '' })
+      setForm({ suId: '', bathDate: ukDateStr(), bathTime: '', bathType: 'shower', assistanceLevel: 'moderate', hairWashed: false, nailsCut: false, shaved: false, skinCondition: '', notes: '' })
       load()
       if (view === 'log') loadLog()
     } catch {}

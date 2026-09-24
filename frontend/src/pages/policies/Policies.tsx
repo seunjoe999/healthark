@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react'
 import api, { resolveUploadUrl } from '../../api'
+import { ukDateStr } from '../../utils/ukDate'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input } from '../../components/ui'
@@ -366,7 +367,7 @@ export default function Policies() {
 }
 
 function AddPolicyModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ title: '', version: '1.0', documentUrl: '', effectiveDate: new Date().toISOString().split('T')[0], reviewDate: '', requiresSign: true })
+  const [form, setForm] = useState({ title: '', version: '1.0', documentUrl: '', effectiveDate: ukDateStr(), reviewDate: '', requiresSign: true })
   const [loading, setLoading] = useState(false)
   const [allStaff, setAllStaff] = useState<any[]>([])
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([])

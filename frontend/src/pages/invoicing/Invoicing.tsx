@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
+import { ukDateStr } from '../../utils/ukDate'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Plus, Download, Check, X, ChevronDown, Eye, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -210,7 +211,7 @@ function CreateInvoiceModal({ open, onClose, homeId, onSaved }: { open: boolean;
 }
 
 function GenerateMonthlyModal({ open, onClose, homeId, onGenerated }: { open: boolean; onClose: () => void; homeId: string; onGenerated: () => void }) {
-  const [monthDate, setMonthDate] = useState(new Date().toISOString().split('T')[0])
+  const [monthDate, setMonthDate] = useState(ukDateStr())
   const [loading, setLoading] = useState(false)
 
   const generate = async () => {

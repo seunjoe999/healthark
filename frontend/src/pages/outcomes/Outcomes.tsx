@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText, Edit2 } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
+import { ukDateStr } from '../../utils/ukDate'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import clsx from 'clsx'
@@ -172,11 +173,11 @@ export default function Outcomes() {
   const [form, setForm] = useState({ suId: '', goal: '', description: '', targetDate: '', reviewDate: '', status: 'ongoing' })
   const [editForm, setEditForm] = useState({ goal: '', description: '', targetDate: '', status: 'ongoing' })
   const [addMode, setAddMode] = useState<'goal' | 'monthly'>('goal')
-  const [monthlyForm, setMonthlyForm] = useState({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
+  const [monthlyForm, setMonthlyForm] = useState({ month: '', completedBy: '', dateCompleted: ukDateStr(), ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
   const [monthlyChecks, setMonthlyChecks] = useState<Record<string, boolean[]>>(
     Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, (s.checks || []).map(() => false)]))
   )
-  const [reviewForm, setReviewForm] = useState({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] })
+  const [reviewForm, setReviewForm] = useState({ status: '', notes: '', reviewDate: ukDateStr() })
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   async function quickUpdateStatus(id: string, status: string) {
@@ -234,7 +235,7 @@ export default function Outcomes() {
         ].filter(l => l !== undefined).join('\n').trim()
         await api.post('/outcomes', { suId, goal, description, status: 'ongoing', targetDate: monthlyForm.dateCompleted || undefined })
         setShowAdd(false)
-        setMonthlyForm({ month: '', completedBy: '', dateCompleted: new Date().toISOString().split('T')[0], ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
+        setMonthlyForm({ month: '', completedBy: '', dateCompleted: ukDateStr(), ...Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, ''])) })
         setMonthlyChecks(Object.fromEntries(MONTHLY_SECTIONS.map(s => [s.key, (s.checks || []).map(() => false)])))
         setForm(f => ({ ...f, suId: '' }))
       } else {
@@ -420,7 +421,7 @@ export default function Outcomes() {
                             }}>
                             Edit
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: new Date().toISOString().split('T')[0] }) }}>
+                          <Button size="sm" variant="outline" onClick={() => { setShowReview(o); setReviewForm({ status: '', notes: '', reviewDate: ukDateStr() }) }}>
                             Add Review
                           </Button>
                         </div>

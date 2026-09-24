@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { ukDateStr } from '../../utils/ukDate'
 import { Button, Select, Spinner, Modal, Input } from '../../components/ui'
 import {
   Grid3X3, Printer, CheckCircle, AlertTriangle, XCircle, MinusCircle,
@@ -244,7 +245,7 @@ export default function TrainingMatrix() {
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
   const [addOpen, setAddOpen] = useState(false)
-  const [addForm, setAddForm] = useState({ staffId: '', courseName: '', completedDate: new Date().toISOString().split('T')[0], expiryDate: '' })
+  const [addForm, setAddForm] = useState({ staffId: '', courseName: '', completedDate: ukDateStr(), expiryDate: '' })
   const [saving, setSaving] = useState(false)
   const [trainingTypes, setTrainingTypes] = useState<{ id: string; name: string }[]>([])
   const [manageTypesOpen, setManageTypesOpen] = useState(false)
@@ -301,7 +302,7 @@ export default function TrainingMatrix() {
       await api.post('/staff-hr/training', addForm)
       toast.success('Training record added')
       setAddOpen(false)
-      setAddForm({ staffId: '', courseName: '', completedDate: new Date().toISOString().split('T')[0], expiryDate: '' })
+      setAddForm({ staffId: '', courseName: '', completedDate: ukDateStr(), expiryDate: '' })
       await load()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to add training record') }
     finally { setSaving(false) }
