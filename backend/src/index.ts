@@ -226,6 +226,9 @@ import diaryRoutes from './routes/diary.routes';
 import professionalVisitsRoutes from './routes/professionalVisits.routes';
 import medicineRiskRoutes from './routes/medicineRisk.routes';
 import serviceUserFeedbackRoutes from './routes/serviceUserFeedback.routes';
+import uniformStockRoutes from './routes/uniformStock.routes';
+import financeTrackingRoutes from './routes/financeTracking.routes';
+import meetingTrackerRoutes from './routes/meetingTracker.routes';
 import performanceMatrixRoutes from './routes/performanceMatrix.routes';
 import socialActivitiesRoutes from './routes/socialActivities.routes';
 import recruitmentRoutes from './routes/recruitment.routes';
@@ -241,6 +244,9 @@ app.use('/api/diary', diaryRoutes);
 app.use('/api/professional-visits', professionalVisitsRoutes);
 app.use('/api/medicine-risk', medicineRiskRoutes);
 app.use('/api/service-feedback', serviceUserFeedbackRoutes);
+app.use('/api/uniform-stock', uniformStockRoutes);
+app.use('/api/finance-tracking', financeTrackingRoutes);
+app.use('/api/meeting-tracker', meetingTrackerRoutes);
 app.use('/api/performance', performanceMatrixRoutes);
 app.use('/api/social-activities', socialActivitiesRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
@@ -1967,6 +1973,51 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_suf_su ON service_user_feedback(su_id, completed_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_suf_home ON service_user_feedback(home_id, completed_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS uniform_log (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
+       staff_name VARCHAR(255) NOT NULL,
+       log_type VARCHAR(20) NOT NULL DEFAULT 'collection',
+       item_description TEXT,
+       log_date DATE NOT NULL,
+       log_time TIME,
+       notes TEXT,
+       staff_signature TEXT,
+       manager_signature TEXT,
+       manager_name VARCHAR(255),
+       recorded_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_uniform_home ON uniform_log(home_id, log_date DESC)`,
+    `CREATE TABLE IF NOT EXISTS finance_tracking (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID REFERENCES service_users(id) ON DELETE CASCADE,
+       week_of_payment DATE,
+       payment_type VARCHAR(50) NOT NULL DEFAULT 'other',
+       amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+       payment_date DATE NOT NULL,
+       staff_on_shift VARCHAR(255),
+       notes TEXT,
+       created_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_finance_home ON finance_tracking(home_id, payment_date DESC)`,
+    `CREATE TABLE IF NOT EXISTS meeting_tracker (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       meeting_date DATE NOT NULL,
+       meeting_type VARCHAR(100) NOT NULL DEFAULT 'other',
+       minutes_taker VARCHAR(255),
+       follow_up TEXT,
+       action_plan TEXT,
+       status VARCHAR(30) NOT NULL DEFAULT 'open',
+       notes TEXT,
+       created_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_meeting_tracker_home ON meeting_tracker(home_id, meeting_date DESC)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS review_frequency VARCHAR(30) DEFAULT 'every_4_weeks'`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS auditor_name VARCHAR(255)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checklist_answers JSONB`,

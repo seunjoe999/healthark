@@ -18,7 +18,7 @@ import {
   AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
-  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown, Download
+  FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown, Download, Shirt, Banknote, CalendarClock
 } from 'lucide-react'
 
 // Every assignable role (see AccessRights.tsx's ROLES list) except care_staff —
@@ -128,12 +128,15 @@ const navSections = [
       { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
       { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
       { label: 'Download App',       to: '/install',           icon: Download,      roles: [], featureKey: 'install_app' },
+      { label: 'Finance Tracking',   to: '/finance-tracking',  icon: Banknote,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'finance_tracking' },
       { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: ['admin', 'super_admin'], featureKey: 'invoicing' },
       { label: 'Leave & Holidays',   to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
       { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
+      { label: 'Meeting Tracker',    to: '/meeting-tracker',   icon: CalendarClock, roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'meeting_tracker' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
+      { label: 'Uniform Stock',      to: '/uniform-stock',     icon: Shirt,         roles: [], featureKey: 'uniform_stock' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
       { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
       { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
