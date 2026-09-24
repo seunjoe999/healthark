@@ -183,11 +183,14 @@ router.post('/event', authenticate,
       const geofencePassed = true;
       const closestDistance = outcome.distanceMetres;
 
+      // Previously blocked home_manager/group_admin from clocking in at all — but
+      // any staff member whose actual work location is the office (not a
+      // resident's home) needs to clock in too, managers included, for accurate
+      // time tracking. They pass through the same geofence check as everyone
+      // else (falls back to the office/home address when no resident is
+      // assigned to their shift), so this doesn't skip the location check.
       const staffRows = await query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
       const staffRole = staffRows[0]?.role;
-      if (staffRole === 'home_manager' || staffRole === 'group_admin') {
-        return res.status(403).json({ success: false, error: 'Managers and admins cannot clock in via QR.' });
-      }
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
       const lastEventRows = await query<any>(

@@ -13,7 +13,7 @@ import { motion } from 'framer-motion'
 import {
   Users, UserCheck, Pill, AlertTriangle, Calendar,
   Clock, CheckSquare, Cake, Bell, ClipboardList,
-  FileText, Zap, ChevronRight, TrendingUp, CalendarClock,
+  FileText, Zap, ChevronRight, TrendingUp, CalendarClock, LogIn, ArrowRight,
 } from 'lucide-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
@@ -147,6 +147,8 @@ export default function Dashboard() {
   })
   const [todaysTasks, setTodaysTasks] = useState<any[]>([])
   const [healthReviewsDue, setHealthReviewsDue] = useState<any[]>([])
+  const [clockedIn, setClockedIn] = useState(false)
+  const [clockInUrl, setClockInUrl] = useState<string | null>(null)
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -161,6 +163,18 @@ export default function Dashboard() {
       setSelectedHome(user?.homeId || h[0]?.id || '')
     }).catch(console.error)
   }, [user])
+
+  // Office-based staff (managers included) now clock in/out the same way
+  // frontline staff do — the backend geofence falls back to the office/home
+  // address when no resident is tied to today's shift.
+  useEffect(() => {
+    if (!selectedHome) return
+    api.get('/clockin/status').then(res => setClockedIn(!!res.data?.data?.clockedIn)).catch(() => {})
+    api.get(`/clockin/home-qr/${selectedHome}`).then(res => {
+      const qrToken = res.data?.data?.qrToken
+      setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
+    }).catch(() => {})
+  }, [selectedHome])
 
   useEffect(() => {
     if (!selectedHome) return
@@ -379,6 +393,20 @@ export default function Dashboard() {
           </select>
         )}
       </div>
+
+      {!loading && !clockedIn && clockInUrl && (
+        <Link to={clockInUrl} className="flex items-center gap-3 rounded-2xl px-4 py-3 mb-4 text-white"
+          style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+            <LogIn className="w-4 h-4" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Clock in</p>
+            <p className="text-white/80 text-xs">Working from the office today? Clock in here.</p>
+          </div>
+          <ArrowRight className="w-4 h-4 flex-shrink-0" />
+        </Link>
+      )}
 
       {!loading && healthReviewsDue.length > 0 && (
         <Link to="/diary" className="flex items-center gap-3 rounded-2xl px-4 py-3 mb-6 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/15 transition-colors">
