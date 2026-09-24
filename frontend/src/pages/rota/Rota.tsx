@@ -78,7 +78,15 @@ const LATE_GRACE_MINS = 10
 // unfilled are left exactly as the manager set them.
 function getDisplayStatus(shift: any, now: Date): string {
   const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
-  if (status !== 'filled' || !shift.staff_id) return status
+  // A shift with a staff member assigned is eligible for the clock-in colour
+  // override whenever its status isn't one of the terminal, manager-set ones —
+  // not only when status is the exact literal 'filled'. Some shifts (older
+  // rows, or ones generated through a path that never explicitly wrote
+  // 'filled') keep staff_id set but status stuck at the 'unfilled' default,
+  // which silently disabled clock-in colouring for that shift forever even
+  // though someone was clearly assigned and on shift.
+  const TERMINAL_STATUSES = ['cancelled', 'on_hold', 'completed']
+  if (!shift.staff_id || TERMINAL_STATUSES.includes(status)) return status
 
   const st = shift.start_time?.substring(0, 5) || '08:00'
   const et = shift.end_time?.substring(0, 5) || '09:00'
@@ -123,16 +131,6 @@ function shiftHeightPx(startTime: string, endTime: string): number {
 }
 function getName(p: any) {
   return `${p?.first_name || p?.firstName || ''} ${p?.last_name || p?.lastName || ''}`.trim()
-}
-
-// "Hawthorn Road Service" -> "HS" — keeps the shift tile readable at small
-// widths without truncating the service name into something unrecognisable.
-// The full name is always still shown in the shift detail modal and as a
-// title/tooltip on the tile itself.
-function serviceInitials(label: string): string {
-  const words = label.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= 1) return label.slice(0, 3).toUpperCase()
-  return words.map(w => w[0]).join('').slice(0, 3).toUpperCase()
 }
 
 // Assigns each shift a lane (col) and lane count (cols) so overlapping shifts on the
@@ -291,6 +289,20 @@ export default function Rota() {
     } catch { }
   }, [selectedHome])
 
+  // Every service name ever used at this home, independent of the visible
+  // week/day — deriving this from just the currently-loaded shifts made the
+  // Services list look empty when the visible date range had no service
+  // shifts on it, even though services existed on other weeks.
+  const [allServiceLabels, setAllServiceLabels] = useState<string[]>([])
+  const loadServiceLabels = useCallback(async () => {
+    if (!selectedHome) return
+    try {
+      const res = await api.get('/shifts/service-labels', { params: { homeId: selectedHome } })
+      setAllServiceLabels(res.data.data || [])
+    } catch { }
+  }, [selectedHome])
+  useEffect(() => { loadServiceLabels() }, [loadServiceLabels])
+
   useEffect(() => {
     if (!selectedHome) return
     Promise.all([staffApi.list({ homeId: selectedHome }), suApi.list(selectedHome, { status: 'live' })])
@@ -391,9 +403,10 @@ export default function Rota() {
     ? Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
     : [dayDate]
 
-  // Distinct service names in the currently loaded shifts, for the unified
-  // staff/service filter dropdown below.
-  const serviceLabels = Array.from(new Set(shifts.map((s: any) => s.label).filter(Boolean))).sort()
+  // Distinct service names for the unified staff/service filter dropdown below —
+  // sourced from allServiceLabels (every label ever used at this home), not just
+  // the shifts currently loaded for the visible week/day.
+  const serviceLabels = allServiceLabels
 
   const getDayShifts = (day: Date) => {
     let r = shifts.filter(s => { try { return isSameDay(parseISO(s.shift_date), day) } catch { return false } })
@@ -626,10 +639,15 @@ export default function Rota() {
                     </button>
                   </div>
                 )}
-                {/* Manager sees approve/reject (after target has agreed) */}
-                {canManage && !swap.is_my_inbox && swap.status === 'pending_manager' && (
+                {/* Manager sees approve/reject: immediately for an "open" request (no
+                    specific target was picked, so there's nobody who could ever click
+                    Agree — waiting for that response would leave it stuck forever), or
+                    once a specific target has agreed. */}
+                {canManage && !swap.is_my_inbox && (swap.status === 'pending_manager' || (swap.status === 'pending' && !swap.target_staff_id)) && (
                   <div className="flex gap-1.5 ml-auto items-center">
-                    <span className="text-emerald-600 font-semibold text-xs">Both agreed —</span>
+                    <span className="text-emerald-600 font-semibold text-xs">
+                      {swap.status === 'pending_manager' ? 'Both agreed —' : 'Open request —'}
+                    </span>
                     <button
                       disabled={swapActing === swap.id}
                       onClick={() => actOnSwap(swap.id, 'approved')}
@@ -644,7 +662,7 @@ export default function Rota() {
                     </button>
                   </div>
                 )}
-                {canManage && !swap.is_my_inbox && swap.status === 'pending' && (
+                {canManage && !swap.is_my_inbox && swap.status === 'pending' && !!swap.target_staff_id && (
                   <span className="ml-auto text-slate-400 italic text-xs">Awaiting target staff response…</span>
                 )}
               </div>
@@ -791,7 +809,7 @@ export default function Rota() {
                           </p>
                           {height > 40 && (shift.label || shift.su_names || shift.su_name) && (
                             <p className="text-[10.5px] leading-tight truncate font-bold" title={shift.label || shift.su_names || shift.su_name}>
-                              {shift.label ? serviceInitials(shift.label) : (shift.su_names || shift.su_name)}
+                              {shift.label || shift.su_names || shift.su_name}
                             </p>
                           )}
                           {height > 54 && (
@@ -1734,6 +1752,20 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [editingNotes, setEditingNotes] = useState(false)
   const [editNotesForCarers, setEditNotesForCarers] = useState(shift.notes_for_carers || '')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [editingLabel, setEditingLabel] = useState(false)
+  const [editLabel, setEditLabel] = useState(shift.label || '')
+  const [savingLabel, setSavingLabel] = useState(false)
+
+  const saveLabel = async () => {
+    setSavingLabel(true)
+    try {
+      const res = await api.put(`/shifts/${shift.id}`, { label: editLabel.trim() })
+      onUpdated(res.data.data)
+      toast.success(editLabel.trim() ? 'Reclassified as a Service' : 'Reclassified as Individual')
+      setEditingLabel(false)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update') }
+    finally { setSavingLabel(false) }
+  }
 
   const saveNotes = async () => {
     setSavingNotes(true)
@@ -1901,12 +1933,26 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         )}
 
         <div className="grid grid-cols-2 gap-3 text-sm">
-          {shift.label && (
-            <div className="col-span-2">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Service</p>
-              <p className="text-slate-800 font-medium">{shift.label}</p>
-            </div>
-          )}
+          <div className="col-span-2">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Service</p>
+            {editingLabel ? (
+              <div className="flex items-center gap-2">
+                <input className="input text-sm" value={editLabel} onChange={e => setEditLabel(e.target.value)}
+                  placeholder="Leave blank for an Individual shift" />
+                <Button size="sm" loading={savingLabel} onClick={saveLabel}>Save</Button>
+                <Button size="sm" variant="outline" onClick={() => { setEditingLabel(false); setEditLabel(shift.label || '') }}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p className="text-slate-800 font-medium">{shift.label || 'Individual (not a Service)'}</p>
+                {canManage && (
+                  <button type="button" onClick={() => setEditingLabel(true)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                    {shift.label ? 'Edit' : 'Make this a Service'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           {(shift.su_names || shift.su_name) && (
             <div className="col-span-2">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">

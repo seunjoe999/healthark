@@ -288,7 +288,7 @@ function InvoiceDetailModal({ invoice, onClose, onStatusChange, onSent }: { invo
         {invoice.notes && (
           <div className="p-3 bg-blue-50 rounded border border-blue-200">
             <p className="text-xs font-semibold text-blue-700 mb-1">Notes</p>
-            <p className="text-sm text-blue-600">{invoice.notes}</p>
+            <p className="text-sm text-blue-600 whitespace-pre-wrap">{invoice.notes}</p>
           </div>
         )}
 

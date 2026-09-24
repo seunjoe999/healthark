@@ -128,6 +128,26 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
   return toInsert.length;
 }
 
+// GET /api/shifts/service-labels?homeId= — every distinct service name ever used
+// at this home, independent of which week/day is currently being viewed. The
+// Rota's "Services" filter used to derive its list from only the shifts loaded
+// for the visible date range, so navigating to a week with no service-shifts
+// scheduled made the filter (and the whole Services list) look empty/broken,
+// even though services existed on other weeks.
+router.get('/service-labels', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query<{ label: string }>(
+      `SELECT DISTINCT label FROM staff_shifts WHERE home_id = $1 AND label IS NOT NULL AND label != ''
+       UNION
+       SELECT DISTINCT label FROM shift_templates WHERE home_id = $1 AND label IS NOT NULL AND label != ''
+       ORDER BY label`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows.map((r: any) => r.label) } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/shifts?homeId=&weekStart=&date=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -399,7 +419,10 @@ router.put('/swaps/:id', requireRole(...MANAGE_ROLES), async (req: Request, res:
       [status, responseNotes || null, req.params.id]
     );
     if (status === 'approved') {
-      // Do the actual shift swap in DB
+      // Do the actual shift swap in DB. For an "open" request (no specific
+      // target_staff_id was picked), this releases the shift back to unfilled
+      // so it can be assigned to whoever actually covers it — there's no
+      // specific person to hand it straight to.
       const swap = rows[0];
       if (swap) {
         await query(
@@ -594,7 +617,7 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
 
       const {
         staffId, suId, shiftDate, startTime, endTime, shiftType, totalStaffRequired,
-        notesForCarers, notesForManagers, status,
+        notesForCarers, notesForManagers, status, label,
         funderName, funderCostNotes, wageRate, chargeRate, chargeBankHolidayRate,
         timeCritical, shiftRun, applyToFuture,
       } = req.body;
@@ -614,6 +637,11 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
       if (endTime !== undefined) set('end_time', endTime);
       if (shiftType !== undefined) set('shift_type', shiftType);
       if (totalStaffRequired !== undefined) set('total_staff_required', parseInt(totalStaffRequired) || 1);
+      // Lets a manager reclassify an existing shift between "Individual" (no label,
+      // shows the resident's own name) and "Service" (labelled, shows the shared
+      // service name) after the fact, instead of having to delete and recreate it
+      // through "Create Rota for Service" just to fix a mis-created entry.
+      if (label !== undefined) set('label', label || null);
       if (notesForCarers !== undefined) set('notes_for_carers', notesForCarers || null);
       if (notesForManagers !== undefined) set('notes_for_managers', notesForManagers || null);
       if (status !== undefined) {

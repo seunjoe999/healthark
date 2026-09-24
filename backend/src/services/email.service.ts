@@ -267,7 +267,7 @@ export function invoiceEmail(
               <tr><td style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">Amount Due</td><td align="right" style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">£${total.toFixed(2)}</td></tr>
             </table>
 
-            ${invoice.notes ? `<p style="font-size:13px;margin-top:20px"><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
+            ${invoice.notes ? `<p style="font-size:13px;margin-top:20px;line-height:1.6"><strong>Notes:</strong><br/>${invoice.notes.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>` : ''}
             <p style="text-align:center;font-size:26px;font-style:italic;color:#1e293b;margin:32px 0 8px">Thank You!</p>
             <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:24px">This invoice was sent via CompCare Hub on behalf of ${home.name}.</div>
 
