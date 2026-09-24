@@ -5,8 +5,9 @@ import { useAuth } from '../../context/AuthContext'
 import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
-import { BarChart3, Search, AlertTriangle, CheckCircle, User, Brain, TrendingUp } from 'lucide-react'
+import { BarChart3, Search, AlertTriangle, CheckCircle, User, Brain, TrendingUp, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { buildLetterheadPage, openLetterheadPrint, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 // Alphabetical by label, so the "All Types" list reads in a predictable order.
 const REPORT_TYPES = [
@@ -106,6 +107,51 @@ export default function Reports() {
     finally { setLoading(false) }
   }
 
+  // Reports previously only rendered on-screen — there was no way to pull one
+  // out to send off, e.g. System Activity (audit trail) for a compliance
+  // request, or any report scoped to one resident. Matches the same
+  // letterhead/photo document style as Care Plans instead of a raw browser
+  // print of the live page.
+  const handleDownloadReport = () => {
+    if (!data) { toast.error('Run a report first'); return }
+    const rows: any[] = Array.isArray(data) ? data : (data?.plans || data?.incidents || [])
+    if (!rows.length) { toast.error('No data to download'); return }
+    const reportLabel = REPORT_TYPES.find(r => r.value === reportType)?.label || reportType
+    const su = selectedSu ? suList.find(s => s.id === selectedSu) : null
+    const suName = su ? `${su.first_name || su.firstName} ${su.last_name || su.lastName}` : 'All Residents'
+
+    const cols = Object.keys(rows[0]).filter(k => !['id', 'home_id', 'su_id', 'staff_id'].includes(k)).slice(0, 8)
+    const tableRows = rows.slice(0, 200).map(row => `<tr>${cols.map(c => {
+      const v = row[c]
+      const display = v instanceof Date ? v.toLocaleDateString('en-GB')
+        : typeof v === 'boolean' ? (v ? 'Yes' : 'No')
+        : String(v ?? '—').substring(0, 120)
+      return `<td>${esc(display)}</td>`
+    }).join('')}</tr>`).join('')
+
+    const sections: PrintSection[] = [{
+      title: reportLabel,
+      inner: `
+        <table class="fields">
+          <tr>${cols.map(c => `<th>${esc(c.replace(/_/g, ' '))}</th>`).join('')}</tr>
+          ${tableRows}
+        </table>
+      `,
+    }]
+
+    const page = buildLetterheadPage({
+      docTitle: reportLabel,
+      docSubtitle: `${from} to ${to}${rows.length > 200 ? ` — first 200 of ${rows.length} records` : ''}`,
+      docRefPrefix: 'RPT',
+      docRefId: reportType,
+      residentName: suName,
+      residentLabel: su ? 'Resident' : 'Scope',
+      residentPhotoUrl: su?.photo_url || su?.photoUrl || null,
+      sections,
+    })
+    openLetterheadPrint(reportLabel, page)
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -164,6 +210,15 @@ export default function Reports() {
           </Button>
         </div>
       </div>
+
+      {/* Download */}
+      {!loading && data && (
+        <div className="flex justify-end mb-3">
+          <Button variant="outline" icon={<Download className="w-4 h-4" />} onClick={handleDownloadReport}>
+            Download / Print Report
+          </Button>
+        </div>
+      )}
 
       {/* Results */}
       {loading ? <Spinner /> : !data ? (
