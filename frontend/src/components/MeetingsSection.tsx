@@ -8,15 +8,15 @@ import { SpeechTextarea } from './ui/SpeechButton'
 import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type MeetingType = 'resident' | 'staff' | 'management'
+type MeetingType = 'resident' | 'staff' | 'management' | 'team'
 
 interface MeetingsSectionProps {
   meetingType: MeetingType
-  /** su_id for resident meetings, staff_id for staff meetings — omitted for management meetings */
+  /** su_id for resident meetings, staff_id for staff meetings, team_id for team meetings — omitted for management meetings */
   parentId?: string
   /** home_id — required for management meetings, otherwise ignored (server derives it) */
   homeId?: string
-  /** Display label used in headings/buttons, e.g. "Resident Meeting" / "Staff Meeting" / "Management Meeting" */
+  /** Display label used in headings/buttons, e.g. "Resident Meeting" / "Staff Meeting" / "Management Meeting" / "Team Meeting" */
   label: string
 }
 
@@ -28,12 +28,14 @@ const BLANK = {
 function listUrl(meetingType: MeetingType, parentId?: string, homeId?: string) {
   if (meetingType === 'resident') return `/meetings/su/${parentId}`
   if (meetingType === 'staff') return `/meetings/staff/${parentId}`
+  if (meetingType === 'team') return `/meetings/team/${parentId}`
   return `/meetings/management${homeId ? `?homeId=${homeId}` : ''}`
 }
 
 function createUrl(meetingType: MeetingType) {
   if (meetingType === 'resident') return '/meetings/su'
   if (meetingType === 'staff') return '/meetings/staff'
+  if (meetingType === 'team') return '/meetings/team'
   return '/meetings/management'
 }
 
@@ -225,6 +227,7 @@ function CreateModal({ open, meetingType, parentId, homeId, label, defaultConduc
       }
       if (meetingType === 'resident') payload.suId = parentId
       else if (meetingType === 'staff') payload.staffId = parentId
+      else if (meetingType === 'team') payload.teamId = parentId
       else payload.homeId = homeId
       await api.post(createUrl(meetingType), payload)
       toast.success(`${label} saved`)

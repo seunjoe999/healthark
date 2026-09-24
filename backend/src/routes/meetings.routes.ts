@@ -110,6 +110,54 @@ router.post('/staff', [body('staffId').isUUID(), body('conductedBy').notEmpty()]
   }
 );
 
+// ── Team Meeting ─────────────────────────────────────────────────
+// Visible to any member of the team (not manager-only like Management
+// Meeting) — staff explicitly asked to be able to see their own team's
+// meeting minutes, not just have them recorded about them.
+router.get('/team/:teamId', param('teamId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const myStaffId = fromToken(req, 'staffId');
+      const isPrivileged = (MANAGER_ROLES as readonly string[]).includes(role);
+      if (!isPrivileged) {
+        const memberRows = await query<any>('SELECT id FROM staff WHERE id = $1 AND team_id = $2', [myStaffId, req.params.teamId]);
+        if (!memberRows.length) return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
+      }
+      const rows = await query(
+        `SELECT m.*, s.first_name || ' ' || s.last_name as created_by_name
+         FROM meetings m LEFT JOIN staff s ON s.id = m.created_by
+         WHERE m.meeting_type = 'team' AND m.team_id = $1
+         ORDER BY m.meeting_date DESC, m.created_at DESC`,
+        [req.params.teamId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/team', requireRole(...MANAGER_ROLES), [body('teamId').isUUID(), body('conductedBy').notEmpty()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const createdBy = fromToken(req, 'staffId');
+      let homeId = fromToken(req, 'homeId');
+      const { teamId, conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan } = req.body;
+      if (!homeId) {
+        const teamRows = await query<any>('SELECT home_id FROM teams WHERE id=$1', [teamId]);
+        homeId = teamRows[0]?.home_id || '';
+      }
+      const rows = await query(
+        `INSERT INTO meetings (meeting_type, team_id, home_id, created_by, conducted_by, meeting_date,
+          attendees, service_location, notes, action_plan)
+         VALUES ('team',$1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [teamId, homeId, createdBy, conductedBy, meetingDate || ukDateStr(),
+         attendees || null, serviceLocation || null, notes || null, actionPlan || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // ── Management Meeting (home-wide, not tied to a resident/staff record) ──
 // Management-only — this covers whatever managers discuss home-wide
 // (HR, safeguarding, disciplinary, etc.), so care staff must not be able

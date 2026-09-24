@@ -2649,6 +2649,8 @@ async function ensureColumns() {
     // where a resident has been getting a topical medication applied.
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS application_site          VARCHAR(50)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS application_site_label    VARCHAR(100)`,
+    `ALTER TABLE meetings ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES teams(id) ON DELETE CASCADE`,
+    `CREATE INDEX IF NOT EXISTS idx_meetings_team ON meetings(team_id)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_taken              VARCHAR(50)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_unit               VARCHAR(20)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS side_effects              BOOLEAN NOT NULL DEFAULT FALSE`,

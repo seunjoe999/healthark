@@ -29,7 +29,7 @@ const STAFF_DOC_TYPES = [
   { value: 'other', label: 'Other document' },
 ]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings'
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
 
@@ -165,6 +165,7 @@ export default function StaffModule() {
     { key: 'supervisions', label: 'Supervision & Appraisal' },
     { key: 'sensitive', label: `Sensitive Info (${sensitiveNotes.length})` },
     { key: 'meetings', label: 'Staff Meeting' },
+    ...(selected?.team_id ? [{ key: 'team_meetings' as StaffTab, label: 'Team Meeting' }] : []),
   ]
 
   return (
@@ -765,6 +766,10 @@ export default function StaffModule() {
 
             {tab === 'meetings' && selected && (
               <MeetingsSection meetingType="staff" parentId={selected.id} label="Staff Meeting" />
+            )}
+
+            {tab === 'team_meetings' && selected?.team_id && (
+              <MeetingsSection meetingType="team" parentId={selected.team_id} label="Team Meeting" />
             )}
 
             {tab === 'clock' && (
