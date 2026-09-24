@@ -131,7 +131,7 @@ export default function ServiceUserFeedback() {
       )}
 
       {showNew && (
-        <NewFeedbackModal sus={sus} homeId={selectedHome} onClose={() => setShowNew(false)}
+        <NewFeedbackModal sus={sus} onClose={() => setShowNew(false)}
           onSaved={() => { setShowNew(false); load() }} />
       )}
 
@@ -140,9 +140,9 @@ export default function ServiceUserFeedback() {
   )
 }
 
-function NewFeedbackModal({ sus, homeId, onClose, onSaved }: { sus: any[]; homeId: string; onClose: () => void; onSaved: () => void }) {
-  const [step, setStep] = useState<0 | 1>(0)
-  const [suId, setSuId] = useState('')
+function NewFeedbackModal({ sus, fixedSuId, onClose, onSaved }: { sus?: any[]; fixedSuId?: string; onClose: () => void; onSaved: () => void }) {
+  const [step, setStep] = useState<0 | 1>(fixedSuId ? 1 : 0)
+  const [suId, setSuId] = useState(fixedSuId || '')
   const [project, setProject] = useState('')
   const [location, setLocation] = useState('')
   const [answers, setAnswers] = useState<Record<string, { value?: string; comment?: string }>>({})
@@ -173,7 +173,7 @@ function NewFeedbackModal({ sus, homeId, onClose, onSaved }: { sus: any[]; homeI
     <Modal open={true} onClose={onClose} title="New Service User Feedback" size="lg">
       {step === 0 ? (
         <form onSubmit={startForm} className="space-y-4">
-          <Select label="Service User" options={sus.map(s => ({ value: s.id, label: getName(s) }))}
+          <Select label="Service User" options={(sus || []).map(s => ({ value: s.id, label: getName(s) }))}
             placeholder="Select resident..." value={suId} onChange={e => setSuId(e.target.value)} required />
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -192,9 +192,11 @@ function NewFeedbackModal({ sus, homeId, onClose, onSaved }: { sus: any[]; homeI
         </form>
       ) : (
         <div className="space-y-5">
-          <button type="button" onClick={() => setStep(0)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
-            <ChevronLeft className="w-3.5 h-3.5" /> Back
-          </button>
+          {!fixedSuId && (
+            <button type="button" onClick={() => setStep(0)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
+              <ChevronLeft className="w-3.5 h-3.5" /> Back
+            </button>
+          )}
           <div className="max-h-[60vh] overflow-y-auto space-y-5 pr-1">
             {visibleQuestions.map((q, i) => (
               <div key={q.id} className="card p-3">
@@ -256,5 +258,57 @@ function FeedbackDetailModal({ feedback, onClose }: { feedback: any; onClose: ()
         </div>
       </div>
     </Modal>
+  )
+}
+
+// Embeddable panel used on a resident's own profile page (Background tab) —
+// scoped to just that resident, so no resident picker is needed.
+export function SuFeedbackPanel({ suId, suName }: { suId: string; suName: string }) {
+  const [list, setList] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showNew, setShowNew] = useState(false)
+  const [detail, setDetail] = useState<any>(null)
+
+  const load = () => {
+    setLoading(true)
+    api.get('/service-feedback', { params: { suId } }).then(res => setList(res.data.data || []))
+      .catch(() => toast.error('Failed to load feedback')).finally(() => setLoading(false))
+  }
+  useEffect(() => { load() }, [suId])
+
+  async function openDetail(id: string) {
+    try {
+      const res = await api.get(`/service-feedback/${id}`)
+      setDetail(res.data.data)
+    } catch { toast.error('Failed to load') }
+  }
+
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" style={{ color: '#e8b130' }} /> Service User Feedback
+        </h3>
+        <Button size="sm" variant="gold" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setShowNew(true)}>New</Button>
+      </div>
+      {loading ? <Spinner /> : list.length === 0 ? (
+        <p className="text-sm text-slate-400">No feedback recorded yet for this resident.</p>
+      ) : (
+        <div className="space-y-2">
+          {list.map(f => (
+            <div key={f.id} onClick={() => openDetail(f.id)}
+              className="p-3 rounded-lg border border-slate-200 hover:border-amber-400/60 cursor-pointer transition-colors flex items-center justify-between">
+              <p className="text-sm text-slate-700">{format(new Date(f.completed_at), 'd MMM yyyy')}</p>
+              <p className="text-xs text-slate-400">Completed by {f.completed_by_name || 'Unknown'}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {showNew && (
+        <NewFeedbackModal fixedSuId={suId} onClose={() => setShowNew(false)}
+          onSaved={() => { setShowNew(false); load() }} />
+      )}
+      {detail && <FeedbackDetailModal feedback={{ ...detail, su_name: suName }} onClose={() => setDetail(null)} />}
+    </div>
   )
 }

@@ -402,6 +402,18 @@ router.put(
       // (self-promotion would let anyone escalate their own privileges).
       const newRole = (canManage && !isSelf) ? (newRoleInput || null) : null;
 
+      // A role change must clear any stale per-user feature-flag override —
+      // per-user flags always win over the new role's own access-rights
+      // config (see auth.routes.ts login merge), so someone promoted from a
+      // restricted role (e.g. care_staff) kept their old individual
+      // restrictions baked in and their view looked unchanged despite the
+      // promotion, even though the new role's permissions were broader.
+      let clearFeatureFlags = false;
+      if (newRole) {
+        const roleRows = await query<any>('SELECT role FROM staff WHERE id = $1', [targetId]);
+        if (roleRows[0] && roleRows[0].role !== newRole) clearFeatureFlags = true;
+      }
+
       // Recompute prorated annual leave entitlement if contracted hours or start
       // date changed. If the staff row hasn't been touched since a prior leave
       // year (leave_year is null or not the current year), this is a year
@@ -481,7 +493,8 @@ router.put(
           home_id = COALESCE($20, home_id),
           role = COALESCE($21, role),
           email = COALESCE($23, email),
-          ni_number = COALESCE($24, ni_number)
+          ni_number = COALESCE($24, ni_number),
+          feature_flags = CASE WHEN $25 THEN '{}'::jsonb ELSE feature_flags END
          WHERE id = $22
          RETURNING id, first_name, last_name, email, role, status, is_active`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
@@ -495,7 +508,8 @@ router.put(
          newRole,
          targetId,
          email || null,
-         niNumber || null]
+         niNumber || null,
+         clearFeatureFlags]
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);

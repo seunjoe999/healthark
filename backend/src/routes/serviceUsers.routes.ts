@@ -94,6 +94,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                       su.emergency_rating, su.nhs_number, su.dnar, su.nil_by_mouth,
                       su.need_to_know, su.my_instructions,
                       su.admission_date, su.created_at,
+                      su.annual_health_date, su.annual_health_notes, su.annual_health_na, su.annual_health_due_date,
+                      su.gp_review_date, su.gp_review_notes, su.gp_review_na, su.gp_review_due_date,
+                      su.mental_health_date, su.mental_health_notes, su.mental_health_na, su.mental_health_due_date,
+                      su.dentist_date, su.dentist_notes, su.dentist_na, su.dentist_due_date,
+                      su.optician_date, su.optician_notes, su.optician_na, su.optician_due_date,
                       h.name as home_name
                FROM service_users su
                JOIN homes h ON h.id = su.home_id
@@ -121,6 +126,62 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// GET /api/service-users/health-reviews-due?homeId= — every health-check review
+// (Annual Health Check, GP, Mental Health, Dentist, Optician) that is due today
+// or overdue, for the pop-up reminder shown to both staff and management. Only
+// residents the caller can actually see (assigned-only for restricted roles).
+router.get('/health-reviews-due', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = req.query.homeId as string || getHomeId(req);
+    const staffId = getStaffId(req);
+    const role = getRole(req);
+    if (!homeId) throw new AppError('homeId required', 400);
+
+    let sql = `SELECT su.id, su.first_name, su.last_name,
+                      su.annual_health_due_date, su.annual_health_na,
+                      su.gp_review_due_date, su.gp_review_na,
+                      su.mental_health_due_date, su.mental_health_na,
+                      su.dentist_due_date, su.dentist_na,
+                      su.optician_due_date, su.optician_na
+               FROM service_users su
+               WHERE su.home_id = $1 AND su.status = 'live'`;
+    const params: unknown[] = [homeId];
+
+    if (RESTRICTED_ROLES.includes(role) && staffId) {
+      const ids = await getAssignedSuIds(staffId);
+      if (!ids.length) return res.json({ success: true, data: [] } as ApiResponse);
+      sql += ` AND su.id = ANY($2)`;
+      params.push(ids);
+    }
+
+    const rows = await query<any>(sql, params);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const REVIEW_TYPES: { key: string; label: string; dueKey: string; naKey: string }[] = [
+      { key: 'annual_health', label: 'Annual Health Check', dueKey: 'annual_health_due_date', naKey: 'annual_health_na' },
+      { key: 'gp_review', label: 'GP Review', dueKey: 'gp_review_due_date', naKey: 'gp_review_na' },
+      { key: 'mental_health', label: 'Mental Health Review', dueKey: 'mental_health_due_date', naKey: 'mental_health_na' },
+      { key: 'dentist', label: 'Dentist Review', dueKey: 'dentist_due_date', naKey: 'dentist_na' },
+      { key: 'optician', label: 'Optician Review', dueKey: 'optician_due_date', naKey: 'optician_na' },
+    ];
+    const due: any[] = [];
+    for (const su of rows) {
+      for (const rt of REVIEW_TYPES) {
+        if (su[rt.naKey]) continue;
+        const dueDate = su[rt.dueKey];
+        if (!dueDate) continue;
+        const d = new Date(dueDate);
+        if (d <= today) {
+          due.push({
+            suId: su.id, suName: `${su.first_name} ${su.last_name}`,
+            reviewType: rt.key, reviewLabel: rt.label, dueDate,
+          });
+        }
+      }
+    }
+    res.json({ success: true, data: due } as ApiResponse);
   } catch (err) { next(err); }
 });
 
@@ -240,11 +301,11 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         status: 'status', emergencyRating: 'emergency_rating', nhsNumber: 'nhs_number',
         niNumber: 'ni_number', dnar: 'dnar', dnarFormUrl: 'dnar_form_url',
         gpName: 'gp_name', pharmacyName: 'pharmacy_name',
-        annualHealthDate: 'annual_health_date', annualHealthNotes: 'annual_health_notes', annualHealthNa: 'annual_health_na',
-        gpReviewDate: 'gp_review_date', gpReviewNotes: 'gp_review_notes', gpReviewNa: 'gp_review_na',
-        mentalHealthDate: 'mental_health_date', mentalHealthNotes: 'mental_health_notes', mentalHealthNa: 'mental_health_na',
-        dentistDate: 'dentist_date', dentistNotes: 'dentist_notes', dentistNa: 'dentist_na',
-        opticianDate: 'optician_date', opticianNotes: 'optician_notes', opticianNa: 'optician_na',
+        annualHealthDate: 'annual_health_date', annualHealthNotes: 'annual_health_notes', annualHealthNa: 'annual_health_na', annualHealthDueDate: 'annual_health_due_date',
+        gpReviewDate: 'gp_review_date', gpReviewNotes: 'gp_review_notes', gpReviewNa: 'gp_review_na', gpReviewDueDate: 'gp_review_due_date',
+        mentalHealthDate: 'mental_health_date', mentalHealthNotes: 'mental_health_notes', mentalHealthNa: 'mental_health_na', mentalHealthDueDate: 'mental_health_due_date',
+        dentistDate: 'dentist_date', dentistNotes: 'dentist_notes', dentistNa: 'dentist_na', dentistDueDate: 'dentist_due_date',
+        opticianDate: 'optician_date', opticianNotes: 'optician_notes', opticianNa: 'optician_na', opticianDueDate: 'optician_due_date',
         admissionDate: 'admission_date', localAuthority: 'local_authority',
         religion: 'religion', ethnicity: 'ethnicity', maritalStatus: 'marital_status',
         commsPrefs: 'comms_prefs', lifeHistory: 'life_history', hobbies: 'hobbies',
@@ -283,6 +344,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         'dateOfBirth', 'admissionDate', 'annualHealthDate', 'gpReviewDate',
         'mentalHealthDate', 'dentistDate', 'opticianDate', 'carePlanLiveDate',
         'dolsStartDate', 'dolsEndDate',
+        'annualHealthDueDate', 'gpReviewDueDate', 'mentalHealthDueDate', 'dentistDueDate', 'opticianDueDate',
       ]);
       for (const [camel, snake] of Object.entries(fieldMap)) {
         if (req.body[camel] !== undefined) {

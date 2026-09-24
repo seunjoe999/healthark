@@ -18,9 +18,10 @@ import PhotoUpload from '../../components/ui/PhotoUpload'
 import { QRModal } from './QRModal'
 import ResidentTimeline from './ResidentTimeline'
 import MeetingsSection from '../../components/MeetingsSection'
+import { SuFeedbackPanel } from '../service-user-feedback/ServiceUserFeedback'
 import toast from 'react-hot-toast'
 
-type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'meetings' | 'timeline' | 'reviews'
+type Tab = 'overview' | 'health' | 'contacts' | 'documents' | 'comms' | 'background' | 'feedback' | 'meetings' | 'timeline' | 'reviews'
 
 const SU_DOC_TYPES = [
   { value: 'passport', label: 'Copy of passport' },
@@ -157,6 +158,7 @@ export default function ServiceUserProfile() {
     { key: 'documents', label: `Documents (${documents.length})` },
     { key: 'comms', label: 'My Comms' },
     { key: 'background', label: 'Background' },
+    { key: 'feedback', label: 'Service User Feedback' },
     { key: 'meetings', label: 'Resident Meeting' },
     { key: 'timeline', label: 'Daily Timeline' },
     { key: 'reviews', label: 'Reviews' },
@@ -241,7 +243,9 @@ export default function ServiceUserProfile() {
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 ${
               tab === t.key
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                : t.key === 'feedback'
+                  ? 'text-amber-700 bg-amber-100 hover:bg-amber-200'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}>
             {t.label}
           </button>
@@ -492,6 +496,9 @@ export default function ServiceUserProfile() {
             <p className="text-sm text-slate-700 whitespace-pre-line">{su.dailyRoutine || '—'}</p>
           </Card>
         </div>
+      )}
+      {tab === 'feedback' && (
+        <SuFeedbackPanel suId={su.id} suName={`${su.firstName} ${su.lastName}`} />
       )}
       {tab === 'meetings' && (
         <MeetingsSection meetingType="resident" parentId={su.id} label="Resident Meeting" />

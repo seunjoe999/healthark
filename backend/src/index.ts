@@ -1901,15 +1901,19 @@ async function ensureColumns() {
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS annual_health_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS annual_health_notes TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS annual_health_na BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS annual_health_due_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_review_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_review_notes TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_review_na BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gp_review_due_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS mental_health_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS mental_health_notes TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS mental_health_na BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS mental_health_due_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dentist_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dentist_notes TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dentist_na BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS dentist_due_date DATE`,
     `ALTER TABLE su_reviews ADD COLUMN IF NOT EXISTS monthly_progress TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS funeral_director VARCHAR(255)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS bath_frequency VARCHAR(100)`,
@@ -1975,6 +1979,7 @@ async function ensureColumns() {
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_date DATE`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_notes TEXT`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_na BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS optician_due_date DATE`,
     // Every home gets a compulsory daily "Check medication stock" task template
     // (visible to all roles — assigned_role left NULL) so it's guaranteed to
     // appear on staff's task list each shift, seeded once per home.

@@ -16,9 +16,10 @@ interface Task {
   status: string
   due_date?: string
   due_time?: string
-  kind?: 'task' | 'medication'
+  kind?: 'task' | 'medication' | 'health_review'
   suName?: string
   medDetail?: any
+  reviewDetail?: any
 }
 
 interface TaskPopupProps {
@@ -48,9 +49,10 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
     setLoading(true)
     try {
       const today = await getServerTodayStr()
-      const [taskRes, medRes] = await Promise.allSettled([
+      const [taskRes, medRes, reviewRes] = await Promise.allSettled([
         api.get('/tasks', { params: { date: today } }),
         user?.homeId ? api.get('/mar/due-today', { params: { homeId: user.homeId } }) : Promise.resolve(null),
+        user?.homeId ? api.get('/service-users/health-reviews-due', { params: { homeId: user.homeId } }) : Promise.resolve(null),
       ])
       const pending: Task[] = taskRes.status === 'fulfilled'
         ? (taskRes.value.data.data || []).filter((t: any) => t.status === 'pending').map((t: any) => ({ ...t, kind: 'task' }))
@@ -67,7 +69,17 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
           kind: 'medication',
           medDetail: m,
         } as any))
-      const merged = [...pending, ...meds]
+      const reviewsRaw = reviewRes.status === 'fulfilled' && reviewRes.value ? (reviewRes.value.data.data || []) : []
+      const reviews: Task[] = reviewsRaw.map((r: any) => ({
+        id: `review-${r.suId}-${r.reviewType}`,
+        title: r.reviewLabel,
+        description: `For ${r.suName}`,
+        status: 'pending',
+        due_time: '00:00', // date-based, already filtered to due-today-or-overdue server-side
+        kind: 'health_review',
+        reviewDetail: r,
+      } as any))
+      const merged = [...pending, ...meds, ...reviews]
       setTasks(merged)
       setHasLoaded(true)
       if (merged.length === 0) onClose()
@@ -96,6 +108,7 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
 
   const openTask = (task: Task) => {
     if (task.kind === 'medication') { setPreviewMed(task.medDetail); return }
+    if (task.kind === 'health_review') { onClose(); navigate(`/diary?su=${task.reviewDetail.suId}`); return }
     onClose()
     navigate(`/tasks?complete=${task.id}`)
   }
@@ -108,12 +121,16 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-slate-800 text-sm">{task.title}</p>
           {task.kind === 'medication' && <span className="text-[10px] font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded-full">Medication</span>}
+          {task.kind === 'health_review' && <span className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full">Health Review</span>}
           {overdue && <span className="text-[10px] font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-full flex items-center gap-0.5"><AlarmClock className="w-2.5 h-2.5" /> Overdue</span>}
         </div>
         {task.description && <DashText text={task.description} className="text-xs text-slate-600 mt-1 leading-relaxed" />}
-        {task.due_time && <p className="text-xs text-slate-500 mt-1">Due: {task.due_time.slice(0, 5)}</p>}
+        {task.kind === 'health_review' && task.reviewDetail?.dueDate && (
+          <p className="text-xs text-slate-500 mt-1">Due: {new Date(task.reviewDetail.dueDate).toLocaleDateString('en-GB')}</p>
+        )}
+        {task.kind !== 'health_review' && task.due_time && <p className="text-xs text-slate-500 mt-1">Due: {task.due_time.slice(0, 5)}</p>}
       </div>
-      {task.kind === 'medication' ? (
+      {(task.kind === 'medication' || task.kind === 'health_review') ? (
         <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0 mt-0.5" />
       ) : (
         <button onClick={(e) => { e.stopPropagation(); markComplete(task.id) }} className="text-slate-400 hover:text-green-600 transition-colors flex-shrink-0">

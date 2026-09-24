@@ -19,11 +19,11 @@ export default function ResidentDiary() {
   const [incidentsLoading, setIncidentsLoading] = useState(false)
 
   const [form, setForm] = useState({
-    annualHealthDate: '', annualHealthNotes: '', annualHealthNa: false,
-    gpReviewDate: '', gpReviewNotes: '', gpReviewNa: false,
-    mentalHealthDate: '', mentalHealthNotes: '', mentalHealthNa: false,
-    dentistDate: '', dentistNotes: '', dentistNa: false,
-    opticianDate: '', opticianNotes: '', opticianNa: false,
+    annualHealthDate: '', annualHealthNotes: '', annualHealthNa: false, annualHealthDueDate: '',
+    gpReviewDate: '', gpReviewNotes: '', gpReviewNa: false, gpReviewDueDate: '',
+    mentalHealthDate: '', mentalHealthNotes: '', mentalHealthNa: false, mentalHealthDueDate: '',
+    dentistDate: '', dentistNotes: '', dentistNa: false, dentistDueDate: '',
+    opticianDate: '', opticianNotes: '', opticianNa: false, opticianDueDate: '',
   })
 
   useEffect(() => {
@@ -52,18 +52,23 @@ export default function ResidentDiary() {
         annualHealthDate: su.annual_health_date?.split('T')[0] || '',
         annualHealthNotes: su.annual_health_notes || '',
         annualHealthNa: su.annual_health_na || false,
+        annualHealthDueDate: su.annual_health_due_date?.split('T')[0] || '',
         gpReviewDate: su.gp_review_date?.split('T')[0] || '',
         gpReviewNotes: su.gp_review_notes || '',
         gpReviewNa: su.gp_review_na || false,
+        gpReviewDueDate: su.gp_review_due_date?.split('T')[0] || '',
         mentalHealthDate: su.mental_health_date?.split('T')[0] || '',
         mentalHealthNotes: su.mental_health_notes || '',
         mentalHealthNa: su.mental_health_na || false,
+        mentalHealthDueDate: su.mental_health_due_date?.split('T')[0] || '',
         dentistDate: su.dentist_date?.split('T')[0] || '',
         dentistNotes: su.dentist_notes || '',
         dentistNa: su.dentist_na || false,
+        dentistDueDate: su.dentist_due_date?.split('T')[0] || '',
         opticianDate: su.optician_date?.split('T')[0] || '',
         opticianNotes: su.optician_notes || '',
         opticianNa: su.optician_na || false,
+        opticianDueDate: su.optician_due_date?.split('T')[0] || '',
       })
     }
   }, [selectedSU, serviceUsers])
@@ -79,12 +84,12 @@ export default function ResidentDiary() {
       toast.success('Health reviews saved')
       // Update local state
       setServiceUsers(prev => prev.map(s => s.id === selectedSU ? {
-        ...s, 
-        annual_health_date: form.annualHealthDate, annual_health_notes: form.annualHealthNotes, annual_health_na: form.annualHealthNa,
-        gp_review_date: form.gpReviewDate, gp_review_notes: form.gpReviewNotes, gp_review_na: form.gpReviewNa,
-        mental_health_date: form.mentalHealthDate, mental_health_notes: form.mentalHealthNotes, mental_health_na: form.mentalHealthNa,
-        dentist_date: form.dentistDate, dentist_notes: form.dentistNotes, dentist_na: form.dentistNa,
-        optician_date: form.opticianDate, optician_notes: form.opticianNotes, optician_na: form.opticianNa,
+        ...s,
+        annual_health_date: form.annualHealthDate, annual_health_notes: form.annualHealthNotes, annual_health_na: form.annualHealthNa, annual_health_due_date: form.annualHealthDueDate,
+        gp_review_date: form.gpReviewDate, gp_review_notes: form.gpReviewNotes, gp_review_na: form.gpReviewNa, gp_review_due_date: form.gpReviewDueDate,
+        mental_health_date: form.mentalHealthDate, mental_health_notes: form.mentalHealthNotes, mental_health_na: form.mentalHealthNa, mental_health_due_date: form.mentalHealthDueDate,
+        dentist_date: form.dentistDate, dentist_notes: form.dentistNotes, dentist_na: form.dentistNa, dentist_due_date: form.dentistDueDate,
+        optician_date: form.opticianDate, optician_notes: form.opticianNotes, optician_na: form.opticianNa, optician_due_date: form.opticianDueDate,
       } : s))
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to save')
@@ -92,12 +97,21 @@ export default function ResidentDiary() {
     setSaving(false)
   }
 
-  const renderSection = (title: string, dateKey: string, notesKey: string, naKey: string) => {
+  const renderSection = (title: string, dateKey: string, notesKey: string, naKey: string, dueDateKey: string) => {
     const isNa = (form as any)[naKey]
+    const dueDate = (form as any)[dueDateKey]
+    const isOverdue = dueDate && dueDate < format(new Date(), 'yyyy-MM-dd')
     return (
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-800 text-lg">{title}</h3>
+          <h3 className="font-semibold text-slate-800 text-lg flex items-center gap-2">
+            {title}
+            {!isNa && isOverdue && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                <AlertTriangle className="w-3 h-3" /> Overdue
+              </span>
+            )}
+          </h3>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={isNa} onChange={e => set(naKey, e.target.checked)} className="rounded accent-purple-600 w-4 h-4" />
             <span className="text-sm font-medium text-slate-600">Not Applicable (N/A)</span>
@@ -106,10 +120,14 @@ export default function ResidentDiary() {
         {!isNa && (
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-1">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Review Date</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Last Review Date</label>
               <input type="date" className="input w-full" value={(form as any)[dateKey]} onChange={e => set(dateKey, e.target.value)} />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-1">
+              <label className={`text-xs font-semibold uppercase tracking-wider mb-1 block ${isOverdue ? 'text-rose-600' : 'text-slate-500'}`}>Next Review Due Date</label>
+              <input type="date" className={`input w-full ${isOverdue ? 'border-rose-300 text-rose-700' : ''}`} value={dueDate} onChange={e => set(dueDateKey, e.target.value)} />
+            </div>
+            <div className="md:col-span-1">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Notes</label>
               <input type="text" className="input w-full" placeholder="Add a little note..." value={(form as any)[notesKey]} onChange={e => set(notesKey, e.target.value)} />
             </div>
@@ -146,11 +164,11 @@ export default function ResidentDiary() {
 
       {selectedSU ? (
         <form onSubmit={save}>
-          {renderSection('Annual Health Check', 'annualHealthDate', 'annualHealthNotes', 'annualHealthNa')}
-          {renderSection('GP Review', 'gpReviewDate', 'gpReviewNotes', 'gpReviewNa')}
-          {renderSection('Mental Health Review', 'mentalHealthDate', 'mentalHealthNotes', 'mentalHealthNa')}
-          {renderSection('Dentist Review', 'dentistDate', 'dentistNotes', 'dentistNa')}
-          {renderSection('Optician Review', 'opticianDate', 'opticianNotes', 'opticianNa')}
+          {renderSection('Annual Health Check', 'annualHealthDate', 'annualHealthNotes', 'annualHealthNa', 'annualHealthDueDate')}
+          {renderSection('GP Review', 'gpReviewDate', 'gpReviewNotes', 'gpReviewNa', 'gpReviewDueDate')}
+          {renderSection('Mental Health Review', 'mentalHealthDate', 'mentalHealthNotes', 'mentalHealthNa', 'mentalHealthDueDate')}
+          {renderSection('Dentist Review', 'dentistDate', 'dentistNotes', 'dentistNa', 'dentistDueDate')}
+          {renderSection('Optician Review', 'opticianDate', 'opticianNotes', 'opticianNa', 'opticianDueDate')}
 
           <div className="mt-6 flex justify-end">
             <Button type="submit" variant="gold" loading={saving}>Save Health Reviews</Button>

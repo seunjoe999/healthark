@@ -44,22 +44,25 @@ const navSections = [
   {
     label: 'SERVICE USERS', highlight: true,
     items: [
-      { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
-      { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
+      // Manager asked for this section back in its original (non-alphabetical)
+      // order — Residents and Medication at the top since those are opened
+      // constantly, with Calendar/Capacity (rarely used) pushed to the bottom.
+      { label: 'Residents',                        to: '/service-users',       icon: Users,         roles: [], featureKey: 'service_users' },
+      { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
+      { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
+      { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
+      { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
       { label: 'Care Reviews',                      to: '/reviews',             icon: ClipboardCheck,roles: [], featureKey: 'reviews' },
       { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
       { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
-      { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
-      { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
-      { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
       { label: 'Other Risk Assessment',             to: '/risk-management',     icon: Shield,        roles: [], featureKey: 'risk_management' },
-      { label: 'Residents',                        to: '/service-users',       icon: Users,         roles: [], featureKey: 'service_users' },
       { label: 'Residents Health Check',             to: '/diary',               icon: BookOpen,      roles: [], featureKey: 'diary' },
       { label: 'Safeguarding',                      to: '/safeguarding',        icon: ShieldCheck,   roles: [], featureKey: 'safeguarding' },
       { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
-      { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
+      { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
+      { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
     ]
   },
   {
@@ -132,7 +135,6 @@ const navSections = [
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
-      { label: 'Service User Feedback', to: '/service-feedback', icon: MessageSquare, roles: [], featureKey: 'service_feedback' },
       { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
       { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
     ]

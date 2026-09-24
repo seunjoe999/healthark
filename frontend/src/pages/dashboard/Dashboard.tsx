@@ -146,6 +146,7 @@ export default function Dashboard() {
     dailyRecordsByDay: {},
   })
   const [todaysTasks, setTodaysTasks] = useState<any[]>([])
+  const [healthReviewsDue, setHealthReviewsDue] = useState<any[]>([])
   const [loading, setLoading]           = useState(true)
   const [showBirthdays, setShowBirthdays] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -184,6 +185,7 @@ export default function Dashboard() {
       /* 8 */ api.get('/compliance', { params: { homeId: selectedHome } }),
       /* 9 */ api.get('/daily-records', { params: { homeId: selectedHome, from: sevenAgo, to: todayStr } }),
       /* 10 */ api.get('/tasks', { params: { homeId: selectedHome, date: todayStr } }),
+      /* 11 */ api.get('/service-users/health-reviews-due', { params: { homeId: selectedHome } }),
     ]).then(results => {
       /* ── Existing stats ── */
       const dashRes     = results[0].status === 'fulfilled' ? results[0].value : null
@@ -282,6 +284,10 @@ export default function Dashboard() {
       const tasksRes = results[10].status === 'fulfilled' ? results[10].value : null
       const allTasks: any[] = tasksRes?.data?.data || []
       setTodaysTasks(allTasks.filter((t: any) => t.status === 'pending'))
+
+      /* ── Resident health-check reviews due or overdue ── */
+      const healthReviewsRes = results[11].status === 'fulfilled' ? results[11].value : null
+      setHealthReviewsDue(healthReviewsRes?.data?.data || [])
     }).catch(console.error).finally(() => setLoading(false))
     })()
   }, [selectedHome])
@@ -373,6 +379,15 @@ export default function Dashboard() {
           </select>
         )}
       </div>
+
+      {!loading && healthReviewsDue.length > 0 && (
+        <Link to="/diary" className="flex items-center gap-3 rounded-2xl px-4 py-3 mb-6 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/15 transition-colors">
+          <span className="text-rose-400 text-lg leading-none">⏰</span>
+          <p className="text-sm text-rose-300">
+            <strong className="text-rose-200">{healthReviewsDue.length}</strong> resident health check review{healthReviewsDue.length !== 1 ? 's are' : ' is'} due or overdue — click to review
+          </p>
+        </Link>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-64"><Spinner /></div>
