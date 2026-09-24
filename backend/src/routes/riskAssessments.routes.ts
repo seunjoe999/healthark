@@ -58,6 +58,58 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// GET /api/risk-management/reads-summary?homeId=xxx — who has read which
+// risk assessment (Service User Audit read-tracking), same shape as care
+// plans' equivalent endpoint. Must be before /:id.
+router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query(
+      `SELECT ra.id as assessment_id, ra.assessment_name,
+              su.first_name || ' ' || su.last_name as su_name,
+              COUNT(rar.id) as total_reads,
+              MAX(rar.read_at) as last_read_at,
+              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
+       FROM risk_assessments ra
+       JOIN service_users su ON su.id = ra.su_id
+       LEFT JOIN risk_assessment_reads rar ON rar.assessment_id = ra.id
+       LEFT JOIN staff s ON s.id = rar.staff_id
+       WHERE ra.home_id = $1 AND ra.is_active IS NOT FALSE
+       GROUP BY ra.id, su.first_name, su.last_name
+       ORDER BY su.last_name, ra.assessment_name`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/risk-management/:id/read — track that a staff member read this assessment
+router.post('/:id/read', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      if (!staffId) { res.json({ success: true }); return; }
+      await query(`INSERT INTO risk_assessment_reads (assessment_id, staff_id) VALUES ($1, $2)`, [req.params.id, staffId]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/risk-management/:id/reads — recent reads for an assessment
+router.get('/:id/reads', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT rar.read_at, s.first_name || ' ' || s.last_name as staff_name
+         FROM risk_assessment_reads rar JOIN staff s ON s.id = rar.staff_id
+         WHERE rar.assessment_id = $1 ORDER BY rar.read_at DESC LIMIT 20`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Frontline staff are read-only on risk assessments — only managers may write.

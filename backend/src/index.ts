@@ -2660,6 +2660,23 @@ async function ensureColumns() {
     // Ensures the column exists, then backfills any still-NULL rows.
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS qr_token VARCHAR(255) UNIQUE DEFAULT encode(gen_random_bytes(16),'hex')`,
     `UPDATE service_users SET qr_token = encode(gen_random_bytes(16),'hex') WHERE qr_token IS NULL`,
+    // Read-tracking for Risk Assessments and Medicine Risk Assessments — same
+    // shape as the existing care_plan_reads table, so Service User Audit gets
+    // the same "who has read this" tracking for all three document types.
+    `CREATE TABLE IF NOT EXISTS risk_assessment_reads (
+       id         BIGSERIAL PRIMARY KEY,
+       assessment_id UUID NOT NULL REFERENCES risk_assessments(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       read_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_rar_assessment ON risk_assessment_reads(assessment_id, read_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS medicine_risk_reads (
+       id         BIGSERIAL PRIMARY KEY,
+       assessment_id UUID NOT NULL REFERENCES medicine_risk_assessments(id) ON DELETE CASCADE,
+       staff_id   UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+       read_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mrr_assessment ON medicine_risk_reads(assessment_id, read_at DESC)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_taken              VARCHAR(50)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_unit               VARCHAR(20)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS side_effects              BOOLEAN NOT NULL DEFAULT FALSE`,

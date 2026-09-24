@@ -144,7 +144,12 @@ export default function RiskManagement() {
   const [signOffForm, setSignOffForm] = useState({ signedOffBy: '', signedOffDate: '' })
   const [search, setSearch] = useState('')
 
-  const markRead = (id: string) => setReadIds(prev => new Set([...prev, id]))
+  const markRead = (id: string) => {
+    setReadIds(prev => new Set([...prev, id]))
+    api.post(`/risk-assessments/${id}/read`).catch(() => {})
+    api.get(`/risk-assessments/${id}/reads`).then(r => setViewReads(r.data?.data || [])).catch(() => {})
+  }
+  const [viewReads, setViewReads] = useState<any[]>([])
 
   const RA_PRINT_CSS = `
     *{box-sizing:border-box;margin:0;padding:0}
@@ -367,6 +372,18 @@ export default function RiskManagement() {
     } catch { toast.error('Failed to load risk management plans') }
     finally { setLoading(false) }
   }
+
+  // Seeds the "Read" badge on cards from real persisted read receipts —
+  // previously readIds was purely local state (a Set that started empty on
+  // every page load and was never sent to the server), so "Mark read" never
+  // actually recorded anything and no one — including management — could
+  // ever see who had actually read a risk assessment.
+  useEffect(() => {
+    if (!selectedHome) return
+    api.get('/risk-assessments/reads-summary', { params: { homeId: selectedHome } })
+      .then(res => setReadIds(new Set((res.data?.data || []).filter((r: any) => Number(r.total_reads) > 0).map((r: any) => r.assessment_id))))
+      .catch(() => {})
+  }, [selectedHome, assessments.length])
 
   const getName = (su: any) =>
     `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
@@ -619,7 +636,7 @@ export default function RiskManagement() {
           {visibleAssessments.map((ra: any) => {
             const label = ra.assessment_name
             return (
-              <button key={ra.id} onClick={() => setViewItem(ra)}
+              <button key={ra.id} onClick={() => { setViewItem(ra); setViewReads([]); api.get(`/risk-assessments/${ra.id}/reads`).then(r => setViewReads(r.data?.data || [])).catch(() => {}) }}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-left hover:shadow-md hover:border-slate-200 transition-all group">
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-100 transition-colors">
@@ -687,6 +704,13 @@ export default function RiskManagement() {
                   </>
                 )}
               </div>
+
+              {canManage && viewReads.length > 0 && (
+                <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-2.5">
+                  <span className="font-semibold text-slate-600">Read by:</span>{' '}
+                  {viewReads.map((r: any) => r.staff_name).join(', ')}
+                </div>
+              )}
 
               <div className="space-y-3">
                 <GreenSection label="What is the risk" value={ra.description} />

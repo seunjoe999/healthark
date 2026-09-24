@@ -92,6 +92,58 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// GET /api/medicine-risk/reads-summary?homeId=xxx — who has read which
+// medicine risk assessment (Service User Audit read-tracking). Must be
+// before /:id.
+router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = tok(req, 'homeId') || (req.query.homeId as string);
+    const rows = await query(
+      `SELECT mr.id as assessment_id,
+              su.first_name || ' ' || su.last_name as su_name,
+              COUNT(mrr.id) as total_reads,
+              MAX(mrr.read_at) as last_read_at,
+              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
+       FROM medicine_risk_assessments mr
+       JOIN service_users su ON su.id = mr.su_id
+       LEFT JOIN medicine_risk_reads mrr ON mrr.assessment_id = mr.id
+       LEFT JOIN staff s ON s.id = mrr.staff_id
+       WHERE mr.home_id = $1
+       GROUP BY mr.id, su.first_name, su.last_name
+       ORDER BY su.last_name`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/medicine-risk/:id/read — track that a staff member read this assessment
+router.post('/:id/read', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = tok(req, 'staffId');
+      if (!staffId) { res.json({ success: true }); return; }
+      await query(`INSERT INTO medicine_risk_reads (assessment_id, staff_id) VALUES ($1, $2)`, [req.params.id, staffId]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// GET /api/medicine-risk/:id/reads — recent reads for an assessment
+router.get('/:id/reads', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT mrr.read_at, s.first_name || ' ' || s.last_name as staff_name
+         FROM medicine_risk_reads mrr JOIN staff s ON s.id = mrr.staff_id
+         WHERE mrr.assessment_id = $1 ORDER BY mrr.read_at DESC LIMIT 20`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
 // POST /api/medicine-risk — staff can read, only managers can write

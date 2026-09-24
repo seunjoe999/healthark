@@ -1001,6 +1001,13 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
               {canManage && <Button variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={onNewAssessment}>New Assessment</Button>}
             </div>
 
+            {/* Read tracking — Service User Audit needs to know who has
+                actually read this assessment, same as Care Plans / Risk
+                Assessments. */}
+            <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <MedRiskReadTracker assessmentId={r.id} canManage={canManage} />
+            </div>
+
             {/* Risk update tracking — dated history of changes to this risk */}
             <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <UpdateHistory riskId={r.id} />
@@ -1009,6 +1016,42 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
         )}
       </div>
     </Modal>
+  )
+}
+
+function MedRiskReadTracker({ assessmentId, canManage }: { assessmentId: string; canManage: boolean }) {
+  const [reads, setReads] = useState<any[]>([])
+  const [marking, setMarking] = useState(false)
+  const [marked, setMarked] = useState(false)
+
+  const load = () => {
+    api.get(`/medicine-risk/${assessmentId}/reads`).then(r => setReads(r.data?.data || [])).catch(() => {})
+  }
+  useEffect(() => { load() }, [assessmentId])
+
+  const markRead = async () => {
+    setMarking(true)
+    try {
+      await api.post(`/medicine-risk/${assessmentId}/read`)
+      setMarked(true)
+      load()
+    } catch { toast.error('Failed to record') }
+    finally { setMarking(false) }
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <button type="button" onClick={markRead} disabled={marking || marked}
+        className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-70',
+          marked ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100')}>
+        <CheckCircle2 className="w-3.5 h-3.5" /> {marked ? 'Marked as read' : 'Mark as read'}
+      </button>
+      {canManage && reads.length > 0 && (
+        <span className="text-xs text-slate-500">
+          Read by: {reads.map((r: any) => r.staff_name).join(', ')}
+        </span>
+      )}
+    </div>
   )
 }
 
