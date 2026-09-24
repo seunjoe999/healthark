@@ -2651,6 +2651,15 @@ async function ensureColumns() {
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS application_site_label    VARCHAR(100)`,
     `ALTER TABLE meetings ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES teams(id) ON DELETE CASCADE`,
     `CREATE INDEX IF NOT EXISTS idx_meetings_team ON meetings(team_id)`,
+    // Family Portal was completely broken: the /family/:token page looks a
+    // resident up by qr_token, but any resident whose row predates this
+    // column being added to the schema (or that was never backfilled) has a
+    // NULL qr_token, so the frontend fell back to using the resident's plain
+    // id in the link — which the backend query never matches (it only looks
+    // up by qr_token), so every such link 404'd as "Resident not found".
+    // Ensures the column exists, then backfills any still-NULL rows.
+    `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS qr_token VARCHAR(255) UNIQUE DEFAULT encode(gen_random_bytes(16),'hex')`,
+    `UPDATE service_users SET qr_token = encode(gen_random_bytes(16),'hex') WHERE qr_token IS NULL`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_taken              VARCHAR(50)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_unit               VARCHAR(20)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS side_effects              BOOLEAN NOT NULL DEFAULT FALSE`,

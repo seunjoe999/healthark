@@ -21,7 +21,7 @@ router.get('/:token', async (req: Request, res: Response, next: NextFunction) =>
               h.name as home_name, h.phone as home_phone, h.address1 as home_address
        FROM service_users su
        JOIN homes h ON h.id = su.home_id
-       WHERE su.qr_token = $1`,
+       WHERE su.qr_token = $1 OR su.id::text = $1`,
       [req.params.token]
     );
     if (!rows.length) throw new AppError('Resident not found', 404);

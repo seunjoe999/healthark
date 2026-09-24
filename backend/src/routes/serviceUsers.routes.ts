@@ -92,7 +92,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     let sql = `SELECT su.id, su.first_name, su.last_name, su.preferred_name,
                       su.date_of_birth, su.gender, su.photo_url, su.status,
                       su.emergency_rating, su.nhs_number, su.dnar, su.nil_by_mouth,
-                      su.need_to_know, su.my_instructions,
+                      su.need_to_know, su.my_instructions, su.room_number, su.qr_token,
                       su.admission_date, su.created_at,
                       su.annual_health_date, su.annual_health_notes, su.annual_health_na, su.annual_health_due_date,
                       su.gp_review_date, su.gp_review_notes, su.gp_review_na, su.gp_review_due_date,
