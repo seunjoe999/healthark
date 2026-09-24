@@ -19,6 +19,12 @@ interface WaitingEntry {
   status: 'enquiry' | 'assessment_booked' | 'assessment_complete' | 'offer_made' | 'accepted' | 'declined' | 'withdrawn';
   enquiry_date: string;
   notes: string;
+  address: string | null;
+  assessment_date: string | null;
+  assessment_conducted_by: string | null;
+  outcome: string | null;
+  next_action: string | null;
+  final_outcome: string | null;
 }
 
 interface Stats { total: number; waiting: number; high_priority: number; avg_wait_days: number; }
@@ -45,7 +51,10 @@ export default function WaitingList() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
-  const [form, setForm] = useState({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '' });
+  const [form, setForm] = useState({
+    full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '',
+    address: '', assessment_date: '', assessment_conducted_by: '', outcome: '', next_action: '', final_outcome: '',
+  });
 
   const fetchData = async () => {
     try {
@@ -80,10 +89,19 @@ export default function WaitingList() {
         careNeeds: form.care_needs || undefined,
         priority: form.priority,
         notes: form.notes || undefined,
+        address: form.address || undefined,
+        assessmentDate: form.assessment_date || undefined,
+        assessmentConductedBy: form.assessment_conducted_by || undefined,
+        outcome: form.outcome || undefined,
+        nextAction: form.next_action || undefined,
+        finalOutcome: form.final_outcome || undefined,
       });
       toast.success('Added to waiting list');
       setShowForm(false);
-      setForm({ full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '' });
+      setForm({
+        full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '',
+        address: '', assessment_date: '', assessment_conducted_by: '', outcome: '', next_action: '', final_outcome: '',
+      });
       fetchData();
     } catch { toast.error('Failed to save'); }
   };
@@ -168,6 +186,9 @@ export default function WaitingList() {
               { label: 'Contact Name', key: 'contact_name', type: 'text', required: false },
               { label: 'Contact Phone', key: 'contact_phone', type: 'tel', required: false },
               { label: 'Contact Email', key: 'contact_email', type: 'email', required: false },
+              { label: 'Address', key: 'address', type: 'text', required: false },
+              { label: 'Date of Assessment', key: 'assessment_date', type: 'date', required: false },
+              { label: 'Who Conducted the Assessment', key: 'assessment_conducted_by', type: 'text', required: false },
             ].map(f => (
               <div key={f.key}>
                 <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
@@ -188,6 +209,17 @@ export default function WaitingList() {
               <textarea value={form.care_needs} onChange={e => setForm(p => ({ ...p, care_needs: e.target.value }))} rows={2}
                 className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
             </div>
+            {[
+              { label: 'Outcome', key: 'outcome' },
+              { label: 'Next Action', key: 'next_action' },
+              { label: 'Final Outcome', key: 'final_outcome' },
+            ].map(f => (
+              <div key={f.key} className="md:col-span-2">
+                <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
+                <textarea value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} rows={2}
+                  className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
+              </div>
+            ))}
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Add</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
@@ -213,12 +245,22 @@ export default function WaitingList() {
                     <span className="text-xs text-gray-500">{STATUS_LABELS[e.status] || e.status}</span>
                   </div>
                   {e.date_of_birth && <div className="text-xs text-gray-400 mt-1">DOB: {format(new Date(String(e.date_of_birth).includes('T') ? e.date_of_birth : e.date_of_birth + 'T12:00:00'), 'dd MMM yyyy')}</div>}
+                  {e.address && <div className="text-xs text-gray-400 mt-0.5">{e.address}</div>}
                   {e.care_needs && <div className="text-xs text-gray-500 mt-1">{e.care_needs}</div>}
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                     {e.contact_name && <span>{e.contact_name}</span>}
                     {e.contact_phone && <span className="flex items-center gap-1"><Phone size={10} />{e.contact_phone}</span>}
                     {e.enquiry_date && <span className="flex items-center gap-1"><Clock size={10} />{format(new Date(String(e.enquiry_date).includes('T') ? e.enquiry_date : e.enquiry_date + 'T12:00:00'), 'dd MMM yyyy')}</span>}
                   </div>
+                  {(e.assessment_date || e.assessment_conducted_by) && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      Assessment{e.assessment_date && ` — ${format(new Date(String(e.assessment_date).includes('T') ? e.assessment_date : e.assessment_date + 'T12:00:00'), 'dd MMM yyyy')}`}
+                      {e.assessment_conducted_by && ` by ${e.assessment_conducted_by}`}
+                    </div>
+                  )}
+                  {e.outcome && <div className="text-xs text-gray-500 mt-1"><span className="text-gray-400">Outcome:</span> {e.outcome}</div>}
+                  {e.next_action && <div className="text-xs text-gray-500 mt-1"><span className="text-gray-400">Next action:</span> {e.next_action}</div>}
+                  {e.final_outcome && <div className="text-xs text-gray-500 mt-1"><span className="text-gray-400">Final outcome:</span> {e.final_outcome}</div>}
                 </div>
                 <div className="flex gap-1">
                   {e.status === 'enquiry' && (

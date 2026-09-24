@@ -57,6 +57,7 @@ export default function EnvironmentalChecks() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('7');
+  const [typeFilter, setTypeFilter] = useState('');
   const [homes, setHomes] = useState<any[]>([]);
   const [selectedHome, setSelectedHome] = useState('');
   const [residents, setResidents] = useState<any[]>([]);
@@ -102,6 +103,7 @@ export default function EnvironmentalChecks() {
   }, [filter, selectedHome]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { setTypeFilter('') }, [filter, selectedHome]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +142,11 @@ export default function EnvironmentalChecks() {
     { value: CUSTOM_OPTION, label: '+ Add a new custom check type...' },
   ];
   const residentOptions = residents.map(r => ({ value: r.id, label: `${r.first_name} ${r.last_name}` }));
+  // Only offer types actually present in the loaded (day-range-filtered) checks,
+  // so the dropdown doesn't list types with nothing to show for this period.
+  const presentTypes = Array.from(new Set(checks.map(c => c.check_type)));
+  const typeFilterOptions = presentTypes.map(t => ({ value: t, label: typeLabel(t) }));
+  const filteredChecks = typeFilter ? checks.filter(c => c.check_type === typeFilter) : checks;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -182,7 +189,7 @@ export default function EnvironmentalChecks() {
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center flex-wrap">
         {['7', '14', '30', '90'].map(d => (
           <button key={d} onClick={() => setFilter(d)}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${filter === d ? 'text-white' : mutedText}`}
@@ -190,6 +197,13 @@ export default function EnvironmentalChecks() {
             {d}d
           </button>
         ))}
+        {presentTypes.length > 0 && (
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 bg-white">
+            <option value="">All check types</option>
+            {typeFilterOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Add form */}
@@ -241,11 +255,11 @@ export default function EnvironmentalChecks() {
       {/* Checks list */}
       {loading ? (
         <div className={`text-center py-12 ${mutedText}`}>Loading...</div>
-      ) : checks.length === 0 ? (
-        <div className={`text-center py-12 ${mutedText}`}>No checks recorded for this period</div>
+      ) : filteredChecks.length === 0 ? (
+        <div className={`text-center py-12 ${mutedText}`}>{typeFilter ? 'No checks of this type recorded for this period' : 'No checks recorded for this period'}</div>
       ) : (
         <div className="space-y-2">
-          {checks.map(c => (
+          {filteredChecks.map(c => (
             <motion.div key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex items-center gap-4 p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
               <div className="flex-shrink-0">{statusIcon(c.result)}</div>

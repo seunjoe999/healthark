@@ -114,15 +114,15 @@ export default function OralHygiene() {
             <Smile className="w-6 h-6 text-sky-500" />
             Oral Hygiene Chart
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">Daily oral care recording — morning and evening</p>
+          <p className="text-slate-600 text-sm mt-0.5">Daily oral care recording — morning and evening</p>
         </div>
-        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+        <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-2 bg-white">
           <Printer className="w-4 h-4" /> Print
         </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-5">
-        <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Service User</label>
+        <label className="text-xs font-bold uppercase tracking-wide text-slate-600 mb-2 block">Service User</label>
         <select className="input w-full max-w-xs" value={selectedSu} onChange={e => setSelectedSu(e.target.value)}>
           <option value="">— Select resident —</option>
           {residents.map(r => <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>)}
@@ -137,13 +137,13 @@ export default function OralHygiene() {
               <div className="flex rounded-xl overflow-hidden border border-slate-200">
                 {(['Morning', 'Evening'] as const).map(s => (
                   <button key={s} onClick={() => setSession(s)}
-                    className={`px-4 py-1.5 text-xs font-bold transition-all ${session === s ? 'bg-sky-500 text-white' : 'bg-white text-slate-500'}`}>{s}</button>
+                    className={`px-4 py-1.5 text-xs font-bold transition-all ${session === s ? 'bg-sky-500 text-white' : 'bg-white text-slate-600'}`}>{s}</button>
                 ))}
               </div>
             </div>
             <div className="px-5 py-5 space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Mouth Condition <span className="font-normal text-slate-400">(tick all that apply)</span></label>
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-600 mb-2 block">Mouth Condition <span className="font-normal text-slate-500">(tick all that apply)</span></label>
                 <div className="flex flex-wrap gap-1.5">
                   {MOUTH_CONDITIONS.map(c => (
                     <button key={c} onClick={() => toggle(c, mouthConditions, setMouthConditions)}
@@ -156,7 +156,7 @@ export default function OralHygiene() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Upper Denture</label>
+                  <label className="text-xs font-bold uppercase tracking-wide text-slate-600 mb-2 block">Upper Denture</label>
                   <div className="space-y-1">
                     {['Cleaned', 'Not present', 'Not cleaned'].map(v => (
                       <label key={v} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all ${upperDenture === v ? 'border-sky-400 bg-sky-50' : 'border-slate-100'}`}>
@@ -167,7 +167,7 @@ export default function OralHygiene() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Lower Denture</label>
+                  <label className="text-xs font-bold uppercase tracking-wide text-slate-600 mb-2 block">Lower Denture</label>
                   <div className="space-y-1">
                     {['Cleaned', 'Not present', 'Not cleaned'].map(v => (
                       <label key={v} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all ${lowerDenture === v ? 'border-sky-400 bg-sky-50' : 'border-slate-100'}`}>
@@ -180,7 +180,7 @@ export default function OralHygiene() {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Products Used</label>
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-600 mb-2 block">Products Used</label>
                 <div className="flex flex-wrap gap-1.5">
                   {PRODUCTS.map(p => (
                     <button key={p} onClick={() => toggle(p, products, setProducts)}
@@ -192,7 +192,7 @@ export default function OralHygiene() {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">Level of Assistance</label>
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-600 mb-2 block">Level of Assistance</label>
                 <div className="grid grid-cols-2 gap-2">
                   {ASSISTANCE.map(a => (
                     <label key={a} className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all ${assistance === a ? 'border-sky-400 bg-sky-50' : 'border-slate-100'}`}>
@@ -219,7 +219,7 @@ export default function OralHygiene() {
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-5">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-slate-800">{format(viewMonth, 'MMMM yyyy')}</h2>
-              <div className="flex items-center gap-3 text-[10px] text-slate-500">
+              <div className="flex items-center gap-3 text-[10px] text-slate-600">
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-green-200 inline-block"/> Both sessions</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-yellow-100 inline-block"/> One session</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-100 inline-block"/> Refused</span>
@@ -227,7 +227,7 @@ export default function OralHygiene() {
             </div>
             <div className="p-4">
               <div className="grid grid-cols-7 gap-1 mb-1">
-                {['M','T','W','T','F','S','S'].map((d, i) => <p key={i} className="text-[10px] text-center text-slate-400 font-bold">{d}</p>)}
+                {['M','T','W','T','F','S','S'].map((d, i) => <p key={i} className="text-[10px] text-center text-slate-500 font-bold">{d}</p>)}
               </div>
               <div className="grid grid-cols-7 gap-1">
                 {Array(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay() === 0 ? 6 : new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay() - 1).fill(null).map((_, i) => <div key={i} />)}
@@ -240,7 +240,7 @@ export default function OralHygiene() {
                     <div key={key} className="aspect-square rounded-lg flex flex-col items-center justify-center relative"
                       style={{ background: bg, border: isToday ? '2px solid #0ea5e9' : 'none' }}>
                       <span className="text-[10px] font-bold text-slate-600">{format(d, 'd')}</span>
-                      {entries.length > 0 && <span className="text-[8px] text-slate-400">{entries.length}x</span>}
+                      {entries.length > 0 && <span className="text-[8px] text-slate-500">{entries.length}x</span>}
                     </div>
                   )
                 })}
@@ -257,7 +257,7 @@ export default function OralHygiene() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50 text-[10px] text-slate-500 uppercase tracking-wide">
+                      <tr className="border-b border-slate-100 bg-slate-50 text-[10px] text-slate-600 uppercase tracking-wide">
                         <th className="px-4 py-2 text-left">Date/Time</th>
                         <th className="px-4 py-2 text-left">Session</th>
                         <th className="px-4 py-2 text-left">Condition</th>

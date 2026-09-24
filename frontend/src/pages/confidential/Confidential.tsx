@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import api, { getToken } from '../../api'
 import toast from 'react-hot-toast'
 import {
-  Lock, Users, UserSquare, Plus, X, ChevronDown, ChevronUp,
+  Lock, Users, Plus, X, ChevronDown, ChevronUp,
   FileText, Trash2, Eye, EyeOff, Upload, CheckCircle, Loader2,
   AlertCircle, ShieldAlert
 } from 'lucide-react'
@@ -181,23 +181,9 @@ export default function Confidential() {
         </div>
       )}
 
-      {/* Tabs — management sees both, staff only see Service Users */}
-      {isMgmt && (
-        <div className="flex gap-1 p-1 rounded-xl bg-white/8 w-fit">
-          {(['service_user', 'staff'] as const).map(t => (
-            <button key={t} onClick={() => { setTab(t); setShowForm(false); setExpanded(null) }}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${tab === t ? 'bg-white/15 text-white shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}>
-              {t === 'service_user' ? (
-                <span className="flex items-center gap-2"><Users className="w-4 h-4" />Service Users</span>
-              ) : (
-                <span className="flex items-center gap-2"><UserSquare className="w-4 h-4" />Staff</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Management: record list */}
+      {/* Management: record list — Service Users only. This used to also have a
+          "Staff" tab alongside Service Users; removed per request, so this page
+          is now scoped to service user confidentiality only. */}
       {isMgmt && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">

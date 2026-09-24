@@ -7,6 +7,7 @@ const FREQ_TIMES: Record<string, string[]> = {
   three_times_daily: ['08:00', '14:00', '20:00'],
   four_times_daily: ['08:00', '12:00', '16:00', '20:00'],
   weekly: ['08:00'],
+  every_3_days: ['08:00'],
   as_required: [],
   other: ['08:00'],
 };
@@ -85,6 +86,14 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
     if (med.frequency === 'weekly' && med.start_date) {
       const anchorDow = new Date(med.start_date).getDay();
       if (anchorDow !== todayDow) continue;
+    }
+    if (med.frequency === 'every_3_days' && med.start_date) {
+      const anchor = new Date(med.start_date);
+      const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+      const now = new Date();
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
+      if (daysSinceAnchor < 0 || daysSinceAnchor % 3 !== 0) continue;
     }
     const times = getTimeSlots(med.frequency, med.apply_time);
     for (const t of times) {

@@ -8,21 +8,22 @@ import { Spinner, EmptyState, Button } from '../../components/ui'
 import { BarChart3, Search, AlertTriangle, CheckCircle, User, Brain, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// Alphabetical by label, so the "All Types" list reads in a predictable order.
 const REPORT_TYPES = [
+  { value: 'calendar', label: 'Calendar & Appointments', description: 'Everything added to the calendar' },
+  { value: 'care-plan-compliance', label: 'Care Plan Compliance', description: 'Review status and overdue plans' },
+  { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'daily-records', label: 'Daily Records', description: 'All care records for a date range' },
   { value: 'fluid', label: 'Fluid Intake', description: 'Fluid totals and threshold alerts' },
+  { value: 'incident-analysis', label: 'Incident Analysis', description: 'Analysis of incident patterns' },
   { value: 'incidents', label: 'Incidents', description: 'All incident reports' },
-  { value: 'care-plan-compliance', label: 'Care Plan Compliance', description: 'Review status and overdue plans' },
-  { value: 'staff-attendance', label: 'Staff Attendance', description: 'Clock in/out history' },
-  { value: 'training-compliance', label: 'Training Compliance', description: 'Expiring and expired certificates' },
   { value: 'mar-report', label: 'MAR Report', description: 'Medication administration records' },
   { value: 'medication-report', label: 'Medication Report', description: 'All medications by resident' },
-  { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
-  { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
-  { value: 'incident-analysis', label: 'Incident Analysis', description: 'Analysis of incident patterns' },
   { value: 'medication-stock', label: 'Medication Stock', description: 'Stock counts, home-wide or per resident' },
-  { value: 'calendar', label: 'Calendar & Appointments', description: 'Everything added to the calendar' },
+  { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
+  { value: 'staff-attendance', label: 'Staff Attendance', description: 'Clock in/out history' },
   { value: 'system-activity', label: 'System Activity', description: 'Anything done on the system, by any staff member' },
+  { value: 'training-compliance', label: 'Training Compliance', description: 'Expiring and expired certificates' },
 ]
 
 // Kept in sync with RECORD_TYPES in pages/daily-records/DailyRecords.tsx — this list drives the

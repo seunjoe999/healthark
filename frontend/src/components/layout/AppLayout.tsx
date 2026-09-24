@@ -37,29 +37,29 @@ const navSections = [
     items: [
       { label: 'Dashboard',   to: '/dashboard',   icon: LayoutDashboard, roles: [], featureKey: 'dashboard' },
       { label: 'Inbox',       to: '/messages',    icon: MessageSquare,   roles: [], featureKey: 'messages' },
-      { label: 'Tasks',       to: '/tasks',       icon: CheckSquare,     roles: ['care_staff', 'team_leader', 'senior_carer'], featureKey: 'tasks' },
       { label: 'Noticeboard', to: '/noticeboard', icon: Newspaper,       roles: [], featureKey: 'noticeboard' },
+      { label: 'Tasks',       to: '/tasks',       icon: CheckSquare,     roles: ['care_staff', 'team_leader', 'senior_carer'], featureKey: 'tasks' },
     ]
   },
   {
     label: 'SERVICE USERS', highlight: true,
     items: [
-      { label: 'Residents',                        to: '/service-users',       icon: Users,         roles: [], featureKey: 'service_users' },
-      { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
-      { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
-      { label: 'Other Risk Assessment',             to: '/risk-management',     icon: Shield,        roles: [], featureKey: 'risk_management' },
-      { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
-      { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
-      { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
-      { label: 'Care Reviews',                      to: '/reviews',             icon: ClipboardCheck,roles: [], featureKey: 'reviews' },
-      { label: 'Residents Health Check',             to: '/diary',               icon: BookOpen,      roles: [], featureKey: 'diary' },
       { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
-      { label: 'Safeguarding',                      to: '/safeguarding',        icon: ShieldCheck,   roles: [], featureKey: 'safeguarding' },
-      { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
-      { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
-      { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
       { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
+      { label: 'Care Reviews',                      to: '/reviews',             icon: ClipboardCheck,roles: [], featureKey: 'reviews' },
+      { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
+      { label: 'Consents & Signatures',             to: '/consents',            icon: FileSignature, roles: [], featureKey: 'consents' },
+      { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
+      { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
+      { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
+      { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
+      { label: 'Other Risk Assessment',             to: '/risk-management',     icon: Shield,        roles: [], featureKey: 'risk_management' },
+      { label: 'Residents',                        to: '/service-users',       icon: Users,         roles: [], featureKey: 'service_users' },
+      { label: 'Residents Health Check',             to: '/diary',               icon: BookOpen,      roles: [], featureKey: 'diary' },
+      { label: 'Safeguarding',                      to: '/safeguarding',        icon: ShieldCheck,   roles: [], featureKey: 'safeguarding' },
       { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
+      { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
+      { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
     ]
   },
   {
@@ -71,19 +71,19 @@ const navSections = [
   {
     label: 'STAFF RECORDS', highlight: true,
     items: [
-      { label: 'Staff Profile',          to: '/staff',                 icon: UserSquare,    roles: [], featureKey: 'staff' },
-      { label: 'Staff Assessment',       to: '/assessments?tab=staff', icon: FileCheck,     roles: [], featureKey: 'staff_assessment' },
-      { label: 'DBS Compliance',         to: '/dbs',                   icon: UserCheck,     roles: [], featureKey: 'dbs' },
-      { label: 'Clock In',               to: '/clockin-admin',         icon: QrCode,        roles: [], featureKey: 'clockin' },
-      { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
       { label: 'Calendar',               to: '/staff-calendar',        icon: Calendar,      roles: [], featureKey: 'staff_calendar' },
+      { label: 'Clock In',               to: '/clockin-admin',         icon: QrCode,        roles: [], featureKey: 'clockin' },
       { label: 'Comp Care Hub Training', to: '/training',              icon: GraduationCap, roles: [], featureKey: 'training' },
+      { label: 'DBS Compliance',         to: '/dbs',                   icon: UserCheck,     roles: [], featureKey: 'dbs' },
       // Previously only reachable via Settings, which is hard-restricted to group_admin —
       // meaning nobody else could ever be given access no matter what Access Rights said.
       // Standalone nav items here use the same broad non-care-staff baseline as the rest
       // of this section, so the owner can grant/revoke access per role from Access Rights
       // the normal way instead of it being all-or-nothing.
       { label: 'Resident Assignments',   to: '/settings/resident-assignments', icon: UserCheck, roles: NOT_CARE_STAFF, featureKey: 'resident_assignments' },
+      { label: 'Staff Assessment',       to: '/assessments?tab=staff', icon: FileCheck,     roles: [], featureKey: 'staff_assessment' },
+      { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
+      { label: 'Staff Profile',          to: '/staff',                 icon: UserSquare,    roles: [], featureKey: 'staff' },
       { label: 'Teams',                  to: '/settings/teams',        icon: Users2,        roles: NOT_CARE_STAFF, featureKey: 'teams' },
     ]
   },
@@ -99,12 +99,12 @@ const navSections = [
     // section (they get their own view of complaints etc. elsewhere if needed).
     label: 'QUALITY ASSURANCE', highlight: true,
     items: [
-      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: NOT_CARE_STAFF, featureKey: 'compliance' },
-      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: NOT_CARE_STAFF, featureKey: 'complaints' },
-      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: NOT_CARE_STAFF, featureKey: 'audits' },
       { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: NOT_CARE_STAFF, featureKey: 'audit_trail' },
-      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: NOT_CARE_STAFF, featureKey: 'reports' },
+      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: NOT_CARE_STAFF, featureKey: 'audits' },
+      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: NOT_CARE_STAFF, featureKey: 'complaints' },
+      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: NOT_CARE_STAFF, featureKey: 'compliance' },
       { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: NOT_CARE_STAFF, featureKey: 'cqc_notifications' },
+      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: NOT_CARE_STAFF, featureKey: 'reports' },
     ]
   },
   {
@@ -122,47 +122,47 @@ const navSections = [
   {
     label: 'OPERATIONS', highlight: true,
     items: [
-      { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
-      { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
-      { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
-      { label: 'Leave & Holidays',   to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
-      { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: [], featureKey: 'invoicing' },
-      { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
-      { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
       { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
+      { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
+      { label: 'Download App',       to: '/install',           icon: Download,      roles: [], featureKey: 'install_app' },
+      { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: [], featureKey: 'invoicing' },
+      { label: 'Leave & Holidays',   to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
+      { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
-      { label: 'Download App',       to: '/install',           icon: Download,      roles: [], featureKey: 'install_app' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
+      { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
+      { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
+      { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
     ]
   },
   {
     label: 'CLINICAL MONITORING', highlight: true,
     items: [
-      { label: 'Weight Tracker',      to: '/weight-tracker',     icon: Activity,      roles: [], featureKey: 'weight_tracker' },
-      { label: 'Wound Care',          to: '/wound-care',         icon: Stethoscope,   roles: [], featureKey: 'wound_care' },
-      { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
-      { label: 'Barthel Index',       to: '/assessments/barthel', icon: FileCheck,     roles: [], featureKey: 'barthel' },
-      { label: 'MUST Score',          to: '/assessments/must',    icon: Scale,         roles: [], featureKey: 'must_score' },
-      { label: 'NEWS2 Score',         to: '/clinical/news2',          icon: Activity,      roles: [], featureKey: 'news2' },
-      { label: 'Waterlow / Turns',    to: '/clinical/waterlow',       icon: Shield,        roles: [], featureKey: 'waterlow' },
       { label: 'Abbey Pain Scale',    to: '/clinical/abbey-pain',     icon: Brain,         roles: [], featureKey: 'abbey_pain' },
-      { label: 'Pain Assessment',     to: '/clinical/pain-assessment',icon: Frown,         roles: [], featureKey: 'pain_assessment_tool' },
+      { label: 'Barthel Index',       to: '/assessments/barthel', icon: FileCheck,     roles: [], featureKey: 'barthel' },
       { label: 'Blood Glucose',       to: '/clinical/blood-glucose',  icon: Droplets,      roles: [], featureKey: 'blood_glucose' },
-      { label: 'Oral Hygiene',        to: '/clinical/oral-hygiene',   icon: Thermometer,   roles: [], featureKey: 'oral_hygiene' },
       { label: 'Catheter Care',       to: '/clinical/catheter-care',  icon: Zap,           roles: [], featureKey: 'catheter_care' },
       { label: 'End of Life',         to: '/clinical/end-of-life',    icon: BookOpen,      roles: [], featureKey: 'end_of_life' },
       { label: 'GP / Referrals',      to: '/clinical/gp-referrals',   icon: ClipboardList, roles: [], featureKey: 'gp_referrals' },
+      { label: 'Hospital Admissions', to: '/hospital-admissions',icon: Activity,      roles: [], featureKey: 'hospital_admissions' },
+      { label: 'MUST Score',          to: '/assessments/must',    icon: Scale,         roles: [], featureKey: 'must_score' },
+      { label: 'NEWS2 Score',         to: '/clinical/news2',          icon: Activity,      roles: [], featureKey: 'news2' },
+      { label: 'Oral Hygiene',        to: '/clinical/oral-hygiene',   icon: Thermometer,   roles: [], featureKey: 'oral_hygiene' },
+      { label: 'Pain Assessment',     to: '/clinical/pain-assessment',icon: Frown,         roles: [], featureKey: 'pain_assessment_tool' },
+      { label: 'Waterlow / Turns',    to: '/clinical/waterlow',       icon: Shield,        roles: [], featureKey: 'waterlow' },
+      { label: 'Weight Tracker',      to: '/weight-tracker',     icon: Activity,      roles: [], featureKey: 'weight_tracker' },
+      { label: 'Wound Care',          to: '/wound-care',         icon: Stethoscope,   roles: [], featureKey: 'wound_care' },
     ]
   },
   {
     label: 'CAPACITY & OPERATIONS', highlight: true,
     items: [
       { label: 'Bed Occupancy',       to: '/bed-occupancy',      icon: LayoutDashboard, roles: [], featureKey: 'bed_occupancy' },
-      { label: 'Waiting List',        to: '/waiting-list',       icon: Users,           roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'waiting_list' },
       { label: 'Contractor Register', to: '/contractors',        icon: Wrench,          roles: [], featureKey: 'contractors' },
-      { label: 'External Contacts',   to: '/external-contacts',  icon: Users,           roles: [], featureKey: 'external_contacts' },
       { label: 'Environmental Checks',to: '/environmental-checks',icon: Thermometer,    roles: [], featureKey: 'environmental' },
+      { label: 'External Contacts',   to: '/external-contacts',  icon: Users,           roles: [], featureKey: 'external_contacts' },
+      { label: 'Waiting List',        to: '/waiting-list',       icon: Users,           roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'waiting_list' },
     ]
   },
   {
@@ -175,9 +175,9 @@ const navSections = [
   {
     label: 'GOVERNANCE', highlight: true,
     items: [
-      { label: 'Lessons Learned',    to: '/lessons-learned',    icon: BookOpen,      roles: [], featureKey: 'lessons_learned' },
-      { label: 'CQC Mock Inspection',to: '/cqc-inspection',     icon: Shield,        roles: [], featureKey: 'cqc_inspection' },
       { label: 'CQC Evidence Pack',  to: '/cqc/evidence-pack',  icon: FileText,      roles: [], featureKey: 'evidence_pack' },
+      { label: 'CQC Mock Inspection',to: '/cqc-inspection',     icon: Shield,        roles: [], featureKey: 'cqc_inspection' },
+      { label: 'Lessons Learned',    to: '/lessons-learned',    icon: BookOpen,      roles: [], featureKey: 'lessons_learned' },
     ]
   },
   {

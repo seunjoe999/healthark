@@ -14,6 +14,7 @@ const FREQ_TIMES: Record<string, string[]> = {
   three_times_daily: ['08:00', '14:00', '20:00'],
   four_times_daily: ['08:00', '12:00', '16:00', '20:00'],
   weekly: ['08:00'],
+  every_3_days: ['08:00'],
   as_required: ['PRN'],
   other: ['—'],
 }
@@ -24,6 +25,7 @@ const FREQUENCIES = [
   { value: 'three_times_daily', label: 'Three times daily (TDS)' },
   { value: 'four_times_daily', label: 'Four times daily (QDS)' },
   { value: 'weekly', label: 'Weekly' },
+  { value: 'every_3_days', label: 'Every 3 days' },
   { value: 'as_required', label: 'As required (PRN)' },
   { value: 'other', label: 'Other' },
 ]

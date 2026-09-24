@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 router.use(authenticate);
@@ -42,6 +43,14 @@ async function ensureTable() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Added later — see PUT/POST below. IF NOT EXISTS so this is safe to run
+  // against a table that already existed before these columns did.
+  await query(`ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS address TEXT`);
+  await query(`ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS assessment_date DATE`);
+  await query(`ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS assessment_conducted_by TEXT`);
+  await query(`ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS outcome TEXT`);
+  await query(`ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS next_action TEXT`);
+  await query(`ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS final_outcome TEXT`);
 }
 
 // GET /api/waiting-list?homeId=&status=
@@ -130,21 +139,25 @@ router.post('/', [
       fullName, dateOfBirth, contactName, contactPhone, contactEmail,
       careNeeds, fundingType, priority, enquiryDate, expectedAdmissionDate,
       preferredRoom, status, notes, assignedTo,
+      address, assessmentDate, assessmentConductedBy, outcome, nextAction, finalOutcome,
     } = req.body;
 
     const rows = await query(
       `INSERT INTO waiting_list
          (home_id, full_name, date_of_birth, contact_name, contact_phone, contact_email,
           care_needs, funding_type, priority, enquiry_date, expected_admission_date,
-          preferred_room, status, notes, assigned_to, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          preferred_room, status, notes, assigned_to, created_by,
+          address, assessment_date, assessment_conducted_by, outcome, next_action, final_outcome)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
        RETURNING *`,
       [
         homeId, fullName, dateOfBirth || null, contactName || null, contactPhone || null,
         contactEmail || null, careNeeds || null, fundingType || 'unknown',
-        priority || 'standard', enquiryDate || new Date().toISOString().slice(0, 10),
+        priority || 'standard', enquiryDate || ukDateStr(),
         expectedAdmissionDate || null, preferredRoom || null, status || 'enquiry',
         notes || null, assignedTo || null, staffId,
+        address || null, assessmentDate || null, assessmentConductedBy || null,
+        outcome || null, nextAction || null, finalOutcome || null,
       ]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -163,6 +176,7 @@ router.put('/:id', [
       fullName, dateOfBirth, contactName, contactPhone, contactEmail,
       careNeeds, fundingType, priority, enquiryDate, expectedAdmissionDate,
       preferredRoom, status, notes, assignedTo,
+      address, assessmentDate, assessmentConductedBy, outcome, nextAction, finalOutcome,
     } = req.body;
 
     // assigned_to uses a direct SET (not COALESCE) whenever the key is present
@@ -187,6 +201,12 @@ router.put('/:id', [
          status = COALESCE($12, status),
          notes = COALESCE($13, notes),
          ${assignedToClause},
+         address = COALESCE($17, address),
+         assessment_date = COALESCE($18, assessment_date),
+         assessment_conducted_by = COALESCE($19, assessment_conducted_by),
+         outcome = COALESCE($20, outcome),
+         next_action = COALESCE($21, next_action),
+         final_outcome = COALESCE($22, final_outcome),
          updated_at = NOW()
        WHERE id = $15 AND home_id = $16
        RETURNING *`,
@@ -195,6 +215,8 @@ router.put('/:id', [
         contactEmail || null, careNeeds || null, fundingType || null, priority || null,
         enquiryDate || null, expectedAdmissionDate || null, preferredRoom || null,
         status || null, notes || null, assignedTo || null, id, homeId,
+        address || null, assessmentDate || null, assessmentConductedBy || null,
+        outcome || null, nextAction || null, finalOutcome || null,
       ]
     );
     if (!rows.length) {
