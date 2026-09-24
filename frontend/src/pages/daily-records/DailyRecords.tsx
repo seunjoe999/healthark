@@ -72,6 +72,8 @@ const RECORD_TYPES = [
   { value: 'body_map', label: 'Body Map / Skin', icon: '🗺️' },
   { value: 'seizure', label: 'Seizure Episode', icon: '⚡' },
   { value: 'follow_up', label: 'Follow Up', icon: '📌' },
+  { value: 'shopping', label: 'Shopping', icon: '🛍️' },
+  { value: 'financial_support', label: 'Financial Support', icon: '💰' },
 ]
 
 

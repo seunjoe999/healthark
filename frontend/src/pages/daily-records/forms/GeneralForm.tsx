@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { dailyRecordsApi } from '../../../api'
+import { dailyRecordsApi, getToken } from '../../../api'
 import { Button, Select, Input } from '../../../components/ui'
 import { SpeechTextarea } from '../../../components/ui/SpeechButton'
 
@@ -7,16 +7,36 @@ const ENGAGEMENT = [{ value: 'good', label: 'Good' }, { value: 'limited', label:
 const VISIT_TYPES = [{ value: 'social', label: 'Social visit' }, { value: 'family', label: 'Family visit' }, { value: 'community', label: 'Community access' }]
 const COMMS_MODES = [{ value: 'verbal', label: 'Verbal' }, { value: 'makaton', label: 'Makaton' }, { value: 'pecs', label: 'PECS' }, { value: 'written', label: 'Written' }, { value: 'eye_gaze', label: 'Eye gaze' }, { value: 'other', label: 'Other' }]
 const CALL_DIRECTIONS = [{ value: 'incoming', label: 'Incoming — they called us' }, { value: 'outgoing', label: 'Outgoing — we called them' }]
+const PAYMENT_METHODS = [{ value: 'cash', label: 'Cash' }, { value: 'debit_card', label: 'Debit card' }, { value: 'credit_card', label: 'Credit card' }, { value: 'bank_transfer', label: 'Bank transfer' }, { value: 'other', label: 'Other' }]
 
 export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type: string; suId: string; onSaved: () => void; recordedAt?: string }) {
   const [form, setForm] = useState<Record<string, any>>({ notes: '' })
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  const uploadReceipt = async (file: File) => {
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const token = getToken()
+      const res = await fetch('/api/upload/document', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd })
+      const json = await res.json()
+      set('receiptUrl', json.fileUrl || '')
+      set('receiptName', json.fileName || file.name)
+    } catch { alert('Receipt upload failed') }
+    finally { setUploading(false) }
+  }
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (['medication_disposed', 'medication_received', 'medication_ordered'].includes(type) && !form.medicationName?.trim()) {
       alert('Medication name is required'); return
+    }
+    if (type === 'shopping' && !form.amountSpent) { alert('Amount spent is required'); return }
+    if (type === 'financial_support' && (!form.amountSpent || !form.reasonForWithdrawal?.trim())) {
+      alert('Amount spent and reason for withdrawal are required'); return
     }
     setLoading(true)
     try {
@@ -34,6 +54,13 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
       } else if (type === 'medication_ordered') {
         notes = [`Medication: ${form.medicationName}`, form.quantity && `Quantity ordered: ${form.quantity}`,
           form.receivedFrom && `Ordered from: ${form.receivedFrom}`, form.expectedDate && `Expected delivery: ${form.expectedDate}`, notes].filter(Boolean).join('\n')
+      } else if (type === 'shopping') {
+        notes = [`Amount spent: £${form.amountSpent || '0.00'}`, form.paymentMethod && `Payment method: ${PAYMENT_METHODS.find(p => p.value === form.paymentMethod)?.label || form.paymentMethod}`,
+          form.receiptUrl && `Receipt attached: ${form.receiptName || form.receiptUrl}`, notes].filter(Boolean).join('\n')
+      } else if (type === 'financial_support') {
+        notes = [`Cash withdrawal: £${form.cashWithdrawal || '0.00'}`, `Amount spent: £${form.amountSpent || '0.00'}`,
+          form.balanceInBank && `Balance in bank: £${form.balanceInBank}`, form.reasonForWithdrawal && `Reason for withdrawal: ${form.reasonForWithdrawal}`,
+          form.receiptUrl && `Receipt attached: ${form.receiptName || form.receiptUrl}`, notes].filter(Boolean).join('\n')
       }
       await dailyRecordsApi.create({ suId, recordType: type, recordedAt, ...form, notes })
       onSaved()
@@ -111,6 +138,32 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <Input label="Quantity ordered" value={form.quantity || ''} onChange={e => set('quantity', e.target.value)} placeholder="e.g. 28 tablets..." />
         <Input label="Ordered from" value={form.receivedFrom || ''} onChange={e => set('receivedFrom', e.target.value)} placeholder="e.g. Pharmacy name..." />
         <Input label="Expected delivery date" type="date" value={form.expectedDate || ''} onChange={e => set('expectedDate', e.target.value)} />
+      </>)}
+
+      {type === 'shopping' && (<>
+        <Input label="Amount spent (£) *" required type="number" step="0.01" value={form.amountSpent || ''} onChange={e => set('amountSpent', e.target.value)} placeholder="0.00" />
+        <Select label="Payment method" value={form.paymentMethod || ''} onChange={e => set('paymentMethod', e.target.value)} options={PAYMENT_METHODS} placeholder="Select method" />
+        <div>
+          <label className="label">Receipt attached</label>
+          <input type="file" accept="image/*,.pdf" className="input" disabled={uploading}
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadReceipt(f) }} />
+          {uploading && <p className="text-xs text-slate-500 mt-1">Uploading...</p>}
+          {form.receiptUrl && <p className="text-xs text-green-600 mt-1">Attached: {form.receiptName}</p>}
+        </div>
+      </>)}
+
+      {type === 'financial_support' && (<>
+        <Input label="Cash withdrawal (£)" type="number" step="0.01" value={form.cashWithdrawal || ''} onChange={e => set('cashWithdrawal', e.target.value)} placeholder="0.00" />
+        <Input label="Amount spent (£) *" required type="number" step="0.01" value={form.amountSpent || ''} onChange={e => set('amountSpent', e.target.value)} placeholder="0.00" />
+        <Input label="Balance in bank (£)" type="number" step="0.01" value={form.balanceInBank || ''} onChange={e => set('balanceInBank', e.target.value)} placeholder="0.00" />
+        <div><label className="label">Reason for withdrawal *</label><textarea required className="input" rows={2} value={form.reasonForWithdrawal || ''} onChange={e => set('reasonForWithdrawal', e.target.value)} placeholder="What was the money withdrawn for..." /></div>
+        <div>
+          <label className="label">Receipt attached</label>
+          <input type="file" accept="image/*,.pdf" className="input" disabled={uploading}
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadReceipt(f) }} />
+          {uploading && <p className="text-xs text-slate-500 mt-1">Uploading...</p>}
+          {form.receiptUrl && <p className="text-xs text-green-600 mt-1">Attached: {form.receiptName}</p>}
+        </div>
       </>)}
 
       {type === 'handover' && (<>
