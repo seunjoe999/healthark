@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import auditTemplates from '../data/auditTemplates.json';
+import { ukDateStr } from '../utils/ukTime';
 
 type AuditTemplate = {
   sourceFile: string; category: string; title: string; suggestedKey: string;
@@ -187,7 +188,7 @@ router.post('/generate',
       const suId = req.body.suId || null;
 
       const from = periodFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const to = periodTo || new Date().toISOString().split('T')[0];
+      const to = periodTo || ukDateStr();
 
       // Create pending audit record
       const auditRows = await query(

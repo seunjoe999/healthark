@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { sendPushToStaff } from '../services/push.service';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 
@@ -516,7 +517,7 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
         [homeId, label || null, staffId || null, primarySuId, allSuIds.length ? allSuIds : null, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
          recurrence || 'daily', effectiveDays,
-         startDate || new Date().toISOString().split('T')[0],
+         startDate || ukDateStr(),
          // 1, not the original totalStaffRequired — each row generated here is now its
          // OWN slot (see staffToCreate above), so "how many staff does this row need"
          // is always 1; the original required count only decided how many rows to make.
@@ -564,7 +565,7 @@ router.post('/templates', requireRole(...MANAGE_ROLES), async (req: Request, res
       [homeId, label || null, staffId || null, suId || null, shiftType || 'regular',
        startTime, endTime, breakMinutes || 0, recurrence || 'weekly',
        daysOfWeek && daysOfWeek.length ? daysOfWeek : [1],
-       startDate || new Date().toISOString().split('T')[0],
+       startDate || ukDateStr(),
        staffCount || 1, createdBy]
     );
     const tmpl = rows[0] as any;
@@ -576,7 +577,7 @@ router.post('/templates', requireRole(...MANAGE_ROLES), async (req: Request, res
 // DELETE /api/shifts/templates/:id — remove template + future generated shifts
 router.delete('/templates/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = ukDateStr();
     await query(`DELETE FROM staff_shifts WHERE template_id=$1 AND shift_date >= $2`, [req.params.id, today]);
     await query(`UPDATE shift_templates SET is_active=FALSE WHERE id=$1`, [req.params.id]);
     res.json({ success: true } as ApiResponse);
@@ -811,7 +812,7 @@ router.post('/bulk-unassign', requireRole(...MANAGE_ROLES), [
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { staffId, suId } = req.body;
-      const today = new Date().toISOString().split('T')[0];
+      const today = ukDateStr();
 
       const rows = await query<any>(
         `UPDATE staff_shifts SET staff_id = NULL, status = 'unfilled', updated_at = NOW()

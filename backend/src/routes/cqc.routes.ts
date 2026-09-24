@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 router.use(authenticate);
@@ -11,7 +12,7 @@ router.get('/evidence-pack', async (req: Request, res: Response, next: NextFunct
   try {
     const homeId = (req.query.homeId as string) || (req.staff as any)?.homeId || '';
     const from = req.query.from as string || new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
-    const to   = req.query.to   as string || new Date().toISOString().split('T')[0];
+    const to   = req.query.to   as string || ukDateStr();
 
     if (!homeId) return res.status(400).json({ success: false, error: 'homeId required' });
 

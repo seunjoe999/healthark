@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types/index';
+import { ukDateStr } from '../utils/ukTime';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -194,7 +195,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 function todayDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return ukDateStr();
 }
 
 export default router;

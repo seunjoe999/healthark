@@ -291,6 +291,7 @@ app.use('/api/push', pushRoutes);
 
 // ── Serve React frontend ──────────────────────────────────────────────────
 import fs from 'fs';
+import { ukDateStr } from './utils/ukTime';
 const frontendDist = path.join(__dirname, '../../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   logger.info(`Serving frontend from: ${frontendDist}`);
@@ -3163,7 +3164,7 @@ async function bootstrap() {
     const legacy = await dbQuery<any>(
       `SELECT * FROM shift_templates WHERE is_active = TRUE AND label IS NOT NULL AND staff_count > 1`
     );
-    const today = new Date().toISOString().split('T')[0];
+    const today = ukDateStr();
     let extraSlotsGenerated = 0;
     for (const tmpl of legacy) {
       const missing = (tmpl.staff_count || 1) - 1;

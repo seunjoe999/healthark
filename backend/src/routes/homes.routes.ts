@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import { randomBytes } from 'crypto';
+import { ukDateStr } from '../utils/ukTime';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -193,7 +194,7 @@ router.get('/:id/dashboard', param('id').notEmpty(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.params.id;
-      const today = new Date().toISOString().split('T')[0];
+      const today = ukDateStr();
 
       const ZERO = [{ count: '0' }];
       const [suLive, staffActive, alertsUnresolved, carePlansOverdue, leaveRequests, recentClockIns, birthdays, alerts] =

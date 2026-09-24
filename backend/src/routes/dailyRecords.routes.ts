@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 
@@ -369,7 +370,7 @@ router.get('/fluid-total', async (req: Request, res: Response, next: NextFunctio
   try {
     const { suId, date } = req.query as Record<string, string>;
     if (!suId) throw new AppError('suId required', 400);
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || ukDateStr();
     const rows = await query(
       `SELECT total_ml, below_threshold FROM su_daily_fluid_totals WHERE su_id = $1 AND record_date = $2`,
       [suId, targetDate]

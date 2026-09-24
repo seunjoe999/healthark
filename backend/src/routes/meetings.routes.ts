@@ -6,6 +6,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { ukDateStr } from '../utils/ukTime';
 
 // Shared "Meetings" record type — used for Resident Meeting (su_id set),
 // Staff Meeting (staff_id set) and Management Meeting (home-wide, neither
@@ -57,7 +58,7 @@ router.post('/su', [body('suId').isUUID(), body('conductedBy').notEmpty()], vali
         `INSERT INTO meetings (meeting_type, su_id, home_id, created_by, conducted_by, meeting_date,
           attendees, service_location, notes, action_plan)
          VALUES ('resident',$1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [suId, homeId, createdBy, conductedBy, meetingDate || new Date().toISOString().split('T')[0],
+        [suId, homeId, createdBy, conductedBy, meetingDate || ukDateStr(),
          attendees || null, serviceLocation || null, notes || null, actionPlan || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -101,7 +102,7 @@ router.post('/staff', [body('staffId').isUUID(), body('conductedBy').notEmpty()]
         `INSERT INTO meetings (meeting_type, staff_id, home_id, created_by, conducted_by, meeting_date,
           attendees, service_location, notes, action_plan)
          VALUES ('staff',$1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [staffId, homeId, createdBy, conductedBy, meetingDate || new Date().toISOString().split('T')[0],
+        [staffId, homeId, createdBy, conductedBy, meetingDate || ukDateStr(),
          attendees || null, serviceLocation || null, notes || null, actionPlan || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -137,7 +138,7 @@ router.post('/management', requireRole(...MANAGER_ROLES), [body('homeId').isUUID
         `INSERT INTO meetings (meeting_type, home_id, created_by, conducted_by, meeting_date,
           attendees, service_location, notes, action_plan)
          VALUES ('management',$1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-        [homeId, createdBy, conductedBy, meetingDate || new Date().toISOString().split('T')[0],
+        [homeId, createdBy, conductedBy, meetingDate || ukDateStr(),
          attendees || null, serviceLocation || null, notes || null, actionPlan || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -153,7 +154,7 @@ router.put('/:id/sign-off', param('id').isUUID(), body('signedOffBy').notEmpty()
       const rows = await query(
         `UPDATE meetings SET signed_off = TRUE, signed_off_by = $1, signed_off_date = $2
          WHERE id = $3 RETURNING *`,
-        [signedOffBy, nd(signedOffDate) || new Date().toISOString().split('T')[0], req.params.id]
+        [signedOffBy, nd(signedOffDate) || ukDateStr(), req.params.id]
       );
       if (!rows.length) { res.status(404).json({ success: false, error: 'Meeting not found' } as ApiResponse); return; }
       res.json({ success: true, data: rows[0] } as ApiResponse);

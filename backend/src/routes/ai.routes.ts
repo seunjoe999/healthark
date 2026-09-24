@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import https from 'https';
 import { URLSearchParams } from 'url';
+import { ukDateStr } from '../utils/ukTime';
 
 // ── Groq AI caller (same pattern as aiAudit.routes.ts) ───────────────────────
 async function callAI(prompt: string, maxTokens = 900): Promise<string> {
@@ -159,7 +160,7 @@ router.post(
       if (!homeId) throw new AppError('homeId is required', 400);
 
       const shiftDate: string =
-        req.body.shiftDate || new Date().toISOString().split('T')[0];
+        req.body.shiftDate || ukDateStr();
       const shiftType: string = req.body.shiftType || 'all';
 
       // Hours window: day = last 12h of daytime, night = last 12h overnight, all = last 24h
@@ -435,7 +436,7 @@ router.post(
     try {
       const { suId, staffNote, incidentType, incidentDate } = req.body;
       const staffId = fromToken(req, 'staffId');
-      const dateStr: string = incidentDate || new Date().toISOString().split('T')[0];
+      const dateStr: string = incidentDate || ukDateStr();
 
       const suRows = await query(
         `SELECT first_name || ' ' || last_name AS name, date_of_birth, room_number

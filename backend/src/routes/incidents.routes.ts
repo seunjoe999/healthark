@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { ukDateStr } from '../utils/ukTime';
 import { sendPushToStaffMany } from '../services/push.service';
 async function callGroq(prompt: string, maxTokens = 1200): Promise<string> {
   const key = process.env.GROQ_API_KEY || '';
@@ -210,7 +211,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     if (!suId) throw new AppError('suId required', 400);
     if (!homeId) throw new AppError('homeId required', 400);
     if (!staffId) throw new AppError('staffId not found in token', 401);
-    const recordDate = incidentDate || new Date().toISOString().split('T')[0];
+    const recordDate = incidentDate || ukDateStr();
     const drRow = await query<{ id: string }>(
       `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, record_date, notes)
        VALUES ($1,$2,$3,'incident',$4,$5) RETURNING id`,

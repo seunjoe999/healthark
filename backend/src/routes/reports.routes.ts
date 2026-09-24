@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
+import { ukDateStr } from '../utils/ukTime';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -22,7 +23,7 @@ router.get('/daily-records', async (req: Request, res: Response, next: NextFunct
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { suId, from, to, recordType } = req.query as Record<string, string>;
     const fromDate = from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = to || new Date().toISOString().split('T')[0];
+    const toDate = to || ukDateStr();
 
     let sql = `SELECT dr.*, su.first_name || ' ' || su.last_name as su_name,
                       s.first_name || ' ' || s.last_name as staff_name
@@ -47,7 +48,7 @@ router.get('/fluid', async (req: Request, res: Response, next: NextFunction) => 
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { from, to } = req.query as Record<string, string>;
     const fromDate = from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = to || new Date().toISOString().split('T')[0];
+    const toDate = to || ukDateStr();
 
     const rows = await query(
       `SELECT ft.*, su.first_name || ' ' || su.last_name as su_name, su.min_fluid_ml
@@ -66,7 +67,7 @@ router.get('/incidents', async (req: Request, res: Response, next: NextFunction)
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { from, to } = req.query as Record<string, string>;
     const fromDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = to || new Date().toISOString().split('T')[0];
+    const toDate = to || ukDateStr();
 
     const rows = await query(
       `SELECT ri.*, dr.record_date, su.first_name || ' ' || su.last_name as su_name,
@@ -112,7 +113,7 @@ router.get('/staff-attendance', async (req: Request, res: Response, next: NextFu
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { from, to } = req.query as Record<string, string>;
     const fromDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = to || new Date().toISOString().split('T')[0];
+    const toDate = to || ukDateStr();
     const rows = await query(
       `SELECT ce.*, s.first_name || ' ' || s.last_name as staff_name, s.role
        FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id
@@ -191,7 +192,7 @@ router.get('/mar-report', async (req: Request, res: Response, next: NextFunction
        LEFT JOIN staff s ON s.id = mr.given_by
        WHERE mr.home_id = $1 AND mr.record_date BETWEEN $2 AND $3
        ORDER BY mr.record_date DESC, su_name`,
-      [homeId, from || new Date().toISOString().split('T')[0], to || new Date().toISOString().split('T')[0]]
+      [homeId, from || ukDateStr(), to || ukDateStr()]
     );
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -245,7 +246,7 @@ router.get('/calendar', async (req: Request, res: Response, next: NextFunction) 
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { suId, from, to } = req.query as Record<string, string>;
     const fromDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = to || new Date().toISOString().split('T')[0];
+    const toDate = to || ukDateStr();
     let sql = `SELECT ce.*, su.first_name || ' ' || su.last_name as su_name,
                       s.first_name || ' ' || s.last_name as created_by_name
                FROM calendar_events ce
@@ -303,7 +304,7 @@ router.get('/safeguarding', async (req: Request, res: Response, next: NextFuncti
        WHERE sg.home_id = $1
        ${from ? "AND sg.incident_date >= $2 AND sg.incident_date <= $3" : ""}
        ORDER BY sg.incident_date DESC`,
-      from ? [homeId, from, to || new Date().toISOString().split('T')[0]] : [homeId]
+      from ? [homeId, from, to || ukDateStr()] : [homeId]
     );
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -408,7 +409,7 @@ router.get('/incident-analysis', async (req: Request, res: Response, next: NextF
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const { from, to } = req.query as Record<string, string>;
     const fromDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = to || new Date().toISOString().split('T')[0];
+    const toDate = to || ukDateStr();
 
     const rows = await query(
       `SELECT ri.incident_type, ri.description, ri.body_map_data, ri.witnesses,

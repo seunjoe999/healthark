@@ -7,6 +7,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 
@@ -139,7 +140,7 @@ router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()]
         `INSERT INTO staff_cautions (staff_id, home_id, created_by, caution_type, caution_date, overview,
           outcome, strengths, weaknesses, action_points, review_date, document_url, document_name)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-        [staffId, homeId, createdBy, cautionType || 'verbal', nd(cautionDate) || new Date().toISOString().split('T')[0], overview,
+        [staffId, homeId, createdBy, cautionType || 'verbal', nd(cautionDate) || ukDateStr(), overview,
          outcome || null, strengths || null, weaknesses || null, actionPoints || null, nd(reviewDate),
          documentUrl || null, documentName || null]
       );

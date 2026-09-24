@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 router.use(authenticate);
@@ -2014,7 +2015,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
        conductedBy || null, auditorName || null, JSON.stringify(answers || {}),
        totalScore, maxScore, scorePct, riskLevel,
        actionsIdentified || null, actionsOutcome || null, actionsCompletedDate || null,
-       nextReviewDate || null, notes || null, assessmentDate || new Date().toISOString().split('T')[0],
+       nextReviewDate || null, notes || null, assessmentDate || ukDateStr(),
        assessorSignature || null, staffSignature || null]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
