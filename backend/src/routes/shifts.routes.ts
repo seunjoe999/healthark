@@ -43,7 +43,7 @@ function stripFinancials<T extends Record<string, any>>(row: T, role: string): T
 const SHIFT_STATUSES = ['unfilled', 'filled', 'cancelled', 'on_hold', 'completed'];
 const SHIFT_RELATIONS = ['shadow', 'double_up'];
 
-async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Promise<number> {
+export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Promise<number> {
   // Bulk-generate instead of one DB round-trip per calendar day — with the
   // "ongoing" default (52 weeks, daily) the old day-by-day loop meant up to
   // ~700 sequential awaited queries in a single request, routinely exceeding

@@ -3146,6 +3146,61 @@ async function bootstrap() {
     logger.info('Backfill: room numbers assigned to residents without one');
   } catch (err: any) { logger.warn('Backfill room_number error: ' + err?.message); }
 
+  // One-time data fix: service rotas created before the "one row per required
+  // staff slot" fix (shifts.routes.ts service-shift/generateFromTemplate) stored
+  // "Shift Size N" as metadata on a single template row that could only ever hold
+  // one staff member — so a second or third required person had no row to ever
+  // be assigned into (reported as "shift size is two but I can only see one
+  // staff"). The current code path never writes shift_templates.staff_count > 1
+  // any more (every template it creates now represents exactly one slot), so any
+  // row still found with staff_count > 1 can only be a leftover from the old
+  // behaviour. Self-terminating: once every leftover row is split down to
+  // staff_count = 1, nothing matches on a later run, so this is safe to leave in
+  // place permanently rather than needing to be removed after one deploy.
+  try {
+    const { query: dbQuery } = await import('./config/database');
+    const { generateFromTemplate } = await import('./routes/shifts.routes');
+    const legacy = await dbQuery<any>(
+      `SELECT * FROM shift_templates WHERE is_active = TRUE AND label IS NOT NULL AND staff_count > 1`
+    );
+    const today = new Date().toISOString().split('T')[0];
+    let extraSlotsGenerated = 0;
+    for (const tmpl of legacy) {
+      const missing = (tmpl.staff_count || 1) - 1;
+      // The existing row now represents just its own single slot. Already-generated
+      // future occurrences of it get the same correction; past shifts are left alone.
+      await dbQuery(`UPDATE shift_templates SET staff_count = 1 WHERE id = $1`, [tmpl.id]);
+      await dbQuery(
+        `UPDATE staff_shifts SET total_staff_required = 1 WHERE template_id = $1 AND shift_date >= $2`,
+        [tmpl.id, today]
+      );
+      for (let i = 0; i < missing; i++) {
+        const rows = await dbQuery<any>(
+          `INSERT INTO shift_templates
+            (home_id, label, staff_id, su_id, su_ids, shift_type, start_time, end_time, break_minutes,
+             recurrence, days_of_week, start_date, staff_count, is_ongoing,
+             notes_for_carers, notes_for_managers, created_by)
+           SELECT home_id, label, NULL, su_id, su_ids, shift_type, start_time, end_time, break_minutes,
+                  recurrence, days_of_week, GREATEST(start_date, $2::date), 1, is_ongoing,
+                  notes_for_carers, notes_for_managers, created_by
+           FROM shift_templates WHERE id = $1
+           RETURNING *`,
+          [tmpl.id, today]
+        );
+        const newTmpl = rows[0];
+        // New unfilled slot only generates shifts from today onward — it never
+        // existed before, so there's no history to backfill for it.
+        if (newTmpl) {
+          await generateFromTemplate(newTmpl, newTmpl.home_id, newTmpl.is_ongoing ? 52 : 12);
+          extraSlotsGenerated++;
+        }
+      }
+    }
+    if (legacy.length > 0) {
+      logger.info(`Backfill: split ${legacy.length} legacy multi-staff service rota template(s) into individually-assignable slots (${extraSlotsGenerated} new slot(s) added)`);
+    }
+  } catch (err: any) { logger.warn('Backfill legacy service rota slots error: ' + err?.message); }
+
   app.listen(PORT, () => {
     logger.info(`CompCare Hub API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
