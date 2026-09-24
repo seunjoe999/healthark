@@ -493,6 +493,52 @@ async function fetchCategoryContext(
     }
   }
 
+  if (auditType === 'medication_risk_assessment') {
+    // The manager's specific complaint: this audit was showing "Active care
+    // plans 517, 16 care plans overdue" — facility-wide stats for every care
+    // plan type, not what's actually being audited here. Scoped to just the
+    // Medicine Risk Assessments (medicine_risk_assessments table), and to one
+    // resident when auditing a specific person.
+    const suFilter = suId ? ` AND su.id = $4` : ''
+    const params = suId ? [homeId, from, to, suId] : [homeId, from, to]
+    const rows = await query<any>(
+      `SELECT mr.risk_level, mr.review_date, mr.assessed_at, su.first_name || ' ' || su.last_name as su_name
+       FROM medicine_risk_assessments mr
+       JOIN service_users su ON su.id = mr.su_id
+       WHERE mr.home_id = $1 AND mr.assessed_at::date BETWEEN $2 AND $3${suFilter}
+       ORDER BY mr.assessed_at DESC`, params
+    )
+    const overdue = rows.filter((r: any) => r.review_date && new Date(r.review_date) < new Date())
+    const highRisk = rows.filter((r: any) => r.risk_level === 'high')
+    // Residents (in scope) with no assessment on file at all in the period —
+    // a missing assessment is itself a finding, not just an overdue review.
+    const suScopeSql = suId ? `su.id = $2` : `su.home_id = $1 AND su.status = 'live'`
+    const suScopeParams = suId ? [homeId, suId] : [homeId]
+    const missing = await query<any>(
+      `SELECT su.first_name || ' ' || su.last_name as su_name FROM service_users su
+       WHERE ${suScopeSql} AND NOT EXISTS (SELECT 1 FROM medicine_risk_assessments mr WHERE mr.su_id = su.id)`,
+      suScopeParams
+    )
+    const ctx = [
+      `Audit: Medication Risk Assessment${suName ? ` | Service user: ${suName}` : ''} | Period: ${from} to ${to}`,
+      `Medicine Risk Assessments recorded in period: ${rows.length}, ${overdue.length} overdue for review, ${highRisk.length} rated high risk` +
+        (rows.length ? ` (${limit5(rows, r => `${r.su_name}: ${r.risk_level} risk, review ${r.review_date || 'not set'}`)})` : ' — none recorded in this period'),
+      `Residents with NO Medicine Risk Assessment on file at all: ${missing.length}` +
+        (missing.length ? ` (${limit5(missing, m => m.su_name)})` : ''),
+    ].join('\n')
+    return {
+      ctx,
+      summaryLines: [
+        `- Medicine Risk Assessments recorded this period: **${rows.length}**`,
+        `- Overdue for review: **${overdue.length}**`,
+        `- Rated high risk: **${highRisk.length}**`,
+        `- Residents with no assessment on file: **${missing.length}**`,
+      ],
+      checksTotal: Math.max(5, rows.length + missing.length),
+      checksFailed: overdue.length + missing.length,
+    }
+  }
+
   if (auditType === 'infection_control_audit') {
     // No dedicated infection-control tracking exists yet in the system (unlike
     // fridge temperatures or incidents, which have their own tables) — honest
