@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -151,8 +151,11 @@ router.post('/staff/:staffId', param('staffId').isUUID(), validateRequest,
   }
 );
 
-// DELETE /api/documents/staff/:staffId/:docId
-router.delete('/staff/:staffId/:docId',
+// DELETE /api/documents/staff/:staffId/:docId — deleting a staff document
+// (DBS certificate, contract, right-to-work evidence etc.) permanently removes
+// compliance evidence, so this is admin-only, not open to every manager who can
+// upload one.
+router.delete('/staff/:staffId/:docId', requireRole('admin', 'super_admin'),
   [param('staffId').isUUID(), param('docId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -582,6 +582,19 @@ export default function StaffModule() {
                         <a href={resolveUploadUrl(doc.file_url)} target="_blank" rel="noreferrer">
                           <Button size="sm" variant="outline" icon={<Eye className="w-3.5 h-3.5" />}>View</Button>
                         </a>
+                        {isRole('admin', 'super_admin') && (
+                          <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
+                            onClick={async () => {
+                              if (!window.confirm(`Permanently delete "${doc.title || doc.file_name}"?`)) return
+                              try {
+                                await api.delete(`/documents/staff/${selected.id}/${doc.id}`)
+                                setStaffDocs(prev => prev.filter((d: any) => d.id !== doc.id))
+                                toast.success('Document deleted')
+                              } catch { toast.error('Failed to delete document') }
+                            }}>
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>

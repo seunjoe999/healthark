@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Target, Plus, CheckCircle, Clock, TrendingUp, ChevronDown, FileText, Edit2 } from 'lucide-react'
-import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState } from '../../components/ui'
+import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import { ukDateStr } from '../../utils/ukDate'
 import { useAuth } from '../../context/AuthContext'
@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
 import { handleTextareaPaste } from '../../utils/pasteFormat'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
 
 const MONTHLY_SECTIONS = [
   {
@@ -155,6 +156,31 @@ const statusConfig: Record<string, { color: string; badge: string }> = {
   no:        { color: 'text-rose-400', badge: 'badge-critical' },
 }
 
+function buildOutcomePrintPage(o: any, suName: string): string {
+  const statusLabel = STATUSES.find(s => s.value === o.status)?.label || o.status
+  const sections: PrintSection[] = [{
+    title: 'Details',
+    inner: `
+      <table class="fields">
+        <tr><th>Goal</th><td>${esc(o.goal)}</td></tr>
+        <tr><th>Status</th><td>${esc(statusLabel)}</td></tr>
+        ${o.target_date ? `<tr><th>Target Date</th><td>${fmtDate(o.target_date)}</td></tr>` : ''}
+        <tr><th>Recorded By</th><td>${esc(o.created_by_name || '')}</td></tr>
+      </table>
+    `,
+  }]
+  if (o.description) sections.push({ title: 'Description', inner: `<p class="body-text">${nl(String(o.description).replace(/\*\*/g, ''))}</p>` })
+
+  return buildLetterheadPage({
+    docTitle: 'Service User Outcome',
+    docSubtitle: 'Care outcome record',
+    docRefPrefix: 'OUT',
+    docRefId: o.id,
+    residentName: suName,
+    sections,
+  })
+}
+
 export default function Outcomes() {
   const { user } = useAuth()
   const { theme } = useTheme()
@@ -294,6 +320,12 @@ export default function Outcomes() {
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
   const filtered = outcomes.filter(o => (!filterStatus || o.status === filterStatus))
 
+  const handlePrintOutcomes = () => {
+    if (filtered.length === 0) { toast.error('No outcomes to print'); return }
+    const body = filtered.map(o => buildOutcomePrintPage(o, o.su_name || '')).join('')
+    openLetterheadPrint('Service User Outcomes', body)
+  }
+
   const grouped = filtered.reduce<Record<string, any[]>>((acc, o) => {
     const key = o.su_id
     if (!acc[key]) acc[key] = []
@@ -310,9 +342,12 @@ export default function Outcomes() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Track goals and progress for service users</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
-          Add Outcome
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintButton onClick={handlePrintOutcomes} />
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+            Add Outcome
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

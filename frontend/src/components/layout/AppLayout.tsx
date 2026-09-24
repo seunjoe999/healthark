@@ -125,7 +125,7 @@ const navSections = [
       { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
       { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
       { label: 'Download App',       to: '/install',           icon: Download,      roles: [], featureKey: 'install_app' },
-      { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: [], featureKey: 'invoicing' },
+      { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: ['admin', 'super_admin'], featureKey: 'invoicing' },
       { label: 'Leave & Holidays',   to: '/holidays',          icon: Palmtree,      roles: [], featureKey: 'holidays' },
       { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },

@@ -17,9 +17,12 @@ function fromToken(req: Request, field: string): string {
 }
 
 router.use(authenticate);
+// Invoicing is financial data — restricted to admin/super_admin only, not the
+// broader home_manager/group_admin set that could see it before.
+router.use(requireRole('admin', 'super_admin'));
 
 // GET /api/invoicing?homeId=xxx&status=pending
-router.get('/', requireRole('home_manager', 'group_admin'), validateRequest,
+router.get('/', validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
@@ -38,7 +41,7 @@ router.get('/', requireRole('home_manager', 'group_admin'), validateRequest,
 );
 
 // GET /api/invoicing/:id
-router.get('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await dbQuery(
@@ -77,7 +80,7 @@ router.post('/', [
 );
 
 // PATCH /api/invoicing/:id — update invoice
-router.patch('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+router.patch('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status, commissionedHours, invoiceAmount, notes } = req.body;
@@ -101,7 +104,7 @@ router.patch('/:id', requireRole('home_manager', 'group_admin'), param('id').isU
 
 // POST /api/invoicing/:id/send — email the invoice out to one or more recipients
 // (e.g. the funder/local authority) before it's marked approved/paid.
-router.post('/:id/send', requireRole('home_manager', 'group_admin'), [
+router.post('/:id/send', [
   param('id').isUUID(),
   body('emails').isArray({ min: 1 }),
   body('emails.*').isEmail(),
@@ -143,7 +146,7 @@ router.post('/:id/send', requireRole('home_manager', 'group_admin'), [
 );
 
 // DELETE /api/invoicing/:id
-router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await dbQuery('DELETE FROM invoices WHERE id = $1', [req.params.id]);
@@ -153,7 +156,7 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').is
 );
 
 // POST /api/invoicing/generate-monthly — auto-generate monthly invoices
-router.post('/generate-monthly', requireRole('home_manager', 'group_admin'), validateRequest,
+router.post('/generate-monthly', validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
