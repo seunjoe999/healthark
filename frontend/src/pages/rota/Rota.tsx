@@ -302,6 +302,7 @@ export default function Rota() {
     } catch { }
   }, [selectedHome])
   useEffect(() => { loadServiceLabels() }, [loadServiceLabels])
+  const [manageServicesOpen, setManageServicesOpen] = useState(false)
 
   useEffect(() => {
     if (!selectedHome) return
@@ -570,6 +571,13 @@ export default function Rota() {
             {staffList.map(s => <option key={s.id} value={`staff:${s.id}`}>{getName(s)}</option>)}
           </optgroup>
         </select>
+        {canManage && serviceLabels.length > 0 && (
+          <button onClick={() => setManageServicesOpen(true)}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+            title="View and delete services — e.g. remove accidental duplicates">
+            <Trash2 className="w-3 h-3" /> Manage Services
+          </button>
+        )}
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">All Shift Types</option>
@@ -971,6 +979,14 @@ export default function Rota() {
           homeId={selectedHome}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
           onSaved={() => { setBulkOpen(false); loadAll() }}
+        />
+      )}
+
+      {manageServicesOpen && (
+        <ManageServicesModal
+          homeId={selectedHome}
+          onClose={() => setManageServicesOpen(false)}
+          onDeleted={() => { loadServiceLabels(); loadAll() }}
         />
       )}
 
@@ -2454,6 +2470,74 @@ function SwapModal({ shift, staffList, homeId, onClose, onSaved }: {
           <Button type="submit" loading={saving} icon={<ArrowLeftRight className="w-4 h-4" />}>Send request</Button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+// ── Manage Services Modal ──────────────────────────────────────────────────────
+// Lets a manager see every service label at this home with how many shifts sit
+// under it, and delete a whole service (every shift + its recurring template)
+// in one click — for cleaning up accidental duplicates like the same service
+// created several times over ("Kennedy" x4) without hunting down and deleting
+// every individual shift tile by hand.
+
+function ManageServicesModal({ homeId, onClose, onDeleted }: {
+  homeId: string; onClose: () => void; onDeleted: () => void
+}) {
+  const [services, setServices] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/shifts/service-labels-detail', { params: { homeId } })
+      setServices(res.data.data || [])
+    } catch { toast.error('Failed to load services') }
+    finally { setLoading(false) }
+  }, [homeId])
+  useEffect(() => { load() }, [load])
+
+  const remove = async (label: string) => {
+    if (!window.confirm(`Delete the service "${label}"? This removes every shift under it (past and future) and cannot be undone.`)) return
+    setDeleting(label)
+    try {
+      const res = await api.delete(`/shifts/service-label/${encodeURIComponent(label)}`, { params: { homeId } })
+      toast.success(`Deleted ${res.data.data?.deleted ?? 0} shift(s) for "${label}"`)
+      setServices(prev => prev.filter(s => s.label !== label))
+      onDeleted()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete') }
+    finally { setDeleting(null) }
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Manage Services" size="md">
+      <p className="text-sm text-slate-500 mb-4">
+        Every service currently on the rota, with how many shifts sit under it. Delete a service to remove all of its shifts (past and future) at once — useful for cleaning up accidental duplicates.
+      </p>
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading...</p>
+      ) : services.length === 0 ? (
+        <p className="text-sm text-slate-400">No services found.</p>
+      ) : (
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {services.map(s => (
+            <div key={s.label} className="flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">{s.label}</p>
+                <p className="text-xs text-slate-400">{s.shift_count} shift{s.shift_count !== '1' ? 's' : ''} total · {s.future_count} upcoming</p>
+              </div>
+              <button onClick={() => remove(s.label)} disabled={deleting !== null}
+                className="flex items-center gap-1 text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                <Trash2 className="w-3.5 h-3.5" /> {deleting === s.label ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex justify-end pt-4 mt-2 border-t border-slate-100">
+        <Button variant="outline" onClick={onClose}>Close</Button>
+      </div>
     </Modal>
   )
 }

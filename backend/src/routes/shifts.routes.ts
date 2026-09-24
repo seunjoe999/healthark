@@ -148,6 +148,43 @@ router.get('/service-labels', async (req: Request, res: Response, next: NextFunc
   } catch (err) { next(err); }
 });
 
+// GET /api/shifts/service-labels-detail?homeId= — same distinct labels as
+// above, but with a shift count each, for the "Manage Services" cleanup
+// panel — lets a manager see they've accidentally created "Kennedy" four
+// times over and delete the duplicates, instead of hunting down and
+// removing dozens of individual shift tiles one at a time.
+router.get('/service-labels-detail', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query<any>(
+      `SELECT label, COUNT(*) as shift_count,
+              COUNT(*) FILTER (WHERE shift_date >= CURRENT_DATE) as future_count
+       FROM staff_shifts
+       WHERE home_id = $1 AND label IS NOT NULL AND label != ''
+       GROUP BY label ORDER BY label`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/shifts/service-label/:label?homeId= — deletes every shift AND
+// recurring template for this exact service label at this home, so a
+// manager can remove a whole accidentally-duplicated service in one action
+// instead of clicking through every individual shift.
+router.delete('/service-label/:label', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const label = decodeURIComponent(req.params.label);
+    const shiftsDeleted = await query<any>(
+      `DELETE FROM staff_shifts WHERE home_id = $1 AND label = $2 RETURNING id`,
+      [homeId, label]
+    );
+    await query(`UPDATE shift_templates SET is_active = FALSE WHERE home_id = $1 AND label = $2`, [homeId, label]);
+    res.json({ success: true, data: { deleted: shiftsDeleted.length } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/shifts?homeId=&weekStart=&date=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
