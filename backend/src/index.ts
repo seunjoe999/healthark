@@ -1943,6 +1943,7 @@ async function ensureColumns() {
     // with uneven gaps into an artificial evenly-spaced pattern and caused staff to be unable
     // to log doses at the medication's actual prescribed times.
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS time_slots TEXT[]`,
+    `ALTER TABLE timesheet_entries ADD COLUMN IF NOT EXISTS service_name VARCHAR(255)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS review_frequency VARCHAR(30) DEFAULT 'every_4_weeks'`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS auditor_name VARCHAR(255)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checklist_answers JSONB`,

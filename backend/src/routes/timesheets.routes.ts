@@ -176,14 +176,14 @@ router.post('/:id/entries', requireRole('home_manager', 'group_admin', 'deputy_m
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { workDate, startTime, endTime, hoursWorked, notes } = req.body;
+      const { workDate, startTime, endTime, hoursWorked, notes, serviceName, breakMinutes } = req.body;
       const [ts] = await query('SELECT * FROM timesheets WHERE id = $1', [req.params.id]);
       if (!ts) throw new AppError('Timesheet not found', 404);
 
       await query(`
-        INSERT INTO timesheet_entries (timesheet_id, clockin_id, work_date, start_time, end_time, hours_worked, notes)
-        VALUES ($1, NULL, $2, $3, $4, $5, $6)`,
-        [req.params.id, workDate, startTime || null, endTime || null, parseFloat(hoursWorked).toFixed(2), notes || null]
+        INSERT INTO timesheet_entries (timesheet_id, clockin_id, work_date, start_time, end_time, break_minutes, hours_worked, notes, service_name)
+        VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8)`,
+        [req.params.id, workDate, startTime || null, endTime || null, parseInt(breakMinutes) || 0, parseFloat(hoursWorked).toFixed(2), notes || null, serviceName || null]
       );
 
       const [{ sum }] = await query<any>('SELECT COALESCE(SUM(hours_worked), 0) AS sum FROM timesheet_entries WHERE timesheet_id = $1', [req.params.id]);

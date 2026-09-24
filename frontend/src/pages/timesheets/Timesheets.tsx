@@ -35,13 +35,32 @@ export default function Timesheets() {
   const [loading, setLoading] = useState(true)
   const [weekStart, setWeekStart] = useState(getMonday(new Date()))
   const [showGenerate, setShowGenerate] = useState(false)
+  const [genStep, setGenStep] = useState<1 | 2>(1)
   const [showDetail, setShowDetail] = useState<any>(null)
   const [genForm, setGenForm] = useState({ staffId: '' })
   const [submitting, setSubmitting] = useState(false)
   const [stats, setStats] = useState<any>(null)
   const [showAddEntry, setShowAddEntry] = useState(false)
-  const [entryForm, setEntryForm] = useState({ workDate: '', startTime: '', endTime: '', hoursWorked: '', notes: '' })
+  const [entryForm, setEntryForm] = useState({ workDate: '', startTime: '', endTime: '', breakMinutes: '0', hoursWorked: '', serviceName: '', notes: '' })
   const [entrySubmitting, setEntrySubmitting] = useState(false)
+  const [serviceOptions, setServiceOptions] = useState<string[]>([])
+
+  useEffect(() => {
+    api.get('/shifts/service-labels').then(res => setServiceOptions(res.data?.data || [])).catch(() => {})
+  }, [])
+
+  // Auto-computes hours worked from start/end time minus break, so staff don't
+  // have to do the maths themselves — they just enter when they started,
+  // finished, and how long their break was.
+  function autoHours(startTime: string, endTime: string, breakMinutes: string) {
+    if (!startTime || !endTime) return ''
+    const [sh, sm] = startTime.split(':').map(Number)
+    const [eh, em] = endTime.split(':').map(Number)
+    let mins = (eh * 60 + em) - (sh * 60 + sm)
+    if (mins < 0) mins += 24 * 60
+    mins -= parseInt(breakMinutes) || 0
+    return mins > 0 ? (mins / 60).toFixed(2) : ''
+  }
 
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
 
@@ -74,13 +93,40 @@ export default function Timesheets() {
     setWeekStart(d.toISOString().split('T')[0])
   }
 
-  async function generate(e: React.FormEvent) {
+  // "Generate" used to create an empty timesheet purely from clock-in/out data —
+  // if that staff member had no complete clock-in+clock-out pair for the week
+  // (a very common gap), it silently produced a 0-hour timesheet with nothing
+  // in it and no way to add the actual shift right there. Now picking a staff
+  // member immediately opens the shift-entry form (step 2) so the real hours
+  // worked can be entered directly, instead of generating an empty record first.
+  function pickStaffAndContinue(e: React.FormEvent) {
     e.preventDefault()
+    if (!genForm.staffId) return
+    setEntryForm({ workDate: weekStart, startTime: '', endTime: '', breakMinutes: '0', hoursWorked: '', serviceName: '', notes: '' })
+    setGenStep(2)
+  }
+
+  async function generateAndAddFirstEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!entryForm.workDate || !entryForm.hoursWorked) return
     setSubmitting(true)
     try {
-      await api.post('/timesheets/generate', { staffId: genForm.staffId, weekStart })
+      const genRes = await api.post('/timesheets/generate', { staffId: genForm.staffId, weekStart })
+      const timesheetId = genRes.data?.data?.timesheet?.id
+      if (timesheetId) {
+        await api.post(`/timesheets/${timesheetId}/entries`, {
+          workDate: entryForm.workDate,
+          startTime: entryForm.startTime || null,
+          endTime: entryForm.endTime || null,
+          breakMinutes: entryForm.breakMinutes || '0',
+          hoursWorked: entryForm.hoursWorked,
+          serviceName: entryForm.serviceName || null,
+          notes: entryForm.notes || null,
+        })
+      }
       setShowGenerate(false)
-      load()
+      setGenStep(1)
+      await load()
     } catch {}
     setSubmitting(false)
   }
@@ -102,7 +148,7 @@ export default function Timesheets() {
   }
 
   function openAddEntry() {
-    setEntryForm({ workDate: '', startTime: '', endTime: '', hoursWorked: '', notes: '' })
+    setEntryForm({ workDate: '', startTime: '', endTime: '', breakMinutes: '0', hoursWorked: '', serviceName: '', notes: '' })
     setShowAddEntry(true)
   }
 
@@ -115,7 +161,9 @@ export default function Timesheets() {
         workDate: entryForm.workDate,
         startTime: entryForm.startTime || null,
         endTime: entryForm.endTime || null,
+        breakMinutes: entryForm.breakMinutes || '0',
         hoursWorked: entryForm.hoursWorked,
+        serviceName: entryForm.serviceName || null,
         notes: entryForm.notes || null,
       })
       setShowAddEntry(false)
@@ -155,18 +203,18 @@ export default function Timesheets() {
         )}
       </div>
 
-      {/* Stats */}
+      {/* Stats — colour-coded per widget for at-a-glance scanning */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Pending Approval', value: stats.pending_count },
-            { label: 'Approved', value: stats.approved_count },
-            { label: 'Total Hours', value: formatHours(stats.total_hours) },
-            { label: 'Total Pay', value: stats.total_pay ? `£${parseFloat(stats.total_pay).toFixed(2)}` : '—' },
+            { label: 'Pending Approval', value: stats.pending_count, bg: '#fef3c7', border: '#fbbf24', text: '#92400e' },
+            { label: 'Approved', value: stats.approved_count, bg: '#d1fae5', border: '#6ee7b7', text: '#065f46' },
+            { label: 'Total Hours', value: formatHours(stats.total_hours), bg: '#dbeafe', border: '#93c5fd', text: '#1e40af' },
+            { label: 'Total Pay', value: stats.total_pay ? `£${parseFloat(stats.total_pay).toFixed(2)}` : '—', bg: '#ede9fe', border: '#c4b5fd', text: '#5b21b6' },
           ].map(s => (
-            <div key={s.label} className="card p-4 text-center">
-              <div className="text-2xl font-bold text-amber-400">{s.value ?? 0}</div>
-              <div className="text-xs text-slate-400 mt-1">{s.label}</div>
+            <div key={s.label} className="rounded-xl p-4 text-center border" style={{ background: s.bg, borderColor: s.border }}>
+              <div className="text-2xl font-bold" style={{ color: s.text }}>{s.value ?? 0}</div>
+              <div className="text-xs mt-1 font-semibold" style={{ color: s.text, opacity: 0.75 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -238,20 +286,67 @@ export default function Timesheets() {
         </div>
       )}
 
-      {/* Generate Modal */}
-      <Modal open={showGenerate} onClose={() => setShowGenerate(false)} title="Generate Timesheet">
-        <form onSubmit={generate} className="space-y-4">
-          <p className="text-sm text-slate-400">Generate a timesheet from clock-in data for the selected staff member.</p>
-          <Select label="Staff Member" options={staffOptions} placeholder="Select staff member..." value={genForm.staffId}
-            onChange={e => setGenForm(f => ({ ...f, staffId: e.target.value }))} required />
-          <div className="card p-3 text-sm text-slate-300">
-            Week: <strong className="text-white">{new Date(weekStart).toLocaleDateString('en-GB')} – {weekEnd.toLocaleDateString('en-GB')}</strong>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowGenerate(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Generate</Button>
-          </div>
-        </form>
+      {/* Generate Modal — step 1: pick staff, step 2: enter the actual shift worked */}
+      <Modal open={showGenerate} onClose={() => { setShowGenerate(false); setGenStep(1) }} title="Generate Timesheet">
+        {genStep === 1 ? (
+          <form onSubmit={pickStaffAndContinue} className="space-y-4">
+            <p className="text-sm text-slate-400">Select the staff member, then add the hours they worked.</p>
+            <Select label="Staff Member" options={staffOptions} placeholder="Select staff member..." value={genForm.staffId}
+              onChange={e => setGenForm(f => ({ ...f, staffId: e.target.value }))} required />
+            <div className="card p-3 text-sm text-slate-300">
+              Week: <strong className="text-white">{new Date(weekStart).toLocaleDateString('en-GB')} – {weekEnd.toLocaleDateString('en-GB')}</strong>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowGenerate(false)}>Cancel</Button>
+              <Button type="submit" variant="gold">Next</Button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={generateAndAddFirstEntry} className="space-y-4">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Date</label>
+              <input type="date" required className="input" min={weekStart} max={weekEnd.toISOString().split('T')[0]}
+                value={entryForm.workDate} onChange={e => setEntryForm(f => ({ ...f, workDate: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Start time</label>
+                <input type="time" required className="input" value={entryForm.startTime}
+                  onChange={e => setEntryForm(f => ({ ...f, startTime: e.target.value, hoursWorked: autoHours(e.target.value, f.endTime, f.breakMinutes) }))} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Finish time</label>
+                <input type="time" required className="input" value={entryForm.endTime}
+                  onChange={e => setEntryForm(f => ({ ...f, endTime: e.target.value, hoursWorked: autoHours(f.startTime, e.target.value, f.breakMinutes) }))} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Break (mins)</label>
+                <input type="number" min="0" step="5" className="input" value={entryForm.breakMinutes}
+                  onChange={e => setEntryForm(f => ({ ...f, breakMinutes: e.target.value, hoursWorked: autoHours(f.startTime, f.endTime, e.target.value) }))} />
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 -mt-2">Total hours are calculated from start/finish minus your break — your break is automatically excluded.</p>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Total hours worked</label>
+              <input type="number" step="0.25" min="0" max="24" required className="input" placeholder="e.g. 7.5"
+                value={entryForm.hoursWorked} onChange={e => setEntryForm(f => ({ ...f, hoursWorked: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Service</label>
+              <input className="input" list="service-options" placeholder="Which service did they work..."
+                value={entryForm.serviceName} onChange={e => setEntryForm(f => ({ ...f, serviceName: e.target.value }))} />
+              <datalist id="service-options">{serviceOptions.map(s => <option key={s} value={s} />)}</datalist>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Notes (optional)</label>
+              <input className="input" value={entryForm.notes} onChange={e => setEntryForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setGenStep(1)}>Back</Button>
+              <Button type="submit" variant="gold" loading={submitting}>Generate</Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* Detail Modal */}
@@ -295,7 +390,10 @@ export default function Timesheets() {
                   {showDetail.entries.map((e: any) => (
                     <div key={e.id} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc' }}>
                       <span className={theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}>{new Date(e.work_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                      <span className="text-slate-400">{e.start_time ? `${e.start_time} – ${e.end_time}` : (e.notes || 'Manual entry')}</span>
+                      <span className="text-slate-400">
+                        {e.start_time ? `${e.start_time} – ${e.end_time}` : (e.notes || 'Manual entry')}
+                        {e.service_name && ` · ${e.service_name}`}
+                      </span>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white">{formatHours(e.hours_worked)}</span>
                         {canManage && !e.clockin_id && (
@@ -344,9 +442,20 @@ export default function Timesheets() {
             </div>
           </div>
           <div>
+            <label className="text-xs text-slate-400 mb-1 block">Break (mins, excluded from hours below)</label>
+            <input type="number" min="0" step="5" className="input" value={entryForm.breakMinutes}
+              onChange={e => setEntryForm(f => ({ ...f, breakMinutes: e.target.value }))} />
+          </div>
+          <div>
             <label className="text-xs text-slate-400 mb-1 block">Hours worked</label>
             <input type="number" step="0.25" min="0" max="24" required className="input" placeholder="e.g. 7.5"
               value={entryForm.hoursWorked} onChange={e => setEntryForm(f => ({ ...f, hoursWorked: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Service</label>
+            <input className="input" list="service-options" placeholder="Which service did they work..."
+              value={entryForm.serviceName} onChange={e => setEntryForm(f => ({ ...f, serviceName: e.target.value }))} />
+            <datalist id="service-options">{serviceOptions.map(s => <option key={s} value={s} />)}</datalist>
           </div>
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Notes (optional)</label>
