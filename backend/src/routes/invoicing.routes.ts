@@ -115,7 +115,8 @@ router.post('/:id/send', [
       const emails: string[] = req.body.emails;
       const rows = await dbQuery<any>(
         `SELECT i.*, su.first_name, su.last_name, h.name as home_name,
-                h.address1, h.address2, h.address3, h.postcode, h.phone, h.email as home_email
+                h.address1, h.address2, h.address3, h.postcode, h.phone, h.email as home_email,
+                h.bank_name, h.bank_account_number, h.bank_sort_code, h.paypal_email
          FROM invoices i
          JOIN service_users su ON su.id = i.su_id
          JOIN homes h ON h.id = i.home_id
@@ -132,6 +133,8 @@ router.post('/:id/send', [
           name: invoice.home_name,
           address1: invoice.address1, address2: invoice.address2, address3: invoice.address3,
           postcode: invoice.postcode, phone: invoice.phone, email: invoice.home_email,
+          bankName: invoice.bank_name, bankAccountNumber: invoice.bank_account_number,
+          bankSortCode: invoice.bank_sort_code, paypalEmail: invoice.paypal_email,
         }),
       });
       if (!result.ok) throw new AppError(result.error || 'Failed to send invoice email', 502);

@@ -132,6 +132,7 @@ const navSections = [
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
+      { label: 'Service User Feedback', to: '/service-feedback', icon: MessageSquare, roles: [], featureKey: 'service_feedback' },
       { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
       { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
     ]

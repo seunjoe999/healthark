@@ -225,6 +225,7 @@ import bowelChartRoutes from './routes/bowelChart.routes';
 import diaryRoutes from './routes/diary.routes';
 import professionalVisitsRoutes from './routes/professionalVisits.routes';
 import medicineRiskRoutes from './routes/medicineRisk.routes';
+import serviceUserFeedbackRoutes from './routes/serviceUserFeedback.routes';
 import performanceMatrixRoutes from './routes/performanceMatrix.routes';
 import socialActivitiesRoutes from './routes/socialActivities.routes';
 import recruitmentRoutes from './routes/recruitment.routes';
@@ -239,6 +240,7 @@ app.use('/api/bowel-chart', bowelChartRoutes);
 app.use('/api/diary', diaryRoutes);
 app.use('/api/professional-visits', professionalVisitsRoutes);
 app.use('/api/medicine-risk', medicineRiskRoutes);
+app.use('/api/service-feedback', serviceUserFeedbackRoutes);
 app.use('/api/performance', performanceMatrixRoutes);
 app.use('/api/social-activities', socialActivitiesRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
@@ -1944,6 +1946,23 @@ async function ensureColumns() {
     // to log doses at the medication's actual prescribed times.
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS time_slots TEXT[]`,
     `ALTER TABLE timesheet_entries ADD COLUMN IF NOT EXISTS service_name VARCHAR(255)`,
+    `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255)`,
+    `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100)`,
+    `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_sort_code VARCHAR(20)`,
+    `ALTER TABLE homes ADD COLUMN IF NOT EXISTS paypal_email VARCHAR(255)`,
+    `CREATE TABLE IF NOT EXISTS service_user_feedback (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+       su_id UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       completed_by UUID REFERENCES staff(id) ON DELETE SET NULL,
+       completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       project VARCHAR(255),
+       location VARCHAR(255),
+       answers JSONB NOT NULL DEFAULT '{}',
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_suf_su ON service_user_feedback(su_id, completed_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_suf_home ON service_user_feedback(home_id, completed_at DESC)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS review_frequency VARCHAR(30) DEFAULT 'every_4_weeks'`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS auditor_name VARCHAR(255)`,
     `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS checklist_answers JSONB`,

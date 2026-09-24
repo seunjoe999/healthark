@@ -112,6 +112,10 @@ export default function Settings() {
         cqcRating: h.cqc_rating || '',
         totalBeds: h.total_beds || 30,
         taskReminderMinutes: h.task_reminder_minutes || 60,
+        bankName: h.bank_name || '',
+        bankAccountNumber: h.bank_account_number || '',
+        bankSortCode: h.bank_sort_code || '',
+        paypalEmail: h.paypal_email || '',
       })
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
@@ -351,6 +355,20 @@ export default function Settings() {
                 <option value="120">2 hours</option>
                 <option value="240">4 hours</option>
               </select>
+            </div>
+          </div>
+
+          {/* Payment details — shown in the "Payment Methods" section of emailed invoices */}
+          <div className="border-t border-slate-100 pt-4 mt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <h4 className="font-semibold text-slate-800 text-sm">Payment details</h4>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">Shown in the "Payment Methods" section of invoices emailed to funders/local authorities.</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Input label="Bank name" value={form.bankName || ''} onChange={e => set('bankName', e.target.value)} />
+              <Input label="Sort code" value={form.bankSortCode || ''} onChange={e => set('bankSortCode', e.target.value)} placeholder="00-00-00" />
+              <Input label="Account number" value={form.bankAccountNumber || ''} onChange={e => set('bankAccountNumber', e.target.value)} />
+              <Input label="PayPal email" type="email" value={form.paypalEmail || ''} onChange={e => set('paypalEmail', e.target.value)} />
             </div>
           </div>
 

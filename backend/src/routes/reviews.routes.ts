@@ -337,7 +337,8 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
   try {
     const homeId = fromToken(req, 'homeId');
     const { name, address1, postcode, phone, email, managerName, latitude, longitude, geofenceRadius,
-            careType, cqcLocationId, cqcRating, totalBeds, taskReminderMinutes } = req.body;
+            careType, cqcLocationId, cqcRating, totalBeds, taskReminderMinutes,
+            bankName, bankAccountNumber, bankSortCode, paypalEmail } = req.body;
     // Empty-string numeric fields (unset lat/long, blank bed count, etc.) must
     // become null, not '' — Postgres throws "invalid input syntax for type
     // numeric" trying to cast '' directly, which is what was causing every
@@ -357,11 +358,13 @@ router.put('/settings/home', async (req: Request, res: Response, next: NextFunct
         care_type=COALESCE($11,care_type), cqc_location_id=COALESCE($12,cqc_location_id),
         cqc_rating=COALESCE($13,cqc_rating), total_beds=COALESCE($14,total_beds),
         task_reminder_minutes=COALESCE($15,task_reminder_minutes),
+        bank_name=COALESCE($16,bank_name), bank_account_number=COALESCE($17,bank_account_number),
+        bank_sort_code=COALESCE($18,bank_sort_code), paypal_email=COALESCE($19,paypal_email),
         updated_at=NOW() WHERE id=$10`,
       [name || null, address1 || null, (postcode || '').slice(0, 10) || null, phone || null, email || null, managerName || null,
        numOrNull(latitude), numOrNull(longitude), intOrNull(geofenceRadius),
        homeId, careType || null, cqcLocationId || null, cqcRating || null, intOrNull(totalBeds),
-       intOrNull(taskReminderMinutes)]
+       intOrNull(taskReminderMinutes), bankName || null, bankAccountNumber || null, bankSortCode || null, paypalEmail || null]
     );
     res.json({ success: true, message: 'Home settings updated' } as ApiResponse);
   } catch (err) { next(err); }

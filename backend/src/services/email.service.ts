@@ -205,7 +205,8 @@ export function customEmail(candidate: { first_name: string; last_name: string }
 // "Bill To", the issuing home is the "From", and hours × rate is the one line item.
 export function invoiceEmail(
   invoice: { id: string; first_name: string; last_name: string; month_date: string; commissioned_hours?: number | null; hourly_rate?: number | null; invoice_amount: number; notes?: string | null; created_at?: string },
-  home: { name: string; address1?: string | null; address2?: string | null; address3?: string | null; postcode?: string | null; phone?: string | null; email?: string | null }
+  home: { name: string; address1?: string | null; address2?: string | null; address3?: string | null; postcode?: string | null; phone?: string | null; email?: string | null;
+          bankName?: string | null; bankAccountNumber?: string | null; bankSortCode?: string | null; paypalEmail?: string | null }
 ) {
   const monthLabel = new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   const invoiceNo = invoice.id.slice(0, 8).toUpperCase();
@@ -262,10 +263,24 @@ export function invoiceEmail(
               </tr>
             </table>
 
-            <table role="presentation" cellpadding="0" cellspacing="0" style="width:60%;margin-left:auto;font-size:13px">
-              <tr><td style="padding:6px 12px">Subtotal</td><td align="right" style="padding:6px 12px">£${total.toFixed(2)}</td></tr>
-              <tr><td style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">Amount Due</td><td align="right" style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">£${total.toFixed(2)}</td></tr>
-            </table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0"><tr>
+              <td width="50%" style="vertical-align:top">
+                ${(home.bankName || home.bankAccountNumber || home.paypalEmail) ? `
+                <div style="font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px">PAYMENT METHODS</div>
+                <div style="font-size:13px;line-height:1.7">
+                  ${home.bankName ? `Bank: ${home.bankName}<br/>` : ''}
+                  ${home.bankSortCode ? `Sort code: ${home.bankSortCode}<br/>` : ''}
+                  ${home.bankAccountNumber ? `Account: ${home.bankAccountNumber}<br/>` : ''}
+                  ${home.paypalEmail ? `PayPal: ${home.paypalEmail}` : ''}
+                </div>` : ''}
+              </td>
+              <td width="50%" style="vertical-align:top">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px">
+                  <tr><td style="padding:6px 12px">Subtotal</td><td align="right" style="padding:6px 12px">£${total.toFixed(2)}</td></tr>
+                  <tr><td style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">Amount Due</td><td align="right" style="padding:6px 12px;background:#1e293b;color:#fff;font-weight:700;font-size:15px">£${total.toFixed(2)}</td></tr>
+                </table>
+              </td>
+            </tr></table>
 
             ${invoice.notes ? `<p style="font-size:13px;margin-top:20px;line-height:1.6"><strong>Notes:</strong><br/>${invoice.notes.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>` : ''}
             <p style="text-align:center;font-size:26px;font-style:italic;color:#1e293b;margin:32px 0 8px">Thank You!</p>

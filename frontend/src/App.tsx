@@ -51,6 +51,7 @@ const Maintenance = React.lazy(() => import('./pages/maintenance/Maintenance'))
 const Incidents = React.lazy(() => import('./pages/incidents/Incidents'))
 const DbsTracker = React.lazy(() => import('./pages/dbs/DBSTracker'))
 const Timesheets = React.lazy(() => import('./pages/timesheets/Timesheets'))
+const ServiceUserFeedback = React.lazy(() => import('./pages/service-user-feedback/ServiceUserFeedback'))
 const CQCNotifications = React.lazy(() => import('./pages/cqc-notifications/CQCNotifications'))
 const AuditTrail = React.lazy(() => import('./pages/audit-trail/AuditTrail'))
 const PPEStock = React.lazy(() => import('./pages/ppe/PPE'))
@@ -185,6 +186,7 @@ function AppRoutes() {
         <Route path="/incidents" element={<ProtectedRoute><Incidents /></ProtectedRoute>} />
         <Route path="/dbs" element={<ProtectedRoute><DbsTracker /></ProtectedRoute>} />
         <Route path="/timesheets" element={<ProtectedRoute><Timesheets /></ProtectedRoute>} />
+        <Route path="/service-feedback" element={<ProtectedRoute><ServiceUserFeedback /></ProtectedRoute>} />
         <Route path="/cqc-notifications" element={<ProtectedRoute><CQCNotifications /></ProtectedRoute>} />
         <Route path="/audit-trail" element={<ProtectedRoute><AuditTrail /></ProtectedRoute>} />
         <Route path="/risk-assessment" element={<Navigate to="/risk-management" replace />} />
