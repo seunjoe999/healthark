@@ -10,6 +10,7 @@ import https from 'https';
 import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { getMyPendingTasksToday } from '../utils/taskDue';
+import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 
@@ -125,7 +126,9 @@ router.post('/event', authenticate,
         }
       };
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      // UK date, not the server's own UTC clock — see getMyPendingTasksToday for
+      // why this class of bug matters most right around UK midnight during BST.
+      const todayStr = ukDateStr();
       const rotaShifts = await query<any>(
         `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
         [staffId, homeId, todayStr]
@@ -289,8 +292,8 @@ router.post('/event', authenticate,
 router.get('/analytics', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const startDate = (req.query.startDate as string) || new Date().toISOString().split('T')[0];
-    const endDate = (req.query.endDate as string) || new Date().toISOString().split('T')[0];
+    const startDate = (req.query.startDate as string) || ukDateStr();
+    const endDate = (req.query.endDate as string) || ukDateStr();
 
     // Total events + clock-ins + unique staff
     const summaryRows = await query<any>(
@@ -624,7 +627,7 @@ router.get('/generate/:suId', authenticate, param('suId').isUUID(), validateRequ
 router.get('/sessions', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+    const date = (req.query.date as string) || ukDateStr();
     const rows = await query<any>(
       `SELECT ce.id, ce.staff_id, ce.event_type, ce.event_time, ce.geofence_passed,
               ce.distance_metres, ce.punctuality,

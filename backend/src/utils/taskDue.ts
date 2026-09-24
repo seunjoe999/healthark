@@ -1,5 +1,6 @@
 import { query } from '../config/database';
 import { RESTRICTED_ROLES, getAssignedSuIds } from './residentAccess';
+import { ukDateStr } from './ukTime';
 
 export interface DueGeneralTask { id: string; title: string; dueTime: string | null }
 
@@ -9,7 +10,13 @@ export interface DueGeneralTask { id: string; title: string; dueTime: string | n
 // tasks with no restriction), so a task that wouldn't even show on a staff member's own
 // list can never block them from clocking out over it.
 export async function getMyPendingTasksToday(homeId: string, staffId: string, role: string): Promise<DueGeneralTask[]> {
-  const todayStr = new Date().toISOString().split('T')[0];
+  // UK date, not the server's own UTC clock — during BST the server's UTC date is
+  // still "yesterday" for up to an hour after UK midnight, so this used to check
+  // yesterday's task list (and yesterday's rota shift, below) against a staff
+  // member clocking out right around midnight, either missing genuinely pending
+  // tasks or matching against the wrong shift window entirely — this gate blocks
+  // clock-out, so getting the date wrong here directly produces a stuck clock-in.
+  const todayStr = ukDateStr();
   const rows = await query<any>(
     `SELECT id, title, due_time, created_by, assigned_staff_id, assigned_role, visible_team_ids, su_id
      FROM tasks WHERE home_id = $1 AND task_date = $2 AND status = 'pending'`,
