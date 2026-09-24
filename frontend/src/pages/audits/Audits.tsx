@@ -444,6 +444,16 @@ function AuditReport({ audit, templates, homeName, homeAddress, canDelete, onDel
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5">
+            {/* Which resident this audit is about (or "General/Service-wide" when
+                it isn't) — previously only shown as a small subtitle, easy to miss;
+                now its own clearly-labelled card matching Care Home/Auditor/Period. */}
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 border border-purple-200">
+              <User className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs text-purple-600 font-medium">Service User</p>
+                <p className="text-sm text-purple-900 font-semibold">{audit.su_name || 'General / Service-wide'}</p>
+              </div>
+            </div>
             {homeName && (
               <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
@@ -1394,6 +1404,12 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
     ? templates.filter(t => t.suggestedKey.startsWith('custom_'))
     : templates.filter(t => t.category === category && !t.suggestedKey.startsWith('custom_'))
 
+  const templateScope: 'service_user' | 'service' | null = templates.find(t => t.suggestedKey === auditType)?.scope ?? null
+  useEffect(() => {
+    if (templateScope === 'service') { setSubjectType('other'); setSuId('') }
+    else if (templateScope === 'service_user') { setSubjectType('service_user') }
+  }, [templateScope])
+
   useEffect(() => {
     if (templates.length && !templates.some(t => t.suggestedKey === auditType)) {
       setAuditType(grouped[0]?.suggestedKey || templates[0].suggestedKey)
@@ -1447,19 +1463,14 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
             <input className="input" placeholder="e.g. End of Year Compliance Review" value={customName} onChange={e => setCustomName(e.target.value)} />
           </div>
         )}
-        <div>
-          <label className="label">Who is this audit for?</label>
-          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit mb-2">
-            <button type="button" onClick={() => setSubjectType('service_user')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
-              Service User
-            </button>
-            <button type="button" onClick={() => { setSubjectType('other'); setSuId('') }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'other' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
-              Other (General)
-            </button>
-          </div>
-          {subjectType === 'service_user' && (
+        {/* Built-in templates have a fixed scope — Activity/Falls are always about
+            one resident, Fridge Temperature/Infection Control are always about the
+            whole service — so there's nothing to choose for those, just a resident
+            to pick when the audit requires one. Custom audits (no known scope) keep
+            the free "Service User / Other" toggle, since their scope isn't fixed. */}
+        {templateScope === 'service_user' ? (
+          <div>
+            <label className="label">Service user *</label>
             <select className="input" value={suId} onChange={e => setSuId(e.target.value)}>
               <option value="">Select resident...</option>
               {residents.map(su => (
@@ -1468,8 +1479,37 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
                 </option>
               ))}
             </select>
-          )}
-        </div>
+            <p className="text-xs text-slate-400 mt-1">This audit is per resident — required before you can start it.</p>
+          </div>
+        ) : templateScope === 'service' ? (
+          <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+            This audit covers the whole service/facility, not one resident.
+          </p>
+        ) : (
+          <div>
+            <label className="label">Who is this audit for?</label>
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit mb-2">
+              <button type="button" onClick={() => setSubjectType('service_user')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'service_user' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+                Service User
+              </button>
+              <button type="button" onClick={() => { setSubjectType('other'); setSuId('') }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'other' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
+                Other (General)
+              </button>
+            </div>
+            {subjectType === 'service_user' && (
+              <select className="input" value={suId} onChange={e => setSuId(e.target.value)}>
+                <option value="">Select resident...</option>
+                {residents.map(su => (
+                  <option key={su.id} value={su.id}>
+                    {`${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
         <div>
           <label className="label">Review frequency</label>
           <select className="input" value={reviewFrequency} onChange={e => setReviewFrequency(e.target.value)}>
@@ -1478,8 +1518,8 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
         </div>
         <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button loading={loading} icon={<Activity className="w-4 h-4" />}
-            onClick={() => onGenerate(auditType, customName, reviewFrequency, subjectType === 'service_user' && suId ? suId : null)}>
+          <Button loading={loading} disabled={templateScope === 'service_user' && !suId} icon={<Activity className="w-4 h-4" />}
+            onClick={() => onGenerate(auditType, customName, reviewFrequency, templateScope === 'service_user' ? suId : (templateScope === 'service' ? null : (subjectType === 'service_user' && suId ? suId : null)))}>
             Start Audit
           </Button>
         </div>

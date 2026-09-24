@@ -18,6 +18,42 @@ type AuditTemplate = {
 const AUDIT_TEMPLATES = auditTemplates as AuditTemplate[];
 const AUDIT_TEMPLATE_MAP = new Map(AUDIT_TEMPLATES.map(t => [t.suggestedKey, t]));
 
+// Every template in auditTemplates.json is tagged category:"service_user" regardless
+// of whether it's actually about one resident (Activity, Falls) or the whole home/
+// service (Fridge Temperature, Infection Control, Fire Safety) — so the "who is
+// this for" step had no real way to know which templates need a resident picked.
+// This is the authoritative per-template scope used to require (or hide) the
+// resident selector, and to route to a category-specific data fetcher below.
+const AUDIT_SCOPE: Record<string, 'service_user' | 'service'> = {
+  activity_audit: 'service_user',
+  care_plan_audit: 'service_user',
+  su_documentation_audit: 'service_user',
+  equipment_audit: 'service',
+  falls_prevention_audit: 'service_user',
+  fire_safety_audit: 'service',
+  fridge_temperature_audit: 'service',
+  health_safety_audit: 'service',
+  incident_analysis_audit: 'service',
+  incident_accident_reporting_audit: 'service_user',
+  infection_control_audit: 'service',
+  mandatory_safety_audits_overview: 'service',
+  mar_chart_record_audit: 'service_user',
+  medication_audit: 'service_user',
+  medication_risk_assessment: 'service_user',
+  nutrition_hydration_audit: 'service_user',
+  one_to_one_audit_managers: 'service',
+  premises_audit: 'service',
+  pressure_ulcer_skin_integrity_audit: 'service_user',
+  su_safeguarding_audit: 'service_user',
+  self_medication_administration_assessment: 'service_user',
+};
+// Custom audits (organisation-authored) have no inherent scope — the auditor's
+// own "Who is this for?" choice on the Start Audit form still governs those,
+// unchanged. Only the 21 built-in templates get a fixed, known scope.
+function scopeFor(auditType: string): 'service_user' | 'service' | null {
+  return AUDIT_SCOPE[auditType] || null;
+}
+
 function parseAIJson(raw: string): any {
   const cleaned = raw.replace(/```(?:json|javascript|js)?\s*/gi, '').replace(/```\s*/g, '').trim();
   try { return JSON.parse(cleaned); } catch { /* fall through */ }
@@ -121,13 +157,15 @@ router.get('/templates', async (req: Request, res: Response, next: NextFunction)
         'SELECT * FROM custom_audit_templates WHERE organisation_id = $1 ORDER BY created_at DESC', [orgId]
       );
     }
-    const customTemplates: AuditTemplate[] = customRows.map(r => ({
+    const customTemplates: (AuditTemplate & { scope: string | null })[] = customRows.map(r => ({
       sourceFile: 'custom', category: r.category || 'Custom', title: r.title,
       suggestedKey: `custom_${r.id}`,
       fields: [], questions: (r.questions || []).map((q: any) => ({ text: typeof q === 'string' ? q : q.text, type: 'yesno' })),
       hasActionPlan: true, hasSignature: true, hasScore: true,
+      scope: scopeFor(`custom_${r.id}`),
     }));
-    res.json({ success: true, data: [...customTemplates, ...AUDIT_TEMPLATES] } as ApiResponse);
+    const builtIn = AUDIT_TEMPLATES.map(t => ({ ...t, scope: scopeFor(t.suggestedKey) }));
+    res.json({ success: true, data: [...customTemplates, ...builtIn] } as ApiResponse);
   } catch (err) { next(err); }
 });
 
@@ -186,6 +224,15 @@ router.post('/generate',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { auditType, customName, periodFrom, periodTo, reviewFrequency } = req.body;
       const suId = req.body.suId || null;
+
+      // The 21 built-in templates have a fixed scope (Activity/Falls are about one
+      // resident; Fridge Temperature/Infection Control are about the whole service) —
+      // enforced here too, not just in the Start Audit form, since a per-resident
+      // audit run with no resident selected is exactly the "it's doing it for all of
+      // them, not per individual service user" complaint this was built to fix.
+      if (scopeFor(auditType) === 'service_user' && !suId) {
+        throw new AppError('Select which service user this audit is for', 400);
+      }
 
       const from = periodFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const to = periodTo || ukDateStr();
@@ -343,13 +390,155 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').is
   }
 );
 
+interface CategoryContext { ctx: string; summaryLines: string[]; checksTotal: number; checksFailed: number }
+
+// Category-specific data for the audit types the PDF walkthrough named explicitly —
+// each pulls ONLY the records that audit is actually about, instead of the one
+// generic "care plans / incidents / fluid / MAR / training" block every audit used
+// to get regardless of what it was auditing. Returns null for any audit type not
+// covered here, which falls back to the original generic block below (still
+// functional, just not yet given its own tailored data source).
+async function fetchCategoryContext(
+  auditType: string, homeId: string, suId: string | null, from: string, to: string, suName: string | null
+): Promise<CategoryContext | null> {
+  const limit5 = (arr: any[], fn: (x: any) => string) => arr.slice(0, 5).map(fn).join('; ') || 'none'
+
+  if (auditType === 'activity_audit' && suId) {
+    const [activityPlans, aboutMe, suRow, activityRecords] = await Promise.all([
+      query<any>(`SELECT plan_type, custom_name, aims_outcomes, last_review_date, next_review_date, is_active
+                  FROM care_plans WHERE su_id = $1 AND plan_type = 'social_activities'`, [suId]),
+      query<any>(`SELECT hobbies_interests FROM su_about_me WHERE su_id = $1`, [suId]),
+      query<any>(`SELECT hobbies FROM service_users WHERE id = $1`, [suId]),
+      query<any>(`SELECT record_date, notes FROM daily_records
+                  WHERE su_id = $1 AND record_type = 'social_activity' AND record_date BETWEEN $2 AND $3
+                  ORDER BY record_date DESC LIMIT 20`, [suId, from, to]),
+    ])
+    const activePlan = activityPlans.find((p: any) => p.is_active) || activityPlans[0]
+    const hobbies = aboutMe[0]?.hobbies_interests || suRow[0]?.hobbies || ''
+    const overdue = activePlan?.next_review_date && new Date(activePlan.next_review_date) < new Date()
+
+    const ctx = [
+      `Audit: Activity Audit | Service user: ${suName} | Period: ${from} to ${to}`,
+      activePlan
+        ? `Activity Care Plan: EXISTS (last reviewed ${activePlan.last_review_date || 'never'}, next review ${activePlan.next_review_date || 'not set'}${overdue ? ', OVERDUE' : ''}). Aims/outcomes: ${String(activePlan.aims_outcomes || '').slice(0, 300) || 'none recorded'}`
+        : `Activity Care Plan: NONE FOUND on the system for this resident`,
+      `Stated hobbies/interests (About Me): ${hobbies || 'none recorded'}`,
+      `Activity daily records logged in period: ${activityRecords.length}` +
+        (activityRecords.length ? ` (${limit5(activityRecords, r => `${r.record_date}: ${String(r.notes || '').slice(0, 60)}`)})` : ' — no activity engagement recorded in this period'),
+    ].join('\n')
+
+    return {
+      ctx,
+      summaryLines: [
+        `- Activity Care Plan on file: **${activePlan ? 'Yes' : 'No'}**${overdue ? ' (review overdue)' : ''}`,
+        `- Stated hobbies/interests recorded: **${hobbies ? 'Yes' : 'No'}**`,
+        `- Activity records logged this period: **${activityRecords.length}**`,
+      ],
+      checksTotal: Math.max(5, activityRecords.length + (activePlan ? 1 : 0) + (hobbies ? 1 : 0)),
+      checksFailed: (activePlan ? 0 : 1) + (overdue ? 1 : 0) + (activityRecords.length === 0 ? 1 : 0),
+    }
+  }
+
+  if (auditType === 'fridge_temperature_audit') {
+    const checks = await query<any>(
+      `SELECT check_date, reading_value, unit, result, location FROM environmental_checks
+       WHERE home_id = $1 AND check_type IN ('fridge_temp','freezer_temp') AND check_date BETWEEN $2 AND $3
+       ORDER BY check_date DESC`, [homeId, from, to]
+    )
+    const failed = checks.filter((c: any) => c.result === 'fail' || c.result === 'action_required')
+    const ctx = [
+      `Audit: Fridge/Freezer Temperature Audit | Period: ${from} to ${to}`,
+      `Fridge/freezer temperature checks logged: ${checks.length}, ${failed.length} out of range` +
+        (checks.length ? ` (${limit5(checks, c => `${c.check_date} ${c.location || ''}: ${c.reading_value}${c.unit} — ${c.result}`)})` : ' — no checks recorded in this period'),
+    ].join('\n')
+    return {
+      ctx,
+      summaryLines: [
+        `- Fridge/freezer temperature checks logged: **${checks.length}**`,
+        `- Out-of-range readings: **${failed.length}**`,
+      ],
+      checksTotal: Math.max(5, checks.length),
+      checksFailed: failed.length + (checks.length === 0 ? 1 : 0),
+    }
+  }
+
+  if (auditType === 'incident_accident_reporting_audit' || auditType === 'falls_prevention_audit') {
+    const isFalls = auditType === 'falls_prevention_audit'
+    const typeFilter = isFalls ? ` AND ri.incident_type = 'fall'` : ''
+    const suFilter = suId ? ` AND su.id = $4` : ''
+    const params = suId ? [homeId, from, to, suId] : [homeId, from, to]
+    const rows = await query<any>(
+      `SELECT ri.incident_type, ri.manager_reviewed, dr.record_date,
+              su.first_name || ' ' || su.last_name as su_name
+       FROM records_incidents ri
+       JOIN daily_records dr ON dr.id = ri.daily_record_id
+       JOIN service_users su ON su.id = dr.su_id
+       WHERE dr.home_id = $1 AND dr.record_date BETWEEN $2 AND $3${typeFilter}${suFilter}`, params
+    )
+    const unreviewed = rows.filter((r: any) => !r.manager_reviewed)
+    const label = isFalls ? 'Falls' : 'Incidents'
+    const ctx = [
+      `Audit: ${isFalls ? 'Falls Prevention' : 'Incident/Accident Reporting'} Audit${suName ? ` | Service user: ${suName}` : ''} | Period: ${from} to ${to}`,
+      `${label} recorded: ${rows.length}, ${unreviewed.length} not yet manager-reviewed` +
+        (rows.length ? ` (${limit5(rows, r => `${r.record_date} ${r.su_name}${isFalls ? '' : `: ${r.incident_type}`}${r.manager_reviewed ? '' : ' — UNREVIEWED'}`)})` : ` — no ${label.toLowerCase()} recorded in this period`),
+    ].join('\n')
+    return {
+      ctx,
+      summaryLines: [
+        `- ${label} recorded this period: **${rows.length}**`,
+        `- Not yet manager-reviewed: **${unreviewed.length}**`,
+      ],
+      checksTotal: Math.max(5, rows.length),
+      checksFailed: unreviewed.length,
+    }
+  }
+
+  if (auditType === 'infection_control_audit') {
+    // No dedicated infection-control tracking exists yet in the system (unlike
+    // fridge temperatures or incidents, which have their own tables) — honest
+    // about that gap rather than pulling in unrelated generic data. The
+    // checklist still gets answered (safe-default "yes"/compliant per question,
+    // same as any audit type with no matching live data), for the auditor to
+    // review and correct against what they can see on inspection.
+    const ctx = [
+      `Audit: Infection Prevention and Control Audit | Period: ${from} to ${to}`,
+      `No dedicated infection-control data source is tracked in the system yet (this is a facility-wide/inspection-based audit) — answer each question from direct observation during the walk-round rather than system records.`,
+    ].join('\n')
+    return { ctx, summaryLines: ['- This audit is inspection-based — no live system data to summarise yet.'], checksTotal: 5, checksFailed: 0 }
+  }
+
+  return null
+}
+
 async function generateAuditReport(auditId: string, homeId: string, auditType: string, from: string, to: string, suId?: string | null) {
   try {
-    // ── Gather live data ──────────────────────────────────────────────────────
+    let suName: string | null = null
+    if (suId) {
+      const suRows = await query<any>('SELECT first_name || \' \' || last_name as name FROM service_users WHERE id = $1', [suId])
+      suName = suRows[0]?.name || null
+    }
+    const categoryContext = await fetchCategoryContext(auditType, homeId, suId || null, from, to, suName)
+
+    const auditLabel = auditType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+    let ctx = ''
+    let checksTotal = 10
+    let checksFailed = 0
+    // Generic-path-only variables — stay empty when categoryContext was used, so
+    // the (unreachable in that case) generic fallback-findings block below never
+    // runs, but keeping the declarations avoids re-plumbing everything downstream.
     let carePlans: any[] = [], incidents: any[] = [], dailyRecords: any[] = []
     let fluidData: any[] = [], staffTraining: any[] = [], marRecords: any[] = [], missingRecords: any[] = []
     let safeguardingRows: any[] = [], medicationStock: any[] = []
+    let overduePlans: any[] = [], fluidFlags: any[] = [], expiringTraining: any[] = []
+    let totalRecords = 0, marPct = 0
 
+    if (categoryContext) {
+      ctx = categoryContext.ctx
+      checksTotal = categoryContext.checksTotal
+      checksFailed = categoryContext.checksFailed
+    } else {
+
+    // ── Gather live data ──────────────────────────────────────────────────────
     const suFilter = suId ? ' AND su.id = $4' : ''
     const suParams = suId ? [homeId, from, to, suId] : [homeId, from, to]
     const missingRecordsFilter = suId ? ' AND su.id = $2' : ''
@@ -401,22 +590,21 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
     ])
 
     // ── Derived metrics ───────────────────────────────────────────────────────
-    const overduePlans    = carePlans.filter(cp => cp.next_review_date && new Date(cp.next_review_date) < new Date())
-    const fluidFlags      = fluidData
-    const expiringTraining = staffTraining
+    overduePlans    = carePlans.filter(cp => cp.next_review_date && new Date(cp.next_review_date) < new Date())
+    fluidFlags      = fluidData
+    expiringTraining = staffTraining
     const marStat         = (marRecords[0] || {}) as any
-    const totalRecords    = dailyRecords.reduce((s, r) => s + parseInt(r.count), 0)
-    const marPct          = marStat.total > 0 ? Math.round((parseInt(marStat.given || 0) / parseInt(marStat.total)) * 100) : 0
-    const auditLabel      = auditType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+    totalRecords    = dailyRecords.reduce((s, r) => s + parseInt(r.count), 0)
+    marPct          = marStat.total > 0 ? Math.round((parseInt(marStat.given || 0) / parseInt(marStat.total)) * 100) : 0
     const lowStock        = medicationStock.filter((m: any) => Number(m.current_stock) <= Number(m.reorder_level))
 
     // ── Scoring (based on real data, not AI) ─────────────────────────────────
-    const checksTotal  = Math.max(10,
+    checksTotal  = Math.max(10,
       carePlans.length + incidents.length + dailyRecords.length +
       (marStat.total > 0 ? 5 : 0) + safeguardingRows.length + staffTraining.length + missingRecords.length +
       medicationStock.length
     )
-    const checksFailed = overduePlans.length + fluidFlags.length + expiringTraining.length +
+    checksFailed = overduePlans.length + fluidFlags.length + expiringTraining.length +
       missingRecords.length + safeguardingRows.filter((s: any) => !s.manager_ack).length +
       incidents.filter((i: any) => !i.manager_reviewed).length +
       (marPct > 0 && marPct < 95 ? 2 : 0) + lowStock.length
@@ -424,7 +612,7 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
     // ── Build compact data context for AI (kept short to stay under token limits) ──
     const limit5 = (arr: any[], fn: (x: any) => string) => arr.slice(0, 5).map(fn).join('; ') || 'none'
 
-    const ctx = [
+    ctx = [
       `Audit: ${auditLabel} | Period: ${from} to ${to}`,
       `Care plans: ${carePlans.length} active, ${overduePlans.length} overdue` +
         (overduePlans.length ? ` (${limit5(overduePlans, cp => `${cp.su_name} ${cp.plan_type} due ${cp.next_review_date}`)})` : ''),
@@ -442,6 +630,8 @@ async function generateAuditReport(auditId: string, homeId: string, auditType: s
       `Medication stock: ${medicationStock.length} items, ${lowStock.length} at/below reorder level` +
         (lowStock.length ? ` (${limit5(lowStock, m => `${m.su_name} ${m.medication_name}: ${m.current_stock}${m.unit} left`)})` : ''),
     ].join('\n')
+
+    } // end generic data-gathering branch (categoryContext ? skip : run above)
 
     // ── AI prompt (concise to stay within Groq free-tier token limits) ─────────
     const prompt = `UK CQC care home compliance inspector. Write a formal ${auditLabel} audit report.
@@ -482,6 +672,13 @@ British English. Max 400 words total.`
       // Fallback template when AI is unavailable
       findings = `## ${auditLabel} Audit Report\n**Period:** ${from} to ${to}\n\n`
       findings += `### Summary\n`
+      if (categoryContext) {
+        findings += categoryContext.summaryLines.join('\n') + '\n'
+        findings += checksFailed === 0 ? `\n✅ No critical issues identified in this audit period.\n` : `\n⚠️ ${checksFailed} issue(s) identified — see summary above.\n`
+        recommendations = checksFailed > 0
+          ? `- Review the flagged item(s) above and address before the next audit cycle\n`
+          : '- Continue current monitoring — no immediate actions required.'
+      } else {
       findings += `- Active care plans: **${carePlans.length}** (${overduePlans.length} overdue)\n`
       findings += `- Daily records logged: **${totalRecords}**\n`
       findings += `- Incidents: **${incidents.length}**\n`
@@ -499,6 +696,7 @@ British English. Max 400 words total.`
       if (fluidFlags.length > 0) recommendations += `- Investigate and address fluid intake below threshold\n`
       if (expiringTraining.length > 0) recommendations += `- Arrange renewal for ${expiringTraining.length} expiring training certificate(s)\n`
       if (!recommendations) recommendations = '- Continue current monitoring — no immediate actions required.'
+      }
     }
 
     // ── The system fully answers the audit's checklist from the live data
