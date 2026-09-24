@@ -7,6 +7,7 @@ import { format, parseISO, startOfWeek, startOfMonth, endOfMonth, addDays, diffe
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
 import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck, Clock, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
+import BodySitePicker from '../../components/BodySitePicker'
 
 const FREQ_TIMES: Record<string, string[]> = {
   once_daily: ['08:00'],
@@ -1349,6 +1350,9 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
   const [completed, setCompleted] = useState(true)
   const [signoffId, setSignoffId] = useState('')
   const [signoffName, setSignoffName] = useState('')
+  const [applicationSite, setApplicationSite] = useState(existingRecord?.application_site || '')
+  const [applicationSiteLabel, setApplicationSiteLabel] = useState(existingRecord?.application_site_label || '')
+  const needsApplicationSite = ['cream', 'patch'].includes(med.medicine_type)
 
   const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
   const isControlled = med.is_controlled
@@ -1380,6 +1384,9 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
     if (isControlled && selected?.given && !witnessId) {
       toast.error('A witness is required for controlled medication administration'); return
     }
+    if (needsApplicationSite && selected?.given && !applicationSite) {
+      toast.error('Select where on the body this was applied'); return
+    }
     setLoading(true)
     try {
       if (isAmend) {
@@ -1394,6 +1401,8 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
           sideEffects,
           sideEffectsNotes: sideEffects ? (sideEffectsNotes || undefined) : undefined,
           emotion: emotion || undefined,
+          applicationSite: applicationSite || undefined,
+          applicationSiteLabel: applicationSiteLabel || undefined,
         })
         onSaved()
         return
@@ -1415,6 +1424,8 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
         completed,
         signoffRequestedBy: signoffId || undefined,
         signoffRequestedName: signoffId ? signoffName : undefined,
+        applicationSite: applicationSite || undefined,
+        applicationSiteLabel: applicationSiteLabel || undefined,
       }
       if (isControlled && witnessId) {
         payload.controlledWitnessId = witnessId
@@ -1563,6 +1574,10 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
               </select>
             </div>
           </div>
+        )}
+
+        {needsApplicationSite && selected?.given && (
+          <BodySitePicker value={applicationSite} onChange={(zoneId, zoneLabel) => { setApplicationSite(zoneId); setApplicationSiteLabel(zoneLabel) }} />
         )}
 
         <div>

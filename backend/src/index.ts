@@ -2644,6 +2644,11 @@ async function ensureColumns() {
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS controlled_witness_signed_at TIMESTAMPTZ`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mgmt_sign_off_by          VARCHAR(255)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS mgmt_sign_off_at          TIMESTAMPTZ`,
+    // Body site the dose was applied to — creams and patches need to be
+    // rotated across sites so staff and management can see the pattern of
+    // where a resident has been getting a topical medication applied.
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS application_site          VARCHAR(50)`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS application_site_label    VARCHAR(100)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_taken              VARCHAR(50)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS amount_unit               VARCHAR(20)`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS side_effects              BOOLEAN NOT NULL DEFAULT FALSE`,

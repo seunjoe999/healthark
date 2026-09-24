@@ -231,7 +231,7 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       const { suId, medicationId, given, refused, reason, notes, scheduledTime, recordDate, marCode,
               controlledWitnessId, controlledWitnessName,
               amountTaken, amountUnit, sideEffects, sideEffectsNotes, emotion, completed,
-              signoffRequestedBy, signoffRequestedName } = req.body;
+              signoffRequestedBy, signoffRequestedName, applicationSite, applicationSiteLabel } = req.body;
 
       // A dose can't be recorded before it's actually due — administering early is a real
       // clinical safety issue, not just a data-entry nicety. PRN (as-required) doses are
@@ -253,8 +253,8 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
           refused_reason, notes, scheduled_time, record_date, mar_code,
           controlled_witness_id, controlled_witness_name,
           amount_taken, amount_unit, side_effects, side_effects_notes, emotion, completed,
-          signoff_requested_by, signoff_requested_name)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
+          signoff_requested_by, signoff_requested_name, application_site, application_site_label)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
         [suId, homeId, medicationId, staffId, given ?? null, refused || false,
          reason || null, notes || null, scheduledTime || null,
          recordDate || ukDateStr(),
@@ -262,7 +262,8 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
          controlledWitnessId || null, controlledWitnessName || null,
          amountTaken || null, amountUnit || null, sideEffects || false, sideEffectsNotes || null,
          emotion || null, completed !== undefined ? completed : true,
-         signoffRequestedBy || null, signoffRequestedName || null]
+         signoffRequestedBy || null, signoffRequestedName || null,
+         applicationSite || null, applicationSiteLabel || null]
       );
       const record = rows[0] as any;
 
@@ -365,7 +366,7 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
       }
 
       const { given, refused, reason, notes, marCode, amountTaken, amountUnit,
-              sideEffects, sideEffectsNotes, emotion } = req.body;
+              sideEffects, sideEffectsNotes, emotion, applicationSite, applicationSiteLabel } = req.body;
       const updated = await query(
         `UPDATE mar_records SET
            given = COALESCE($1, given), refused = COALESCE($2, refused),
@@ -373,11 +374,12 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
            mar_code = COALESCE($5, mar_code), amount_taken = COALESCE($6, amount_taken),
            amount_unit = COALESCE($7, amount_unit),
            side_effects = COALESCE($8, side_effects), side_effects_notes = COALESCE($9, side_effects_notes),
-           emotion = COALESCE($10, emotion)
-         WHERE id = $11 RETURNING *`,
+           emotion = COALESCE($10, emotion),
+           application_site = COALESCE($11, application_site), application_site_label = COALESCE($12, application_site_label)
+         WHERE id = $13 RETURNING *`,
         [given ?? null, refused ?? null, reason || null, notes || null, marCode || null,
          amountTaken || null, amountUnit || null, sideEffects ?? null, sideEffectsNotes || null,
-         emotion || null, req.params.id]
+         emotion || null, applicationSite || null, applicationSiteLabel || null, req.params.id]
       );
       res.json({ success: true, data: updated[0] } as ApiResponse);
     } catch (err) { next(err); }
