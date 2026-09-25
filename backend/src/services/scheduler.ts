@@ -373,11 +373,14 @@ export function startScheduler(): void {
     // AI monthly report generation - wired in Phase 5
   }, UK_TZ);
 
-  // Every morning at 6am: generate today's recurring task instances. Uncompleted
-  // tasks from previous days are no longer duplicated forward — the task list
-  // query itself keeps showing any pending task until it's completed, so it
-  // never silently disappears.
-  cron.schedule('0 6 * * *', async () => {
+  // Just after UK midnight: generate today's recurring task instances. Was
+  // 6am, which meant a "daily" task completed yesterday had no fresh pending
+  // instance for up to 6 hours after the new day started — moved to 00:01 so
+  // a new one is there right at the start of the day. Uncompleted tasks from
+  // previous days are no longer duplicated forward — the task list query
+  // itself keeps showing any pending task until it's completed, so it never
+  // silently disappears.
+  cron.schedule('1 0 * * *', async () => {
     logger.info('Scheduler: generating daily tasks');
     await generateDailyTasks();
   }, UK_TZ);

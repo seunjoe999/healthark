@@ -111,9 +111,14 @@ export default function StaffDashboard() {
         const profileData = v(profileR)?.data.data
         const allShifts = v(shiftsR)?.data.data || []
         setMyShifts(allShifts.filter((s: any) => s.staff_id === user.id))
-        setMyTasks((v(tasksR)?.data.data || []).filter((t: any) =>
-          !t.assigned_role || t.assigned_role === (profileData?.role || '')
-        ))
+        // GET /api/tasks already does full visibility filtering server-side for
+        // the authenticated staff member (creator / assigned_staff_id / assigned_role
+        // / team / general, plus resident-restriction for care roles) — this used to
+        // re-filter on just assigned_role here too, which silently hid any task the
+        // backend correctly showed via assigned_staff_id or team targeting instead
+        // (a task assigned directly to this staff member, with no assigned_role set
+        // to something else, could still vanish from their own dashboard).
+        setMyTasks(v(tasksR)?.data.data || [])
         setMyLeave(v(leaveR)?.data.data || [])
         setNotifications((v(notifR)?.data.data || []).filter((n: any) => !n.is_read).slice(0, 5))
         setMyProfile(profileData)

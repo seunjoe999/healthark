@@ -124,14 +124,16 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { title, category, description, frequency, dueTime, assignedRole, priority, suId, pictureUrl, visibleTeamIds } = req.body;
+      const { title, category, description, frequency, dueTime, dueTimes, assignedRole, priority, suId, pictureUrl, visibleTeamIds } = req.body;
+      const cleanDueTimes = Array.isArray(dueTimes) ? dueTimes.map((t: string) => String(t).slice(0, 5)).filter(Boolean) : null;
       const rows = await query(
         `INSERT INTO task_templates (home_id, title, category, description, frequency, due_time,
-          assigned_role, priority, su_id, picture_url, visible_team_ids)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+          assigned_role, priority, su_id, picture_url, visible_team_ids, due_times)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
         [homeId, title, category, description || null, frequency || 'daily',
          dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null,
-         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null]
+         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null,
+         cleanDueTimes && cleanDueTimes.length ? cleanDueTimes : null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -157,8 +159,9 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const createdBy = fromToken(req, 'staffId');
-      const { title, category, description, taskDate, dueTime, priority, suId, assignedRole, pictureUrl, assignedStaffId, visibleTeamIds, frequency } = req.body;
+      const { title, category, description, taskDate, dueTime, dueTimes, priority, suId, assignedRole, pictureUrl, assignedStaffId, visibleTeamIds, frequency } = req.body;
       const teamIds = Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null;
+      const cleanDueTimes = Array.isArray(dueTimes) ? dueTimes.map((t: string) => String(t).slice(0, 5)).filter(Boolean) : null;
       const rows = await query(
         `INSERT INTO tasks (home_id, su_id, created_by, title, category, description,
           task_date, due_time, priority, assigned_role, picture_url, assigned_staff_id, visible_team_ids)
@@ -175,10 +178,11 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
       if (frequency && frequency !== 'once') {
         await query(
           `INSERT INTO task_templates (home_id, title, category, description, frequency, due_time,
-            assigned_role, priority, su_id, picture_url, visible_team_ids)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            assigned_role, priority, su_id, picture_url, visible_team_ids, due_times)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
           [homeId, title, category || 'general', description || null, frequency,
-           dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null, teamIds]
+           dueTime || null, assignedRole || null, priority || 'normal', suId || null, pictureUrl || null, teamIds,
+           cleanDueTimes && cleanDueTimes.length ? cleanDueTimes : null]
         );
       }
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
@@ -271,11 +275,13 @@ router.delete('/templates/:id', requireRole('home_manager', 'group_admin'), para
 router.put('/templates/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { title, category, description, frequency, dueTime, assignedRole, priority, pictureUrl, visibleTeamIds } = req.body;
+      const { title, category, description, frequency, dueTime, dueTimes, assignedRole, priority, pictureUrl, visibleTeamIds } = req.body;
+      const cleanDueTimes = Array.isArray(dueTimes) ? dueTimes.map((t: string) => String(t).slice(0, 5)).filter(Boolean) : null;
       await query(
-        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7, picture_url=COALESCE($9, picture_url), visible_team_ids=$10 WHERE id=$8`,
+        `UPDATE task_templates SET title=$1, category=$2, description=$3, frequency=$4, due_time=$5, assigned_role=$6, priority=$7, picture_url=COALESCE($9, picture_url), visible_team_ids=$10, due_times=$11 WHERE id=$8`,
         [title, category, description||null, frequency, dueTime||null, assignedRole||null, priority, req.params.id, pictureUrl || null,
-         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null]
+         Array.isArray(visibleTeamIds) && visibleTeamIds.length ? visibleTeamIds : null,
+         cleanDueTimes && cleanDueTimes.length ? cleanDueTimes : null]
       );
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }

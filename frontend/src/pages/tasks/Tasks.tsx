@@ -27,6 +27,8 @@ import DashText from '../../components/DashText'
 const FREQUENCIES = [
   { value: 'once', label: 'Once only' },
   { value: 'daily', label: 'Daily' },
+  { value: 'twice_daily', label: 'Twice daily' },
+  { value: 'three_times_daily', label: '3 times daily' },
   { value: 'rota_days', label: 'Rota days' },
   { value: 'weekdays', label: 'Weekdays only' },
   { value: 'weekends', label: 'Weekends only' },
@@ -814,13 +816,36 @@ function AddFollowUpModal({ open, onClose, homeId, staffList, teams, onSaved }: 
   )
 }
 
+// How many "Time" inputs a frequency needs, and their labels — twice/3x daily
+// need one time per occurrence instead of the usual single due time, same
+// shape as medication's multi-dose time slots.
+const OCCURRENCE_COUNT: Record<string, number> = { twice_daily: 2, three_times_daily: 3 }
+
+function OccurrenceTimesFields({ frequency, dueTimes, onChange }: { frequency: string; dueTimes: string[]; onChange: (times: string[]) => void }) {
+  const count = OCCURRENCE_COUNT[frequency]
+  if (!count) return null
+  const times = Array.from({ length: count }, (_, i) => dueTimes[i] || '')
+  return (
+    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>
+      {times.map((t, i) => (
+        <Input key={i} label={`Time ${i + 1} of ${count}`} type="time" required value={t}
+          onChange={e => { const next = [...times]; next[i] = e.target.value; onChange(next) }} />
+      ))}
+    </div>
+  )
+}
+
 function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boolean; onClose: () => void; homeId: string; teams: any[]; onSaved: () => void }) {
-  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', assignedRole: '', priority: 'normal', pictureUrl: '', visibleTeamIds: [] })
+  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; dueTimes: string[]; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', dueTimes: [], assignedRole: '', priority: 'normal', pictureUrl: '', visibleTeamIds: [] })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const isMultiDaily = !!OCCURRENCE_COUNT[form.frequency]
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isMultiDaily && form.dueTimes.filter(Boolean).length < OCCURRENCE_COUNT[form.frequency]) {
+      toast.error('Set a time for every occurrence'); return
+    }
     setLoading(true)
     try { await api.post('/tasks/templates', { homeId, ...form }); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
@@ -837,8 +862,12 @@ function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boo
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
-          <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+          {!isMultiDaily && <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />}
         </div>
+        {isMultiDaily && (
+          <OccurrenceTimesFields frequency={form.frequency} dueTimes={form.dueTimes}
+            onChange={times => setForm(p => ({ ...p, dueTimes: times }))} />
+        )}
         <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
         <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
@@ -853,12 +882,13 @@ function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boo
 }
 
 function EditTemplateModal({ template, teams, onClose, onSaved }: { template: any; teams: any[]; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({
+  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; dueTimes: string[]; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({
     title: template.title || '',
     category: template.category || 'general',
     description: template.description || '',
     frequency: template.frequency || 'daily',
     dueTime: template.due_time || '',
+    dueTimes: template.due_times || [],
     assignedRole: template.assigned_role || '',
     priority: template.priority || 'normal',
     pictureUrl: template.picture_url || '',
@@ -866,9 +896,13 @@ function EditTemplateModal({ template, teams, onClose, onSaved }: { template: an
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const isMultiDaily = !!OCCURRENCE_COUNT[form.frequency]
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isMultiDaily && form.dueTimes.filter(Boolean).length < OCCURRENCE_COUNT[form.frequency]) {
+      toast.error('Set a time for every occurrence'); return
+    }
     setLoading(true)
     try { await api.put(`/tasks/templates/${template.id}`, form); onSaved() }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
@@ -885,8 +919,12 @@ function EditTemplateModal({ template, teams, onClose, onSaved }: { template: an
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
-          <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+          {!isMultiDaily && <Input label="Time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />}
         </div>
+        {isMultiDaily && (
+          <OccurrenceTimesFields frequency={form.frequency} dueTimes={form.dueTimes}
+            onChange={times => setForm(p => ({ ...p, dueTimes: times }))} />
+        )}
         <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
         <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></div>

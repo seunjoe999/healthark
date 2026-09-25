@@ -20,13 +20,6 @@ export async function generateTasksForHome(homeId: string): Promise<number> {
 
   let created = 0;
   for (const tmpl of templates) {
-    // Check if task already exists for today
-    const existing = await query(
-      `SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3`,
-      [homeId, today, tmpl.title]
-    );
-    if (existing.length > 0) continue;
-
     // "weekly" recurs on whatever day of the week the template was first
     // created on (not hardcoded to Monday, which meant a template created
     // any other day never fired except by coincidence).
@@ -43,7 +36,7 @@ export async function generateTasksForHome(homeId: string): Promise<number> {
     const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
 
     let shouldCreate = false;
-    if (freq === 'daily') shouldCreate = true;
+    if (freq === 'daily' || freq === 'twice_daily' || freq === 'three_times_daily') shouldCreate = true;
     else if (freq === 'weekly' && dayOfWeek === templateDow) shouldCreate = true;
     else if (freq === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldCreate = true;
     else if (freq === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldCreate = true;
@@ -71,14 +64,34 @@ export async function generateTasksForHome(homeId: string): Promise<number> {
     else if (freq === 'yearly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 12 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
 
     if (shouldCreate) {
-      await query(
-        `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status, visible_team_ids)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10)`,
-        [homeId, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
-         tmpl.description || null, today, tmpl.due_time || null,
-         tmpl.priority || 'normal', tmpl.assigned_role || null, tmpl.visible_team_ids || null]
-      );
-      created++;
+      // "twice_daily"/"three_times_daily" generate one row per occurrence time
+      // (due_times, set on the template) instead of one row carrying multiple
+      // times — each occurrence is its own independent pending task, poppable
+      // and completable on its own, same as every other task. Falls back to
+      // the template's single due_time for every other frequency, unchanged.
+      const occurrenceTimes = (freq === 'twice_daily' || freq === 'three_times_daily') && Array.isArray(tmpl.due_times) && tmpl.due_times.length
+        ? tmpl.due_times
+        : [tmpl.due_time || null];
+
+      for (const dueTime of occurrenceTimes) {
+        // Dedup per occurrence (title + due_time), not just title — a
+        // twice-daily template's two occurrences share a title but must both
+        // be allowed to exist for the same day.
+        const existing = await query(
+          `SELECT id FROM tasks WHERE home_id=$1 AND task_date=$2 AND title=$3 AND due_time IS NOT DISTINCT FROM $4`,
+          [homeId, today, tmpl.title, dueTime]
+        );
+        if (existing.length > 0) continue;
+
+        await query(
+          `INSERT INTO tasks (home_id, su_id, title, category, description, task_date, due_time, priority, assigned_role, status, visible_team_ids)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10)`,
+          [homeId, tmpl.su_id || null, tmpl.title, tmpl.category || 'general',
+           tmpl.description || null, today, dueTime,
+           tmpl.priority || 'normal', tmpl.assigned_role || null, tmpl.visible_team_ids || null]
+        );
+        created++;
+      }
     }
   }
   return created;

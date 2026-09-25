@@ -1965,6 +1965,11 @@ async function ensureColumns() {
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS visible_team_ids UUID[]`,
     `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS visible_team_ids UUID[]`,
     `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS picture_url TEXT`,
+    // Explicit per-occurrence times for "twice_daily"/"three_times_daily" templates
+    // (e.g. ['08:00','18:00']) — same shape as su_medications.time_slots below, so a
+    // template that recurs more than once a day generates one tasks row per time
+    // instead of cramming multiple times into a single due_time.
+    `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS due_times TEXT[]`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type VARCHAR(30)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS apply_time TIME`,
     // Explicit, individually-set administration times (e.g. ['06:00','12:00','18:00','22:00'])
