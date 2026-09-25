@@ -225,15 +225,11 @@ export default function StaffDashboard() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
           <h2 className="font-semibold text-slate-800">My tasks today</h2>
-          {clockedIn && (
-            <Link to="/tasks" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
-              View all <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          )}
+          <Link to="/tasks" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
+            View all <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-        {!clockedIn ? (
-          <p className="text-sm text-slate-400 px-5 py-4">Clock in above to see today's tasks</p>
-        ) : myTasks.length === 0 && (!stockCount || stockCount.done) ? (
+        {myTasks.length === 0 && (!stockCount || stockCount.done) ? (
           <p className="text-sm text-slate-400 px-5 py-4">No tasks assigned for today</p>
         ) : (
           <div>
