@@ -8,7 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin, Eye,
+  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -805,6 +805,7 @@ export default function Rota() {
 
                     return (
                       <button key={shift.id} onClick={() => toggleShiftSelected(shift.id)}
+                        onDoubleClick={() => setDetailShift(shift)}
                         className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
                           top: top + 1,
@@ -823,15 +824,6 @@ export default function Rota() {
                         <div className={`absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center border ${selected ? 'bg-amber-500 border-amber-500' : 'bg-white/80 border-slate-300'}`}>
                           {selected && <Check className="w-3 h-3 text-white" />}
                         </div>
-                        {/* Viewing/editing a shift's own details is now a dedicated
-                            icon (the main tile click selects it instead). */}
-                        <span
-                          role="button"
-                          title="View shift details"
-                          onClick={(e) => { e.stopPropagation(); setDetailShift(shift) }}
-                          className="absolute top-1 left-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/80 text-slate-600 opacity-0 group-hover:opacity-100 hover:bg-slate-100 transition-opacity cursor-pointer">
-                          <Eye className="w-3 h-3" />
-                        </span>
                         {canManage && (
                           <span
                             role="button"
