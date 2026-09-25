@@ -28,8 +28,13 @@ router.get('/medications/:suId', param('suId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await assertResidentAccess(req, req.params.suId);
+      // Aliased to match every frontend read of this list (edit form, MAR chart
+      // print, display cards) — the underlying columns are `notes`/`prescriber`,
+      // but the app has always read `instructions`/`prescribed_by`, so re-opening
+      // Edit on a medication (or any other place this list feeds) showed those
+      // two fields as blank even though the data was saved correctly.
       const rows = await query(
-        'SELECT * FROM su_medications WHERE su_id = $1 AND is_active = true ORDER BY medication_name',
+        'SELECT *, notes AS instructions, prescriber AS prescribed_by FROM su_medications WHERE su_id = $1 AND is_active = true ORDER BY medication_name',
         [req.params.suId]
       );
       res.json({ success: true, data: rows } as ApiResponse);
