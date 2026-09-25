@@ -194,6 +194,66 @@ router.post('/management', requireRole(...MANAGER_ROLES), [body('homeId').isUUID
   }
 );
 
+// ── Team Meeting (home-wide whole-staff briefing — distinct from the
+// internal-Team-linked 'team' type above, and open to all staff, not just
+// managers: "available to both staff and the management") ───────────────
+router.get('/team-briefing', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    if (!homeId) { res.json({ success: true, data: [] } as ApiResponse); return; }
+    const rows = await query(
+      `SELECT m.*, s.first_name || ' ' || s.last_name as created_by_name
+       FROM meetings m LEFT JOIN staff s ON s.id = m.created_by
+       WHERE m.meeting_type = 'team_briefing' AND m.home_id = $1
+       ORDER BY m.meeting_date DESC, m.created_at DESC`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+router.post('/team-briefing', [body('homeId').isUUID(), body('conductedBy').notEmpty()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const createdBy = fromToken(req, 'staffId');
+      const { homeId, conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan } = req.body;
+      const rows = await query(
+        `INSERT INTO meetings (meeting_type, home_id, created_by, conducted_by, meeting_date,
+          attendees, service_location, notes, action_plan)
+         VALUES ('team_briefing',$1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        [homeId, createdBy, conductedBy, meetingDate || ukDateStr(),
+         attendees || null, serviceLocation || null, notes || null, actionPlan || null]
+      );
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/meetings/:id/send-minutes — notify the ticked staff with this
+// meeting's minutes, in-app only (matches how the rest of the app notifies
+// staff of things — no email/SMS delivery here).
+router.post('/:id/send-minutes', param('id').isUUID(), body('staffIds').isArray({ min: 1 }), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const meetingRows = await query<any>('SELECT * FROM meetings WHERE id = $1', [req.params.id]);
+      const meeting = meetingRows[0];
+      if (!meeting) { res.status(404).json({ success: false, error: 'Meeting not found' } as ApiResponse); return; }
+      const staffIds: string[] = (req.body.staffIds || []).filter(Boolean);
+      const dateStr = meeting.meeting_date ? new Date(meeting.meeting_date).toLocaleDateString('en-GB') : '';
+      const title = `Team Meeting minutes: ${dateStr}`;
+      const body = meeting.notes || meeting.action_plan || 'Minutes have been recorded for this team meeting.';
+      for (const staffId of staffIds) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+           VALUES ($1,$2,$3,$4,'meeting','/team-meeting')`,
+          [staffId, meeting.home_id, title, body]
+        ).catch(() => {});
+      }
+      res.json({ success: true, data: { sent: staffIds.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // ── Sign-off (shared across all meeting types) ────────────────────
 router.put('/:id/sign-off', param('id').isUUID(), body('signedOffBy').notEmpty(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

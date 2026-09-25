@@ -134,6 +134,7 @@ const navSections = [
       { label: 'Maintenance',        to: '/maintenance',       icon: Wrench,        roles: [], featureKey: 'maintenance' },
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
       { label: 'Meeting Tracker',    to: '/meeting-tracker',   icon: CalendarClock, roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'meeting_tracker' },
+      { label: 'Team Meeting',       to: '/team-meeting',      icon: Users,         roles: [], featureKey: 'team_meeting' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
       { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
       { label: 'Uniform Stock',      to: '/uniform-stock',     icon: Shirt,         roles: NOT_CARE_STAFF, featureKey: 'uniform_stock' },

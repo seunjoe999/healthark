@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import api from '../api'
+import { staffApi } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { format } from 'date-fns'
 import { ukDateStr } from '../utils/ukDate'
 import { Spinner, Button, Modal, EmptyState } from './ui'
 import { SpeechTextarea } from './ui/SpeechButton'
-import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react'
+import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type MeetingType = 'resident' | 'staff' | 'management' | 'team'
+type MeetingType = 'resident' | 'staff' | 'management' | 'team' | 'team_briefing'
 
 interface MeetingsSectionProps {
   meetingType: MeetingType
@@ -29,6 +30,7 @@ function listUrl(meetingType: MeetingType, parentId?: string, homeId?: string) {
   if (meetingType === 'resident') return `/meetings/su/${parentId}`
   if (meetingType === 'staff') return `/meetings/staff/${parentId}`
   if (meetingType === 'team') return `/meetings/team/${parentId}`
+  if (meetingType === 'team_briefing') return `/meetings/team-briefing${homeId ? `?homeId=${homeId}` : ''}`
   return `/meetings/management${homeId ? `?homeId=${homeId}` : ''}`
 }
 
@@ -36,6 +38,7 @@ function createUrl(meetingType: MeetingType) {
   if (meetingType === 'resident') return '/meetings/su'
   if (meetingType === 'staff') return '/meetings/staff'
   if (meetingType === 'team') return '/meetings/team'
+  if (meetingType === 'team_briefing') return '/meetings/team-briefing'
   return '/meetings/management'
 }
 
@@ -49,8 +52,9 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
   const [signOffItem, setSignOffItem] = useState<any>(null)
   const [signOffForm, setSignOffForm] = useState({ signedOffBy: '', signedOffDate: '' })
   const [saving, setSaving] = useState(false)
+  const [sendItem, setSendItem] = useState<any>(null)
 
-  const canLoad = meetingType === 'management' ? !!homeId : !!parentId
+  const canLoad = (meetingType === 'management' || meetingType === 'team_briefing') ? !!homeId : !!parentId
 
   const load = useCallback(async () => {
     if (!canLoad) return
@@ -135,6 +139,15 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
                 {expanded && (
                   <div className="px-5 pb-5 pt-2 border-t border-white/5 space-y-4">
                     <MeetingView meeting={m} />
+                    {meetingType === 'team_briefing' && (
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <p className="text-xs text-slate-500">Send these minutes to staff</p>
+                        <Button size="sm" variant="outline" icon={<Send className="w-3.5 h-3.5" />}
+                          onClick={() => setSendItem(m)}>
+                          Send Minutes
+                        </Button>
+                      </div>
+                    )}
                     {!m.signed_off && canManage && (
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                         <p className="text-xs text-slate-500">Not yet signed off</p>
@@ -175,7 +188,61 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
           </div>
         </div>
       </Modal>
+
+      <SendMinutesModal meeting={sendItem} homeId={homeId} onClose={() => setSendItem(null)} />
     </div>
+  )
+}
+
+function SendMinutesModal({ meeting, homeId, onClose }: { meeting: any; homeId?: string; onClose: () => void }) {
+  const [staff, setStaff] = useState<any[]>([])
+  const [selected, setSelected] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    if (!meeting) return
+    setSelected([])
+    setLoading(true)
+    staffApi.list(homeId ? { homeId } : undefined).then(res => setStaff(res.data.data || []))
+      .catch(() => toast.error('Failed to load staff list'))
+      .finally(() => setLoading(false))
+  }, [meeting, homeId])
+
+  const toggle = (id: string) => setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
+
+  const send = async () => {
+    if (!selected.length) { toast.error('Select at least one staff member'); return }
+    setSending(true)
+    try {
+      await api.post(`/meetings/${meeting.id}/send-minutes`, { staffIds: selected })
+      toast.success(`Minutes sent to ${selected.length} staff member${selected.length === 1 ? '' : 's'}`)
+      onClose()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to send') }
+    finally { setSending(false) }
+  }
+
+  return (
+    <Modal open={!!meeting} onClose={onClose} title="Send Minutes to Staff" size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-500">Tick who should receive these meeting minutes. They'll get an in-app notification.</p>
+        {loading ? <Spinner /> : (
+          <div className="max-h-72 overflow-y-auto space-y-1 border border-slate-100 rounded-lg p-2">
+            {staff.map((s: any) => (
+              <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">
+                <input type="checkbox" checked={selected.includes(s.id)} onChange={() => toggle(s.id)} className="rounded" />
+                <span className="text-sm text-slate-700">{s.first_name} {s.last_name}</span>
+                <span className="text-xs text-slate-400 ml-auto capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button loading={sending} onClick={send} icon={<Send className="w-4 h-4" />}>Send</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
