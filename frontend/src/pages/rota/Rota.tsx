@@ -2511,6 +2511,11 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
   const [services, setServices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  // In-app confirm instead of window.confirm — a native browser dialog here blocks
+  // any automated/assistive click-through and is inconsistent with how every other
+  // destructive action in this app confirms (see the danger-styled Modal pattern
+  // used elsewhere, e.g. FinanceTracking's delete confirm).
+  const [confirmLabel, setConfirmLabel] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -2523,7 +2528,7 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
   useEffect(() => { load() }, [load])
 
   const remove = async (label: string) => {
-    if (!window.confirm(`Delete the service "${label}"? This removes every shift under it (past and future) and cannot be undone.`)) return
+    setConfirmLabel(null)
     setDeleting(label)
     try {
       const res = await api.delete(`/shifts/service-label/${encodeURIComponent(label)}`, { params: { homeId } })
@@ -2551,7 +2556,7 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
                 <p className="text-sm font-semibold text-slate-800">{s.label}</p>
                 <p className="text-xs text-slate-400">{s.shift_count} shift{s.shift_count !== '1' ? 's' : ''} total · {s.future_count} upcoming</p>
               </div>
-              <button onClick={() => remove(s.label)} disabled={deleting !== null}
+              <button onClick={() => setConfirmLabel(s.label)} disabled={deleting !== null}
                 className="flex items-center gap-1 text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                 <Trash2 className="w-3.5 h-3.5" /> {deleting === s.label ? 'Deleting…' : 'Delete'}
               </button>
@@ -2562,6 +2567,18 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
       <div className="flex justify-end pt-4 mt-2 border-t border-slate-100">
         <Button variant="outline" onClick={onClose}>Close</Button>
       </div>
+
+      {confirmLabel && (
+        <Modal open={true} onClose={() => setConfirmLabel(null)} title="Delete this service?" size="sm">
+          <p className="text-sm text-slate-600 mb-5">
+            Delete the service "{confirmLabel}"? This removes every shift under it (past and future) and cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setConfirmLabel(null)}>Cancel</Button>
+            <Button variant="danger" onClick={() => remove(confirmLabel)}>Delete</Button>
+          </div>
+        </Modal>
+      )}
     </Modal>
   )
 }
