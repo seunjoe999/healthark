@@ -1718,7 +1718,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
-              options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
+              options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'capsule', label: 'Capsule' }, { value: 'liquid', label: 'Liquid' }, { value: 'fluid', label: 'Fluid' }, { value: 'syrup', label: 'Syrup' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'nebulizer', label: 'Nebulizer' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'peg', label: 'PEG' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
               placeholder="Select type" />
             {form.medicineType === 'other' && (
               <Input className="mt-2" placeholder="What type of medicine is it?" value={form.medicineTypeOther} onChange={e => set('medicineTypeOther', e.target.value)} />
@@ -1847,7 +1847,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
-              options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
+              options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'capsule', label: 'Capsule' }, { value: 'liquid', label: 'Liquid' }, { value: 'fluid', label: 'Fluid' }, { value: 'syrup', label: 'Syrup' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'nebulizer', label: 'Nebulizer' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'peg', label: 'PEG' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
               placeholder="Select type" />
             {form.medicineType === 'other' && (
               <Input className="mt-2" placeholder="What type of medicine is it?" value={form.medicineTypeOther} onChange={e => set('medicineTypeOther', e.target.value)} />
