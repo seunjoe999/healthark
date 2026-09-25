@@ -223,6 +223,10 @@ export default function Rota() {
   // swap requests
   const [swapRequests, setSwapRequests] = useState<any[]>([])
   const [swapActing, setSwapActing] = useState<string | null>(null)
+  // Manually toggled open via the "Swap Requests" button in the filter bar, so
+  // there's always a way to check even when there's nothing pending (the panel
+  // auto-shows on its own whenever there ARE pending requests, regardless of this).
+  const [swapPanelOpen, setSwapPanelOpen] = useState(false)
 
   // bulk shift selection
   const [selectMode, setSelectMode] = useState(false)
@@ -231,7 +235,6 @@ export default function Rota() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
   // modals
-  const [createOpen,  setCreateOpen]  = useState(false)
   const [standbyOpen, setStandbyOpen] = useState(false)
   const [serviceRotaOpen, setServiceRotaOpen] = useState(false)
   const [leaveOpen,   setLeaveOpen]   = useState(false)
@@ -453,15 +456,12 @@ export default function Rota() {
         <div className="flex items-center gap-2">
           {canManage && (
             <>
-              <Button icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>
-                Create shift
+              <Button icon={<Plus className="w-4 h-4" />} onClick={() => setServiceRotaOpen(true)}
+                title="Staff is optional — creates an unfilled rota for a service that you can assign staff to later">
+                Create shift <span className="ml-1 font-normal opacity-70">(staff optional)</span>
               </Button>
               <Button variant="outline" icon={<Plus className="w-4 h-4" />} onClick={() => setStandbyOpen(true)}>
                 Create Standby Shift
-              </Button>
-              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setServiceRotaOpen(true)}
-                title="Staff is optional — creates an unfilled rota for a resident that you can assign staff to later">
-                Create Rota for Service <span className="ml-1 font-normal opacity-70">(staff optional)</span>
               </Button>
               <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}
                 title="Create a brand new recurring shift pattern, or delete shifts matching a pattern — this does NOT assign staff to shifts that already exist">
@@ -578,6 +578,11 @@ export default function Rota() {
             <Trash2 className="w-3 h-3" /> Manage Services
           </button>
         )}
+        <button onClick={() => setSwapPanelOpen(v => !v)}
+          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+          title="View shift swap requests">
+          <ArrowLeftRight className="w-3 h-3" /> Swap Requests{swapRequests.length > 0 ? ` (${swapRequests.length})` : ''}
+        </button>
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">All Shift Types</option>
@@ -617,11 +622,19 @@ export default function Rota() {
       )}
 
       {/* ── Swap Requests Inbox ─────────────────────────────────────────── */}
-      {swapRequests.length > 0 && (
+      {(swapRequests.length > 0 || swapPanelOpen) && (
         <div className="border-b border-amber-200 bg-amber-50/60 px-4 py-2.5">
           <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
             <ArrowLeftRight className="w-3.5 h-3.5" /> Shift Swap Requests ({swapRequests.length})
+            {swapRequests.length === 0 && (
+              <button onClick={() => setSwapPanelOpen(false)} className="ml-auto text-amber-400 hover:text-amber-600 normal-case font-normal">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </p>
+          {swapRequests.length === 0 && (
+            <p className="text-xs text-amber-600 italic">No pending swap requests right now.</p>
+          )}
           <div className="space-y-1.5">
             {swapRequests.map((swap: any) => (
               <div key={swap.id} className="flex flex-wrap items-center gap-2 bg-white rounded-lg border border-amber-200 px-3 py-2 text-xs">
@@ -836,7 +849,7 @@ export default function Rota() {
 
                   {/* Quick-add dot (today only, empty day) */}
                   {canManage && dayShifts.length === 0 && dayLeaves.length === 0 && isToday && (
-                    <button onClick={() => setCreateOpen(true)}
+                    <button onClick={() => setServiceRotaOpen(true)}
                       className="absolute left-1 right-1 border border-dashed border-slate-200 rounded-lg text-xs text-slate-300 hover:text-slate-500 hover:border-slate-300 flex items-center justify-center gap-1 transition-colors"
                       style={{ top: shiftTopPx('08:00'), height: 38 }}>
                       <Plus className="w-3 h-3" /> Add shift
@@ -875,19 +888,6 @@ export default function Rota() {
       </div>
 
       {/* ── Modals ─────────────────────────────────────────────────────── */}
-      {createOpen && (
-        <CreateShiftModal
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
-          suList={suList}
-          staffList={staffList}
-          homeId={selectedHome}
-          canSeeFinancials={canSeeFinancials}
-          defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
-          onSaved={() => { setCreateOpen(false); loadAll(); toast.success('Shift created and staff allocated') }}
-        />
-      )}
-
       {standbyOpen && (
         <CreateStandbyModal
           open={standbyOpen}
@@ -908,7 +908,8 @@ export default function Rota() {
           homeId={selectedHome}
           canSeeFinancials={canSeeFinancials}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
-          onSaved={() => { setServiceRotaOpen(false); loadAll() }}
+          existingLabels={allServiceLabels}
+          onSaved={() => { setServiceRotaOpen(false); loadAll(); loadServiceLabels() }}
         />
       )}
 
@@ -1311,10 +1312,11 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
 // creates one shift per resident (via the existing /shifts/service-shift
 // endpoint) instead of repeating "Create Shift" once per resident by hand.
 
-function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defaultDate, onSaved, canSeeFinancials }: {
+function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defaultDate, onSaved, canSeeFinancials, existingLabels }: {
   open: boolean; onClose: () => void
   suList: any[]; staffList: any[]; homeId: string
   defaultDate: string; onSaved: () => void; canSeeFinancials: boolean
+  existingLabels: string[]
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [form, setForm] = useState({
@@ -1352,7 +1354,6 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
   const next = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.label.trim()) { toast.error('Enter a name for this service'); return }
-    if (selectedSus.length === 0) { toast.error('Select at least one resident'); return }
     if (form.recurrence !== 'daily' && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
     setStep(2)
   }
@@ -1379,7 +1380,8 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
       // to show a plain "success" message while nothing appeared on the grid.
       const generated = res.data.data?.generated ?? 0
       if (generated > 0) {
-        toast.success(`Rota created — ${generated} shift${generated !== 1 ? 's' : ''} added for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}`)
+        const residentPart = selectedSus.length > 0 ? ` for ${selectedSus.length} resident${selectedSus.length !== 1 ? 's' : ''}` : ''
+        toast.success(`Rota created — ${generated} shift${generated !== 1 ? 's' : ''} added${residentPart}`)
       } else {
         toast.error('No shifts were generated — check the dates and recurrence, then try again')
       }
@@ -1397,17 +1399,28 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
     <Modal open={open} onClose={onClose} title="Create Rota for Service" size="md">
       {step === 1 ? (
         <form onSubmit={next} className="space-y-4">
-          {/* Service name — shown on the rota grid instead of the residents'
-              names, e.g. "Day Centre", "Domiciliary Team A" — a rota entry
-              covering several residents under one shared service, rather than
-              one resident's own individual rota. */}
+          {/* Service name — shown on the rota grid instead of the residents' names,
+              e.g. "12 Kennedy Avenue" — a rota entry covering a house/service, rather
+              than one resident's own individual rota. Backed by a datalist of every
+              service ever created at this home, so picking the same name again reuses
+              it instead of silently creating a near-duplicate through a typo. */}
           <Input label="Service name *" required value={form.label} onChange={e => set('label', e.target.value)}
-            placeholder="e.g. Day Centre, Domiciliary Team A..." />
+            placeholder="e.g. 12 Kennedy Avenue, Day Centre..." list="existing-service-labels" />
+          {existingLabels.length > 0 && (
+            <datalist id="existing-service-labels">
+              {existingLabels.map(l => <option key={l} value={l} />)}
+            </datalist>
+          )}
+          {existingLabels.length > 0 && (
+            <p className="text-xs text-slate-400 -mt-2">
+              Existing services: {existingLabels.slice(0, 6).join(', ')}{existingLabels.length > 6 ? ', …' : ''} — start typing to reuse one.
+            </p>
+          )}
 
-          {/* Residents (multi-select) */}
+          {/* Residents (multi-select, optional) */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Residents * <span className="text-slate-400 font-normal normal-case">({selectedSus.length} selected)</span>
+              Residents <span className="text-slate-400 font-normal normal-case">(optional — {selectedSus.length} selected)</span>
             </label>
             <div className="relative mb-2">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />

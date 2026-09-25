@@ -40,7 +40,7 @@ export interface DueMedicationTask {
 // Medication due-today as a per-staff task list — shared by the /mar/due-today endpoint
 // (what staff see on their task list) and the clock-out compulsory-completion check
 // (what blocks clocking out), so the two can never silently disagree about what's due.
-export async function getDueTodayTasks(homeId: string, staffId: string, role: string): Promise<DueMedicationTask[]> {
+export async function getDueTodayTasks(homeId: string, staffId: string, role: string, shiftSuIds?: string[]): Promise<DueMedicationTask[]> {
   const isPrivileged = PRIVILEGED_MAR_ROLES.includes(role);
   const today = ukDateStr();
 
@@ -49,6 +49,15 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
     const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [staffId]);
     assignedSuIds = assignments.map((a: any) => a.su_id);
     if (assignedSuIds.length === 0) return [];
+  }
+  // Narrow further to residents actually on THIS staff member's rota shift today, when
+  // known. staff_service_user_assignments is a standing caseload that can include
+  // residents this person isn't rostered with today — without this, the clock-out gate
+  // (see clockin.routes.ts) blocked on medication for a resident's whole caseload
+  // regardless of who they were actually rostered to work with on the shift they're
+  // trying to end.
+  if (shiftSuIds && shiftSuIds.length > 0) {
+    assignedSuIds = assignedSuIds ? assignedSuIds.filter(id => shiftSuIds.includes(id)) : shiftSuIds;
   }
 
   let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,

@@ -20,6 +20,14 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
+// "HH:MM" / "HH:MM:SS" -> minutes since midnight, or null if unset.
+function hhmmToMins(t?: string | null): number | null {
+  if (!t) return null;
+  const [h, m] = t.slice(0, 5).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
 function geocodePostcode(postcode: string): Promise<{ latitude: number; longitude: number } | null> {
   return new Promise((resolve) => {
     const clean = postcode.replace(/\s+/g, '');
@@ -130,7 +138,7 @@ router.post('/event', authenticate,
       // why this class of bug matters most right around UK midnight during BST.
       const todayStr = ukDateStr();
       const rotaShifts = await query<any>(
-        `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
         [staffId, homeId, todayStr]
       );
       for (const sh of rotaShifts) {
@@ -224,11 +232,47 @@ router.post('/event', authenticate,
       // Medication due during this shift must be signed off before clocking out — a
       // resident's medication silently going unrecorded because a shift ended is a
       // real safety gap, not just a missed task. Only counts medication whose scheduled
-      // time has already passed (an evening dose isn't "overdue" on an early shift).
+      // time has already passed (an evening dose isn't "overdue" on an early shift), AND
+      // only for residents this staff member was actually rostered with today — not their
+      // whole standing caseload.
       if (eventType === 'clock_out') {
         const nowHHMM = new Date().toTimeString().slice(0, 5);
-        const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole);
-        const overdue = dueTasks.filter(t => t.status === 'pending' && t.scheduledTime <= nowHHMM);
+
+        // The residents tied to today's rota shift(s) for this staff member — reused from
+        // the geofence check-point lookup above. When known, this scopes the clock-out
+        // medication check to just those residents (see getDueTodayTasks), so a morning
+        // shift worker isn't blocked over an evening dose for a resident on their general
+        // caseload they weren't rostered with today.
+        const todayShiftSuIds = Array.from(new Set(
+          rotaShifts.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+        ));
+
+        // Cap the "due by" cutoff at this shift's own end time (not the live clock) — a
+        // dose that only looks overdue because staff forgot to clock out after their
+        // shift genuinely ended belongs to whoever is on shift when it actually comes
+        // due, not to this shift. Combines every shift row for today in case there's
+        // more than one; handles an overnight shift (end time before start time) by
+        // treating its end as the following day.
+        let shiftStartMins: number | null = null;
+        let shiftEndMins: number | null = null;
+        for (const sh of rotaShifts) {
+          const s = hhmmToMins(sh.start_time);
+          let e = hhmmToMins(sh.end_time);
+          if (s != null && e != null) {
+            if (e <= s) e += 1440;
+            shiftStartMins = shiftStartMins == null ? s : Math.min(shiftStartMins, s);
+            shiftEndMins = shiftEndMins == null ? e : Math.max(shiftEndMins, e);
+          }
+        }
+        const nowMins = hhmmToMins(nowHHMM)!;
+        const cutoffMins = shiftEndMins != null ? Math.min(nowMins, shiftEndMins) : nowMins;
+
+        const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
+        const overdue = dueTasks.filter(t => {
+          if (t.status !== 'pending') return false;
+          const schedMins = hhmmToMins(t.scheduledTime);
+          return schedMins != null && schedMins <= cutoffMins;
+        });
         if (overdue.length > 0) {
           const residents = Array.from(new Set(overdue.map(t => t.suName)));
           return res.status(403).json({
