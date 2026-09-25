@@ -556,19 +556,16 @@ export default function Rota() {
           Service
         </span>
         <Filter className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
-          value={filterSu} onChange={e => setFilterSu(e.target.value)}>
-          <option value="">All Service Users</option>
-          {suList.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
-        </select>
-        {/* Service filter (left) and staff filter (right) — split from a single
-            merged dropdown so "service" reads left-to-right the same order as
-            the rest of this bar (Service badge, service users, then services,
-            then staff). */}
+        {/* Services (leftmost filter), then service users, then staff. */}
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterLabel} onChange={e => { setFilterLabel(e.target.value); setFilterStaff('') }}>
           <option value="">All Services</option>
           {serviceLabels.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
+          value={filterSu} onChange={e => setFilterSu(e.target.value)}>
+          <option value="">All Service Users</option>
+          {suList.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
         </select>
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterStaff} onChange={e => { setFilterStaff(e.target.value); setFilterLabel('') }}>
