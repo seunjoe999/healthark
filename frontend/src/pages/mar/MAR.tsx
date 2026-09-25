@@ -1656,9 +1656,23 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
 // prescribed times. Manager asked for this to be removed in favour of setting each
 // time directly.
 function TimeSlotsField({ frequency, value, onChange }: { frequency: string; value: string[]; onChange: (v: string[]) => void }) {
-  if (frequency === 'as_required' || !frequency) return null
-  const count = (FREQ_TIMES[frequency] || ['08:00']).length
+  const count = frequency === 'as_required' || !frequency ? 0 : (FREQ_TIMES[frequency] || ['08:00']).length
   const slots = Array.from({ length: count }, (_, i) => value[i] || FREQ_TIMES[frequency]?.[i] || '')
+  // The inputs below show a default time (from FREQ_TIMES) whenever `value` doesn't
+  // have one yet — e.g. every time this modal opens on a medication saved before its
+  // frequency had this many slots, or where earlier slots were never explicitly
+  // touched. That default was only ever visual: it rendered in the box but was never
+  // written into the form's own state, so "every dose looks filled in" while the
+  // actual saved value was still short — failing "set a time for every dose" on
+  // submit, or on reload, without the user ever having changed anything. Push the
+  // resolved defaults into the form the moment they'd otherwise only be shown.
+  useEffect(() => {
+    if (count === 0) return
+    const same = value.length === count && slots.every((s, i) => s === value[i])
+    if (!same) onChange(slots)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frequency, count])
+  if (count === 0) return null
   const setSlot = (i: number, v: string) => {
     const next = [...slots]
     next[i] = v
