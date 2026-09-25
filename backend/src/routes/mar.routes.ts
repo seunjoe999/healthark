@@ -46,18 +46,22 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const { suId, medicationName, dose, frequency, route, prescribedBy,
               startDate, endDate, instructions, isPrn, isControlled, pharmacyName, pharmacyPhone,
               gpName, gpPhone, medicationCode, atcCode,
-              locationAccessCode, medicineWarning, medicineType, applyTime, timeSlots } = req.body;
+              locationAccessCode, medicineWarning, medicineType, applyTime, timeSlots,
+              medicineTypeOther, frequencyOther, weeklyDays } = req.body;
       const bodyHomeId = req.body.homeId;
       const effectiveHomeId = bodyHomeId || homeId;
       const cleanSlots = Array.isArray(timeSlots) ? timeSlots.map((t: string) => String(t).slice(0, 5)).filter(Boolean) : null;
+      const cleanWeeklyDays = Array.isArray(weeklyDays) ? weeklyDays.map(Number).filter((n: number) => !Number.isNaN(n)) : null;
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
-          prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by, medicine_type, apply_time, time_slots)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+          prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by, medicine_type, apply_time, time_slots,
+          medicine_type_other, frequency_other, weekly_days)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
         [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
          instructions || null, isPrn || false, isControlled || false, staffId, medicineType || null, applyTime || null,
-         cleanSlots && cleanSlots.length ? cleanSlots : null]
+         cleanSlots && cleanSlots.length ? cleanSlots : null,
+         nd(medicineTypeOther), nd(frequencyOther), cleanWeeklyDays && cleanWeeklyDays.length ? cleanWeeklyDays : null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -68,7 +72,8 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled, medicineType, applyTime, timeSlots } = req.body;
+      const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled, medicineType, applyTime, timeSlots,
+              medicineTypeOther, frequencyOther, weeklyDays } = req.body;
       const updates = [
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
@@ -80,6 +85,14 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'is_prn', val: isPrn },
         { field: 'is_controlled', val: isControlled },
         { field: 'medicine_type', val: medicineType },
+        { field: 'medicine_type_other', val: medicineTypeOther !== undefined ? nd(medicineTypeOther) : undefined },
+        { field: 'frequency_other', val: frequencyOther !== undefined ? nd(frequencyOther) : undefined },
+        {
+          field: 'weekly_days',
+          val: weeklyDays !== undefined
+            ? (Array.isArray(weeklyDays) && weeklyDays.length ? weeklyDays.map(Number).filter((n: number) => !Number.isNaN(n)) : null)
+            : undefined,
+        },
         // apply_time is a Postgres `time` column — toggling a medication to PRN
         // clears the apply-time field in the UI to '', which Postgres rejects
         // outright ("invalid input syntax for type time"), 500ing the whole

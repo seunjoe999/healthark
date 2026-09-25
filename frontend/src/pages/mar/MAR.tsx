@@ -30,6 +30,8 @@ const FREQUENCIES = [
   { value: 'as_required', label: 'As required (PRN)' },
   { value: 'other', label: 'Other' },
 ]
+// Sun=0..Sat=6, same convention as staff_shifts.days_of_week / su_medications.weekly_days.
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const ROUTES = [
   { value: 'oral', label: 'Oral' },
   { value: 'topical', label: 'Topical' },
@@ -1677,16 +1679,19 @@ function TimeSlotsField({ frequency, value, onChange }: { frequency: string; val
 
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
-  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', timeSlots: [] as string[], prescribedBy: '', startDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '' }
+  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', timeSlots: [] as string[], prescribedBy: '', startDate: '', endDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '', medicineTypeOther: '', frequencyOther: '', weeklyDays: [] as number[] }
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  const toggleWeeklyDay = (d: number) => setForm(p => ({ ...p, weeklyDays: p.weeklyDays.includes(d) ? p.weeklyDays.filter(x => x !== d) : [...p.weeklyDays, d].sort() }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.medicationName.trim()) { toast.error('Medication name is required'); return }
     if (!suId) { toast.error('No service user selected'); return }
     if (!form.frequency) { toast.error('Frequency is required'); return }
+    if (form.frequency === 'other' && !form.frequencyOther.trim()) { toast.error('Describe the custom frequency'); return }
+    if (form.medicineType === 'other' && !form.medicineTypeOther.trim()) { toast.error('Describe the medicine type'); return }
     if (!form.prescribedBy.trim()) { toast.error('Reason for prescription is required'); return }
     // Administration times are required (except for PRN, which has no fixed schedule) —
     // without them every medication silently defaulted to 08:00 on the MAR.
@@ -1706,17 +1711,43 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
     <Modal open={open} onClose={onClose} title="Add medication" size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <Input label="Medication name *" required value={form.medicationName} onChange={e => set('medicationName', e.target.value)} placeholder="e.g. Amlodipine, Paracetamol..." />
-        <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
-            options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
-            placeholder="Select type" />
+          <Input label="Starts on" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="Ends on" type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
+              options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
+              placeholder="Select type" />
+            {form.medicineType === 'other' && (
+              <Input className="mt-2" placeholder="What type of medicine is it?" value={form.medicineTypeOther} onChange={e => set('medicineTypeOther', e.target.value)} />
+            )}
+          </div>
           <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
-          <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+          <div>
+            <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+            {form.frequency === 'other' && (
+              <Input className="mt-2" placeholder="Describe the frequency" value={form.frequencyOther} onChange={e => set('frequencyOther', e.target.value)} />
+            )}
+          </div>
         </div>
+        {form.frequency === 'weekly' && (
+          <div>
+            <label className="label">Day of the week to administer *</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {DAY_LABELS.map((d, i) => (
+                <button key={i} type="button" onClick={() => toggleWeeklyDay(i)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${form.weeklyDays.includes(i) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {!form.isPrn && <TimeSlotsField frequency={form.frequency} value={form.timeSlots} onChange={v => set('timeSlots', v)} />}
         <div>
           <label className="label">Directions / Instructions</label>
@@ -1774,6 +1805,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     timeSlots: (med.time_slots && med.time_slots.length ? med.time_slots : (med.apply_time ? [String(med.apply_time).slice(0, 5)] : [])) as string[],
     prescribedBy: med.prescribed_by || '',
     startDate: med.start_date ? med.start_date.split('T')[0] : '',
+    endDate: med.end_date ? med.end_date.split('T')[0] : '',
     instructions: med.instructions || '',
     locationAccessCode: med.location_access_code || '',
     medicineWarning: med.medicine_warning || '',
@@ -1783,13 +1815,19 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     pharmacyPhone: med.pharmacy_phone || '',
     gpName: med.gp_name || '',
     gpPhone: med.gp_phone || '',
+    medicineTypeOther: med.medicine_type_other || '',
+    frequencyOther: med.frequency_other || '',
+    weeklyDays: (Array.isArray(med.weekly_days) ? med.weekly_days.map(Number) : []) as number[],
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  const toggleWeeklyDay = (d: number) => setForm(p => ({ ...p, weeklyDays: p.weeklyDays.includes(d) ? p.weeklyDays.filter(x => x !== d) : [...p.weeklyDays, d].sort() }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.frequency) { toast.error('Frequency is required'); return }
+    if (form.frequency === 'other' && !form.frequencyOther.trim()) { toast.error('Describe the custom frequency'); return }
+    if (form.medicineType === 'other' && !form.medicineTypeOther.trim()) { toast.error('Describe the medicine type'); return }
     const cleanSlots = form.timeSlots.filter(Boolean)
     if (!form.isPrn && cleanSlots.length < (FREQ_TIMES[form.frequency]?.length || 1)) { toast.error('Set a time for every dose'); return }
     if (!form.prescribedBy.trim()) { toast.error('Reason for prescription is required'); return }
@@ -1802,17 +1840,43 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
   return (
     <Modal open={true} onClose={onClose} title={`Edit — ${med.medication_name}`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-        <Input label="Apply date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
-            options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
-            placeholder="Select type" />
+          <Input label="Starts on" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="Ends on" type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Select label="Medicine type" value={form.medicineType} onChange={e => set('medicineType', e.target.value)}
+              options={[{ value: 'tablet', label: 'Tablet / Pill' }, { value: 'liquid', label: 'Liquid' }, { value: 'cream', label: 'Cream / Ointment' }, { value: 'inhaler', label: 'Inhaler' }, { value: 'injection', label: 'Injection' }, { value: 'patch', label: 'Patch' }, { value: 'drops', label: 'Drops' }, { value: 'other', label: 'Other' }]}
+              placeholder="Select type" />
+            {form.medicineType === 'other' && (
+              <Input className="mt-2" placeholder="What type of medicine is it?" value={form.medicineTypeOther} onChange={e => set('medicineTypeOther', e.target.value)} />
+            )}
+          </div>
           <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
-          <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+          <div>
+            <Select label="Frequency *" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} placeholder="Select frequency" />
+            {form.frequency === 'other' && (
+              <Input className="mt-2" placeholder="Describe the frequency" value={form.frequencyOther} onChange={e => set('frequencyOther', e.target.value)} />
+            )}
+          </div>
         </div>
+        {form.frequency === 'weekly' && (
+          <div>
+            <label className="label">Day of the week to administer *</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {DAY_LABELS.map((d, i) => (
+                <button key={i} type="button" onClick={() => toggleWeeklyDay(i)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${form.weeklyDays.includes(i) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {!form.isPrn && <TimeSlotsField frequency={form.frequency} value={form.timeSlots} onChange={v => set('timeSlots', v)} />}
         <div>
           <label className="label">Directions / Instructions</label>

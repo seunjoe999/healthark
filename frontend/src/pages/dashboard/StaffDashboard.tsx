@@ -221,6 +221,34 @@ export default function StaffDashboard() {
         ))}
       </div>
 
+      {/* Medication due today — a dedicated list, not just a count buried in the
+          MAR quick-action tile's subtitle, so setting up a medication is visibly
+          reflected on the dashboard the same way a task is. */}
+      {myMeds.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+            <h2 className="font-semibold text-slate-800">Medication due today</h2>
+            <Link to="/mar" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div>
+            {myMeds.filter((m: any) => m.status === 'pending').slice(0, 4).map((m: any) => (
+              <div key={`${m.medicationId}-${m.scheduledTime}`} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
+                <Pill className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-700 truncate">{m.medicationName}{m.suName ? ` · ${m.suName}` : ''}</p>
+                </div>
+                {m.scheduledTime && <p className="text-xs text-slate-400 flex-shrink-0">{m.scheduledTime}</p>}
+              </div>
+            ))}
+            {myMeds.filter((m: any) => m.status === 'pending').length === 0 && (
+              <p className="text-sm text-slate-400 px-5 py-4">All medications given for today</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* My tasks today */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">

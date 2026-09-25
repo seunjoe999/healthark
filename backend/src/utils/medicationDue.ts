@@ -61,16 +61,18 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   }
 
   let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
-                    m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date, m.time_slots,
+                    m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date, m.end_date, m.time_slots, m.weekly_days,
                     su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
              FROM su_medications m
              JOIN service_users su ON su.id = m.su_id
              WHERE m.home_id = $1 AND m.is_active = true AND m.is_prn = false`;
   const params: any[] = [homeId];
   if (assignedSuIds) {
-    sql += ` AND m.su_id = ANY($2)`;
+    sql += ` AND m.su_id = ANY($${params.length + 1})`;
     params.push(assignedSuIds);
   }
+  sql += ` AND (m.end_date IS NULL OR m.end_date >= $${params.length + 1})`;
+  params.push(today);
   const meds = await query<any>(sql, params);
 
   // Ordered oldest-first so the Map below keeps the LATEST entry per slot —
@@ -92,9 +94,13 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   const todayDow = ukDayOfWeek();
   const tasks: DueMedicationTask[] = [];
   for (const med of meds as any[]) {
-    if (med.frequency === 'weekly' && med.start_date) {
-      const anchorDow = new Date(med.start_date).getDay();
-      if (anchorDow !== todayDow) continue;
+    if (med.frequency === 'weekly') {
+      if (Array.isArray(med.weekly_days) && med.weekly_days.length > 0) {
+        if (!med.weekly_days.map(Number).includes(todayDow)) continue;
+      } else if (med.start_date) {
+        const anchorDow = new Date(med.start_date).getDay();
+        if (anchorDow !== todayDow) continue;
+      }
     }
     if (med.frequency === 'every_3_days' && med.start_date) {
       const anchor = new Date(med.start_date);

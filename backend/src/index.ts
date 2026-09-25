@@ -1978,6 +1978,16 @@ async function ensureColumns() {
     // with uneven gaps into an artificial evenly-spaced pattern and caused staff to be unable
     // to log doses at the medication's actual prescribed times.
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS time_slots TEXT[]`,
+    // Free-text follow-up when "Other" is picked for medicine type or frequency —
+    // the dropdown keeps storing the literal 'other' (so re-opening the form still
+    // shows "Other" selected, not a value matching no option), and the actual typed
+    // description lives here instead.
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type_other TEXT`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS frequency_other TEXT`,
+    // Which day(s) of the week a "weekly" medication is administered on (0=Sun..6=Sat,
+    // same convention as shift_templates.days_of_week) — explicitly chosen by whoever
+    // adds the medication, rather than implicitly derived from start_date alone.
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS weekly_days INTEGER[]`,
     `ALTER TABLE timesheet_entries ADD COLUMN IF NOT EXISTS service_name VARCHAR(255)`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255)`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100)`,
