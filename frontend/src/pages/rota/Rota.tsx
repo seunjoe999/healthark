@@ -894,6 +894,7 @@ export default function Rota() {
           onClose={() => setStandbyOpen(false)}
           staffList={staffList}
           homeId={selectedHome}
+          serviceLabels={serviceLabels}
           defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
           onSaved={() => { setStandbyOpen(false); loadAll(); toast.success('Standby shift created') }}
         />
@@ -1614,13 +1615,13 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
 
 // ── Create Standby Shift Modal ────────────────────────────────────────────────
 
-function CreateStandbyModal({ open, onClose, staffList, homeId, defaultDate, onSaved }: {
+function CreateStandbyModal({ open, onClose, staffList, homeId, serviceLabels, defaultDate, onSaved }: {
   open: boolean; onClose: () => void
-  staffList: any[]; homeId: string
+  staffList: any[]; homeId: string; serviceLabels: string[]
   defaultDate: string; onSaved: () => void
 }) {
   const [form, setForm] = useState({
-    staffId: '', startDate: defaultDate, isOngoing: false, endDate: defaultDate,
+    label: '', staffId: '', startDate: defaultDate, isOngoing: false, endDate: defaultDate,
     recurrence: 'daily', daysOfWeek: [1, 2, 3, 4, 5],
     startTime: '08:00', endTime: '20:00',
     workDetails: '', carerPayRegular: '', carerPayBankHoliday: '', carerPayBy: 'hour',
@@ -1635,12 +1636,14 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, defaultDate, onS
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.label.trim()) { toast.error('Enter a service'); return }
     if (!form.staffId) { toast.error('Select a staff member'); return }
     setSaving(true)
     try {
       const daysOfWeek = form.recurrence === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : form.daysOfWeek
       await api.post('/shifts/service-shift', {
         homeId,
+        label: form.label.trim(),
         suId: null,
         startDate: form.startDate,
         isOngoing: form.isOngoing,
@@ -1666,6 +1669,14 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, defaultDate, onS
   return (
     <Modal open={open} onClose={onClose} title="Create Standby Shift" size="md">
       <form onSubmit={save} className="space-y-4">
+
+        <Input label="Service *" required value={form.label} onChange={e => set('label', e.target.value)}
+          placeholder="e.g. 12 Kennedy Avenue, Day Centre..." list="existing-service-labels-standby" />
+        {serviceLabels.length > 0 && (
+          <datalist id="existing-service-labels-standby">
+            {serviceLabels.map(l => <option key={l} value={l} />)}
+          </datalist>
+        )}
 
         {/* Dates */}
         <div className="grid grid-cols-2 gap-3">

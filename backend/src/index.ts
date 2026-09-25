@@ -75,7 +75,25 @@ app.use(cors({
 }));
 
 // â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.use('/api', rateLimit({ windowMs: 900000, max: 1000, standardHeaders: true, legacyHeaders: false }));
+// Key by the authenticated staff member (from the JWT) rather than raw IP where
+// possible — a whole care home's staff share one site WiFi's public IP, so keying
+// by IP alone means one shared 1000-requests/15min budget for every device in the
+// building, tripped by ordinary multi-staff usage (dashboard polling, notification
+// SSE reconnects) long before anyone did anything wrong. Falls back to IP for
+// unauthenticated requests (e.g. login itself). jwt.decode (not verify) is fine
+// here — this only groups traffic for rate-limiting, not a security boundary, so a
+// forged token just buys its own separate bucket instead of stealing someone else's.
+function rateLimitKey(req: express.Request): string {
+  const token = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : '';
+  if (token) {
+    try {
+      const payload = jwt.decode(token) as any;
+      if (payload?.staffId) return `staff:${payload.staffId}`;
+    } catch { /* fall through to IP */ }
+  }
+  return req.ip || 'unknown';
+}
+app.use('/api', rateLimit({ windowMs: 900000, max: 3000, standardHeaders: true, legacyHeaders: false, keyGenerator: rateLimitKey }));
 app.use('/api/auth/login', rateLimit({ windowMs: 900000, max: 50, standardHeaders: true, legacyHeaders: false }));
 // pin-login accepts a short numeric PIN (as few as 4 digits — 10,000 combinations),
 // which the general 1000/15min API limit does nothing to stop being brute-forced.
