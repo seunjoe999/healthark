@@ -137,10 +137,15 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
 router.get('/service-labels', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    // Deactivated templates (deleted via Manage Services) must not leak their
+    // label back into this suggestion list — without the is_active filter, a
+    // service someone already deleted (e.g. a duplicate "Kennedy Road") kept
+    // reappearing as a selectable "existing service" forever, even though it
+    // had zero real shifts and never showed up in Manage Services itself.
     const rows = await query<{ label: string }>(
       `SELECT DISTINCT label FROM staff_shifts WHERE home_id = $1 AND label IS NOT NULL AND label != ''
        UNION
-       SELECT DISTINCT label FROM shift_templates WHERE home_id = $1 AND label IS NOT NULL AND label != ''
+       SELECT DISTINCT label FROM shift_templates WHERE home_id = $1 AND label IS NOT NULL AND label != '' AND is_active = true
        ORDER BY label`,
       [homeId]
     );

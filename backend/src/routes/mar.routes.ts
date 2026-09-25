@@ -60,13 +60,15 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
       const rows = await query(
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
           prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by, medicine_type, apply_time, time_slots,
-          medicine_type_other, frequency_other, weekly_days)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
+          medicine_type_other, frequency_other, weekly_days,
+          location_access_code, medicine_warning, pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING *`,
         [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
          instructions || null, isPrn || false, isControlled || false, staffId, medicineType || null, applyTime || null,
          cleanSlots && cleanSlots.length ? cleanSlots : null,
-         nd(medicineTypeOther), nd(frequencyOther), cleanWeeklyDays && cleanWeeklyDays.length ? cleanWeeklyDays : null]
+         nd(medicineTypeOther), nd(frequencyOther), cleanWeeklyDays && cleanWeeklyDays.length ? cleanWeeklyDays : null,
+         nd(locationAccessCode), nd(medicineWarning), nd(pharmacyName), nd(pharmacyPhone), nd(gpName), nd(gpPhone), nd(medicationCode), nd(atcCode)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -77,8 +79,17 @@ router.post('/medications', [body('suId').isUUID(), body('medicationName').notEm
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
+      // Same 24-hour amend rule as daily records and MAR dose logs — care staff can
+      // fix a medication entry for up to a day after their shift ends, not
+      // indefinitely; managers editing prescriptions are unrestricted.
+      if (role === 'care_staff' && !(await isWithinAmendWindow(staffId))) {
+        throw new AppError('You can only amend this for up to 24 hours after your shift ends', 403);
+      }
       const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled, medicineType, applyTime, timeSlots,
-              medicineTypeOther, frequencyOther, weeklyDays } = req.body;
+              medicineTypeOther, frequencyOther, weeklyDays,
+              locationAccessCode, medicineWarning, pharmacyName, pharmacyPhone, gpName, gpPhone, medicationCode, atcCode } = req.body;
       const updates = [
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
@@ -90,6 +101,14 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
         { field: 'is_prn', val: isPrn },
         { field: 'is_controlled', val: isControlled },
         { field: 'medicine_type', val: medicineType },
+        { field: 'location_access_code', val: locationAccessCode !== undefined ? nd(locationAccessCode) : undefined },
+        { field: 'medicine_warning', val: medicineWarning !== undefined ? nd(medicineWarning) : undefined },
+        { field: 'pharmacy_name', val: pharmacyName !== undefined ? nd(pharmacyName) : undefined },
+        { field: 'pharmacy_phone', val: pharmacyPhone !== undefined ? nd(pharmacyPhone) : undefined },
+        { field: 'gp_name', val: gpName !== undefined ? nd(gpName) : undefined },
+        { field: 'gp_phone', val: gpPhone !== undefined ? nd(gpPhone) : undefined },
+        { field: 'medication_code', val: medicationCode !== undefined ? nd(medicationCode) : undefined },
+        { field: 'atc_code', val: atcCode !== undefined ? nd(atcCode) : undefined },
         { field: 'medicine_type_other', val: medicineTypeOther !== undefined ? nd(medicineTypeOther) : undefined },
         { field: 'frequency_other', val: frequencyOther !== undefined ? nd(frequencyOther) : undefined },
         {
