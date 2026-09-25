@@ -707,13 +707,13 @@ export default function Rota() {
 
         {/* Day headers — sticky */}
         <div className="flex sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
-          <div className="w-14 flex-shrink-0 border-r border-slate-100" />
+          <div className="w-14 flex-shrink-0 border-r-2 border-slate-300" />
           {dayData.map(({ day, dayShifts, dayLeaves, width }) => {
             const isToday = isSameDay(day, today)
             const count = dayShifts.length + dayLeaves.length
             return (
               <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0 }}
-                className={`text-center py-2 border-l border-slate-100 ${isToday ? 'bg-indigo-600' : ''}`}>
+                className={`text-center py-2 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : ''}`}>
                 <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-700'}`}>{format(day, 'EEE')}</p>
                 <p className={`text-xl font-bold leading-tight ${isToday ? 'text-white' : 'text-slate-700'}`}>
                   {format(day, 'd')}
@@ -736,11 +736,11 @@ export default function Rota() {
           <div className="flex">
 
             {/* Time labels */}
-            <div className="w-14 flex-shrink-0 border-r border-slate-100">
+            <div className="w-14 flex-shrink-0 border-r-2 border-slate-300">
               {HOURS.map(h => (
                 <div key={h} style={{ height: HOUR_HEIGHT }}
-                  className="flex items-start justify-end pr-2 pt-1 border-t border-slate-100">
-                  <span className="text-[11px] text-slate-400">{String(h).padStart(2, '0')}:00</span>
+                  className="flex items-start justify-end pr-2 pt-1 border-t border-slate-200">
+                  <span className="text-[11px] font-bold text-slate-500">{String(h).padStart(2, '0')}:00</span>
                 </div>
               ))}
             </div>
@@ -754,12 +754,12 @@ export default function Rota() {
 
               return (
                 <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0, height: TOTAL_HEIGHT }}
-                  className={`relative border-l ${isToday ? 'bg-indigo-50 border-l-2 border-indigo-300' : 'border-slate-100'}`}>
+                  className={`relative border-l-2 ${isToday ? 'bg-indigo-50 border-indigo-300' : 'border-slate-300'}`}>
 
                   {/* Hour gridlines */}
                   {HOURS.map((h, i) => (
                     <div key={h}
-                      className={`absolute left-0 right-0 border-t ${i % 2 === 0 ? 'border-slate-100' : 'border-slate-50'}`}
+                      className={`absolute left-0 right-0 border-t ${i % 2 === 0 ? 'border-slate-200' : 'border-slate-100'}`}
                       style={{ top: i * HOUR_HEIGHT }} />
                   ))}
 
@@ -810,8 +810,8 @@ export default function Rota() {
                         style={{
                           top: top + 1,
                           height: Math.max(height - 2, 32),
-                          left: `calc(${laneLeft}% + 2px)`,
-                          width: `calc(${laneWidth}% - 4px)`,
+                          left: `calc(${laneLeft}% + 4px)`,
+                          width: `calc(${laneWidth}% - 8px)`,
                           backgroundColor: colors.bg,
                           borderColor:     selected ? '#e8b130' : colors.border,
                           color:           colors.text,
