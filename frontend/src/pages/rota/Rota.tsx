@@ -561,27 +561,19 @@ export default function Rota() {
           <option value="">All Service Users</option>
           {suList.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
         </select>
-        {/* Unified staff + service filter — one dropdown so the user can jump
-            straight to a single service (instead of every service lumped
-            together) or a single staff member, without hunting through two
-            separate lists. */}
+        {/* Service filter (left) and staff filter (right) — split from a single
+            merged dropdown so "service" reads left-to-right the same order as
+            the rest of this bar (Service badge, service users, then services,
+            then staff). */}
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
-          value={filterStaff ? `staff:${filterStaff}` : filterLabel ? `service:${filterLabel}` : ''}
-          onChange={e => {
-            const v = e.target.value
-            if (v.startsWith('staff:')) { setFilterStaff(v.slice(6)); setFilterLabel('') }
-            else if (v.startsWith('service:')) { setFilterLabel(v.slice(8)); setFilterStaff('') }
-            else { setFilterStaff(''); setFilterLabel('') }
-          }}>
+          value={filterLabel} onChange={e => { setFilterLabel(e.target.value); setFilterStaff('') }}>
+          <option value="">All Services</option>
+          {serviceLabels.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
+          value={filterStaff} onChange={e => { setFilterStaff(e.target.value); setFilterLabel('') }}>
           <option value="">All Staff</option>
-          {serviceLabels.length > 0 && (
-            <optgroup label="Services">
-              {serviceLabels.map(l => <option key={l} value={`service:${l}`}>{l}</option>)}
-            </optgroup>
-          )}
-          <optgroup label="Staff">
-            {staffList.map(s => <option key={s.id} value={`staff:${s.id}`}>{getName(s)}</option>)}
-          </optgroup>
+          {staffList.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
         </select>
         {canManage && serviceLabels.length > 0 && (
           <button onClick={() => setManageServicesOpen(true)}
