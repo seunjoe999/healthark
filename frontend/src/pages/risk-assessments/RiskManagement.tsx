@@ -55,6 +55,25 @@ function RiskBadge({ level }: { level: string }) {
   )
 }
 
+// Card background/border tinted by risk level, matching Medicine Risk
+// Assessment's list cards (its riskTint/riskBorder) — a risk-level card there
+// reads as solid pale red/amber/green at a glance instead of a plain white
+// card with a small badge, per "I want it to look like the medication risk
+// assessment" request.
+function raTint(level: string) {
+  if (level === 'critical' || level === 'high') return '#fef2f2'
+  if (level === 'medium') return '#fffbeb'
+  if (level === 'low') return '#f0fdf4'
+  return '#ffffff'
+}
+function raBorder(level: string) {
+  if (level === 'critical') return 'rgba(220,38,38,0.45)'
+  if (level === 'high') return 'rgba(239,68,68,0.35)'
+  if (level === 'medium') return 'rgba(245,158,11,0.35)'
+  if (level === 'low') return 'rgba(16,185,129,0.4)'
+  return 'rgba(148,163,184,0.25)'
+}
+
 // Card-styled field, matching Care Plans' GoldSection pattern — a bordered
 // box with a bold label and dark, readable body text instead of faint gray.
 function Field({ label, value }: { label: string; value?: string | null }) {
@@ -635,11 +654,13 @@ export default function RiskManagement() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {visibleAssessments.map((ra: any) => {
             const label = ra.assessment_name
+            const level = ra.risk_rating || ra.current_risk_level || 'low'
             return (
               <button key={ra.id} onClick={() => { setViewItem(ra); setViewReads([]); api.get(`/risk-assessments/${ra.id}/reads`).then(r => setViewReads(r.data?.data || [])).catch(() => {}) }}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-left hover:shadow-md hover:border-slate-200 transition-all group">
+                className="rounded-2xl shadow-sm p-5 text-left hover:shadow-md transition-all group"
+                style={{ background: raTint(level), border: `1.5px solid ${raBorder(level)}` }}>
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-100 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0 group-hover:bg-white transition-colors">
                     <Shield className="w-5 h-5 text-slate-500" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -671,6 +692,23 @@ export default function RiskManagement() {
           const likelihood = LIKELIHOOD_OPTIONS.find(o => o.value === ra.risk_rating_option)
           return (
             <div className="space-y-4">
+              {/* Resident header — photo + name, matching Medicine Risk Assessment's
+                  document-style header on its detail view. */}
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                {ra.su_photo_url ? (
+                  <img src={ra.su_photo_url} alt={ra.su_name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                    onError={e => { e.currentTarget.outerHTML = `<div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0" style="background:#fdf3d9;color:#8a6400">${(ra.su_name?.[0] || '?').toUpperCase()}</div>` }} />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0" style={{ background: '#fdf3d9', color: '#8a6400' }}>
+                    {(ra.su_name?.[0] || '?').toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-slate-900">{ra.su_name}</p>
+                  <p className="text-xs text-slate-500">{ra.assessment_name}</p>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-slate-100">
                 <button
                   onClick={() => { markRead(ra.id); toast.success('Marked as read') }}

@@ -232,7 +232,7 @@ function buildIncidentPrintPage(inc: any): string {
   }
 
   if (inc.immediate_action) {
-    sections.push({ title: 'Immediate Action Taken', inner: `<p class="body-text">${nl(inc.immediate_action)}</p>` })
+    sections.push({ title: 'Intervention Following the Incident', inner: `<p class="body-text">${nl(inc.immediate_action)}</p>` })
   }
 
   if (inc.emotion) {
@@ -381,6 +381,10 @@ const BLANK_INC = {
   witnessedBy: 'Nobody',
   residentProvideInfo: 'Yes',
   residentActivity: '',
+  interventionFollowing: '',
+  incidentTypeOtherDetail: '',
+  locationOtherDetail: '',
+  witnessedByOtherDetail: '',
   description: '',
   reportedToSeniorDate: ukDateStr(),
   reportedToSeniorHour: nowHour(),
@@ -694,8 +698,8 @@ export default function Incidents() {
   const incidentDraftKey = draftKey('incident')
   restoreDraftOnOpen<typeof BLANK_INC>(incidentDraftKey, createOpen,
     draft => setCreateForm({ ...BLANK_INC, ...draft }),
-    draft => !!(draft.suId || draft.description))
-  useDraftAutosave(incidentDraftKey, createForm, createOpen, !!(createForm.suId || createForm.description))
+    draft => !!(draft.suId || draft.residentActivity))
+  useDraftAutosave(incidentDraftKey, createForm, createOpen, !!(createForm.suId || createForm.residentActivity))
 
   // Edit incident state
   const [editOpen, setEditOpen] = useState(false)
@@ -742,14 +746,26 @@ export default function Incidents() {
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!createForm.suId) { toast.error('Select a service user'); return }
-    if (!createForm.description.trim()) { toast.error('Please describe how the incident happened'); return }
+    if (!createForm.residentActivity.trim()) { toast.error('Please describe how the incident happened'); return }
     setCreating(true)
     try {
       const payload = {
         ...createForm,
         homeId: selectedHome,
         incidentTime: `${createForm.incidentHour}:${createForm.incidentMinute}`,
-        witnesses: [createForm.witnessedBy, createForm.staffInvolved === 'Yes' ? createForm.staffInvolvedList : ''].filter(Boolean).join('; '),
+        // "Other" selections carry their own free-text box now — substitute the typed
+        // detail in place of the literal word "Other" so nothing gets lost, without
+        // needing new backend columns (incidentType already falls back to showing the
+        // raw string when it isn't a known TYPE_LABELS key — see line ~1097).
+        incidentType: createForm.incidentType === 'other' && createForm.incidentTypeOtherDetail
+          ? createForm.incidentTypeOtherDetail : createForm.incidentType,
+        location: createForm.location === 'Other' && createForm.locationOtherDetail
+          ? createForm.locationOtherDetail : createForm.location,
+        witnesses: [
+          createForm.witnessedBy === 'Other' && createForm.witnessedByOtherDetail
+            ? createForm.witnessedByOtherDetail : createForm.witnessedBy,
+          createForm.staffInvolved === 'Yes' ? createForm.staffInvolvedList : '',
+        ].filter(Boolean).join('; '),
         injuries: createForm.serviceUserInjured === 'Yes',
         injuryDetails: createForm.injuryLocations
           ? `Locations: ${createForm.injuryLocations}`
@@ -757,10 +773,12 @@ export default function Incidents() {
         medicalNeeded: createForm.gpAmbulanceCalled !== '' && createForm.gpAmbulanceCalled !== 'No',
         medicalDetails: createForm.gpAmbulanceCalled,
         familyNotified: createForm.nokInformed === 'Yes',
-        immediateAction: [
-          createForm.residentActivity ? `Resident was: ${createForm.residentActivity}` : '',
-          createForm.notes || '',
-        ].filter(Boolean).join('\n'),
+        // "How did the incident happen?" (residentActivity) is the narrative; Notes is
+        // folded in underneath it, same as it always was pre-existing.
+        description: [createForm.residentActivity, createForm.notes || ''].filter(Boolean).join('\n\n'),
+        // "Intervention following the incident" — its own dedicated field now, no
+        // longer merged from resident activity + notes.
+        immediateAction: createForm.interventionFollowing || '',
         contributingFactors: createForm.equipmentInvolved === 'Yes' ? 'Equipment/machinery involved' : '',
       }
       await api.post('/incidents', payload)
@@ -1103,7 +1121,7 @@ export default function Incidents() {
                     {inc.safeguarding_ref && <IncidentField label="Safeguarding" value="Safeguarding referral made" />}
                     {inc.description && <IncidentField label="Details of Incident" value={inc.description} />}
                     {inc.witnesses && <IncidentField label="Witnesses" value={inc.witnesses} />}
-                    {inc.immediate_action && <IncidentField label="Immediate action taken" value={inc.immediate_action} />}
+                    {inc.immediate_action && <IncidentField label="Intervention following the incident" value={inc.immediate_action} />}
 
                     {/* Emotion display */}
                     {inc.emotion && (
@@ -1195,7 +1213,7 @@ export default function Incidents() {
                 onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Immediate action taken</label>
+              <label className="label">Intervention following the incident</label>
               <textarea className="input w-full" rows={2}
                 value={editForm.immediateAction}
                 onChange={e => setEditForm(f => ({ ...f, immediateAction: e.target.value }))} />
@@ -1309,6 +1327,13 @@ export default function Incidents() {
               {INCIDENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
             </select>
           </div>
+          {createForm.incidentType === 'other' && (
+            <div>
+              <label className="label">Please specify the incident type</label>
+              <input className="input w-full" value={createForm.incidentTypeOtherDetail}
+                onChange={e => setCreateForm(f => ({ ...f, incidentTypeOtherDetail: e.target.value }))} />
+            </div>
+          )}
 
           {/* Incident Lasted */}
           <div>
@@ -1334,6 +1359,13 @@ export default function Incidents() {
                 <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
+          {createForm.location === 'Other' && (
+            <div>
+              <label className="label">Please specify the location</label>
+              <input className="input w-full" value={createForm.locationOtherDetail}
+                onChange={e => setCreateForm(f => ({ ...f, locationOtherDetail: e.target.value }))} />
+            </div>
+          )}
 
           {/* Were other staff involved? */}
           <div>
@@ -1392,6 +1424,13 @@ export default function Incidents() {
               <option value="Other">Other</option>
             </select>
           </div>
+          {createForm.witnessedBy === 'Other' && (
+            <div>
+              <label className="label">Please specify who witnessed it</label>
+              <input className="input w-full" value={createForm.witnessedByOtherDetail}
+                onChange={e => setCreateForm(f => ({ ...f, witnessedByOtherDetail: e.target.value }))} />
+            </div>
+          )}
 
           {/* Was resident able to provide information */}
           <div>
@@ -1402,16 +1441,19 @@ export default function Incidents() {
             </select>
           </div>
 
-          {/* What was resident doing */}
+          {/* How did the incident happen — was "What was resident doing at time of the
+              incident?", renamed per request; the separate "How did the incident
+              happen?" box that used to sit below it is gone, folded into this one. */}
           <div>
-            <SpeechTextarea label="What was resident doing at time of the incident?" rows={4}
+            <SpeechTextarea required label="How did the incident happen?" rows={4}
               placeholder="" value={createForm.residentActivity} onChange={v => setCreateForm(f => ({ ...f, residentActivity: v }))} />
           </div>
 
-          {/* How did it happen */}
+          {/* Intervention following the incident — new field, second box */}
           <div>
-            <SpeechTextarea required label="How did the incident happen?" rows={4}
-              placeholder="" value={createForm.description} onChange={v => setCreateForm(f => ({ ...f, description: v }))} />
+            <SpeechTextarea label="Intervention following the incident" rows={4}
+              placeholder="What intervention/action was taken following the incident?"
+              value={createForm.interventionFollowing} onChange={v => setCreateForm(f => ({ ...f, interventionFollowing: v }))} />
           </div>
 
           {/* Date reported to senior staff */}
