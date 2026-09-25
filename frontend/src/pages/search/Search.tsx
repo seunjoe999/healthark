@@ -32,7 +32,7 @@ export default function GlobalSearch() {
       <h1 className="font-display text-2xl text-slate-900 mb-5">Search</h1>
       <div className="relative mb-6">
         <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input autoFocus className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-200 bg-white shadow-card text-base focus:outline-none focus:ring-2 focus:ring-purple-300 transition"
+        <input autoFocus className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-200 bg-white shadow-card text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-300 transition"
           placeholder="Search residents, staff, care plans..." value={query} onChange={e => setQuery(e.target.value)} />
         {loading && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />}
       </div>
