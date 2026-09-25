@@ -60,10 +60,20 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
   const startDate = new Date(startDateStr + 'T00:00:00Z');
   const dowList: number[] = Array.isArray(tmpl.days_of_week) ? tmpl.days_of_week.map(Number) : [Number(tmpl.days_of_week)];
 
+  // A template's own end_date (its "stop date") caps generation regardless of the
+  // weeks-ahead window below — previously ignored entirely, so a shift given a
+  // specific stop date kept generating occurrences past it for as long as the
+  // ongoing/non-ongoing weeks window allowed.
+  const endDateStr = tmpl.end_date
+    ? (typeof tmpl.end_date === 'string' ? tmpl.end_date.split('T')[0] : tmpl.end_date.toISOString().split('T')[0])
+    : null;
+
   const dateStrs: string[] = [];
   const cur = new Date(startDate);
   for (let i = 0; i <= weeks * 7; i++) {
     const dow = cur.getUTCDay();
+    const dateStr = cur.toISOString().split('T')[0];
+    if (endDateStr && dateStr > endDateStr) break;
     const dayMatches = tmpl.recurrence === 'daily' || dowList.includes(dow);
     if (dayMatches) {
       let ok = true;
@@ -71,7 +81,7 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
         const weeksSince = Math.floor((cur.getTime() - startDate.getTime()) / (7 * 86400000));
         if (weeksSince % 2 !== 0) ok = false;
       }
-      if (ok) dateStrs.push(cur.toISOString().split('T')[0]);
+      if (ok) dateStrs.push(dateStr);
     }
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
@@ -578,8 +588,8 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
         `INSERT INTO shift_templates
           (home_id, label, staff_id, su_id, su_ids, shift_type, start_time, end_time, break_minutes,
            recurrence, days_of_week, start_date, staff_count, is_ongoing,
-           notes_for_carers, notes_for_managers, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+           notes_for_carers, notes_for_managers, created_by, end_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
         [homeId, label || null, staffId || null, primarySuId, allSuIds.length ? allSuIds : null, shiftType || 'regular', startTime, endTime, parseInt(breakMins) || 0,
          recurrence || 'daily', effectiveDays,
          startDate || ukDateStr(),
@@ -587,7 +597,10 @@ router.post('/service-shift', requireRole(...MANAGE_ROLES), async (req: Request,
          // OWN slot (see staffToCreate above), so "how many staff does this row need"
          // is always 1; the original required count only decided how many rows to make.
          1, isOngoing || false,
-         notesForCarers || null, notesForManagers || null, createdBy]
+         notesForCarers || null, notesForManagers || null, createdBy,
+         // Ongoing shifts ignore any stop date entirely (that's what "ongoing" means);
+         // only a non-ongoing shift's chosen end date is persisted.
+         isOngoing ? null : (endDate || null)]
       );
       const tmpl = {
         ...rows[0], is_standby: isStandby || false, standby_work_details: standbyWorkDetails || null,

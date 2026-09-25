@@ -2885,6 +2885,10 @@ async function ensureColumns() {
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS label VARCHAR(255)`,
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS su_id UUID REFERENCES service_users(id) ON DELETE SET NULL`,
     `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES staff(id) ON DELETE SET NULL`,
+    // Stop date for a non-ongoing recurring shift — accepted from the create form but
+    // never actually persisted or enforced, so a shift with a chosen end date just kept
+    // generating occurrences regardless ("if i put a stop date, it doesn't stop").
+    `ALTER TABLE shift_templates ADD COLUMN IF NOT EXISTS end_date DATE`,
     // ── must_scores — table used in reviews.routes.ts but missing from all migrations ──────────
     `CREATE TABLE IF NOT EXISTS must_scores (
        id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
