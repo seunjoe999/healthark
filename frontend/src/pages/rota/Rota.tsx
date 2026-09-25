@@ -317,29 +317,46 @@ export default function Rota() {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  const deleteShift = async (id: string) => {
-    if (!confirm('Remove this shift?')) return
-    try {
-      await api.delete(`/shifts/${id}`)
-      setShifts(prev => prev.filter(s => s.id !== id))
-      setDetailShift(null)
-      toast.success('Shift removed')
-    } catch { toast.error('Failed') }
+  // In-app confirm dialog for anything destructive below — a native
+  // window.confirm() blocks automated/assistive click-through and is
+  // inconsistent with the confirm-modal pattern Manage Services already uses.
+  const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
+
+  const deleteShift = (id: string) => {
+    setPendingConfirm({
+      title: 'Remove this shift?',
+      message: 'Remove this shift?',
+      onConfirm: async () => {
+        setPendingConfirm(null)
+        try {
+          await api.delete(`/shifts/${id}`)
+          setShifts(prev => prev.filter(s => s.id !== id))
+          setDetailShift(null)
+          toast.success('Shift removed')
+        } catch { toast.error('Failed') }
+      },
+    })
   }
 
   // Removes the recurring template plus every future occurrence generated
   // from it (past shifts stay, for the record) — for an "ongoing"/recurring
   // shift, deleting just today's occurrence via deleteShift() leaves every
   // future day still scheduled.
-  const deleteShiftSeries = async (shift: any) => {
+  const deleteShiftSeries = (shift: any) => {
     if (!shift.template_id) return deleteShift(shift.id)
-    if (!confirm('Remove this AND all future occurrences of this recurring shift? Past shifts are kept for the record.')) return
-    try {
-      await api.delete(`/shifts/templates/${shift.template_id}`)
-      setShifts(prev => prev.filter(s => !(s.template_id === shift.template_id && s.shift_date >= format(new Date(), 'yyyy-MM-dd'))))
-      setDetailShift(null)
-      toast.success('Recurring shift removed from today onwards')
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to remove recurring shift') }
+    setPendingConfirm({
+      title: 'Remove this recurring shift?',
+      message: 'Remove this AND all future occurrences of this recurring shift? Past shifts are kept for the record.',
+      onConfirm: async () => {
+        setPendingConfirm(null)
+        try {
+          await api.delete(`/shifts/templates/${shift.template_id}`)
+          setShifts(prev => prev.filter(s => !(s.template_id === shift.template_id && s.shift_date >= format(new Date(), 'yyyy-MM-dd'))))
+          setDetailShift(null)
+          toast.success('Recurring shift removed from today onwards')
+        } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to remove recurring shift') }
+      },
+    })
   }
 
   // ── Bulk selection ───────────────────────────────────────────────────────
@@ -354,20 +371,27 @@ export default function Rota() {
 
   const exitSelectMode = () => { setSelectMode(false); setSelectedShiftIds(new Set()) }
 
-  const bulkDeleteShifts = async () => {
+  const bulkDeleteShifts = () => {
     if (selectedShiftIds.size === 0) return
-    if (!confirm(`Delete ${selectedShiftIds.size} selected shift${selectedShiftIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) return
-    setBulkDeleting(true)
-    try {
-      const ids = Array.from(selectedShiftIds)
-      const results = await Promise.allSettled(ids.map(id => api.delete(`/shifts/${id}`)))
-      const okIds = ids.filter((_, i) => results[i].status === 'fulfilled')
-      const failed = ids.length - okIds.length
-      setShifts(prev => prev.filter(s => !okIds.includes(s.id)))
-      if (failed === 0) toast.success(`${okIds.length} shift${okIds.length !== 1 ? 's' : ''} deleted`)
-      else toast.error(`Deleted ${okIds.length}, ${failed} failed`)
-      exitSelectMode()
-    } finally { setBulkDeleting(false) }
+    const n = selectedShiftIds.size
+    setPendingConfirm({
+      title: 'Delete selected shifts?',
+      message: `Delete ${n} selected shift${n !== 1 ? 's' : ''}? This cannot be undone.`,
+      onConfirm: async () => {
+        setPendingConfirm(null)
+        setBulkDeleting(true)
+        try {
+          const ids = Array.from(selectedShiftIds)
+          const results = await Promise.allSettled(ids.map(id => api.delete(`/shifts/${id}`)))
+          const okIds = ids.filter((_, i) => results[i].status === 'fulfilled')
+          const failed = ids.length - okIds.length
+          setShifts(prev => prev.filter(s => !okIds.includes(s.id)))
+          if (failed === 0) toast.success(`${okIds.length} shift${okIds.length !== 1 ? 's' : ''} deleted`)
+          else toast.error(`Deleted ${okIds.length}, ${failed} failed`)
+          exitSelectMode()
+        } finally { setBulkDeleting(false) }
+      },
+    })
   }
 
   const bulkAssignStaff = async (staffId: string) => {
@@ -477,8 +501,8 @@ export default function Rota() {
               </Button>
               <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
                 onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-                title="Click shifts on the grid to select them, then assign a staff member or delete them">
-                {selectMode ? `${selectedShiftIds.size} selected` : 'Select Shifts to Assign'}
+                title="Click shifts on the grid to select them, then assign a staff member to all of them or delete them all at once">
+                {selectMode ? `${selectedShiftIds.size} selected` : 'Select Shifts to Assign / Delete'}
               </Button>
               <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
                 Report Absence + Find Cover
@@ -531,18 +555,15 @@ export default function Rota() {
 
       {/* ── Filters ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 flex-wrap bg-slate-50/80">
-        {/* Individual / Service switch — Individual is each resident's own rota
-            (created via Create Shift / Bulk Create), Service is a shared-service
-            rota entry (created via Create Rota for Service, shows its service
-            name instead of residents' names). All shows both together. */}
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-sm flex-shrink-0">
-          {([{ v: 'all', l: 'All' }, { v: 'individual', l: 'Individual' }, { v: 'service', l: 'Services' }] as const).map(o => (
-            <button key={o.v} onClick={() => setRotaMode(o.v)}
-              className={`px-2.5 py-1 font-semibold transition-colors ${rotaMode === o.v ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
-              {o.l}
-            </button>
-          ))}
-        </div>
+        {/* Rota is service-only now (every new shift requires a Service + a
+            resident), so the old All/Individual/Service switch collapsed down
+            to a single always-on "Service" label — nothing left to switch
+            between. rotaMode stays 'all' under the hood so any older,
+            pre-redesign individual shifts remain visible rather than getting
+            silently hidden. */}
+        <span className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-800 text-white text-sm font-bold flex-shrink-0">
+          Service
+        </span>
         <Filter className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterSu} onChange={e => setFilterSu(e.target.value)}>
@@ -863,7 +884,7 @@ export default function Rota() {
       </div>
 
       {/* ── Legend ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-100 text-[11px] text-slate-500 flex-wrap bg-slate-50 no-print">
+      <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-100 text-[11px] font-semibold text-slate-600 flex-wrap bg-slate-50 no-print">
         {SHIFT_STATUSES.map(s => (
           <span key={s.value} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS[s.value].dot }} />
@@ -970,6 +991,16 @@ export default function Rota() {
           onClose={() => setSwapShift(null)}
           onSaved={() => { setSwapShift(null); toast.success('Swap requested') }}
         />
+      )}
+
+      {pendingConfirm && (
+        <Modal open={true} onClose={() => setPendingConfirm(null)} title={pendingConfirm.title} size="sm">
+          <p className="text-sm text-slate-600 mb-5">{pendingConfirm.message}</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setPendingConfirm(null)}>Cancel</Button>
+            <Button variant="danger" onClick={pendingConfirm.onConfirm}>Delete</Button>
+          </div>
+        </Modal>
       )}
 
       {bulkOpen && (
@@ -1355,6 +1386,10 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
   const next = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.label.trim()) { toast.error('Enter a name for this service'); return }
+    // Required (not just offered) so clock-in geofencing has a resident's
+    // postcode to check against — a service with no resident attached has no
+    // location for the app to verify staff are actually there.
+    if (selectedSus.length === 0) { toast.error('Select at least one resident'); return }
     if (form.recurrence !== 'daily' && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
     setStep(2)
   }
@@ -1418,10 +1453,11 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
             </p>
           )}
 
-          {/* Residents (multi-select, optional) */}
+          {/* Residents (multi-select, required) — needed so clock-in geofencing
+              has a real address (the resident's own postcode) to check against. */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Residents <span className="text-slate-400 font-normal normal-case">(optional — {selectedSus.length} selected)</span>
+              Residents * <span className="text-slate-400 font-normal normal-case">({selectedSus.length} selected)</span>
             </label>
             <div className="relative mb-2">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -1954,7 +1990,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             <div>
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date / Times</p>
               <div className="flex items-center gap-2">
-                <p className="text-slate-800 font-medium">
+                <p className="text-slate-800 font-bold">
                   {shift.shift_date ? format(parseISO(shift.shift_date), 'EEE d MMM yyyy') : '—'}
                   {' · '}{shift.start_time?.substring(0, 5)}–{shift.end_time?.substring(0, 5)}
                 </p>
@@ -1967,7 +2003,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             </div>
             <div>
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Shift type</p>
-              <p className="text-slate-800 font-medium capitalize">{shift.shift_type?.replace(/_/g, ' ')}</p>
+              <p className="text-slate-800 font-bold capitalize">{shift.shift_type?.replace(/_/g, ' ')}</p>
             </div>
           </div>
         )}
@@ -1984,7 +2020,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <p className="text-slate-800 font-medium">{shift.label || 'Individual (not a Service)'}</p>
+                <p className="text-slate-800 font-bold">{shift.label || 'Individual (not a Service)'}</p>
                 {canManage && (
                   <button type="button" onClick={() => setEditingLabel(true)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                     {shift.label ? 'Edit' : 'Make this a Service'}
@@ -1998,7 +2034,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">
                 {shift.label ? 'Covers' : shift.su_ids && shift.su_ids.length > 1 ? 'Service Users' : 'Service User'}
               </p>
-              <p className="text-slate-800 font-medium">{shift.su_names || shift.su_name}</p>
+              <p className="text-slate-800 font-bold">{shift.su_names || shift.su_name}</p>
             </div>
           )}
           {shift.is_standby && (
@@ -2097,7 +2133,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           )}
           {shift.staff_id && (
             <button onClick={onSwap}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 border border-slate-200 hover:bg-slate-50 transition-colors">
               <ArrowLeftRight className="w-3.5 h-3.5" /> Request swap
             </button>
           )}
