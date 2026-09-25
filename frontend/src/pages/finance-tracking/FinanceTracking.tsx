@@ -85,8 +85,6 @@ export default function FinanceTracking() {
 
   const total = entries.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
 
-  if (!canManage) return <div className="p-8"><EmptyState title="Not available" description="This page is only available to management." /></div>
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -133,9 +131,11 @@ export default function FinanceTracking() {
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 <p className="font-bold text-emerald-600">£{parseFloat(en.amount || 0).toFixed(2)}</p>
-                <button onClick={() => remove(en.id)} className="text-slate-300 hover:text-rose-500">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canManage && (
+                  <button onClick={() => remove(en.id)} className="text-slate-300 hover:text-rose-500">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

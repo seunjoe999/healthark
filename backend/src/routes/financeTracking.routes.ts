@@ -15,8 +15,10 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
-// GET /api/finance-tracking?homeId=&suId=
-router.get('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+// GET /api/finance-tracking?homeId=&suId= — open to all staff (not just managers), so
+// care staff logging a resident's spending can also see the running record they're
+// adding to; deletion stays manager-only below.
+router.get('/',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
@@ -36,8 +38,8 @@ router.get('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'ad
   }
 );
 
-// POST /api/finance-tracking
-router.post('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+// POST /api/finance-tracking — open to all staff, same reasoning as GET above.
+router.post('/',
   [body('paymentType').notEmpty(), body('paymentDate').isDate(), body('amount').isFloat({ min: 0 })], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
