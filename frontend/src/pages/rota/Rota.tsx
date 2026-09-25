@@ -8,7 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin,
+  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin, Eye,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -228,8 +228,9 @@ export default function Rota() {
   // auto-shows on its own whenever there ARE pending requests, regardless of this).
   const [swapPanelOpen, setSwapPanelOpen] = useState(false)
 
-  // bulk shift selection
-  const [selectMode, setSelectMode] = useState(false)
+  // Bulk shift selection — clicking a shift tile always toggles its highlight
+  // (RoundSys-style), no separate "select mode" to switch into first. Once
+  // anything's highlighted, the action bar below the filters offers assign/delete.
   const [selectedShiftIds, setSelectedShiftIds] = useState<Set<string>>(new Set())
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
@@ -238,7 +239,6 @@ export default function Rota() {
   const [standbyOpen, setStandbyOpen] = useState(false)
   const [serviceRotaOpen, setServiceRotaOpen] = useState(false)
   const [leaveOpen,   setLeaveOpen]   = useState(false)
-  const [bulkOpen,    setBulkOpen]    = useState(false)
   const [detailShift, setDetailShift] = useState<any>(null)
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [coverOpen,   setCoverOpen]   = useState(false)
@@ -369,7 +369,7 @@ export default function Rota() {
     })
   }
 
-  const exitSelectMode = () => { setSelectMode(false); setSelectedShiftIds(new Set()) }
+  const clearSelection = () => setSelectedShiftIds(new Set())
 
   const bulkDeleteShifts = () => {
     if (selectedShiftIds.size === 0) return
@@ -388,7 +388,7 @@ export default function Rota() {
           setShifts(prev => prev.filter(s => !okIds.includes(s.id)))
           if (failed === 0) toast.success(`${okIds.length} shift${okIds.length !== 1 ? 's' : ''} deleted`)
           else toast.error(`Deleted ${okIds.length}, ${failed} failed`)
-          exitSelectMode()
+          clearSelection()
         } finally { setBulkDeleting(false) }
       },
     })
@@ -404,7 +404,7 @@ export default function Rota() {
       if (failed === 0) toast.success(`Assigned to ${ids.length} shift${ids.length !== 1 ? 's' : ''}`)
       else toast.error(`Assigned ${ids.length - failed}, ${failed} failed`)
       setBulkAssignOpen(false)
-      exitSelectMode()
+      clearSelection()
       loadAll()
     } finally { setBulkDeleting(false) }
   }
@@ -487,10 +487,6 @@ export default function Rota() {
               <Button variant="outline" icon={<Plus className="w-4 h-4" />} onClick={() => setStandbyOpen(true)}>
                 Create Standby Shift
               </Button>
-              <Button variant="outline" icon={<Filter className="w-4 h-4" />} onClick={() => setBulkOpen(true)}
-                title="Create a brand new recurring shift pattern, or delete shifts matching a pattern — this does NOT assign staff to shifts that already exist">
-                Bulk Create / Delete Shifts
-              </Button>
               <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}
                 title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern — use this to fill in a rota someone already created">
                 Bulk Assign Staff to Shifts
@@ -498,11 +494,6 @@ export default function Rota() {
               <Button variant="outline" icon={<UserMinus className="w-4 h-4" />} onClick={() => setUnassignOpen(true)}
                 title="Remove a staff member from all of their current and future shifts (today onwards) — the shifts stay on the rota as unfilled, ready to reassign">
                 Unassign
-              </Button>
-              <Button variant={selectMode ? 'primary' : 'outline'} icon={<Check className="w-4 h-4" />}
-                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-                title="Click shifts on the grid to select them, then assign a staff member to all of them or delete them all at once">
-                {selectMode ? `${selectedShiftIds.size} selected` : 'Select Shifts to Assign / Delete'}
               </Button>
               <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
                 Report Absence + Find Cover
@@ -582,7 +573,7 @@ export default function Rota() {
             else if (v.startsWith('service:')) { setFilterLabel(v.slice(8)); setFilterStaff('') }
             else { setFilterStaff(''); setFilterLabel('') }
           }}>
-          <option value="">All Staff &amp; Services</option>
+          <option value="">All Staff</option>
           {serviceLabels.length > 0 && (
             <optgroup label="Services">
               {serviceLabels.map(l => <option key={l} value={`service:${l}`}>{l}</option>)}
@@ -594,13 +585,13 @@ export default function Rota() {
         </select>
         {canManage && serviceLabels.length > 0 && (
           <button onClick={() => setManageServicesOpen(true)}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+            className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
             title="View and delete services — e.g. remove accidental duplicates">
             <Trash2 className="w-3 h-3" /> Manage Services
           </button>
         )}
         <button onClick={() => setSwapPanelOpen(v => !v)}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+          className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
           title="View shift swap requests">
           <ArrowLeftRight className="w-3 h-3" /> Swap Requests{swapRequests.length > 0 ? ` (${swapRequests.length})` : ''}
         </button>
@@ -615,29 +606,27 @@ export default function Rota() {
             <X className="w-3 h-3" /> Clear
           </button>
         )}
-        <div className="ml-auto text-xs text-slate-400">
+        <div className="ml-auto text-xs font-bold text-slate-600">
           {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''} today
         </div>
       </div>
 
-      {/* ── Bulk selection action bar ──────────────────────────────────── */}
-      {selectMode && (
+      {/* ── Bulk selection action bar — appears the moment anything's highlighted ── */}
+      {selectedShiftIds.size > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-blue-100 bg-blue-50 flex-wrap">
-          <p className="text-sm font-semibold text-blue-800">
-            {selectedShiftIds.size === 0
-              ? 'Tap one or more shifts on the grid below (including gray "Unfilled" ones) to select them'
-              : `${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — assign staff to all of them, or delete them`}
+          <p className="text-sm font-bold text-blue-800">
+            {`${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — assign staff to all of them, or delete them`}
           </p>
           <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" variant="outline" disabled={selectedShiftIds.size === 0 || bulkDeleting}
+            <Button size="sm" variant="outline" disabled={bulkDeleting}
               icon={<Users className="w-3.5 h-3.5" />} onClick={() => setBulkAssignOpen(true)}>
-              Assign staff
+              Bulk assign staff
             </Button>
-            <Button size="sm" variant="danger" disabled={selectedShiftIds.size === 0} loading={bulkDeleting}
+            <Button size="sm" variant="danger" loading={bulkDeleting}
               icon={<Trash2 className="w-3.5 h-3.5" />} onClick={bulkDeleteShifts}>
               Delete selected
             </Button>
-            <Button size="sm" variant="ghost" onClick={exitSelectMode}>Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>Cancel</Button>
           </div>
         </div>
       )}
@@ -725,11 +714,11 @@ export default function Rota() {
             return (
               <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0 }}
                 className={`text-center py-2 border-l border-slate-100 ${isToday ? 'bg-indigo-600' : ''}`}>
-                <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-400'}`}>{format(day, 'EEE')}</p>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-700'}`}>{format(day, 'EEE')}</p>
                 <p className={`text-xl font-bold leading-tight ${isToday ? 'text-white' : 'text-slate-700'}`}>
                   {format(day, 'd')}
                 </p>
-                <p className={`text-[10px] ${isToday ? 'text-indigo-100' : 'text-slate-400'}`}>{format(day, 'MMM')}</p>
+                <p className={`text-[10px] font-bold ${isToday ? 'text-indigo-100' : 'text-slate-600'}`}>{format(day, 'MMM')}</p>
                 {count > 0 && (
                   <div className={`mx-auto mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isToday ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
                     {count}
@@ -815,7 +804,7 @@ export default function Rota() {
                     const laneLeft = lane.col * laneWidth
 
                     return (
-                      <button key={shift.id} onClick={() => selectMode ? toggleShiftSelected(shift.id) : setDetailShift(shift)}
+                      <button key={shift.id} onClick={() => toggleShiftSelected(shift.id)}
                         className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
                           top: top + 1,
@@ -823,21 +812,32 @@ export default function Rota() {
                           left: `calc(${laneLeft}% + 2px)`,
                           width: `calc(${laneWidth}% - 4px)`,
                           backgroundColor: colors.bg,
-                          borderColor:     selected ? '#2563eb' : colors.border,
+                          borderColor:     selected ? '#e8b130' : colors.border,
                           color:           colors.text,
-                          boxShadow: selected ? '0 0 0 2px #2563eb' : undefined,
+                          boxShadow: selected ? '0 0 0 2px #e8b130' : undefined,
                         }}>
-                        {selectMode && (
-                          <div className={`absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center border ${selected ? 'bg-blue-600 border-blue-600' : 'bg-white/80 border-slate-300'}`}>
-                            {selected && <Check className="w-3 h-3 text-white" />}
-                          </div>
-                        )}
-                        {!selectMode && canManage && (
+                        {/* Click-to-highlight (RoundSys-style) — every tile is always
+                            selectable, no separate "select mode" needed. This small
+                            checkbox just confirms the tile's selected state; the amber
+                            border above is the primary at-a-glance signal. */}
+                        <div className={`absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center border ${selected ? 'bg-amber-500 border-amber-500' : 'bg-white/80 border-slate-300'}`}>
+                          {selected && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        {/* Viewing/editing a shift's own details is now a dedicated
+                            icon (the main tile click selects it instead). */}
+                        <span
+                          role="button"
+                          title="View shift details"
+                          onClick={(e) => { e.stopPropagation(); setDetailShift(shift) }}
+                          className="absolute top-1 left-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/80 text-slate-600 opacity-0 group-hover:opacity-100 hover:bg-slate-100 transition-opacity cursor-pointer">
+                          <Eye className="w-3 h-3" />
+                        </span>
+                        {canManage && (
                           <span
                             role="button"
                             title="Delete this shift"
                             onClick={(e) => { e.stopPropagation(); deleteShift(shift.id) }}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/80 text-rose-500 opacity-70 hover:opacity-100 hover:bg-rose-50 transition-opacity cursor-pointer">
+                            className="absolute bottom-1 right-1 w-5 h-5 rounded-md flex items-center justify-center bg-white/80 text-rose-500 opacity-0 group-hover:opacity-100 hover:bg-rose-50 transition-opacity cursor-pointer">
                             <Trash2 className="w-3 h-3" />
                           </span>
                         )}
@@ -1001,18 +1001,6 @@ export default function Rota() {
             <Button variant="danger" onClick={pendingConfirm.onConfirm}>Delete</Button>
           </div>
         </Modal>
-      )}
-
-      {bulkOpen && (
-        <BulkOperationsModal
-          open={bulkOpen}
-          onClose={() => setBulkOpen(false)}
-          staffList={staffList}
-          suList={suList}
-          homeId={selectedHome}
-          defaultDate={format(view === 'week' ? weekStart : dayDate, 'yyyy-MM-dd')}
-          onSaved={() => { setBulkOpen(false); loadAll() }}
-        />
       )}
 
       {manageServicesOpen && (
@@ -1940,7 +1928,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         {/* Status changer */}
         {canManage && (
           <div>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1.5">Status</p>
+            <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-1.5">Status</p>
             <div className="flex flex-wrap gap-1.5">
               {SHIFT_STATUSES.map(s => (
                 <button key={s.value} disabled={savingStatus} onClick={() => changeStatus(s.value)}
@@ -1959,15 +1947,15 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           <div className="rounded-xl border border-slate-200 p-3 space-y-2.5 bg-slate-50">
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Date</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1">Date</label>
                 <input type="date" className="input text-sm" value={editDate} onChange={e => setEditDate(e.target.value)} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Start</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1">Start</label>
                 <input type="time" className="input text-sm" value={editStart} onChange={e => setEditStart(e.target.value)} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Finish</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1">Finish</label>
                 <input type="time" className="input text-sm" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
               </div>
             </div>
@@ -1988,7 +1976,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         ) : (
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Date / Times</p>
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-0.5">Date / Times</p>
               <div className="flex items-center gap-2">
                 <p className="text-slate-800 font-bold">
                   {shift.shift_date ? format(parseISO(shift.shift_date), 'EEE d MMM yyyy') : '—'}
@@ -2002,7 +1990,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               </div>
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Shift type</p>
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-0.5">Shift type</p>
               <p className="text-slate-800 font-bold capitalize">{shift.shift_type?.replace(/_/g, ' ')}</p>
             </div>
           </div>
@@ -2010,7 +1998,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="col-span-2">
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Service</p>
+            <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-0.5">Service</p>
             {editingLabel ? (
               <div className="flex items-center gap-2">
                 <input className="input text-sm" value={editLabel} onChange={e => setEditLabel(e.target.value)}
@@ -2031,7 +2019,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           </div>
           {(shift.su_names || shift.su_name) && (
             <div className="col-span-2">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-0.5">
                 {shift.label ? 'Covers' : shift.su_ids && shift.su_ids.length > 1 ? 'Service Users' : 'Service User'}
               </p>
               <p className="text-slate-800 font-bold">{shift.su_names || shift.su_name}</p>
@@ -2052,7 +2040,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         {(shift.notes_for_carers || canManage) && (
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Notes for carers</p>
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Notes for carers</p>
               {canManage && !editingNotes && (
                 <button type="button" onClick={() => { setEditNotesForCarers(shift.notes_for_carers || ''); setEditingNotes(true) }}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-700">
@@ -2078,7 +2066,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         )}
         {shift.notes_for_managers && (
           <div>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Manager notes</p>
+            <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-1">Manager notes</p>
             <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-100">{shift.notes_for_managers}</p>
           </div>
         )}
@@ -2133,7 +2121,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           )}
           {shift.staff_id && (
             <button onClick={onSwap}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 border border-slate-200 hover:bg-slate-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-slate-800 border border-slate-800 hover:bg-slate-900 transition-colors">
               <ArrowLeftRight className="w-3.5 h-3.5" /> Request swap
             </button>
           )}
@@ -2673,259 +2661,6 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
           </div>
         </Modal>
       )}
-    </Modal>
-  )
-}
-
-// ── Bulk Operations Modal ─────────────────────────────────────────────────────
-
-function BulkOperationsModal({ open, onClose, staffList, suList, homeId, defaultDate, onSaved }: {
-  open: boolean; onClose: () => void
-  staffList: any[]; suList: any[]; homeId: string; defaultDate: string; onSaved: () => void
-}) {
-  const [mode, setMode] = useState<'create' | 'delete'>('create')
-  const [form, setForm] = useState({
-    staffId: '', startDate: defaultDate,
-    pattern: 'weekly',          // weekly | biweekly | daily
-    daysOfWeek: [1] as number[],
-    startTime: '08:00', endTime: '20:00',
-    breakMins: '30',
-    shiftType: 'regular', weeks: '12',
-  })
-  const [delForm, setDelForm] = useState({
-    staffId: '', suId: '', dayOrNight: 'any' as 'any' | 'day' | 'night',
-    daysOfWeek: [1, 2, 3, 4, 5] as number[], fortnightly: false,
-    startDate: defaultDate, endDate: '', ongoing: true,
-  })
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
-  const setDel = (k: string, v: any) => setDelForm(p => ({ ...p, [k]: v }))
-
-  useEffect(() => {
-    if (open) {
-      setForm(f => ({ ...f, startDate: defaultDate }))
-      setDelForm(f => ({ ...f, startDate: defaultDate }))
-    }
-  }, [open, defaultDate])
-
-  const toggleDay = (d: number) =>
-    setForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
-  const toggleDelDay = (d: number) =>
-    setDelForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.staffId) { toast.error('Select a staff member'); return }
-    if (form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
-    setSaving(true)
-    try {
-      const recurrenceMap: Record<string, string> = { weekly: 'weekly', biweekly: 'every_other_week', daily: 'daily' }
-      const daysOfWeek = form.pattern === 'daily' ? [0,1,2,3,4,5,6] : form.daysOfWeek
-      await api.post('/shifts/service-shift', {
-        homeId,
-        suId: null,
-        startDate: form.startDate,
-        isOngoing: false,
-        endDate: null,
-        recurrence: recurrenceMap[form.pattern] || 'weekly',
-        daysOfWeek,
-        startTime: form.startTime,
-        endTime: form.endTime,
-        shiftType: form.shiftType,
-        staffIds: [form.staffId],
-        totalStaffRequired: 1,
-        breakMins: parseInt(form.breakMins) || 0,
-        weeks: parseInt(form.weeks) || 12,
-      })
-      toast.success('Bulk shifts created')
-      onSaved()
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
-    finally { setSaving(false) }
-  }
-
-  const bulkDelete = async () => {
-    if (delForm.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
-    if (!delForm.ongoing && !delForm.endDate) { toast.error('Set an end date, or choose "Until I stop it"'); return }
-    if (!window.confirm('Delete every shift matching this pattern? This cannot be undone.')) return
-    setDeleting(true)
-    try {
-      const res = await api.post('/shifts/bulk-delete-pattern', {
-        homeId,
-        staffId: delForm.staffId || null, suId: delForm.suId || null,
-        dayOrNight: delForm.dayOrNight, daysOfWeek: delForm.daysOfWeek, fortnightly: delForm.fortnightly,
-        startDate: delForm.startDate,
-        endDate: delForm.ongoing ? format(addDays(parseISO(delForm.startDate), 365), 'yyyy-MM-dd') : delForm.endDate,
-      })
-      const deleted = res.data.data?.deleted || 0
-      toast.success(deleted > 0 ? `Deleted ${deleted} shift${deleted !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
-      onSaved()
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to bulk delete') }
-    finally { setDeleting(false) }
-  }
-
-  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
-  const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
-
-  if (mode === 'delete') {
-    return (
-      <Modal open={open} onClose={onClose} title="Bulk Operations — Delete Shifts" size="md">
-        <div className="space-y-4">
-          <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            {[{ v: 'create', l: 'Create' }, { v: 'delete', l: 'Delete' }].map(o => (
-              <button key={o.v} type="button" onClick={() => setMode(o.v as any)}
-                className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${mode === o.v ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
-                {o.l}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-rose-600 bg-rose-50 rounded-lg p-3 border border-rose-100">
-            Removes every shift matching this pattern within the date range — e.g. all of one staff member's Monday night shifts. This cannot be undone.
-          </p>
-
-          <Select label="Staff member (optional)" value={delForm.staffId} onChange={e => setDel('staffId', e.target.value)}
-            options={staffOptions} placeholder="Any staff" />
-          <Select label="Resident (optional)" value={delForm.suId} onChange={e => setDel('suId', e.target.value)}
-            options={suOptions} placeholder="Any resident" />
-
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Day or Night</label>
-            <div className="flex gap-2">
-              {[{ v: 'any', l: 'Any' }, { v: 'day', l: 'Day' }, { v: 'night', l: 'Night' }].map(o => (
-                <button key={o.v} type="button" onClick={() => setDel('dayOrNight', o.v)}
-                  className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${delForm.dayOrNight === o.v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
-                  {o.l}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Days of the week *</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {WEEKDAY_OPTIONS.map(d => (
-                <button key={d.value} type="button" onClick={() => toggleDelDay(d.value)}
-                  className={`w-11 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${delForm.daysOfWeek.includes(d.value) ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="delFortnightly" checked={delForm.fortnightly} onChange={e => setDel('fortnightly', e.target.checked)} className="rounded" />
-            <label htmlFor="delFortnightly" className="text-sm text-slate-700">Every other week only (fortnightly, starting the week of the start date below)</label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start date *</label>
-              <input type="date" className="input" value={delForm.startDate} onChange={e => setDel('startDate', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End</label>
-              <div className="flex gap-1.5">
-                <button type="button" onClick={() => setDel('ongoing', true)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${delForm.ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
-                  Every matching shift
-                </button>
-                <button type="button" onClick={() => setDel('ongoing', false)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${!delForm.ongoing ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>
-                  Pick a date
-                </button>
-              </div>
-            </div>
-          </div>
-          {!delForm.ongoing && (
-            <Input label="End date *" type="date" required value={delForm.endDate} onChange={e => setDel('endDate', e.target.value)} />
-          )}
-
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button variant="danger" loading={deleting} onClick={bulkDelete} icon={<Trash2 className="w-4 h-4" />}>Delete matching shifts</Button>
-          </div>
-        </div>
-      </Modal>
-    )
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Bulk Operations — Recurring Shifts" size="md">
-      <form onSubmit={save} className="space-y-4">
-        <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-          {[{ v: 'create', l: 'Create' }, { v: 'delete', l: 'Delete' }].map(o => (
-            <button key={o.v} type="button" onClick={() => setMode(o.v as any)}
-              className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${mode === o.v ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
-              {o.l}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 border border-slate-100">
-          Assign a staff member to work on a recurring schedule. This generates individual shifts for the selected period.
-        </p>
-
-        <Select label="Staff member *" required value={form.staffId} onChange={e => set('staffId', e.target.value)}
-          options={staffOptions} placeholder="Select staff..." />
-
-        <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Recurrence Pattern</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[{ value: 'daily', label: 'Every Day' }, { value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Every 2 Weeks' }].map(o => (
-              <button key={o.value} type="button" onClick={() => set('pattern', o.value)}
-                className={`py-2 rounded-xl text-sm font-semibold border transition-colors ${form.pattern === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {form.pattern !== 'daily' && (
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Day{form.pattern === 'biweekly' ? ' (every other week)' : 's'}
-            </label>
-            <div className="flex gap-1">
-              {DAY_LETTERS.map((d, i) => (
-                <button key={i} type="button" onClick={() => toggleDay(i)}
-                  className={`flex-1 h-9 rounded-full text-xs font-bold border transition-colors ${form.daysOfWeek.includes(i) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Generate for (weeks)</label>
-            <input type="number" min="1" max="52" className="input" value={form.weeks} onChange={e => set('weeks', e.target.value)} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <Input label="Start time *" type="time" required value={form.startTime} onChange={e => set('startTime', e.target.value)} />
-          <Input label="End time *" type="time" required value={form.endTime} onChange={e => set('endTime', e.target.value)} />
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Break (mins)</label>
-            <input type="number" min="0" max="120" step="5" className="input" value={form.breakMins} onChange={e => set('breakMins', e.target.value)} />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Shift Type</label>
-          <select className="input" value={form.shiftType} onChange={e => set('shiftType', e.target.value)}>
-            {SHIFT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </div>
-
-        <div className="flex gap-3 justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={saving} icon={<Check className="w-4 h-4" />}>
-            Apply Bulk Schedule
-          </Button>
-        </div>
-      </form>
     </Modal>
   )
 }
