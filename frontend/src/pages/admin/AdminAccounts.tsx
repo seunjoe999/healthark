@@ -637,6 +637,15 @@ export default function AdminAccounts() {
                   onClick={() => { setPinOpen(admin); setNewPin('') }}>
                   {admin.has_pin ? 'Reset PIN' : 'Create PIN'}
                 </Button>
+                {/* Opens this person's individual page-access overrides — separate from,
+                    and takes priority over, the role-wide defaults set on Role Permissions.
+                    Previously had no way to open from anywhere in the UI, so a stale
+                    individual override (e.g. from before a promotion) could silently block
+                    someone even after their role was granted access. */}
+                <Button size="sm" variant="outline" icon={<Sliders className="w-3.5 h-3.5" />}
+                  onClick={() => setAccessModal(admin)}>
+                  Access
+                </Button>
                 {admin.has_pin && (
                   <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
                     onClick={() => removePin(admin)}>
