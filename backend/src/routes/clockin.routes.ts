@@ -134,11 +134,17 @@ router.post('/event', authenticate,
         }
       };
 
+      // Same "trim + collapse whitespace + case-insensitive" normalization used
+      // when de-duplicating near-identical rota service labels ("KENNEDY ROAD"
+      // vs "KENNEDY  ROAD ") — a service's saved geofence postcode label has to
+      // survive that same messiness to actually match its shifts.
+      const normalizeLabel = (l?: string | null) => (l || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
       // UK date, not the server's own UTC clock — see getMyPendingTasksToday for
       // why this class of bug matters most right around UK midnight during BST.
       const todayStr = ukDateStr();
       const rotaShifts = await query<any>(
-        `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        `SELECT su_id, su_ids, label, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
         [staffId, homeId, todayStr]
       );
       for (const sh of rotaShifts) {
@@ -146,11 +152,36 @@ router.post('/event', authenticate,
         if (Array.isArray(sh.su_ids)) for (const id of sh.su_ids) await addServiceUserCheckPoint(id);
       }
       if (suId) await addServiceUserCheckPoint(suId);
+
+      // Every postcode configured for this home — fetched once, used both to match
+      // today's service-shift label(s) below and as the office-area fallback further
+      // down, so a location set specifically for "KENNEDY SERVICE" only ever applies
+      // to staff actually rostered on a Kennedy Service shift today, not to everyone.
+      const allPostcodes = await query<any>(
+        'SELECT postcode, label, latitude, longitude, radius FROM home_postcodes WHERE home_id = $1',
+        [homeId]
+      );
+
+      // A rota shift built around a Service (e.g. "KENNEDY SERVICE", a specific
+      // house) rather than a named resident has no resident lat/lng to check
+      // against at all — this is now the common case since the rota redesign made
+      // residents optional on service shifts. Without this, those shifts silently
+      // fell back to the office address, blocking staff who are legitimately at a
+      // service-user's house miles away. Match today's shift label(s) against any
+      // postcode a manager has set for that exact service via Manage Services.
+      const todaysLabels = new Set(rotaShifts.map((sh: any) => normalizeLabel(sh.label)).filter(Boolean));
+      for (const pc of allPostcodes) {
+        if (todaysLabels.has(normalizeLabel(pc.label)) && pc.latitude && pc.longitude) {
+          checkPoints.push({ lat: parseFloat(pc.latitude), lng: parseFloat(pc.longitude), label: pc.label || pc.postcode, radius: pc.radius || 200 });
+        }
+      }
+
       const usingResidentCheckpoints = checkPoints.length > 0;
 
       if (checkPoints.length === 0) {
-        // No resident tied to today's rota shift (or no shift found yet) —
-        // check against the office/home address + any extra postcodes instead.
+        // No resident, and no service-label match, tied to today's rota shift (or
+        // no shift found yet) — check against the office/home address + every
+        // configured postcode instead, as a last resort.
         const homeRows = await query<any>(
           'SELECT address1, postcode, latitude, longitude, geofence_radius FROM homes WHERE id = $1',
           [homeId]
@@ -160,11 +191,7 @@ router.post('/event', authenticate,
           const label = [home.address1, home.postcode].filter(Boolean).join(', ');
           checkPoints.push({ lat: parseFloat(home.latitude), lng: parseFloat(home.longitude), label, radius: home.geofence_radius || 200 });
         }
-        const extraPostcodes = await query<any>(
-          'SELECT postcode, label, latitude, longitude, radius FROM home_postcodes WHERE home_id = $1',
-          [homeId]
-        );
-        for (const pc of extraPostcodes) {
+        for (const pc of allPostcodes) {
           if (pc.latitude && pc.longitude) {
             checkPoints.push({ lat: parseFloat(pc.latitude), lng: parseFloat(pc.longitude), label: pc.label || pc.postcode, radius: pc.radius || 200 });
           }

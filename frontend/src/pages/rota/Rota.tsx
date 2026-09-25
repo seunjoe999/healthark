@@ -8,7 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users,
+  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -2505,10 +2505,17 @@ function SwapModal({ shift, staffList, homeId, onClose, onSaved }: {
 // created several times over ("Kennedy" x4) without hunting down and deleting
 // every individual shift tile by hand.
 
+// Same "trim + collapse whitespace + case-insensitive" normalization the backend
+// uses when matching a shift's service label to a saved geofence postcode — has to
+// survive the same near-identical-label messiness ("KENNEDY ROAD" vs "KENNEDY  ROAD ")
+// that was already found and fixed for duplicate services themselves.
+const normalizeServiceLabel = (l?: string | null) => (l || '').trim().replace(/\s+/g, ' ').toUpperCase()
+
 function ManageServicesModal({ homeId, onClose, onDeleted }: {
   homeId: string; onClose: () => void; onDeleted: () => void
 }) {
   const [services, setServices] = useState<any[]>([])
+  const [postcodes, setPostcodes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   // In-app confirm instead of window.confirm — a native browser dialog here blocks
@@ -2516,16 +2523,26 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
   // destructive action in this app confirms (see the danger-styled Modal pattern
   // used elsewhere, e.g. FinanceTracking's delete confirm).
   const [confirmLabel, setConfirmLabel] = useState<string | null>(null)
+  const [editingPostcodeFor, setEditingPostcodeFor] = useState<string | null>(null)
+  const [postcodeInput, setPostcodeInput] = useState('')
+  const [savingPostcode, setSavingPostcode] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/shifts/service-labels-detail', { params: { homeId } })
-      setServices(res.data.data || [])
+      const [svcRes, pcRes] = await Promise.all([
+        api.get('/shifts/service-labels-detail', { params: { homeId } }),
+        api.get(`/clockin/postcodes/${homeId}`),
+      ])
+      setServices(svcRes.data.data || [])
+      setPostcodes(pcRes.data.data || [])
     } catch { toast.error('Failed to load services') }
     finally { setLoading(false) }
   }, [homeId])
   useEffect(() => { load() }, [load])
+
+  const postcodeForLabel = (label: string) =>
+    postcodes.find(pc => normalizeServiceLabel(pc.label) === normalizeServiceLabel(label))
 
   const remove = async (label: string) => {
     setConfirmLabel(null)
@@ -2539,10 +2556,27 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
     finally { setDeleting(null) }
   }
 
+  const openPostcodeEditor = (label: string) => {
+    setPostcodeInput(postcodeForLabel(label)?.postcode || '')
+    setEditingPostcodeFor(label)
+  }
+
+  const savePostcode = async () => {
+    if (!editingPostcodeFor || !postcodeInput.trim()) return
+    setSavingPostcode(true)
+    try {
+      await api.post('/clockin/postcodes', { homeId, postcode: postcodeInput.trim(), label: editingPostcodeFor, radius: 200 })
+      toast.success(`Postcode saved for "${editingPostcodeFor}" — clock-in will now check staff are actually there`)
+      setEditingPostcodeFor(null)
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save postcode') }
+    finally { setSavingPostcode(false) }
+  }
+
   return (
     <Modal open={true} onClose={onClose} title="Manage Services" size="md">
       <p className="text-sm text-slate-500 mb-4">
-        Every service currently on the rota, with how many shifts sit under it. Delete a service to remove all of its shifts (past and future) at once — useful for cleaning up accidental duplicates.
+        Every service currently on the rota, with how many shifts sit under it. Set a postcode so clock-in geofencing checks staff are actually at that service — without one, clock-in falls back to checking against the office. Delete a service to remove all of its shifts (past and future) at once — useful for cleaning up accidental duplicates.
       </p>
       {loading ? (
         <p className="text-sm text-slate-400">Loading...</p>
@@ -2550,18 +2584,42 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
         <p className="text-sm text-slate-400">No services found.</p>
       ) : (
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {services.map(s => (
-            <div key={s.label} className="flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{s.label}</p>
-                <p className="text-xs text-slate-400">{s.shift_count} shift{s.shift_count !== '1' ? 's' : ''} total · {s.future_count} upcoming</p>
+          {services.map(s => {
+            const pc = postcodeForLabel(s.label)
+            return (
+              <div key={s.label} className="px-3 py-2 rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{s.label}</p>
+                    <p className="text-xs text-slate-400">{s.shift_count} shift{s.shift_count !== '1' ? 's' : ''} total · {s.future_count} upcoming</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openPostcodeEditor(s.label)} disabled={deleting !== null}
+                      className="flex items-center gap-1 text-xs font-semibold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      <MapPin className="w-3.5 h-3.5" /> {pc ? 'Edit postcode' : 'Set postcode'}
+                    </button>
+                    <button onClick={() => setConfirmLabel(s.label)} disabled={deleting !== null}
+                      className="flex items-center gap-1 text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      <Trash2 className="w-3.5 h-3.5" /> {deleting === s.label ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+                {pc && editingPostcodeFor !== s.label && (
+                  <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {pc.postcode}
+                  </p>
+                )}
+                {editingPostcodeFor === s.label && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input value={postcodeInput} onChange={e => setPostcodeInput(e.target.value)}
+                      placeholder="e.g. M35 9BG" className="flex-1" />
+                    <Button size="sm" loading={savingPostcode} onClick={savePostcode}>Save</Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingPostcodeFor(null)}>Cancel</Button>
+                  </div>
+                )}
               </div>
-              <button onClick={() => setConfirmLabel(s.label)} disabled={deleting !== null}
-                className="flex items-center gap-1 text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
-                <Trash2 className="w-3.5 h-3.5" /> {deleting === s.label ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
       <div className="flex justify-end pt-4 mt-2 border-t border-slate-100">
