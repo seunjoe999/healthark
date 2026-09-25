@@ -200,6 +200,35 @@ router.delete('/service-label/:label', requireRole(...MANAGE_ROLES), async (req:
   } catch (err) { next(err); }
 });
 
+// PATCH /api/shifts/service-label/:label/end-date — set (or clear) a stop date on
+// every recurring template behind this service, and trim any future shifts already
+// generated past it. Creating a shift with an end date already stops future
+// generation at that date, but there was previously no way to add or change a stop
+// date on a service that already exists, nor any bounded alternative to "Remove
+// this + all future" — this covers both: it applies going forward AND cleans up
+// what's already sitting on the rota past the new cutoff.
+router.patch('/service-label/:label/end-date', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const label = decodeURIComponent(req.params.label);
+    const endDate = req.body.endDate || null; // null clears the stop date (ongoing)
+    await query(
+      `UPDATE shift_templates SET end_date = $1 WHERE home_id = $2 AND label = $3 AND is_active = true`,
+      [endDate, homeId, label]
+    );
+    let trimmed = 0;
+    if (endDate) {
+      const today = ukDateStr();
+      const removed = await query<any>(
+        `DELETE FROM staff_shifts WHERE home_id = $1 AND label = $2 AND shift_date > $3 AND shift_date >= $4 RETURNING id`,
+        [homeId, label, endDate, today]
+      );
+      trimmed = removed.length;
+    }
+    res.json({ success: true, data: { trimmed } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/shifts?homeId=&weekStart=&date=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -8,7 +8,7 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin,
+  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin, Calendar,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -2531,6 +2531,14 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
   const [editingPostcodeFor, setEditingPostcodeFor] = useState<string | null>(null)
   const [postcodeInput, setPostcodeInput] = useState('')
   const [savingPostcode, setSavingPostcode] = useState(false)
+  // A service could only ever get a stop date at the moment it was first created —
+  // there was no way to add or change one afterwards, and no bounded alternative to
+  // "delete every future shift" when someone just wanted future shifts trimmed back
+  // to a specific date. This sets shift_templates.end_date for the service going
+  // forward AND removes any already-generated shifts past the new cutoff.
+  const [editingStopDateFor, setEditingStopDateFor] = useState<string | null>(null)
+  const [stopDateInput, setStopDateInput] = useState('')
+  const [savingStopDate, setSavingStopDate] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -2578,6 +2586,28 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
     finally { setSavingPostcode(false) }
   }
 
+  const openStopDateEditor = (label: string) => {
+    setStopDateInput('')
+    setEditingStopDateFor(label)
+  }
+
+  const saveStopDate = async () => {
+    if (!editingStopDateFor) return
+    setSavingStopDate(true)
+    try {
+      const res = await api.patch(`/shifts/service-label/${encodeURIComponent(editingStopDateFor)}/end-date`,
+        { endDate: stopDateInput || null }, { params: { homeId } })
+      const trimmed = res.data.data?.trimmed ?? 0
+      toast.success(stopDateInput
+        ? `Stop date set for "${editingStopDateFor}"${trimmed ? ` — removed ${trimmed} shift(s) already past it` : ''}`
+        : `Stop date cleared for "${editingStopDateFor}"`)
+      setEditingStopDateFor(null)
+      load()
+      onDeleted() // refresh the rota grid too, since shifts may have been trimmed
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to set stop date') }
+    finally { setSavingStopDate(false) }
+  }
+
   return (
     <Modal open={true} onClose={onClose} title="Manage Services" size="md">
       <p className="text-sm text-slate-500 mb-4">
@@ -2603,6 +2633,10 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
                       className="flex items-center gap-1 text-xs font-semibold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                       <MapPin className="w-3.5 h-3.5" /> {pc ? 'Edit postcode' : 'Set postcode'}
                     </button>
+                    <button onClick={() => openStopDateEditor(s.label)} disabled={deleting !== null}
+                      className="flex items-center gap-1 text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      <Calendar className="w-3.5 h-3.5" /> Stop date
+                    </button>
                     <button onClick={() => setConfirmLabel(s.label)} disabled={deleting !== null}
                       className="flex items-center gap-1 text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                       <Trash2 className="w-3.5 h-3.5" /> {deleting === s.label ? 'Deleting…' : 'Delete'}
@@ -2620,6 +2654,15 @@ function ManageServicesModal({ homeId, onClose, onDeleted }: {
                       placeholder="e.g. M35 9BG" className="flex-1" />
                     <Button size="sm" loading={savingPostcode} onClick={savePostcode}>Save</Button>
                     <Button size="sm" variant="outline" onClick={() => setEditingPostcodeFor(null)}>Cancel</Button>
+                  </div>
+                )}
+                {editingStopDateFor === s.label && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input type="date" value={stopDateInput} onChange={e => setStopDateInput(e.target.value)} className="flex-1" />
+                    <Button size="sm" loading={savingStopDate} onClick={saveStopDate}>
+                      {stopDateInput ? 'Save' : 'Clear (make ongoing)'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingStopDateFor(null)}>Cancel</Button>
                   </div>
                 )}
               </div>
