@@ -305,8 +305,24 @@ router.post('/event', authenticate,
           const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
           overdue = dueTasks.filter(t => {
             if (t.status !== 'pending') return false;
-            const schedMins = hhmmToMins(t.scheduledTime);
-            return schedMins != null && schedMins <= cutoffMins;
+            const raw = hhmmToMins(t.scheduledTime);
+            if (raw == null) return false;
+            // shiftStartMins/shiftEndMins was computed above but never actually used to
+            // exclude anything below it — only the upper cutoff was checked. That let a
+            // dose due BEFORE this shift even started (a resident's earlier dose that a
+            // different, earlier-shift colleague missed, or that belongs to whoever
+            // covers that specific time window) still block THIS staff member's
+            // clock-out, even though it was never really their responsibility. A dose
+            // only counts against this shift if its scheduled time actually falls
+            // within this shift's own start-to-end window, not merely before its end.
+            // For an overnight shift (end < start, already normalised to end > 1440
+            // above), a small raw time like 00:30 means "the next calendar day" from
+            // the shift's own point of view, so it's tried both as-is and shifted by
+            // +1440 to see which one actually lands inside the shift's window.
+            const candidates = [raw, raw + 1440];
+            const schedMins = candidates.find(c => shiftStartMins == null || (c >= shiftStartMins && c <= (shiftEndMins ?? Infinity))) ?? raw;
+            if (shiftStartMins != null && schedMins < shiftStartMins) return false;
+            return schedMins <= cutoffMins;
           });
         } catch (medCheckErr) {
           logger.error('Clock-out medication check failed — allowing clock-out rather than blocking on an internal error', medCheckErr);
