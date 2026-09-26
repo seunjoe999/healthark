@@ -20,6 +20,27 @@ const FREQ_TIMES: Record<string, string[]> = {
   other: ['—'],
 }
 
+// Mirrors backend/src/utils/medicationDue.ts's getTimeSlots exactly — a medication
+// with no explicit time_slots but a staff-chosen apply_time (e.g. 19:00 instead of
+// the default 08:00) must resolve to the SAME offset time here as it does in the
+// clock-out due-check, or a dose given against the grid's own displayed time gets
+// logged under a scheduled_time the due-check was never looking for. That mismatch
+// left a real, fully-completed medication showing as still due at clock-out, with
+// nothing visibly outstanding anywhere in the MAR screen — the two computations had
+// silently drifted apart for any medication predating this app's time_slots concept.
+function getTimeSlotsClient(frequency: string, applyTime?: string | null): string[] {
+  const defaults = FREQ_TIMES[frequency] || ['08:00']
+  if (!applyTime || !defaults.length || frequency === 'as_required' || frequency === 'other') return defaults
+  const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const toTime = (mins: number) => {
+    mins = ((mins % 1440) + 1440) % 1440
+    return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+  }
+  const applyMin = toMin(String(applyTime).slice(0, 5))
+  const offset = applyMin - toMin(defaults[0])
+  return defaults.map(t => toTime(toMin(t) + offset))
+}
+
 const FREQUENCIES = [
   { value: 'once_daily', label: 'Once daily' },
   { value: 'twice_daily', label: 'Twice daily (BD)' },
@@ -946,7 +967,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
 
         <tbody>
           {medications.map((med: any) => {
-            const slots: string[] = med.time_slots || FREQ_TIMES[med.frequency] || ['08:00']
+            const slots: string[] = (med.time_slots && med.time_slots.length) ? med.time_slots : getTimeSlotsClient(med.frequency, med.apply_time)
             return slots.map((slot: string, si: number) => (
               <tr key={`${med.id}-${slot}`} style={{ backgroundColor: si % 2 === 0 ? gridBodyBg : gridBodyBgAlt }}>
                 {/* Medication name — spans all time slots */}
@@ -1984,7 +2005,7 @@ function buildMarPrintBody(su: any, medications: any[], dates: string[], startDa
     const rows = medications.length === 0
       ? `<tr><td colspan="${3 + week.dates.length}" style="text-align:center;padding:10px;color:#666">No medications recorded</td></tr>`
       : medications.map((med: any) => {
-          const slots: string[] = med.time_slots || FREQ_TIMES[med.frequency] || ['08:00']
+          const slots: string[] = (med.time_slots && med.time_slots.length) ? med.time_slots : getTimeSlotsClient(med.frequency, med.apply_time)
           return slots.map((slot: string, si: number) => `
             <tr>
               ${si === 0 ? `<td class="med" rowspan="${slots.length}">${esc(med.medication_name)}${med.dose ? `<div class="dose">${esc(med.dose)}${med.route ? ` · ${esc(med.route)}` : ''}</div>` : ''}${med.is_prn ? '<div class="dose">PRN</div>' : ''}</td>` : ''}

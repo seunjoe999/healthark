@@ -8,11 +8,18 @@ import {
   Plus, ChevronLeft, ChevronRight, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
-  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin, Calendar,
+  Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin, Calendar, Pencil,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ── Constants ────────────────────────────────────────────────────────────────
+
+// Touch capability doesn't change during a session, so this is computed once at
+// module load rather than re-checked per render. Used to switch shift-tile
+// interaction: desktop keeps single-click-highlights/double-click-opens, touch
+// gets single-tap-opens (double-tap isn't reliable on a touchscreen) with an
+// always-visible checkbox as the only way to multi-select there.
+const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
 const HOUR_HEIGHT = 64
 const START_HOUR = 6
@@ -241,6 +248,7 @@ export default function Rota() {
   const [leaveOpen,   setLeaveOpen]   = useState(false)
   const [detailShift, setDetailShift] = useState<any>(null)
   const [swapShift,   setSwapShift]   = useState<any>(null)
+  const [adjustPickerOpen, setAdjustPickerOpen] = useState(false)
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
   const [unassignOpen, setUnassignOpen] = useState(false)
@@ -584,6 +592,13 @@ export default function Rota() {
           title="View shift swap requests">
           <ArrowLeftRight className="w-3 h-3" /> Swap Requests{swapRequests.length > 0 ? ` (${swapRequests.length})` : ''}
         </button>
+        {canManage && (
+          <button onClick={() => setAdjustPickerOpen(true)}
+            className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+            title="Find a shift to change its start/finish time or reassign it, without hunting through the calendar">
+            <Pencil className="w-3 h-3" /> Adjust Shift
+          </button>
+        )}
         <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
           value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">All Shift Types</option>
@@ -793,7 +808,8 @@ export default function Rota() {
                     const laneLeft = lane.col * laneWidth
 
                     return (
-                      <button key={shift.id} onClick={() => toggleShiftSelected(shift.id)}
+                      <button key={shift.id}
+                        onClick={() => { if (IS_TOUCH_DEVICE) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
                         onDoubleClick={() => setDetailShift(shift)}
                         className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
@@ -806,12 +822,17 @@ export default function Rota() {
                           color:           colors.text,
                           boxShadow: selected ? '0 0 0 2px #e8b130' : undefined,
                         }}>
-                        {/* Click-to-highlight (RoundSys-style) — every tile is always
-                            selectable, no separate "select mode" needed. This small
-                            checkbox just confirms the tile's selected state; the amber
-                            border above is the primary at-a-glance signal. */}
-                        <div className={`absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center border ${selected ? 'bg-amber-500 border-amber-500' : 'bg-white/80 border-slate-300'}`}>
-                          {selected && <Check className="w-3 h-3 text-white" />}
+                        {/* Click-to-highlight (RoundSys-style) on desktop, where a real
+                            double-click opens details. Touch devices can't fire double-tap
+                            reliably ("it keeps highlighting and not allowing me to double
+                            click... just like on the laptop"), so on touch a single tap opens
+                            details directly instead — this checkbox becomes the only way to
+                            select for bulk actions there, always visible (no hover needed),
+                            with stopPropagation so tapping it doesn't also open the shift. */}
+                        <div role="button" title="Select this shift"
+                          onClick={(e) => { e.stopPropagation(); toggleShiftSelected(shift.id) }}
+                          className={`absolute top-1 right-1 flex items-center justify-center rounded border cursor-pointer ${IS_TOUCH_DEVICE ? 'w-5 h-5' : 'w-4 h-4'} ${selected ? 'bg-amber-500 border-amber-500' : 'bg-white/80 border-slate-300'}`}>
+                          {selected && <Check className={IS_TOUCH_DEVICE ? 'w-3.5 h-3.5 text-white' : 'w-3 h-3 text-white'} />}
                         </div>
                         {canManage && (
                           <span
@@ -924,6 +945,14 @@ export default function Rota() {
           homeId={selectedHome}
           defaultDate={format(today, 'yyyy-MM-dd')}
           onSaved={() => { setLeaveOpen(false); loadAll(); toast.success('Absence recorded') }}
+        />
+      )}
+
+      {adjustPickerOpen && (
+        <AdjustShiftPicker
+          shifts={shifts}
+          onClose={() => setAdjustPickerOpen(false)}
+          onPick={(shift) => { setAdjustPickerOpen(false); setDetailShift(shift) }}
         />
       )}
 
@@ -1767,6 +1796,58 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, serviceLabels, d
           <Button type="submit" loading={saving}>Create Standby Shift</Button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+// ── Adjust Shift Picker ─────────────────────────────────────────────────────────
+// A manager can already change a shift's start/finish time or reassign it once
+// they've opened it — but finding the right one meant hunting through the
+// calendar grid by eye. This is just a faster way in: search by service or
+// staff name across the shifts already loaded for the visible week/day, pick
+// one, and it opens straight into the same detail view (with its existing
+// edit-time and reassign controls) rather than duplicating that UI here.
+function AdjustShiftPicker({ shifts, onClose, onPick }: {
+  shifts: any[]; onClose: () => void; onPick: (shift: any) => void
+}) {
+  const [search, setSearch] = useState('')
+  const q = search.trim().toLowerCase()
+  const filtered = (q
+    ? shifts.filter((s: any) =>
+        (s.label || '').toLowerCase().includes(q) ||
+        (s.staff_name || '').toLowerCase().includes(q) ||
+        (s.su_names || s.su_name || '').toLowerCase().includes(q))
+    : shifts
+  ).slice(0, 100)
+
+  return (
+    <Modal open={true} onClose={onClose} title="Adjust Shift" size="md">
+      <p className="text-sm text-slate-500 mb-3">
+        Find a shift in the currently loaded week/day to change its start or finish time, or reassign it to someone else.
+      </p>
+      <Input placeholder="Search by service or staff name…" value={search} onChange={e => setSearch(e.target.value)} className="mb-3" />
+      {filtered.length === 0 ? (
+        <p className="text-sm text-slate-400">No shifts match — try a different search, or change the week/day first.</p>
+      ) : (
+        <div className="space-y-1.5 max-h-96 overflow-y-auto">
+          {filtered.map((s: any) => (
+            <button key={s.id} onClick={() => onPick(s)}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-left transition-colors">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800 truncate">{s.label || s.su_names || s.su_name || 'Individual shift'}</p>
+                <p className="text-xs text-slate-500">
+                  {s.shift_date ? format(parseISO(s.shift_date), 'EEE d MMM') : ''} · {(s.start_time || '').slice(0, 5)}–{(s.end_time || '').slice(0, 5)}
+                  {s.staff_name ? ` · ${s.staff_name}` : ' · Unfilled'}
+                </p>
+              </div>
+              <Pencil className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex justify-end pt-4 mt-2 border-t border-slate-100">
+        <Button variant="outline" onClick={onClose}>Close</Button>
+      </div>
     </Modal>
   )
 }

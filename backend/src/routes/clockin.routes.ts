@@ -11,6 +11,7 @@ import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { getMyPendingTasksToday } from '../utils/taskDue';
 import { ukDateStr } from '../utils/ukTime';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -294,12 +295,23 @@ router.post('/event', authenticate,
         const nowMins = hhmmToMins(nowHHMM)!;
         const cutoffMins = shiftEndMins != null ? Math.min(nowMins, shiftEndMins) : nowMins;
 
-        const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
-        const overdue = dueTasks.filter(t => {
-          if (t.status !== 'pending') return false;
-          const schedMins = hhmmToMins(t.scheduledTime);
-          return schedMins != null && schedMins <= cutoffMins;
-        });
+        // Fails OPEN, not closed: a bug or edge case in this computation must never
+        // permanently trap a staff member clocked in on a real shift — that's a worse
+        // outcome than occasionally missing a genuinely overdue dose (which the
+        // separate 30-minute missed-medication alert, unrelated to clock-out, still
+        // catches). Logged so a silent miss is still visible to whoever checks logs.
+        let overdue: any[] = [];
+        try {
+          const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
+          overdue = dueTasks.filter(t => {
+            if (t.status !== 'pending') return false;
+            const schedMins = hhmmToMins(t.scheduledTime);
+            return schedMins != null && schedMins <= cutoffMins;
+          });
+        } catch (medCheckErr) {
+          logger.error('Clock-out medication check failed — allowing clock-out rather than blocking on an internal error', medCheckErr);
+          overdue = [];
+        }
         if (overdue.length > 0) {
           const residents = Array.from(new Set(overdue.map(t => t.suName)));
           return res.status(403).json({
