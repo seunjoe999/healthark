@@ -86,7 +86,7 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <div><label className="label">Topics discussed</label><textarea className="input" rows={3} value={form.topics || ''} onChange={e => set('topics', e.target.value)} placeholder="What did you talk about..." /></div>
         <Input label="Duration (minutes)" type="number" value={form.durationMins || ''} onChange={e => set('durationMins', parseInt(e.target.value))} />
         <Select label="Engagement level" value={form.engagement || ''} onChange={e => set('engagement', e.target.value)} options={ENGAGEMENT} placeholder="Select level" />
-        <div className="flex items-center gap-2"><input type="checkbox" id="fu" checked={form.followUp || false} onChange={e => set('followUp', e.target.checked)} className="rounded" /><label htmlFor="fu" className="text-sm">Follow-up required</label></div>
+        <div className="flex items-center gap-2"><input type="checkbox" id="fu" checked={form.followUp || false} onChange={e => set('followUp', e.target.checked)} className="rounded" /><label htmlFor="fu" className="text-sm text-slate-700">Follow-up required</label></div>
         {form.followUp && <Input label="Follow-up notes" value={form.followUpNotes || ''} onChange={e => set('followUpNotes', e.target.value)} />}
       </>)}
 
@@ -154,7 +154,7 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <Input label="Witnessed by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Name of witness..." />
         <div className="flex items-center gap-2">
           <input type="checkbox" id="prnSe" checked={form.sideEffects || false} onChange={e => set('sideEffects', e.target.checked)} className="rounded" />
-          <label htmlFor="prnSe" className="text-sm">Any side effects observed?</label>
+          <label htmlFor="prnSe" className="text-sm text-slate-700">Any side effects observed?</label>
         </div>
         {form.sideEffects && (
           <div><label className="label">Side effect details</label><textarea className="input" rows={2} value={form.sideEffectsNotes || ''} onChange={e => set('sideEffectsNotes', e.target.value)} placeholder="What was observed..." /></div>
