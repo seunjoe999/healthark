@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Thermometer, Plus, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Thermometer, Plus, CheckCircle, XCircle, AlertTriangle, RefreshCw, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api, { homesApi, suApi } from '../../api';
@@ -11,13 +11,17 @@ import { Button, Input, Select, Textarea } from '../../components/ui';
 interface EnvCheck {
   id: number;
   check_date: string;
+  check_time: string | null;
   check_type: string;
   location: string;
   reading_value: string;
   unit: string;
   result: 'pass' | 'fail' | 'action_required';
+  action_taken: string | null;
   notes: string;
+  recorded_by: string;
   recorded_by_name: string;
+  su_id?: string | null;
   su_name?: string | null;
   home_name?: string | null;
 }
@@ -63,6 +67,9 @@ export default function EnvironmentalChecks() {
   const [residents, setResidents] = useState<any[]>([]);
   const [customTypeNames, setCustomTypeNames] = useState<string[]>([]);
   const [form, setForm] = useState(emptyForm);
+  const [editingCheck, setEditingCheck] = useState<EnvCheck | null>(null);
+
+  const canEdit = (c: EnvCheck) => user?.role !== 'care_staff' || c.recorded_by === user?.id;
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -110,21 +117,54 @@ export default function EnvironmentalChecks() {
     const checkType = form.check_type === CUSTOM_OPTION ? form.customType.trim() : form.check_type;
     if (!checkType) { toast.error('Enter a name for the custom check'); return; }
     try {
-      await api.post('/environmental', {
-        homeId: selectedHome,
-        checkType,
-        location: form.location,
-        suId: form.su_id || null,
-        readingValue: form.reading_value,
-        unit: form.unit,
-        result: form.result,
-        notes: form.notes,
-      });
-      toast.success('Check recorded');
+      if (editingCheck) {
+        await api.put(`/environmental/${editingCheck.id}`, {
+          checkDate: editingCheck.check_date,
+          checkTime: editingCheck.check_time,
+          checkType,
+          location: form.location,
+          suId: form.su_id || null,
+          readingValue: form.reading_value,
+          unit: form.unit,
+          result: form.result,
+          actionTaken: editingCheck.action_taken,
+          notes: form.notes,
+        });
+        toast.success('Check updated');
+      } else {
+        await api.post('/environmental', {
+          homeId: selectedHome,
+          checkType,
+          location: form.location,
+          suId: form.su_id || null,
+          readingValue: form.reading_value,
+          unit: form.unit,
+          result: form.result,
+          notes: form.notes,
+        });
+        toast.success('Check recorded');
+      }
       setShowForm(false);
+      setEditingCheck(null);
       setForm({ ...emptyForm });
       fetchData();
     } catch { toast.error('Failed to save'); }
+  };
+
+  const openEdit = (c: EnvCheck) => {
+    setEditingCheck(c);
+    const known = new Set(CHECK_TYPES.map(t => t.value));
+    setForm({
+      check_type: known.has(c.check_type) ? c.check_type : c.check_type,
+      customType: '',
+      su_id: c.su_id || '',
+      location: c.location || '',
+      reading_value: c.reading_value || '',
+      unit: c.unit || '',
+      result: c.result,
+      notes: c.notes || '',
+    });
+    setShowForm(true);
   };
 
   const statusIcon = (s: string) => {
@@ -169,7 +209,7 @@ export default function EnvironmentalChecks() {
           <button onClick={fetchData} className={mutedText + " p-2 rounded-lg hover:opacity-70"} style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
-          <Button variant="gold" icon={<Plus size={16} />} onClick={() => setShowForm(true)}>Add Check</Button>
+          <Button variant="gold" icon={<Plus size={16} />} onClick={() => { setEditingCheck(null); setForm({ ...emptyForm }); setShowForm(true); }}>Add Check</Button>
         </div>
       </div>
 
@@ -210,7 +250,7 @@ export default function EnvironmentalChecks() {
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
-          <h3 className={`${headingText} font-bold`}>Record Environmental Check</h3>
+          <h3 className={`${headingText} font-bold`}>{editingCheck ? 'Edit Environmental Check' : 'Record Environmental Check'}</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select label="Check Type" value={form.check_type}
               onChange={e => setForm(p => ({ ...p, check_type: e.target.value }))}
@@ -245,8 +285,8 @@ export default function EnvironmentalChecks() {
               <Textarea label="Notes" rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
             </div>
             <div className="md:col-span-2 flex gap-3">
-              <Button type="submit" variant="gold">Save Check</Button>
-              <Button type="button" variant="ghost" onClick={() => { setShowForm(false); setForm({ ...emptyForm }) }}>Cancel</Button>
+              <Button type="submit" variant="gold">{editingCheck ? 'Update Check' : 'Save Check'}</Button>
+              <Button type="button" variant="ghost" onClick={() => { setShowForm(false); setEditingCheck(null); setForm({ ...emptyForm }) }}>Cancel</Button>
             </div>
           </form>
         </motion.div>
@@ -278,7 +318,15 @@ export default function EnvironmentalChecks() {
                   {c.notes && <span className={`text-xs truncate ${mutedText}`}>{c.notes}</span>}
                 </div>
               </div>
-              <div className={`text-xs flex-shrink-0 ${mutedText}`}>{c.recorded_by_name}</div>
+              <div className={`text-xs flex-shrink-0 flex items-center gap-2 ${mutedText}`}>
+                {c.recorded_by_name}
+                {canEdit(c) && (
+                  <button onClick={() => openEdit(c)} title="Edit this check"
+                    className="p-1 hover:bg-blue-500/10 rounded-lg transition-colors hover:text-blue-400">
+                    <Edit className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>

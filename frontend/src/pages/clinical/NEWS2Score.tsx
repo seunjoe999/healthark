@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
-import { Activity, Save, ChevronDown, ChevronUp, AlertTriangle, Printer, TrendingUp } from 'lucide-react'
+import { Activity, Save, ChevronDown, ChevronUp, AlertTriangle, Printer, TrendingUp, Edit, X } from 'lucide-react'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate as fmtLetterDate, nl as letterNl } from '../../utils/letterheadPrint'
 
 // ── NEWS2 scoring ──────────────────────────────────────────────────
@@ -79,6 +79,9 @@ export default function NEWS2Score() {
   const [history, setHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEditNews2 = (h: any) => user?.role !== 'care_staff' || h.assessed_by === user?.id
 
   useEffect(() => {
     if (!user?.homeId) return
@@ -115,22 +118,45 @@ export default function NEWS2Score() {
     if (!selectedSu || !allSet) return
     setSaving(true)
     try {
-      await api.post('/assessments/news2', {
+      const payload = {
         suId: selectedSu, homeId: user?.homeId,
         respirationRate: rrV, spo2: spo2V, supplementalO2: onO2,
         systolicBp: sbpV, pulse: pulseV, avpu, temperature: tempV,
         rrScore, spo2Score, o2Score, sbpScore, pulseScore, avpuScore, tempScore,
         totalScore, responseLevel: response?.level, notes,
         assessedBy: user?.id,
-      })
-      toast.success('NEWS2 Score saved')
+      }
+      if (editingId) {
+        await api.put(`/assessments/news2/${editingId}`, payload)
+        toast.success('NEWS2 Score updated')
+      } else {
+        await api.post('/assessments/news2', payload)
+        toast.success('NEWS2 Score saved')
+      }
       const r = await api.get(`/assessments/news2/${selectedSu}`)
       setHistory(r.data.data || [])
       reset()
+      setEditingId(null)
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Failed to save')
     } finally { setSaving(false) }
   }
+
+  const editNews2 = (h: any) => {
+    setEditingId(h.id)
+    setRr(h.respiration_rate != null ? String(h.respiration_rate) : '')
+    setSpo2(h.spo2 != null ? String(h.spo2) : '')
+    setOnO2(h.supplemental_o2 != null ? !!h.supplemental_o2 : null)
+    setSbp(h.systolic_bp != null ? String(h.systolic_bp) : '')
+    setPulse(h.pulse != null ? String(h.pulse) : '')
+    setAvpu(h.avpu || '')
+    setTemp(h.temperature != null ? String(h.temperature) : '')
+    setNotes(h.notes || '')
+    setExpanded(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const cancelEdit = () => { setEditingId(null); reset() }
 
   const resident = residents.find(r => r.id === selectedSu)
 
@@ -200,11 +226,16 @@ export default function NEWS2Score() {
       {selectedSu && (
         <>
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-5">
-            <div className="px-5 py-4 border-b border-slate-100">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
               <h2 className="font-semibold text-slate-800">
-                New Assessment — {format(new Date(), 'd MMMM yyyy, HH:mm')}
+                {editingId ? 'Editing Assessment' : 'New Assessment'} — {format(new Date(), 'd MMMM yyyy, HH:mm')}
                 {resident && <span className="text-slate-400 font-normal ml-2">· {resident.first_name} {resident.last_name}</span>}
               </h2>
+              {editingId && (
+                <button onClick={cancelEdit} className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800">
+                  <X className="w-3.5 h-3.5" /> Cancel edit
+                </button>
+              )}
             </div>
 
             <div className="divide-y divide-slate-50">
@@ -348,7 +379,7 @@ export default function NEWS2Score() {
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={reset} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 rounded-xl bg-white">Reset</button>
-                <Button icon={<Save className="w-4 h-4" />} onClick={save} loading={saving} disabled={!allSet}>Save NEWS2</Button>
+                <Button icon={<Save className="w-4 h-4" />} onClick={save} loading={saving} disabled={!allSet}>{editingId ? 'Update NEWS2' : 'Save NEWS2'}</Button>
               </div>
             </div>
           </div>
@@ -413,6 +444,14 @@ export default function NEWS2Score() {
                             ))}
                           </div>
                           {h.notes && <p className="text-xs text-slate-600 italic mt-2">{h.notes}</p>}
+                          {canEditNews2(h) && (
+                            <div className="flex justify-end mt-2">
+                              <button onClick={() => editNews2(h)}
+                                className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800">
+                                <Edit className="w-3.5 h-3.5" /> Edit this assessment
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

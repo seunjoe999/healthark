@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button } from '../../components/ui'
 import toast from 'react-hot-toast'
-import { Shield, Save, ChevronDown, ChevronUp, Plus, Printer, RefreshCw, Clock } from 'lucide-react'
+import { Shield, Save, ChevronDown, ChevronUp, Plus, Printer, RefreshCw, Clock, Edit, X } from 'lucide-react'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate as fmtLetterDate, nl as letterNl } from '../../utils/letterheadPrint'
 
 // ── Waterlow risk interpretation ──────────────────────────────────
@@ -102,6 +102,9 @@ export default function WaterlowScore() {
   const [medRisks, setMedRisks] = useState<string[]>([])
   const [wNotes, setWNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEditWaterlow = (h: any) => user?.role !== 'care_staff' || h.assessed_by === user?.id
 
   // Repositioning fields
   const [position, setPosition] = useState('')
@@ -150,7 +153,7 @@ export default function WaterlowScore() {
     if (!selectedSu || !coreReady) return
     setSaving(true)
     try {
-      await api.post('/assessments/waterlow', {
+      const payload = {
         suId: selectedSu, homeId: user?.homeId,
         buildScore: build, skinScore: skin, sexAgeScore: sexAge,
         malnutritionScore: malnut, continenceScore: cont, mobilityScore: mob,
@@ -159,15 +162,45 @@ export default function WaterlowScore() {
         tissueRisks, neuroRisks, surgeryRisks, medRisks,
         totalScore, riskLevel: risk?.label, notes: wNotes,
         assessedBy: user?.id,
-      })
-      toast.success('Waterlow Score saved')
+      }
+      if (editingId) {
+        await api.put(`/assessments/waterlow/${editingId}`, payload)
+        toast.success('Waterlow Score updated')
+      } else {
+        await api.post('/assessments/waterlow', payload)
+        toast.success('Waterlow Score saved')
+      }
       const r = await api.get(`/assessments/waterlow/${selectedSu}`)
       setWaterlowHistory(r.data.data || [])
       setBuild(null); setSkin(null); setSexAge(null); setMalnut(null); setCont(null); setMob(null)
       setTissueRisks([]); setNeuroRisks([]); setSurgeryRisks([]); setMedRisks([]); setWNotes('')
+      setEditingId(null)
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Failed to save')
     } finally { setSaving(false) }
+  }
+
+  const editWaterlow = (h: any) => {
+    setEditingId(h.id)
+    setBuild(h.build_score ?? 0)
+    setSkin(h.skin_score ?? 0)
+    setSexAge(h.sex_age_score ?? 0)
+    setMalnut(h.malnutrition_score ?? 0)
+    setCont(h.continence_score ?? 0)
+    setMob(h.mobility_score ?? 0)
+    setTissueRisks(Array.isArray(h.tissue_risks) ? h.tissue_risks : [])
+    setNeuroRisks(Array.isArray(h.neuro_risks) ? h.neuro_risks : [])
+    setSurgeryRisks(Array.isArray(h.surgery_risks) ? h.surgery_risks : [])
+    setMedRisks(Array.isArray(h.med_risks) ? h.med_risks : [])
+    setWNotes(h.notes || '')
+    setExpanded(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setBuild(null); setSkin(null); setSexAge(null); setMalnut(null); setCont(null); setMob(null)
+    setTissueRisks([]); setNeuroRisks([]); setSurgeryRisks([]); setMedRisks([]); setWNotes('')
   }
 
   const saveRepo = async () => {
@@ -324,8 +357,15 @@ export default function WaterlowScore() {
           {tab === 'waterlow' && (
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100">
-                  <h2 className="font-semibold text-slate-800">Waterlow Pressure Ulcer Risk Assessment — {format(new Date(), 'd MMMM yyyy')}</h2>
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                  <h2 className="font-semibold text-slate-800">
+                    {editingId ? 'Editing Assessment' : 'Waterlow Pressure Ulcer Risk Assessment'} — {format(new Date(), 'd MMMM yyyy')}
+                  </h2>
+                  {editingId && (
+                    <button onClick={cancelEdit} className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800">
+                      <X className="w-3.5 h-3.5" /> Cancel edit
+                    </button>
+                  )}
                 </div>
 
                 {[
@@ -407,7 +447,7 @@ export default function WaterlowScore() {
                 <div className="px-5 pb-5 space-y-3">
                   <textarea className="input w-full" rows={2} placeholder="Additional notes or care plan actions..." value={wNotes} onChange={e => setWNotes(e.target.value)} />
                   <div className="flex justify-end">
-                    <Button icon={<Save className="w-4 h-4" />} onClick={saveWaterlow} loading={saving} disabled={!coreReady}>Save Waterlow Score</Button>
+                    <Button icon={<Save className="w-4 h-4" />} onClick={saveWaterlow} loading={saving} disabled={!coreReady}>{editingId ? 'Update Waterlow Score' : 'Save Waterlow Score'}</Button>
                   </div>
                 </div>
               </div>
@@ -421,17 +461,24 @@ export default function WaterlowScore() {
                       {waterlowHistory.map((h: any) => {
                         const hr = getWaterlowRisk(h.total_score)
                         return (
-                          <button key={h.id} onClick={() => setExpanded(expanded === h.id ? null : h.id)}
-                            className="w-full px-5 py-4 flex items-center gap-3 hover:bg-slate-50 text-left">
-                            <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center bg-white flex-shrink-0" style={{ borderColor: hr.color }}>
-                              <span className="text-xs font-black" style={{ color: hr.color }}>{h.total_score}</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-slate-800"><span style={{ color: hr.color }}>{hr.label}</span> — Score {h.total_score}</p>
-                              <p className="text-xs text-slate-400">{h.assessed_at ? format(new Date(h.assessed_at), 'd MMM yyyy') : ''}{h.assessed_by_name ? ` · ${h.assessed_by_name}` : ''}</p>
-                            </div>
-                            <div className="ml-auto">{expanded === h.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}</div>
-                          </button>
+                          <div key={h.id} className="w-full px-5 py-4 flex items-center gap-3 hover:bg-slate-50">
+                            <button onClick={() => setExpanded(expanded === h.id ? null : h.id)} className="flex items-center gap-3 flex-1 text-left">
+                              <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center bg-white flex-shrink-0" style={{ borderColor: hr.color }}>
+                                <span className="text-xs font-black" style={{ color: hr.color }}>{h.total_score}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800"><span style={{ color: hr.color }}>{hr.label}</span> — Score {h.total_score}</p>
+                                <p className="text-xs text-slate-400">{h.assessed_at ? format(new Date(h.assessed_at), 'd MMM yyyy') : ''}{h.assessed_by_name ? ` · ${h.assessed_by_name}` : ''}</p>
+                              </div>
+                              <div className="ml-auto">{expanded === h.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}</div>
+                            </button>
+                            {canEditWaterlow(h) && (
+                              <button onClick={() => editWaterlow(h)} title="Edit this assessment"
+                                className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600 flex-shrink-0">
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         )
                       })}
                     </div>
