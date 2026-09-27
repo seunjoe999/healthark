@@ -272,7 +272,10 @@ export default function ClockInAnalytics() {
             </div>
           </div>
 
-          {/* Staff table */}
+          {/* Staff table — clock-in count, last clock-in time, last clock-out
+              time, status and the force-clock-out action all live together
+              in one row per staff, instead of clock-out times only being
+              visible in a separate list further down the page. */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
             <div className="px-5 py-4 border-b border-slate-50">
               <h2 className="text-sm font-semibold text-slate-700">Staff breakdown</h2>
@@ -286,8 +289,8 @@ export default function ClockInAnalytics() {
                     <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       <th className="text-left px-5 py-3">Staff member</th>
                       <th className="text-center px-4 py-3">Clock-ins</th>
-                      <th className="text-center px-4 py-3">Clock-outs</th>
-                      <th className="text-left px-4 py-3">Last event</th>
+                      <th className="text-left px-4 py-3">Last clock-in</th>
+                      <th className="text-left px-4 py-3">Last clock-out</th>
                       <th className="text-left px-4 py-3">Status</th>
                       <th className="text-left px-4 py-3"></th>
                     </tr>
@@ -297,6 +300,12 @@ export default function ClockInAnalytics() {
                       const isActiveToday = row.last_event
                         ? new Date(row.last_event).toDateString() === new Date().toDateString()
                         : false
+                      // The most recent clock-out event for this staff member in this
+                      // home/date range — clockOuts is already sorted newest-first.
+                      const lastClockOut = data.clockOuts?.find((c: any) => c.staff_id === row.staff_id)
+                      // last_event is the most recent event of EITHER type; when the
+                      // staff member is currently clocked in, that event is a clock-in.
+                      const lastClockIn = row.currently_clocked_in ? row.last_event : null
                       return (
                         <tr key={row.staff_id} className="hover:bg-slate-50">
                           <td className="px-5 py-3 font-medium text-slate-900">{row.staff_name}</td>
@@ -305,13 +314,11 @@ export default function ClockInAnalytics() {
                               {parseInt(row.clock_ins || '0')}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="inline-block min-w-[2rem] text-center font-semibold text-blue-700 bg-blue-50 rounded-full px-2 py-0.5 text-xs">
-                              {parseInt(row.clock_outs || '0')}
-                            </span>
+                          <td className="px-4 py-3 text-slate-500 text-xs">
+                            {lastClockIn ? formatTime(lastClockIn) : '—'}
                           </td>
                           <td className="px-4 py-3 text-slate-500 text-xs">
-                            {row.last_event ? formatTime(row.last_event) : '—'}
+                            {lastClockOut?.event_time ? formatTime(lastClockOut.event_time) : '—'}
                           </td>
                           <td className="px-4 py-3">
                             {row.currently_clocked_in ? (
@@ -365,36 +372,6 @@ export default function ClockInAnalytics() {
           )}
 
           {/* Late arrivals */}
-          {data.clockOuts?.length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-50">
-                <h2 className="text-sm font-semibold text-slate-700">
-                  Clock-outs ({data.clockOuts.length})
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      <th className="text-left px-5 py-3">Staff member</th>
-                      <th className="text-left px-4 py-3">Clock-out time</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {data.clockOuts.map((row: any, idx: number) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="px-5 py-3 font-medium text-slate-900">{row.staff_name}</td>
-                        <td className="px-4 py-3 text-slate-600 font-mono text-xs">
-                          {row.event_time ? format(new Date(row.event_time), 'HH:mm, d MMM yyyy') : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {data.lateArrivals?.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-50">
