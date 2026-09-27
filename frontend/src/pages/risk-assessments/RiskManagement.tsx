@@ -690,11 +690,13 @@ export default function RiskManagement() {
         {viewItem && (() => {
           const ra = viewItem
           const likelihood = LIKELIHOOD_OPTIONS.find(o => o.value === ra.risk_rating_option)
+          const raAge = ra.su_date_of_birth ? Math.floor((Date.now() - new Date(ra.su_date_of_birth).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
           return (
             <div className="space-y-4">
-              {/* Resident header — photo + name, matching Medicine Risk Assessment's
-                  document-style header on its detail view. */}
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+              {/* Resident header — same standard biography (photo, room, age, medicine
+                  and food allergies) as Medicine Risk Assessment's detail view, so every
+                  risk assessment type shows the same key facts, not just the name. */}
+              <div className="flex items-start gap-3 pb-3 border-b border-slate-100">
                 {ra.su_photo_url ? (
                   <img src={ra.su_photo_url} alt={ra.su_name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
                     onError={e => { e.currentTarget.outerHTML = `<div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0" style="background:#fdf3d9;color:#8a6400">${(ra.su_name?.[0] || '?').toUpperCase()}</div>` }} />
@@ -703,9 +705,15 @@ export default function RiskManagement() {
                     {(ra.su_name?.[0] || '?').toUpperCase()}
                   </div>
                 )}
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-semibold text-slate-900">{ra.su_name}</p>
-                  <p className="text-xs text-slate-500">{ra.assessment_name}</p>
+                  <p className="text-xs text-slate-500 mb-1">{ra.assessment_name}</p>
+                  <div className="grid sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                    {ra.room_number && <p className="text-xs text-slate-500">Room: <span className="font-medium text-slate-800">{ra.room_number}</span></p>}
+                    {raAge !== null && <p className="text-xs text-slate-500">Age: <span className="font-medium text-slate-800">{raAge} yrs</span></p>}
+                    {ra.su_med_allergies && <p className="text-xs text-slate-500">Medicine allergies: <span className="font-medium text-rose-500">{ra.su_med_allergies}</span></p>}
+                    {ra.su_food_allergies && <p className="text-xs text-slate-500">Food allergies: <span className="font-medium text-rose-500">{ra.su_food_allergies}</span></p>}
+                  </div>
                 </div>
               </div>
 

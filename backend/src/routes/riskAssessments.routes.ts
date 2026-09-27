@@ -25,7 +25,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const { suId, homeId } = req.query as Record<string, string>;
     if (suId) await assertResidentAccess(req, suId);
     const targetHomeId = homeId || fromToken(req, 'homeId');
-    let sql = `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url
+    let sql = `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url,
+               su.room_number, su.date_of_birth as su_date_of_birth,
+               su.med_allergies as su_med_allergies, su.food_allergies as su_food_allergies
                FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id
                WHERE ra.is_active = true`;
     const params: unknown[] = [];
@@ -42,7 +44,9 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query(
-        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url
+        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url,
+         su.room_number, su.date_of_birth as su_date_of_birth,
+         su.med_allergies as su_med_allergies, su.food_allergies as su_food_allergies
          FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id WHERE ra.id = $1`,
         [req.params.id]
       );
