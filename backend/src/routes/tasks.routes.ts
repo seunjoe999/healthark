@@ -94,12 +94,28 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    // Restricted roles only see tasks tied to their own assigned residents (tasks
-    // with no resident attached, i.e. general/home-wide tasks, remain visible) —
-    // unless the task was assigned directly to them, which always shows.
+    // Restricted roles only see tasks tied to a resident they're actually
+    // ROSTERED FOR on this date — not their whole static assigned-residents
+    // list (staff_service_user_assignments), which is a longer-term caseload
+    // manager-set separately from day-to-day rota. A carer scheduled today for
+    // Resident A only, who also happens to have a standing assignment to
+    // Residents B and C from months ago, should not see B/C's tasks today —
+    // she finishes A's tasks, clocks out, and is rostered elsewhere next.
+    // Tasks with no resident attached (general/home-wide) or assigned
+    // directly to this staff member always remain visible regardless.
     if (RESTRICTED_ROLES.includes(role) && staffId) {
-      const assignedSuIds = await getAssignedSuIds(staffId);
-      rows = rows.filter(t => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
+      const rotaShifts = await query<any>(
+        `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        [staffId, homeId, date]
+      );
+      const rotaSuIds = Array.from(new Set(
+        rotaShifts.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+      ));
+      // No rota entry at all for this date (e.g. ad-hoc/relief cover not yet
+      // logged on the rota) — fall back to the static assignment list rather
+      // than showing an empty resident-task list outright.
+      const suIds = rotaSuIds.length > 0 ? rotaSuIds : await getAssignedSuIds(staffId);
+      rows = rows.filter(t => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || suIds.includes(t.su_id));
     }
 
     res.json({ success: true, data: rows } as ApiResponse);

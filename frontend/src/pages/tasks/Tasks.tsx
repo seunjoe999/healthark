@@ -539,10 +539,14 @@ export default function Tasks() {
             <select value={residentSearch} onChange={e => setResidentSearch(e.target.value)}
               className="w-full appearance-none rounded-xl border border-purple-200 bg-purple-50 pl-4 pr-10 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 transition-all">
               <option value="">All service users</option>
-              {sus.map((s: any) => {
-                const name = `${s.first_name || s.firstName} ${s.last_name || s.lastName}`
-                return <option key={s.id} value={name}>{name}</option>
-              })}
+              {/* Care staff only ever see tasks for residents on their own rota
+                  (backend-enforced) — offering every resident in the home here
+                  would just be a list of names that filter to nothing for them,
+                  so narrow this dropdown to residents actually present in their
+                  task list. Managers/other creator roles still see everyone. */}
+              {(isRole(...TASK_CREATOR_ROLES) ? sus.map((s: any) => `${s.first_name || s.firstName} ${s.last_name || s.lastName}`)
+                : Array.from(new Set(tasks.map((t: any) => t.su_name).filter(Boolean)))
+              ).map((name: string) => <option key={name} value={name}>{name}</option>)}
             </select>
             <ChevronDown className="w-4 h-4 text-purple-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
