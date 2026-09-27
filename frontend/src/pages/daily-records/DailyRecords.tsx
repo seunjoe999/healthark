@@ -446,21 +446,33 @@ function RecordHeader({ record: r, suName }: { record: any; suName?: string }) {
   )
 }
 
+// Every record type shares the same header (Date / Staff on Duty / Service
+// User / Time, each its own line) plus a relaxed, line-break-preserving body —
+// only the body's CONTENT differs per type. Some types used to skip the
+// header and render as a single dense one-liner instead, which is why those
+// types specifically (Food and Fluid, vitals, bowel) looked "jam-packed"
+// next to ones that already had the fuller treatment (Personal Care,
+// behaviour, General Support, Activities) — this makes the spacing automatic
+// and consistent across every type rather than a per-type special case.
 function RecordSummary({ record: r, suName }: { record: any; suName?: string }) {
   const type = r.record_type || ''
-  if (type === 'fluid_intake') return <p className="text-sm text-slate-700">{r.fluid_type || 'Fluid'} — <strong>{r.amount_ml}ml</strong></p>
-  if (type === 'food_intake') return <p className="text-sm text-slate-700">{r.meal_type || 'Meal'}: <strong>{r.amount_eaten || '—'}</strong>{r.food_description ? ` · ${r.food_description}` : ''}</p>
-  if (type === 'vitals_bp') return <p className="text-sm text-slate-700">BP: <strong>{r.systolic}/{r.diastolic} mmHg</strong>{r.pulse ? ` · Pulse: ${r.pulse}bpm` : ''}</p>
-  if (type === 'vitals_temp') return <p className="text-sm text-slate-700">Temp: <strong>{r.temp_celsius}°C</strong></p>
-  if (type === 'vitals_oxygen') return <p className="text-sm text-slate-700">SpO2: <strong>{r.spo2_percent}%</strong>{r.supplemental_o2 ? ' (on O₂)' : ''}</p>
-  if (type === 'vitals_weight') return <p className="text-sm text-slate-700">Weight: <strong>{r.weight_kg}kg</strong>{r.bmi ? ` · BMI: ${r.bmi}` : ''}</p>
-  if (type === 'bowel_movement') return <p className="text-sm text-slate-700">Bristol type {r.bristol_type || '—'}{r.notes ? ` · ${r.notes}` : ''}</p>
-  // whitespace-pre-wrap preserves the line breaks/paragraphs staff typed —
-  // without it the browser collapses them into one dense run of text, which
-  // is what staff were describing as everything being "jammed pack(ed)" together.
-  if (type === 'behaviour') return <><RecordHeader record={r} suName={suName} /><p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'Behaviour recorded'}</p></>
-  if (type === 'prn_medication') return <><RecordHeader record={r} suName={suName} /><p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || 'PRN medication administered'}</p></>
-  return <><RecordHeader record={r} suName={suName} /><p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'}</p></>
+  let body: React.ReactNode
+  if (type === 'fluid_intake') body = <>{r.fluid_type || 'Fluid'} — <strong>{r.amount_ml}ml</strong></>
+  else if (type === 'food_intake') body = <>{r.meal_type || 'Meal'}: <strong>{r.amount_eaten || '—'}</strong>{r.food_description ? ` · ${r.food_description}` : ''}</>
+  else if (type === 'vitals_bp') body = <>BP: <strong>{r.systolic}/{r.diastolic} mmHg</strong>{r.pulse ? ` · Pulse: ${r.pulse}bpm` : ''}</>
+  else if (type === 'vitals_temp') body = <>Temp: <strong>{r.temp_celsius}°C</strong></>
+  else if (type === 'vitals_oxygen') body = <>SpO2: <strong>{r.spo2_percent}%</strong>{r.supplemental_o2 ? ' (on O₂)' : ''}</>
+  else if (type === 'vitals_weight') body = <>Weight: <strong>{r.weight_kg}kg</strong>{r.bmi ? ` · BMI: ${r.bmi}` : ''}</>
+  else if (type === 'bowel_movement') body = <>Bristol type {r.bristol_type || '—'}{r.notes ? ` · ${r.notes}` : ''}</>
+  else if (type === 'behaviour') body = r.notes || 'Behaviour recorded'
+  else if (type === 'prn_medication') body = r.notes || 'PRN medication administered'
+  else body = r.notes || r.description || r.record_type?.replace(/_/g, ' ') || '—'
+  return (
+    <>
+      <RecordHeader record={r} suName={suName} />
+      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{body}</p>
+    </>
+  )
 }
 
 // Local datetime-local string ("YYYY-MM-DDTHH:mm") for right now, used to seed
