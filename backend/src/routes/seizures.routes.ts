@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -75,6 +76,33 @@ router.post('/', [body('suId').isUUID()], validateRequest,
          action || null, notifiedGP || false, notifiedFamily || false, notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/seizures/:id — care staff can amend their own entry for 24h after
+// their shift ends; managers unrestricted.
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = tok(req, 'role');
+      const staffId = tok(req, 'staffId');
+      const existing = await query<any>('SELECT recorded_by FROM seizure_logs WHERE id = $1', [req.params.id]);
+      if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+      if (role === 'care_staff') {
+        if (existing[0].recorded_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+        if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+      }
+      const { seizureAt, seizureType, durationSeconds, description, recoveryTime, postIctal, action, notifiedGP, notifiedFamily, notes } = req.body;
+      const rows = await query(
+        `UPDATE seizure_logs SET seizure_at=$1, seizure_type=$2, duration_seconds=$3, description=$4,
+           recovery_time_mins=$5, post_ictal=$6, action_taken=$7, notified_gp=$8, notified_family=$9, notes=$10
+         WHERE id=$11 RETURNING *`,
+        [seizureAt, seizureType || 'unclassified', durationSeconds || null, description || null,
+         recoveryTime || null, postIctal || null, action || null, notifiedGP || false,
+         notifiedFamily || false, notes || null, req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Thermometer, Plus, AlertTriangle, TrendingUp, Activity } from 'lucide-react'
+import { Thermometer, Plus, AlertTriangle, TrendingUp, Activity, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import api from '../../api'
 import { ukDateStr } from '../../utils/ukDate'
@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 import { useTheme } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
 const OBS_TYPES = [
@@ -130,6 +131,7 @@ function buildObservationsPrintPage(rows: any[], title: string): string {
 
 export default function Observations() {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [view, setView] = useState<'list' | 'summary'>('summary')
   const [summary, setSummary] = useState<any[]>([])
@@ -142,6 +144,9 @@ export default function Observations() {
   const [preview, setPreview] = useState<any>(null)
   const [filterType, setFilterType] = useState('')
   const [dateFrom, setDateFrom] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEdit = (r: any) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
   const [form, setForm] = useState({
     suId: '', obsType: 'temperature', observedAt: ukDateStr() + 'T' + new Date().toTimeString().substring(0, 5),
@@ -179,7 +184,7 @@ export default function Observations() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/observations', {
+      const payload = {
         ...form,
         tempCelsius: form.tempCelsius || undefined,
         systolic: form.systolic ? parseInt(form.systolic) : undefined,
@@ -189,12 +194,40 @@ export default function Observations() {
         o2Litres: form.o2Litres ? parseFloat(form.o2Litres) : undefined,
         weight: form.weight ? parseFloat(form.weight) : undefined,
         bloodGlucose: form.bloodGlucose ? parseFloat(form.bloodGlucose) : undefined,
-      })
+      }
+      if (editingId) {
+        await api.put(`/observations/${editingId}`, payload)
+        toast.success('Observation updated')
+      } else {
+        await api.post('/observations', payload)
+      }
       setShowAdd(false)
+      setEditingId(null)
       load()
       if (view === 'list') loadList()
-    } catch {}
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save observation') }
     setSubmitting(false)
+  }
+
+  function openEdit(r: any) {
+    setEditingId(r.id)
+    setForm({
+      suId: r.su_id,
+      obsType: r.obs_type || 'temperature',
+      observedAt: r.observed_at?.slice(0, 16) || (ukDateStr() + 'T' + new Date().toTimeString().substring(0, 5)),
+      tempCelsius: r.temp_celsius ?? '',
+      tempMethod: r.temp_method || 'tympanic',
+      systolic: r.systolic != null ? String(r.systolic) : '',
+      diastolic: r.diastolic != null ? String(r.diastolic) : '',
+      pulse: r.pulse != null ? String(r.pulse) : '',
+      spo2: r.spo2_percent != null ? String(r.spo2_percent) : '',
+      o2Litres: r.o2_litres_min != null ? String(r.o2_litres_min) : '',
+      weight: r.weight_kg != null ? String(r.weight_kg) : '',
+      bloodGlucose: r.blood_glucose != null ? String(r.blood_glucose) : '',
+      notes: r.notes || '',
+    })
+    setPreview(null)
+    setShowAdd(true)
   }
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
@@ -225,7 +258,7 @@ export default function Observations() {
         </div>
         <div className="flex items-center gap-2">
           <PrintButton onClick={handlePrintObservations} />
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setShowAdd(true) }}>
             Record Observation
           </Button>
         </div>
@@ -366,13 +399,18 @@ export default function Observations() {
               <div><span className="text-slate-500">Recorded by:</span> <span className="text-white">{preview.recorded_by_name}</span></div>
             </div>
             {preview.notes && <div><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-300">{preview.notes}</p></div>}
+            {canEdit(preview) && (
+              <div className="flex justify-end pt-2 border-t border-white/8">
+                <Button variant="ghost" icon={<Edit className="w-3.5 h-3.5" />} onClick={() => openEdit(preview)}>Edit</Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Record Observation" size="lg">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setEditingId(null) }} title={editingId ? 'Edit Observation' : 'Record Observation'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required />
+          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required disabled={!!editingId} />
           <div className="grid grid-cols-2 gap-3">
             <Select label="Type *" options={OBS_TYPES} value={form.obsType} onChange={e => setForm(f => ({ ...f, obsType: e.target.value }))} />
             <Input label="Date & Time" type="datetime-local" value={form.observedAt} onChange={e => setForm(f => ({ ...f, observedAt: e.target.value }))} />
@@ -406,8 +444,8 @@ export default function Observations() {
           )}
           <SpeechTextarea label="Notes" rows={2} value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} placeholder="Any relevant notes..." />
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Observation</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setEditingId(null) }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>{editingId ? 'Update Observation' : 'Save Observation'}</Button>
           </div>
         </form>
       </Modal>

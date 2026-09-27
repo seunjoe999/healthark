@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -85,6 +86,33 @@ router.post('/',
          skinCondition || null, notes || null, staffId, witnessedBy || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/bath-chart/:id — care staff can amend their own entry for 24h after
+// their shift ends; managers unrestricted.
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const staffId = fromToken(req, 'staffId');
+      const existing = await query<any>('SELECT given_by FROM bath_charts WHERE id = $1', [req.params.id]);
+      if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+      if (role === 'care_staff') {
+        if (existing[0].given_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+        if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+      }
+      const { bathDate, bathTime, bathType, assistanceLevel, hairWashed, nailsCut, shaved, skinCondition, notes, witnessedBy } = req.body;
+      const rows = await query(
+        `UPDATE bath_charts SET bath_date=$1, bath_time=$2, bath_type=$3, assistance_level=$4,
+           hair_washed=$5, nails_cut=$6, shaved=$7, skin_condition=$8, notes=$9, witnessed_by=$10
+         WHERE id=$11 RETURNING *`,
+        [bathDate, bathTime || null, bathType, assistanceLevel || 'moderate',
+         hairWashed || false, nailsCut || false, shaved || false,
+         skinCondition || null, notes || null, witnessedBy || null, req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Droplets, Plus, Trash2, Info } from 'lucide-react'
+import { Droplets, Plus, Trash2, Info, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useTheme } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 
 const INPUT_CATEGORIES = [
   { value: 'drink', label: 'Drink / Oral fluids' },
@@ -32,6 +33,7 @@ const defaultForm = {
 
 export default function FluidBalance() {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const pageBg = theme === 'dark' ? '#0d1526' : '#f8f7fb'
   const tileBg = theme === 'dark' ? '#111111' : '#ffffff'
   const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)'
@@ -44,6 +46,9 @@ export default function FluidBalance() {
   const [selectedSU, setSelectedSU] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const [form, setForm] = useState(defaultForm)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEdit = (r: any) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
   useEffect(() => {
     api.get('/service-users').then(r => setServiceUsers(r.data.data || [])).catch(() => {})
@@ -72,7 +77,7 @@ export default function FluidBalance() {
     if (!form.amountMl || parseInt(form.amountMl) <= 0) { toast.error('Please enter a valid amount'); return; }
     setSubmitting(true)
     try {
-      await api.post('/fluid-balance', {
+      const payload = {
         suId: form.suId,
         recordDate: selectedDate,
         recordTime: form.recordTime,
@@ -80,14 +85,34 @@ export default function FluidBalance() {
         category: form.category,
         amountMl: parseInt(form.amountMl),
         notes: form.notes,
-      })
+      }
+      if (editingId) {
+        await api.put(`/fluid-balance/${editingId}`, payload)
+        toast.success('Fluid record updated')
+      } else {
+        await api.post('/fluid-balance', payload)
+        toast.success('Fluid record saved')
+      }
       setShowAdd(false)
+      setEditingId(null)
       setForm(defaultForm)
       if (form.suId === selectedSU) load()
       else setSelectedSU(form.suId)
-      toast.success('Fluid record saved')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save record') }
     setSubmitting(false)
+  }
+
+  function openEdit(r: any) {
+    setEditingId(r.id)
+    setForm({
+      suId: r.su_id,
+      type: r.type,
+      category: r.category,
+      amountMl: String(r.amount_ml),
+      recordTime: r.record_time?.slice(0, 5) || new Date().toTimeString().slice(0, 5),
+      notes: r.notes || '',
+    })
+    setShowAdd(true)
   }
 
   async function handleDelete(id: string) {
@@ -113,7 +138,7 @@ export default function FluidBalance() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Track daily fluid intake and output for residents</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setForm(defaultForm); setShowAdd(true) }}>
           Add Record
         </Button>
       </div>
@@ -211,12 +236,22 @@ export default function FluidBalance() {
                   <td className="p-3 text-slate-400 max-w-xs truncate">{r.notes || '—'}</td>
                   <td className="p-3 text-slate-500 text-xs">{r.recorded_by_name}</td>
                   <td className="p-3">
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      className="text-slate-600 hover:text-rose-400 transition-colors p-1 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {canEdit(r) && (
+                        <button
+                          onClick={() => openEdit(r)}
+                          className="text-slate-600 hover:text-blue-400 transition-colors p-1 rounded"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(r.id)}
+                        className="text-slate-600 hover:text-rose-400 transition-colors p-1 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -225,8 +260,8 @@ export default function FluidBalance() {
         </div>
       )}
 
-      {/* Add Record Modal */}
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Fluid Record" size="lg">
+      {/* Add / Edit Record Modal */}
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setEditingId(null) }} title={editingId ? 'Edit Fluid Record' : 'Add Fluid Record'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Service User *"
@@ -235,6 +270,7 @@ export default function FluidBalance() {
             value={form.suId}
             onChange={e => setForm(f => ({ ...f, suId: e.target.value }))}
             required
+            disabled={!!editingId}
           />
 
           {/* Input / Output toggle */}
@@ -299,8 +335,8 @@ export default function FluidBalance() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Record</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setEditingId(null) }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>{editingId ? 'Update Record' : 'Save Record'}</Button>
           </div>
         </form>
       </Modal>

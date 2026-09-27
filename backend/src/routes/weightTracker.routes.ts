@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -98,6 +99,36 @@ router.post('/',
          notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/weight-tracker/:id — care staff can amend their own entry for 24h
+// after their shift ends; managers unrestricted.
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await ensureTable();
+      const role = tok(req, 'role');
+      const staffId = tok(req, 'staffId');
+      const existing = await query<any>('SELECT recorded_by FROM weight_records WHERE id = $1', [req.params.id]);
+      if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+      if (role === 'care_staff') {
+        if (existing[0].recorded_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+        if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+      }
+      const { recordDate, weightKg, heightCm, notes } = req.body;
+      let bmi: number | null = null;
+      if (heightCm && parseFloat(heightCm) > 0) {
+        const h = parseFloat(heightCm) / 100;
+        bmi = Math.round((parseFloat(weightKg) / (h * h)) * 10) / 10;
+      }
+      const rows = await query(
+        `UPDATE weight_records SET record_date=$1, weight_kg=$2, height_cm=$3, bmi=$4, notes=$5
+         WHERE id=$6 RETURNING *`,
+        [recordDate, parseFloat(weightKg), heightCm ? parseFloat(heightCm) : null, bmi, notes || null, req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

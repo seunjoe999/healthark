@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -81,6 +82,34 @@ router.post('/', [body('suId').isUUID(), body('obsType').notEmpty()], validateRe
          bloodGlucose || null, notes || null, isAbnormal || false]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/observations/:id — care staff can amend their own entry for 24h
+// after their shift ends; managers unrestricted.
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = tok(req, 'role');
+      const staffId = tok(req, 'staffId');
+      const existing = await query<any>('SELECT recorded_by FROM observations WHERE id = $1', [req.params.id]);
+      if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+      if (role === 'care_staff') {
+        if (existing[0].recorded_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+        if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+      }
+      const { obsType, observedAt, tempCelsius, tempMethod, systolic, diastolic, pulse, spo2, o2Litres, weight, bloodGlucose, notes, isAbnormal } = req.body;
+      const rows = await query(
+        `UPDATE observations SET obs_type=$1, observed_at=$2, temp_celsius=$3, temp_method=$4,
+           systolic=$5, diastolic=$6, pulse=$7, spo2_percent=$8, o2_litres_min=$9, weight_kg=$10,
+           blood_glucose=$11, notes=$12, is_abnormal=$13
+         WHERE id=$14 RETURNING *`,
+        [obsType, observedAt, tempCelsius || null, tempMethod || null, systolic || null, diastolic || null,
+         pulse || null, spo2 || null, o2Litres || null, weight || null, bloodGlucose || null,
+         notes || null, isAbnormal || false, req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

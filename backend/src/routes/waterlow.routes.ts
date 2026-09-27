@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -102,6 +103,42 @@ router.post('/waterlow', async (req: Request, res: Response, next: NextFunction)
        totalScore ?? 0, riskLevel || null, notes || null]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/environmental-charts/waterlow/:id — care staff can amend their own
+// assessment for 24h after their shift ends; managers unrestricted.
+router.put('/waterlow/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await ensureWaterlowTable();
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    const existing = await query<any>('SELECT assessed_by FROM waterlow_scores WHERE id = $1', [req.params.id]);
+    if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+    if (role === 'care_staff') {
+      if (existing[0].assessed_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+      if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+    }
+    const {
+      buildScore, skinScore, sexAgeScore, malnutritionScore,
+      continenceScore, mobilityScore, tissueRiskScore, neuroRiskScore,
+      surgeryRiskScore, medRiskScore, tissueRisks, neuroRisks, surgeryRisks, medRisks,
+      totalScore, riskLevel, notes,
+    } = req.body;
+    const rows = await query<any>(
+      `UPDATE waterlow_scores SET build_score=$1, skin_score=$2, sex_age_score=$3, malnutrition_score=$4,
+         continence_score=$5, mobility_score=$6, tissue_risk_score=$7, neuro_risk_score=$8,
+         surgery_risk_score=$9, med_risk_score=$10, tissue_risks=$11, neuro_risks=$12,
+         surgery_risks=$13, med_risks=$14, total_score=$15, risk_level=$16, notes=$17
+       WHERE id=$18 RETURNING *`,
+      [buildScore ?? 0, skinScore ?? 0, sexAgeScore ?? 0, malnutritionScore ?? 0,
+       continenceScore ?? 0, mobilityScore ?? 0, tissueRiskScore ?? 0, neuroRiskScore ?? 0,
+       surgeryRiskScore ?? 0, medRiskScore ?? 0,
+       JSON.stringify(tissueRisks || []), JSON.stringify(neuroRisks || []),
+       JSON.stringify(surgeryRisks || []), JSON.stringify(medRisks || []),
+       totalScore ?? 0, riskLevel || null, notes || null, req.params.id]
+    );
+    res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
 

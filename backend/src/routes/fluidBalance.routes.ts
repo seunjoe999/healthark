@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -86,6 +87,31 @@ router.post('/',
          type, category, amountMl, notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/fluid-balance/:id — care staff can amend their own entry for 24h
+// after their shift ends; managers unrestricted.
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await ensureTable();
+      const role = tok(req, 'role');
+      const staffId = tok(req, 'staffId');
+      const existing = await query<any>('SELECT recorded_by FROM fluid_balance WHERE id = $1', [req.params.id]);
+      if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+      if (role === 'care_staff') {
+        if (existing[0].recorded_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+        if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+      }
+      const { recordDate, recordTime, type, category, amountMl, notes } = req.body;
+      const rows = await query(
+        `UPDATE fluid_balance SET record_date=$1, record_time=$2, type=$3, category=$4, amount_ml=$5, notes=$6
+         WHERE id=$7 RETURNING *`,
+        [recordDate, recordTime, type, category, amountMl, notes || null, req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

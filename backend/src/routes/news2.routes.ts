@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -81,6 +82,38 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
        totalScore ?? 0, responseLevel || null, notes || null]
     );
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/news2/:id — care staff can amend their own assessment for 24h after
+// their shift ends; managers unrestricted.
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await ensureNews2Table();
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    const existing = await query<any>('SELECT assessed_by FROM news2_scores WHERE id = $1', [req.params.id]);
+    if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+    if (role === 'care_staff') {
+      if (existing[0].assessed_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+      if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+    }
+    const {
+      respirationRate, spo2, supplementalO2, systolicBp, pulse, avpu, temperature,
+      rrScore, spo2Score, o2Score, sbpScore, pulseScore, avpuScore, tempScore,
+      totalScore, responseLevel, notes,
+    } = req.body;
+    const rows = await query<any>(
+      `UPDATE news2_scores SET respiration_rate=$1, spo2=$2, supplemental_o2=$3, systolic_bp=$4, pulse=$5,
+         avpu=$6, temperature=$7, rr_score=$8, spo2_score=$9, o2_score=$10, sbp_score=$11, pulse_score=$12,
+         avpu_score=$13, temp_score=$14, total_score=$15, response_level=$16, notes=$17
+       WHERE id=$18 RETURNING *`,
+      [respirationRate || null, spo2 || null, supplementalO2 ?? false, systolicBp || null, pulse || null,
+       avpu || null, temperature || null, rrScore ?? 0, spo2Score ?? 0, o2Score ?? 0, sbpScore ?? 0,
+       pulseScore ?? 0, avpuScore ?? 0, tempScore ?? 0, totalScore ?? 0, responseLevel || null, notes || null,
+       req.params.id]
+    );
+    res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
 

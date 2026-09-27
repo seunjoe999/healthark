@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Droplets, Plus, Clock } from 'lucide-react'
+import { Droplets, Plus, Clock, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 import { useTheme } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 
 const LOG_TABLE_CSS = `
   table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
@@ -104,6 +105,7 @@ function bristolColor(type: number) {
 
 export default function BowelChart() {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [records, setRecords] = useState<any[]>([])
   const [summary, setSummary] = useState<any[]>([])
@@ -114,6 +116,9 @@ export default function BowelChart() {
   const [selectedSU, setSelectedSU] = useState('')
   const [view, setView] = useState<'log' | 'summary'>('summary')
   const [preview, setPreview] = useState<any>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEdit = (r: any) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
   const [form, setForm] = useState({
     suId: '',
@@ -148,16 +153,37 @@ export default function BowelChart() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/bowel-chart', {
-        ...form,
-        bristolType: parseInt(form.bristolType),
-      })
+      const payload = { ...form, bristolType: parseInt(form.bristolType) }
+      if (editingId) {
+        await api.put(`/bowel-chart/${editingId}`, payload)
+        toast.success('Record updated')
+      } else {
+        await api.post('/bowel-chart', payload)
+        toast.success('Bowel movement recorded')
+      }
       setShowAdd(false)
+      setEditingId(null)
       setForm(f => ({ ...f, suId: '', bristolType: '4', amount: '', colour: 'brown', consistency: '', blood: false, mucus: false, notes: '' }))
       load()
-      toast.success('Bowel movement recorded')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save record') }
     setSubmitting(false)
+  }
+
+  function openEdit(r: any) {
+    setEditingId(r.id)
+    setForm({
+      suId: r.su_id,
+      bristolType: String(r.bristol_type),
+      recordedAt: r.recorded_at?.slice(0, 16) || new Date().toISOString().slice(0, 16),
+      amount: r.amount || '',
+      colour: r.colour || 'brown',
+      consistency: r.consistency || '',
+      blood: !!r.blood_present,
+      mucus: !!r.mucus_present,
+      notes: r.notes || '',
+    })
+    setPreview(null)
+    setShowAdd(true)
   }
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
@@ -192,7 +218,7 @@ export default function BowelChart() {
         </div>
         <div className="flex items-center gap-2">
           <PrintButton onClick={handlePrint} />
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setShowAdd(true) }}>
             Record
           </Button>
         </div>
@@ -316,14 +342,19 @@ export default function BowelChart() {
             </div>
             {preview.consistency && <div><p className="text-xs text-slate-500 mb-1">Consistency notes</p><p className="text-sm text-slate-300">{preview.consistency}</p></div>}
             {preview.notes && <div><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-sm text-slate-300">{preview.notes}</p></div>}
-            <p className="text-xs text-slate-600">Recorded by {preview.recorded_by_name}</p>
+            <div className="flex items-center justify-between pt-2 border-t border-white/8">
+              <p className="text-xs text-slate-600">Recorded by {preview.recorded_by_name}</p>
+              {canEdit(preview) && (
+                <Button variant="ghost" icon={<Edit className="w-3.5 h-3.5" />} onClick={() => openEdit(preview)}>Edit</Button>
+              )}
+            </div>
           </div>
         )}
       </Modal>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Record Bowel Movement" size="lg">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setEditingId(null) }} title={editingId ? 'Edit Bowel Chart Record' : 'Record Bowel Movement'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required />
+          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required disabled={!!editingId} />
           <div className="grid grid-cols-2 gap-3">
             <Select label="Bristol Type *" options={BRISTOL_TYPES} value={form.bristolType} onChange={e => setForm(f => ({ ...f, bristolType: e.target.value }))} />
             <Input label="Date & Time" type="datetime-local" value={form.recordedAt} onChange={e => setForm(f => ({ ...f, recordedAt: e.target.value }))} />
@@ -355,8 +386,8 @@ export default function BowelChart() {
               placeholder="Any additional notes..." />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Record</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setEditingId(null) }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>{editingId ? 'Update Record' : 'Save Record'}</Button>
           </div>
         </form>
       </Modal>

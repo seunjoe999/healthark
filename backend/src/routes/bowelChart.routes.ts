@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -75,6 +76,32 @@ router.post('/', [body('suId').isUUID(), body('bristolType').isInt({ min: 1, max
          blood || false, mucus || false, notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/bowel-chart/:id — care staff can amend their own entry for 24h after
+// their shift ends; managers unrestricted (same rule as Daily Records/MAR).
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = tok(req, 'role');
+      const staffId = tok(req, 'staffId');
+      const existing = await query<any>('SELECT recorded_by FROM bowel_charts WHERE id = $1', [req.params.id]);
+      if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+      if (role === 'care_staff') {
+        if (existing[0].recorded_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+        if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+      }
+      const { bristolType, recordedAt, amount, colour, consistency, blood, mucus, notes } = req.body;
+      const rows = await query(
+        `UPDATE bowel_charts SET bristol_type=$1, recorded_at=$2, amount=$3, colour=$4,
+           consistency=$5, blood_present=$6, mucus_present=$7, notes=$8
+         WHERE id=$9 RETURNING *`,
+        [bristolType, recordedAt, amount || null, colour || null, consistency || null,
+         blood || false, mucus || false, notes || null, req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

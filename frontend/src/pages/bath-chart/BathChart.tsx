@@ -1,5 +1,5 @@
 ﻿﻿import React, { useState, useEffect } from 'react'
-import { Droplets, Plus, Calendar, Users, Check } from 'lucide-react'
+import { Droplets, Plus, Calendar, Users, Check, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Textarea, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import { ukDateStr } from '../../utils/ukDate'
@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 import { useTheme } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 
 const LOG_TABLE_CSS = `
   table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
@@ -106,6 +107,7 @@ function daysSince(dateStr: string) {
 
 export default function BathChart() {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [view, setView] = useState<'summary' | 'log'>('summary')
   const [summary, setSummary] = useState<any[]>([])
@@ -115,6 +117,9 @@ export default function BathChart() {
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEdit = (r: any) => user?.role !== 'care_staff' || r.given_by === user?.id
 
   const [form, setForm] = useState({
     suId: '', bathDate: ukDateStr(), bathTime: '',
@@ -152,13 +157,36 @@ export default function BathChart() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/bath-chart', form)
+      if (editingId) {
+        await api.put(`/bath-chart/${editingId}`, form)
+        toast.success('Record updated')
+      } else {
+        await api.post('/bath-chart', form)
+      }
       setShowAdd(false)
+      setEditingId(null)
       setForm({ suId: '', bathDate: ukDateStr(), bathTime: '', bathType: 'shower', assistanceLevel: 'moderate', hairWashed: false, nailsCut: false, shaved: false, skinCondition: '', notes: '' })
       load()
       if (view === 'log') loadLog()
-    } catch {}
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save record') }
     setSubmitting(false)
+  }
+
+  function openEdit(r: any) {
+    setEditingId(r.id)
+    setForm({
+      suId: r.su_id,
+      bathDate: r.bath_date?.slice(0, 10) || ukDateStr(),
+      bathTime: r.bath_time?.slice(0, 5) || '',
+      bathType: r.bath_type || 'shower',
+      assistanceLevel: r.assistance_level || 'moderate',
+      hairWashed: !!r.hair_washed,
+      nailsCut: !!r.nails_cut,
+      shaved: !!r.shaved,
+      skinCondition: r.skin_condition || '',
+      notes: r.notes || '',
+    })
+    setShowAdd(true)
   }
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
@@ -187,7 +215,7 @@ export default function BathChart() {
         </div>
         <div className="flex items-center gap-2">
           <PrintButton onClick={handlePrint} />
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setShowAdd(true) }}>
             Log Bath / Shower
           </Button>
         </div>
@@ -273,6 +301,13 @@ export default function BathChart() {
                           <div className="text-white font-medium">{new Date(r.bath_date).toLocaleDateString('en-GB')}</div>
                           {r.bath_time && <div>{r.bath_time.substring(0,5)}</div>}
                           <div className="mt-1">{r.given_by_name}</div>
+                          {canEdit(r) && (
+                            <button onClick={() => openEdit(r)}
+                              className="mt-2 p-1 hover:bg-blue-500/10 rounded-lg transition-colors text-slate-500 hover:text-blue-400 inline-flex"
+                              title="Edit this record">
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -284,11 +319,11 @@ export default function BathChart() {
         </>
       )}
 
-      {/* Add Modal */}
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Log Bath / Shower" size="lg">
+      {/* Add / Edit Modal */}
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setEditingId(null) }} title={editingId ? 'Edit Bath / Shower Record' : 'Log Bath / Shower'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select label="Service User" options={suOptions} placeholder="Select service user..." value={form.suId}
-            onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required />
+            onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required disabled={!!editingId} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.bathDate} required
               onChange={e => setForm(f => ({ ...f, bathDate: e.target.value }))} />
@@ -319,8 +354,8 @@ export default function BathChart() {
             onChange={e => setForm(f => ({ ...f, skinCondition: e.target.value }))} />
           <Textarea label="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Record</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setEditingId(null) }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>{editingId ? 'Update Record' : 'Save Record'}</Button>
           </div>
         </form>
       </Modal>

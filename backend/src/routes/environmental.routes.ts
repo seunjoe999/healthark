@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types/index';
 import { ukDateStr } from '../utils/ukTime';
 import jwt from 'jsonwebtoken';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -191,6 +192,35 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     ]);
 
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/environmental/:id — care staff can amend their own entry for 24h
+// after their shift ends; managers unrestricted.
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    const existing = await query<any>('SELECT recorded_by FROM environmental_checks WHERE id = $1', [req.params.id]);
+    if (!existing.length) return res.status(404).json({ success: false, error: 'Record not found' } as ApiResponse);
+    if (role === 'care_staff') {
+      if (existing[0].recorded_by !== staffId) return res.status(403).json({ success: false, error: 'You can only edit your own records' } as ApiResponse);
+      if (!(await isWithinAmendWindow(staffId))) return res.status(403).json({ success: false, error: 'You can only edit your own records for up to 24 hours after your shift ends' } as ApiResponse);
+    }
+    const { checkDate, checkTime, checkType, location, suId, readingValue, unit, result, actionTaken, notes } = req.body;
+    if (!checkType) throw new AppError('checkType is required', 400);
+    if (!location) throw new AppError('location is required', 400);
+    if (!result) throw new AppError('result is required', 400);
+    const rows = await query(`
+      UPDATE environmental_checks SET check_date=$1, check_time=$2, check_type=$3, location=$4,
+        reading_value=$5, unit=$6, result=$7, action_taken=$8, notes=$9, su_id=$10
+      WHERE id=$11 RETURNING *
+    `, [
+      checkDate || todayDate(), checkTime || null, checkType, location,
+      readingValue || null, unit || null, result, actionTaken || null, notes || null,
+      suId || null, req.params.id
+    ]);
+    res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
 

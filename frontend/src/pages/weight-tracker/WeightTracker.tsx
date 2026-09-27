@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Scale, Plus, Trash2, TrendingUp } from 'lucide-react'
+import { Scale, Plus, Trash2, TrendingUp, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -17,6 +17,7 @@ interface WeightRecord {
   height_cm: string | null
   bmi: string | null
   notes: string | null
+  recorded_by: string
   recorded_by_name: string
 }
 
@@ -157,6 +158,9 @@ export default function WeightTracker() {
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
   const [form, setForm] = useState(defaultForm)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEdit = (r: WeightRecord) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
   // Live BMI preview while typing
   const liveBmi = useMemo(() => {
@@ -199,21 +203,40 @@ export default function WeightTracker() {
     if (!form.weightKg || parseFloat(form.weightKg) <= 0) { toast.error('Please enter a valid weight'); return; }
     setSubmitting(true)
     try {
-      await api.post('/weight-tracker', {
+      const payload = {
         suId: form.suId,
         homeId,
         recordDate: form.recordDate,
         weightKg: parseFloat(form.weightKg),
         heightCm: form.heightCm ? parseFloat(form.heightCm) : undefined,
         notes: form.notes,
-      })
+      }
+      if (editingId) {
+        await api.put(`/weight-tracker/${editingId}`, payload)
+        toast.success('Weight reading updated')
+      } else {
+        await api.post('/weight-tracker', payload)
+        toast.success('Weight reading saved')
+      }
       setShowAdd(false)
+      setEditingId(null)
       setForm(f => ({ ...defaultForm, suId: f.suId }))
       if (form.suId === selectedSU) load()
       else setSelectedSU(form.suId)
-      toast.success('Weight reading saved')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save reading') }
     setSubmitting(false)
+  }
+
+  function openEdit(r: WeightRecord) {
+    setEditingId(r.id)
+    setForm({
+      suId: r.su_id,
+      recordDate: r.record_date?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+      weightKg: r.weight_kg != null ? String(parseFloat(r.weight_kg)) : '',
+      heightCm: r.height_cm != null ? String(parseFloat(r.height_cm)) : '',
+      notes: r.notes || '',
+    })
+    setShowAdd(true)
   }
 
   async function handleDelete(id: string) {
@@ -238,7 +261,7 @@ export default function WeightTracker() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Monitor resident weight and body mass index over time</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setForm(defaultForm); setShowAdd(true) }}>
           Add Reading
         </Button>
       </div>
@@ -349,12 +372,22 @@ export default function WeightTracker() {
                         <td className="p-3 text-slate-400 text-xs">{r.recorded_by_name}</td>
                         <td className="p-3 text-slate-400 max-w-xs truncate text-xs">{r.notes || '—'}</td>
                         <td className="p-3">
-                          <button
-                            onClick={() => handleDelete(r.id)}
-                            className="text-slate-600 hover:text-rose-400 transition-colors p-1 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            {canEdit(r) && (
+                              <button
+                                onClick={() => openEdit(r)}
+                                className="text-slate-600 hover:text-blue-400 transition-colors p-1 rounded"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDelete(r.id)}
+                              className="text-slate-600 hover:text-rose-400 transition-colors p-1 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -366,8 +399,8 @@ export default function WeightTracker() {
         </>
       )}
 
-      {/* Add Reading Modal */}
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Weight Reading" size="lg">
+      {/* Add / Edit Reading Modal */}
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setEditingId(null) }} title={editingId ? 'Edit Weight Reading' : 'Add Weight Reading'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Service User *"
@@ -376,6 +409,7 @@ export default function WeightTracker() {
             value={form.suId}
             onChange={e => setForm(f => ({ ...f, suId: e.target.value }))}
             required
+            disabled={!!editingId}
           />
 
           <Input
@@ -428,8 +462,8 @@ export default function WeightTracker() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Reading</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setEditingId(null) }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>{editingId ? 'Update Reading' : 'Save Reading'}</Button>
           </div>
         </form>
       </Modal>

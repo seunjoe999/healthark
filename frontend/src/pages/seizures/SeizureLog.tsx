@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Zap, Plus, AlertTriangle, Clock } from 'lucide-react'
+import { Zap, Plus, AlertTriangle, Clock, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton } from '../../components/ui'
 import api from '../../api'
 import clsx from 'clsx'
@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 import { useTheme } from '../../context/ThemeContext'
+import { useAuth } from '../../context/AuthContext'
 
 const LOG_TABLE_CSS = `
   table.log{width:100%;border-collapse:collapse;margin-bottom:14px;font-family:Arial,sans-serif;font-size:10px;page-break-inside:auto}
@@ -86,6 +87,7 @@ function formatDuration(seconds: number | null) {
 
 export default function SeizureLog() {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const pillBg = theme === 'dark' ? '#1a1a1a' : '#f1f5f9'
   const [searchParams] = useSearchParams()
   const initSuId = searchParams.get('suId') || ''
@@ -98,6 +100,9 @@ export default function SeizureLog() {
   const [selectedSU, setSelectedSU] = useState(initSuId)
   const [view, setView] = useState<'log' | 'stats'>('log')
   const [preview, setPreview] = useState<any>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const canEdit = (r: any) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
   const [form, setForm] = useState({
     suId: initSuId, seizureAt: new Date().toISOString().slice(0, 16),
@@ -127,16 +132,42 @@ export default function SeizureLog() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/seizures', {
+      const payload = {
         ...form,
         durationSeconds: form.durationSeconds ? parseInt(form.durationSeconds) : null,
         recoveryTime: form.recoveryTime ? parseInt(form.recoveryTime) : null,
-      })
+      }
+      if (editingId) {
+        await api.put(`/seizures/${editingId}`, payload)
+        toast.success('Seizure episode updated')
+      } else {
+        await api.post('/seizures', payload)
+        toast.success('Seizure episode logged')
+      }
       setShowAdd(false)
+      setEditingId(null)
       load()
-      toast.success('Seizure episode logged')
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to log seizure') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save seizure') }
     setSubmitting(false)
+  }
+
+  function openEdit(r: any) {
+    setEditingId(r.id)
+    setForm({
+      suId: r.su_id,
+      seizureAt: r.seizure_at?.slice(0, 16) || new Date().toISOString().slice(0, 16),
+      seizureType: r.seizure_type || 'unclassified',
+      durationSeconds: r.duration_seconds != null ? String(r.duration_seconds) : '',
+      description: r.description || '',
+      recoveryTime: r.recovery_time_mins != null ? String(r.recovery_time_mins) : '',
+      postIctal: r.post_ictal || '',
+      action: r.action_taken || '',
+      notifiedGP: !!r.notified_gp,
+      notifiedFamily: !!r.notified_family,
+      notes: r.notes || '',
+    })
+    setPreview(null)
+    setShowAdd(true)
   }
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
@@ -165,7 +196,7 @@ export default function SeizureLog() {
         </div>
         <div className="flex items-center gap-2">
           <PrintButton onClick={handlePrint} />
-          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setShowAdd(true) }}>
             Log Seizure
           </Button>
         </div>
@@ -268,14 +299,19 @@ export default function SeizureLog() {
               {preview.notified_gp && <span className="text-blue-400 font-medium">GP notified</span>}
               {preview.notified_family && <span className="text-purple-400 font-medium">Family notified</span>}
             </div>
-            <p className="text-xs text-slate-600">Recorded by {preview.recorded_by_name}</p>
+            <div className="flex items-center justify-between pt-2 border-t border-white/8">
+              <p className="text-xs text-slate-600">Recorded by {preview.recorded_by_name}</p>
+              {canEdit(preview) && (
+                <Button variant="ghost" icon={<Edit className="w-3.5 h-3.5" />} onClick={() => openEdit(preview)}>Edit</Button>
+              )}
+            </div>
           </div>
         )}
       </Modal>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Log Seizure Episode" size="lg">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setEditingId(null) }} title={editingId ? 'Edit Seizure Episode' : 'Log Seizure Episode'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required />
+          <Select label="Service User *" options={suOptions} placeholder="Select service user..." value={form.suId} onChange={e => setForm(f => ({ ...f, suId: e.target.value }))} required disabled={!!editingId} />
           <div className="grid grid-cols-2 gap-3">
             <Select label="Seizure type *" options={SEIZURE_TYPES} value={form.seizureType} onChange={e => setForm(f => ({ ...f, seizureType: e.target.value }))} />
             <Input label="Date & Time" type="datetime-local" value={form.seizureAt} onChange={e => setForm(f => ({ ...f, seizureAt: e.target.value }))} />
@@ -307,8 +343,8 @@ export default function SeizureLog() {
             </label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button type="submit" variant="gold" loading={submitting}>Save Record</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowAdd(false); setEditingId(null) }}>Cancel</Button>
+            <Button type="submit" variant="gold" loading={submitting}>{editingId ? 'Update Record' : 'Save Record'}</Button>
           </div>
         </form>
       </Modal>
