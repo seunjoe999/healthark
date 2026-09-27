@@ -60,6 +60,8 @@ const ROUTES = [
   { value: 'injection', label: 'Injection' },
   { value: 'patch', label: 'Patch' },
   { value: 'eye_drops', label: 'Eye drops' },
+  { value: 'peg', label: 'PEG' },
+  { value: 'ear_drop', label: 'Ear drop' },
   { value: 'other', label: 'Other' },
 ]
 
