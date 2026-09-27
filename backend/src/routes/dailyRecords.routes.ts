@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr } from '../utils/ukTime';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -202,14 +203,23 @@ router.post('/', [
              VALUES ($1,$2,$3,$4,$5,$6,$7)`,
             [dr.id, bristolType || null, frequencyToday || 0, colour || null, consistencyNotes || null, laxativeGiven || false, daysSince]
           );
-          // Mirror to bowel_charts so the Bowel Chart page shows the record
-          await client.query(
-            `INSERT INTO bowel_charts (home_id, su_id, recorded_by, bristol_type, recorded_at, colour, consistency, notes)
-             VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7)`,
-            [homeId, suId, staffId, bristolType || null, colour || null,
-             consistencyNotes ? consistencyNotes.substring(0, 100) : null,
-             laxativeGiven ? 'Laxative given' : null]
-          );
+          // Mirror to bowel_charts so the Bowel Chart page shows the record.
+          // bristol_type there is NOT NULL — skip the mirror rather than fail
+          // the whole save if a type wasn't actually selected on this form.
+          if (bristolType) {
+            try {
+              await client.query(
+                `INSERT INTO bowel_charts (home_id, su_id, recorded_by, bristol_type, recorded_at, amount, colour, consistency, blood_present, mucus_present, notes)
+                 VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7,$8,$9,$10)`,
+                [homeId, suId, staffId, bristolType, null, colour || null,
+                 consistencyNotes ? consistencyNotes.substring(0, 100) : null,
+                 false, false,
+                 laxativeGiven ? 'Laxative given' : null]
+              );
+            } catch (mirrorErr) {
+              logger.error('Failed to mirror bowel record to bowel_charts', { error: mirrorErr, suId, dailyRecordId: dr.id });
+            }
+          }
           break;
         }
         case 'behaviour': {
@@ -551,15 +561,24 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           // touched records_bowel left that mirror stale, so the Bowel Chart
           // page kept showing the OLD values after a correction.
           if (type === 'bowel' && (req.body.bristolType !== undefined || req.body.colour !== undefined || req.body.consistencyNotes !== undefined || req.body.laxativeGiven !== undefined)) {
-            await query(
-              `UPDATE bowel_charts SET bristol_type = COALESCE($1, bristol_type), colour = COALESCE($2, colour),
-                 consistency = COALESCE($3, consistency), notes = COALESCE($4, notes)
-               WHERE su_id = (SELECT su_id FROM daily_records WHERE id = $5) AND recorded_by = $6
-               ORDER BY recorded_at DESC LIMIT 1`,
-              [req.body.bristolType ?? null, req.body.colour ?? null,
-               req.body.consistencyNotes ? String(req.body.consistencyNotes).substring(0, 100) : null,
-               req.body.laxativeGiven ? 'Laxative given' : null, req.params.id, rec.staff_id]
-            );
+            try {
+              // Postgres UPDATE can't take ORDER BY/LIMIT directly — target the
+              // single matching row via a subquery instead.
+              await query(
+                `UPDATE bowel_charts SET bristol_type = COALESCE($1, bristol_type), colour = COALESCE($2, colour),
+                   consistency = COALESCE($3, consistency), notes = COALESCE($4, notes)
+                 WHERE id = (
+                   SELECT id FROM bowel_charts
+                   WHERE su_id = (SELECT su_id FROM daily_records WHERE id = $5) AND recorded_by = $6
+                   ORDER BY recorded_at DESC LIMIT 1
+                 )`,
+                [req.body.bristolType ?? null, req.body.colour ?? null,
+                 req.body.consistencyNotes ? String(req.body.consistencyNotes).substring(0, 100) : null,
+                 req.body.laxativeGiven ? 'Laxative given' : null, req.params.id, rec.staff_id]
+              );
+            } catch (mirrorErr) {
+              logger.error('Failed to mirror bowel edit to bowel_charts', { error: mirrorErr, recordId: req.params.id });
+            }
           }
         }
       }
