@@ -300,8 +300,20 @@ router.post('/event', authenticate,
         // outcome than occasionally missing a genuinely overdue dose (which the
         // separate 30-minute missed-medication alert, unrelated to clock-out, still
         // catches). Logged so a silent miss is still visible to whoever checks logs.
+        //
+        // No staff_shifts row for today at all (ad-hoc cover, a swap that didn't
+        // transfer the row, or the rota just wasn't filled in) is one such edge case:
+        // shiftStartMins/shiftEndMins both stay null and todayShiftSuIds is empty, so
+        // BOTH narrowing checks below (resident scope and the shift-window bounds)
+        // silently become no-ops — getDueTodayTasks falls back to this staff member's
+        // WHOLE standing caseload and the time filter falls back to "due by right
+        // now", so a resident's later dose completely outside today's actual working
+        // hours (e.g. a 20:00 medication for someone on their broader caseload, well
+        // after their real shift ended) still trapped them. Treated the same as the
+        // internal-error case: with no rota record to scope against, don't block.
         let overdue: any[] = [];
         try {
+          if (rotaShifts.length === 0) throw new Error('no rota shift on record for today — nothing reliable to scope the check against');
           const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
           overdue = dueTasks.filter(t => {
             if (t.status !== 'pending') return false;

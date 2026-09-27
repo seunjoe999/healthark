@@ -40,9 +40,26 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
     return false;
   });
 
+  // staff_shifts for today, fetched once and reused below for both resident scope
+  // and the time-window check — same rota-derived approach GET /api/tasks uses
+  // (see tasks.routes.ts) instead of the static staff_service_user_assignments
+  // caseload, so a carer only sees/is blocked by tasks for whoever they're
+  // actually rostered with today, not their whole long-term assignment list.
+  const shiftRows = staffId
+    ? await query<any>(
+        `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        [staffId, homeId, todayStr]
+      )
+    : [];
+
   if (RESTRICTED_ROLES.includes(role) && staffId) {
-    const assignedSuIds = await getAssignedSuIds(staffId);
-    visible = visible.filter((t: any) => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || assignedSuIds.includes(t.su_id));
+    const rotaSuIds = Array.from(new Set(
+      shiftRows.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+    ));
+    // No rota entry at all today (ad-hoc/relief cover) — fall back to the static
+    // assignment list rather than hiding every resident-linked task outright.
+    const suIds = rotaSuIds.length > 0 ? rotaSuIds : await getAssignedSuIds(staffId);
+    visible = visible.filter((t: any) => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || suIds.includes(t.su_id));
   }
 
   // Only tasks due within the staff member's own shift(s) today block them from
@@ -52,11 +69,14 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   // never clock out: the next shift's tasks always showed as still outstanding.
   // A task with no due_time can't be matched to a shift, so it's left in
   // (same as before) rather than silently exempting it.
+  //
+  // When there's NO shift row at all for today, the window can't be verified —
+  // failing open here (excluding every due-timed task rather than keeping them
+  // all in, which is what happened before) matches the same fail-open principle
+  // used for the clock-out medication check in clockin.routes.ts: a data gap in
+  // the rota must never be the reason a real task outside someone's actual
+  // working hours traps them at clock-out.
   if (staffId) {
-    const shiftRows = await query<any>(
-      `SELECT start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-      [staffId, homeId, todayStr]
-    );
     if (shiftRows.length) {
       const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
       const windows = shiftRows.map((s: any) => {
@@ -73,6 +93,8 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
           return due >= w.start && due <= w.end;
         });
       });
+    } else {
+      visible = visible.filter((t: any) => !t.due_time);
     }
   }
 
