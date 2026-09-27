@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Activity, Plus, ChevronRight, TrendingDown, TrendingUp, Minus, AlertCircle } from 'lucide-react'
+import { Activity, Plus, ChevronRight, TrendingDown, TrendingUp, Minus, AlertCircle, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -305,12 +305,19 @@ function AssessmentForm({
 
 // ── Wound detail / history timeline ─────────────────────────────────
 
-function WoundDetail({ wound, onClose, onAddFollowUp }: {
+function WoundDetail({ wound, onClose, onAddFollowUp, onEdit }: {
   wound: { latest: any; history: any[] }
   onClose: () => void
   onAddFollowUp: (location: string, suId: string) => void
+  onEdit: (id: string) => void
 }) {
+  const { user } = useAuth()
   const { theme } = useTheme()
+  // Care staff can edit their own assessment for up to 24 hours after their shift
+  // ends (backend is the source of truth for the window, same convention as Daily
+  // Records/MAR/Tasks) — always show Edit for the owner and let the backend's own
+  // error surface if they're outside the window, rather than hiding it pre-emptively.
+  const canEdit = (a: any) => user?.role !== 'care_staff' || a.assessed_by === user?.id
   const { latest, history } = wound
   const label = (v: string, opts: { value: string; label: string }[]) => opts.find(o => o.value === v)?.label || v
   const summaryBg = theme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'
@@ -385,7 +392,16 @@ function WoundDetail({ wound, onClose, onAddFollowUp }: {
                   {a.dressing_used && <span>Dressing: {a.dressing_used}</span>}
                 </div>
                 {a.notes && <p className="text-xs text-slate-500 mt-1">{a.notes}</p>}
-                <p className="text-xs text-slate-600 mt-1">By {a.assessed_by_name}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-slate-600">By {a.assessed_by_name}</p>
+                  {canEdit(a) && (
+                    <button onClick={() => onEdit(a.id)}
+                      className="p-1 hover:bg-blue-500/10 rounded-lg transition-colors text-slate-500 hover:text-blue-400"
+                      title="Edit this assessment">
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -547,6 +563,7 @@ export default function WoundCare() {
           wound={selectedWound}
           onClose={() => setSelectedWound(null)}
           onAddFollowUp={openFollowUp}
+          onEdit={(id) => { setSelectedWound(null); setEditingId(id); setShowForm(true) }}
         />
       )}
     </div>

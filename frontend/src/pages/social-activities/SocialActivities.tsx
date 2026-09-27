@@ -130,14 +130,22 @@ export default function SocialActivities() {
                 <p className="text-xs text-slate-600 mt-1">Logged by {a.staff_name}</p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => { setEditing(a); setAddOpen(true) }}
-                  className="p-2 rounded-lg text-slate-500 hover:text-amber-400 transition-colors">
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => deleteActivity(a.id)}
-                  className="p-2 rounded-lg text-slate-500 hover:text-rose-400 transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {/* Care staff can edit their own entry for up to 24h after their shift ends
+                    (backend, matching Daily Records/MAR/Tasks) — was previously shown to
+                    everyone regardless of who recorded it, which the backend now rejects
+                    for anyone else. Delete stays manager-only, same as Daily Records. */}
+                {(user?.role !== 'care_staff' || a.staff_id === user?.id) && (
+                  <button onClick={() => { setEditing(a); setAddOpen(true) }}
+                    className="p-2 rounded-lg text-slate-500 hover:text-amber-400 transition-colors">
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {user?.role !== 'care_staff' && (
+                  <button onClick={() => deleteActivity(a.id)}
+                    className="p-2 rounded-lg text-slate-500 hover:text-rose-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
