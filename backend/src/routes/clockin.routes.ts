@@ -419,7 +419,7 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
          COUNT(*) FILTER (WHERE ce.event_type='clock_out') as clock_outs,
          COUNT(*) as total_events,
          MAX(ce.event_time) as last_event,
-         (SELECT ce2.event_type FROM staff_clock_events ce2 WHERE ce2.staff_id = ce.staff_id ORDER BY ce2.event_time DESC LIMIT 1) = 'clock_in' as currently_clocked_in
+         (SELECT ce2.event_type FROM staff_clock_events ce2 WHERE ce2.staff_id = ce.staff_id AND ce2.home_id = $1 ORDER BY ce2.event_time DESC LIMIT 1) = 'clock_in' as currently_clocked_in
        FROM staff_clock_events ce
        JOIN staff s ON s.id = ce.staff_id
        WHERE ce.home_id = $1 AND ce.event_time::date BETWEEN $2 AND $3
