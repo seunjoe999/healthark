@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -66,6 +67,19 @@ router.post('/', [
 // PUT /api/social-activities/:id
 router.put('/:id', param('id').isUUID(), validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Had no ownership/role check — any authenticated staff member could edit
+    // (or delete, below) any social activity record. Matches the creator +
+    // 24h-after-shift-ends rule used elsewhere; managers stay unrestricted.
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    if (role === 'care_staff') {
+      const existing = await query<any>('SELECT staff_id FROM social_activities WHERE id = $1', [req.params.id]);
+      if (!existing.length) throw new AppError('Not found', 404);
+      if (existing[0].staff_id !== staffId) throw new AppError('You can only edit an activity you recorded', 403);
+      if (!(await isWithinAmendWindow(staffId))) {
+        throw new AppError('You can only edit your own records for up to 24 hours after your shift ends', 403);
+      }
+    }
     const { title, activityDate, durationMins, location, participants, enjoyed, notes } = req.body;
     const rows = await query(
       `UPDATE social_activities SET title=$1, activity_date=$2, duration_mins=$3, location=$4, participants=$5, enjoyed=$6, notes=$7

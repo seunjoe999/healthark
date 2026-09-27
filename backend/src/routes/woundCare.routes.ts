@@ -7,6 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 
 const router = Router();
 router.use(authenticate);
@@ -141,6 +142,20 @@ router.post('/',
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Had no ownership/role check at all — any authenticated staff member could
+      // edit any wound assessment, regardless of who recorded it or how long ago.
+      // Matches the same creator + 24h-after-shift-ends rule used for daily
+      // records, MAR, and tasks; managers remain unrestricted.
+      const role = tok(req, 'role');
+      const staffId = tok(req, 'staffId');
+      if (role === 'care_staff') {
+        const existing = await query<any>('SELECT assessed_by FROM wound_assessments WHERE id = $1', [req.params.id]);
+        if (!existing.length) throw new AppError('Wound assessment not found', 404);
+        if (existing[0].assessed_by !== staffId) throw new AppError('You can only edit an assessment you recorded', 403);
+        if (!(await isWithinAmendWindow(staffId))) {
+          throw new AppError('You can only edit your own records for up to 24 hours after your shift ends', 403);
+        }
+      }
       const {
         assessmentDate, woundLocation, woundType, stage,
         sizeLengthCm, sizeWidthCm, sizeDepthCm, woundBed,
