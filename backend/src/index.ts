@@ -2514,6 +2514,10 @@ async function ensureColumns() {
     `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS side_effects_notes  TEXT`,
     `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS emotion             TEXT`,
     `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS completed           BOOLEAN NOT NULL DEFAULT FALSE`,
+    // Links a PRN administration to the resident's own catalogued PRN medicine
+    // (su_medications), so picking from their real PRN list (instead of typing
+    // a name from scratch) can be traced back to the actual prescription.
+    `ALTER TABLE records_prn_medication ADD COLUMN IF NOT EXISTS medication_id       UUID REFERENCES su_medications(id) ON DELETE SET NULL`,
     // ── staff_training_modules — inbuilt training hub completion tracking ─────
     `CREATE TABLE IF NOT EXISTS staff_training_modules (
        staff_id     UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,

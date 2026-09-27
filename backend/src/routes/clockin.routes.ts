@@ -459,6 +459,23 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
       [homeId, startDate, endDate]
     );
 
+    // Recent clock-outs, with their actual time — the "By staff" table only ever
+    // showed a clock-out COUNT plus a single "last event" timestamp, so a manager
+    // could see someone clocked out but not when, unlike clock-ins (which already
+    // had this exact list via lateRows above). Mirrors lateRows' shape.
+    const clockOutRows = await query<any>(
+      `SELECT ce.staff_id,
+         s.first_name || ' ' || s.last_name as staff_name,
+         ce.event_time
+       FROM staff_clock_events ce
+       JOIN staff s ON s.id = ce.staff_id
+       WHERE ce.home_id = $1
+         AND ce.event_type = 'clock_out'
+         AND ce.event_time::date BETWEEN $2 AND $3
+       ORDER BY ce.event_time DESC`,
+      [homeId, startDate, endDate]
+    );
+
     // Staff in home who have NO clock events in range
     const neverClockedInRows = await query<any>(
       `SELECT s.id as staff_id, s.first_name || ' ' || s.last_name as staff_name, s.role
@@ -485,6 +502,7 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
         byStaff: byStaffRows,
         byDay: byDayRows,
         lateArrivals: lateRows,
+        clockOuts: clockOutRows,
         neverClockedIn: neverClockedInRows,
       }
     } as ApiResponse);

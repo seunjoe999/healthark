@@ -115,7 +115,11 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
     // matches the MAR grid's logic. Without this, a medication with real,
     // unevenly-spaced dose times had its later doses silently recomputed to the
     // wrong time and never surfaced as due, so they never popped up as a task.
-    const times = (med.time_slots && med.time_slots.length) ? med.time_slots : getTimeSlots(med.frequency, med.apply_time);
+    // De-duped — a manager-entered time_slots array with an accidental repeated
+    // time (e.g. saved before this session's "every dose needs a real time" fix
+    // existed) used to surface as the SAME dose appearing 2-3 times on the to-do
+    // list at that one time, instead of once.
+    const times = Array.from(new Set<string>((med.time_slots && med.time_slots.length) ? med.time_slots : getTimeSlots(med.frequency, med.apply_time)));
     for (const t of times) {
       const existing = recordMap.get(`${med.medication_id}|${t}`);
       // completed=false (e.g. an "Attempted" outcome — resident refused but

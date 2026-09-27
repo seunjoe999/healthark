@@ -298,12 +298,16 @@ export default function DailyRecords() {
                                   {(() => {
                                     const isCareStaff = user?.role === 'care_staff'
                                     const isOwn = r.staff_id === user?.id
-                                    // Care staff can edit their own entries for as long as they're still
-                                    // clocked in — was previously locked to the same calendar day, which
-                                    // both cut a shift short right at midnight (nights) and left it open
-                                    // long after a day shift had ended. Once they clock out, it locks.
-                                    // Never someone else's record, regardless.
-                                    const canEdit = !isCareStaff || (isOwn && clockedIn)
+                                    // Care staff can edit their own entries for up to 24 hours after their
+                                    // shift ends (same rule as MAR/task amends elsewhere in this app) — the
+                                    // backend (PUT /daily-records/:id) is the actual source of truth for
+                                    // that window. This button used to require `clockedIn`, which hid Edit
+                                    // the instant someone clocked out even though the backend would still
+                                    // have allowed it for the next 24 hours — staff genuinely could not
+                                    // reach an edit they were entitled to make. Always show it for the
+                                    // owner; if they're really outside the window, the save attempt surfaces
+                                    // the backend's own clear error instead of hiding the button pre-emptively.
+                                    const canEdit = !isCareStaff || isOwn
                                     return canEdit ? (
                                       <button onClick={() => setEditingRecord(r)}
                                         className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"

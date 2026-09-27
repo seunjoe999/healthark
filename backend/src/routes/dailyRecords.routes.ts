@@ -319,13 +319,13 @@ router.post('/', [
           break;
         }
         case 'prn_medication': {
-          const { medicationName, dose, reason, witnessedBy, outcomeNotes,
+          const { medicationName, medicationId, dose, reason, witnessedBy, outcomeNotes,
                   medicineType, administered, sideEffects, sideEffectsNotes, emotion, completed } = req.body;
           await client.query(
-            `INSERT INTO records_prn_medication (daily_record_id, medication_name, dose, reason, administered_by, witnessed_by, outcome_notes,
+            `INSERT INTO records_prn_medication (daily_record_id, medication_name, medication_id, dose, reason, administered_by, witnessed_by, outcome_notes,
                medicine_type, administered, side_effects, side_effects_notes, emotion, completed)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-            [dr.id, medicationName, dose || null, reason || null, staffId,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+            [dr.id, medicationName, medicationId || null, dose || null, reason || null, staffId,
              witnessedBy || null, outcomeNotes || notes || null,
              medicineType || null,
              administered !== undefined ? administered : true,
@@ -458,6 +458,112 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       }
 
       const type = recordType || rec.record_type;
+
+      // Editing ANY Daily Records type other than vitals only ever rewrote the
+      // parent's `notes` field below — the actual structured fields each type's
+      // own form collects (bowel's Bristol type/colour/laxative, PRN's side
+      // effects/outcome, behaviour's triggers, etc.) were silently discarded on
+      // save, so "editing" a record never really changed what staff could see
+      // was recorded. This mirrors the exact column set each type's own
+      // creation case (above, in POST /) already inserts, so an edit updates
+      // the same child-table row it created.
+      type FieldSpec = { body: string; col: string; cast?: (v: any) => any };
+      const childUpdateSpecs: Record<string, { table: string; extraWhere?: string; fields: FieldSpec[] }> = {
+        food_drink: { table: 'records_food_drink', fields: [
+          { body: 'entryType', col: 'entry_type' }, { body: 'mealType', col: 'meal_type' },
+          { body: 'description', col: 'description' }, { body: 'amountEaten', col: 'amount_eaten' },
+          { body: 'volumeMl', col: 'volume_ml' }, { body: 'assisted', col: 'assisted' }, { body: 'refused', col: 'refused' },
+        ] },
+        personal_care: { table: 'records_personal_care', fields: [
+          { body: 'careTypes', col: 'care_types' }, { body: 'assistanceLevel', col: 'assistance_level' },
+          { body: 'continenceCare', col: 'continence_care' }, { body: 'continenceNotes', col: 'continence_notes' },
+          { body: 'skinCondition', col: 'skin_condition' },
+        ] },
+        bowel: { table: 'records_bowel', fields: [
+          { body: 'bristolType', col: 'bristol_type' }, { body: 'frequencyToday', col: 'frequency_today' },
+          { body: 'colour', col: 'colour' }, { body: 'consistencyNotes', col: 'consistency_notes' },
+          { body: 'laxativeGiven', col: 'laxative_given' },
+        ] },
+        behaviour: { table: 'records_behaviour', fields: [
+          { body: 'mood', col: 'mood' }, { body: 'behaviourNoted', col: 'behaviour_noted' },
+          { body: 'antecedents', col: 'antecedents' }, { body: 'triggersNoted', col: 'antecedents' },
+          { body: 'careIntervention', col: 'care_intervention' }, { body: 'actionTaken', col: 'care_intervention' },
+          { body: 'consequences', col: 'consequences' },
+          { body: 'behaviourTypes', col: 'behaviour_types' },
+          { body: 'otherStaffInvolved', col: 'other_staff_involved' }, { body: 'escalated', col: 'other_staff_involved' },
+        ] },
+        repositioning: { table: 'records_repositioning', fields: [
+          { body: 'position', col: 'position' }, { body: 'skinChecked', col: 'skin_checked' },
+          { body: 'skinConcerns', col: 'skin_concerns' }, { body: 'nextDueAt', col: 'next_due_at' },
+        ] },
+        oral_care: { table: 'records_oral_care', fields: [
+          { body: 'careTypes', col: 'care_types' }, { body: 'mouthCondition', col: 'mouth_condition' },
+          { body: 'hasDentures', col: 'has_dentures' }, { body: 'dentureType', col: 'denture_type' },
+        ] },
+        communication: { table: 'records_communication', fields: [
+          { body: 'modeUsed', col: 'mode_used' }, { body: 'topic', col: 'topic' }, { body: 'responseLevel', col: 'response_level' },
+        ] },
+        one_to_one: { table: 'records_one_to_one', fields: [
+          { body: 'topics', col: 'topics' }, { body: 'durationMins', col: 'duration_mins' },
+          { body: 'engagement', col: 'engagement' }, { body: 'followUp', col: 'follow_up' }, { body: 'followUpNotes', col: 'follow_up_notes' },
+        ] },
+        social_activity: { table: 'records_social_activity', fields: [
+          { body: 'activityName', col: 'activity_name' }, { body: 'engagement', col: 'engagement' }, { body: 'enjoyed', col: 'enjoyed' },
+        ] },
+        telephone_call: { table: 'records_calls', fields: [
+          { body: 'direction', col: 'direction' }, { body: 'callerName', col: 'caller_name' },
+          { body: 'relationship', col: 'relationship' }, { body: 'reason', col: 'reason' }, { body: 'outcome', col: 'outcome' },
+        ] },
+        visit: { table: 'records_visits', fields: [
+          { body: 'visitType', col: 'visit_type' }, { body: 'visitorName', col: 'visitor_name' },
+          { body: 'relationship', col: 'relationship' }, { body: 'location', col: 'location' },
+          { body: 'timeArrived', col: 'time_arrived' }, { body: 'timeLeft', col: 'time_left' }, { body: 'suResponse', col: 'su_response' },
+        ] },
+        prn_medication: { table: 'records_prn_medication', fields: [
+          { body: 'medicationName', col: 'medication_name' }, { body: 'medicationId', col: 'medication_id' },
+          { body: 'dose', col: 'dose' }, { body: 'reason', col: 'reason' }, { body: 'witnessedBy', col: 'witnessed_by' },
+          { body: 'outcomeNotes', col: 'outcome_notes' }, { body: 'medicineType', col: 'medicine_type' },
+          { body: 'administered', col: 'administered' }, { body: 'sideEffects', col: 'side_effects' },
+          { body: 'sideEffectsNotes', col: 'side_effects_notes' }, { body: 'emotion', col: 'emotion' }, { body: 'completed', col: 'completed' },
+        ] },
+        welfare_check: { table: 'records_welfare_check', fields: [
+          { body: 'checkType', col: 'check_type' }, { body: 'suStatus', col: 'su_status' },
+          { body: 'environmentOk', col: 'environment_ok' }, { body: 'environmentNotes', col: 'environment_notes' }, { body: 'actionTaken', col: 'action_taken' },
+        ] },
+        handover: { table: 'records_handover', fields: [
+          { body: 'shiftSummary', col: 'shift_summary' }, { body: 'priorityFlags', col: 'priority_flags' }, { body: 'outstandingActions', col: 'outstanding_actions' },
+        ] },
+      };
+      const spec = childUpdateSpecs[type];
+      if (spec) {
+        const sets: string[] = []; const vals: any[] = [];
+        for (const f of spec.fields) {
+          if (req.body[f.body] === undefined) continue;
+          const v = f.cast ? f.cast(req.body[f.body]) : req.body[f.body];
+          sets.push(`${f.col} = $${vals.length + 1}`);
+          vals.push(v);
+        }
+        if (sets.length) {
+          vals.push(req.params.id);
+          await query(`UPDATE ${spec.table} SET ${sets.join(', ')} WHERE daily_record_id = $${vals.length}`, vals);
+          // Bowel's dedicated chart page reads from bowel_charts, a mirror
+          // populated at creation time (see POST / above) — an edit that only
+          // touched records_bowel left that mirror stale, so the Bowel Chart
+          // page kept showing the OLD values after a correction.
+          if (type === 'bowel' && (req.body.bristolType !== undefined || req.body.colour !== undefined || req.body.consistencyNotes !== undefined || req.body.laxativeGiven !== undefined)) {
+            await query(
+              `UPDATE bowel_charts SET bristol_type = COALESCE($1, bristol_type), colour = COALESCE($2, colour),
+                 consistency = COALESCE($3, consistency), notes = COALESCE($4, notes)
+               WHERE su_id = (SELECT su_id FROM daily_records WHERE id = $5) AND recorded_by = $6
+               ORDER BY recorded_at DESC LIMIT 1`,
+              [req.body.bristolType ?? null, req.body.colour ?? null,
+               req.body.consistencyNotes ? String(req.body.consistencyNotes).substring(0, 100) : null,
+               req.body.laxativeGiven ? 'Laxative given' : null, req.params.id, rec.staff_id]
+            );
+          }
+        }
+      }
+
       if (type === 'vitals_bp' && (req.body.systolic !== undefined || req.body.diastolic !== undefined)) {
         const { systolic, diastolic, pulse, bpPosition } = req.body;
         const outsideRange = systolic > 180 || systolic < 90 || diastolic > 110 || diastolic < 60;

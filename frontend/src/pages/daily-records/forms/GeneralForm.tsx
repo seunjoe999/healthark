@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { dailyRecordsApi, getToken } from '../../../api'
+import React, { useState, useEffect } from 'react'
+import api, { dailyRecordsApi, getToken } from '../../../api'
 import { Button, Select, Input } from '../../../components/ui'
 import { SpeechTextarea } from '../../../components/ui/SpeechButton'
 
@@ -14,6 +14,17 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  // PRN: show the resident's OWN catalogued as-required medicines to pick from
+  // (previously a blank text box, so staff typed a name from scratch instead of
+  // seeing e.g. Paracetamol / Zopiclone that this resident is actually on).
+  const [prnMeds, setPrnMeds] = useState<any[]>([])
+  useEffect(() => {
+    if (type !== 'prn_medication' || !suId) return
+    api.get(`/mar/medications/${suId}`).then(res => {
+      setPrnMeds((res.data.data || []).filter((m: any) => m.is_prn))
+    }).catch(() => {})
+  }, [type, suId])
 
   const uploadReceipt = async (file: File) => {
     setUploading(true)
@@ -113,10 +124,45 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
       </>)}
 
       {type === 'prn_medication' && (<>
-        <Input label="Medication name" required value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="Name of medication given..." />
+        {prnMeds.length > 0 && form.medicationId !== 'other' ? (
+          <div>
+            <label className="label">PRN medication *</label>
+            <select required className="input" value={form.medicationId || ''}
+              onChange={e => {
+                const picked = prnMeds.find(m => m.id === e.target.value)
+                set('medicationId', e.target.value)
+                set('medicationName', picked?.medication_name || '')
+                set('dose', picked?.dose || '')
+              }}>
+              <option value="">Select the PRN medication given...</option>
+              {prnMeds.map(m => <option key={m.id} value={m.id}>{m.medication_name}{m.dose ? ` (${m.dose})` : ''}</option>)}
+              <option value="other">Other / not listed…</option>
+            </select>
+          </div>
+        ) : (
+          <div>
+            {prnMeds.length > 0 && (
+              <button type="button" className="text-xs text-purple-600 mb-1" onClick={() => { set('medicationId', ''); set('medicationName', ''); set('dose', '') }}>
+                ← Pick from {prnMeds.length === 1 ? "resident's PRN medication" : "resident's PRN medications"}
+              </button>
+            )}
+            <Input label="Medication name *" required value={form.medicationName || ''} onChange={e => set('medicationName', e.target.value)} placeholder="Name of medication given..." />
+          </div>
+        )}
         <Input label="Dose" value={form.dose || ''} onChange={e => set('dose', e.target.value)} placeholder="e.g. 500mg, 2 tablets..." />
         <div><label className="label">Reason for giving *</label><textarea required className="input" rows={2} value={form.reason || ''} onChange={e => set('reason', e.target.value)} placeholder="Why was this medication needed..." /></div>
         <Input label="Witnessed by" value={form.witnessedBy || ''} onChange={e => set('witnessedBy', e.target.value)} placeholder="Name of witness..." />
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="prnSe" checked={form.sideEffects || false} onChange={e => set('sideEffects', e.target.checked)} className="rounded" />
+          <label htmlFor="prnSe" className="text-sm">Any side effects observed?</label>
+        </div>
+        {form.sideEffects && (
+          <div><label className="label">Side effect details</label><textarea className="input" rows={2} value={form.sideEffectsNotes || ''} onChange={e => set('sideEffectsNotes', e.target.value)} placeholder="What was observed..." /></div>
+        )}
+        <Select label="Resident's response" value={form.emotion || ''} onChange={e => set('emotion', e.target.value)}
+          options={[{ value: 'settled', label: 'Settled / relieved' }, { value: 'no_change', label: 'No change' }, { value: 'distressed', label: 'Still distressed' }, { value: 'other', label: 'Other' }]}
+          placeholder="How were they afterwards..." />
+        <Input label="Outcome notes" value={form.outcomeNotes || ''} onChange={e => set('outcomeNotes', e.target.value)} placeholder="Effect of the medication, follow-up needed..." />
       </>)}
 
       {type === 'medication_disposed' && (<>

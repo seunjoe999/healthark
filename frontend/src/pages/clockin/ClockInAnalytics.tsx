@@ -365,6 +365,36 @@ export default function ClockInAnalytics() {
           )}
 
           {/* Late arrivals */}
+          {data.clockOuts?.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-50">
+                <h2 className="text-sm font-semibold text-slate-700">
+                  Clock-outs ({data.clockOuts.length})
+                </h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <th className="text-left px-5 py-3">Staff member</th>
+                      <th className="text-left px-4 py-3">Clock-out time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {data.clockOuts.map((row: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="px-5 py-3 font-medium text-slate-900">{row.staff_name}</td>
+                        <td className="px-4 py-3 text-slate-600 font-mono text-xs">
+                          {row.event_time ? format(new Date(row.event_time), 'HH:mm, d MMM yyyy') : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {data.lateArrivals?.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-50">

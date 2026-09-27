@@ -402,6 +402,12 @@ export default function MAR() {
                         <p className="text-sm text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
                         {med.prescribed_by && <p className="text-xs text-slate-400 mt-0.5">Reason for prescription: {med.prescribed_by}</p>}
                         {med.start_date && <p className="text-xs text-slate-400">Started: {format(new Date(med.start_date), 'd MMM yyyy')}</p>}
+                        {med.end_date && (
+                          <p className={`text-xs font-semibold ${new Date(med.end_date) < new Date() ? 'text-rose-600' : 'text-slate-400'}`}>
+                            {new Date(med.end_date) < new Date() ? '⚠ Ended ' : 'Ends '}{format(new Date(med.end_date), 'd MMM yyyy')}
+                            {new Date(med.end_date) < new Date() && ' — this medicine has stopped showing as due. Clear or extend the end date if this was a mistake.'}
+                          </p>
+                        )}
                         {med.instructions && (
                           <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mt-1.5">{med.instructions}</p>
                         )}
