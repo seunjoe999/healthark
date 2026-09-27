@@ -274,7 +274,7 @@ export default function DailyRecords() {
                 description="Daily records will appear here once added"
                 action={isToday ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add first record</Button> : undefined} />
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {Object.entries(groupedRecords).map(([type, typeRecords]) => {
                   const typeInfo = RECORD_TYPES.find(r => r.value === type)
                   return (
@@ -286,9 +286,9 @@ export default function DailyRecords() {
                       </div>
                       <div className="divide-y divide-slate-100">
                         {(typeRecords as any[]).map((r: any) => (
-                          <div key={r.id} className="px-5 py-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
+                          <div key={r.id} className="px-5 py-5">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 space-y-1">
                                 <RecordSummary record={r} suName={selectedSu ? getName(selectedSu) : ''} />
                               </div>
                               <div className="text-right flex-shrink-0">
