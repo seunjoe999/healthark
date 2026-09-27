@@ -117,6 +117,24 @@ router.post('/', [
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
             [dr.id, entryType, mealType || null, description, amountEaten || null, volumeMl || null, assisted || false, refused || false, notes || null]
           );
+          // su_daily_fluid_totals is a running per-day total that the Fluid
+          // Total widget, low-intake alerts and reports all read from — but
+          // nothing was ever writing to it, so a drink entry never showed up
+          // anywhere except the raw timeline. Accumulate it here.
+          if (entryType === 'drink' && volumeMl && !refused) {
+            const suRows = await client.query(`SELECT min_fluid_ml FROM service_users WHERE id = $1`, [suId]);
+            const minFluidMl = suRows.rows[0]?.min_fluid_ml || 1500;
+            const recordDate = (dr.record_date instanceof Date ? dr.record_date.toISOString() : String(dr.record_date)).slice(0, 10);
+            await client.query(
+              `INSERT INTO su_daily_fluid_totals (su_id, home_id, record_date, total_ml, below_threshold)
+               VALUES ($1,$2,$3,$4,$4 < $5)
+               ON CONFLICT (su_id, record_date) DO UPDATE
+                 SET total_ml = su_daily_fluid_totals.total_ml + EXCLUDED.total_ml,
+                     below_threshold = (su_daily_fluid_totals.total_ml + EXCLUDED.total_ml) < $5,
+                     updated_at = NOW()`,
+              [suId, homeId, recordDate, volumeMl, minFluidMl]
+            );
+          }
           break;
         }
         case 'vitals_bp': {

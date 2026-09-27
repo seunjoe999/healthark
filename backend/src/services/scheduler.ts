@@ -192,8 +192,16 @@ async function checkMissedMedication() {
         for (const id of staffRecipients.keys()) recipients.set(id, true);
 
         for (const recipientId of recipients.keys()) {
+          // INSERT ... WHERE NOT EXISTS instead of a separate SELECT-then-INSERT:
+          // the check above only dedupes at the home level, so the same
+          // recipient could still get inserted more than once per run (e.g. a
+          // recipient who is both an assigned carer and a manager), and two
+          // overlapping cron ticks could both pass a plain SELECT check before
+          // either INSERT commits. This makes the per-recipient dedupe atomic.
           await query(
-            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'warning',$5)`,
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+             SELECT $1,$2,$3,$4,'warning',$5
+             WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE recipient_id = $1 AND home_id = $2 AND link = $5)`,
             [recipientId, home.id, `Medication missed — ${med.suName}`,
              `${med.medicationName} scheduled for ${med.scheduledTime} was not recorded as given.`, link]
           ).catch(() => {});

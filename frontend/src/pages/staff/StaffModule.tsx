@@ -154,16 +154,21 @@ export default function StaffModule() {
 
   const getName = (s: any) => `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()
 
+  // Care staff viewing their own profile (the only profile they can ever
+  // view — see the non-manager filtering above) shouldn't see Training,
+  // Documents or Sensitive Info; Supervision & Appraisal stays visible to
+  // them. Managers still see every tab on any staff member's profile.
+  const hideForOwnCareStaffView = !isManager
   const tabs: { key: StaffTab; label: string }[] = [
     { key: 'profile', label: 'Profile' },
-    { key: 'training', label: `Training (${training.length})` },
+    ...(hideForOwnCareStaffView ? [] : [{ key: 'training' as StaffTab, label: `Training (${training.length})` }]),
     { key: 'leave', label: `Leave (${leave.length})` },
     { key: 'onboarding', label: 'Onboarding' },
     { key: 'clock', label: 'Clock history' },
-    { key: 'documents', label: 'Documents' },
+    ...(hideForOwnCareStaffView ? [] : [{ key: 'documents' as StaffTab, label: 'Documents' }]),
     { key: 'cautions', label: 'Disciplinary' },
     { key: 'supervisions', label: 'Supervision & Appraisal' },
-    { key: 'sensitive', label: `Sensitive Info (${sensitiveNotes.length})` },
+    ...(hideForOwnCareStaffView ? [] : [{ key: 'sensitive' as StaffTab, label: `Sensitive Info (${sensitiveNotes.length})` }]),
     { key: 'meetings', label: 'Staff Meeting' },
     ...(selected?.team_id ? [{ key: 'team_meetings' as StaffTab, label: 'Team Meeting' }] : []),
   ]
@@ -271,8 +276,14 @@ export default function StaffModule() {
               </button>
             )}
             {/* Header */}
-            {/* WhatsApp-style clickable profile header */}
-            <Link to={`/staff/${selected.id}/edit`} className="block bg-white/5 rounded-xl border border-white/10 shadow-sm p-5 mb-4 hover:border-purple-400/40 hover:shadow-md transition-all group">
+            {/* WhatsApp-style clickable profile header — read-only (no edit
+                link) for care staff viewing their own profile; managers can
+                still edit any profile, including their own. */}
+            {(() => {
+              const HeaderWrap: any = isManager ? Link : 'div'
+              const wrapProps = isManager ? { to: `/staff/${selected.id}/edit` } : {}
+              return (
+            <HeaderWrap {...wrapProps} className="block bg-white/5 rounded-xl border border-white/10 shadow-sm p-5 mb-4 hover:border-purple-400/40 hover:shadow-md transition-all group">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <PhotoUpload
@@ -286,7 +297,7 @@ export default function StaffModule() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="inline-block max-w-full font-bold text-black text-xl truncate bg-emerald-100 border border-emerald-200 rounded-lg px-3 py-1">{getName(selected)}</h2>
-                    <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors flex-shrink-0" />
+                    {isManager && <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors flex-shrink-0" />}
                   </div>
                   <p className="text-sm text-slate-500 capitalize mt-1.5">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
                   <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
@@ -300,10 +311,12 @@ export default function StaffModule() {
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>
+                  {isManager && <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>}
                 </div>
               </div>
-            </Link>
+            </HeaderWrap>
+              )
+            })()}
 
             <EditLeaveModal staff={editLeaveFor} onClose={() => setEditLeaveFor(null)}
               onSaved={(updated) => { setSelected((p: any) => ({ ...p, ...updated })); setEditLeaveFor(null) }} />

@@ -185,12 +185,21 @@ export default function EditStaff() {
   }
 
   useEffect(() => {
+    // Care staff's own profile is read-only everywhere — the profile page
+    // itself hides the edit link, but this guards direct navigation to the
+    // edit URL too. The backend enforces the same rule independently.
+    if (isOwnProfile && isRole('care_staff')) {
+      toast.error('Your profile can only be edited by a manager')
+      navigate('/staff', { replace: true })
+      return
+    }
     if (!id) return
     Promise.all([staffApi.get(id), homesApi.list()]).then(([sRes, hRes]) => {
       setForm(norm(sRes.data.data))
       setHomes(hRes.data.data || [])
     }).catch(console.error).finally(() => setLoading(false))
     api.get(`/documents/staff/${id}`).then(res => setDocuments(res.data.data || [])).catch(() => setDocuments([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const deleteDoc = async (docId: string) => {

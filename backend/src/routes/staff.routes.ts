@@ -380,8 +380,12 @@ router.put(
       const { role, staffId, organisationId } = req.staff;
       const targetId = req.params.id;
       const isSelf = targetId === staffId;
+      const canManage = role === 'group_admin' || role === 'home_manager';
 
-      if (!isSelf && role !== 'group_admin' && role !== 'home_manager') {
+      // Care staff must never be able to edit their own personal/staff record —
+      // it's read-only for them everywhere in the system — even though isSelf
+      // would otherwise let a self-edit through for other non-manager roles.
+      if (!canManage && (!isSelf || role === 'care_staff')) {
         throw new AppError('Not authorised to edit this profile', 403);
       }
 
@@ -391,7 +395,6 @@ router.put(
               photoUrl, status, isActive, leaveDate, homeId, role: newRoleInput,
               contractedHours, startDate, leaveHoursTotal, leaveHoursRemaining } = req.body;
 
-      const canManage = role === 'group_admin' || role === 'home_manager';
       const newStatus = canManage ? (status || null) : null;
       // Derived from newStatus (already gated to canManage), not the raw request
       // body — a non-manager editing their own profile must not be able to

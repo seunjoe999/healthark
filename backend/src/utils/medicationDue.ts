@@ -146,6 +146,12 @@ export interface StockCountStatus { total: number; counted: number; done: boolea
 // (checked against "since this shift started" — a count done on an earlier
 // shift today doesn't excuse skipping it on this one).
 export async function getStockCountStatus(homeId: string, since?: Date): Promise<StockCountStatus> {
+  // "Counted" used to mean a row in medication_stock got touched — but that table
+  // only updates itself automatically off MAR administration (see mar.routes.ts),
+  // never off the actual "Medication Count" record staff fill in (a daily_records
+  // note, recordType 'medication_stock_count' — see MedicationCountForm.tsx). The
+  // two were completely unrelated, so this always read 0 counted regardless of how
+  // many count records staff genuinely submitted, permanently blocking clock-out.
   const [totalRows, countedRows] = await Promise.all([
     query<any>(
       `SELECT COUNT(DISTINCT su_id) AS total FROM su_medications sm
@@ -155,13 +161,13 @@ export async function getStockCountStatus(homeId: string, since?: Date): Promise
     ),
     since
       ? query<any>(
-          `SELECT COUNT(DISTINCT su_id) AS counted FROM medication_stock
-           WHERE home_id = $1 AND updated_at >= $2`,
+          `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
+           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at >= $2`,
           [homeId, since]
         )
       : query<any>(
-          `SELECT COUNT(DISTINCT su_id) AS counted FROM medication_stock
-           WHERE home_id = $1 AND updated_at::date = CURRENT_DATE`,
+          `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
+           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at::date = CURRENT_DATE`,
           [homeId]
         ),
   ]);
