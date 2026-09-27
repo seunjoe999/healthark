@@ -809,7 +809,13 @@ export default function Rota() {
 
                     return (
                       <button key={shift.id}
-                        onClick={() => { if (IS_TOUCH_DEVICE) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
+                        // Once anything is selected, every shift click (touch or desktop) keeps
+                        // adding/removing from the selection instead of opening details — without
+                        // this, a touch-device manager could only ever get ONE shift selected: the
+                        // small top-right checkbox was the sole way to select there, and a normal
+                        // tap on any OTHER shift's body reopened its details and effectively looked
+                        // like "selecting a second shift doesn't work".
+                        onClick={() => { if (selectedShiftIds.size === 0 && IS_TOUCH_DEVICE) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
                         onDoubleClick={() => setDetailShift(shift)}
                         className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
                         style={{
@@ -2284,7 +2290,13 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
 }) {
   const [staffId, setStaffId] = useState('')
   const [suId, setSuId] = useState(seed?.suId || '')
-  const [dayOrNight, setDayOrNight] = useState<'any' | 'day' | 'night'>(seed?.dayOrNight || 'any')
+  // Defaults to "Day" rather than "Any" when opened without a seed (i.e. straight
+  // from the toolbar button, not "Bulk assign like this" off a specific shift) —
+  // "Any" silently matched night shifts too unless the manager remembered to
+  // narrow it, which is exactly the "it assigns at night where I didn't tell it
+  // to" report. Explicitly choosing "Any" is still one click away if that's
+  // really what's wanted.
+  const [dayOrNight, setDayOrNight] = useState<'any' | 'day' | 'night'>(seed?.dayOrNight || 'day')
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(seed?.daysOfWeek?.length ? seed.daysOfWeek : [1, 2, 3, 4, 5])
   // Weekly/fortnightly still match by the days-of-week picker below; daily is just
   // weekly with every day selected (same backend logic, no special case needed);
