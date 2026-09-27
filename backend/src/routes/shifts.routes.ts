@@ -883,11 +883,17 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       );
 
       // Fortnightly: keep only shifts in the same alternating week as startDate.
-      const startWeekIndex = Math.floor((new Date(startDate).getTime()) / (7 * 24 * 3600 * 1000));
+      // Weeks are counted as 7-day blocks from startDate itself (days 0-6 = week 0,
+      // 7-13 = week 1, ...), not from the Unix epoch — bucketing by epoch day/7 put
+      // the boundary at an arbitrary point unrelated to startDate, so depending on
+      // where startDate fell within that fixed grid, most of the days the manager
+      // actually meant as "week 1" could land in the epoch's "week 1" bucket instead
+      // and get excluded, while "week 2" days landed in the epoch's "week 0" bucket.
+      const startMs = new Date(startDate).getTime();
       const matched = fortnightly
         ? candidates.filter(c => {
-            const weekIndex = Math.floor(new Date(c.shift_date).getTime() / (7 * 24 * 3600 * 1000));
-            return (weekIndex - startWeekIndex) % 2 === 0;
+            const diffDays = Math.floor((new Date(c.shift_date).getTime() - startMs) / (24 * 3600 * 1000));
+            return Math.floor(diffDays / 7) % 2 === 0;
           })
         : candidates;
 
@@ -968,11 +974,13 @@ router.post('/bulk-delete-pattern', requireRole(...MANAGE_ROLES), [
          staffId || null, suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null]
       );
 
-      const startWeekIndex = Math.floor((new Date(startDate).getTime()) / (7 * 24 * 3600 * 1000));
+      // See the matching comment in bulk-assign-pattern above — weeks are counted
+      // as 7-day blocks from startDate, not from the Unix epoch.
+      const startMs = new Date(startDate).getTime();
       const matched = fortnightly
         ? candidates.filter(c => {
-            const weekIndex = Math.floor(new Date(c.shift_date).getTime() / (7 * 24 * 3600 * 1000));
-            return (weekIndex - startWeekIndex) % 2 === 0;
+            const diffDays = Math.floor((new Date(c.shift_date).getTime() - startMs) / (24 * 3600 * 1000));
+            return Math.floor(diffDays / 7) % 2 === 0;
           })
         : candidates;
 
