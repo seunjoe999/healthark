@@ -1,5 +1,6 @@
 import { query } from '../config/database';
 import { ukDateStr, ukDayOfWeek } from './ukTime';
+import { getAssignedSuIds } from './residentAccess';
 
 const FREQ_TIMES: Record<string, string[]> = {
   once_daily: ['08:00'],
@@ -46,8 +47,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
 
   let assignedSuIds: string[] | null = null;
   if (!isPrivileged) {
-    const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [staffId]);
-    assignedSuIds = assignments.map((a: any) => a.su_id);
+    assignedSuIds = await getAssignedSuIds(staffId);
     if (assignedSuIds.length === 0) return [];
   }
   // Narrow further to residents actually on THIS staff member's rota shift today, when

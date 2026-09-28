@@ -10,7 +10,7 @@ import https from 'https';
 import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { getMyPendingTasksToday } from '../utils/taskDue';
-import { ukDateStr } from '../utils/ukTime';
+import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 import { logger } from '../config/logger';
 
 const router = Router();
@@ -264,7 +264,7 @@ router.post('/event', authenticate,
       // only for residents this staff member was actually rostered with today — not their
       // whole standing caseload.
       if (eventType === 'clock_out') {
-        const nowHHMM = new Date().toTimeString().slice(0, 5);
+        const nowHHMM = ukTimeHHMM();
 
         // The residents tied to today's rota shift(s) for this staff member — reused from
         // the geofence check-point lookup above. When known, this scopes the clock-out
@@ -319,6 +319,11 @@ router.post('/event', authenticate,
             if (t.status !== 'pending') return false;
             const raw = hhmmToMins(t.scheduledTime);
             if (raw == null) return false;
+            // A dose whose time hasn't arrived yet ("Not due yet" on the MAR) can never
+            // block clock-out, whatever the shift window arithmetic below works out —
+            // e.g. a 21:00 ointment stopped a 20:05 clock-out. Only for a shift that
+            // doesn't cross midnight, where "later than now" is unambiguous.
+            if (raw > nowMins && (shiftEndMins == null || shiftEndMins <= 1440)) return false;
             // shiftStartMins/shiftEndMins was computed above but never actually used to
             // exclude anything below it — only the upper cutoff was checked. That let a
             // dose due BEFORE this shift even started (a resident's earlier dose that a

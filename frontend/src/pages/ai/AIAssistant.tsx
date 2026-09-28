@@ -846,6 +846,11 @@ export default function AIAssistant() {
 
   return (
     <div className="p-4 lg:p-10 max-w-4xl mx-auto">
+      {/* Every colour on this page (white text, translucent-white borders/tabs) is
+          designed for a dark background. In light mode the app's own background is
+          light, so the header, tab bar and their labels were effectively invisible.
+          A self-contained dark panel keeps them legible in BOTH themes. */}
+      <div className="rounded-3xl p-4 lg:p-8" style={{ background: '#0f1524', border: '1px solid rgba(255,255,255,0.08)' }}>
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex items-start gap-4 mb-8">
@@ -856,7 +861,7 @@ export default function AIAssistant() {
           <Brain size={24} style={{ color: '#a78bfa' }} />
         </div>
         <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-slate-900">AI Assistant</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-white">AI Assistant</h1>
           <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
             AI-powered tools to support safe, efficient care delivery
           </p>
@@ -897,6 +902,7 @@ export default function AIAssistant() {
       {activeTab === 'format'     && <FormatNoteTab />}
       {activeTab === 'schedule'   && <ScheduleTab homeId={homeId} />}
 
+      </div>
     </div>
   )
 }

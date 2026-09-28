@@ -111,11 +111,12 @@ router.post('/', [
       // Create child record based on type
       switch (normalizedType) {
         case 'food_drink': {
-          const { entryType, mealType, description, amountEaten, volumeMl, assisted, refused } = req.body;
+          const { mealType, description, amountEaten, volumeMl, assisted, refused } = req.body;
+          const entryType = req.body.entryType || (recordType === 'fluid_intake' ? 'drink' : 'food');
           await client.query(
             `INSERT INTO records_food_drink (daily_record_id, entry_type, meal_type, description, amount_eaten, volume_ml, assisted, refused, notes)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [dr.id, entryType, mealType || null, description, amountEaten || null, volumeMl || null, assisted || false, refused || false, notes || null]
+            [dr.id, entryType, mealType || null, description || '', amountEaten || null, volumeMl || null, assisted || false, refused || false, notes || null]
           );
           // su_daily_fluid_totals is a running per-day total that the Fluid
           // Total widget, low-intake alerts and reports all read from — but
@@ -124,15 +125,31 @@ router.post('/', [
           if (entryType === 'drink' && volumeMl && !refused) {
             const suRows = await client.query(`SELECT min_fluid_ml FROM service_users WHERE id = $1`, [suId]);
             const minFluidMl = suRows.rows[0]?.min_fluid_ml || 1500;
-            const recordDate = (dr.record_date instanceof Date ? dr.record_date.toISOString() : String(dr.record_date)).slice(0, 10);
+            // Recompute the day's total from the records themselves rather than
+            // adding onto the previous value: the schema's own trigger also
+            // maintains this row (so += double-counted), and the old statement used
+            // one parameter both as an integer value and inside a comparison, which
+            // Postgres can reject as "inconsistent types deduced for parameter" —
+            // every drink entry then failed with a bare "Internal server error"
+            // while food entries (which skip this block) kept saving. Explicit
+            // casts on every parameter avoid that.
             await client.query(
               `INSERT INTO su_daily_fluid_totals (su_id, home_id, record_date, total_ml, below_threshold)
-               VALUES ($1,$2,$3,$4,$4 < $5)
+               SELECT dr.su_id, dr.home_id, dr.record_date, t.total, t.total < $2::int
+               FROM daily_records dr
+               CROSS JOIN LATERAL (
+                 SELECT COALESCE(SUM(f.volume_ml), 0)::int AS total
+                 FROM records_food_drink f
+                 JOIN daily_records d2 ON d2.id = f.daily_record_id
+                 WHERE d2.su_id = dr.su_id AND d2.record_date = dr.record_date
+                   AND f.entry_type = 'drink' AND NOT COALESCE(f.refused, false)
+               ) t
+               WHERE dr.id = $1::uuid
                ON CONFLICT (su_id, record_date) DO UPDATE
-                 SET total_ml = su_daily_fluid_totals.total_ml + EXCLUDED.total_ml,
-                     below_threshold = (su_daily_fluid_totals.total_ml + EXCLUDED.total_ml) < $5,
+                 SET total_ml = EXCLUDED.total_ml,
+                     below_threshold = EXCLUDED.below_threshold,
                      updated_at = NOW()`,
-              [suId, homeId, recordDate, volumeMl, minFluidMl]
+              [dr.id, minFluidMl]
             );
           }
           break;
