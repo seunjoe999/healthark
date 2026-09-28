@@ -206,6 +206,7 @@ router.put('/role-permissions', requireRole('home_manager', 'group_admin'),
          ON CONFLICT (home_id, role, permission) DO UPDATE SET granted=$4, updated_at=NOW()`,
         [hId, role, permission, !!granted]
       );
+      notifyHomeClients(hId, 'access-refresh', role);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -499,7 +500,7 @@ router.put(
           ni_number = COALESCE($24, ni_number),
           feature_flags = CASE WHEN $25 THEN '{}'::jsonb ELSE feature_flags END
          WHERE id = $22
-         RETURNING id, first_name, last_name, email, role, status, is_active`,
+         RETURNING id, first_name, last_name, email, role, status, is_active, home_id`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
          address1 || null, address2 || null, address3 || null, postcode || null,
          nd(dateOfBirth), gender || null, nationality || null, maritalStatus || null,
@@ -518,6 +519,9 @@ router.put(
       if (!rows.length) throw new AppError('Staff not found', 404);
       const updated = rows[0] as any;
       logAudit({ homeId: updated.home_id || homeId || '', staffId, staffName: '', action: 'update', resourceType: 'staff', resourceId: targetId, resourceLabel: `${updated.first_name} ${updated.last_name}` });
+      // A role/status change alters what that person may see — push a refresh so
+      // their open session picks it up now instead of on their next focus/login.
+      if ((newRole || newStatus) && updated.home_id) notifyHomeClients(updated.home_id, 'access-refresh', updated.role);
       res.json({ success: true, data: updated } as ApiResponse);
     } catch (err) { next(err); }
   }
@@ -531,10 +535,11 @@ router.put('/:id/feature-flags', requireRole('group_admin'),
       const { featureFlags } = req.body;
       if (!featureFlags || typeof featureFlags !== 'object') throw new AppError('featureFlags object required', 400);
       const rows = await query(
-        `UPDATE staff SET feature_flags=$1::jsonb WHERE id=$2 RETURNING id, feature_flags`,
+        `UPDATE staff SET feature_flags=$1::jsonb WHERE id=$2 RETURNING id, feature_flags, home_id`,
         [JSON.stringify(featureFlags), req.params.id]
       );
       if (!rows.length) throw new AppError('Staff not found', 404);
+      if ((rows[0] as any).home_id) notifyHomeClients((rows[0] as any).home_id, 'access-refresh', 'user');
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }

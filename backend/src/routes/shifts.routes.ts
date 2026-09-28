@@ -897,23 +897,68 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
           })
         : candidates;
 
-      if (matched.length === 0) {
+      const ids = matched.map(m => m.id);
+      if (ids.length) {
+        await query(
+          `UPDATE staff_shifts SET staff_id = $1, status = 'filled', updated_at = NOW() WHERE id = ANY($2::uuid[])`,
+          [staffId, ids]
+        );
+      }
+
+      // Pattern dates with no shift at all for this resident used to be silently
+      // skipped — bulk-assigning across weeks that had no rota generated yet
+      // reported "0 allocated" and nothing appeared on the calendar. Create the
+      // missing shift (day 08:00-20:00 / night 20:00-08:00) already allocated.
+      // Only when Day or Night is chosen, since "Any" gives no time to create at.
+      let created = 0;
+      if (dayOrNight === 'day' || dayOrNight === 'night') {
+        const existing = await query<any>(
+          `SELECT shift_date::text AS d FROM staff_shifts
+           WHERE home_id = $1 AND su_id = $2 AND shift_date BETWEEN $3 AND $4
+             AND (
+               ($5 = 'day'   AND start_time >= '06:00'::time AND start_time < '20:00'::time)
+               OR ($5 = 'night' AND (start_time >= '20:00'::time OR start_time < '06:00'::time))
+             )`,
+          [homeId, suId, startDate, endDate, dayOrNight]
+        );
+        const haveShift = new Set(existing.map((r: any) => r.d));
+        const dows = new Set((daysOfWeek || []).map((d: any) => parseInt(d)));
+        const startDom = new Date(startDate + 'T00:00:00Z').getUTCDate();
+        const endMs = new Date(endDate + 'T00:00:00Z').getTime();
+        const missing: string[] = [];
+        for (let t = new Date(startDate + 'T00:00:00Z').getTime(); t <= endMs; t += 86400000) {
+          const dt = new Date(t);
+          const ds = dt.toISOString().split('T')[0];
+          const dayMatches = monthly ? dt.getUTCDate() === startDom : dows.has(dt.getUTCDay());
+          if (!dayMatches || haveShift.has(ds)) continue;
+          if (fortnightly && Math.floor((t - new Date(startDate + 'T00:00:00Z').getTime()) / 86400000 / 7) % 2 !== 0) continue;
+          missing.push(ds);
+        }
+        if (missing.length) {
+          const [st, et] = dayOrNight === 'day' ? ['08:00', '20:00'] : ['20:00', '08:00'];
+          const rows = await query<any>(
+            `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, status, total_staff_required)
+             SELECT $1, $2, $3, d::date, $5::time, $6::time, 'regular', 'filled', 1
+             FROM unnest($4::text[]) AS d
+             RETURNING id`,
+            [homeId, staffId, suId, missing, st, et]
+          );
+          created = rows.length;
+        }
+      }
+      const total = ids.length + created;
+
+      if (total === 0) {
         return res.json({ success: true, data: { assigned: 0 } } as ApiResponse);
       }
 
-      const ids = matched.map(m => m.id);
-      await query(
-        `UPDATE staff_shifts SET staff_id = $1, status = 'filled', updated_at = NOW() WHERE id = ANY($2::uuid[])`,
-        [staffId, ids]
-      );
-
       sendPushToStaff(staffId, {
         title: 'Rota updated',
-        body: `You've been assigned ${ids.length} new shift${ids.length !== 1 ? 's' : ''} on the rota.`,
+        body: `You've been assigned ${total} new shift${total !== 1 ? 's' : ''} on the rota.`,
         url: '/rota',
       }).catch(() => {});
 
-      res.json({ success: true, data: { assigned: ids.length } } as ApiResponse);
+      res.json({ success: true, data: { assigned: total, created } } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

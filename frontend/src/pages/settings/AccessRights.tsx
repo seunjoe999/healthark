@@ -130,10 +130,10 @@ export default function AccessRights() {
     if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) return
     const current = isEnabled(role, key)
     const nextFlags = { ...(flags[role] || {}) }
-    // When granting full access, we omit the key (defaults to true)
-    // When revoking, we set false explicitly
-    if (current) nextFlags[key] = false
-    else delete nextFlags[key]
+    // Both directions are stored explicitly: false revokes, true grants. Omitting the
+    // key on grant meant "use the built-in role default", so a page the role's default
+    // excluded stayed hidden in the menu even though this screen showed it as granted.
+    nextFlags[key] = !current
 
     setSaving(`${role}-${key}`)
     try {
@@ -152,9 +152,10 @@ export default function AccessRights() {
     if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) return
     setSaving(`${role}-all`)
     try {
-      // Empty object = all features enabled (no restrictions)
-      await api.put('/staff/role-access-rights', { homeId: selectedHome, role, featureFlags: {} })
-      setFlags(f => ({ ...f, [role]: {} }))
+      const allOn: Record<string, boolean> = {}
+      for (const f of FEATURES) allOn[f.key] = true
+      await api.put('/staff/role-access-rights', { homeId: selectedHome, role, featureFlags: allOn })
+      setFlags(f => ({ ...f, [role]: allOn }))
       toast.success(`Full access granted to ${ROLES.find(r => r.value === role)?.label}`)
     } catch {
       toast.error('Failed')

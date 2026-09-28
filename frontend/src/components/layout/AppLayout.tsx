@@ -290,8 +290,17 @@ function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: Sideb
       <nav className="flex-1 overflow-y-auto px-3 space-y-4 pb-4">
         {navSections.map((section, si) => {
           const visible = section.items.filter(item => {
+            // An explicit Access Rights setting always wins over the built-in role
+            // defaults, in BOTH directions: `false` hides the page, `true` shows it
+            // even to a role the hard-coded list would have excluded. Previously only
+            // `false` was honoured, so switching a page ON for a role in Access Rights
+            // (e.g. Teams or Reports for a senior carer) changed nothing in the menu.
+            const flag = (item as any).featureKey ? user?.featureFlags?.[(item as any).featureKey] : undefined
+            if (!isRole('group_admin')) {
+              if (flag === false) return false
+              if (flag === true) return true
+            }
             if (item.roles.length > 0 && !item.roles.some(r => isRole(r))) return false
-            if ((item as any).featureKey && !isRole('group_admin') && user?.featureFlags?.[(item as any).featureKey] === false) return false
             return true
           })
           if (!visible.length) return null
