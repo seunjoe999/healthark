@@ -358,7 +358,10 @@ router.post('/event', authenticate,
         // on an earlier shift today doesn't excuse skipping it on this one, so
         // this checks against the current shift's clock-in time, not just "today".
         const shiftStart = lastEventRows[0]?.event_time;
-        const stockStatus = await getStockCountStatus(homeId, shiftStart ? new Date(shiftStart) : undefined);
+        // Scoped to this staff member's own rota residents today — see the
+        // comment in getStockCountStatus for why the unscoped home-wide total
+        // could never actually be cleared by any one person.
+        const stockStatus = await getStockCountStatus(homeId, shiftStart ? new Date(shiftStart) : undefined, todayShiftSuIds);
         if (!stockStatus.done) {
           return res.status(403).json({
             success: false,

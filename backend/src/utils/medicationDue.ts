@@ -145,33 +145,52 @@ export interface StockCountStatus { total: number; counted: number; done: boolea
 // clock-in onward (checked against "today"), and a hard block at clock-out
 // (checked against "since this shift started" — a count done on an earlier
 // shift today doesn't excuse skipping it on this one).
-export async function getStockCountStatus(homeId: string, since?: Date): Promise<StockCountStatus> {
+export async function getStockCountStatus(homeId: string, since?: Date, suIds?: string[]): Promise<StockCountStatus> {
   // "Counted" used to mean a row in medication_stock got touched — but that table
   // only updates itself automatically off MAR administration (see mar.routes.ts),
   // never off the actual "Medication Count" record staff fill in (a daily_records
   // note, recordType 'medication_stock_count' — see MedicationCountForm.tsx). The
   // two were completely unrelated, so this always read 0 counted regardless of how
   // many count records staff genuinely submitted, permanently blocking clock-out.
+  //
+  // `total` used to always mean every live resident on medication in the WHOLE
+  // home, regardless of who's asking — fine for a manager's home-wide overview,
+  // but fatal as a clock-out gate: it required ONE staff member's own shift to
+  // have counted every resident in the building before THEY could clock out,
+  // which is structurally impossible for anyone who isn't single-handedly
+  // covering the entire home. That's why reports kept showing a stuck fraction
+  // (7/13, 9/13, 11/13, ...) that could never reach completion — staff were
+  // being held to a total that was never theirs to clear. When `suIds` is
+  // given (the caller's own rostered residents), both sides of the fraction
+  // are scoped to just those residents instead.
+  const suScope = suIds && suIds.length > 0;
   const [totalRows, countedRows] = await Promise.all([
     query<any>(
       `SELECT COUNT(DISTINCT su_id) AS total FROM su_medications sm
        JOIN service_users su ON su.id = sm.su_id
-       WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true`,
-      [homeId]
+       WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true
+         AND ($2::uuid[] IS NULL OR sm.su_id = ANY($2::uuid[]))`,
+      [homeId, suScope ? suIds : null]
     ),
     since
       ? query<any>(
           `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
-           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at >= $2`,
-          [homeId, since]
+           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at >= $2
+             AND ($3::uuid[] IS NULL OR su_id = ANY($3::uuid[]))`,
+          [homeId, since, suScope ? suIds : null]
         )
       : query<any>(
           `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
-           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at::date = CURRENT_DATE`,
-          [homeId]
+           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at::date = CURRENT_DATE
+             AND ($2::uuid[] IS NULL OR su_id = ANY($2::uuid[]))`,
+          [homeId, suScope ? suIds : null]
         ),
   ]);
   const total = parseInt(totalRows[0]?.total || '0', 10);
   const counted = parseInt(countedRows[0]?.counted || '0', 10);
+  // suIds given but empty (e.g. no rota shift on record today) means there's
+  // nothing reliable to scope against — fail open rather than falling back to
+  // the unscoped home-wide total this was just fixed to avoid.
+  if (suIds && suIds.length === 0) return { total: 0, counted: 0, done: true };
   return { total, counted, done: total === 0 || counted >= total };
 }
