@@ -10,6 +10,7 @@ import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr } from '../utils/ukTime';
 import { generateTasksForHome } from '../utils/taskGeneration';
+import { sendPushToStaffMany } from '../services/push.service';
 
 const router = Router();
 
@@ -201,6 +202,40 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
            cleanDueTimes && cleanDueTimes.length ? cleanDueTimes : null]
         );
       }
+      // Notify whoever the task is actually visible to — a manager setting a
+      // task up expects staff to be alerted, not to have to stumble on it in
+      // the day's list. Mirrors GET /'s own visibility rule: a specific
+      // assignee only, otherwise anyone matching the role/team target, or
+      // every active staff member in the home for a general task.
+      try {
+        let recipientRows: any[];
+        if (assignedStaffId) {
+          recipientRows = [{ id: assignedStaffId }];
+        } else if (assignedRole || teamIds) {
+          recipientRows = await query<any>(
+            `SELECT id FROM staff WHERE home_id = $1 AND status != 'terminated'
+               AND (($2::text IS NOT NULL AND role = $2) OR ($3::uuid[] IS NOT NULL AND team_id = ANY($3::uuid[])))`,
+            [homeId, assignedRole || null, teamIds]
+          );
+        } else {
+          recipientRows = await query<any>(
+            `SELECT id FROM staff WHERE home_id = $1 AND status != 'terminated' AND id != $2`,
+            [homeId, createdBy]
+          );
+        }
+        const recipientIds = recipientRows.map((r: any) => r.id).filter((id: string) => id !== createdBy);
+        if (recipientIds.length) {
+          const notifTitle = 'New task assigned';
+          const notifBody = `${title}${dueTime ? ` — due ${dueTime}` : ''}`;
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+             SELECT unnest($1::uuid[]), $2, $3, $4, 'task', '/tasks'`,
+            [recipientIds, homeId, notifTitle, notifBody]
+          );
+          sendPushToStaffMany(recipientIds, { title: notifTitle, body: notifBody, url: '/tasks' }).catch(() => {});
+        }
+      } catch { /* notification is best-effort — must never block task creation */ }
+
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
