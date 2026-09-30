@@ -252,10 +252,16 @@ export default function Rota() {
   // swap requests
   const [swapRequests, setSwapRequests] = useState<any[]>([])
   const [swapActing, setSwapActing] = useState<string | null>(null)
-  // Manually toggled open via the "Swap Requests" button in the filter bar, so
-  // there's always a way to check even when there's nothing pending (the panel
-  // auto-shows on its own whenever there ARE pending requests, regardless of this).
+  // Toggled by the "Swap Requests" button in the filter bar. Used to force the
+  // panel open when there's nothing pending, OR force it closed when there IS —
+  // a manager needs to be able to collapse it to see the calendar underneath
+  // without losing the pending count on the button itself. This used to be
+  // OR'd with "requests.length > 0" to auto-show the panel, which meant the
+  // button had literally no visible effect while anything was pending — every
+  // click toggled this state correctly, but the panel stayed visible either
+  // way, which looked exactly like the button doing nothing.
   const [swapPanelOpen, setSwapPanelOpen] = useState(false)
+  const prevSwapCount = React.useRef(0)
 
   // Bulk shift selection — clicking a shift tile always toggles its highlight
   // (RoundSys-style), no separate "select mode" to switch into first. Once
@@ -318,7 +324,14 @@ export default function Rota() {
     if (!selectedHome) return
     try {
       const res = await api.get('/shifts/swaps', { params: { homeId: selectedHome } })
-      setSwapRequests(res.data.data || [])
+      const next = res.data.data || []
+      // Auto-open the panel when the pending count genuinely goes up (a new
+      // request came in), not on every poll — otherwise a manager who just
+      // closed it after dealing with the current batch would have it forced
+      // back open immediately by the very next refresh.
+      if (next.length > prevSwapCount.current) setSwapPanelOpen(true)
+      prevSwapCount.current = next.length
+      setSwapRequests(next)
     } catch { }
   }, [selectedHome])
 
@@ -658,15 +671,13 @@ export default function Rota() {
       )}
 
       {/* ── Swap Requests Inbox ─────────────────────────────────────────── */}
-      {(swapRequests.length > 0 || swapPanelOpen) && (
+      {swapPanelOpen && (
         <div className="border-b border-amber-200 bg-amber-50/60 px-4 py-2.5">
           <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
             <ArrowLeftRight className="w-3.5 h-3.5" /> Shift Swap Requests ({swapRequests.length})
-            {swapRequests.length === 0 && (
-              <button onClick={() => setSwapPanelOpen(false)} className="ml-auto text-amber-400 hover:text-amber-600 normal-case font-normal">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <button onClick={() => setSwapPanelOpen(false)} className="ml-auto text-amber-400 hover:text-amber-600 normal-case font-normal">
+              <X className="w-3.5 h-3.5" />
+            </button>
           </p>
           {swapRequests.length === 0 && (
             <p className="text-xs text-amber-600 italic">No pending swap requests right now.</p>
