@@ -215,7 +215,7 @@ router.delete('/custom-templates/:id', requireRole('group_admin', 'home_manager'
 
 // POST /api/audits/generate — trigger AI audit
 router.post('/generate',
-  requireRole('home_manager', 'group_admin'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager'),
   [body('auditType').notEmpty(), body('homeId').optional({ checkFalsy: true }).isUUID(), body('suId').optional({ checkFalsy: true }).isUUID()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -332,7 +332,7 @@ router.get('/:id/signoffs', param('id').isUUID(), validateRequest,
 );
 
 // POST /api/audits/:id/signoffs — request signoff from selected staff (manager+)
-router.post('/:id/signoffs', requireRole('group_admin', 'home_manager'),
+router.post('/:id/signoffs', requireRole('group_admin', 'home_manager', 'deputy_manager', 'service_manager'),
   param('id').isUUID(), body('staffIds').isArray({ min: 1 }), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -381,7 +381,7 @@ router.post('/:id/sign', param('id').isUUID(), validateRequest,
 );
 
 // DELETE /api/audits/:id — delete audit (manager+)
-router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM audit_reports WHERE id = $1', [req.params.id]);
@@ -834,7 +834,7 @@ Reply with ONLY a JSON array, one object per question in order, using this exact
 }
 
 // POST /api/audits/:id/ai-action-plan — AI generates detailed action plan
-router.post('/:id/ai-action-plan', requireRole('home_manager', 'group_admin'),
+router.post('/:id/ai-action-plan', requireRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query('SELECT * FROM audit_reports WHERE id = $1', [req.params.id]);
@@ -875,7 +875,7 @@ Max 5 items. Be specific to the actual data above.`
 );
 
 // POST /api/audits/:id/ai-compliance-fix — AI generates compliance improvement plan
-router.post('/:id/ai-compliance-fix', requireRole('home_manager', 'group_admin'),
+router.post('/:id/ai-compliance-fix', requireRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query('SELECT * FROM audit_reports WHERE id = $1', [req.params.id]);

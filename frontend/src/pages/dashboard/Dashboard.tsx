@@ -154,7 +154,7 @@ export default function Dashboard() {
   const today = format(new Date(), 'yyyy-MM-dd')
   const bdRef = useRef<HTMLDivElement>(null)
 
-  if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor')) return <StaffDashboard />
+  if (!isRole('home_manager', 'group_admin', 'senior_carer', 'auditor', 'deputy_manager', 'service_manager')) return <StaffDashboard />
 
   useEffect(() => {
     homesApi.list().then(res => {

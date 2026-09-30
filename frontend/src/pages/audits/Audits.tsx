@@ -250,7 +250,7 @@ export default function Audits() {
                   <option value="all">All Records</option>
                 </select>
               </div>
-              {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+              {isRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager', 'admin') && (
                 <button onClick={() => setGenerateOpen(true)}
                   className="w-8 h-8 rounded-lg bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center transition-colors" title="Add audit">
                   <Plus className="w-4 h-4" />
@@ -321,7 +321,7 @@ export default function Audits() {
                               className="text-xs font-semibold px-2.5 py-1 rounded-lg text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
                               Review
                             </button>
-                            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                            {isRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager', 'admin') && (
                               <button onClick={() => deleteAudit(audit.id)}
                                 className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors" title="Delete">
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -339,7 +339,7 @@ export default function Audits() {
 
           <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
             <p className="text-xs text-slate-400">To add a new audit type, click the + button above.</p>
-            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+            {isRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager', 'admin') && (
               <button onClick={() => setGenerateOpen(true)}
                 className="w-8 h-8 rounded-lg bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center transition-colors" title="Add audit">
                 <Plus className="w-4 h-4" />
@@ -357,7 +357,7 @@ export default function Audits() {
             templates={templates}
             homeName={selectedHomeObj?.name}
             homeAddress={selectedHomeObj?.address1}
-            canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
+            canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager', 'admin')}
             onDelete={(id) => { deleteAudit(id); setDetailAudit(null) }}
             onOpenActionPlan={() => { setActionAudit(detailAudit); setActionPlanAutoAI(false); setActionPlanOpen(true) }}
             onAIActionPlan={() => { setActionAudit(detailAudit); setActionPlanAutoAI(true); setActionPlanOpen(true) }}
@@ -724,7 +724,7 @@ function AuditReport({ audit, templates, homeName, homeAddress, canDelete, onDel
 
 function AuditChecklist({ audit, templates }: { audit: any; templates: any[] }) {
   const { isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager', 'admin')
 
   const template = templates.find(t => t.suggestedKey === audit.audit_type)
   const questions: { text: string; type: string }[] = template?.questions?.length
