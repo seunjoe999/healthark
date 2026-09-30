@@ -61,7 +61,7 @@ router.get('/summary', async (req: Request, res: Response, next: NextFunction) =
 });
 
 // POST /api/bowel-chart
-router.post('/', [body('suId').isUUID(), body('bristolType').isInt({ min: 1, max: 7 })], validateRequest,
+router.post('/', [body('suId').isUUID(), body('bristolType').isInt({ min: 1, max: 8 })], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = tok(req, 'homeId');

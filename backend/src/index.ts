@@ -1807,6 +1807,16 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_bowel_su ON bowel_charts(su_id, recorded_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_bowel_home ON bowel_charts(home_id, recorded_at DESC)`,
+    // The "Consistency notes" field is a free-text textarea on the Bowel Chart form,
+    // but this column started life as VARCHAR(50) — any note over 50 characters (a
+    // couple of sentences is all it takes) threw "value too long for type character
+    // varying(50)" as a bare Internal Server Error on save, with no validation
+    // message pointing at why. Widened to match notes' own TEXT type.
+    `ALTER TABLE bowel_charts ALTER COLUMN consistency TYPE TEXT`,
+    // BRISTOL_TYPES on the frontend includes an 8th option, "No bowel opened" —
+    // this CHECK only allowed 1-7, so picking it 500'd the same way.
+    `ALTER TABLE bowel_charts DROP CONSTRAINT IF EXISTS bowel_charts_bristol_type_check`,
+    `ALTER TABLE bowel_charts ADD CONSTRAINT bowel_charts_bristol_type_check CHECK (bristol_type BETWEEN 1 AND 8)`,
     // ── Resident Diary ────────────────────────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS resident_diary (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
