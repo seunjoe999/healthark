@@ -5,7 +5,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown, X } from 'lucide-react'
 
 // One icon per task category so the list is scannable at a glance, instead of
 // every task (medication, housekeeping, comfort check, ...) showing the same
@@ -682,16 +682,33 @@ export default function Tasks() {
 }
 
 function AddTaskModal({ open, onClose, sus, homeId, staffList, teams, onSaved }: { open: boolean; onClose: () => void; sus: any[]; homeId: string; staffList: any[]; teams: any[]; onSaved: () => void }) {
-  const [form, setForm] = useState<{ title: string; category: string; description: string; taskDate: string; dueTime: string; priority: string; suId: string; assignedRole: string; assignedStaffId: string; pictureUrl: string; visibleTeamIds: string[]; frequency: string }>({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), dueTime: '', priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '', visibleTeamIds: [], frequency: 'once' })
+  const [form, setForm] = useState<{ title: string; category: string; description: string; taskDate: string; priority: string; suId: string; assignedRole: string; assignedStaffId: string; pictureUrl: string; visibleTeamIds: string[]; frequency: string }>({ title: '', category: 'general', description: '', taskDate: format(new Date(), 'yyyy-MM-dd'), priority: 'normal', suId: '', assignedRole: '', assignedStaffId: '', pictureUrl: '', visibleTeamIds: [], frequency: 'once' })
+  // A task that needs to pop up several times a day (e.g. hourly checks) used to
+  // mean creating this whole form over and over, once per time — the "+" lets one
+  // save create several tasks (same everything else) in one go instead, one per
+  // time entered. An empty row is dropped rather than becoming a due-time-less task.
+  const [dueTimes, setDueTimes] = useState<string[]>([''])
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const setTime = (i: number, v: string) => setDueTimes(prev => prev.map((t, idx) => idx === i ? v : t))
+  const addTime = () => setDueTimes(prev => [...prev, ''])
+  const removeTime = (i: number) => setDueTimes(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)
   const suOptions = sus.map(su => ({ value: su.id, label: `${su.first_name || su.firstName} ${su.last_name || su.lastName}` }))
   const staffOptions = staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try { await api.post('/tasks', { homeId, ...form, suId: form.suId || null, assignedStaffId: form.assignedStaffId || null }); onSaved() }
+    try {
+      const times = dueTimes.filter(Boolean)
+      const base = { homeId, ...form, suId: form.suId || null, assignedStaffId: form.assignedStaffId || null }
+      if (times.length === 0) {
+        await api.post('/tasks', { ...base, dueTime: '' })
+      } else {
+        for (const dueTime of times) await api.post('/tasks', { ...base, dueTime })
+      }
+      onSaved()
+    }
     catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setLoading(false) }
   }
@@ -706,9 +723,29 @@ function AddTaskModal({ open, onClose, sus, homeId, staffList, teams, onSaved }:
         </div>
         <Select label="Linked to resident (optional)" value={form.suId} onChange={e => set('suId', e.target.value)}
           options={suOptions} placeholder="Select resident (optional)" />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Date" type="date" value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
-          <Input label="Due time" type="time" value={form.dueTime} onChange={e => set('dueTime', e.target.value)} />
+        <Input label="Date" type="date" value={form.taskDate} onChange={e => set('taskDate', e.target.value)} />
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Due time(s)</label>
+          <div className="space-y-2">
+            {dueTimes.map((t, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input type="time" className="input flex-1" value={t} onChange={e => setTime(i, e.target.value)} />
+                {dueTimes.length > 1 && (
+                  <button type="button" onClick={() => removeTime(i)} className="p-2 text-slate-400 hover:text-rose-600" title="Remove this time">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                {i === dueTimes.length - 1 && (
+                  <button type="button" onClick={addTime} className="p-2 text-slate-400 hover:text-blue-600" title="Add another time — creates a separate task at each time">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {dueTimes.filter(Boolean).length > 1 && (
+            <p className="text-xs text-slate-400 mt-1">Creates {dueTimes.filter(Boolean).length} tasks, one at each time.</p>
+          )}
         </div>
         <Select label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} options={FREQUENCIES} />
         {form.frequency !== 'once' && (
