@@ -1603,6 +1603,7 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
                 <option value="tablet">Tablet(s)</option>
                 <option value="ml">ml</option>
                 <option value="mg">mg</option>
+                <option value="mcg">mcg</option>
                 <option value="drop">Drop(s)</option>
                 <option value="puff">Puff(s)</option>
                 <option value="application">Application</option>
