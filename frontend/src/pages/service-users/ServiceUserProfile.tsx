@@ -94,6 +94,7 @@ export default function ServiceUserProfile() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('overview')
   const [addContactOpen, setAddContactOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState<any | null>(null)
   const [uploadDocOpen, setUploadDocOpen] = useState(false)
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -379,6 +380,11 @@ export default function ServiceUserProfile() {
                       </div>
                       {c.relationship && <p className="text-sm text-slate-500 mt-0.5">{c.relationship}</p>}
                     </div>
+                    <button onClick={() => { setEditingContact(c); setAddContactOpen(true) }}
+                      className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600 flex-shrink-0"
+                      title="Edit contact">
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                   <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-500">
                     {(c.phone_primary || c.phonePrimary) && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{c.phone_primary || c.phonePrimary}</span>}
@@ -389,8 +395,14 @@ export default function ServiceUserProfile() {
               ))}
             </div>
           )}
-          <AddContactModal open={addContactOpen} onClose={() => setAddContactOpen(false)} suId={su.id}
-            onAdded={(c) => { setContacts(prev => [...prev, c]); setAddContactOpen(false); toast.success('Contact added') }} />
+          <AddContactModal open={addContactOpen} onClose={() => { setAddContactOpen(false); setEditingContact(null) }} suId={su.id}
+            editingContact={editingContact}
+            onAdded={(c) => {
+              setContacts(prev => editingContact ? prev.map(x => x.id === c.id ? c : x) : [...prev, c])
+              setAddContactOpen(false)
+              setEditingContact(null)
+              toast.success(editingContact ? 'Contact updated' : 'Contact added')
+            }} />
         </div>
       )}
 
@@ -622,11 +634,25 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 const EMPTY_CONTACT_FORM = { fullName: '', relationship: '', contactTag: 'family', phonePrimary: '', email: '', isPrimary: false, notes: '' }
 
-function AddContactModal({ open, onClose, suId, onAdded }: {
+function AddContactModal({ open, onClose, suId, onAdded, editingContact }: {
   open: boolean; onClose: () => void; suId: string; onAdded: (c: any) => void
+  editingContact?: any | null
 }) {
   const [form, setForm] = useState(EMPTY_CONTACT_FORM)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setForm(editingContact ? {
+      fullName: editingContact.full_name || editingContact.fullName || '',
+      relationship: editingContact.relationship || '',
+      contactTag: editingContact.contact_tag || editingContact.contactTag || 'family',
+      phonePrimary: editingContact.phone_primary || editingContact.phonePrimary || '',
+      email: editingContact.email || '',
+      isPrimary: editingContact.is_primary || editingContact.isPrimary || false,
+      notes: editingContact.notes || '',
+    } : EMPTY_CONTACT_FORM)
+  }, [open, editingContact])
 
   const handleClose = () => {
     setForm(EMPTY_CONTACT_FORM)
@@ -637,15 +663,17 @@ function AddContactModal({ open, onClose, suId, onAdded }: {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await suApi.addContact(suId, form)
+      const res = editingContact
+        ? await suApi.updateContact(suId, editingContact.id, form)
+        : await suApi.addContact(suId, form)
       onAdded(res.data.data)
       setForm(EMPTY_CONTACT_FORM)
-    } catch { toast.error('Failed to add contact') }
+    } catch { toast.error(editingContact ? 'Failed to update contact' : 'Failed to add contact') }
     finally { setLoading(false) }
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Add contact">
+    <Modal open={open} onClose={handleClose} title={editingContact ? 'Edit contact' : 'Add contact'}>
       <form onSubmit={save} className="space-y-4">
         <Input label="Full name *" required value={form.fullName} onChange={e => setForm(p => ({ ...p, fullName: e.target.value }))} />
         <Input label="Relationship" value={form.relationship} onChange={e => setForm(p => ({ ...p, relationship: e.target.value }))} />
@@ -660,7 +688,7 @@ function AddContactModal({ open, onClose, suId, onAdded }: {
         </div>
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-          <Button type="submit" loading={loading}>Add contact</Button>
+          <Button type="submit" loading={loading}>{editingContact ? 'Save changes' : 'Add contact'}</Button>
         </div>
       </form>
     </Modal>
