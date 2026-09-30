@@ -117,6 +117,28 @@ const SHIFT_RELATIONS: Record<string, { label: string; bg: string; text: string 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const DAY_SHORT   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+// Shared across CreateShiftModal / CreateServiceRotaModal / CreateStandbyModal —
+// 'weekly' already covers "once a week" (pick a single day, repeats every week);
+// the rest pick which week(s) a "Specific Days" pattern repeats on. 'monthly' is
+// its own thing (same day-of-month as the start date, not day-of-week based), so
+// it hides the day picker rather than requiring a day selection.
+const RECURRENCE_OPTIONS = [
+  { value: 'daily', label: 'Every Day' },
+  { value: 'weekly', label: 'Specific Days' },
+  { value: 'fortnightly', label: 'Fortnightly' },
+  { value: 'every_3_weeks', label: 'Every 3 Weeks' },
+  { value: 'monthly', label: 'Monthly' },
+]
+const NEEDS_DAY_PICKER = (r: string) => r !== 'daily' && r !== 'monthly'
+function summarizeRecurrence(recurrence: string, daysOfWeek: number[]): string {
+  if (recurrence === 'daily') return 'Every day'
+  if (recurrence === 'monthly') return 'Monthly (same date)'
+  const days = daysOfWeek.map(d => DAY_SHORT[d]).join(', ')
+  if (recurrence === 'fortnightly') return `${days} — fortnightly`
+  if (recurrence === 'every_3_weeks') return `${days} — every 3 weeks`
+  return days
+}
+
 const LEAVE_LABELS: Record<string, string> = {
   annual: 'Annual Leave', sick: 'Sick Leave', other: 'Absence',
 }
@@ -1110,7 +1132,7 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
   const next = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.suId) { toast.error('Select a service user'); return }
-    if (form.recurrence !== 'daily' && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
+    if (NEEDS_DAY_PICKER(form.recurrence) && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
     setStep(2)
   }
 
@@ -1180,15 +1202,15 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
           {/* Recurrence */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Every</label>
-            <div className="flex gap-2 mb-2">
-              {[{ value: 'daily', label: 'Every Day' }, { value: 'weekly', label: 'Specific Days' }].map(o => (
+            <div className="flex gap-1.5 mb-2 flex-wrap">
+              {RECURRENCE_OPTIONS.map(o => (
                 <button key={o.value} type="button" onClick={() => set('recurrence', o.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                  className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                   {o.label}
                 </button>
               ))}
             </div>
-            {form.recurrence !== 'daily' && (
+            {NEEDS_DAY_PICKER(form.recurrence) && (
               <div className="flex gap-1">
                 {DAY_LETTERS.map((d, i) => (
                   <button key={i} type="button" onClick={() => toggleDay(i)}
@@ -1284,7 +1306,7 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
             <p className="font-semibold">{suList.find(s => s.id === form.suId) ? getName(suList.find(s => s.id === form.suId)) : 'Service User'}</p>
             <p className="text-xs text-blue-600 mt-0.5">
               {form.startDate} · {form.isOngoing ? 'Ongoing' : form.endDate} · {form.startTime}–{form.endTime} ·{' '}
-              {form.recurrence === 'daily' ? 'Every day' : form.daysOfWeek.map(d => DAY_SHORT[d]).join(', ')}
+              {summarizeRecurrence(form.recurrence, form.daysOfWeek)}
             </p>
           </div>
 
@@ -1394,7 +1416,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
     // postcode to check against — a service with no resident attached has no
     // location for the app to verify staff are actually there.
     if (selectedSus.length === 0) { toast.error('Select at least one resident'); return }
-    if (form.recurrence !== 'daily' && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
+    if (NEEDS_DAY_PICKER(form.recurrence) && form.daysOfWeek.length === 0) { toast.error('Select at least one day'); return }
     setStep(2)
   }
 
@@ -1515,15 +1537,15 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
           {/* Recurrence */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Every</label>
-            <div className="flex gap-2 mb-2">
-              {[{ value: 'daily', label: 'Every Day' }, { value: 'weekly', label: 'Specific Days' }].map(o => (
+            <div className="flex gap-1.5 mb-2 flex-wrap">
+              {RECURRENCE_OPTIONS.map(o => (
                 <button key={o.value} type="button" onClick={() => set('recurrence', o.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                  className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                   {o.label}
                 </button>
               ))}
             </div>
-            {form.recurrence !== 'daily' && (
+            {NEEDS_DAY_PICKER(form.recurrence) && (
               <div className="flex gap-1">
                 {DAY_LETTERS.map((d, i) => (
                   <button key={i} type="button" onClick={() => toggleDay(i)}
@@ -1595,7 +1617,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
             <p className="font-semibold">{form.label} — {selectedSus.length} resident{selectedSus.length !== 1 ? 's' : ''} selected</p>
             <p className="text-xs text-blue-600 mt-0.5">
               {form.startDate} · {form.isOngoing ? 'Ongoing' : form.endDate} · {form.startTime}–{form.endTime} ·{' '}
-              {form.recurrence === 'daily' ? 'Every day' : form.daysOfWeek.map(d => DAY_SHORT[d]).join(', ')}
+              {summarizeRecurrence(form.recurrence, form.daysOfWeek)}
             </p>
           </div>
 
@@ -1743,15 +1765,15 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, serviceLabels, d
         {/* Recurrence */}
         <div>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Every</label>
-          <div className="flex gap-2 mb-2">
-            {[{ value: 'daily', label: 'Every Day' }, { value: 'weekly', label: 'Specific Days' }].map(o => (
+          <div className="flex gap-1.5 mb-2 flex-wrap">
+            {RECURRENCE_OPTIONS.map(o => (
               <button key={o.value} type="button" onClick={() => set('recurrence', o.value)}
-                className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border transition-colors ${form.recurrence === o.value ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                 {o.label}
               </button>
             ))}
           </div>
-          {form.recurrence !== 'daily' && (
+          {NEEDS_DAY_PICKER(form.recurrence) && (
             <div className="flex gap-1">
               {DAY_LETTERS.map((d, i) => (
                 <button key={i} type="button" onClick={() => toggleDay(i)}

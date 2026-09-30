@@ -68,18 +68,31 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
     ? (typeof tmpl.end_date === 'string' ? tmpl.end_date.split('T')[0] : tmpl.end_date.toISOString().split('T')[0])
     : null;
 
+  // Every-N-weeks recurrences (fortnightly = every 2, every_3_weeks = every 3) all
+  // use the same "which week is this relative to the start date" parity check —
+  // just against a different interval — so one map covers all of them instead of
+  // a separate if-branch per option.
+  const WEEK_INTERVALS: Record<string, number> = {
+    biweekly: 2, every_other_week: 2, fortnightly: 2, every_3_weeks: 3,
+  };
+
   const dateStrs: string[] = [];
   const cur = new Date(startDate);
   for (let i = 0; i <= weeks * 7; i++) {
     const dow = cur.getUTCDay();
     const dateStr = cur.toISOString().split('T')[0];
     if (endDateStr && dateStr > endDateStr) break;
-    const dayMatches = tmpl.recurrence === 'daily' || dowList.includes(dow);
+    // Monthly matches the same day-of-month as the template's own start date,
+    // independent of days_of_week (which isn't meaningful for this mode) — same
+    // rule already used for one-off pattern allocation in bulk-assign-pattern.
+    const dayMatches = tmpl.recurrence === 'daily'
+      || (tmpl.recurrence === 'monthly' ? cur.getUTCDate() === startDate.getUTCDate() : dowList.includes(dow));
     if (dayMatches) {
       let ok = true;
-      if (tmpl.recurrence === 'biweekly' || tmpl.recurrence === 'every_other_week') {
+      const interval = WEEK_INTERVALS[tmpl.recurrence];
+      if (interval) {
         const weeksSince = Math.floor((cur.getTime() - startDate.getTime()) / (7 * 86400000));
-        if (weeksSince % 2 !== 0) ok = false;
+        if (weeksSince % interval !== 0) ok = false;
       }
       if (ok) dateStrs.push(dateStr);
     }
