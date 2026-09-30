@@ -120,24 +120,55 @@ export default function Reports() {
     const su = selectedSu ? suList.find(s => s.id === selectedSu) : null
     const suName = su ? `${su.first_name || su.firstName} ${su.last_name || su.lastName}` : 'All Residents'
 
-    const cols = Object.keys(rows[0]).filter(k => !['id', 'home_id', 'su_id', 'staff_id'].includes(k)).slice(0, 8)
-    const tableRows = rows.slice(0, 200).map(row => `<tr>${cols.map(c => {
-      const v = row[c]
-      const display = v instanceof Date ? v.toLocaleDateString('en-GB')
-        : typeof v === 'boolean' ? (v ? 'Yes' : 'No')
-        : String(v ?? '—').substring(0, 120)
-      return `<td>${esc(display)}</td>`
-    }).join('')}</tr>`).join('')
-
-    const sections: PrintSection[] = [{
-      title: reportLabel,
-      inner: `
-        <table class="fields">
-          <tr>${cols.map(c => `<th>${esc(c.replace(/_/g, ' '))}</th>`).join('')}</tr>
-          ${tableRows}
-        </table>
-      `,
-    }]
+    // Daily Records reads as flowing narrative on screen (Date / Staff on Duty /
+    // Service User / Time, then a descriptive line per entry — see DailyRecords.tsx's
+    // RecordHeader/RecordSummary) — a spreadsheet-style table of that same data lost
+    // the format staff actually document and read in. Every other report here is
+    // genuinely tabular (attendance, stock counts, compliance lists, ...) and stays
+    // a table.
+    const sections: PrintSection[] = reportType === 'daily-records'
+      ? [{
+          title: reportLabel,
+          inner: rows.slice(0, 200).map(row => {
+            const recordedAt = row.recorded_at ? new Date(row.recorded_at) : null
+            const typeLabel = DAILY_RECORD_TYPES.find(t => t.value === row.record_type)?.label
+              || String(row.record_type || '').replace(/_/g, ' ')
+            const body = row.notes || row.description || typeLabel
+            return `
+              <h3 class="sub">${esc(typeLabel)}</h3>
+              <table class="idtable" style="margin-bottom:6px">
+                <tr>
+                  <td class="lbl">Date</td><td class="val">${recordedAt ? esc(recordedAt.toLocaleDateString('en-GB')) : '—'}</td>
+                  <td class="lbl">Time</td><td class="val">${recordedAt ? esc(recordedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) : '—'}</td>
+                </tr>
+                <tr>
+                  <td class="lbl">Staff on Duty</td><td class="val">${esc(row.staff_name || '—')}</td>
+                  <td class="lbl">Service User</td><td class="val">${esc(row.su_name || '—')}</td>
+                </tr>
+              </table>
+              <p class="body-text${body ? '' : ' muted'}">${esc(body || 'No further detail recorded')}</p>
+            `
+          }).join(''),
+        }]
+      : (() => {
+          const cols = Object.keys(rows[0]).filter(k => !['id', 'home_id', 'su_id', 'staff_id'].includes(k)).slice(0, 8)
+          const tableRows = rows.slice(0, 200).map(row => `<tr>${cols.map(c => {
+            const v = row[c]
+            const display = v instanceof Date ? v.toLocaleDateString('en-GB')
+              : typeof v === 'boolean' ? (v ? 'Yes' : 'No')
+              : String(v ?? '—').substring(0, 120)
+            return `<td>${esc(display)}</td>`
+          }).join('')}</tr>`).join('')
+          return [{
+            title: reportLabel,
+            inner: `
+              <table class="fields">
+                <tr>${cols.map(c => `<th>${esc(c.replace(/_/g, ' '))}</th>`).join('')}</tr>
+                ${tableRows}
+              </table>
+            `,
+          }]
+        })()
 
     const page = buildLetterheadPage({
       docTitle: reportLabel,
