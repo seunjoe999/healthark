@@ -877,6 +877,11 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
           slot={signOffTask.scheduledTime}
           suId={signOffTask.suId}
           homeId={selectedHome}
+          // A task still pending with a recordId behind it is a retry after an
+          // earlier unresolved outcome (e.g. "Attempted") — pass that record so
+          // the previous handover note is visible instead of reopening blank,
+          // and so this save amends it rather than creating a separate entry.
+          existingRecord={signOffTask.recordId ? { id: signOffTask.recordId, notes: signOffTask.notes, mar_code: signOffTask.marCode } : undefined}
           onClose={() => setSignOffTask(null)}
           onSaved={() => { setSignOffTask(null); load(); toast.success('Medication signed off') }}
         />

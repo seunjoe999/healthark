@@ -35,7 +35,7 @@ export interface DueMedicationTask {
   medicationId: string; suId: string; suName: string; suPhoto: string | null;
   medicationName: string; dose: string; route: string; instructions: string;
   isControlled: boolean; scheduledTime: string; status: string;
-  recordId?: string; givenBy?: string;
+  recordId?: string; givenBy?: string; notes?: string | null; marCode?: string | null;
 }
 
 // Medication due-today as a per-staff task list — shared by the /mar/due-today endpoint
@@ -84,7 +84,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   // never be matched back to its slot and the task looks permanently unresolved.
   const recordRows = await query<any>(
     `SELECT id, medication_id, LEFT(scheduled_time::text, 5) as scheduled_time,
-            given, refused, mar_code, completed, given_by
+            given, refused, mar_code, completed, given_by, notes
      FROM mar_records WHERE home_id = $1 AND record_date = $2 ORDER BY created_at ASC`,
     [homeId, today]
   );
@@ -132,6 +132,10 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
         isControlled: med.is_controlled, scheduledTime: t,
         status: (!existing || unresolved) ? 'pending' : (existing.given ? 'given' : existing.refused ? 'refused' : (existing.mar_code || 'logged')),
         recordId: existing?.id, givenBy: existing?.given_by,
+        // Surfaced so a retry (e.g. after an "Attempted" outcome) can show the
+        // previous attempt's handover note instead of reopening to a blank form —
+        // see LogMARModal's existingRecord usage in MAR.tsx.
+        notes: existing?.notes ?? null, marCode: existing?.mar_code ?? null,
       });
     }
   }
