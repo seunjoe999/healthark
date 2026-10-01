@@ -136,9 +136,9 @@ function AppRoutes() {
   useCapacitorSetup()
   return (
     <React.Suspense fallback={
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0d1526' }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#0d1526' }}>
         <video src="/logo-intro.mp4" autoPlay muted loop playsInline
-          style={{ width: 220, maxWidth: '60vw', borderRadius: 16 }} />
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
     }>
       <Routes>
@@ -292,14 +292,17 @@ function BootSplash({ children }: { children: React.ReactNode }) {
   }, [])
   React.useEffect(() => {
     if (!show) return
-    const t = setTimeout(dismiss, 4500)
+    // Safety net only — the clip is ~10s, so this should fire after onEnded,
+    // not before it (a shorter timeout here was cutting the video off every
+    // time before it could finish, regardless of the onEnded handler).
+    const t = setTimeout(dismiss, 11000)
     return () => clearTimeout(t)
   }, [show, dismiss])
   if (!show) return <>{children}</>
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1526' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0d1526' }}>
       <video src="/logo-intro.mp4" autoPlay muted playsInline onEnded={dismiss}
-        style={{ width: 280, maxWidth: '70vw', borderRadius: 20 }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </div>
   )
 }
