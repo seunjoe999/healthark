@@ -2459,6 +2459,11 @@ async function ensureColumns() {
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_acceptable           VARCHAR(50)`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_after_controls       TEXT`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS historical_context        TEXT`,
+    // Structured Yes/No checklist, currently used by the Choking Risk
+    // Assessment template — {"Question text": "Yes"|"No"|""}. Stored as JSONB
+    // rather than a fixed column per question since different risk types may
+    // want their own checklist shape in future.
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS checklist_answers         JSONB`,
     // ── supervisions — extra supervision/burnout fields ───────────────────────
     `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS review_frequency             VARCHAR(50)`,
     `ALTER TABLE supervisions ADD COLUMN IF NOT EXISTS supervisor_name_text         VARCHAR(255)`,

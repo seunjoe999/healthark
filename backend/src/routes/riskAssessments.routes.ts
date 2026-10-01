@@ -133,7 +133,7 @@ router.post('/',
               historicalContext, riskRating,
               riskBeforeIntervention, riskScore, riskRatingOption,
               evaluationOfRisk, riskAcceptable, riskAfterControls,
-              riskUpdateTracking, lastAssessedDate } = req.body;
+              riskUpdateTracking, lastAssessedDate, checklistAnswers } = req.body;
 
       if (!suId || typeof suId !== 'string' || !UUID_RE.test(suId.trim())) {
         res.status(400).json({ success: false, error: 'suId must be a valid UUID' }); return;
@@ -152,8 +152,8 @@ router.post('/',
           historical_context, risk_rating,
           risk_before_intervention, risk_score, risk_rating_option,
           evaluation_of_risk, risk_acceptable, risk_after_controls,
-          risk_update_tracking, last_assessed_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25) RETURNING *`,
+          risk_update_tracking, last_assessed_date, checklist_answers)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`,
         [trimmedSuId, homeId, assessmentName, description || null, riskLevel || 'low',
          currentRiskLevel || riskLevel || 'low', whoIsAtRisk || null,
          isHistorical || false, whatCouldHappen || null, triggers || null,
@@ -162,7 +162,8 @@ router.post('/',
          historicalContext || null, riskRating || currentRiskLevel || riskLevel || 'low',
          riskBeforeIntervention || null, riskScore ?? null, riskRatingOption || null,
          evaluationOfRisk || null, riskAcceptable || null, riskAfterControls || null,
-         riskUpdateTracking || null, lastAssessedDate || null]
+         riskUpdateTracking || null, lastAssessedDate || null,
+         checklistAnswers ? JSON.stringify(checklistAnswers) : null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -185,7 +186,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
               evaluationOfRisk, riskAcceptable, riskAfterControls,
               signedOff, signedOffBy, signedOffDate,
               riskUpdateTracking, lastAssessedDate,
-              whoIsAtRisk, isHistorical } = req.body;
+              whoIsAtRisk, isHistorical, checklistAnswers } = req.body;
       const freqDays: Record<string, number> = { weekly: 7, fortnightly: 14, monthly: 30, eight_weekly: 56, yearly: 365 };
       const freq = reviewFrequency || 'monthly';
       const nextReview = new Date();
@@ -217,7 +218,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
           risk_update_tracking       = COALESCE($21, risk_update_tracking),
           last_assessed_date         = COALESCE($22, last_assessed_date),
           who_is_at_risk             = COALESCE($23, who_is_at_risk),
-          is_historical              = COALESCE($24, is_historical)
+          is_historical              = COALESCE($24, is_historical),
+          checklist_answers          = COALESCE($25, checklist_answers)
          WHERE id = $9
          RETURNING id`,
         [description, currentRiskLevel, managementPlan, triggers, protectiveFactors,
@@ -227,7 +229,8 @@ router.put('/:id', param('id').isUUID(), validateRequest,
          evaluationOfRisk ?? null, riskAcceptable ?? null, riskAfterControls ?? null,
          signedOff ?? null, signedOffBy ?? null, nd(signedOffDate),
          riskUpdateTracking ?? null, lastAssessedDate ?? null,
-         whoIsAtRisk ?? null, isHistorical ?? null]
+         whoIsAtRisk ?? null, isHistorical ?? null,
+         checklistAnswers ? JSON.stringify(checklistAnswers) : null]
       );
       if (!(updatedRows as any[]).length) throw new AppError('Risk assessment not found', 404);
 

@@ -35,6 +35,47 @@ const RISK_TYPES = [
   { value: 'custom', label: 'Custom / Other' },
 ]
 
+// Fixed Yes/No checklist for the Choking Risk Assessment, matching the
+// owner's existing paper/competitor template exactly — same questions, same
+// order — so a Choking Risk Assessment in the app reads the same as the one
+// staff are used to filling in on paper.
+const CHOKING_CHECKLIST = [
+  'Weak or ineffectual cough; inability to clear throat',
+  'Difficulty in swallowing',
+  'Known to aspirate',
+  'Frequent chest infections',
+  'Poor physical state either as a result of condition or a health problem',
+  'A diagnosis of epilepsy',
+  'A diagnosis of cerebral Palsy',
+  'Severe and enduring mental health problems',
+  'Confusion/disorientation',
+  'Poor head control',
+  'Poor posture',
+  'Tendency to tongue thrust',
+  'Breathing difficulties',
+  'Has previously required urgent attention due to choking when eating or drinking',
+  'Feeds self independently and safely',
+  'Feeds self independently and safely with supervision',
+  'Tendency to take food from others if not supervised',
+  'Tendency to take food from fruit bowl/cupboards if not supervised and be unsafe',
+  'Drinks independently and safely',
+  'Eats rapidly',
+  'Drinks rapidly',
+  'Requires assistance with food cutting or preparing prior to consuming',
+  'Will overload mouth with food/drink',
+  'Will store food and drink in mouth',
+  'Will swallow food without chewing',
+  'Will continue to eat whilst coughing',
+  'Will continue to drink whilst coughing',
+  'Eats safely with dentures/without dentures/without teeth',
+  'Will accept/put any item into mouth',
+  'Will accept/put any item into mouth and swallow',
+  'Is prescribed a modified consistency diet',
+  'Requires thickened fluids',
+  'Requires specialist feeding aids to reduce the risk of choking',
+  'Requires specialist drinking aids to reduce the risk of choking',
+]
+
 const LIKELIHOOD_OPTIONS = [
   { value: '1', label: '1 — Rare',        riskLevel: 'low' },
   { value: '2', label: '2 — Possible',    riskLevel: 'medium' },
@@ -117,7 +158,7 @@ const BLANK_FORM = {
   whoIsAtRisk: '', isHistorical: false, whatCouldHappen: '', triggers: '', protectiveFactors: '',
   managementPlan: '', historicalContext: '', reviewFrequency: 'monthly',
   riskBeforeIntervention: '', riskRatingOption: '', riskAfterControls: '',
-  riskUpdateTracking: '', lastAssessedDate: '',
+  riskUpdateTracking: '', lastAssessedDate: '', checklistAnswers: {} as Record<string, string>,
 }
 
 // ── Draft autosave (New Risk Management Plan form) ─────────────────────────
@@ -292,8 +333,14 @@ export default function RiskManagement() {
       sections.push({ title: 'Risk Occurring Following Control Measures', inner: `<p class="body-text">${nl(ra.risk_after_controls)}</p>` })
     }
 
+    if (ra.checklist_answers && Object.keys(ra.checklist_answers).length > 0) {
+      const rows = CHOKING_CHECKLIST.filter(q => ra.checklist_answers[q])
+        .map(q => `<tr><td>${esc(q)}</td><td style="width:15%">${esc(ra.checklist_answers[q])}</td></tr>`).join('')
+      sections.push({ title: 'Risk Tracking Update', inner: `<table class="fields"><tbody>${rows}</tbody></table>` })
+    }
+
     if (ra.risk_update_tracking) {
-      sections.push({ title: 'Risk Update Tracking', inner: `<p class="body-text">${nl(ra.risk_update_tracking)}</p>` })
+      sections.push({ title: ra.checklist_answers ? 'Additional Notes' : 'Risk Update Tracking', inner: `<p class="body-text">${nl(ra.risk_update_tracking)}</p>` })
     }
 
     const sectionsHtml = sections.map((s, i) =>
@@ -453,6 +500,7 @@ export default function RiskManagement() {
         riskAfterControls: form.riskAfterControls,
         riskUpdateTracking: form.riskUpdateTracking,
         lastAssessedDate: form.lastAssessedDate || undefined,
+        checklistAnswers: form.riskType === 'choking' ? form.checklistAnswers : undefined,
       })
       toast.success('Risk management plan created')
       clearRiskDraft()
@@ -479,6 +527,7 @@ export default function RiskManagement() {
         riskAfterControls: form.riskAfterControls,
         riskUpdateTracking: form.riskUpdateTracking,
         lastAssessedDate: form.lastAssessedDate || undefined,
+        checklistAnswers: form.riskType === 'choking' ? form.checklistAnswers : undefined,
       })
       toast.success('Risk management plan updated')
       setEditItem(null)
@@ -547,6 +596,7 @@ export default function RiskManagement() {
       riskAfterControls: ra.risk_after_controls || '',
       riskUpdateTracking: ra.risk_update_tracking || '',
       lastAssessedDate: ra.last_assessed_date ? ra.last_assessed_date.split('T')[0] : '',
+      checklistAnswers: ra.checklist_answers || {},
     })
     setEditItem(ra)
   }
@@ -770,7 +820,20 @@ export default function RiskManagement() {
                 <AmberSection label="Triggers" value={ra.triggers} />
                 <AmberSection label="Protective factors" value={ra.protective_factors} />
                 <AmberSection label="Risk Management Plan" value={ra.management_plan} />
-                <Field label="Update tracking" value={ra.risk_update_tracking} />
+                {ra.checklist_answers && Object.keys(ra.checklist_answers).length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: '#b3800f' }}>Risk Tracking Update</p>
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+                      {CHOKING_CHECKLIST.filter(q => ra.checklist_answers[q]).map(q => (
+                        <div key={q} className="flex items-center justify-between gap-3 px-3 py-1.5">
+                          <span className="text-sm text-slate-700 flex-1">{q}</span>
+                          <span className={`text-xs font-semibold flex-shrink-0 ${ra.checklist_answers[q] === 'Yes' ? 'text-amber-700' : 'text-slate-500'}`}>{ra.checklist_answers[q]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <Field label={ra.checklist_answers ? 'Additional notes' : 'Update tracking'} value={ra.risk_update_tracking} />
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 items-center text-xs text-slate-500 pt-3 border-t border-slate-100">
@@ -963,7 +1026,34 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
 
       <SpeechTextarea label="Risk occurring following control measures" className="w-full" rows={2} placeholder="Describe the residual risk after controls are applied..."
         value={form.riskAfterControls} onChange={v => setF('riskAfterControls', v)} />
-      <SpeechTextarea label="Risk Update Tracking" className="w-full" rows={2} placeholder="Log any ongoing updates or changes to this risk..."
+
+      {form.riskType === 'choking' && (
+        <div>
+          <label className="label">Risk Tracking Update</label>
+          <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+            {CHOKING_CHECKLIST.map(q => (
+              <div key={q} className="flex items-center justify-between gap-3 px-3 py-2">
+                <span className="text-sm text-slate-700 flex-1">{q}</span>
+                <div className="flex gap-1 flex-shrink-0">
+                  {['Yes', 'No'].map(opt => (
+                    <button key={opt} type="button"
+                      onClick={() => setF('checklistAnswers', { ...form.checklistAnswers, [q]: opt })}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                        form.checklistAnswers[q] === opt
+                          ? (opt === 'Yes' ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-slate-100 border-slate-300 text-slate-600')
+                          : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+                      }`}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <SpeechTextarea label={form.riskType === 'choking' ? 'Additional notes' : 'Risk Update Tracking'} className="w-full" rows={2} placeholder="Log any ongoing updates or changes to this risk..."
         value={form.riskUpdateTracking} onChange={v => setF('riskUpdateTracking', v)} />
 
       {/* Summary */}
