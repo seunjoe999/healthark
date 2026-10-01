@@ -83,7 +83,7 @@ export default function Login() {
           {/* Logo */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="flex items-center gap-4 mb-8">
-            <img src="/logo.jpeg" alt="CompCare Hub" className="w-14 h-14 rounded-2xl object-contain shadow-lg" style={{ background: 'white', padding: '4px' }} />
+            <img src="/pwa-192.png" alt="CompCare Hub" className="w-14 h-14 rounded-2xl object-cover shadow-lg" />
             <div>
               <h1 className="text-white font-display text-2xl leading-none">CompCare Hub</h1>
               <p className="text-slate-400 text-sm mt-1">Your Care Our Priority</p>
@@ -239,7 +239,7 @@ export default function Login() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(232,177,48,0.08) 0%, transparent 60%)' }} />
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}
           className="max-w-sm text-center relative z-10">
-          <img src="/logo.jpeg" alt="Comprehensive Care" className="w-28 h-28 rounded-3xl object-contain mx-auto mb-8 shadow-2xl" style={{ background: 'white', padding: '8px' }} />
+          <img src="/pwa-192.png" alt="Comprehensive Care" className="w-28 h-28 rounded-3xl object-cover mx-auto mb-8 shadow-2xl" />
           <h2 className="text-white font-display text-4xl mb-3 leading-tight">Comprehensive<br />Care</h2>
           <p className="text-slate-400 mb-10">The complete care home management platform for UK care providers</p>
           <div className="space-y-3">

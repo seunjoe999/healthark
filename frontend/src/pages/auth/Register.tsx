@@ -56,7 +56,7 @@ export default function Register() {
 
         <div className="w-full max-w-md relative z-10">
           <div className="flex items-center gap-4 mb-8">
-            <img src="/logo.jpeg" alt="CompCare Hub" className="w-12 h-12 rounded-xl object-contain" style={{ background: 'white', padding: '3px' }} />
+            <img src="/pwa-192.png" alt="CompCare Hub" className="w-12 h-12 rounded-xl object-cover" />
             <div>
               <h1 className="text-white font-display text-xl leading-none">CompCare Hub</h1>
               <p className="text-slate-400 text-xs mt-0.5">Your Care Our Priority</p>
@@ -134,7 +134,7 @@ export default function Register() {
 
       <div className="hidden xl:flex flex-1 flex-col items-center justify-center p-16 relative overflow-hidden">
         <div className="max-w-sm text-center relative z-10">
-          <img src="/logo.jpeg" alt="" className="w-24 h-24 rounded-2xl object-contain mx-auto mb-6 shadow-2xl" style={{ background: 'white', padding: '6px' }} />
+          <img src="/pwa-192.png" alt="" className="w-24 h-24 rounded-2xl object-cover mx-auto mb-6 shadow-2xl" />
           <h2 className="text-white font-display text-3xl mb-3">Join your care team</h2>
           <p className="text-slate-400 mb-8 text-sm leading-relaxed">Register using the code from your manager. Your account will be reviewed and activated before your first shift.</p>
           <div className="space-y-3 text-left">

@@ -274,7 +274,7 @@ function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: Sideb
       <div className="px-5 pb-4" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
-            <img src="/logo.jpeg" alt="Comprehensive Care Service" className="w-10 h-10 rounded-xl object-contain shadow-lg flex-shrink-0" style={{ background: 'white', padding: '3px' }} />
+            <img src="/pwa-192.png" alt="Comprehensive Care Service" className="w-10 h-10 rounded-xl object-cover shadow-lg flex-shrink-0" />
             <div>
               <h1 style={{ fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2, color: '#e8b130' }}>Comprehensive<br />Care Service</h1>
             </div>
@@ -623,10 +623,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {/* Logo + name */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <img
-              src="/logo.jpeg"
+              src="/pwa-192.png"
               alt=""
-              className="w-7 h-7 rounded-lg object-contain flex-shrink-0"
-              style={{ background: 'white', padding: '2px' }}
+              className="w-7 h-7 rounded-lg object-cover flex-shrink-0"
             />
             <span
               className="text-sm font-bold truncate"

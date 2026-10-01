@@ -270,7 +270,7 @@ export default function FamilyView() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col gap-4" style={{ background: BG }}>
-        <img src="/logo.jpeg" alt="CompCare" className="w-14 h-14 rounded-2xl object-contain shadow-md" style={{ padding: 4, background: 'white' }} />
+        <img src="/pwa-192.png" alt="CompCare" className="w-14 h-14 rounded-2xl object-cover shadow-md" />
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: BRAND }} />
         <p className="text-slate-500 text-sm">Loading care record…</p>
       </div>
@@ -280,7 +280,7 @@ export default function FamilyView() {
   if (error || !data?.resident) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 flex-col gap-4" style={{ background: BG }}>
-        <img src="/logo.jpeg" alt="CompCare" className="w-14 h-14 rounded-2xl object-contain shadow-md" style={{ padding: 4, background: 'white' }} />
+        <img src="/pwa-192.png" alt="CompCare" className="w-14 h-14 rounded-2xl object-cover shadow-md" />
         <AlertTriangle className="w-10 h-10 text-amber-500" />
         <h2 className="text-slate-800 text-xl font-semibold">Link not found</h2>
         <p className="text-slate-500 text-sm text-center">{error || 'This family portal link is invalid or has expired.'}</p>
@@ -300,8 +300,7 @@ export default function FamilyView() {
       {/* ── Top banner ── */}
       <div className="sticky top-0 z-10 border-b border-slate-200 shadow-sm" style={{ background: BRAND }}>
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <img src="/logo.jpeg" alt="CompCare" className="w-9 h-9 rounded-xl object-contain flex-shrink-0"
-            style={{ padding: 3, background: 'white' }} />
+          <img src="/pwa-192.png" alt="CompCare" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-white font-semibold text-sm leading-tight truncate">{name}</p>
             <p className="text-white/60 text-xs truncate">{resident.home_name}</p>
@@ -858,8 +857,8 @@ export default function FamilyView() {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <img src="/logo.jpeg" alt="CompCare" className="w-8 h-8 rounded-lg object-contain mx-auto mb-2 opacity-60"
-            style={{ padding: 2, background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} />
+          <img src="/pwa-192.png" alt="CompCare" className="w-8 h-8 rounded-lg object-cover mx-auto mb-2 opacity-60"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} />
           <p className="text-xs text-slate-400">Confidential — Authorised family members only</p>
           <p className="text-xs text-slate-400 mt-0.5">Generated {format(new Date(), 'd MMMM yyyy')} · CompCare Hub</p>
         </div>

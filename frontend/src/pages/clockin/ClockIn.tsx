@@ -92,7 +92,7 @@ export default function ClockIn() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/logo.jpeg" alt="CompCare Hub" className="w-16 h-16 rounded-2xl object-contain mx-auto mb-3 shadow-lg" style={{ background: 'white', padding: '4px' }} />
+          <img src="/pwa-192.png" alt="CompCare Hub" className="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 shadow-lg" />
           <h1 className="text-white font-display text-xl">CompCare Hub</h1>
         </div>
 

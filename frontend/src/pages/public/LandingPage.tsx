@@ -80,7 +80,7 @@ function StatCounter({ target, suffix, label }: { target: number; suffix: string
 
 /* ── Images ─────────────────────────────────────────────────────────────────── */
 const IMG = {
-  logo:  '/cc-logo.jpg',
+  logo:  '/pwa-192.png',
   hero:  '/hero-care.jpg',
   card1: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80&auto=format&fit=crop',
   card2: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80&auto=format&fit=crop',
@@ -391,8 +391,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto rounded-full flex items-center justify-between px-5 sm:px-8"
           style={{ height: 148, background: PURPLE, boxShadow: '0 8px 30px rgba(0,0,0,0.35)' }}>
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-3 flex-shrink-0 pl-1">
-            <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 72, height: 72, background: 'white' }}>
-              <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-contain" />
+            <div className="flex items-center justify-center rounded-full overflow-hidden" style={{ width: 72, height: 72 }}>
+              <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-cover" />
             </div>
             <span className="hidden xs:block text-xl sm:text-2xl font-black tracking-tight" style={{ color: '#FFFFFF' }}>CompCare Hub</span>
           </button>
@@ -896,8 +896,8 @@ export default function LandingPage() {
 
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden" style={{ background: 'white' }}>
-                  <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-contain" />
+                <div className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden">
+                  <img src={IMG.logo} alt="CompCare Hub" className="w-full h-full object-cover" />
                 </div>
                 <p className="text-sm font-black text-white">CompCare Hub</p>
               </div>

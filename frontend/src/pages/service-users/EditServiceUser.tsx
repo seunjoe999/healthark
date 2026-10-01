@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { suApi } from '../../api'
 import api from '../../api'
@@ -125,6 +125,7 @@ export default function EditServiceUser() {
   const [editingContact, setEditingContact] = useState<string | null>(null)
   const [showContactForm, setShowContactForm] = useState(false)
   const [savingContact, setSavingContact] = useState(false)
+  const contactFormRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -196,6 +197,11 @@ export default function EditServiceUser() {
     setContactForm({ fullName: c.full_name || '', relationship: c.relationship || '', contactTag: c.contact_tag || '', phonePrimary: c.phone_primary || '', phoneSecondary: c.phone_secondary || '', phoneHome: c.phone_home || '', email: c.email || '', isPrimary: c.is_primary || false, notes: c.notes || '' })
     setEditingContact(c.id)
     setShowContactForm(true)
+    // The form always renders after the full contact list, which on a resident
+    // with many contacts (GP, next of kin, podiatrist, day centre, etc.) can be
+    // a full page scroll away — clicking Edit at the top looked like it did
+    // nothing. Scroll it into view once it's mounted.
+    setTimeout(() => contactFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
   }
 
   if (loading) return <div className="p-8"><Spinner /></div>
@@ -271,7 +277,10 @@ export default function EditServiceUser() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-amber-400 uppercase tracking-wider">Important Contacts</h2>
-            <Button variant="gold" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => { setContactForm(emptyContact); setEditingContact(null); setShowContactForm(true) }}>
+            <Button variant="gold" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => {
+              setContactForm(emptyContact); setEditingContact(null); setShowContactForm(true)
+              setTimeout(() => contactFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+            }}>
               Add Contact
             </Button>
           </div>
@@ -312,7 +321,7 @@ export default function EditServiceUser() {
           ))}
 
           {showContactForm && (
-            <div className="card p-5 border-amber-500/30">
+            <div ref={contactFormRef} className="card p-5 border-amber-500/30">
               <h3 className="font-bold text-white mb-4 text-sm">{editingContact ? 'Edit Contact' : 'New Contact'}</h3>
               <div className="grid md:grid-cols-2 gap-3">
                 <Input label="Full name *" value={contactForm.fullName} onChange={e => setC('fullName', e.target.value)} />
