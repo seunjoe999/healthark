@@ -36,25 +36,28 @@ const ABBREV: Record<string, string> = {
   'Dementia Care': 'Dementia',
 }
 
+// text colours darkened from the Tailwind -400 shades (#4ade80/#fbbf24/#ef4444)
+// — too pale to read against a light background, per the owner's explicit
+// "darken the green/orange/yellow" request.
 const STATUS_CONFIG = {
   current: {
     bg: 'rgba(74,222,128,0.2)',
     border: 'rgba(74,222,128,0.4)',
-    text: '#4ade80',
+    text: '#15803d',
     symbol: '✓',
     label: 'Current',
   },
   expiring: {
     bg: 'rgba(251,191,36,0.2)',
     border: 'rgba(251,191,36,0.4)',
-    text: '#fbbf24',
+    text: '#b45309',
     symbol: '!',
     label: 'Expiring Soon',
   },
   expired: {
     bg: 'rgba(239,68,68,0.2)',
     border: 'rgba(239,68,68,0.4)',
-    text: '#ef4444',
+    text: '#b91c1c',
     symbol: '✗',
     label: 'Expired',
   },
@@ -395,9 +398,9 @@ export default function TrainingMatrix() {
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Fully Compliant', value: stats.fullyCompliant, color: '#4ade80', bg: 'rgba(74,222,128,0.08)', icon: <CheckCircle className="w-4 h-4 text-emerald-400" /> },
-          { label: 'Staff with Gaps', value: stats.withGaps, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', icon: <XCircle className="w-4 h-4 text-rose-400" /> },
-          { label: 'Items Expiring', value: stats.expiring, color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', icon: <AlertTriangle className="w-4 h-4 text-amber-400" /> },
+          { label: 'Fully Compliant', value: stats.fullyCompliant, color: '#15803d', bg: 'rgba(74,222,128,0.08)', icon: <CheckCircle className="w-4 h-4 text-emerald-600" /> },
+          { label: 'Staff with Gaps', value: stats.withGaps, color: '#b91c1c', bg: 'rgba(239,68,68,0.08)', icon: <XCircle className="w-4 h-4 text-rose-600" /> },
+          { label: 'Items Expiring', value: stats.expiring, color: '#b45309', bg: 'rgba(251,191,36,0.08)', icon: <AlertTriangle className="w-4 h-4 text-amber-600" /> },
         ].map(({ label, value, color, bg, icon }) => (
           <div
             key={label}
@@ -461,7 +464,7 @@ export default function TrainingMatrix() {
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <th
-                    className="text-left px-4 py-3 text-xs font-semibold text-slate-400 sticky left-0"
+                    className={`text-left px-4 py-3 text-xs font-bold sticky left-0 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}
                     style={{ background: tileBg, minWidth: 180, zIndex: 2, boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}
                   >
                     Staff Member
@@ -469,7 +472,7 @@ export default function TrainingMatrix() {
                   {data.trainingTypes.map(t => (
                     <th
                       key={t}
-                      className="text-center px-2 py-3 text-xs font-semibold text-slate-400"
+                      className={`text-center px-2 py-3 text-xs font-bold ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}
                       style={{ minWidth: 80 }}
                       title={t}
                     >

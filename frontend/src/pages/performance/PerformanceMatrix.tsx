@@ -327,7 +327,7 @@ export default function PerformanceMatrix() {
           { key: 'history', label: 'Review History' },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setView(t.key as any)}
-            className={clsx('px-5 py-2 rounded-lg text-sm font-medium transition-all', view === t.key ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200')}
+            className={clsx('px-5 py-2 rounded-lg text-sm font-bold transition-all', view === t.key ? 'text-slate-900' : theme === 'dark' ? 'text-slate-200 bg-white/5 hover:bg-white/10' : 'text-slate-700 bg-white hover:bg-slate-50 shadow-sm')}
             style={view === t.key ? { background: 'linear-gradient(135deg, #e8b130, #d4961a)' } : {}}>
             {t.label}
           </button>
@@ -350,7 +350,7 @@ export default function PerformanceMatrix() {
               <div className={`overflow-x-auto ${panelBorder} rounded-xl border`} style={{ background: panelBg }}>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-slate-500 uppercase tracking-wider">
+                    <tr className={clsx('text-xs font-bold uppercase tracking-wider', theme === 'dark' ? 'text-slate-200' : 'text-slate-700')}>
                       <th className="text-left py-3 px-3">Staff Member</th>
                       <th className="text-center py-3 px-3">Training %</th>
                       <th className="text-center py-3 px-3">Supervision</th>
