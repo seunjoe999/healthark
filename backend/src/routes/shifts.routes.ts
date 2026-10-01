@@ -249,6 +249,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = req.query.date as string;
     const weekStart = req.query.weekStart as string;
+    // Arbitrary range, used by the dashboard (e.g. "next 7 days", "this week")
+    // where a single date or a Monday-anchored week doesn't fit. Previously
+    // unrecognised here, so a from/to request silently fell through with no
+    // date filter at all and returned the home's ENTIRE shift history —
+    // 13,000+ rows (including years of future recurring-template shifts) for
+    // what should have been a handful of days, which is what was actually
+    // making the dashboard slow to load.
+    const from = req.query.from as string;
+    const to = req.query.to as string;
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
 
@@ -268,6 +277,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       else if (weekStart) {
         myDatesSql += ` AND shift_date >= $3 AND shift_date < $3::date + interval '7 days'`;
         myDatesParams.push(weekStart);
+      } else if (from && to) {
+        myDatesSql += ` AND shift_date >= $3 AND shift_date <= $4`;
+        myDatesParams.push(from, to);
       }
       const myShifts = await query<any>(myDatesSql, myDatesParams);
       restrictDates = myShifts.map((r: any) => r.shift_date);
@@ -317,6 +329,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     else if (weekStart) {
       sql += ` AND sh.shift_date >= $${params.length+1} AND sh.shift_date < $${params.length+1}::date + interval '7 days'`;
       params.push(weekStart);
+    } else if (from && to) {
+      sql += ` AND sh.shift_date >= $${params.length+1} AND sh.shift_date <= $${params.length+2}`;
+      params.push(from, to);
     }
     if (restrictDates) {
       sql += ` AND sh.shift_date = ANY($${params.length+1})`;

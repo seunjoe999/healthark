@@ -37,7 +37,7 @@ function getHomeId(req: Request): string {
 // GET /api/daily-records?suId=xxx&date=2026-05-10  OR  ?homeId=xxx&date=2026-05-10 (multi-resident, for handover)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { suId, homeId, date, recordType } = req.query as Record<string, string>;
+    const { suId, homeId, date, from, to, recordType } = req.query as Record<string, string>;
     if (!suId && !homeId) throw new AppError('suId or homeId required', 400);
     if (suId) await assertResidentAccess(req, suId);
 
@@ -53,6 +53,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (suId) { sql += ` AND dr.su_id = $${idx++}`; params.push(suId); }
     if (homeId) { sql += ` AND dr.home_id = $${idx++}`; params.push(homeId); }
     if (date) { sql += ` AND dr.record_date = $${idx++}`; params.push(date); }
+    // A from/to range with no date filter would otherwise match every daily
+    // record ever logged for the home (same unbounded-query bug as /shifts).
+    else if (from && to) { sql += ` AND dr.record_date >= $${idx++} AND dr.record_date <= $${idx++}`; params.push(from, to); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
     sql += ' ORDER BY dr.record_date DESC, dr.recorded_at DESC';
 
