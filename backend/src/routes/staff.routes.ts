@@ -91,6 +91,23 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       organisationId = src[0]?.organisation_id || "";
     }
 
+    // Only group_admin honoured the homeId query param below — every other role's
+    // branch used the caller's own token home_id regardless of what home/service
+    // was selected on screen, so switching a service in the Rota page's home
+    // selector silently had zero effect for a home_manager or team_leader: they'd
+    // keep seeing (or, for a team leader whose own token home_id didn't match the
+    // selected service at all, completely miss) staff from their token's home
+    // instead of the one actually chosen. Scope all branches to the selected home
+    // when one was given, same as group_admin, but only within the caller's own
+    // organisation so a forged homeId can't pull another org's staff.
+    let effectiveHomeId = homeId;
+    if (filterHomeId && filterHomeId !== homeId) {
+      const homeOrgRows = await query<any>('SELECT organisation_id FROM homes WHERE id=$1', [filterHomeId]);
+      if (homeOrgRows[0]?.organisation_id && homeOrgRows[0].organisation_id === organisationId) {
+        effectiveHomeId = filterHomeId;
+      }
+    }
+
     let rows;
     if (role === 'group_admin') {
       const params = filterHomeId ? [organisationId, filterHomeId] : [organisationId];
@@ -120,7 +137,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                 home_id, photo_url, start_date, is_active
          FROM staff WHERE home_id = $1 AND organisation_id = $2 AND status != 'terminated'
          ORDER BY last_name, first_name`,
-        [homeId, organisationId]
+        [effectiveHomeId, organisationId]
       );
     } else if (role === 'team_leader') {
       // Team leaders only see staff in their own team (a team they lead via
@@ -137,18 +154,24 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         teamId = own[0]?.team_id || undefined;
       }
       if (teamId) {
+        // team_id already identifies exactly who's on this leader's own team —
+        // additionally requiring home_id to match the currently-selected
+        // home/service excluded a team leader from seeing her own team (and
+        // her own name/rota) whenever her account's own home_id didn't line up
+        // with whichever service happened to be selected, even though team
+        // membership was the only scope that should have mattered here.
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, role, photo_url, team_id
-           FROM staff WHERE home_id = $1 AND team_id = $2 AND is_active = TRUE
+           FROM staff WHERE team_id = $1 AND is_active = TRUE
            ORDER BY last_name, first_name`,
-          [homeId, teamId]
+          [teamId]
         );
       } else {
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, role, photo_url
            FROM staff WHERE home_id = $1 AND is_active = TRUE
            ORDER BY last_name, first_name`,
-          [homeId]
+          [effectiveHomeId]
         );
       }
     } else {
@@ -157,7 +180,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         `SELECT id, first_name, last_name, preferred_name, role, photo_url
          FROM staff WHERE home_id = $1 AND is_active = TRUE
          ORDER BY last_name, first_name`,
-        [homeId]
+        [effectiveHomeId]
       );
     }
     res.json({ success: true, data: rows } as ApiResponse);

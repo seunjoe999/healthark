@@ -128,9 +128,16 @@ export default function ClockInAnalytics() {
     }
   }
 
-  // Build a full week of day labels so we always show Mon–Sun even if no data
+  // Build a full week of day labels so we always show Mon–Sun even if no data.
+  // A native <input type="date"> fires onChange with an empty string while a
+  // segment is only partially typed (e.g. day/month filled in but year not
+  // yet) — parseISO('') produces an Invalid Date, and format() on that threw
+  // uncaught ("Invalid time value"), crashing the whole page on every
+  // keystroke of manually editing the From date, not just on an actually bad
+  // final value.
   const weekDays = useMemo(() => {
     const start = parseISO(startDate)
+    if (isNaN(start.getTime())) return []
     const days: { date: string; label: string }[] = []
     for (let i = 0; i < 7; i++) {
       const d = addDays(start, i)
@@ -195,11 +202,11 @@ export default function ClockInAnalytics() {
           )}
           <div>
             <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1 block">From</label>
-            <input type="date" className="input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <input type="date" className="input" value={startDate} onChange={e => { if (e.target.value) setStartDate(e.target.value) }} />
           </div>
           <div>
             <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1 block">To</label>
-            <input type="date" className="input" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <input type="date" className="input" value={endDate} onChange={e => { if (e.target.value) setEndDate(e.target.value) }} />
           </div>
           {/* Quick presets */}
           <button

@@ -322,7 +322,16 @@ router.get('/leave/all', async (req: Request, res: Response, next: NextFunction)
                FROM staff_leave lr JOIN staff s ON s.id = lr.staff_id
                WHERE s.home_id = $1`;
     const params: unknown[] = [homeId];
-    if (staffId) { sql += ` AND lr.staff_id = $${params.length+1}`; params.push(staffId); }
+    // This endpoint had no role restriction at all — any authenticated staff
+    // member could see every colleague's leave calendar, including their
+    // remaining hours balance, just by calling it without a staffId filter.
+    // Non-managers are now hard-locked to their own leave regardless of what
+    // the client requests.
+    const role = fromToken(req, 'role');
+    const tokenStaffId = fromToken(req, 'staffId');
+    const isLeaveManager = LEAVE_MANAGER_ROLES.includes(role);
+    const effectiveStaffId = isLeaveManager ? staffId : tokenStaffId;
+    if (effectiveStaffId) { sql += ` AND lr.staff_id = $${params.length+1}`; params.push(effectiveStaffId); }
     if (from) { sql += ` AND lr.end_date >= $${params.length+1}`; params.push(from); }
     if (to)   { sql += ` AND lr.start_date <= $${params.length+1}`; params.push(to); }
     sql += orderBy === 'applied' ? ' ORDER BY lr.created_at ASC' : ' ORDER BY lr.start_date DESC';

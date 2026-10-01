@@ -6,7 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-import { assertResidentAccess } from '../utils/residentAccess';
+import { assertResidentAccess, RESTRICTED_ROLES } from '../utils/residentAccess';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { ukDateStr, ukTimeHHMM, ukTimeHHMMSS } from '../utils/ukTime';
 import { isWithinAmendWindow } from '../utils/clockStatus';
@@ -562,7 +562,26 @@ router.get('/stock/:suId', param('suId').isUUID(), validateRequest,
 router.get('/stock-count-status', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const status = await getStockCountStatus(homeId);
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    // Was always the home-wide total regardless of who's asking — fine for a
+    // manager's overview, but showed every care/team-leader staff member a
+    // fraction like "7/13 residents counted" that was never theirs to clear,
+    // the same bug already fixed for the actual clock-out gate below. Scope
+    // this dashboard widget to today's rota residents too, so restricted
+    // roles only ever see (and are prompted about) their own shift's count.
+    let suIds: string[] | undefined;
+    if (RESTRICTED_ROLES.includes(role) && staffId) {
+      const todayStr = ukDateStr();
+      const shiftRows = await query<any>(
+        `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        [staffId, homeId, todayStr]
+      );
+      suIds = Array.from(new Set(
+        shiftRows.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+      )) as string[];
+    }
+    const status = await getStockCountStatus(homeId, undefined, suIds);
     res.json({ success: true, data: status } as ApiResponse);
   } catch (err) { next(err); }
 });

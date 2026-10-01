@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, SpeechTextarea } from '../../components/ui'
-import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck, Search } from 'lucide-react'
+import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck, Search, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const RISK_LEVELS = [
@@ -210,6 +210,21 @@ export default function RiskManagement() {
     api.get(`/risk-assessments/${id}/reads`).then(r => setViewReads(r.data?.data || [])).catch(() => {})
   }
   const [viewReads, setViewReads] = useState<any[]>([])
+  // Admin "who has read which risk assessment" overview — risk assessments only
+  // ever showed a per-item "has anyone read this" dot, with no way to see the
+  // full breakdown management could already see for Support Plans.
+  const [readsModal, setReadsModal] = useState(false)
+  const [readsData, setReadsData] = useState<any[]>([])
+  const [readsLoading, setReadsLoading] = useState(false)
+  const openAdminReads = async () => {
+    setReadsModal(true)
+    setReadsLoading(true)
+    try {
+      const res = await api.get('/risk-assessments/reads-summary', { params: { homeId: selectedHome } })
+      setReadsData(res.data?.data || [])
+    } catch { toast.error('Failed to load reads data') }
+    finally { setReadsLoading(false) }
+  }
 
   const RA_PRINT_CSS = `
     *{box-sizing:border-box;margin:0;padding:0}
@@ -637,6 +652,11 @@ export default function RiskManagement() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">View and manage other risk assessments</p>
         </div>
+        {canManage && (
+          <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}>
+            Who read assessments
+          </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-end no-print">
@@ -706,7 +726,14 @@ export default function RiskManagement() {
             const label = ra.assessment_name
             const level = ra.risk_rating || ra.current_risk_level || 'low'
             return (
-              <button key={ra.id} onClick={() => { setViewItem(ra); setViewReads([]); api.get(`/risk-assessments/${ra.id}/reads`).then(r => setViewReads(r.data?.data || [])).catch(() => {}) }}
+              <button key={ra.id} onClick={() => {
+                setViewItem(ra); setViewReads([])
+                // Read is now recorded the moment staff open the assessment, not only
+                // when they separately click "Mark read" — matches Support Plans, and
+                // means the admin overview reflects who's actually looked at it.
+                if (!readIds.has(ra.id)) markRead(ra.id)
+                else api.get(`/risk-assessments/${ra.id}/reads`).then(r => setViewReads(r.data?.data || [])).catch(() => {})
+              }}
                 className="rounded-2xl shadow-sm p-5 text-left hover:shadow-md transition-all group"
                 style={{ background: raTint(level), border: `1.5px solid ${raBorder(level)}` }}>
                 <div className="flex items-start gap-3 mb-3">
@@ -768,12 +795,9 @@ export default function RiskManagement() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-slate-100">
-                <button
-                  onClick={() => { markRead(ra.id); toast.success('Marked as read') }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${readIds.has(ra.id) ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}>
-                  <BookOpen className="w-3.5 h-3.5" />
-                  {readIds.has(ra.id) ? 'Read' : 'Mark read'}
-                </button>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  <BookOpen className="w-3.5 h-3.5" /> Read
+                </span>
                 <button
                   onClick={() => printAssessment(ra)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
@@ -920,6 +944,42 @@ export default function RiskManagement() {
             <Button loading={saving} onClick={handleAddUpdate} icon={<Check className="w-4 h-4" />}>Save Update</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Admin reads summary modal */}
+      <Modal open={readsModal} onClose={() => setReadsModal(false)} title="Who has read risk assessments" size="lg">
+        {readsLoading ? <Spinner /> : (
+          <div className="max-h-[70vh] overflow-y-auto">
+            {readsData.length === 0 ? (
+              <EmptyState title="No reads recorded yet" description="Reads are tracked when staff open a risk assessment" />
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                  <tr>
+                    {['Resident', 'Assessment', 'Total reads', 'Last read', 'Read by'].map(h => (
+                      <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {readsData.map((row: any, i: number) => (
+                    <tr key={i} className={row.total_reads === '0' || !row.total_reads ? 'bg-amber-50/40' : ''}>
+                      <td className="px-3 py-2 font-medium text-slate-900">{row.su_name}</td>
+                      <td className="px-3 py-2 text-slate-600 text-xs capitalize">{row.assessment_name}</td>
+                      <td className="px-3 py-2">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${(+row.total_reads || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {row.total_reads || 0}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-slate-500">{row.last_read_at ? format(new Date(row.last_read_at), 'd MMM yyyy, HH:mm') : <span className="text-amber-600">Never read</span>}</td>
+                      <td className="px-3 py-2 text-xs text-slate-500">{row.readers || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   )

@@ -10,15 +10,14 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 router.use(authenticate);
 
-// Restricted to non-care-staff roles, matching the sidebar visibility —
-// "remove Uniform Stock from staff access" means the API must actually
-// enforce that too, not just hide the nav link.
-const NOT_CARE_STAFF = [
-  'senior_carer', 'team_leader', 'supervisor', 'deputy_manager', 'home_manager',
-  'registered_manager', 'service_manager', 'admin', 'group_admin', 'director',
-  'auditor', 'recruitment_admin',
+// Was open to team_leader/senior_carer/supervisor too — owner explicitly
+// asked for Uniform Stock (like PPE Stock) to be manager-only, not just
+// excluding care_staff.
+const MANAGEMENT_ONLY = [
+  'deputy_manager', 'home_manager', 'registered_manager', 'service_manager',
+  'admin', 'group_admin', 'director', 'auditor', 'recruitment_admin',
 ] as const;
-router.use(requireRole(...NOT_CARE_STAFF));
+router.use(requireRole(...MANAGEMENT_ONLY));
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);

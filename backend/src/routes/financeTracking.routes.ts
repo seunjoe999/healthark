@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { getAssignedSuIds, RESTRICTED_ROLES } from '../utils/residentAccess';
 
 const router = Router();
 router.use(authenticate);
@@ -31,6 +32,17 @@ router.get('/',
                  WHERE f.home_id = $1`;
       const params: unknown[] = [homeId];
       if (suId) { sql += ` AND f.su_id = $2`; params.push(suId); }
+      // Was open to every staff member regardless of whose service user the entry
+      // was for — a carer could see financial logs (test accounts included) for
+      // residents they have nothing to do with. Restricted roles now only ever
+      // see entries for their own assigned residents.
+      const role = fromToken(req, 'role');
+      const staffId = fromToken(req, 'staffId');
+      if (RESTRICTED_ROLES.includes(role) && staffId) {
+        const assignedSuIds = await getAssignedSuIds(staffId);
+        params.push(assignedSuIds.length ? assignedSuIds : ['00000000-0000-0000-0000-000000000000']);
+        sql += ` AND f.su_id = ANY($${params.length}::uuid[])`;
+      }
       sql += ' ORDER BY f.payment_date DESC, f.created_at DESC LIMIT 300';
       const rows = await query(sql, params);
       res.json({ success: true, data: rows } as ApiResponse);

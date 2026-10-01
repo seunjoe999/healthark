@@ -129,7 +129,13 @@ export default function Holidays() {
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) })
   const firstDay = startOfMonth(currentMonth).getDay()
 
+  // The calendar view used the raw `leaves` list directly, unlike the "list" view
+  // below it (which already filters to own leave for non-managers via canSeeAll)
+  // — so a care/team-leader staff member saw every colleague's approved/pending
+  // leave laid out on the calendar grid, not just their own.
+  const canSeeAllLeave = isRole('home_manager','group_admin','senior_carer','deputy_manager','admin')
   const getDayLeaves = (day: Date) => leaves.filter(l => {
+    if (!canSeeAllLeave && l.staff_id !== user?.id) return false
     try {
       return isWithinInterval(day, { start: parseISO(l.start_date), end: parseISO(l.end_date) })
     } catch { return false }

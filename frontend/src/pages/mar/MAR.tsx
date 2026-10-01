@@ -368,6 +368,14 @@ export default function MAR() {
             )}
             {loading ? (
               <div className="flex items-center justify-center h-48"><Spinner /></div>
+            ) : tab === 'mar' && isRole('team_leader') ? (
+              // Team leaders administer medication on shift, not through the full
+              // MAR grid/history — they got a static, unclickable list of every
+              // medication with no way to actually administer anything from it.
+              // Same actionable "due today" task view care staff get, while they
+              // keep the other privileged tabs (MAR Review, Medication Audit,
+              // Stock Count, GP & Pharmacy) via the tab bar above.
+              <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
             ) : tab === 'mar' ? (
               <MARGrid
                 chartData={chartData}

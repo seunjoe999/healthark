@@ -12,6 +12,11 @@ const router = Router();
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
 router.use(authenticate);
+// Manager-only — the nav entry was already gated this way, but the API itself
+// had no role check, so a team_leader or care_staff account could still reach
+// PPE Stock data via direct API call.
+router.use(requireRole('deputy_manager', 'home_manager', 'registered_manager', 'service_manager',
+  'admin', 'group_admin', 'director', 'auditor', 'recruitment_admin'));
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);

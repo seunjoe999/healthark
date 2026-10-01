@@ -56,10 +56,19 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
     const rotaSuIds = Array.from(new Set(
       shiftRows.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
     ));
-    // No rota entry at all today (ad-hoc/relief cover) — fall back to the static
-    // assignment list rather than hiding every resident-linked task outright.
-    const suIds = rotaSuIds.length > 0 ? rotaSuIds : await getAssignedSuIds(staffId);
-    visible = visible.filter((t: any) => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || suIds.includes(t.su_id));
+    if (shiftRows.length > 0) {
+      // Has a rota entry today — scope to exactly those residents.
+      visible = visible.filter((t: any) => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || rotaSuIds.includes(t.su_id));
+    } else {
+      // No rota entry at all today — this person isn't on shift. Falling back to
+      // their static long-term assignment list used to still trap them at
+      // clock-out over a resident-linked task (e.g. a Medication Stock count)
+      // for someone they're not actually working with today, same fail-open
+      // principle already applied to the medication-due and stock-count checks
+      // in clockin.routes.ts. Only their own created/assigned tasks can still
+      // block them; every other resident-linked task is excluded.
+      visible = visible.filter((t: any) => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id);
+    }
   }
 
   // Only tasks due within the staff member's own shift(s) today block them from

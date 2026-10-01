@@ -145,12 +145,15 @@ const navSections = [
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
       { label: 'Meeting Tracker',    to: '/meeting-tracker',   icon: CalendarClock, roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'meeting_tracker' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
-      { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: NOT_CARE_STAFF, featureKey: 'ppe' },
+      // Was NOT_CARE_STAFF (still let team_leader through) -- owner explicitly
+      // asked for both PPE and Uniform Stock to be manager-only, team leaders
+      // and carers don't need access to either.
+      { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: MANAGEMENT_ONLY, featureKey: 'ppe' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
       { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
       { label: 'Team Meeting',       to: '/team-meeting',      icon: Users,         roles: [], featureKey: 'team_meeting' },
       { label: 'Timesheets',         to: '/timesheets',        icon: Clock,         roles: [], featureKey: 'timesheets' },
-      { label: 'Uniform Stock',      to: '/uniform-stock',     icon: Shirt,         roles: NOT_CARE_STAFF, featureKey: 'uniform_stock' },
+      { label: 'Uniform Stock',      to: '/uniform-stock',     icon: Shirt,         roles: MANAGEMENT_ONLY, featureKey: 'uniform_stock' },
     ]
   },
   {
