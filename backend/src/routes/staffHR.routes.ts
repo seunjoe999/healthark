@@ -99,6 +99,22 @@ router.post('/leave',
           throw new AppError('Annual leave must be requested at least 4 weeks in advance', 400);
         }
       }
+      // Block a duplicate/overlapping request for the same dates — staff were
+      // able to submit the exact same date range twice (confirmed: two
+      // separate 30 Oct – 30 Oct requests sitting in the queue), cluttering
+      // the approval list and requiring a manager to delete the extra one
+      // manually. Only checks against still-live requests (pending/approved)
+      // — a previously declined or cancelled request for the same dates
+      // shouldn't block a fresh attempt.
+      const overlapping = await query<any>(
+        `SELECT id FROM staff_leave
+         WHERE staff_id = $1 AND status IN ('pending', 'approved')
+           AND start_date <= $3 AND end_date >= $2`,
+        [targetStaffId, nd(startDate), nd(endDate)]
+      );
+      if (overlapping.length) {
+        throw new AppError('You already have a leave request covering these dates', 400);
+      }
       const rows = await query(
         `INSERT INTO staff_leave (staff_id, home_id, leave_type, start_date, end_date, hours_requested, reason)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,

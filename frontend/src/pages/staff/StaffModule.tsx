@@ -59,6 +59,8 @@ export default function StaffModule() {
   const [addCautionOpen, setAddCautionOpen] = useState(false)
   const [addSensitiveOpen, setAddSensitiveOpen] = useState(false)
   const [addLeaveOpen, setAddLeaveOpen] = useState(false)
+  const [declineTarget, setDeclineTarget] = useState<any>(null)
+  const [declineReason, setDeclineReason] = useState('')
   const [addTrainingOpen, setAddTrainingOpen] = useState(false)
   const [trainingCertificates, setTrainingCertificates] = useState<any[]>([])
   const [uploadingCert, setUploadingCert] = useState(false)
@@ -504,12 +506,7 @@ export default function StaffModule() {
                               setLeave((res.data.data || []).filter((x: any) => x.staff_id === selected.id))
                               toast.success('Leave approved')
                             }}>Approve</Button>
-                            <Button size="sm" variant="danger" onClick={async () => {
-                              await api.put(`/staff-hr/leave/${l.id}/decline`)
-                              const res = await api.get('/staff-hr/leave')
-                              setLeave((res.data.data || []).filter((x: any) => x.staff_id === selected.id))
-                              toast.success('Leave declined')
-                            }}>Decline</Button>
+                            <Button size="sm" variant="danger" onClick={() => { setDeclineTarget(l); setDeclineReason('') }}>Decline</Button>
                           </div>
                         )}
                       </div>
@@ -518,6 +515,30 @@ export default function StaffModule() {
                 )}
                 <AddLeaveModal open={addLeaveOpen} onClose={() => setAddLeaveOpen(false)} staffId={selected.id}
                   onSaved={async () => { setAddLeaveOpen(false); const res = await api.get('/staff-hr/leave'); setLeave((res.data.data || []).filter((l: any) => l.staff_id === selected.id)); toast.success('Leave request submitted') }} />
+                <Modal open={!!declineTarget} onClose={() => setDeclineTarget(null)} title="Decline leave request" size="sm">
+                  {declineTarget && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-slate-600">
+                        Declining <strong>{selected && getName(selected)}</strong>'s {(declineTarget.leave_type || '').replace('_', ' ')} request.
+                      </p>
+                      <div>
+                        <label className="label">Reason (optional)</label>
+                        <textarea className="input w-full" rows={3} value={declineReason} onChange={e => setDeclineReason(e.target.value)}
+                          placeholder="Explain why this request is being declined..." />
+                      </div>
+                      <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+                        <Button variant="outline" onClick={() => setDeclineTarget(null)}>Back</Button>
+                        <Button variant="danger" onClick={async () => {
+                          await api.put(`/staff-hr/leave/${declineTarget.id}/decline`, { reason: declineReason.trim() || undefined })
+                          const res = await api.get('/staff-hr/leave')
+                          setLeave((res.data.data || []).filter((x: any) => x.staff_id === selected.id))
+                          toast.success('Leave declined')
+                          setDeclineTarget(null)
+                        }}>Decline request</Button>
+                      </div>
+                    </div>
+                  )}
+                </Modal>
               </div>
             )}
 

@@ -857,16 +857,18 @@ export default function Rota() {
                     const laneLeft = lane.col * laneWidth
 
                     return (
-                      <button key={shift.id}
-                        // Once anything is selected, every shift click (touch or desktop) keeps
-                        // adding/removing from the selection instead of opening details — without
-                        // this, a touch-device manager could only ever get ONE shift selected: the
-                        // small top-right checkbox was the sole way to select there, and a normal
-                        // tap on any OTHER shift's body reopened its details and effectively looked
-                        // like "selecting a second shift doesn't work".
+                      <div key={shift.id} role="button" tabIndex={0}
+                        // Was a <button> wrapping the checkbox and delete-icon <div role="button">/
+                        // <span role="button"> below it — nested interactive elements inside a
+                        // native <button> are invalid HTML, and browsers handle the click dispatch
+                        // for that inconsistently (confirmed report: the checkbox visibly toggles
+                        // but a single click doesn't register with the parent's selection state,
+                        // only a double-click does). Plain <div> with the same handlers removes the
+                        // invalid nesting while keeping identical click/dblclick/keyboard behaviour.
                         onClick={() => { if (selectedShiftIds.size === 0 && IS_TOUCH_DEVICE) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
                         onDoubleClick={() => setDetailShift(shift)}
-                        className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm"
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleShiftSelected(shift.id) } }}
+                        className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm cursor-pointer"
                         style={{
                           top: top + 1,
                           height: Math.max(height - 2, 32),
@@ -921,7 +923,7 @@ export default function Rota() {
                             </span>
                           )}
                         </div>
-                      </button>
+                      </div>
                     )
                   })}
 
