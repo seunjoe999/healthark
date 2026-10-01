@@ -352,7 +352,7 @@ export default function Maintenance() {
                 </div>
                 <div className="text-right text-xs text-slate-500 flex-shrink-0">
                   <div>{item.reported_by_name || 'Unknown'}</div>
-                  <div>{new Date(item.created_at).toLocaleDateString()}</div>
+                  <div>{new Date(item.created_at).toLocaleDateString('en-GB')}</div>
                   {item.assigned_to_name && <div className="text-amber-400 mt-1">â†’ {item.assigned_to_name}</div>}
                 </div>
               </div>
@@ -416,7 +416,7 @@ export default function Maintenance() {
               <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{showDetail.title}</h3>
               {showDetail.location && <p className="text-sm text-slate-400 mt-1">ðŸ“ {showDetail.location}</p>}
               {showDetail.description && <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{showDetail.description}</p>}
-              <p className="text-xs text-slate-500 mt-3">Reported by {showDetail.reported_by_name} Â· {new Date(showDetail.created_at).toLocaleDateString()}</p>
+              <p className="text-xs text-slate-500 mt-3">Reported by {showDetail.reported_by_name} Â· {new Date(showDetail.created_at).toLocaleDateString('en-GB')}</p>
             </div>
             {canManage && (
               <form onSubmit={handleUpdate} className="space-y-4">

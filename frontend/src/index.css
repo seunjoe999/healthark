@@ -168,6 +168,16 @@
    regardless of the toggle. Kept unlayered so it beats any @layer utilities
    rule regardless of selector specificity. */
   .app-shell.theme-dark .bg-white { background-color: #111111 !important; }
+  /* Plain bg-white on a form control (no explicit text-color class, since
+     dark default text reads fine on a white background) silently gets its
+     background flipped dark by the rule above, stranding the inherited-black
+     text invisible against it — the one case where this matters, since
+     a user genuinely cannot read what they're typing. */
+  .app-shell.theme-dark input.bg-white,
+  .app-shell.theme-dark select.bg-white,
+  .app-shell.theme-dark textarea.bg-white { color: #e5e7eb !important; }
+  .app-shell.theme-dark input.bg-white::placeholder,
+  .app-shell.theme-dark textarea.bg-white::placeholder { color: #6b7280 !important; }
   .app-shell.theme-dark .bg-slate-50 { background-color: #0a0a0a !important; }
   .app-shell.theme-dark .bg-slate-100 { background-color: #1a1a1a !important; }
   .app-shell.theme-dark .bg-slate-200 { background-color: #222222 !important; }

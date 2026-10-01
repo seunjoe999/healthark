@@ -116,7 +116,7 @@ export default function CQCNotifications() {
                     <p className="text-sm text-slate-700 mb-2 line-clamp-2">{notif.details}</p>
                     <div className="flex gap-2 text-xs text-slate-500">
                       {notif.notified_by_name && <span>{notif.notified_by_name}</span>}
-                      <span>{new Date(notif.notification_date).toLocaleDateString()}</span>
+                      <span>{new Date(notif.notification_date).toLocaleDateString('en-GB')}</span>
                     </div>
                   </div>
                   <button onClick={e => { e.stopPropagation(); handleDelete(notif.id); }} className="text-slate-400 hover:text-red-600 transition-colors flex-shrink-0">
@@ -227,7 +227,7 @@ function NotificationDetailModal({ notification, onClose, onResolve }: { notific
         </div>
         <div className="flex gap-2 text-xs text-slate-500">
           {notification.notified_by_name && <span>By: {notification.notified_by_name}</span>}
-          <span>Date: {new Date(notification.notification_date).toLocaleDateString()}</span>
+          <span>Date: {new Date(notification.notification_date).toLocaleDateString('en-GB')}</span>
         </div>
         {notification.attachment_url && (
           <a href={notification.attachment_url} target="_blank" rel="noopener noreferrer"

@@ -326,9 +326,9 @@ export default function DBSTracker() {
                       {d.dbs_number && <p className="text-xs text-slate-400">DBS No: {d.dbs_number}</p>}
                     </div>
                     <div className="text-right text-xs text-slate-400">
-                      <div>Issued: {d.issue_date ? new Date(d.issue_date).toLocaleDateString() : '—'}</div>
+                      <div>Issued: {d.issue_date ? new Date(d.issue_date).toLocaleDateString('en-GB') : '—'}</div>
                       {d.expiry_date && <div className={clsx('mt-1', d.status === 'expired' ? 'text-rose-400' : d.status === 'expiring_soon' ? 'text-amber-400' : '—')}>
-                        Expires: {new Date(d.expiry_date).toLocaleDateString()}
+                        Expires: {new Date(d.expiry_date).toLocaleDateString('en-GB')}
                       </div>}
                       {d.update_service && <div className="text-emerald-400 mt-1 flex items-center gap-1 justify-end"><Check className="w-3 h-3" />Update Service</div>}
                     </div>
@@ -352,7 +352,7 @@ export default function DBSTracker() {
                       <p className="text-sm text-slate-300">{r.referee_name}{r.referee_company ? ` Â· ${r.referee_company}` : '—'}</p>
                     </div>
                     <div className="text-right text-xs text-slate-400">
-                      {r.received_date && <div>Received: {new Date(r.received_date).toLocaleDateString()}</div>}
+                      {r.received_date && <div>Received: {new Date(r.received_date).toLocaleDateString('en-GB')}</div>}
                       {r.referee_email && <div className="mt-1">{r.referee_email}</div>}
                     </div>
                   </div>
@@ -375,7 +375,7 @@ export default function DBSTracker() {
                     </div>
                     <div className="text-right text-xs text-slate-400">
                       {d.expiry_date && <div className={clsx(d.status === 'expired' ? 'text-rose-400' : '—')}>
-                        Expires: {new Date(d.expiry_date).toLocaleDateString()}
+                        Expires: {new Date(d.expiry_date).toLocaleDateString('en-GB')}
                       </div>}
                     </div>
                   </div>
@@ -398,8 +398,8 @@ export default function DBSTracker() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-xs text-slate-500">DBS Type</p><p className="text-white capitalize">{preview.dbs_type?.replace(/_/g, ' ')}</p></div>
                 {preview.dbs_number && <div><p className="text-xs text-slate-500">Certificate No.</p><p className="text-white font-mono">{preview.dbs_number}</p></div>}
-                <div><p className="text-xs text-slate-500">Issue Date</p><p className="text-white">{preview.issue_date ? new Date(preview.issue_date).toLocaleDateString() : '—'}</p></div>
-                <div><p className="text-xs text-slate-500">Expiry Date</p><p className={preview.status === 'expired' ? 'text-rose-400' : preview.status === 'expiring_soon' ? 'text-amber-400' : 'text-white'}>{preview.expiry_date ? new Date(preview.expiry_date).toLocaleDateString() : 'No expiry'}</p></div>
+                <div><p className="text-xs text-slate-500">Issue Date</p><p className="text-white">{preview.issue_date ? new Date(preview.issue_date).toLocaleDateString('en-GB') : '—'}</p></div>
+                <div><p className="text-xs text-slate-500">Expiry Date</p><p className={preview.status === 'expired' ? 'text-rose-400' : preview.status === 'expiring_soon' ? 'text-amber-400' : 'text-white'}>{preview.expiry_date ? new Date(preview.expiry_date).toLocaleDateString('en-GB') : 'No expiry'}</p></div>
                 {preview.update_service && <div className="col-span-2 text-emerald-400 text-sm font-medium flex items-center gap-1"><Check className="w-3.5 h-3.5" />On DBS Update Service</div>}
                 {preview.notes && <div className="col-span-2"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-slate-300">{preview.notes}</p></div>}
               </div>
@@ -416,14 +416,14 @@ export default function DBSTracker() {
                 {preview.referee_position && <div><p className="text-xs text-slate-500">Position</p><p className="text-white">{preview.referee_position}</p></div>}
                 {preview.referee_company && <div><p className="text-xs text-slate-500">Company</p><p className="text-white">{preview.referee_company}</p></div>}
                 {preview.referee_email && <div><p className="text-xs text-slate-500">Email</p><p className="text-white">{preview.referee_email}</p></div>}
-                {preview.received_date && <div><p className="text-xs text-slate-500">Received</p><p className="text-white">{new Date(preview.received_date).toLocaleDateString()}</p></div>}
+                {preview.received_date && <div><p className="text-xs text-slate-500">Received</p><p className="text-white">{new Date(preview.received_date).toLocaleDateString('en-GB')}</p></div>}
               </div>
             )}
             {preview._type === 'rtw' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-xs text-slate-500">Document Type</p><p className="text-white">{preview.document_type}</p></div>
                 {preview.document_number && <div><p className="text-xs text-slate-500">Document No.</p><p className="text-white font-mono">{preview.document_number}</p></div>}
-                {preview.expiry_date && <div><p className="text-xs text-slate-500">Expiry</p><p className={preview.status === 'expired' ? 'text-rose-400' : 'text-white'}>{new Date(preview.expiry_date).toLocaleDateString()}</p></div>}
+                {preview.expiry_date && <div><p className="text-xs text-slate-500">Expiry</p><p className={preview.status === 'expired' ? 'text-rose-400' : 'text-white'}>{new Date(preview.expiry_date).toLocaleDateString('en-GB')}</p></div>}
               </div>
             )}
           </div>
