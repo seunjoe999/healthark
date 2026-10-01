@@ -30,6 +30,7 @@ export default function Holidays() {
   const [view, setView] = useState<'calendar' | 'list' | 'requests'>('calendar')
   const [preview, setPreview] = useState<any>(null)
   const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined' | 'cancelled'>('all')
+  const [requestStaffFilter, setRequestStaffFilter] = useState('')
   const [myBalance, setMyBalance] = useState<{ total: number; remaining: number } | null>(null)
   const [declineTarget, setDeclineTarget] = useState<any>(null)
   const [declineReason, setDeclineReason] = useState('')
@@ -198,7 +199,9 @@ export default function Holidays() {
       {view === 'requests' ? (
         loadingAll ? <Spinner /> : (
           <div className="space-y-4">
-            {/* Status dropdown filter */}
+            {/* Status + staff member dropdown filters — mirrors RoundSys's "pick an
+                individual, see all their leave requests" flow instead of scrolling
+                the combined list of everyone's requests. */}
             <div className="flex items-center gap-3">
               <select
                 className="input w-auto text-sm"
@@ -210,13 +213,21 @@ export default function Holidays() {
                 <option value="declined">Declined ({allDeclined.length})</option>
                 <option value="cancelled">Cancelled ({allCancelled.length})</option>
               </select>
+              <select
+                className="input w-auto text-sm"
+                value={requestStaffFilter}
+                onChange={e => setRequestStaffFilter(e.target.value)}>
+                <option value="">All staff</option>
+                {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+              </select>
             </div>
             {(() => {
+              const byStaff = (items: any[]) => requestStaffFilter ? items.filter(l => l.staff_id === requestStaffFilter) : items
               const sections = [
-                { status: 'pending', label: 'Pending', items: allPending, accent: 'border-amber-400', badge: 'badge-warning' },
-                { status: 'approved', label: 'Approved', items: allApproved, accent: 'border-emerald-400', badge: 'badge-success' },
-                { status: 'declined', label: 'Declined', items: allDeclined, accent: 'border-rose-400', badge: 'badge-critical' },
-                { status: 'cancelled', label: 'Cancelled', items: allCancelled, accent: 'border-slate-300', badge: 'badge-critical' },
+                { status: 'pending', label: 'Pending', items: byStaff(allPending), accent: 'border-amber-400', badge: 'badge-warning' },
+                { status: 'approved', label: 'Approved', items: byStaff(allApproved), accent: 'border-emerald-400', badge: 'badge-success' },
+                { status: 'declined', label: 'Declined', items: byStaff(allDeclined), accent: 'border-rose-400', badge: 'badge-critical' },
+                { status: 'cancelled', label: 'Cancelled', items: byStaff(allCancelled), accent: 'border-slate-300', badge: 'badge-critical' },
               ].filter(s => requestStatusFilter === 'all' || s.status === requestStatusFilter)
 
               if (sections.every(s => s.items.length === 0)) {

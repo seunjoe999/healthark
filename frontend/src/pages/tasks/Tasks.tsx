@@ -228,6 +228,7 @@ export default function Tasks() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [tasks, setTasks] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
+  const [templateSuFilter, setTemplateSuFilter] = useState('')
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [loading, setLoading] = useState(true)
@@ -620,8 +621,22 @@ export default function Tasks() {
             <EmptyState title="No templates" description="Templates let you auto-generate recurring tasks each day"
               action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add first template</Button> : undefined} />
           ) : (
+            <>
+              {/* Jump straight to one resident's templates instead of scrolling the
+                  full list — the master list can run to dozens of entries. */}
+              <div className="mb-4">
+                <select className="input w-auto" value={templateSuFilter} onChange={e => setTemplateSuFilter(e.target.value)}>
+                  <option value="">All service users</option>
+                  {sus.map((s: any) => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+                </select>
+              </div>
+              {(() => {
+                const filteredTemplates = templateSuFilter ? templates.filter((t: any) => t.su_id === templateSuFilter) : templates
+                return filteredTemplates.length === 0 ? (
+                  <EmptyState title="No templates for this resident" description="No task templates are linked to this service user" />
+                ) : (
             <div className="space-y-4">
-              {templates.map((tmpl: any) => (
+              {filteredTemplates.map((tmpl: any) => (
                 <div key={tmpl.id} className="bg-white rounded-2xl border border-slate-100 shadow-card p-5 flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm text-slate-900">{tmpl.title}</h3>
@@ -629,6 +644,7 @@ export default function Tasks() {
                       <span className={`badge text-xs ${priorityColor(tmpl.priority)}`}>{tmpl.priority}</span>
                       <span className={`text-xs px-2.5 py-1 rounded-full capitalize ${tmpl.category === 'follow_up' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{(tmpl.category || '').replace('_', ' ')}</span>
                       <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full capitalize">{(tmpl.frequency || '').replace('_', ' ')}</span>
+                      {tmpl.su_name && <span className="text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">{tmpl.su_name}</span>}
                     </div>
                     {tmpl.description && <p className="text-xs text-slate-700 font-medium mt-2 leading-relaxed">{tmpl.description}</p>}
                     <div className="flex items-center gap-4 mt-3 text-xs text-slate-600 font-semibold">
@@ -653,6 +669,9 @@ export default function Tasks() {
                 </div>
               ))}
             </div>
+                )
+              })()}
+            </>
           )}
         </>
       )}
@@ -668,11 +687,11 @@ export default function Tasks() {
       <AddFollowUpModal open={addFollowUpOpen} onClose={() => setAddFollowUpOpen(false)} homeId={selectedHome} staffList={staffList} teams={teams}
         onSaved={async () => { setAddFollowUpOpen(false); await load(); toast.success('Follow up scheduled') }} />
 
-      <AddTemplateModal open={addTemplateOpen} onClose={() => setAddTemplateOpen(false)} homeId={selectedHome} teams={teams}
+      <AddTemplateModal open={addTemplateOpen} onClose={() => setAddTemplateOpen(false)} homeId={selectedHome} teams={teams} sus={sus}
         onSaved={async () => { setAddTemplateOpen(false); await loadTemplates(); toast.success('Template added') }} />
 
       {editTemplateOpen && (
-        <EditTemplateModal template={editTemplateOpen} teams={teams} onClose={() => setEditTemplateOpen(null)}
+        <EditTemplateModal template={editTemplateOpen} teams={teams} sus={sus} onClose={() => setEditTemplateOpen(null)}
           onSaved={async () => { setEditTemplateOpen(null); await loadTemplates(); toast.success('Template updated') }} />
       )}
 
@@ -900,11 +919,12 @@ function OccurrenceTimesFields({ frequency, dueTimes, onChange }: { frequency: s
   )
 }
 
-function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boolean; onClose: () => void; homeId: string; teams: any[]; onSaved: () => void }) {
-  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; dueTimes: string[]; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', dueTimes: [], assignedRole: '', priority: 'normal', pictureUrl: '', visibleTeamIds: [] })
+function AddTemplateModal({ open, onClose, homeId, teams, sus, onSaved }: { open: boolean; onClose: () => void; homeId: string; teams: any[]; sus: any[]; onSaved: () => void }) {
+  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; dueTimes: string[]; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[]; suId: string }>({ title: '', category: 'general', description: '', frequency: 'daily', dueTime: '', dueTimes: [], assignedRole: '', priority: 'normal', pictureUrl: '', visibleTeamIds: [], suId: '' })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const isMultiDaily = !!OCCURRENCE_COUNT[form.frequency]
+  const suOptions = sus.map((s: any) => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -935,6 +955,8 @@ function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boo
         )}
         <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
         <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <Select label="Linked to resident (optional)" value={form.suId} onChange={e => set('suId', e.target.value)}
+          options={suOptions} placeholder="Not linked to a specific resident" />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Additional details..." /></div>
         <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
@@ -946,8 +968,8 @@ function AddTemplateModal({ open, onClose, homeId, teams, onSaved }: { open: boo
   )
 }
 
-function EditTemplateModal({ template, teams, onClose, onSaved }: { template: any; teams: any[]; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; dueTimes: string[]; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[] }>({
+function EditTemplateModal({ template, teams, sus, onClose, onSaved }: { template: any; teams: any[]; sus: any[]; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<{ title: string; category: string; description: string; frequency: string; dueTime: string; dueTimes: string[]; assignedRole: string; priority: string; pictureUrl: string; visibleTeamIds: string[]; suId: string }>({
     title: template.title || '',
     category: template.category || 'general',
     description: template.description || '',
@@ -958,10 +980,12 @@ function EditTemplateModal({ template, teams, onClose, onSaved }: { template: an
     priority: template.priority || 'normal',
     pictureUrl: template.picture_url || '',
     visibleTeamIds: template.visible_team_ids || [],
+    suId: template.su_id || '',
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const isMultiDaily = !!OCCURRENCE_COUNT[form.frequency]
+  const suOptions = sus.map((s: any) => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -992,6 +1016,8 @@ function EditTemplateModal({ template, teams, onClose, onSaved }: { template: an
         )}
         <TeamVisibilitySelect teams={teams} value={form.visibleTeamIds} onChange={ids => setForm(p => ({ ...p, visibleTeamIds: ids }))} />
         <Select label="Or restrict by role instead (optional)" value={form.assignedRole} onChange={e => set('assignedRole', e.target.value)} options={TEAMS} />
+        <Select label="Linked to resident (optional)" value={form.suId} onChange={e => set('suId', e.target.value)}
+          options={suOptions} placeholder="Not linked to a specific resident" />
         <div><label className="label">Description</label><textarea className="input" rows={2} value={form.description} onChange={e => set('description', e.target.value)} /></div>
         <PictureUploadField value={form.pictureUrl} onChange={url => set('pictureUrl', url)} />
         <div className="flex gap-3 justify-end pt-2">
