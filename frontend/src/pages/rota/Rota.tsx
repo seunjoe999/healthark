@@ -707,14 +707,14 @@ export default function Rota() {
                     </button>
                   </div>
                 )}
-                {/* Manager sees approve/reject: immediately for an "open" request (no
-                    specific target was picked, so there's nobody who could ever click
-                    Agree — waiting for that response would leave it stuck forever), or
-                    once a specific target has agreed. */}
-                {canManage && !swap.is_my_inbox && (swap.status === 'pending_manager' || (swap.status === 'pending' && !swap.target_staff_id)) && (
+                {/* Manager sees approve/reject any time the swap isn't already resolved —
+                    for an "open" request (no specific target picked), once a specific
+                    target has agreed, or even while still awaiting that target's response
+                    (a manager can force the swap through immediately without waiting). */}
+                {canManage && !swap.is_my_inbox && (swap.status === 'pending_manager' || swap.status === 'pending') && (
                   <div className="flex gap-1.5 ml-auto items-center">
                     <span className="text-emerald-600 font-semibold text-xs">
-                      {swap.status === 'pending_manager' ? 'Both agreed —' : 'Open request —'}
+                      {swap.status === 'pending_manager' ? 'Both agreed —' : (swap.target_staff_id ? 'Awaiting staff response —' : 'Open request —')}
                     </span>
                     <button
                       disabled={swapActing === swap.id}
@@ -729,9 +729,6 @@ export default function Rota() {
                       <X className="w-3 h-3" /> Reject
                     </button>
                   </div>
-                )}
-                {canManage && !swap.is_my_inbox && swap.status === 'pending' && !!swap.target_staff_id && (
-                  <span className="ml-auto text-slate-400 italic text-xs">Awaiting target staff response…</span>
                 )}
               </div>
             ))}
