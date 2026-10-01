@@ -17,9 +17,12 @@ function fromToken(req: Request, field: string): string {
 }
 
 router.use(authenticate);
-// Invoicing is financial data — restricted to admin/super_admin only, not the
-// broader home_manager/group_admin set that could see it before.
-router.use(requireRole('admin', 'super_admin'));
+// Invoicing is financial data — restricted to admin/group_admin only, not the
+// broader home_manager/deputy_manager set that could see it before.
+// Was gated to 'admin', 'super_admin' — 'super_admin' isn't a real StaffRole
+// value, so this silently locked out the owner's own account (role
+// group_admin), who could never actually reach the page despite owning it.
+router.use(requireRole('admin', 'group_admin'));
 
 // GET /api/invoicing?homeId=xxx&status=pending
 router.get('/', validateRequest,

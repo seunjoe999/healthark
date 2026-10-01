@@ -23,8 +23,11 @@ function fromToken(req: Request, field: string): string {
 // assessments and professional-involvement records are all safeguarding-adjacent
 // and must be as restricted as the main quality-records list, not readable by
 // any authenticated staff member just by knowing a resident's id.
+// Was open to team_leader too -- owner explicitly asked for Quality Assurance
+// to be management-only after finding a team_leader account could reach it
+// ("this is for management... we don't want them messing about with the system").
 const QUALITY_PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
-  'director', 'registered_manager', 'service_manager', 'team_leader'] as const;
+  'director', 'registered_manager', 'service_manager'] as const;
 
 // GET /api/quality — list QA records
 // Care staff (and other non-privileged roles) can ADD quality/clinical-monitoring
@@ -36,8 +39,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const type = req.query.type as string;
     const staffFilter = req.query.staffId as string;
     const role = fromToken(req, 'role');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
-      'director', 'registered_manager', 'service_manager', 'team_leader'].includes(role);
+    const isPrivileged = (QUALITY_PRIVILEGED_ROLES as readonly string[]).includes(role);
     if (!isPrivileged) {
       res.json({ success: true, data: [] } as ApiResponse);
       return;
