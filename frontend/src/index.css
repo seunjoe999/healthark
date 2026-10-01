@@ -406,7 +406,7 @@
    that permanent dark background) and forced the typed text to near-black,
    making it unreadable against the sidebar. Win back with a more specific
    selector regardless of theme. */
-.sidebar-search-input.text-white { color: #ffffff !important; }
+.sidebar-search-input { color: #ffffff !important; }
 
 /* The shared .card class (used almost everywhere) is itself hardcoded to a
    dark #111111 background in @layer components above — that's a permanent
