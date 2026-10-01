@@ -42,8 +42,12 @@ router.get('/medications/:suId', param('suId').isUUID(), validateRequest,
   }
 );
 
-// POST /api/mar/medications — add medication
-router.post('/medications', [body('suId').isUUID(), body('medicationName').notEmpty()], validateRequest,
+// POST /api/mar/medications — add medication. Team leaders keep every other
+// privileged MAR capability (Review / Medication Audit / Stock Count /
+// GP-Pharmacy) but should only administer medications already set up, not
+// add new ones to a resident's chart themselves.
+router.post('/medications', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  [body('suId').isUUID(), body('medicationName').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');

@@ -193,6 +193,10 @@ export default function MAR() {
   // this used to be a narrower 4-role list that also silently blocked Registered/Service Managers
   // and Directors from ever reaching the MAR Review tab.
   const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'team_leader')
+  // Team leaders keep the full privileged MAR view (Review / Medication Audit /
+  // Stock Count / GP-Pharmacy tabs) but should only administer medications that
+  // are already set up, not add new ones to a resident's chart themselves.
+  const canAddMedication = isPrivilegedMar && !isRole('team_leader')
   if (!isPrivilegedMar) {
     // A staff member granted MAR Review / Medication Audit / Mar Chart Audit
     // access (Settings → Access Rights) should land on an actual review/audit
@@ -276,7 +280,7 @@ export default function MAR() {
 
         <div className="ml-auto flex items-center gap-2">
           <Button size="sm" variant="outline" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => setPrintModal(true)}>Print</Button>
-          {selectedSu && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>}
+          {selectedSu && canAddMedication && <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>}
         </div>
       </div>
 
@@ -389,8 +393,8 @@ export default function MAR() {
             ) : tab === 'medications' ? (
               <div className="p-4 space-y-3">
                 {medications.length === 0 ? (
-                  <EmptyState title="No medications" description="Add medications for this resident"
-                    action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button>} />
+                  <EmptyState title="No medications" description={canAddMedication ? "Add medications for this resident" : "No medications have been set up for this resident yet"}
+                    action={canAddMedication ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddMedOpen(true)}>Add medication</Button> : undefined} />
                 ) : medications.map((med: any) => (
                   <div key={med.id} className={`rounded-xl border p-4 shadow-sm ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-purple-50 border-purple-200'}`}>
                     <div className="flex items-start justify-between gap-3">
