@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import { query } from '../config/database';
 import { ApiResponse } from '../types';
+import { AppError } from '../middleware/errorHandler';
 import jwt from 'jsonwebtoken';
 
 function parseAIJson(raw: string): any {
@@ -290,7 +291,15 @@ Return JSON only (no markdown):
     if ((areas.incidents?.unreviewed || 0) > 0) available_fixes.push('incidents_acknowledge');
 
     res.json({ success: true, data: { ...plan, available_fixes } } as ApiResponse);
-  } catch (err) { next(err); }
+  } catch (err: any) {
+    // A plain Error here got sanitised to a bare "Internal server error" in
+    // production (see errorHandler.ts — only AppError's message survives),
+    // which is why this always looked identical whether Groq was rate-limited,
+    // the key was missing, or the AI's response didn't parse as JSON. Surfacing
+    // the real reason so staff (and whoever's debugging this) can actually see
+    // what happened instead of a dead end every time.
+    next(err instanceof AppError ? err : new AppError(err?.message || 'Failed to generate improvement plan', 500));
+  }
 });
 
 // POST /api/compliance/execute-fix — run actual DB operations for auto-fixable compliance items
