@@ -137,8 +137,8 @@ function AppRoutes() {
   return (
     <React.Suspense fallback={
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0d1526' }}>
-        <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#e8b130', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        <video src="/logo-intro.mp4" autoPlay muted loop playsInline
+          style={{ width: 220, maxWidth: '60vw', borderRadius: 16 }} />
       </div>
     }>
       <Routes>
