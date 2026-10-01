@@ -6,6 +6,7 @@ import { ApiResponse } from '../types/index';
 import { ukDateStr } from '../utils/ukTime';
 import jwt from 'jsonwebtoken';
 import { isWithinAmendWindow } from '../utils/clockStatus';
+import { getAssignedSuIds, RESTRICTED_ROLES } from '../utils/residentAccess';
 
 const router = Router();
 router.use(authenticate);
@@ -92,7 +93,17 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     sql += ' ORDER BY ec.check_date DESC, ec.created_at DESC';
 
-    const rows = await query(sql, params);
+    let rows = await query<any>(sql, params);
+    // Resident-linked checks were visible to every staff member regardless of
+    // who they're assigned to work with — the owner specifically flagged
+    // seeing checks for residents/space outside their own allocation.
+    // Home-wide checks (su_id null) stay visible to everyone.
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    if (RESTRICTED_ROLES.includes(role) && staffId) {
+      const assignedSuIds = await getAssignedSuIds(staffId);
+      rows = rows.filter((c: any) => !c.su_id || assignedSuIds.includes(c.su_id));
+    }
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });

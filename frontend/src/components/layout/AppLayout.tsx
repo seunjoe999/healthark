@@ -31,6 +31,16 @@ const NOT_CARE_STAFF = [
   'auditor', 'recruitment_admin',
 ]
 
+// True office/management roles only -- excludes team_leader/senior_carer/
+// supervisor as well as care_staff. Owner explicitly asked for Teams and
+// Quality Assurance to be management-only after reviewing a team_leader
+// account and finding both visible there ("this is for management... we
+// don't want them messing about with the system").
+const MANAGEMENT_ONLY = [
+  'deputy_manager', 'home_manager', 'registered_manager', 'service_manager',
+  'admin', 'group_admin', 'director', 'auditor', 'recruitment_admin',
+]
+
 const navSections = [
   {
     label: 'DASHBOARD', highlight: true,
@@ -59,7 +69,6 @@ const navSections = [
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
       { label: 'Residents Health Check',             to: '/diary',               icon: BookOpen,      roles: [], featureKey: 'diary' },
       { label: 'Safeguarding',                      to: '/safeguarding',        icon: ShieldCheck,   roles: [], featureKey: 'safeguarding' },
-      { label: 'Service User Audit',                to: '/audits',              icon: Activity,      roles: [], featureKey: 'audits' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
       { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
       { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
@@ -87,7 +96,7 @@ const navSections = [
       { label: 'Staff Assessment',       to: '/assessments?tab=staff', icon: FileCheck,     roles: [], featureKey: 'staff_assessment' },
       { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
       { label: 'Staff Profile',          to: '/staff',                 icon: UserSquare,    roles: [], featureKey: 'staff' },
-      { label: 'Teams',                  to: '/settings/teams',        icon: Users2,        roles: NOT_CARE_STAFF, featureKey: 'teams' },
+      { label: 'Teams',                  to: '/settings/teams',        icon: Users2,        roles: MANAGEMENT_ONLY, featureKey: 'teams' },
     ]
   },
   {
@@ -97,17 +106,18 @@ const navSections = [
     ]
   },
   {
-    // Quality Assurance is not for care_staff at all — everything below is
-    // scoped to senior_carer and up, so plain frontline staff never see this
-    // section (they get their own view of complaints etc. elsewhere if needed).
+    // Quality Assurance is management-only, not even team leaders/senior
+    // carers — owner explicitly asked for this after finding it visible on a
+    // team_leader account ("staff should not have access to quality
+    // assurance at all").
     label: 'QUALITY ASSURANCE', highlight: true,
     items: [
-      { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: NOT_CARE_STAFF, featureKey: 'audit_trail' },
-      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: NOT_CARE_STAFF, featureKey: 'audits' },
-      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: NOT_CARE_STAFF, featureKey: 'complaints' },
-      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: NOT_CARE_STAFF, featureKey: 'compliance' },
-      { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: NOT_CARE_STAFF, featureKey: 'cqc_notifications' },
-      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: NOT_CARE_STAFF, featureKey: 'reports' },
+      { label: 'Audit Trail',              to: '/audit-trail',       icon: History,     roles: MANAGEMENT_ONLY, featureKey: 'audit_trail' },
+      { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: MANAGEMENT_ONLY, featureKey: 'audits' },
+      { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: MANAGEMENT_ONLY, featureKey: 'complaints' },
+      { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: MANAGEMENT_ONLY, featureKey: 'compliance' },
+      { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: MANAGEMENT_ONLY, featureKey: 'cqc_notifications' },
+      { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: MANAGEMENT_ONLY, featureKey: 'reports' },
     ]
   },
   {
@@ -135,7 +145,7 @@ const navSections = [
       { label: 'Management Meeting', to: '/management-meeting', icon: Users2,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'management_meeting' },
       { label: 'Meeting Tracker',    to: '/meeting-tracker',   icon: CalendarClock, roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'], featureKey: 'meeting_tracker' },
       { label: 'Notifications',      to: '/notifications',     icon: Send,          roles: NOT_CARE_STAFF, featureKey: 'notifications' },
-      { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: [], featureKey: 'ppe' },
+      { label: 'PPE Stock',          to: '/ppe',               icon: Package,       roles: NOT_CARE_STAFF, featureKey: 'ppe' },
       { label: 'Rota',               to: '/rota',              icon: CalendarRange, roles: [], featureKey: 'rota' },
       { label: 'Tasks',              to: '/tasks',             icon: CheckSquare,   roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'tasks' },
       { label: 'Team Meeting',       to: '/team-meeting',      icon: Users,         roles: [], featureKey: 'team_meeting' },

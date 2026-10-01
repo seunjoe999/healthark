@@ -2933,7 +2933,13 @@ async function ensureColumns() {
     `ALTER TABLE must_scores ADD COLUMN IF NOT EXISTS notes TEXT`,
     // ── quality_records — columns used by quality.routes.ts ──────────────────────
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS su_id UUID REFERENCES service_users(id) ON DELETE SET NULL`,
-    `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS summary VARCHAR(500)`,
+    // Was VARCHAR(500) -- staff write multi-paragraph incident narratives in
+    // "You said"/"We did"/"Lessons Learnt", and anything over 500 chars hit a
+    // hard "value too long for type character varying(500)" DB error on save
+    // (confirmed from a screenshot of the exact error). Widened to TEXT to
+    // match every other narrative field on this table (detail, action_taken,
+    // lessons_learnt, updates_text are all already TEXT, uncapped).
+    `ALTER TABLE quality_records ALTER COLUMN summary TYPE TEXT`,
     `ALTER TABLE quality_records ADD COLUMN IF NOT EXISTS detail TEXT`,
     // ── tasks — one-off and generated daily tasks (tasks.routes.ts) ──────────────
     `CREATE TABLE IF NOT EXISTS tasks (

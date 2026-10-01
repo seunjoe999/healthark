@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
+import { getAssignedSuIds, RESTRICTED_ROLES } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -63,8 +64,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
         myTeamId = staffRows[0]?.team_id || null;
       }
+      // Resident-linked events (appointments, reviews, inspections) were visible
+      // to every non-privileged staff member regardless of resident, no matter
+      // who they're actually assigned to work with -- a real data-privacy gap,
+      // same assignment lookup used everywhere else resident data is scoped.
+      const assignedSuIds = RESTRICTED_ROLES.includes(role) && staffId ? await getAssignedSuIds(staffId) : null;
       rows = rows.filter(ev => {
-        if (ev.su_id) return true; // resident-linked events aren't staff-scoped
+        if (ev.su_id) return assignedSuIds ? assignedSuIds.includes(ev.su_id) : true;
         if (ev.created_by === staffId) return true;
         if (ev.assigned_staff_id) return ev.assigned_staff_id === staffId;
         const hasTeamTarget = !!(ev.visible_team_ids && ev.visible_team_ids.length > 0);

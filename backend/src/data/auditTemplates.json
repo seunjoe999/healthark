@@ -1862,7 +1862,8 @@
       },
       {
         "text": "Are there any gaps on the countdown sheet? If so what date is missing and action taken?",
-        "type": "yes_no"
+        "type": "yes_no",
+        "invertedScore": true
       },
       {
         "text": "Does the list of current stock medications accurately reflect the list of medications on the Care Plan and MAR?",
@@ -1874,7 +1875,8 @@
       },
       {
         "text": "Are there any mistakes/counting errors on the count down sheet and if so why?",
-        "type": "yes_no"
+        "type": "yes_no",
+        "invertedScore": true
       },
       {
         "text": "Does the number of tablets left match the balance expected? If not please report this immediately.",

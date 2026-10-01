@@ -727,7 +727,7 @@ function AuditChecklist({ audit, templates }: { audit: any; templates: any[] }) 
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'service_manager', 'admin')
 
   const template = templates.find(t => t.suggestedKey === audit.audit_type)
-  const questions: { text: string; type: string }[] = template?.questions?.length
+  const questions: { text: string; type: string; invertedScore?: boolean }[] = template?.questions?.length
     ? template.questions
     : CHECKLIST_QUESTIONS.map(text => ({ text, type: 'yes_no' }))
 
@@ -756,9 +756,15 @@ function AuditChecklist({ audit, templates }: { audit: any; templates: any[] }) 
 
   useEffect(() => { if (audit.id) loadSignOffs() }, [audit.id])
 
-  const yesNoAnswers = Object.values(answers).filter(v => v === 'yes' || v === 'no')
-  const yesCount = yesNoAnswers.filter(v => v === 'yes').length
-  const totalScore = yesNoAnswers.length > 0 ? Math.round((yesCount / yesNoAnswers.length) * 100) : null
+  // Some questions are phrased so "No" is the compliant answer (e.g. "Are there
+  // any gaps on the countdown sheet?") — flip pass/fail for those so the live
+  // preview matches the backend's recompute on save.
+  const yesNoEntries = Object.entries(answers).filter(([, v]) => v === 'yes' || v === 'no')
+  const passCount = yesNoEntries.filter(([i, v]) => {
+    const inverted = !!questions[Number(i)]?.invertedScore
+    return inverted ? v === 'no' : v === 'yes'
+  }).length
+  const totalScore = yesNoEntries.length > 0 ? Math.round((passCount / yesNoEntries.length) * 100) : null
 
   const save = async () => {
     setSaving(true)

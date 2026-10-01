@@ -963,20 +963,17 @@ function AddTrainingModal({ open, onClose, staffId, onSaved }: { open: boolean; 
   )
 }
 
-// Weekdays (Mon–Fri) in an inclusive range — matches the fallback the
-// backend uses at approval time, so the total shown here is the total
-// that actually gets deducted from the entitlement.
-function countLeaveWeekdays(startDate: string, endDate: string): number {
+// All calendar days (inclusive) in a range — matches the backend's approval-
+// time fallback, which counts every day including weekends (care staff work
+// rotating shifts, including weekends, so a Mon-Fri-only count made a
+// weekend-only leave request compute to 0 hours and silently block the save
+// client-side before it ever reached the backend).
+function countLeaveDays(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 0
   const start = new Date(startDate)
   const end = new Date(endDate)
   if (end < start) return 0
-  let count = 0
-  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dow = d.getDay()
-    if (dow !== 0 && dow !== 6) count++
-  }
-  return count
+  return Math.round((end.getTime() - start.getTime()) / 86400000) + 1
 }
 
 function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
@@ -992,7 +989,7 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
     return d.toISOString().split('T')[0]
   }, [])
 
-  const dayCount = countLeaveWeekdays(form.startDate, form.endDate)
+  const dayCount = countLeaveDays(form.startDate, form.endDate)
   const hoursPerDayNum = parseFloat(form.hoursPerDay) || 0
   const totalHours = dayCount * hoursPerDayNum
 
@@ -1001,7 +998,7 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
     if (!isLeaveManager && form.leaveType === 'annual' && form.startDate < minAnnualDate) {
       toast.error('Annual leave must be requested at least 4 weeks in advance'); return
     }
-    if (!totalHours) { toast.error('Enter hours per day for a date range that includes at least one weekday'); return }
+    if (!totalHours) { toast.error('Enter hours per day for this leave'); return }
     setLoading(true)
     try {
       await api.post(`/staff-hr/leave`, {
@@ -1028,7 +1025,7 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
           hint="e.g. 11 — multiplied automatically by the number of weekdays in the range" />
         {form.startDate && form.endDate && (
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
-            {dayCount} weekday{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong>
+            {dayCount} day{dayCount !== 1 ? 's' : ''} × {hoursPerDayNum || 0}h = <strong>{totalHours}h total</strong>
           </div>
         )}
         <div><label className="label">Notes / reason</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="e.g. Flu symptoms, hospital appointment..." /></div>

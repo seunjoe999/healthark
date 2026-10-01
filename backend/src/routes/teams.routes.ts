@@ -14,8 +14,12 @@ router.use(authenticate);
 // Rights, but write actions (create/edit team, move members) were still hard-limited to the
 // original 4 manager roles here, so anyone else granted access could see the page but get a
 // confusing 403 the moment they tried to actually do anything with it.
+// Was open to senior_carer/team_leader/supervisor too -- owner explicitly
+// asked for team creation/management to be management-only after finding a
+// team_leader account could create teams ("can you imagine, the team
+// leaders? ... we don't want them messing about with the system").
 const MANAGE_ROLES: StaffRole[] = [
-  'senior_carer', 'team_leader', 'supervisor', 'deputy_manager', 'home_manager',
+  'deputy_manager', 'home_manager',
   'registered_manager', 'service_manager', 'admin', 'group_admin', 'director',
   'auditor', 'recruitment_admin',
 ];

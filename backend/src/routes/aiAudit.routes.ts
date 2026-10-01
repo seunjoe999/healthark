@@ -12,7 +12,7 @@ import { ukDateStr } from '../utils/ukTime';
 type AuditTemplate = {
   sourceFile: string; category: string; title: string; suggestedKey: string;
   fields: { label: string; type: string }[];
-  questions: { text: string; type: string }[];
+  questions: { text: string; type: string; invertedScore?: boolean }[];
   hasActionPlan: boolean; hasSignature: boolean; hasScore: boolean;
 };
 const AUDIT_TEMPLATES = auditTemplates as AuditTemplate[];
@@ -284,9 +284,21 @@ router.patch('/:id/checklist', param('id').isUUID(), validateRequest,
       let checksPassed: number | undefined;
       let checksFailed: number | undefined;
       if (checklistAnswers && typeof checklistAnswers === 'object') {
-        const values = (Object.values(checklistAnswers) as string[]).filter(v => v === 'yes' || v === 'no');
-        totalChecks = values.length;
-        checksPassed = values.filter(v => v === 'yes').length;
+        // Some questions are phrased so "No" is the compliant answer (e.g. "Are
+        // there any gaps on the countdown sheet?") — blindly counting 'yes' as
+        // pass for every question inverted the score on those (confirmed via a
+        // staff screenshot: answering "No" correctly still dropped the score).
+        // Look up the audit's template so inverted questions flip pass/fail,
+        // keyed by the same numeric index the frontend saves answers under.
+        const auditTypeRows = await query<any>('SELECT audit_type FROM audit_reports WHERE id = $1', [req.params.id]);
+        const template = auditTypeRows.length ? AUDIT_TEMPLATE_MAP.get(auditTypeRows[0].audit_type) : undefined;
+        const entries = Object.entries(checklistAnswers as Record<string, string>)
+          .filter(([, v]) => v === 'yes' || v === 'no');
+        totalChecks = entries.length;
+        checksPassed = entries.filter(([i, v]) => {
+          const inverted = !!template?.questions[Number(i)]?.invertedScore;
+          return inverted ? v === 'no' : v === 'yes';
+        }).length;
         checksFailed = totalChecks - checksPassed;
       }
 
@@ -778,6 +790,13 @@ British English. Max 400 words total.`
     const questionTexts = template && template.questions.length
       ? template.questions.map(q => q.text)
       : GENERIC_QUESTIONS
+    // A few questions are phrased so "No" is the compliant answer (e.g. "Are
+    // there any gaps on the countdown sheet?") — the safe-default and pass-count
+    // logic below must flip for these or an unclear/missing AI answer silently
+    // marks a real problem as compliant.
+    const invertedFlags = template && template.questions.length
+      ? template.questions.map(q => !!q.invertedScore)
+      : GENERIC_QUESTIONS.map(() => false)
     const questionLabel = template?.title || auditLabel
 
     let checklistAnswers: Record<number, string> = {}
@@ -807,10 +826,13 @@ Reply with ONLY a JSON array, one object per question in order, using this exact
       console.error('AI checklist pre-fill failed, using safe default answers:', checklistErr?.message)
     }
     // Guarantee every question has an answer even if the AI call failed or
-    // returned a partial/malformed response — default to compliant.
+    // returned a partial/malformed response — default to compliant (flipped
+    // for inverted questions, where "no" is the compliant literal answer).
     for (let i = 0; i < questionTexts.length; i++) {
-      if (checklistAnswers[i] !== 'yes' && checklistAnswers[i] !== 'no') checklistAnswers[i] = 'yes'
-      if (checklistAnswers[i] === 'yes') checklistPassed++
+      const inverted = invertedFlags[i];
+      if (checklistAnswers[i] !== 'yes' && checklistAnswers[i] !== 'no') checklistAnswers[i] = inverted ? 'no' : 'yes'
+      const passed = inverted ? checklistAnswers[i] === 'no' : checklistAnswers[i] === 'yes'
+      if (passed) checklistPassed++
     }
 
     const finalTotal = checklistTotal
