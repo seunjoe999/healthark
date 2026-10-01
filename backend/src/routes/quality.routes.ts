@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 
@@ -75,7 +76,13 @@ router.post('/', [body('recordType').notEmpty()], validateRequest,
          status || 'open', nd(entryDate)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
-    } catch (err) { next(err); }
+    } catch (err: any) {
+      // Couldn't reproduce a failure testing this save path end-to-end, but a
+      // plain DB/driver error here would otherwise get sanitized to a generic
+      // "Internal server error" in production -- surfacing the real message
+      // makes the next occurrence (if any) actually diagnosable.
+      next(err instanceof AppError ? err : new AppError(err?.message || 'Failed to save complaint/compliment record', 500));
+    }
   }
 );
 
