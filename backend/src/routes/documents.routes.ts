@@ -115,7 +115,11 @@ router.get('/staff/:staffId', param('staffId').isUUID(), validateRequest,
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
       const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
-      if (!isPrivileged && req.params.staffId !== myStaffId) {
+      // Team leaders are blocked from Certificates & Documents entirely —
+      // including their own — not just other staff's, per the owner's
+      // explicit request. Everyone else below management can still view
+      // their own.
+      if (role === 'team_leader' || (!isPrivileged && req.params.staffId !== myStaffId)) {
         throw new AppError('Forbidden', 403);
       }
       const rows = await query(

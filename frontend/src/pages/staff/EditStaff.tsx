@@ -185,10 +185,11 @@ export default function EditStaff() {
   }
 
   useEffect(() => {
-    // Care staff's own profile is read-only everywhere — the profile page
-    // itself hides the edit link, but this guards direct navigation to the
-    // edit URL too. The backend enforces the same rule independently.
-    if (isOwnProfile && isRole('care_staff')) {
+    // Care staff and team leaders' own profiles are read-only everywhere —
+    // the profile page itself hides the edit link, but this guards direct
+    // navigation to the edit URL too. The backend enforces the same rule
+    // independently.
+    if (isOwnProfile && isRole('care_staff', 'team_leader')) {
       toast.error('Your profile can only be edited by a manager')
       navigate('/staff', { replace: true })
       return
