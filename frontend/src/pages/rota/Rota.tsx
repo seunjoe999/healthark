@@ -4,8 +4,9 @@ import { homesApi, staffApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns'
 import { Button, Modal, Input, Select } from '../../components/ui'
+import clsx from 'clsx'
 import {
-  Plus, ChevronLeft, ChevronRight, Trash2,
+  Plus, ChevronLeft, ChevronRight, ChevronDown, Trash2,
   Filter, RefreshCw, X, Check, Search,
   Printer, CalendarX, ArrowLeftRight,
   Brain, UserX, UserMinus, AlertTriangle, CheckCircle, Phone, Users, MapPin, Calendar, Pencil,
@@ -610,11 +611,8 @@ export default function Rota() {
           <option value="">All Service Users</option>
           {suList.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
         </select>
-        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
-          value={filterStaff} onChange={e => { setFilterStaff(e.target.value); setFilterLabel('') }}>
-          <option value="">All Staff</option>
-          {staffList.map(s => <option key={s.id} value={s.id}>{getName(s)}</option>)}
-        </select>
+        <StaffFilterCombobox staffList={staffList} value={filterStaff}
+          onChange={id => { setFilterStaff(id); setFilterLabel('') }} />
         {canManage && serviceLabels.length > 0 && (
           <button onClick={() => setManageServicesOpen(true)}
             className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
@@ -2252,6 +2250,70 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         </div>
       </div>
     </Modal>
+  )
+}
+
+// ── Staff Filter Combobox ──────────────────────────────────────────────────────
+// A searchable, scrollable replacement for the toolbar "All Staff" plain <select>.
+// Staff homes can have 60+ people in the list, which is awkward to hunt through
+// on a native mobile select popup — this lets staff type a few letters of their
+// own name to find themselves instead of scrolling a long unfiltered list.
+
+function StaffFilterCombobox({ staffList, value, onChange }: {
+  staffList: any[]; value: string; onChange: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  const selected = staffList.find(s => s.id === value)
+  const filtered = staffList.filter(s => getName(s).toLowerCase().includes(search.toLowerCase()))
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white flex items-center gap-1.5 max-w-[160px]">
+        <span className="truncate">{selected ? getName(selected) : 'All Staff'}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="relative p-2 border-b border-slate-100">
+            <Search className="absolute left-4.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input autoFocus className="input pl-8 text-sm" placeholder="Search staff..."
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            <button type="button" onClick={() => { onChange(''); setOpen(false); setSearch('') }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-50 font-medium text-slate-600">
+              All Staff
+            </button>
+            {filtered.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">No staff found</p>
+            ) : (
+              filtered.map((s: any) => (
+                <button key={s.id} type="button" onClick={() => { onChange(s.id); setOpen(false); setSearch('') }}
+                  className={clsx(
+                    'w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-50 last:border-0',
+                    s.id === value ? 'font-semibold text-slate-900 bg-slate-50' : 'text-slate-700',
+                  )}>
+                  {getName(s)}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
