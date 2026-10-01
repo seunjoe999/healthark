@@ -424,6 +424,12 @@
 }
 .app-shell:not(.theme-dark) .card .text-white { color: #0f172a !important; }
 .app-shell:not(.theme-dark) .card .text-slate-100 { color: #1e293b !important; }
+/* text-slate-200 was the one gap between slate-100 and slate-300 above --
+   on light mode's white card background it rendered almost invisible,
+   which is what made the actual complaint/compliment text unreadable once
+   a record was expanded (Complaints & Compliments uses it for the body of
+   every field — "You said", "We did", etc.). */
+.app-shell:not(.theme-dark) .card .text-slate-200 { color: #334155 !important; }
 .app-shell:not(.theme-dark) .card .text-slate-300 { color: #475569 !important; }
 /* text-slate-400 (#94a3b8) was tuned for the dark #111111 card and fails
    contrast against the white light-theme card — e.g. the resident profile's

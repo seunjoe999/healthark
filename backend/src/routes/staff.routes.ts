@@ -498,7 +498,9 @@ router.put(
           role = COALESCE($21, role),
           email = COALESCE($23, email),
           ni_number = COALESCE($24, ni_number),
-          feature_flags = CASE WHEN $25 THEN '{}'::jsonb ELSE feature_flags END
+          feature_flags = CASE WHEN $25 THEN '{}'::jsonb ELSE feature_flags END,
+          start_date = COALESCE($26, start_date),
+          contracted_hours = COALESCE($27, contracted_hours)
          WHERE id = $22
          RETURNING id, first_name, last_name, email, role, status, is_active, home_id`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
@@ -513,7 +515,16 @@ router.put(
          targetId,
          email || null,
          niNumber || null,
-         clearFeatureFlags]
+         clearFeatureFlags,
+         // These were previously only ever written inside the leave-hours
+         // recompute block below, gated on leaveHoursTotal/leaveHoursRemaining
+         // being absent from the request -- but EditStaff.tsx's form always
+         // initialises and sends leaveHoursTotal (defaulting to 224), so that
+         // gate was never actually open on a real save and these two fields
+         // silently never persisted, for anyone, ever. Write them here
+         // unconditionally (when a manager provided them) instead.
+         canManage ? nd(startDate) : null,
+         canManage && contractedHours !== undefined ? (contractedHours === '' ? null : contractedHours) : null]
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);

@@ -137,10 +137,15 @@ router.post('/cautions', [body('staffId').isUUID(), body('overview').notEmpty()]
       const { staffId, cautionType, overview, outcome, strengths, weaknesses, actionPoints, reviewDate,
               cautionDate, documentUrl, documentName } = req.body;
       const rows = await query(
-        `INSERT INTO staff_cautions (staff_id, home_id, created_by, caution_type, caution_date, overview,
+        // issued_by is the table's original NOT NULL column (no default) from
+        // before created_by existed -- the INSERT never populated it, so every
+        // save hit a not-null constraint violation ("Internal server error"
+        // with no useful detail reaching the client). Set it to the same
+        // value as created_by rather than touching the schema.
+        `INSERT INTO staff_cautions (staff_id, home_id, created_by, issued_by, caution_type, caution_date, overview,
           outcome, strengths, weaknesses, action_points, review_date, document_url, document_name)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-        [staffId, homeId, createdBy, cautionType || 'verbal', nd(cautionDate) || ukDateStr(), overview,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+        [staffId, homeId, createdBy, createdBy, cautionType || 'verbal', nd(cautionDate) || ukDateStr(), overview,
          outcome || null, strengths || null, weaknesses || null, actionPoints || null, nd(reviewDate),
          documentUrl || null, documentName || null]
       );
