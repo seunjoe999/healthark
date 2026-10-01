@@ -35,7 +35,15 @@
 
   input, select, textarea, button { font-family: inherit; }
 
-  /* Force dark background on all native selects not using .input class */
+  /* Force dark background on all native selects not using .input class.
+     Written before per-page light/dark theming existed, so it had no notion
+     of "light mode" — a page rendering a select in light mode with its own
+     Tailwind text colour (e.g. text-slate-900) got silently overridden by
+     this rule's higher specificity (select:not(.input) beats a plain class
+     selector), rendering the pale dark-mode text on a white background and
+     making the field look invisible/broken (confirmed on Staff Absence's
+     Record Absence form). Still the correct default for public pages
+     (login/landing), which stay dark regardless of the in-app theme toggle. */
   select:not(.input) {
     background: #1a1a1a;
     color: #f5f0e8;
@@ -45,6 +53,15 @@
   select:not(.input) option {
     background: #1a1a1a;
     color: #f5f0e8;
+  }
+  .app-shell:not(.theme-dark) select:not(.input) {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid rgba(15,23,42,0.12);
+  }
+  .app-shell:not(.theme-dark) select:not(.input) option {
+    background: #ffffff;
+    color: #0f172a;
   }
 
   /* Custom scrollbar */
