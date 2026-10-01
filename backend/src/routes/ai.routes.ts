@@ -34,10 +34,11 @@ async function callAI(prompt: string, maxTokens = 900): Promise<string> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: maxTokens,
         temperature: 0.3,
+        reasoning_effort: 'low',
       }),
     });
 

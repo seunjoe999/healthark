@@ -442,13 +442,14 @@ router.get('/incident-analysis', async (req: Request, res: Response, next: NextF
       method: 'POST',
       headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'openai/gpt-oss-20b',
         messages: [
           { role: 'system', content: 'You are a care home quality assurance manager. Analyse incident reports and provide actionable insights. Be concise, professional, and focus on patterns, risk factors, and recommendations. Format your response with clear sections: Summary, Key Patterns, Risk Factors, and Recommendations.' },
           { role: 'user', content: `Analyse these ${rows.length} incidents from ${fromDate} to ${toDate}:\n\n${summary}\n\nProvide a professional analysis with actionable recommendations for care quality improvement.` }
         ],
-        max_tokens: 1000,
-        temperature: 0.3
+        max_tokens: 1500,
+        temperature: 0.3,
+        reasoning_effort: 'low'
       })
     });
 

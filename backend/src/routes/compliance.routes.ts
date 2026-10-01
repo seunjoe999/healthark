@@ -261,7 +261,7 @@ Return JSON only (no markdown):
         const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 600, temperature: 0.3 }),
+          body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{ role: 'user', content: prompt }], max_tokens: 1200, temperature: 0.3, reasoning_effort: 'low' }),
         }) as any;
         if (r.status === 429) {
           const retryAfter = parseFloat(r.headers?.get?.('retry-after') || '12');
