@@ -2806,6 +2806,15 @@ async function ensureColumns() {
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS incident_time        TIME`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS contributing_factors TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS prevention_actions   TEXT`,
+    // witnessed_by: the frontend already collects this (witnessedBy) but the API
+    // folded it into the free-text `witnesses` column, losing the structured
+    // "was this witnessed at all" signal the Incident Analysis breakdown needs.
+    // manager_informed / physical_intervention: needed for the CQC-style Incident
+    // Analysis breakdown (callout types, physical intervention tally) — neither
+    // existed on this table or the create form before.
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS witnessed_by          TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_informed      BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS physical_intervention BOOLEAN NOT NULL DEFAULT FALSE`,
     // ── su_medications — pharmacy, GP, codes, location, warning ──────────────
     // `instructions` is referenced by mar.routes.ts (INSERT into su_medications and
     // COALESCE(m.instructions, m.notes) in the MAR chart query). Without it the

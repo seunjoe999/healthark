@@ -51,7 +51,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       SELECT
         ri.id, ri.daily_record_id, ri.incident_type, ri.location, ri.description,
         ri.injuries, ri.injury_details, ri.medical_needed, ri.medical_details,
-        ri.witnesses, ri.immediate_action, ri.cqc_notified, ri.family_notified,
+        ri.witnesses, ri.witnessed_by, ri.immediate_action, ri.cqc_notified, ri.family_notified,
+        ri.manager_informed, ri.physical_intervention, ri.contributing_factors, ri.incident_time,
         ri.manager_reviewed, ri.manager_reviewed_at,
         ri.emotion, ri.review_notes, ri.signature, ri.updated_at,
         dr.id as daily_record_id,
@@ -207,8 +208,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = fromToken(req, 'staffId');
     const homeId = req.body.homeId || fromToken(req, 'homeId');
-    const { suId, incidentType, description, location, incidentDate, injuries, injuryDetails,
-            immediateAction, witnesses, medicalNeeded, medicalDetails, cqcNotified, familyNotified } = req.body;
+    const { suId, incidentType, description, location, incidentDate, incidentTime, injuries, injuryDetails,
+            immediateAction, witnesses, witnessedBy, medicalNeeded, medicalDetails, cqcNotified, familyNotified,
+            managerInformed, physicalIntervention, contributingFactors } = req.body;
     if (!suId) throw new AppError('suId required', 400);
     if (!homeId) throw new AppError('homeId required', 400);
     if (!staffId) throw new AppError('staffId not found in token', 401);
@@ -219,14 +221,24 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       [suId, homeId, staffId, recordDate, description || '']
     );
     const drId = (drRow[0] as any).id;
+    // incident_time is TIMESTAMPTZ (not a bare TIME) — incidentTime arrives as
+    // "HH:MM" (a free time input, not tied to today's date), so it has to be
+    // combined with the incident's own record date to build a real timestamp.
+    // This was previously accepted by the frontend payload but silently dropped
+    // here, since the column's own DEFAULT NOW() masked the gap on every insert.
+    const incidentTimestamp = /^\d{2}:\d{2}$/.test(incidentTime || '') ? `${recordDate}T${incidentTime}:00` : null;
     const incRow = await query(
       `INSERT INTO records_incidents (daily_record_id, incident_type, location, description,
-         injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action,
-         cqc_notified, family_notified)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+         injuries, injury_details, medical_needed, medical_details, witnesses, witnessed_by, immediate_action,
+         cqc_notified, family_notified, manager_informed, physical_intervention, contributing_factors,
+         incident_time)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,COALESCE($17::timestamptz, NOW()))
+       RETURNING *`,
       [drId, incidentType || 'other', location || null, description || '',
        injuries || false, injuryDetails || null, medicalNeeded || false, medicalDetails || null,
-       witnesses || null, immediateAction || '', cqcNotified || false, familyNotified || false]
+       witnesses || null, witnessedBy || null, immediateAction || '', cqcNotified || false, familyNotified || false,
+       managerInformed || false, physicalIntervention || false, contributingFactors || null,
+       incidentTimestamp]
     );
     // Notify relevant staff about the new incident (non-fatal)
     try {

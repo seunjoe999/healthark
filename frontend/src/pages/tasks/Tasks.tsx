@@ -477,7 +477,7 @@ export default function Tasks() {
           Tasks
         </button>
         <button onClick={() => setPageTab('templates')}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'templates' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'templates' ? 'bg-purple-600 text-white shadow-sm' : 'bg-white text-slate-500 hover:text-slate-700 shadow-sm'}`}>
           <LayoutTemplate className="w-3.5 h-3.5" /> Templates
         </button>
       </div>

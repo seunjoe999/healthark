@@ -391,6 +391,8 @@ const BLANK_INC = {
   reportedToSeniorMinute: nowMinute(),
   equipmentInvolved: 'No',
   nokInformed: 'No',
+  managerInformed: 'No',
+  physicalIntervention: 'No',
   gpAmbulanceCalled: '',
   notes: '',
   emotion: '',
@@ -554,6 +556,43 @@ function BarChart({ data, colorClass = 'fill-orange-500', height = 80 }: {
   )
 }
 
+// ── Inline SVG donut/pie chart — stroke-dasharray segments on a ring ───
+function PieChart({ data, colors }: { data: { label: string; value: number }[]; colors: string[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0)
+  const radius = 40
+  const circumference = 2 * Math.PI * radius
+  let offset = 0
+  return (
+    <div className="flex items-center gap-5 flex-wrap">
+      <svg viewBox="0 0 100 100" className="w-28 h-28 flex-shrink-0 -rotate-90">
+        {total === 0 ? (
+          <circle cx="50" cy="50" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="16" />
+        ) : data.map((d, i) => {
+          const frac = d.value / total
+          const dash = frac * circumference
+          const seg = (
+            <circle key={i} cx="50" cy="50" r={radius} fill="none" stroke={colors[i % colors.length]}
+              strokeWidth="16" strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={-offset} />
+          )
+          offset += dash
+          return seg
+        })}
+      </svg>
+      <div className="space-y-1.5">
+        {data.map((d, i) => (
+          <div key={d.label} className="flex items-center gap-2 text-xs">
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: colors[i % colors.length] }} />
+            <span className="text-slate-600">{d.label}</span>
+            <span className="font-bold text-slate-800">{d.value}</span>
+          </div>
+        ))}
+        {total === 0 && <p className="text-xs text-slate-400">No callouts in this period</p>}
+      </div>
+    </div>
+  )
+}
+
 function HorizontalBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   const pct = max > 0 ? (value / max) * 100 : 0
   return (
@@ -603,6 +642,23 @@ function IncidentAnalyticsPanel({ incidents, analytics, startDate, endDate }: {
     Critical: '#b91c1c', High: '#ea580c', Medium: '#d97706', Low: '#16a34a'
   }
 
+  const yearData = Object.keys(analytics.byYear).sort().map(y => ({ label: y, value: analytics.byYear[y] }))
+
+  const locationEntries = Object.entries(analytics.byLocation as Record<string, number>)
+    .sort((a, b) => b[1] - a[1])
+  const maxLocation = Math.max(...locationEntries.map(e => e[1]), 1)
+
+  const staffEntries = Object.entries(analytics.byStaff as Record<string, number>)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+  const maxStaff = Math.max(...staffEntries.map(e => e[1]), 1)
+
+  const calloutData = Object.entries(analytics.callout as Record<string, number>)
+    .map(([label, value]) => ({ label, value }))
+  const calloutColors = ['#dc2626', '#f97316', '#2563eb', '#8b5cf6']
+
+  const specifics = analytics.specifics as { fallsSlips: number; witnessed: number; injuries: number; physicalIntervention: number }
+
   return (
     <div className="space-y-4">
       {/* Summary */}
@@ -613,6 +669,42 @@ function IncidentAnalyticsPanel({ incidents, analytics, startDate, endDate }: {
             <p className="text-xs font-semibold text-slate-500 mt-0.5">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Incident specifics — the tallies CQC inspectors look for first */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+          <p className="text-2xl font-black text-orange-600">{specifics.fallsSlips}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Falls / Slips</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+          <p className="text-2xl font-black text-blue-600">{specifics.witnessed}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Witnessed</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+          <p className="text-2xl font-black text-rose-600">{specifics.injuries}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Injuries</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+          <p className="text-2xl font-black text-purple-600">{specifics.physicalIntervention}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Physical Intervention</p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        {/* Incidents by year */}
+        {yearData.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">Incidents by Year</h3>
+            <BarChart data={yearData} colorClass="fill-indigo-500" />
+          </div>
+        )}
+
+        {/* Callout breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Callout Breakdown</h3>
+          <PieChart data={calloutData} colors={calloutColors} />
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
@@ -630,6 +722,18 @@ function IncidentAnalyticsPanel({ incidents, analytics, startDate, endDate }: {
           <BarChart data={dowData} colorClass="fill-blue-400" />
         </div>
       </div>
+
+      {/* By location */}
+      {locationEntries.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Incident by Location</h3>
+          <div className="space-y-2">
+            {locationEntries.map(([label, value]) => (
+              <HorizontalBar key={label} label={label} value={value} max={maxLocation} color="#0d9488" />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* By type */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4">
@@ -657,6 +761,19 @@ function IncidentAnalyticsPanel({ incidents, analytics, startDate, endDate }: {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* By staff — who logged each incident, not a full rota reconstruction
+          of everyone on shift at the time (the record doesn't carry that). */}
+      {staffEntries.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Incident by Staff (logged by)</h3>
+          <div className="space-y-2">
+            {staffEntries.map(([label, value]) => (
+              <HorizontalBar key={label} label={label} value={value} max={maxStaff} color="#2563eb" />
+            ))}
+          </div>
         </div>
       )}
 
@@ -713,6 +830,7 @@ export default function Incidents() {
   // Filters
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
+  const [filterSu, setFilterSu] = useState('')
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
 
@@ -737,6 +855,7 @@ export default function Incidents() {
     if (endDate) params.end_date = endDate
     if (filterType) params.incident_type = filterType
     if (search) params.search = search
+    if (filterSu) params.suId = filterSu
     api.get('/incidents', { params })
       .then(res => setIncidents(res.data.data || []))
       .catch(() => toast.error('Failed to load incidents'))
@@ -766,6 +885,10 @@ export default function Incidents() {
             ? createForm.witnessedByOtherDetail : createForm.witnessedBy,
           createForm.staffInvolved === 'Yes' ? createForm.staffInvolvedList : '',
         ].filter(Boolean).join('; '),
+        // Structured witnessed Yes/No for the Incident Analysis breakdown, kept
+        // separate from the free-text `witnesses` summary above.
+        witnessedBy: createForm.witnessedBy === 'Other' && createForm.witnessedByOtherDetail
+          ? createForm.witnessedByOtherDetail : createForm.witnessedBy,
         injuries: createForm.serviceUserInjured === 'Yes',
         injuryDetails: createForm.injuryLocations
           ? `Locations: ${createForm.injuryLocations}`
@@ -773,6 +896,8 @@ export default function Incidents() {
         medicalNeeded: createForm.gpAmbulanceCalled !== '' && createForm.gpAmbulanceCalled !== 'No',
         medicalDetails: createForm.gpAmbulanceCalled,
         familyNotified: createForm.nokInformed === 'Yes',
+        managerInformed: createForm.managerInformed === 'Yes',
+        physicalIntervention: createForm.physicalIntervention === 'Yes',
         // "How did the incident happen?" (residentActivity) is the narrative; Notes is
         // folded in underneath it, same as it always was pre-existing.
         description: [createForm.residentActivity, createForm.notes || ''].filter(Boolean).join('\n\n'),
@@ -795,7 +920,7 @@ export default function Incidents() {
   useEffect(() => {
     if (!selectedHome) return
     loadIncidents(selectedHome)
-  }, [selectedHome, startDate, endDate, filterType, search])
+  }, [selectedHome, startDate, endDate, filterType, search, filterSu])
 
   const [activeTab, setActiveTab] = useState<'list' | 'analytics'>('list')
 
@@ -844,7 +969,53 @@ export default function Incidents() {
       byResident[n] = (byResident[n] || 0) + 1
     })
 
-    return { byType, byMonth, byDow, DOW, bySev, byResident }
+    // By year
+    const byYear: Record<string, number> = {}
+    incidents.forEach(inc => {
+      if (!inc.record_date) return
+      const y = inc.record_date.toString().slice(0, 4)
+      byYear[y] = (byYear[y] || 0) + 1
+    })
+
+    // By location
+    const byLocation: Record<string, number> = {}
+    incidents.forEach(inc => {
+      const l = inc.location || 'Not recorded'
+      byLocation[l] = (byLocation[l] || 0) + 1
+    })
+
+    // By staff — the staff member who logged the incident. Not the same as
+    // "everyone on shift" (that would need a rota lookup for the incident's
+    // exact date/time), but it's the one staff identity this record reliably
+    // carries, so it's labelled "Logged by" rather than "On shift" below.
+    const byStaff: Record<string, number> = {}
+    incidents.forEach(inc => {
+      const n = inc.recorded_by_name || 'Unknown'
+      byStaff[n] = (byStaff[n] || 0) + 1
+    })
+
+    // Callout breakdown — medical_details carries the GP/Ambulance/111 choice
+    // (a single select, "Both GP and Ambulance" counts toward both), and
+    // manager_informed is a separate boolean, so it's folded in as its own
+    // slice rather than treated as mutually exclusive with the others.
+    const callout = { '111 Called': 0, 'Ambulance': 0, 'GP': 0, 'Manager Informed': 0 }
+    incidents.forEach(inc => {
+      const d = inc.medical_details || ''
+      if (d === '111 Called') callout['111 Called']++
+      if (d === 'Ambulance Called' || d === 'Both GP and Ambulance') callout['Ambulance']++
+      if (d === 'GP Called' || d === 'Both GP and Ambulance') callout['GP']++
+      if (inc.manager_informed) callout['Manager Informed']++
+    })
+
+    // Incident specifics — straightforward tallies CQC inspectors look for.
+    const specifics = {
+      fallsSlips: incidents.filter(inc => inc.incident_type === 'fall').length,
+      witnessed: incidents.filter(inc => inc.witnessed_by && inc.witnessed_by !== 'Nobody').length,
+      injuries: incidents.filter(inc => inc.injuries).length,
+      physicalIntervention: incidents.filter(inc => inc.physical_intervention).length,
+    }
+
+    return { byType, byMonth, byDow, DOW, bySev, byResident, byYear, byLocation, byStaff, callout, specifics }
   }, [incidents, stats])
 
   const toggleExpand = (id: string) => setExpandedId(prev => prev === id ? null : id)
@@ -981,7 +1152,7 @@ export default function Incidents() {
 
       {/* Tab switcher */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-5 w-fit">
-        {[{ id: 'list', label: 'Incident Log' }, { id: 'analytics', label: '📊 Analytics' }].map(tab => (
+        {[{ id: 'list', label: 'Incident Log' }, { id: 'analytics', label: '📊 Incident Analysis' }].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
             className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
               activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
@@ -1029,6 +1200,19 @@ export default function Incidents() {
             </select>
           </div>
 
+          {/* Service user — exact-match dropdown, distinct from the free-text
+              name search above; also scopes the Incident Analysis tab since
+              both tabs share this same filtered `incidents` list. */}
+          <div className="min-w-[180px]">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
+              Service user
+            </label>
+            <select className="input" value={filterSu} onChange={e => setFilterSu(e.target.value)}>
+              <option value="">All service users</option>
+              {sus.map((s: any) => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+            </select>
+          </div>
+
           {/* Date range */}
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
@@ -1054,7 +1238,7 @@ export default function Incidents() {
           </div>
 
           <Button type="button" variant="secondary" icon={<Filter className="w-4 h-4" />}
-            onClick={() => { setSearch(''); setFilterType(''); setStartDate(format(startOfMonth(new Date()), 'yyyy-MM-dd')); setEndDate(format(endOfMonth(new Date()), 'yyyy-MM-dd')); }}>
+            onClick={() => { setSearch(''); setFilterType(''); setFilterSu(''); setStartDate(format(startOfMonth(new Date()), 'yyyy-MM-dd')); setEndDate(format(endOfMonth(new Date()), 'yyyy-MM-dd')); }}>
             Reset
           </Button>
         </div>
@@ -1486,13 +1670,28 @@ export default function Incidents() {
             </select>
           </div>
           <div>
-            <label className="label">Any GP/ambulance called?</label>
+            <label className="label">Any GP/ambulance/111 called?</label>
             <select className="input w-full" value={createForm.gpAmbulanceCalled} onChange={e => setCreateForm(f => ({ ...f, gpAmbulanceCalled: e.target.value }))}>
               <option value="">Please Select</option>
               <option value="No">No</option>
+              <option value="111 Called">111 Called</option>
               <option value="GP Called">GP Called</option>
               <option value="Ambulance Called">Ambulance Called</option>
               <option value="Both GP and Ambulance">Both GP and Ambulance</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Has the manager been informed?</label>
+            <select className="input w-full" value={createForm.managerInformed} onChange={e => setCreateForm(f => ({ ...f, managerInformed: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Was physical intervention required?</label>
+            <select className="input w-full" value={createForm.physicalIntervention} onChange={e => setCreateForm(f => ({ ...f, physicalIntervention: e.target.value }))}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
             </select>
           </div>
 
