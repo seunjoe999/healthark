@@ -205,6 +205,27 @@
   .app-shell.theme-dark .bg-gray-50 { background-color: #0a0a0a                 !important; }
   .app-shell.theme-dark .bg-gray-100 { background-color: #1a1a1a                 !important; }
   .app-shell.theme-dark .bg-gray-200 { background-color: #222222                 !important; }
+
+  /* Same light-background-in-dark-mode problem as above, but for Tailwind's
+     opacity-modifier syntax (bg-amber-50/60 etc.) — that compiles to a
+     DIFFERENT class name than plain bg-amber-50, so none of the overrides
+     above ever matched it and these boxes rendered as a glaring pale box
+     against the rest of the dark UI regardless of the theme toggle. Only
+     covers the specific color/opacity combinations actually used in the
+     codebase (checked via grep) rather than every possible fraction. */
+  .app-shell.theme-dark .bg-slate-50\/50,
+  .app-shell.theme-dark .bg-slate-50\/70,
+  .app-shell.theme-dark .bg-slate-50\/80 { background-color: #0a0a0a !important; }
+  .app-shell.theme-dark .bg-amber-50\/30,
+  .app-shell.theme-dark .bg-amber-50\/40,
+  .app-shell.theme-dark .bg-amber-50\/50,
+  .app-shell.theme-dark .bg-amber-50\/60,
+  .app-shell.theme-dark .bg-amber-50\/70 { background-color: rgba(245,158,11,0.22) !important; }
+  .app-shell.theme-dark .bg-blue-50\/40,
+  .app-shell.theme-dark .bg-blue-50\/60 { background-color: rgba(59,130,246,0.22) !important; }
+  .app-shell.theme-dark .bg-red-50\/30 { background-color: rgba(239,68,68,0.22) !important; }
+  .app-shell.theme-dark .bg-purple-50\/40 { background-color: rgba(168,85,247,0.22) !important; }
+  .app-shell.theme-dark .bg-emerald-50\/40 { background-color: rgba(16,185,129,0.22) !important; }
   .app-shell.theme-dark .bg-zinc-50 { background-color: #0a0a0a                 !important; }
   .app-shell.theme-dark .bg-zinc-100 { background-color: #1a1a1a                 !important; }
   .app-shell.theme-dark .bg-neutral-50 { background-color: #0a0a0a                !important; }
