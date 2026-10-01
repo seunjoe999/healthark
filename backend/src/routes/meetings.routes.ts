@@ -270,4 +270,51 @@ router.put('/:id/sign-off', param('id').isUUID(), body('signedOffBy').notEmpty()
   }
 );
 
+// ── Edit / Delete (shared across all meeting types) ───────────────
+// Same authors as the rest of this feature: management-tier roles, or
+// whoever originally created the record — a senior carer who logged a
+// resident meeting should be able to fix a typo in it without needing
+// a manager to do it for them.
+async function canEditMeeting(req: Request, id: string): Promise<boolean> {
+  const role = fromToken(req, 'role');
+  if ((MANAGER_ROLES as readonly string[]).includes(role)) return true;
+  const staffId = fromToken(req, 'staffId');
+  const rows = await query<any>('SELECT created_by FROM meetings WHERE id = $1', [id]);
+  return !!rows.length && rows[0].created_by === staffId;
+}
+
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!(await canEditMeeting(req, req.params.id))) {
+        return res.status(403).json({ success: false, error: 'You can only edit a meeting you created' } as ApiResponse);
+      }
+      const { conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan } = req.body;
+      const rows = await query(
+        `UPDATE meetings SET
+           conducted_by = COALESCE($1, conducted_by),
+           meeting_date = COALESCE($2, meeting_date),
+           attendees = $3, service_location = $4, notes = $5, action_plan = $6
+         WHERE id = $7 RETURNING *`,
+        [nd(conductedBy), nd(meetingDate), nd(attendees), nd(serviceLocation), nd(notes), nd(actionPlan), req.params.id]
+      );
+      if (!rows.length) { res.status(404).json({ success: false, error: 'Meeting not found' } as ApiResponse); return; }
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!(await canEditMeeting(req, req.params.id))) {
+        return res.status(403).json({ success: false, error: 'You can only delete a meeting you created' } as ApiResponse);
+      }
+      const rows = await query('DELETE FROM meetings WHERE id = $1 RETURNING id', [req.params.id]);
+      if (!rows.length) { res.status(404).json({ success: false, error: 'Meeting not found' } as ApiResponse); return; }
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

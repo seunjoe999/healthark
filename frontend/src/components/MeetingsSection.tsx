@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ukDateStr } from '../utils/ukDate'
 import { Spinner, Button, Modal, EmptyState } from './ui'
 import { SpeechTextarea } from './ui/SpeechButton'
-import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send } from 'lucide-react'
+import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send, Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type MeetingType = 'resident' | 'staff' | 'management' | 'team' | 'team_briefing'
@@ -53,6 +53,8 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
   const [signOffForm, setSignOffForm] = useState({ signedOffBy: '', signedOffDate: '' })
   const [saving, setSaving] = useState(false)
   const [sendItem, setSendItem] = useState<any>(null)
+  const [editItem, setEditItem] = useState<any>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const canLoad = (meetingType === 'management' || meetingType === 'team_briefing') ? !!homeId : !!parentId
 
@@ -83,6 +85,17 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
       load()
     } catch { toast.error('Failed to save sign-off') }
     finally { setSaving(false) }
+  }
+
+  const handleDelete = async (m: any) => {
+    if (!window.confirm(`Delete this ${label.toLowerCase()} record? This cannot be undone.`)) return
+    setDeletingId(m.id)
+    try {
+      await api.delete(`/meetings/${m.id}`)
+      toast.success(`${label} deleted`)
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete') }
+    finally { setDeletingId(null) }
   }
 
   return (
@@ -139,6 +152,23 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
                 {expanded && (
                   <div className="px-5 pb-5 pt-2 border-t border-white/5 space-y-4">
                     <MeetingView meeting={m} />
+                    {(canManage || m.created_by === user?.id) && (
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <p className="text-xs text-slate-500">
+                          {m.created_by === user?.id && !canManage ? 'You created this record' : 'Manage this record'}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
+                            onClick={() => setEditItem(m)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="danger" loading={deletingId === m.id}
+                            icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => handleDelete(m)}>
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     {meetingType === 'team_briefing' && (
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                         <p className="text-xs text-slate-500">Send these minutes to staff</p>
@@ -168,6 +198,10 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
       <CreateModal open={createOpen} meetingType={meetingType} parentId={parentId} homeId={homeId} label={label}
         defaultConductedBy={user ? `${user.firstName} ${user.lastName}`.trim() : ''}
         onClose={() => setCreateOpen(false)} onSaved={() => { setCreateOpen(false); load() }} />
+
+      <CreateModal open={!!editItem} editing={editItem} meetingType={meetingType} parentId={parentId} homeId={homeId} label={label}
+        defaultConductedBy={user ? `${user.firstName} ${user.lastName}`.trim() : ''}
+        onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load() }} />
 
       <Modal open={!!signOffItem} onClose={() => setSignOffItem(null)} title={`Sign Off: ${label}`} size="sm">
         <div className="space-y-4">
@@ -267,8 +301,8 @@ function MeetingView({ meeting: m }: { meeting: any }) {
   )
 }
 
-function CreateModal({ open, meetingType, parentId, homeId, label, defaultConductedBy, onClose, onSaved }: {
-  open: boolean; meetingType: MeetingType; parentId?: string; homeId?: string; label: string
+function CreateModal({ open, editing, meetingType, parentId, homeId, label, defaultConductedBy, onClose, onSaved }: {
+  open: boolean; editing?: any; meetingType: MeetingType; parentId?: string; homeId?: string; label: string
   defaultConductedBy: string; onClose: () => void; onSaved: () => void
 }) {
   const [form, setForm] = useState({ ...BLANK })
@@ -276,8 +310,20 @@ function CreateModal({ open, meetingType, parentId, homeId, label, defaultConduc
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
-    if (open) setForm({ ...BLANK, conductedBy: defaultConductedBy, meetingDate: ukDateStr() })
-  }, [open, defaultConductedBy])
+    if (!open) return
+    if (editing) {
+      setForm({
+        conductedBy: editing.conducted_by || '',
+        meetingDate: editing.meeting_date ? String(editing.meeting_date).slice(0, 10) : ukDateStr(),
+        attendees: editing.attendees || '',
+        serviceLocation: editing.service_location || '',
+        notes: editing.notes || '',
+        actionPlan: editing.action_plan || '',
+      })
+    } else {
+      setForm({ ...BLANK, conductedBy: defaultConductedBy, meetingDate: ukDateStr() })
+    }
+  }, [open, editing, defaultConductedBy])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -292,11 +338,15 @@ function CreateModal({ open, meetingType, parentId, homeId, label, defaultConduc
         notes: form.notes,
         actionPlan: form.actionPlan,
       }
-      if (meetingType === 'resident') payload.suId = parentId
-      else if (meetingType === 'staff') payload.staffId = parentId
-      else if (meetingType === 'team') payload.teamId = parentId
-      else payload.homeId = homeId
-      await api.post(createUrl(meetingType), payload)
+      if (editing) {
+        await api.put(`/meetings/${editing.id}`, payload)
+      } else {
+        if (meetingType === 'resident') payload.suId = parentId
+        else if (meetingType === 'staff') payload.staffId = parentId
+        else if (meetingType === 'team') payload.teamId = parentId
+        else payload.homeId = homeId
+        await api.post(createUrl(meetingType), payload)
+      }
       toast.success(`${label} saved`)
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
@@ -304,7 +354,7 @@ function CreateModal({ open, meetingType, parentId, homeId, label, defaultConduc
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`New ${label}`} size="lg">
+    <Modal open={open} onClose={onClose} title={editing ? `Edit ${label}` : `New ${label}`} size="lg">
       <form onSubmit={save} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-4">
           <div>
