@@ -197,16 +197,36 @@ router.post('/management', requireRole(...MANAGER_ROLES), [body('homeId').isUUID
 // ── Team Meeting (home-wide whole-staff briefing — distinct from the
 // internal-Team-linked 'team' type above, and open to all staff, not just
 // managers: "available to both staff and the management") ───────────────
+// Was returning every team_briefing meeting in the home to anyone who could
+// reach this page, regardless of which team/service it was actually for —
+// confirmed live (owner logged in as a staff member not on the relevant team
+// and could read full meeting minutes for a different service). This "team
+// briefing" type had no team linkage at all, unlike the proper per-team
+// `meeting_type = 'team'` records (already correctly scoped via /team/:teamId
+// below). Reusing the same team_id column: a briefing created with a team
+// selected is now only visible to that team (plus management); existing
+// legacy rows and any briefing created with no team selected have team_id
+// NULL and stay visible to everyone, same as a general/all-staff notice.
 router.get('/team-briefing', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId) { res.json({ success: true, data: [] } as ApiResponse); return; }
+    const role = fromToken(req, 'role');
+    const staffId = fromToken(req, 'staffId');
+    const isPrivileged = (MANAGER_ROLES as readonly string[]).includes(role);
+    let myTeamId: string | null = null;
+    if (!isPrivileged && staffId) {
+      const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
+      myTeamId = staffRows[0]?.team_id || null;
+    }
     const rows = await query(
-      `SELECT m.*, s.first_name || ' ' || s.last_name as created_by_name
+      `SELECT m.*, s.first_name || ' ' || s.last_name as created_by_name, t.name as team_name
        FROM meetings m LEFT JOIN staff s ON s.id = m.created_by
+       LEFT JOIN teams t ON t.id = m.team_id
        WHERE m.meeting_type = 'team_briefing' AND m.home_id = $1
+         AND ($2 OR m.team_id IS NULL OR m.team_id = $3::uuid)
        ORDER BY m.meeting_date DESC, m.created_at DESC`,
-      [homeId]
+      [homeId, isPrivileged, myTeamId]
     );
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
@@ -216,13 +236,13 @@ router.post('/team-briefing', [body('homeId').isUUID(), body('conductedBy').notE
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const createdBy = fromToken(req, 'staffId');
-      const { homeId, conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan } = req.body;
+      const { homeId, conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan, teamId } = req.body;
       const rows = await query(
         `INSERT INTO meetings (meeting_type, home_id, created_by, conducted_by, meeting_date,
-          attendees, service_location, notes, action_plan)
-         VALUES ('team_briefing',$1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+          attendees, service_location, notes, action_plan, team_id)
+         VALUES ('team_briefing',$1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [homeId, createdBy, conductedBy, meetingDate || ukDateStr(),
-         attendees || null, serviceLocation || null, notes || null, actionPlan || null]
+         attendees || null, serviceLocation || null, notes || null, actionPlan || null, teamId || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -289,14 +309,16 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       if (!(await canEditMeeting(req, req.params.id))) {
         return res.status(403).json({ success: false, error: 'You can only edit a meeting you created' } as ApiResponse);
       }
-      const { conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan } = req.body;
+      const { conductedBy, meetingDate, attendees, serviceLocation, notes, actionPlan, teamId } = req.body;
       const rows = await query(
         `UPDATE meetings SET
            conducted_by = COALESCE($1, conducted_by),
            meeting_date = COALESCE($2, meeting_date),
-           attendees = $3, service_location = $4, notes = $5, action_plan = $6
+           attendees = $3, service_location = $4, notes = $5, action_plan = $6,
+           team_id = CASE WHEN $8 THEN $9::uuid ELSE team_id END
          WHERE id = $7 RETURNING *`,
-        [nd(conductedBy), nd(meetingDate), nd(attendees), nd(serviceLocation), nd(notes), nd(actionPlan), req.params.id]
+        [nd(conductedBy), nd(meetingDate), nd(attendees), nd(serviceLocation), nd(notes), nd(actionPlan), req.params.id,
+         teamId !== undefined, teamId || null]
       );
       if (!rows.length) { res.status(404).json({ success: false, error: 'Meeting not found' } as ApiResponse); return; }
       res.json({ success: true, data: rows[0] } as ApiResponse);

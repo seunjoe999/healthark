@@ -23,7 +23,7 @@ interface MeetingsSectionProps {
 
 const BLANK = {
   conductedBy: '', meetingDate: ukDateStr(),
-  attendees: '', serviceLocation: '', notes: '', actionPlan: '',
+  attendees: '', serviceLocation: '', notes: '', actionPlan: '', teamId: '',
 }
 
 function listUrl(meetingType: MeetingType, parentId?: string, homeId?: string) {
@@ -135,6 +135,11 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
                           <span className="flex items-center gap-1 text-xs text-emerald-600"><ShieldCheck className="w-3 h-3" />Signed off</span>
                         ) : (
                           <span className="text-xs text-slate-400">Not signed off</span>
+                        )}
+                        {meetingType === 'team_briefing' && (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold border bg-blue-500/10 border-blue-500/25 text-blue-600">
+                            {m.team_name || 'All staff'}
+                          </span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-4 text-xs text-slate-400 mt-1">
@@ -307,7 +312,18 @@ function CreateModal({ open, editing, meetingType, parentId, homeId, label, defa
 }) {
   const [form, setForm] = useState({ ...BLANK })
   const [loading, setLoading] = useState(false)
+  const [teams, setTeams] = useState<any[]>([])
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  // Team briefings used to have no team linkage at all, so every briefing was
+  // visible home-wide regardless of which service it was for — a
+  // confidentiality breach confirmed live. Picking a team here (optional —
+  // leave blank for a genuine all-staff notice) scopes the record to that
+  // team on the backend.
+  useEffect(() => {
+    if (!open || meetingType !== 'team_briefing' || !homeId) return
+    api.get('/teams', { params: { homeId } }).then(res => setTeams(res.data.data || [])).catch(() => {})
+  }, [open, meetingType, homeId])
 
   useEffect(() => {
     if (!open) return
@@ -319,6 +335,7 @@ function CreateModal({ open, editing, meetingType, parentId, homeId, label, defa
         serviceLocation: editing.service_location || '',
         notes: editing.notes || '',
         actionPlan: editing.action_plan || '',
+        teamId: editing.team_id || '',
       })
     } else {
       setForm({ ...BLANK, conductedBy: defaultConductedBy, meetingDate: ukDateStr() })
@@ -338,6 +355,7 @@ function CreateModal({ open, editing, meetingType, parentId, homeId, label, defa
         notes: form.notes,
         actionPlan: form.actionPlan,
       }
+      if (meetingType === 'team_briefing') payload.teamId = form.teamId || null
       if (editing) {
         await api.put(`/meetings/${editing.id}`, payload)
       } else {
@@ -370,6 +388,16 @@ function CreateModal({ open, editing, meetingType, parentId, homeId, label, defa
           <label className="label">Service / Location</label>
           <input className="input w-full" placeholder="What the meeting concerns / where it took place..." value={form.serviceLocation} onChange={e => set('serviceLocation', e.target.value)} />
         </div>
+        {meetingType === 'team_briefing' && (
+          <div>
+            <label className="label">Team</label>
+            <select className="input w-full" value={form.teamId} onChange={e => set('teamId', e.target.value)}>
+              <option value="">All staff (no specific team)</option>
+              {teams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">Picking a team restricts these minutes to that team only — leave blank for a genuine all-staff notice.</p>
+          </div>
+        )}
         <SpeechTextarea label="Attendees" rows={2} value={form.attendees} onChange={v => set('attendees', v)}
           placeholder="Names of the people who attended the meeting..." />
         <SpeechTextarea label="Notes" rows={5} value={form.notes} onChange={v => set('notes', v)}
