@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { homesApi, suApi, staffApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { format } from 'date-fns'
+import { format, addDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown, X } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 // One icon per task category so the list is scannable at a glance, instead of
 // every task (medication, housekeeping, comfort check, ...) showing the same
@@ -254,7 +254,12 @@ export default function Tasks() {
   // the server is stamped with the server's date, so filtering "today" against
   // the device's own date can silently miss it if the two clocks disagree.
   const [today, setToday] = useState(format(new Date(), 'yyyy-MM-dd'))
-  useEffect(() => { getServerTodayStr().then(setToday) }, [])
+  useEffect(() => { getServerTodayStr().then(d => { setToday(d); setViewDate(d) }) }, [])
+  // The date whose task list is actually being shown — separate from `today`
+  // (the real current day, used for is-overdue comparisons and "Generate
+  // today's tasks") so browsing to another day to find and edit a one-off
+  // task doesn't change what "overdue" means for anything else on the page.
+  const [viewDate, setViewDate] = useState(format(new Date(), 'yyyy-MM-dd'))
 
   useEffect(() => {
     if (!isRole(...TASK_CREATOR_ROLES)) {
@@ -281,7 +286,7 @@ export default function Tasks() {
     loadTemplates()
     loadTodaysAppointments()
     loadStockCountStatus()
-  }, [selectedHome, today])
+  }, [selectedHome, today, viewDate])
 
   const loadTodaysAppointments = async () => {
     try {
@@ -311,7 +316,7 @@ export default function Tasks() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await api.get('/tasks', { params: { homeId: selectedHome, date: today } })
+      const res = await api.get('/tasks', { params: { homeId: selectedHome, date: viewDate } })
       setTasks(res.data.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -429,7 +434,26 @@ export default function Tasks() {
           <h1 className="font-display text-2xl text-slate-900 flex items-center gap-2">
             <CheckSquare className="w-6 h-6 text-purple-600" /> Tasks
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
+          {pageTab === 'tasks' ? (
+            <div className="flex items-center gap-1 mt-0.5">
+              <button onClick={() => setViewDate(d => format(addDays(parseISO(d), -1), 'yyyy-MM-dd'))}
+                className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Previous day">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <p className="text-slate-400 text-sm">{format(parseISO(viewDate), 'EEEE, d MMMM yyyy')}</p>
+              <button onClick={() => setViewDate(d => format(addDays(parseISO(d), 1), 'yyyy-MM-dd'))}
+                className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600" title="Next day">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              {viewDate !== today && (
+                <button onClick={() => setViewDate(today)} className="text-xs font-semibold text-purple-600 hover:text-purple-700 ml-1">
+                  Back to today
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm mt-0.5">{format(new Date(), 'EEEE, d MMMM yyyy')}</p>
+          )}
         </div>
         <div className="flex gap-2 items-center">
           <PrintButton onClick={printTasks} />
