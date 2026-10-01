@@ -239,7 +239,8 @@ export default function Login() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(232,177,48,0.08) 0%, transparent 60%)' }} />
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}
           className="max-w-sm text-center relative z-10">
-          <img src="/pwa-192.png" alt="Comprehensive Care" className="w-28 h-28 rounded-3xl object-cover mx-auto mb-8 shadow-2xl" />
+          <video src="/logo-intro.mp4" autoPlay muted playsInline
+            className="w-48 h-auto rounded-3xl mx-auto mb-8 shadow-2xl" />
           <h2 className="text-white font-display text-4xl mb-3 leading-tight">Comprehensive<br />Care</h2>
           <p className="text-slate-400 mb-10">The complete care home management platform for UK care providers</p>
           <div className="space-y-3">

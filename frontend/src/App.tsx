@@ -277,6 +277,33 @@ class ErrorBoundary extends React.Component<{ children?: React.ReactNode }, { er
   }
 }
 
+// Plays the CompCare Hub logo reveal once per browser session (sessionStorage,
+// not localStorage — a genuine cold start, not every reload) before the app
+// underneath is shown, the way a native app's splash screen would. Dismisses
+// itself when the clip ends, or after a timeout as a safety net in case the
+// video fails to fire its 'ended' event on some device.
+function BootSplash({ children }: { children: React.ReactNode }) {
+  const [show, setShow] = React.useState(() => {
+    try { return !sessionStorage.getItem('bootSplashShown') } catch { return false }
+  })
+  const dismiss = React.useCallback(() => {
+    try { sessionStorage.setItem('bootSplashShown', '1') } catch {}
+    setShow(false)
+  }, [])
+  React.useEffect(() => {
+    if (!show) return
+    const t = setTimeout(dismiss, 4500)
+    return () => clearTimeout(t)
+  }, [show, dismiss])
+  if (!show) return <>{children}</>
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1526' }}>
+      <video src="/logo-intro.mp4" autoPlay muted playsInline onEnded={dismiss}
+        style={{ width: 280, maxWidth: '70vw', borderRadius: 20 }} />
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -289,8 +316,10 @@ export default function App() {
                   banner was rendering right on top of the status bar/notch instead of below it. */}
               <Toaster position="top-right" containerStyle={{ top: 'max(16px, env(safe-area-inset-top))' }}
                 toastOptions={{ duration: 4000, style: { borderRadius: '12px', fontSize: '13px' } }} />
-              <AppRoutes />
-              <InstallPrompt />
+              <BootSplash>
+                <AppRoutes />
+                <InstallPrompt />
+              </BootSplash>
             </NotificationsProvider>
           </AuthProvider>
         </BrowserRouter>

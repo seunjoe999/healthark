@@ -485,7 +485,7 @@ export default function LandingPage() {
             <ConfettiDot delay={2.1} size={14} x="2%" y="80%" color="rgba(36,22,84,0.4)" />
             <Reveal delay={0.15}>
               <div className="relative rounded-[2rem] overflow-hidden shadow-2xl" style={{ aspectRatio: '4/3', border: `2px solid ${PURPLE}33` }}>
-                <img src={IMG.hero} alt="Care team using CompCare Hub" className="w-full h-full object-cover" />
+                <video src="/logo-intro.mp4" autoPlay muted loop playsInline className="w-full h-full object-cover" />
               </div>
             </Reveal>
           </div>
