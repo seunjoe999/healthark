@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { sendPushToStaff } from '../services/push.service';
@@ -454,8 +455,14 @@ router.get('/swaps', async (req: Request, res: Response, next: NextFunction) => 
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const staffId = fromToken(req, 'staffId');
+    const role = fromToken(req, 'role');
     await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_agreed BOOLEAN DEFAULT NULL`).catch(() => {});
     await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_notes TEXT`).catch(() => {});
+    // Care staff shouldn't see the whole home's swap traffic — only requests
+    // they're personally involved in (their own request, or one directed at
+    // them). Managers still see everything, since they need the full picture
+    // to approve/reject.
+    const isManager = (MANAGE_ROLES as readonly string[]).includes(role);
     const rows = await query(
       `SELECT ssr.*,
               sh.shift_date, sh.start_time, sh.end_time, sh.shift_type,
@@ -466,8 +473,9 @@ router.get('/swaps', async (req: Request, res: Response, next: NextFunction) => 
        JOIN staff rs ON rs.id = ssr.requesting_staff_id
        LEFT JOIN staff ts ON ts.id = ssr.target_staff_id
        WHERE ssr.home_id = $1 AND ssr.status IN ('pending','pending_manager')
+         ${isManager ? '' : 'AND (ssr.requesting_staff_id = $2 OR ssr.target_staff_id = $2)'}
        ORDER BY ssr.created_at DESC`,
-      [homeId]
+      isManager ? [homeId] : [homeId, staffId]
     );
     // Mark which rows are directed at the current user (their inbox)
     const enriched = rows.map((r: any) => ({
@@ -499,6 +507,30 @@ router.post('/swaps', async (req: Request, res: Response, next: NextFunction) =>
       ).catch(() => {});
     }
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/shifts/swaps/:id — the person who requested a swap can cancel
+// it themselves (e.g. it was already sorted out directly with a colleague,
+// or they changed their mind) without waiting on a manager or the target
+// staff member to act on it first. Managers may also cancel any swap for
+// cleanup. Only pending/not-yet-resolved requests can be cancelled.
+router.delete('/swaps/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = fromToken(req, 'staffId');
+    const role = fromToken(req, 'role');
+    const isManager = (MANAGE_ROLES as readonly string[]).includes(role);
+    const rows = await query<any>('SELECT * FROM shift_swap_requests WHERE id = $1', [req.params.id]);
+    if (!rows.length) throw new AppError('Swap request not found', 404);
+    const swap = rows[0];
+    if (!isManager && swap.requesting_staff_id !== staffId) {
+      throw new AppError('You can only cancel your own swap request', 403);
+    }
+    if (!['pending', 'pending_manager'].includes(swap.status)) {
+      throw new AppError('This swap request has already been resolved', 400);
+    }
+    await query('DELETE FROM shift_swap_requests WHERE id = $1', [req.params.id]);
+    res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
 });
 

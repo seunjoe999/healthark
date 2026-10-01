@@ -400,6 +400,13 @@
 .app-shell:not(.theme-dark) .bg-white\/10.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/10 .text-slate-300,
 .app-shell:not(.theme-dark) .bg-white\/12.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/12 .text-slate-300,
 .app-shell:not(.theme-dark) .bg-white\/15.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/15 .text-slate-300 { color: #475569 !important; }
+/* The sidebar's own background never flips with the light/dark theme toggle —
+   it stays permanently dark — but the bg-white/10.text-white rule just above
+   still matched its search box (a bg-white/10 translucent highlight on top of
+   that permanent dark background) and forced the typed text to near-black,
+   making it unreadable against the sidebar. Win back with a more specific
+   selector regardless of theme. */
+.sidebar-search-input.text-white { color: #ffffff !important; }
 
 /* The shared .card class (used almost everywhere) is itself hardcoded to a
    dark #111111 background in @layer components above — that's a permanent

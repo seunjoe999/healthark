@@ -25,6 +25,16 @@ function requireLeaveManager(req: Request) {
     throw new AppError('Not authorised to manage leave requests', 403);
   }
 }
+// Leave approval and the 4-week-notice exemption are both now reserved for
+// the owner specifically (group_admin), not the whole manager tier — a
+// deliberate narrowing requested on top of the broader LEAVE_MANAGER_ROLES
+// set above, which still governs who may submit/cancel/decline on others'
+// behalf.
+function requireLeaveApprover(req: Request) {
+  if (fromToken(req, 'role') !== 'group_admin') {
+    throw new AppError('Only the account owner can approve leave requests', 403);
+  }
+}
 
 // ── Leave management ──────────────────────────────────────────────
 router.get('/leave', async (req: Request, res: Response, next: NextFunction) => {
@@ -81,9 +91,9 @@ router.post('/leave',
       if (req.body.staffId && req.body.staffId !== staffId) requireLeaveManager(req);
       const targetStaffId = req.body.staffId || staffId;
       // Annual leave must be requested at least 4 weeks in advance —
-      // except for managers/admins, who can book it for any date.
-      const isLeaveManager = LEAVE_MANAGER_ROLES.includes(fromToken(req, 'role'));
-      if (leaveType === 'annual' && !isLeaveManager) {
+      // except for the account owner (group_admin), who can book it for any date.
+      const isLeaveNoticeExempt = fromToken(req, 'role') === 'group_admin';
+      if (leaveType === 'annual' && !isLeaveNoticeExempt) {
         const minDate = new Date(); minDate.setHours(0, 0, 0, 0); minDate.setDate(minDate.getDate() + 28);
         if (new Date(startDate) < minDate) {
           throw new AppError('Annual leave must be requested at least 4 weeks in advance', 400);
@@ -325,7 +335,7 @@ router.get('/leave/all', async (req: Request, res: Response, next: NextFunction)
 router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      requireLeaveManager(req);
+      requireLeaveApprover(req);
       const token = req.headers.authorization?.substring(7);
       const decoded = token ? jwt.decode(token) as any : {};
       const managerId = decoded?.staffId;

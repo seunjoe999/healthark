@@ -469,6 +469,16 @@ export default function Rota() {
     finally { setSwapActing(null) }
   }
 
+  const cancelSwap = async (swapId: string) => {
+    setSwapActing(swapId)
+    try {
+      await api.delete(`/shifts/swaps/${swapId}`)
+      toast.success('Swap request cancelled')
+      loadSwaps()
+    } catch { toast.error('Failed to cancel') }
+    finally { setSwapActing(null) }
+  }
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const days = view === 'week'
@@ -727,6 +737,17 @@ export default function Rota() {
                       <X className="w-3 h-3" /> Reject
                     </button>
                   </div>
+                )}
+                {/* The person who requested the swap can withdraw it themselves —
+                    e.g. it got sorted out directly with a colleague outside the
+                    app — without waiting on a manager or the target staff member. */}
+                {!canManage && !swap.is_my_inbox && swap.requesting_staff_id === user?.id && (
+                  <button
+                    disabled={swapActing === swap.id}
+                    onClick={() => cancelSwap(swap.id)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-semibold hover:bg-rose-100 hover:text-rose-700 transition-colors disabled:opacity-50 ml-auto">
+                    <X className="w-3 h-3" /> Cancel request
+                  </button>
                 )}
               </div>
             ))}

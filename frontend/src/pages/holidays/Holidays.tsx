@@ -262,16 +262,20 @@ export default function Holidays() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {l.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                        {l.status === 'pending' && (
                           <>
-                            <button onClick={() => approve(l.id)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
-                              <Check className="w-3.5 h-3.5" /> Approve
-                            </button>
-                            <button onClick={() => { openDecline(l) }}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
-                              <X className="w-3.5 h-3.5" /> Decline
-                            </button>
+                            {isRole('group_admin') && (
+                              <button onClick={() => approve(l.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                                <Check className="w-3.5 h-3.5" /> Approve
+                              </button>
+                            )}
+                            {isRole('home_manager', 'group_admin', 'senior_carer') && (
+                              <button onClick={() => { openDecline(l) }}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                                <X className="w-3.5 h-3.5" /> Decline
+                              </button>
+                            )}
                           </>
                         )}
                         {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
@@ -391,16 +395,20 @@ export default function Holidays() {
                 <span className={`badge ${l.status === 'approved' ? 'badge-success' : l.status === 'declined' ? 'badge-critical' : 'badge-warning'}`}>
                   {l.status}
                 </span>
-                {l.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                {l.status === 'pending' && (
                   <>
-                    <button onClick={() => approve(l.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
-                      <Check className="w-3.5 h-3.5" /> Approve
-                    </button>
-                    <button onClick={() => { openDecline(l) }}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
-                      <X className="w-3.5 h-3.5" /> Decline
-                    </button>
+                    {isRole('group_admin') && (
+                      <button onClick={() => approve(l.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                        <Check className="w-3.5 h-3.5" /> Approve
+                      </button>
+                    )}
+                    {isRole('home_manager', 'group_admin', 'senior_carer') && (
+                      <button onClick={() => { openDecline(l) }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                        <X className="w-3.5 h-3.5" /> Decline
+                      </button>
+                    )}
                   </>
                 )}
                 {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
@@ -469,16 +477,20 @@ export default function Holidays() {
               )
             })()}
 
-            {preview.status === 'pending' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+            {preview.status === 'pending' && (
               <div className="flex gap-2 pt-2">
-                <button onClick={async () => { await approve(preview.id); setPreview(null) }}
-                  className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600">
-                  Approve
-                </button>
-                <button onClick={() => { openDecline(preview) }}
-                  className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600">
-                  Decline
-                </button>
+                {isRole('group_admin') && (
+                  <button onClick={async () => { await approve(preview.id); setPreview(null) }}
+                    className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600">
+                    Approve
+                  </button>
+                )}
+                {isRole('home_manager', 'group_admin', 'senior_carer') && (
+                  <button onClick={() => { openDecline(preview) }}
+                    className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600">
+                    Decline
+                  </button>
+                )}
               </div>
             )}
             {preview.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (

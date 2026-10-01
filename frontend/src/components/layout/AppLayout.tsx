@@ -233,7 +233,7 @@ function SidebarSearch({ onNavClick }: { onNavClick: () => void }) {
         <input
           value={q} onChange={e => setQ(e.target.value)}
           placeholder="Search…"
-          className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 outline-none min-w-0"
+          className="sidebar-search-input flex-1 bg-transparent text-sm text-white placeholder-slate-400 outline-none min-w-0"
         />
       </div>
     </form>
