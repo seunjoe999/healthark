@@ -147,6 +147,15 @@ export default function ServiceUserProfile() {
     } catch { toast.error('Failed to delete') }
   }
 
+  const deleteContact = async (contactId: string) => {
+    if (!id || !confirm('Delete this contact?')) return
+    try {
+      await suApi.deleteContact(id, contactId)
+      setContacts(prev => prev.filter(c => c.id !== contactId))
+      toast.success('Contact deleted')
+    } catch { toast.error('Failed to delete contact') }
+  }
+
   if (loading) return <div className="p-8"><Spinner /></div>
   if (!su) return <div className="p-8"><EmptyState title="Resident not found" /></div>
 
@@ -380,11 +389,24 @@ export default function ServiceUserProfile() {
                       </div>
                       {c.relationship && <p className="text-sm text-slate-500 mt-0.5">{c.relationship}</p>}
                     </div>
-                    <button onClick={() => { setEditingContact(c); setAddContactOpen(true) }}
-                      className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600 flex-shrink-0"
-                      title="Edit contact">
-                      <Edit className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => { setEditingContact(c); setAddContactOpen(true) }}
+                        className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-slate-400 hover:text-blue-600"
+                        title="Edit contact">
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      {/* Owner specifically asked for a way to remove duplicate/erroneous
+                          contact entries (couldn't undo an accidental double-add), and for
+                          it to stay management-only -- not visible to care staff or team
+                          leaders. */}
+                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager') && (
+                        <button onClick={() => deleteContact(c.id)}
+                          className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors text-slate-400 hover:text-rose-600"
+                          title="Delete contact">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-500">
                     {(c.phone_primary || c.phonePrimary) && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{c.phone_primary || c.phonePrimary}</span>}

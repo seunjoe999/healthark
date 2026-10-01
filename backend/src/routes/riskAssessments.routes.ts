@@ -40,31 +40,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-router.get('/:id', param('id').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const rows = await query(
-        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url,
-         su.room_number, su.date_of_birth as su_date_of_birth,
-         su.med_allergies as su_med_allergies, su.food_allergies as su_food_allergies
-         FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id WHERE ra.id = $1`,
-        [req.params.id]
-      );
-      if (!rows.length) throw new AppError('Risk assessment not found', 404);
-      const updates = await query(
-        `SELECT rau.*, s.first_name || ' ' || s.last_name as updated_by_name
-         FROM risk_assessment_updates rau JOIN staff s ON s.id = rau.updated_by
-         WHERE rau.risk_id = $1 ORDER BY rau.created_at DESC`,
-        [req.params.id]
-      );
-      res.json({ success: true, data: { ...rows[0] as object, updates } } as ApiResponse);
-    } catch (err) { next(err); }
-  }
-);
-
 // GET /api/risk-management/reads-summary?homeId=xxx — who has read which
 // risk assessment (Service User Audit read-tracking), same shape as care
-// plans' equivalent endpoint. Must be before /:id.
+// plans' equivalent endpoint. Was previously registered AFTER /:id below —
+// despite a comment here saying it must come first, Express matched
+// "reads-summary" as the :id param, which then failed isUUID() validation.
+// The "Who read assessments" admin button had never actually worked since
+// it was added; this is what moving it above /:id fixes.
 router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
@@ -86,6 +68,28 @@ router.get('/reads-summary', async (req: Request, res: Response, next: NextFunct
     res.json({ success: true, data: rows } as ApiResponse);
   } catch (err) { next(err); }
 });
+
+router.get('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT ra.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo_url,
+         su.room_number, su.date_of_birth as su_date_of_birth,
+         su.med_allergies as su_med_allergies, su.food_allergies as su_food_allergies
+         FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id WHERE ra.id = $1`,
+        [req.params.id]
+      );
+      if (!rows.length) throw new AppError('Risk assessment not found', 404);
+      const updates = await query(
+        `SELECT rau.*, s.first_name || ' ' || s.last_name as updated_by_name
+         FROM risk_assessment_updates rau JOIN staff s ON s.id = rau.updated_by
+         WHERE rau.risk_id = $1 ORDER BY rau.created_at DESC`,
+        [req.params.id]
+      );
+      res.json({ success: true, data: { ...rows[0] as object, updates } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // POST /api/risk-management/:id/read — track that a staff member read this assessment
 router.post('/:id/read', param('id').isUUID(), validateRequest,

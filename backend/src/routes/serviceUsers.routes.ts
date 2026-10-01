@@ -445,7 +445,11 @@ router.put('/:id/contacts/:contactId',
   }
 );
 
+// Deleting a contact had no role check at all — the owner explicitly asked
+// for this to be management-only, same as the equivalent document-delete
+// restriction, so care staff and team leaders can't remove contact records.
 router.delete('/:id/contacts/:contactId',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
   [param('id').isUUID(), param('contactId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
