@@ -90,15 +90,6 @@ router.post('/leave',
       // create leave requests under their name.
       if (req.body.staffId && req.body.staffId !== staffId) requireLeaveManager(req);
       const targetStaffId = req.body.staffId || staffId;
-      // Annual leave must be requested at least 4 weeks in advance —
-      // except for the account owner (group_admin), who can book it for any date.
-      const isLeaveNoticeExempt = fromToken(req, 'role') === 'group_admin';
-      if (leaveType === 'annual' && !isLeaveNoticeExempt) {
-        const minDate = new Date(); minDate.setHours(0, 0, 0, 0); minDate.setDate(minDate.getDate() + 28);
-        if (new Date(startDate) < minDate) {
-          throw new AppError('Annual leave must be requested at least 4 weeks in advance', 400);
-        }
-      }
       // Block a duplicate/overlapping request for the same dates — staff were
       // able to submit the exact same date range twice (confirmed: two
       // separate 30 Oct – 30 Oct requests sitting in the queue), cluttering

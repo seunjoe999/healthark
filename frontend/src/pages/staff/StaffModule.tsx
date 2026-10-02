@@ -998,17 +998,10 @@ function countLeaveDays(startDate: string, endDate: string): number {
 }
 
 function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onClose: () => void; staffId: string; onSaved: () => void }) {
-  const { isRole } = useAuth()
-  const isLeaveManager = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer')
   const [form, setForm] = React.useState({ leaveType: 'annual', startDate: '', endDate: '', hoursPerDay: '', notes: '' })
   const [loading, setLoading] = React.useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'maternity', label: 'Maternity leave' }, { value: 'paternity', label: 'Paternity leave' }, { value: 'unpaid', label: 'Unpaid leave' }, { value: 'other', label: 'Other' }]
-
-  const minAnnualDate = React.useMemo(() => {
-    const d = new Date(); d.setDate(d.getDate() + 28)
-    return d.toISOString().split('T')[0]
-  }, [])
 
   const dayCount = countLeaveDays(form.startDate, form.endDate)
   const hoursPerDayNum = parseFloat(form.hoursPerDay) || 0
@@ -1016,9 +1009,6 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLeaveManager && form.leaveType === 'annual' && form.startDate < minAnnualDate) {
-      toast.error('Annual leave must be requested at least 4 weeks in advance'); return
-    }
     if (!totalHours) { toast.error('Enter hours per day for this leave'); return }
     setLoading(true)
     try {
@@ -1035,11 +1025,8 @@ function AddLeaveModal({ open, onClose, staffId, onSaved }: { open: boolean; onC
     <Modal open={open} onClose={onClose} title="Request / record leave">
       <form onSubmit={save} className="space-y-4">
         <Select label="Leave type *" required value={form.leaveType} onChange={e => set('leaveType', e.target.value)} options={LEAVE_TYPES} />
-        {form.leaveType === 'annual' && !isLeaveManager && (
-          <p className="text-xs text-amber-600 -mt-2">Annual leave requests must be submitted at least 4 weeks ahead of the start date.</p>
-        )}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Start date *" type="date" required min={form.leaveType === 'annual' && !isLeaveManager ? minAnnualDate : undefined} value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+          <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
         </div>
         <Input label="Hours per day *" type="number" step="0.5" required value={form.hoursPerDay} onChange={e => set('hoursPerDay', e.target.value)}
