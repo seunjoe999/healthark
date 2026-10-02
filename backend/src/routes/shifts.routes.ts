@@ -302,7 +302,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       }
       if (teamId) {
         const members = await query<any>('SELECT id FROM staff WHERE team_id = $1', [teamId]);
-        teamStaffIds = members.map((m: any) => m.id);
+        // An unconfigured team (just the leader, nobody added yet) would
+        // otherwise restrict the rota down to only the leader's own shifts —
+        // fall back to the whole home's rota until the team has real members.
+        if (members.length > 1) teamStaffIds = members.map((m: any) => m.id);
       }
     }
 

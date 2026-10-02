@@ -35,17 +35,22 @@ function getHomeId(req: Request): string {
 }
 
 // GET /api/daily-records?suId=xxx&date=2026-05-10  OR  ?homeId=xxx&date=2026-05-10 (multi-resident, for handover)
+// reviewStatus=reviewed|not_reviewed — management review filter (see POST /:id/review)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { suId, homeId, date, from, to, recordType } = req.query as Record<string, string>;
+    const { suId, homeId, date, from, to, recordType, reviewStatus } = req.query as Record<string, string>;
     if (!suId && !homeId) throw new AppError('suId or homeId required', 400);
     if (suId) await assertResidentAccess(req, suId);
 
     let sql = `SELECT dr.*,
                       s.first_name || ' ' || s.last_name as staff_name,
-                      s.photo_url as staff_photo
+                      s.photo_url as staff_photo,
+                      r.first_name || ' ' || r.last_name as reviewed_by_name,
+                      su.first_name || ' ' || su.last_name as su_name
                FROM daily_records dr
                JOIN staff s ON s.id = dr.staff_id
+               JOIN service_users su ON su.id = dr.su_id
+               LEFT JOIN staff r ON r.id = dr.reviewed_by
                WHERE 1=1`;
     const params: unknown[] = [];
     let idx = 1;
@@ -57,6 +62,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // record ever logged for the home (same unbounded-query bug as /shifts).
     else if (from && to) { sql += ` AND dr.record_date >= $${idx++} AND dr.record_date <= $${idx++}`; params.push(from, to); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
+    if (reviewStatus === 'reviewed') sql += ' AND dr.reviewed_at IS NOT NULL';
+    else if (reviewStatus === 'not_reviewed') sql += ' AND dr.reviewed_at IS NULL';
     sql += ' ORDER BY dr.record_date DESC, dr.recorded_at DESC';
 
     const rows = await query(sql, params);
@@ -475,6 +482,33 @@ router.get('/:id/detail', param('id').isUUID(), validateRequest,
   }
 );
 
+// Management Review — a manager reads a staff member's completed daily
+// record, adds their own notes, and signs off on it (mirrors the legacy
+// RoundSys "daily note review" workflow the owner asked us to match).
+const REVIEW_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
+  'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor'];
+
+// POST /api/daily-records/:id/review
+router.post('/:id/review', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = getRole(req);
+      if (!REVIEW_ROLES.includes(role)) throw new AppError('You do not have permission to review records', 403);
+      const staffId = getStaffId(req);
+      const { reviewNotes, signatureDataurl } = req.body;
+
+      const rows = await query(
+        `UPDATE daily_records SET
+           reviewed_by = $1, reviewed_at = NOW(),
+           review_notes = $2, review_signature_dataurl = COALESCE($3, review_signature_dataurl)
+         WHERE id = $4 RETURNING *`,
+        [staffId, nd(reviewNotes), nd(signatureDataurl), req.params.id]
+      );
+      if (!rows.length) throw new AppError('Record not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // PUT /api/daily-records/:id — update a record's notes, and for vitals records
 // (BP / temperature / oxygen / weight) the actual structured reading too — an

@@ -29,9 +29,17 @@ import ProfessionalVisits from '../professional-visits/ProfessionalVisits'
 import VisitorLog from '../visitor-log/VisitorLog'
 import HandoverReport from '../reports/HandoverReport'
 import ResidentDiary from '../diary/ResidentDiary'
+import ManagementReview from './ManagementReview'
+import { ClipboardCheck } from 'lucide-react'
+
+// Who can review staff documentation — matches REVIEW_ROLES in
+// backend/src/routes/dailyRecords.routes.ts
+const REVIEW_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
+  'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor']
 
 const DR_TABS = [
   { key: 'daily_records',       label: 'Daily Records',      icon: ClipboardList },
+  { key: 'management_review',   label: 'Management Review',   icon: ClipboardCheck, managerOnly: true },
   { key: 'social_activities',   label: 'Social Activities',  icon: Music },
   { key: 'bath_chart',          label: 'Bath Chart',          icon: Droplets },
   { key: 'bowel_chart',         label: 'Bowel Chart',         icon: Droplets },
@@ -180,7 +188,7 @@ export default function DailyRecords() {
     <div className="flex flex-col h-full">
       {/* Tab bar */}
       <div className={`border-b ${panelBorder} px-2 flex gap-0 overflow-x-auto shrink-0`} style={{ background: panelBg }}>
-        {DR_TABS.map(tab => (
+        {DR_TABS.filter(tab => !tab.managerOnly || REVIEW_ROLES.includes(user?.role || '')).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === tab.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -193,6 +201,7 @@ export default function DailyRecords() {
 
       {activeTab !== 'daily_records' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
+          {activeTab === 'management_review'    && <ManagementReview homeId={selectedHome} />}
           {activeTab === 'social_activities'   && <SocialActivities />}
           {activeTab === 'bath_chart'           && <BathChart />}
           {activeTab === 'bowel_chart'          && <BowelChart />}

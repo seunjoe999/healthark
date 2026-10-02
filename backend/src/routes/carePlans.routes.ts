@@ -189,7 +189,14 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       const staffId = fromToken(req, 'staffId');
       const role = fromToken(req, 'role');
       if (!MANAGER_ROLES.includes(role)) {
-        throw new AppError('Only managers can edit support plans.', 403);
+        const homeId = fromToken(req, 'homeId');
+        const access = await query<any>(
+          'SELECT can_edit_care_plans FROM staff_home_access WHERE staff_id = $1 AND home_id = $2',
+          [staffId, homeId]
+        );
+        if (!access.length || !access[0].can_edit_care_plans) {
+          throw new AppError('Only managers, or staff granted edit access, can edit support plans.', 403);
+        }
       }
       const { aimsOutcomes, whatICanDo, howToSupport, outcomeAchieved,
               reviewFrequency, updateNotes, attachmentsNotes, templateData, suSignOff, staffSignOff,

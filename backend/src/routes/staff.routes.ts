@@ -166,6 +166,18 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
            ORDER BY last_name, first_name`,
           [teamId]
         );
+        // A team with no members added yet (or only the leader themself)
+        // left the leader seeing only her own name in the staff list and
+        // nobody to message — not a meaningful scope, just an unconfigured
+        // team. Fall back to the whole home until the team is populated.
+        if (rows.length <= 1) {
+          rows = await query(
+            `SELECT id, first_name, last_name, preferred_name, role, photo_url
+             FROM staff WHERE home_id = $1 AND is_active = TRUE
+             ORDER BY last_name, first_name`,
+            [effectiveHomeId]
+          );
+        }
       } else {
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, role, photo_url
