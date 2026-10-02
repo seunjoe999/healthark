@@ -157,9 +157,11 @@ router.post('/staff/:staffId', param('staffId').isUUID(), validateRequest,
 
 // DELETE /api/documents/staff/:staffId/:docId — deleting a staff document
 // (DBS certificate, contract, right-to-work evidence etc.) permanently removes
-// compliance evidence, so this is admin-only, not open to every manager who can
-// upload one.
-router.delete('/staff/:staffId/:docId', requireRole('admin', 'super_admin'),
+// compliance evidence, so this is owner-only, not open to every manager who can
+// upload one. Previously gated to 'admin'/'super_admin', which excluded the
+// account owner (role group_admin) — the one person who explicitly asked for
+// this button.
+router.delete('/staff/:staffId/:docId', requireRole('group_admin'),
   [param('staffId').isUUID(), param('docId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -38,7 +38,7 @@ function getHomeId(req: Request): string {
 // reviewStatus=reviewed|not_reviewed — management review filter (see POST /:id/review)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { suId, homeId, date, from, to, recordType, reviewStatus } = req.query as Record<string, string>;
+    const { suId, homeId, date, from, to, recordType, reviewStatus, staffId } = req.query as Record<string, string>;
     if (!suId && !homeId) throw new AppError('suId or homeId required', 400);
     if (suId) await assertResidentAccess(req, suId);
 
@@ -62,6 +62,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // record ever logged for the home (same unbounded-query bug as /shifts).
     else if (from && to) { sql += ` AND dr.record_date >= $${idx++} AND dr.record_date <= $${idx++}`; params.push(from, to); }
     if (recordType) { sql += ` AND dr.record_type = $${idx++}`; params.push(recordType); }
+    if (staffId) { sql += ` AND dr.staff_id = $${idx++}`; params.push(staffId); }
     if (reviewStatus === 'reviewed') sql += ' AND dr.reviewed_at IS NOT NULL';
     else if (reviewStatus === 'not_reviewed') sql += ' AND dr.reviewed_at IS NULL';
     sql += ' ORDER BY dr.record_date DESC, dr.recorded_at DESC';

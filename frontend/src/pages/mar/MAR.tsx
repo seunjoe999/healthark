@@ -351,7 +351,12 @@ export default function MAR() {
               { key: 'medication_audit', label: 'Medication Audit' },
               { key: 'mar_chart_audit', label: 'Mar Chart Audit' },
               { key: 'mar_review', label: 'MAR Review' },
-            ].filter(t => t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false).map(t => (
+            // Team leaders administer meds via the task view on the "mar" tab, not the
+            // full Medications tab — that tab's Edit/Discontinue/Delete buttons have no
+            // role check of their own, so a team leader reaching it could still add,
+            // discontinue or delete medications. They keep MAR Report, Mar Chart Audit
+            // and MAR Review for their management audits.
+            ].filter(t => (t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false) && (t.key !== 'medications' || !isRole('team_leader'))).map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === t.key ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'}`}>
                 {t.label}

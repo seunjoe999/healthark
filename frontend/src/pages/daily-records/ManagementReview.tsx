@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { dailyRecordsApi, suApi } from '../../api'
+import { dailyRecordsApi, suApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Textarea } from '../../components/ui'
@@ -58,7 +58,9 @@ function daysAgoStr(n: number) { const d = new Date(); d.setDate(d.getDate() - n
 export default function ManagementReview({ homeId }: { homeId: string }) {
   const { user } = useAuth()
   const [sus, setSus] = useState<any[]>([])
+  const [staffList, setStaffList] = useState<any[]>([])
   const [suId, setSuId] = useState('')
+  const [staffId, setStaffId] = useState('')
   const [recordType, setRecordType] = useState('')
   const [from, setFrom] = useState(daysAgoStr(7))
   const [to, setTo] = useState(todayStr())
@@ -71,6 +73,7 @@ export default function ManagementReview({ homeId }: { homeId: string }) {
   useEffect(() => {
     if (!homeId) return
     suApi.list(homeId).then(res => setSus(res.data.data || []))
+    staffApi.list({ homeId }).then(res => setStaffList(res.data.data || []))
   }, [homeId])
 
   const runSearch = async () => {
@@ -83,6 +86,7 @@ export default function ManagementReview({ homeId }: { homeId: string }) {
         from, to,
         recordType: recordType || undefined,
         reviewStatus: reviewStatus || undefined,
+        staffId: staffId || undefined,
       })
       setRecords(res.data.data || [])
     } catch { toast.error('Failed to load records') }
@@ -100,12 +104,19 @@ export default function ManagementReview({ homeId }: { homeId: string }) {
         </div>
         <p className="text-sm text-slate-500 -mt-3">Search staff documentation, read it, and sign off with your own review notes.</p>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
           <div>
             <label className="label">Resident</label>
             <select className="input" value={suId} onChange={e => setSuId(e.target.value)}>
               <option value="">All residents</option>
               {sus.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Staff</label>
+            <select className="input" value={staffId} onChange={e => setStaffId(e.target.value)}>
+              <option value="">All staff</option>
+              {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
             </select>
           </div>
           <div>
@@ -131,7 +142,7 @@ export default function ManagementReview({ homeId }: { homeId: string }) {
               <option value="not_reviewed">Not reviewed</option>
             </select>
           </div>
-          <div className="lg:col-span-5 flex justify-end">
+          <div className="lg:col-span-6 flex justify-end">
             <Button icon={<Search className="w-3.5 h-3.5" />} onClick={runSearch} loading={loading}>Search</Button>
           </div>
         </div>

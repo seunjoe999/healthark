@@ -142,8 +142,11 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   }
 );
 
-// DELETE /api/mar/medications/:id
-router.delete('/medications/:id', param('id').isUUID(), validateRequest,
+// DELETE /api/mar/medications/:id — discontinue. Had no role check at all, so
+// a team leader (explicitly barred from discontinuing meds) could call this
+// directly even with the UI button hidden.
+router.delete('/medications/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('UPDATE su_medications SET is_active = false WHERE id = $1', [req.params.id]);

@@ -184,7 +184,7 @@ export const dailyRecordsApi = {
   update: (id: string, data: Record<string, unknown>) => api.put(`/daily-records/${id}`, data),
   delete: (id: string) => api.delete(`/daily-records/${id}`),
   // Management Review search — suId optional (omit for "all residents" within a home)
-  search: (params: { suId?: string; homeId?: string; from?: string; to?: string; recordType?: string; reviewStatus?: string }) =>
+  search: (params: { suId?: string; homeId?: string; from?: string; to?: string; recordType?: string; reviewStatus?: string; staffId?: string }) =>
     api.get('/daily-records', { params }),
   review: (id: string, data: { reviewNotes?: string; signatureDataurl?: string }) =>
     api.post(`/daily-records/${id}/review`, data),
