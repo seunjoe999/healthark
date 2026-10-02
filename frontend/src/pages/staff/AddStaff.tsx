@@ -13,7 +13,7 @@ export default function AddStaff() {
   const [homes, setHomes] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
   const [createdStaff, setCreatedStaff] = useState<{ email: string; temporaryPassword: string } | null>(null)
-  const [form, setForm] = useState({ homeId: '', firstName: '', lastName: '', email: '' })
+  const [form, setForm] = useState({ homeId: '', firstName: '', lastName: '', email: '', dateOfBirth: '', startDate: '' })
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
@@ -71,6 +71,8 @@ export default function AddStaff() {
             <Input label="First name *" required value={form.firstName} onChange={e => set('firstName', e.target.value)} autoFocus />
             <Input label="Last name *" required value={form.lastName} onChange={e => set('lastName', e.target.value)} />
             <Input label="Email address *" type="email" required value={form.email} onChange={e => set('email', e.target.value)} className="md:col-span-2" />
+            <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} />
+            <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           </div>
         </Card>
       </div>

@@ -1540,6 +1540,16 @@ export default function CarePlans() {
   // Support plans are a clinical/management document — frontline staff can
   // read them but only managers may add or edit (backend enforces the same).
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  // A non-manager (e.g. team leader) can be individually granted edit access
+  // in Settings > Access Rights (staff_home_access.can_edit_care_plans) — the
+  // backend (PUT /care-plans/:id) already honours this, but the Edit button
+  // stayed hidden because it only ever checked the role list above.
+  const [hasEditAccess, setHasEditAccess] = useState(false)
+  useEffect(() => {
+    if (canManage) return
+    api.get('/staff/me/access').then(res => setHasEditAccess(!!res.data.data?.can_edit_care_plans)).catch(() => {})
+  }, [canManage])
+  const canEditPlan = canManage || hasEditAccess
   const [sus, setSus] = useState<any[]>([])
   const [selectedSu, setSelectedSu] = useState<any>(null)
   const [plans, setPlans] = useState<any[]>([])
@@ -1811,7 +1821,7 @@ export default function CarePlans() {
           su={selectedSu}
           reads={planReads[viewPlan.id] || []}
           canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
-          canEdit={canManage}
+          canEdit={canEditPlan}
           onClose={() => setViewPlan(null)}
           onEdit={() => { setEditPlan(viewPlan); setViewPlan(null) }}
           onDelete={async () => { await deletePlan(viewPlan.id) }}

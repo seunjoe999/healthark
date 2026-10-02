@@ -60,6 +60,8 @@ const allowedOrigins = [
   'https://www.compcarehub.co.uk',
   'https://app.comprehensivecare.org.uk',
   'https://comprehensivecare.org.uk',
+  'https://localhost', // the installed Android app (Capacitor) runs its WebView from this origin
+  'capacitor://localhost', // same, on iOS
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
   ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
   ...(process.env.RENDER_EXTERNAL_HOSTNAME ? [`https://${process.env.RENDER_EXTERNAL_HOSTNAME}`] : []),

@@ -6,7 +6,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
-import { assertResidentAccess } from '../utils/residentAccess';
+import { assertResidentAccess, getAssignedSuIds, getRole, getStaffId, RESTRICTED_ROLES } from '../utils/residentAccess';
 
 const router = Router();
 
@@ -33,7 +33,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const params: unknown[] = [];
     let idx = 1;
     if (suId) { sql += ` AND ra.su_id = $${idx++}`; params.push(suId); }
-    else { sql += ` AND ra.home_id = $${idx++}`; params.push(targetHomeId); }
+    else {
+      sql += ` AND ra.home_id = $${idx++}`; params.push(targetHomeId);
+      // Care staff requesting the whole home's list (no suId — e.g. the
+      // "Other Risk Assessment" grid) must only see residents they're assigned
+      // to work with, same scoping Medication Risk Assessment and Care Plans
+      // already apply — this page was showing every resident's risk
+      // assessments to every care staff member regardless of assignment.
+      if (RESTRICTED_ROLES.includes(getRole(req))) {
+        const ids = await getAssignedSuIds(getStaffId(req));
+        if (!ids.length) { res.json({ success: true, data: [] } as ApiResponse); return; }
+        params.push(ids); sql += ` AND ra.su_id = ANY($${params.length})`;
+      }
+    }
     sql += ' ORDER BY ra.created_at DESC';
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

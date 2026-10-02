@@ -321,6 +321,85 @@ async function checkLateOrMissedShifts() {
   } catch (err) { logger.error('Late/missed shift check failed:', err); }
 }
 
+// Every morning at 07:30: remind staff about today's calendar appointments —
+// both resident appointments (GP visits, reviews, inspections) and staff-only
+// events (training, meetings). There was previously no reminder job at all for
+// calendar_events, so an appointment booked days in advance never surfaced to
+// anyone on the day it was actually due. Dedupes on the notification's link so
+// a re-run doesn't spam a second reminder for the same event.
+async function checkTodaysAppointments() {
+  try {
+    const { query } = await import('../config/database');
+    const today = ukDateStr();
+    const events = await query<any>(
+      `SELECT ce.id, ce.home_id, ce.title, ce.event_type, ce.start_time, ce.su_id,
+              ce.assigned_staff_id, ce.attendees, ce.all_staff, ce.visible_team_ids,
+              su.first_name || ' ' || su.last_name as su_name
+       FROM calendar_events ce
+       LEFT JOIN service_users su ON su.id = ce.su_id
+       WHERE ce.event_date = $1`,
+      [today]
+    );
+    if (!events.length) return;
+
+    for (const ev of events as any[]) {
+      const link = `/calendar?event=${ev.id}`;
+      const already = await query<any>(`SELECT 1 FROM notifications WHERE home_id = $1 AND link = $2 LIMIT 1`, [ev.home_id, link]);
+      if (already.length) continue;
+
+      const recipients = new Map<string, true>();
+
+      if (ev.assigned_staff_id) recipients.set(ev.assigned_staff_id, true);
+      if (Array.isArray(ev.attendees)) for (const id of ev.attendees) if (id) recipients.set(id, true);
+
+      if (ev.su_id) {
+        const assigned = await query<any>(
+          `SELECT staff_id FROM staff_service_user_assignments WHERE su_id = $1`,
+          [ev.su_id]
+        );
+        for (const a of assigned) recipients.set(a.staff_id, true);
+      }
+
+      if (Array.isArray(ev.visible_team_ids) && ev.visible_team_ids.length) {
+        const teamStaff = await query<any>(
+          `SELECT id FROM staff WHERE home_id = $1 AND team_id = ANY($2) AND is_active = true`,
+          [ev.home_id, ev.visible_team_ids]
+        );
+        for (const s of teamStaff) recipients.set(s.id, true);
+      }
+
+      // All-staff event, or no specific audience set at all (su_id, assigned
+      // staff, attendees, teams all empty) — reminds the whole home rather
+      // than silently reminding nobody.
+      if (ev.all_staff || recipients.size === 0) {
+        const allStaff = await query<any>(`SELECT id FROM staff WHERE home_id = $1 AND is_active = true`, [ev.home_id]);
+        for (const s of allStaff) recipients.set(s.id, true);
+      }
+
+      // Managers always get reminded too, same as every other scheduler job here.
+      const managers = await query<any>(
+        `SELECT id FROM staff WHERE home_id = $1 AND role IN ('home_manager','group_admin','deputy_manager') AND is_active = true`,
+        [ev.home_id]
+      );
+      for (const m of managers) recipients.set(m.id, true);
+
+      const timeLabel = ev.start_time ? new Date(ev.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : null;
+      const body = ev.su_name
+        ? `${ev.title}${timeLabel ? ` at ${timeLabel}` : ''} — ${ev.su_name}`
+        : `${ev.title}${timeLabel ? ` at ${timeLabel}` : ''} today`;
+
+      for (const recipientId of recipients.keys()) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+           SELECT $1,$2,$3,$4,'info',$5
+           WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE recipient_id = $1 AND home_id = $2 AND link = $5)`,
+          [recipientId, ev.home_id, `Appointment today — ${ev.title}`, body, link]
+        ).catch(() => {});
+      }
+    }
+  } catch (err) { logger.error('Appointment reminder check failed:', err); }
+}
+
 // The server runs in UTC, but every one of these "at Nam" jobs means UK wall-clock
 // time — without this, they silently fire an hour late (or early) for half the
 // year, whenever the UK is on BST instead of GMT. This is the same root cause as
@@ -380,6 +459,12 @@ export function startScheduler(): void {
     logger.info('Scheduler: generating monthly reports');
     // AI monthly report generation - wired in Phase 5
   }, UK_TZ);
+
+  // Every morning at 07:30: remind staff about today's appointments/events
+  cron.schedule('30 7 * * *', checkTodaysAppointments, UK_TZ);
+  // Also run once at boot, so a deploy mid-morning still reminds staff about
+  // today's appointments rather than waiting until tomorrow's 07:30 run.
+  checkTodaysAppointments();
 
   // Just after UK midnight: generate today's recurring task instances. Was
   // 6am, which meant a "daily" task completed yesterday had no fresh pending

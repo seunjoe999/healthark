@@ -594,6 +594,27 @@ router.put('/:id/feature-flags', requireRole('group_admin'),
   }
 );
 
+// GET /api/staff/me/access — a staff member's own granted access rights for
+// their home (e.g. canEditCarePlans), so the frontend can show/hide the
+// Edit/Review buttons it gates on that flag. Deliberately NOT manager-only —
+// a team leader needs to be able to check their own access, which the
+// manager-only /:id/access below can't give them.
+router.get('/me/access', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.staff?.staffId || (req.headers.authorization && jwt.decode(req.headers.authorization.substring(7)) as any)?.staffId;
+    const homeId = req.staff?.homeId || (req.headers.authorization && jwt.decode(req.headers.authorization.substring(7)) as any)?.homeId;
+    if (!staffId || !homeId) { res.json({ success: true, data: null } as ApiResponse); return; }
+    const rows = await query(
+      `SELECT can_view_care_plans, can_edit_care_plans, can_view_sensitive,
+              can_run_reports, can_manage_staff, can_approve_leave,
+              can_view_phones, can_view_keysafe, can_view_financials
+       FROM staff_home_access WHERE staff_id = $1 AND home_id = $2`,
+      [staffId, homeId]
+    );
+    res.json({ success: true, data: rows[0] || null } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/staff/:id/access
 router.get('/:id/access', requireRole('group_admin', 'home_manager'),
   param('id').matches(laxUuid), validateRequest,
