@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, SpeechTextarea } from '../../components/ui'
 import { Shield, Plus, ChevronDown, ChevronUp, Edit2, X, Check, History, Printer, BookOpen, ShieldCheck, Search, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
+import NotifyReadersSection from '../../components/NotifyReadersSection'
 
 const RISK_LEVELS = [
   { value: 'low',      label: 'Low',      color: 'bg-green-100 text-green-700 border-green-200' },
@@ -889,6 +890,13 @@ export default function RiskManagement() {
               <div className="pt-3 border-t border-slate-100">
                 <UpdateHistory raId={ra.id} />
               </div>
+
+              {canManage && (
+                <div className="pt-3 border-t border-slate-100">
+                  <NotifyReadersSection homeId={selectedHome}
+                    onSend={async (staffIds) => { await api.post(`/risk-assessments/${ra.id}/notify-readers`, { staffIds }) }} />
+                </div>
+              )}
             </div>
           )
         })()}

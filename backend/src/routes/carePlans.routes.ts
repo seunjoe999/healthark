@@ -279,6 +279,36 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// POST /api/care-plans/:id/notify-readers — management picks specific staff
+// from a checklist and sends them a notification to read this plan; opening
+// it already auto-records a read via POST /:id/read below, closing the loop.
+router.post('/:id/notify-readers', requireRole(...MANAGER_ROLES as any),
+  [param('id').isUUID(), body('staffIds').isArray({ min: 1 })], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = fromToken(req, 'homeId');
+      const cpRows = await query<any>(
+        `SELECT cp.plan_type, cp.custom_name, su.first_name || ' ' || su.last_name as su_name
+         FROM care_plans cp JOIN service_users su ON su.id = cp.su_id WHERE cp.id = $1`,
+        [req.params.id]
+      );
+      if (!cpRows.length) throw new AppError('Care plan not found', 404);
+      const cp = cpRows[0];
+      const label = cp.custom_name || (cp.plan_type || '').replace(/_/g, ' ');
+      const link = `/care-plans?open=${req.params.id}`;
+      const staffIds: string[] = (req.body.staffIds || []).filter((id: any) => typeof id === 'string' && UUID_RE.test(id));
+      for (const staffId of staffIds) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'info',$5)`,
+          [staffId, homeId, `Please read — ${label}`,
+           `${cp.su_name}'s "${label}" support plan needs your review. Open it to confirm you've read it.`, link]
+        ).catch(() => {});
+      }
+      res.json({ success: true, data: { notified: staffIds.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/care-plans/:id/read — track that a staff member read this plan
 router.post('/:id/read', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

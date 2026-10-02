@@ -8,6 +8,7 @@ import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash
          History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { handleTextareaPaste } from '../../utils/pasteFormat'
+import NotifyReadersSection from '../../components/NotifyReadersSection'
 
 async function uploadDoc(file: File): Promise<{ fileUrl: string; fileName: string }> {
   const fd = new FormData()
@@ -1822,6 +1823,8 @@ export default function CarePlans() {
           reads={planReads[viewPlan.id] || []}
           canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
           canEdit={canEditPlan}
+          canManage={canManage}
+          homeId={selectedHome}
           onClose={() => setViewPlan(null)}
           onEdit={() => { setEditPlan(viewPlan); setViewPlan(null) }}
           onDelete={async () => { await deletePlan(viewPlan.id) }}
@@ -1884,8 +1887,8 @@ export default function CarePlans() {
   )
 }
 
-function PlanDetailModal({ plan, su, reads, canDelete, canEdit, onClose, onEdit, onDelete, onPrint, onReview }: {
-  plan: any; su?: any; reads: any[]; canDelete: boolean; canEdit: boolean;
+function PlanDetailModal({ plan, su, reads, canDelete, canEdit, canManage, homeId, onClose, onEdit, onDelete, onPrint, onReview }: {
+  plan: any; su?: any; reads: any[]; canDelete: boolean; canEdit: boolean; canManage: boolean; homeId: string;
   onClose: () => void; onEdit: () => void; onDelete: () => void; onPrint: () => void; onReview: () => void
 }) {
   const [reviewing, setReviewing] = useState(false)
@@ -2193,6 +2196,13 @@ function PlanDetailModal({ plan, su, reads, canDelete, canEdit, onClose, onEdit,
             <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={onDelete}>Delete</Button>
           )}
         </div>
+
+        {canManage && (
+          <div className="pt-3 border-t border-slate-100">
+            <NotifyReadersSection homeId={homeId}
+              onSend={async (staffIds) => { await api.post(`/care-plans/${plan.id}/notify-readers`, { staffIds }) }} />
+          </div>
+        )}
       </div>
     </Modal>
   )

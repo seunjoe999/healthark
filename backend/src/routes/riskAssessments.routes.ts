@@ -135,6 +135,38 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Frontline staff are read-only on risk assessments — only managers may write.
 const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
+// POST /api/risk-management/:id/notify-readers — management picks specific
+// staff from a checklist and sends them a notification to read this
+// assessment; the notification's link opens straight into it, and opening it
+// already auto-records a read via POST /:id/read above, so this closes the
+// loop the owner asked for ("select staff, they get told to read it, and we
+// can see who has").
+router.post('/:id/notify-readers', requireRole(...MANAGER_ROLES as any),
+  [param('id').isUUID(), body('staffIds').isArray({ min: 1 })], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = fromToken(req, 'homeId');
+      const raRows = await query<any>(
+        `SELECT ra.assessment_name, su.first_name || ' ' || su.last_name as su_name
+         FROM risk_assessments ra JOIN service_users su ON su.id = ra.su_id WHERE ra.id = $1`,
+        [req.params.id]
+      );
+      if (!raRows.length) throw new AppError('Risk assessment not found', 404);
+      const ra = raRows[0];
+      const link = `/risk-management?open=${req.params.id}`;
+      const staffIds: string[] = (req.body.staffIds || []).filter((id: any) => typeof id === 'string' && UUID_RE.test(id));
+      for (const staffId of staffIds) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'info',$5)`,
+          [staffId, homeId, `Please read — ${ra.assessment_name}`,
+           `${ra.su_name}'s "${ra.assessment_name}" risk assessment needs your review. Open it to confirm you've read it.`, link]
+        ).catch(() => {});
+      }
+      res.json({ success: true, data: { notified: staffIds.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 router.post('/',
   requireRole(...MANAGER_ROLES as any),
   [body('assessmentName').notEmpty().withMessage('assessmentName is required')],
