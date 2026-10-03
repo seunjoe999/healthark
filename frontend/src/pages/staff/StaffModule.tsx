@@ -29,7 +29,7 @@ const STAFF_DOC_TYPES = [
   { value: 'other', label: 'Other document' },
 ]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings' | 'access'
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
 
@@ -173,6 +173,10 @@ export default function StaffModule() {
     ...(hideForOwnCareStaffView ? [] : [{ key: 'sensitive' as StaffTab, label: `Sensitive Info (${sensitiveNotes.length})` }]),
     { key: 'meetings', label: 'Staff Meeting' },
     ...(selected?.team_id ? [{ key: 'team_meetings' as StaffTab, label: 'Team Meeting' }] : []),
+    // Per-staff overrides (e.g. can_edit_care_plans for a non-manager role like
+    // Team Leader) — owner-only, since this grants access beyond the role's
+    // normal defaults.
+    ...(isRole('group_admin') ? [{ key: 'access' as StaffTab, label: 'Access Rights' }] : []),
   ]
 
   return (
@@ -806,6 +810,10 @@ export default function StaffModule() {
               <MeetingsSection meetingType="team" parentId={selected.team_id} label="Team Meeting" />
             )}
 
+            {tab === 'access' && selected && (
+              <AccessRightsTab staffId={selected.id} homeId={selected.home_id || selectedHome} />
+            )}
+
             {tab === 'clock' && (
               <div>
                 <h3 className="font-semibold text-slate-900 mb-4">Clock in / out history</h3>
@@ -921,6 +929,78 @@ function AddCautionModalInline({ staffId, onClose, onSaved }: { staffId: string;
         <div className="flex gap-3 justify-end pt-2 border-t border-white/10"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" loading={loading}>Save</Button></div>
       </form>
     </Modal>
+  )
+}
+
+// Per-staff access overrides (staff_home_access) — grants a specific non-manager
+// staff member access beyond their role's normal defaults, e.g. letting a Team
+// Leader edit and sign off care plans. Owner-only (gated at the tab level above).
+const ACCESS_FIELDS: { key: string; label: string; hint?: string }[] = [
+  { key: 'canViewCarePlans', label: 'View support plans' },
+  { key: 'canEditCarePlans', label: 'Edit & sign off support plans', hint: 'Shows the Edit button and sign-off fields on a support plan' },
+  { key: 'canViewSensitive', label: 'View sensitive staff info' },
+  { key: 'canRunReports', label: 'Run reports' },
+  { key: 'canManageStaff', label: 'Manage staff' },
+  { key: 'canApproveLeave', label: 'Approve leave requests' },
+  { key: 'canViewPhones', label: 'View contact phone numbers' },
+  { key: 'canViewKeysafe', label: 'View keysafe codes' },
+  { key: 'canViewFinancials', label: 'View financial information' },
+]
+
+function AccessRightsTab({ staffId, homeId }: { staffId: string; homeId: string }) {
+  const [access, setAccess] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    api.get(`/staff/${staffId}/access`).then(res => {
+      const row = (res.data.data || []).find((r: any) => r.home_id === homeId)
+      setAccess({
+        canViewCarePlans: row?.can_view_care_plans ?? true,
+        canEditCarePlans: row?.can_edit_care_plans ?? false,
+        canViewSensitive: row?.can_view_sensitive ?? false,
+        canRunReports: row?.can_run_reports ?? false,
+        canManageStaff: row?.can_manage_staff ?? false,
+        canApproveLeave: row?.can_approve_leave ?? false,
+        canViewPhones: row?.can_view_phones ?? false,
+        canViewKeysafe: row?.can_view_keysafe ?? false,
+        canViewFinancials: row?.can_view_financials ?? false,
+      })
+    }).catch(() => toast.error('Failed to load access rights')).finally(() => setLoading(false))
+  }, [staffId, homeId])
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await api.put(`/staff/${staffId}/access/${homeId}`, access)
+      toast.success('Access rights saved')
+    } catch { toast.error('Failed to save access rights') }
+    finally { setSaving(false) }
+  }
+
+  if (loading) return <Spinner />
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <p className="text-sm text-slate-500">
+        Grants this staff member access beyond what their role normally allows for this home — e.g. letting a Team Leader
+        edit and sign off support plans. Unchecked items fall back to their role's default behaviour.
+      </p>
+      <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+        {ACCESS_FIELDS.map(f => (
+          <label key={f.key} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
+            <input type="checkbox" className="mt-0.5 rounded" checked={!!access[f.key]}
+              onChange={e => setAccess(p => ({ ...p, [f.key]: e.target.checked }))} />
+            <span>
+              <span className="block text-sm font-medium text-slate-800">{f.label}</span>
+              {f.hint && <span className="block text-xs text-slate-400 mt-0.5">{f.hint}</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      <Button loading={saving} onClick={save}>Save access rights</Button>
+    </div>
   )
 }
 
