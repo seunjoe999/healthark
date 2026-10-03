@@ -346,21 +346,12 @@ export default function MAR() {
             {[
               { key: 'mar', label: 'Medicine Administration Report' },
               { key: 'medications', label: 'Medications' },
-              // Team leaders need this for medication audits (distinct from the
-              // "Medications" edit tab, which stays hidden from them above) — a
-              // read-only report of administration records, not an edit surface.
-              { key: 'mar_report', label: 'MAR Report' },
               { key: 'stock', label: 'Stock Count' },
               { key: 'gp_pharmacy', label: 'GP & Pharmacy' },
               { key: 'medication_audit', label: 'Medication Audit' },
               { key: 'mar_chart_audit', label: 'Mar Chart Audit' },
               { key: 'mar_review', label: 'MAR Review' },
-            // Team leaders administer meds via the task view on the "mar" tab, not the
-            // full Medications tab — that tab's Edit/Discontinue/Delete buttons have no
-            // role check of their own, so a team leader reaching it could still add,
-            // discontinue or delete medications. They keep MAR Report, Mar Chart Audit
-            // and MAR Review for their management audits.
-            ].filter(t => (t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false) && (t.key !== 'medications' || !isRole('team_leader'))).map(t => (
+            ].filter(t => t.key !== 'mar_review' || isRole('group_admin') || user?.featureFlags?.mar_review !== false).map(t => (
               <button key={t.key} onClick={() => setTab(t.key as any)}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${tab === t.key ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'}`}>
                 {t.label}
@@ -377,15 +368,11 @@ export default function MAR() {
             )}
             {loading ? (
               <div className="flex items-center justify-center h-48"><Spinner /></div>
-            ) : tab === 'mar' && isRole('team_leader') ? (
-              // Team leaders administer medication on shift, not through the full
-              // MAR grid/history — they got a static, unclickable list of every
-              // medication with no way to actually administer anything from it.
-              // Same actionable "due today" task view care staff get, while they
-              // keep the other privileged tabs (MAR Review, Medication Audit,
-              // Stock Count, GP & Pharmacy) via the tab bar above.
-              <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
             ) : tab === 'mar' ? (
+              // Team leaders get the same clickable overview managers use for medication
+              // review/audits — who administered, at what time, with what documentation —
+              // not a restricted task list. Owner was explicit this must match the manager
+              // view exactly; the separate "Medications" tab below is where they administer.
               <MARGrid
                 chartData={chartData}
                 showPrescriptions={showPrescriptions}
@@ -407,6 +394,10 @@ export default function MAR() {
                 }}
                 onRefresh={() => fetchAll(selectedSu)}
               />
+            ) : tab === 'medications' && isRole('team_leader') ? (
+              // Team leaders administer medication here, on shift — the actionable
+              // "due today" task view, not the add/edit/discontinue list below.
+              <MedicationTasks selectedHome={selectedHome} homes={homes} setSelectedHome={setSelectedHome} />
             ) : tab === 'medications' ? (
               <div className="p-4 space-y-3">
                 {medications.length === 0 ? (
@@ -472,8 +463,6 @@ export default function MAR() {
               </div>
             ) : tab === 'gp_pharmacy' ? (
               <GPPharmacyTab su={su} medications={medications} />
-            ) : tab === 'mar_report' ? (
-              <MARReportTab su={su} homeId={selectedHome} />
             ) : tab === 'medication_audit' ? (
               <div className="p-4 space-y-3">
                 <div className="flex justify-between items-center mb-2">
@@ -2161,70 +2150,6 @@ function PrintMARModal({ suId, su, startDate, endDate, onClose }: { suId: string
 }
 
 /* ─── GP & Pharmacy Tab ────────────────────────────────────────────────── */
-// Read-only administration-record report, scoped to this resident — distinct from the
-// "Medications" edit tab (which team leaders don't get). Team leaders need this for
-// medication audits without the ability to add/edit/discontinue medications.
-function MARReportTab({ su, homeId }: { su: any; homeId: string }) {
-  const [rows, setRows] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [from, setFrom] = useState(() => format(new Date(Date.now() - 29 * 86400000), 'yyyy-MM-dd'))
-  const [to, setTo] = useState(() => format(new Date(), 'yyyy-MM-dd'))
-
-  useEffect(() => {
-    if (!su?.id || !homeId) return
-    setLoading(true)
-    api.get('/reports/mar-report', { params: { homeId, from, to } })
-      .then(res => setRows((res.data.data || []).filter((r: any) => r.su_id === su.id)))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [su?.id, homeId, from, to])
-
-  return (
-    <div className="p-4 space-y-3">
-      <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-xs font-semibold text-slate-500">From
-          <input type="date" className="input ml-2" value={from} onChange={e => setFrom(e.target.value)} />
-        </label>
-        <label className="text-xs font-semibold text-slate-500">To
-          <input type="date" className="input ml-2" value={to} onChange={e => setTo(e.target.value)} />
-        </label>
-      </div>
-      {loading ? (
-        <div className="flex items-center justify-center h-32"><Spinner /></div>
-      ) : rows.length === 0 ? (
-        <EmptyState title="No administration records" description="No MAR entries for this resident in the selected date range" />
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="text-left px-3 py-2 font-semibold text-slate-600">Date</th>
-                <th className="text-left px-3 py-2 font-semibold text-slate-600">Time</th>
-                <th className="text-left px-3 py-2 font-semibold text-slate-600">Medication</th>
-                <th className="text-left px-3 py-2 font-semibold text-slate-600">Dose</th>
-                <th className="text-left px-3 py-2 font-semibold text-slate-600">Status</th>
-                <th className="text-left px-3 py-2 font-semibold text-slate-600">Given by</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r: any) => (
-                <tr key={r.id} className="border-t border-slate-100">
-                  <td className="px-3 py-2">{r.record_date ? format(new Date(r.record_date), 'd MMM yyyy') : '—'}</td>
-                  <td className="px-3 py-2">{r.scheduled_time || '—'}</td>
-                  <td className="px-3 py-2">{r.medication_name || '—'}</td>
-                  <td className="px-3 py-2">{r.dose || '—'}</td>
-                  <td className="px-3 py-2">{r.given ? 'Given' : r.refused ? `Refused${r.refused_reason ? ` — ${r.refused_reason}` : ''}` : (r.mar_code || '—')}</td>
-                  <td className="px-3 py-2">{r.given_by_name || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function GPPharmacyTab({ su, medications }: { su: any; medications: any[] }) {
   const infoRow = (label: string, value: string | undefined) =>
     value ? (

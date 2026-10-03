@@ -104,7 +104,13 @@ function RiskBadge({ level }: { level: string }) {
 function AnswerDisplay({ q, value }: { q: any; value: any }) {
   if (value === undefined || value === null || value === '') return <span className="text-slate-400">—</span>
   if (q.type === 'yes_no') {
-    const colors: Record<string, string> = { yes: 'text-green-600', no: 'text-red-500', 'n/a': 'text-slate-400' }
+    // For a reverse-scored question (e.g. "Are there any gaps on the countdown
+    // sheet?") "No" is the good answer and "Yes" is the problem — colors were
+    // hardcoded to always show "no" as red/negative regardless, which read as
+    // a flagged issue even when the audit correctly scored it as compliant.
+    const goodAnswer = q.reverseScored ? 'no' : 'yes'
+    const badAnswer = q.reverseScored ? 'yes' : 'no'
+    const colors: Record<string, string> = { [goodAnswer]: 'text-green-600', [badAnswer]: 'text-red-500', 'n/a': 'text-slate-400' }
     return <span className={`font-semibold uppercase text-sm ${colors[value] || 'text-slate-700'}`}>{value}</span>
   }
   if (q.type === 'scale') {
