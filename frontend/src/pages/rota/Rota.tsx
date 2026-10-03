@@ -623,6 +623,23 @@ export default function Rota() {
         </select>
         <StaffFilterCombobox staffList={staffList} value={filterStaff}
           onChange={id => { setFilterStaff(id); setFilterLabel('') }} />
+        {filterStaff && (() => {
+          const selectedStaff = staffList.find((s: any) => s.id === filterStaff)
+          const contractedHours = selectedStaff?.contracted_hours ?? 36
+          const rotaHours = dayData.reduce((sum, d) => sum + d.dayShifts.reduce((s: number, sh: any) => {
+            const start = timeToMins(sh.start_time?.substring(0, 5) || '00:00')
+            let end = timeToMins(sh.end_time?.substring(0, 5) || '00:00')
+            if (end <= start) end += 1440
+            return s + (end - start) / 60
+          }, 0), 0)
+          return (
+            <span className="flex items-center gap-3 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 flex-shrink-0">
+              <span>Contracted: <span className="text-slate-900">{contractedHours}h</span></span>
+              <span className="text-slate-300">|</span>
+              <span>Rota: <span className={rotaHours > contractedHours ? 'text-amber-600' : 'text-slate-900'}>{rotaHours % 1 === 0 ? rotaHours : rotaHours.toFixed(1)}h</span></span>
+            </span>
+          )
+        })()}
         {canManage && serviceLabels.length > 0 && (
           <button onClick={() => setManageServicesOpen(true)}
             className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
@@ -2309,7 +2326,7 @@ function StaffFilterCombobox({ staffList, value, onChange }: {
         <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-30 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
           <div className="relative p-2 border-b border-slate-100">
             <Search className="absolute left-4.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input autoFocus className="input pl-8 text-sm" placeholder="Search staff..."

@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, SpeechTextarea } from '../../components/ui'
 import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash2,
-         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search, Check } from 'lucide-react'
+         History, ChevronDown, Paperclip, Users, BookOpen, ShieldCheck, Star, Copy, Upload, X, Search, Check, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { handleTextareaPaste } from '../../utils/pasteFormat'
 import NotifyReadersSection from '../../components/NotifyReadersSection'
@@ -1565,6 +1565,7 @@ export default function CarePlans() {
   const [readsData, setReadsData] = useState<any[]>([])
   const [readsLoading, setReadsLoading] = useState(false)
   const [planSearch, setPlanSearch] = useState('')
+  const [hidePlansOpen, setHidePlansOpen] = useState(false)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -1632,7 +1633,8 @@ export default function CarePlans() {
     let suFull = selectedSu
     try { const full = await fetchSuFull(selectedSu.id); if (full) suFull = full } catch {}
 
-    const missing = plans.filter(p => !planReads[p.id])
+    const printablePlans = plans.filter((p: any) => !p.is_hidden)
+    const missing = printablePlans.filter(p => !planReads[p.id])
     let allReads = { ...planReads }
     if (missing.length) {
       const results = await Promise.allSettled(missing.map(p => api.get(`/care-plans/${p.id}/reads`)))
@@ -1644,7 +1646,7 @@ export default function CarePlans() {
     }
 
     const name = getName(suFull)
-    const rows = plans.map(plan => buildPrintHtml(plan, suFull, allReads[plan.id] || []))
+    const rows = printablePlans.map(plan => buildPrintHtml(plan, suFull, allReads[plan.id] || []))
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${name} — All Support Plans</title>
       <style>${CARE_PLAN_PRINT_CSS}</style>
       </head><body>${rows.map(h => `<div class="plan-block">${h.replace(/<!DOCTYPE html>[\s\S]*?<body[^>]*>/, '').replace(/<\/body>[\s\S]*?<\/html>/, '')}</div>`).join('')}</body></html>`
@@ -1665,6 +1667,7 @@ export default function CarePlans() {
 
   const planLabel = (plan: any) => plan.custom_name || PLAN_TYPES.find(t => t.value === plan.plan_type)?.label || plan.plan_type || ''
   const visiblePlans = plans
+    .filter((plan: any) => !plan.is_hidden)
     .filter((plan: any) => !planSearch.trim() || planLabel(plan).toLowerCase().includes(planSearch.trim().toLowerCase()))
     .slice()
     .sort((a: any, b: any) => planLabel(a).localeCompare(planLabel(b)))
@@ -1731,6 +1734,9 @@ export default function CarePlans() {
         {selectedSu && (
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={printAll}>Print all</Button>
+            {canManage && plans.length > 0 && (
+              <Button size="sm" variant="outline" icon={<EyeOff className="w-4 h-4" />} onClick={() => setHidePlansOpen(true)}>Hide care plan</Button>
+            )}
             {canManage && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddPlanOpen(true)}>Add support plan</Button>}
           </div>
         )}
@@ -1814,6 +1820,11 @@ export default function CarePlans() {
       <AddPlanModal open={addPlanOpen} onClose={() => setAddPlanOpen(false)}
         suId={selectedSu?.id} homeId={selectedHome} suName={selectedSu ? getName(selectedSu) : undefined}
         onSaved={async () => { setAddPlanOpen(false); await refreshPlans(); toast.success('Support plan created') }} />
+
+      {/* Hide care plan modal */}
+      <HidePlansModal open={hidePlansOpen} onClose={() => setHidePlansOpen(false)}
+        plans={plans} suId={selectedSu?.id} planLabel={planLabel}
+        onSaved={async () => { setHidePlansOpen(false); await refreshPlans(); toast.success('Care plan visibility updated') }} />
 
       {/* View plan modal */}
       {viewPlan && (
@@ -2313,6 +2324,57 @@ const EMPTY_ADD_FORM = {
 const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'positive_behaviour', 'crisis', 'about_me',
   'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life',
   'physical_health', 'learning_disability', 'bowel_management'])
+
+// Lets a manager hide support plans that don't apply to this resident (shown
+// their full list, checked = hidden) from the grid and Print All, without
+// deleting them — RoundSys-style "Hide Care Plan" checklist.
+function HidePlansModal({ open, onClose, plans, suId, planLabel, onSaved }: {
+  open: boolean; onClose: () => void; plans: any[]; suId?: string
+  planLabel: (plan: any) => string; onSaved: () => void
+}) {
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (open) setHidden(new Set(plans.filter((p: any) => p.is_hidden).map((p: any) => p.id)))
+  }, [open, plans])
+
+  const toggle = (id: string) => setHidden(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  const save = async () => {
+    if (!suId) return
+    setSaving(true)
+    try {
+      await api.post('/care-plans/hide-bulk', { suId, hiddenIds: Array.from(hidden) })
+      onSaved()
+    } catch { toast.error('Failed to update hidden plans') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Hide care plan">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-500">Check any plans that don't apply to this resident — they'll be hidden from the grid and Print All, but not deleted. Uncheck to show them again.</p>
+        <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-80 overflow-y-auto">
+          {plans.map((plan: any) => (
+            <label key={plan.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" checked={hidden.has(plan.id)} onChange={() => toggle(plan.id)} className="rounded" />
+              <span className="text-sm text-slate-700 flex-1">{planLabel(plan)}</span>
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-3 justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button loading={saving} onClick={save}>Save</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
 
 function AddPlanModal({ open, onClose, suId, homeId, onSaved, suName }: {
   open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void; suName?: string

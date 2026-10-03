@@ -2008,6 +2008,10 @@ async function ensureColumns() {
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255)`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100)`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS bank_sort_code VARCHAR(20)`,
+    // Fields needed to match the owner's QuickBooks reference template (Terms,
+    // Due Date, Service Date already exists as month_date).
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS due_date       DATE`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms  VARCHAR(50) DEFAULT 'Net 30'`,
     `ALTER TABLE homes ADD COLUMN IF NOT EXISTS paypal_email VARCHAR(255)`,
     `CREATE TABLE IF NOT EXISTS service_user_feedback (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2756,6 +2760,16 @@ async function ensureColumns() {
     // ── risk_assessments — update tracking and last assessed date ─────────────
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS risk_update_tracking TEXT`,
     `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS last_assessed_date   DATE`,
+    // "My support plan" fields the owner specifically called out as missing from
+    // the Choking Risk Assessment reformat — the checklist replaced them instead
+    // of sitting above them as intended.
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS what_i_can_do        TEXT`,
+    `ALTER TABLE risk_assessments ADD COLUMN IF NOT EXISTS how_you_can_support_me TEXT`,
+    // "Hide Care Plan" — lets a manager hide support plans that don't apply to a
+    // given resident (e.g. a generic plan created by mistake) from the resident's
+    // grid and Print All, without deleting them. Separate from is_active, which
+    // already means archived/deleted.
+    `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE`,
     // ── medicine_risk_assessments — narrative risk-assessment fields to match
     //    the "Other Risk Assessment" template (client voice-note request) ─────
     `ALTER TABLE medicine_risk_assessments ADD COLUMN IF NOT EXISTS review_frequency         VARCHAR(50)`,

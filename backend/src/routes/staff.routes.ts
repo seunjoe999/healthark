@@ -116,7 +116,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, email, role, status,
                   home_id, photo_url, start_date, is_active, last_login, created_at,
-                  feature_flags, (login_pin_hash IS NOT NULL) as has_pin
+                  feature_flags, (login_pin_hash IS NOT NULL) as has_pin, contracted_hours
            FROM staff WHERE organisation_id = $1 AND status != 'terminated' ${where}
            ORDER BY last_name, first_name`,
           params
@@ -125,7 +125,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         // feature_flags column may not exist yet (migration pending) — fall back
         rows = await query(
           `SELECT id, first_name, last_name, preferred_name, email, role, status,
-                  home_id, photo_url, start_date, is_active, last_login, created_at
+                  home_id, photo_url, start_date, is_active, last_login, created_at,
+                  contracted_hours
            FROM staff WHERE organisation_id = $1 AND status != 'terminated' ${where}
            ORDER BY last_name, first_name`,
           params
@@ -134,7 +135,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     } else if (role === 'home_manager') {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
-                home_id, photo_url, start_date, is_active
+                home_id, photo_url, start_date, is_active, contracted_hours
          FROM staff WHERE home_id = $1 AND organisation_id = $2 AND status != 'terminated'
          ORDER BY last_name, first_name`,
         [effectiveHomeId, organisationId]

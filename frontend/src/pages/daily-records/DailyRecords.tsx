@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, subDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Select, Input, Textarea, PrintButton } from '../../components/ui'
-import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check, Music, Thermometer, Stethoscope, ArrowLeftRight, BookOpen, Users2 } from 'lucide-react'
+import { ClipboardList, Plus, ChevronLeft, ChevronRight, Droplets, Edit, Trash2, X, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LETTERHEAD_PRINT_CSS, fmtDate, esc, nl } from '../../utils/letterheadPrint'
 import BodyMap from './forms/BodyMap'
@@ -21,14 +21,6 @@ import BehaviourForm from './forms/BehaviourForm'
 import GeneralForm from './forms/GeneralForm'
 import FollowUpForm from './forms/FollowUpForm'
 import MedicationCountForm from './forms/MedicationCountForm'
-import SocialActivities from '../social-activities/SocialActivities'
-import BathChart from '../bath-chart/BathChart'
-import BowelChart from '../bowel-chart/BowelChart'
-import Observations from '../observations/Observations'
-import ProfessionalVisits from '../professional-visits/ProfessionalVisits'
-import VisitorLog from '../visitor-log/VisitorLog'
-import HandoverReport from '../reports/HandoverReport'
-import ResidentDiary from '../diary/ResidentDiary'
 import ManagementReview from './ManagementReview'
 import { ClipboardCheck } from 'lucide-react'
 
@@ -37,17 +29,14 @@ import { ClipboardCheck } from 'lucide-react'
 const REVIEW_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
   'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor']
 
+// Owner reviewed this live and asked to cut it down to just these two — the
+// other tabs (Social Activities, Bath Chart, Bowel Chart, Observations,
+// Professional Visits, Visitor Log, Handover, Health Check) duplicated record
+// types already loggable from the main Daily Records form. Their components
+// and routes are untouched, just no longer surfaced here.
 const DR_TABS = [
   { key: 'daily_records',       label: 'Daily Records',      icon: ClipboardList },
   { key: 'management_review',   label: 'Management Review',   icon: ClipboardCheck, managerOnly: true },
-  { key: 'social_activities',   label: 'Social Activities',  icon: Music },
-  { key: 'bath_chart',          label: 'Bath Chart',          icon: Droplets },
-  { key: 'bowel_chart',         label: 'Bowel Chart',         icon: Droplets },
-  { key: 'observations',        label: 'Observations',        icon: Thermometer },
-  { key: 'professional_visits', label: 'Professional Visits', icon: Stethoscope },
-  { key: 'visitor_log',         label: 'Visitor Log',         icon: Users2 },
-  { key: 'handover',            label: 'Handover',            icon: ArrowLeftRight },
-  { key: 'health_check',        label: 'Health Check',        icon: BookOpen },
 ]
 
 // Alphabetical by label, so the record-type picker reads in a predictable order.
@@ -190,8 +179,8 @@ export default function DailyRecords() {
       <div className={`border-b ${panelBorder} px-2 flex gap-0 overflow-x-auto shrink-0`} style={{ background: panelBg }}>
         {DR_TABS.filter(tab => !tab.managerOnly || REVIEW_ROLES.includes(user?.role || '')).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-              activeTab === tab.key ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+            className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 rounded-t-lg ${
+              activeTab === tab.key ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}>
             <tab.icon className="w-3.5 h-3.5" />
             {tab.label}
@@ -202,14 +191,6 @@ export default function DailyRecords() {
       {activeTab !== 'daily_records' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === 'management_review'    && <ManagementReview homeId={selectedHome} />}
-          {activeTab === 'social_activities'   && <SocialActivities />}
-          {activeTab === 'bath_chart'           && <BathChart />}
-          {activeTab === 'bowel_chart'          && <BowelChart />}
-          {activeTab === 'observations'         && <Observations />}
-          {activeTab === 'professional_visits'  && <ProfessionalVisits />}
-          {activeTab === 'visitor_log'           && <VisitorLog />}
-          {activeTab === 'handover'             && <HandoverReport />}
-          {activeTab === 'health_check'         && <ResidentDiary />}
         </div>
       ) : (
       <>

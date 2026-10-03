@@ -68,6 +68,26 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/care-plans/hide-bulk — "Hide Care Plan": manager picks which of this
+// resident's plans don't apply and hides them from the grid/Print All without
+// deleting them. Replaces the full hidden set for this resident each save, so
+// un-checking a plan in the modal un-hides it. Registered before /:id.
+router.post('/hide-bulk',
+  requireRole('group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  [body('suId').isUUID(), body('hiddenIds').isArray()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { suId, hiddenIds } = req.body as { suId: string; hiddenIds: string[] };
+      await assertResidentAccess(req, suId);
+      await query('UPDATE care_plans SET is_hidden = false WHERE su_id = $1', [suId]);
+      if (hiddenIds.length) {
+        await query('UPDATE care_plans SET is_hidden = true WHERE su_id = $1 AND id = ANY($2)', [suId, hiddenIds]);
+      }
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/care-plans/reads-summary?homeId=xxx  — admin: who read which plan (must be before /:id)
 router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
   try {

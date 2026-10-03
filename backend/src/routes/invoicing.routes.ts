@@ -68,14 +68,17 @@ router.post('/', [
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { homeId, suId, commissionedHours, hourlyRate, invoiceAmount, notes } = req.body;
+      const { homeId, suId, commissionedHours, hourlyRate, invoiceAmount, notes, paymentTerms } = req.body;
       // <input type="month"> sends YYYY-MM; PostgreSQL DATE needs YYYY-MM-DD
       const rawDate = req.body.monthDate as string;
       const monthDate = /^\d{4}-\d{2}$/.test(rawDate) ? `${rawDate}-01` : rawDate;
+      const terms = paymentTerms || 'Net 30';
+      const termDays = parseInt(String(terms).match(/\d+/)?.[0] || '30', 10);
+      const dueDate = req.body.dueDate || new Date(Date.now() + termDays * 86400000).toISOString().split('T')[0];
       const rows = await dbQuery(
-        `INSERT INTO invoices (home_id, su_id, month_date, commissioned_hours, hourly_rate, invoice_amount, notes, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [homeId, suId, monthDate, commissionedHours || null, hourlyRate || null, invoiceAmount, notes || null, staffId]
+        `INSERT INTO invoices (home_id, su_id, month_date, commissioned_hours, hourly_rate, invoice_amount, notes, created_by, due_date, payment_terms)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [homeId, suId, monthDate, commissionedHours || null, hourlyRate || null, invoiceAmount, notes || null, staffId, dueDate, terms]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }

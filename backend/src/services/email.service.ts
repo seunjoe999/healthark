@@ -204,13 +204,18 @@ export function customEmail(candidate: { first_name: string; last_name: string }
 // (a single monthly care-services line, not a multi-item cart): resident is the
 // "Bill To", the issuing home is the "From", and hours × rate is the one line item.
 export function invoiceEmail(
-  invoice: { id: string; first_name: string; last_name: string; month_date: string; commissioned_hours?: number | null; hourly_rate?: number | null; invoice_amount: number; notes?: string | null; created_at?: string },
+  invoice: { id: string; first_name: string; last_name: string; month_date: string; commissioned_hours?: number | null; hourly_rate?: number | null; invoice_amount: number; notes?: string | null; created_at?: string; due_date?: string | null; payment_terms?: string | null },
   home: { name: string; address1?: string | null; address2?: string | null; address3?: string | null; postcode?: string | null; phone?: string | null; email?: string | null;
           bankName?: string | null; bankAccountNumber?: string | null; bankSortCode?: string | null; paypalEmail?: string | null }
 ) {
   const monthLabel = new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const serviceDate = new Date(invoice.month_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const invoiceNo = invoice.id.slice(0, 8).toUpperCase();
   const issueDate = new Date(invoice.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const terms = invoice.payment_terms || 'Net 30';
+  const dueDate = invoice.due_date
+    ? new Date(invoice.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : new Date((invoice.created_at ? new Date(invoice.created_at).getTime() : Date.now()) + 30 * 86400000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const hours = invoice.commissioned_hours ? parseFloat(String(invoice.commissioned_hours)) : null;
   const rate = invoice.hourly_rate ? parseFloat(String(invoice.hourly_rate)) : null;
   const total = parseFloat(String(invoice.invoice_amount || 0));
@@ -234,7 +239,7 @@ export function invoiceEmail(
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px"><tr>
               <td style="font-size:32px;letter-spacing:2px;font-weight:700;color:#0f172a">INVOICE</td>
-              <td align="right" style="font-size:13px;color:#64748b;vertical-align:top">Invoice No: ${invoiceNo}<br/>Date: ${issueDate}</td>
+              <td align="right" style="font-size:13px;color:#64748b;vertical-align:top">Invoice No: ${invoiceNo}<br/>Terms: ${terms}<br/>Invoice Date: ${issueDate}<br/>Due Date: ${dueDate}</td>
             </tr></table>
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr>
@@ -248,17 +253,22 @@ export function invoiceEmail(
               </td>
             </tr></table>
 
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:24px 0">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px">
+              <tr><td style="font-size:11px;letter-spacing:1px;color:#64748b">SERVICE DATE: ${serviceDate}</td></tr>
+            </table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0 24px">
               <tr>
+                <td style="background:#1e293b;color:#fff;text-align:left;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Product/Service</td>
                 <td style="background:#1e293b;color:#fff;text-align:left;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Description</td>
+                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Qty</td>
                 <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Rate</td>
-                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Hours</td>
-                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Total</td>
+                <td style="background:#1e293b;color:#fff;text-align:right;padding:10px 12px;font-size:11px;letter-spacing:0.5px">Amount</td>
               </tr>
               <tr>
-                <td style="${td}">Care services — ${monthLabel}</td>
-                <td style="${td}text-align:right">${rate ? `£${rate.toFixed(2)}/hr` : '—'}</td>
+                <td style="${td}">Care Services</td>
+                <td style="${td}">${invoice.first_name} ${invoice.last_name} — ${monthLabel}</td>
                 <td style="${td}text-align:right">${hours ? hours.toFixed(1) : '—'}</td>
+                <td style="${td}text-align:right">${rate ? `£${rate.toFixed(2)}/hr` : '—'}</td>
                 <td style="${td}text-align:right">£${total.toFixed(2)}</td>
               </tr>
             </table>
@@ -266,7 +276,7 @@ export function invoiceEmail(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0"><tr>
               <td width="50%" style="vertical-align:top">
                 ${(home.bankName || home.bankAccountNumber || home.paypalEmail) ? `
-                <div style="font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px">PAYMENT METHODS</div>
+                <div style="font-size:11px;letter-spacing:1px;color:#64748b;margin-bottom:4px">CUSTOMER PAYMENT OPTIONS</div>
                 <div style="font-size:13px;line-height:1.7">
                   ${home.bankName ? `Bank: ${home.bankName}<br/>` : ''}
                   ${home.bankSortCode ? `Sort code: ${home.bankSortCode}<br/>` : ''}

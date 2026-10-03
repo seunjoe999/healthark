@@ -36,35 +36,38 @@ const ABBREV: Record<string, string> = {
   'Dementia Care': 'Dementia',
 }
 
-// text colours darkened from the Tailwind -400 shades (#4ade80/#fbbf24/#ef4444)
-// — too pale to read against a light background, per the owner's explicit
-// "darken the green/orange/yellow" request.
+// Previously translucent rgba fills (0.2 alpha, and 0.04 for "missing") were still
+// too faint — reported again after the first darkening pass. Now solid, saturated
+// backgrounds with white text, same family as the clock-in status green
+// (emerald-600, matching bg-emerald-500 used for "approved"/active elsewhere) —
+// legible regardless of light/dark theme instead of relying on page background
+// showing through a transparent fill.
 const STATUS_CONFIG = {
   current: {
-    bg: 'rgba(74,222,128,0.2)',
-    border: 'rgba(74,222,128,0.4)',
-    text: '#15803d',
+    bg: '#059669',
+    border: '#047857',
+    text: '#ffffff',
     symbol: '✓',
     label: 'Current',
   },
   expiring: {
-    bg: 'rgba(251,191,36,0.2)',
-    border: 'rgba(251,191,36,0.4)',
-    text: '#b45309',
+    bg: '#ea580c',
+    border: '#c2410c',
+    text: '#ffffff',
     symbol: '!',
     label: 'Expiring Soon',
   },
   expired: {
-    bg: 'rgba(239,68,68,0.2)',
-    border: 'rgba(239,68,68,0.4)',
-    text: '#b91c1c',
+    bg: '#dc2626',
+    border: '#b91c1c',
+    text: '#ffffff',
     symbol: '✗',
     label: 'Expired',
   },
   missing: {
-    bg: 'rgba(255,255,255,0.04)',
-    border: 'rgba(255,255,255,0.1)',
-    text: '#64748b',
+    bg: '#64748b',
+    border: '#475569',
+    text: '#ffffff',
     symbol: '–',
     label: 'Not Recorded',
   },

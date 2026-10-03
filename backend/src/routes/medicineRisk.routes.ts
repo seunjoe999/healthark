@@ -67,6 +67,34 @@ router.get('/latest', async (req: Request, res: Response, next: NextFunction) =>
   } catch (err) { next(err); }
 });
 
+// GET /api/medicine-risk/reads-summary?homeId=xxx — who has read which
+// medicine risk assessment (Service User Audit read-tracking). Registered
+// before /:id — Express otherwise matches "reads-summary" as the :id param,
+// which fails isUUID() validation and surfaces to the frontend as "Failed to
+// load reads data" (same route-ordering bug previously fixed the same way in
+// riskAssessments.routes.ts, missed here).
+router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = tok(req, 'homeId') || (req.query.homeId as string);
+    const rows = await query(
+      `SELECT mr.id as assessment_id,
+              su.first_name || ' ' || su.last_name as su_name,
+              COUNT(mrr.id) as total_reads,
+              MAX(mrr.read_at) as last_read_at,
+              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
+       FROM medicine_risk_assessments mr
+       JOIN service_users su ON su.id = mr.su_id
+       LEFT JOIN medicine_risk_reads mrr ON mrr.assessment_id = mr.id
+       LEFT JOIN staff s ON s.id = mrr.staff_id
+       WHERE mr.home_id = $1
+       GROUP BY mr.id, su.first_name, su.last_name
+       ORDER BY su.last_name`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/medicine-risk/:id — single assessment plus its update-tracking history
 router.get('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -91,31 +119,6 @@ router.get('/:id', param('id').isUUID(), validateRequest,
     } catch (err) { next(err); }
   }
 );
-
-// GET /api/medicine-risk/reads-summary?homeId=xxx — who has read which
-// medicine risk assessment (Service User Audit read-tracking). Must be
-// before /:id.
-router.get('/reads-summary', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const homeId = tok(req, 'homeId') || (req.query.homeId as string);
-    const rows = await query(
-      `SELECT mr.id as assessment_id,
-              su.first_name || ' ' || su.last_name as su_name,
-              COUNT(mrr.id) as total_reads,
-              MAX(mrr.read_at) as last_read_at,
-              STRING_AGG(DISTINCT s.first_name || ' ' || s.last_name, ', ') as readers
-       FROM medicine_risk_assessments mr
-       JOIN service_users su ON su.id = mr.su_id
-       LEFT JOIN medicine_risk_reads mrr ON mrr.assessment_id = mr.id
-       LEFT JOIN staff s ON s.id = mrr.staff_id
-       WHERE mr.home_id = $1
-       GROUP BY mr.id, su.first_name, su.last_name
-       ORDER BY su.last_name`,
-      [homeId]
-    );
-    res.json({ success: true, data: rows } as ApiResponse);
-  } catch (err) { next(err); }
-});
 
 // POST /api/medicine-risk/:id/read — track that a staff member read this assessment
 router.post('/:id/read', param('id').isUUID(), validateRequest,

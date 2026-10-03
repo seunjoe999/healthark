@@ -219,12 +219,20 @@ router.get('/team-briefing', async (req: Request, res: Response, next: NextFunct
       const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
       myTeamId = staffRows[0]?.team_id || null;
     }
+    // Reiterated as a critical privacy issue a second time (owner found a care
+    // staff member reading another service's minutes) — the "no team selected
+    // = visible to everyone" fallback below was exactly that loophole: minutes
+    // left without a team attached (whether by oversight or intentionally) broadcast
+    // to all staff in the home. Non-privileged staff now only ever see a meeting
+    // whose team_id exactly matches their own; a meeting with no team is
+    // management-only until explicitly assigned to one (see the matching copy
+    // change in MeetingsSection.tsx's team picker).
     const rows = await query(
       `SELECT m.*, s.first_name || ' ' || s.last_name as created_by_name, t.name as team_name
        FROM meetings m LEFT JOIN staff s ON s.id = m.created_by
        LEFT JOIN teams t ON t.id = m.team_id
        WHERE m.meeting_type = 'team_briefing' AND m.home_id = $1
-         AND ($2 OR m.team_id IS NULL OR m.team_id = $3::uuid)
+         AND ($2 OR (m.team_id IS NOT NULL AND m.team_id = $3::uuid))
        ORDER BY m.meeting_date DESC, m.created_at DESC`,
       [homeId, isPrivileged, myTeamId]
     );

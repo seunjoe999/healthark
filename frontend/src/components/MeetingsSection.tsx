@@ -392,10 +392,10 @@ function CreateModal({ open, editing, meetingType, parentId, homeId, label, defa
           <div>
             <label className="label">Team</label>
             <select className="input w-full" value={form.teamId} onChange={e => set('teamId', e.target.value)}>
-              <option value="">All staff (no specific team)</option>
+              <option value="">Management only (no team selected)</option>
               {teams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <p className="text-xs text-slate-400 mt-1">Picking a team restricts these minutes to that team only — leave blank for a genuine all-staff notice.</p>
+            <p className="text-xs text-slate-400 mt-1">Pick a team so only that team's staff can see these minutes. For an all-staff notice, use the Noticeboard instead — leaving this blank restricts the meeting to management.</p>
           </div>
         )}
         <SpeechTextarea label="Attendees" rows={2} value={form.attendees} onChange={v => set('attendees', v)}

@@ -160,6 +160,7 @@ const BLANK_FORM = {
   managementPlan: '', historicalContext: '', reviewFrequency: 'monthly',
   riskBeforeIntervention: '', riskRatingOption: '', riskAfterControls: '',
   riskUpdateTracking: '', lastAssessedDate: '', checklistAnswers: {} as Record<string, string>,
+  whatICanDo: '', howYouCanSupportMe: '',
 }
 
 // ── Draft autosave (New Risk Management Plan form) ─────────────────────────
@@ -517,6 +518,7 @@ export default function RiskManagement() {
         riskUpdateTracking: form.riskUpdateTracking,
         lastAssessedDate: form.lastAssessedDate || undefined,
         checklistAnswers: form.riskType === 'choking' ? form.checklistAnswers : undefined,
+        whatICanDo: form.whatICanDo, howYouCanSupportMe: form.howYouCanSupportMe,
       })
       toast.success('Risk management plan created')
       clearRiskDraft()
@@ -544,6 +546,7 @@ export default function RiskManagement() {
         riskUpdateTracking: form.riskUpdateTracking,
         lastAssessedDate: form.lastAssessedDate || undefined,
         checklistAnswers: form.riskType === 'choking' ? form.checklistAnswers : undefined,
+        whatICanDo: form.whatICanDo, howYouCanSupportMe: form.howYouCanSupportMe,
       })
       toast.success('Risk management plan updated')
       setEditItem(null)
@@ -613,6 +616,8 @@ export default function RiskManagement() {
       riskUpdateTracking: ra.risk_update_tracking || '',
       lastAssessedDate: ra.last_assessed_date ? ra.last_assessed_date.split('T')[0] : '',
       checklistAnswers: ra.checklist_answers || {},
+      whatICanDo: ra.what_i_can_do || '',
+      howYouCanSupportMe: ra.how_you_can_support_me || '',
     })
     setEditItem(ra)
   }
@@ -858,6 +863,8 @@ export default function RiskManagement() {
                     </div>
                   </div>
                 )}
+                <Field label="What I can do" value={ra.what_i_can_do} />
+                <Field label="What you can do to support me" value={ra.how_you_can_support_me} />
                 <Field label={ra.checklist_answers ? 'Additional notes' : 'Update tracking'} value={ra.risk_update_tracking} />
               </div>
 
@@ -1119,6 +1126,15 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
             ))}
           </div>
         </div>
+      )}
+
+      {form.riskType === 'choking' && (
+        <>
+          <SpeechTextarea label="What I can do" className="w-full" rows={2} placeholder="What the service user can do for themselves..."
+            value={form.whatICanDo} onChange={v => setF('whatICanDo', v)} />
+          <SpeechTextarea label="What you can do to support me" className="w-full" rows={2} placeholder="What staff should do to support the service user..."
+            value={form.howYouCanSupportMe} onChange={v => setF('howYouCanSupportMe', v)} />
+        </>
       )}
 
       <SpeechTextarea label={form.riskType === 'choking' ? 'Additional notes' : 'Risk Update Tracking'} className="w-full" rows={2} placeholder="Log any ongoing updates or changes to this risk..."
