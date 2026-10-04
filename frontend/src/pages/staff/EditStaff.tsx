@@ -115,6 +115,15 @@ const STATUSES = [{ value: 'active', label: 'Active' }, { value: 'pending', labe
 const GENDERS = [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'non_binary', label: 'Non-binary' }, { value: 'other', label: 'Other' }]
 const MARITAL = [{ value: 'single', label: 'Single' }, { value: 'married', label: 'Married' }, { value: 'divorced', label: 'Divorced' }, { value: 'widowed', label: 'Widowed' }]
 
+// GET /staff/:id returns date columns as full ISO datetime strings (e.g.
+// "2026-07-22T00:00:00.000Z") once JSON-serialized — an <input type="date">
+// requires exactly "YYYY-MM-DD" and silently renders blank on anything else,
+// which is why a start date that genuinely saved looked "gone" the moment
+// you reopened Edit.
+function dateOnly(v: any): string {
+  return v ? String(v).slice(0, 10) : ''
+}
+
 function norm(s: any) {
   return {
     firstName: s.first_name || s.firstName || '',
@@ -123,9 +132,9 @@ function norm(s: any) {
     phone: s.phone || '',
     role: s.role || 'care_staff',
     status: s.status || 'active',
-    startDate: s.start_date || s.startDate || '',
-    leaveDate: s.leave_date || s.leaveDate || '',
-    dateOfBirth: s.date_of_birth || s.dateOfBirth || '',
+    startDate: dateOnly(s.start_date || s.startDate),
+    leaveDate: dateOnly(s.leave_date || s.leaveDate),
+    dateOfBirth: dateOnly(s.date_of_birth || s.dateOfBirth),
     gender: s.gender || '',
     nationality: s.nationality || '',
     maritalStatus: s.marital_status || s.maritalStatus || '',
@@ -305,7 +314,13 @@ export default function EditStaff() {
             <Input label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
             <Input label="Leave date" type="date" value={form.leaveDate} onChange={e => set('leaveDate', e.target.value)} hint="Only fill if staff has left" />
             <Input label="Contracted hours / week" type="number" step="0.01" value={String(form.contractedHours)} onChange={e => set('contractedHours', e.target.value)} hint="e.g. 37.5 (full-time) or 36 — annual leave is calculated and prorated from this and the start date" />
-            <Input label="Annual leave entitlement (total hours)" type="number" value={String(form.leaveHoursTotal)} onChange={e => set('leaveHoursTotal', parseInt(e.target.value))} hint="This is the TOTAL for the year, not what's left — hours already used stay used. Auto-calculated from contracted hours; override only if needed" />
+            {/* parseInt on every keystroke used to strip the decimal point the
+                instant it was typed (e.g. typing "112.54" collapsed to "112"
+                mid-edit, then subsequent digits appended onto THAT instead of
+                after a decimal, corrupting it into something like "11254") —
+                same fix as Contracted hours above: keep the raw string while
+                editing, let the backend parse it on save. */}
+            <Input label="Annual leave entitlement (total hours)" type="number" step="0.01" value={String(form.leaveHoursTotal)} onChange={e => set('leaveHoursTotal', e.target.value)} hint="This is the TOTAL for the year, not what's left — hours already used stay used. Auto-calculated from contracted hours; override only if needed" />
           </div>
           <div className="mt-3 flex items-center gap-3">
             <input type="checkbox" id="active" checked={form.isActive} onChange={e => set('isActive', e.target.checked)} className="rounded" />

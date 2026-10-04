@@ -987,26 +987,24 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       // old logic assigned EVERY matched row to the same single primaryStaffId and
       // then cloned duplicate rows on top for the other selected staff, which is
       // exactly "allocating one staff for the three days" instead of putting a
-      // DIFFERENT one of the selected staff on each of the three shifts. Instead:
-      // group matched rows by date and round-robin the selected staffIds across
-      // them, one staff member per existing shift row, no duplication. Candidates
-      // are ordered by start_time (see the query above) so "first slot of the
-      // day" is well-defined — otherwise, with same-date rows coming back in
-      // arbitrary DB order, the first staff member clicked could land on a later
-      // shift than the second, looking like assignment ignored click order
-      // entirely in favour of something else (e.g. alphabetical).
-      const byDate = new Map<string, any[]>();
-      for (const m of matched) {
-        const d = fmtDate(m.shift_date);
-        if (!byDate.has(d)) byDate.set(d, []);
-        byDate.get(d)!.push(m);
-      }
+      // DIFFERENT one of the selected staff on each of the three shifts.
+      //
+      // Round-robin the selected staffIds across ALL matched shifts in one
+      // continuous sequence (matched is already ordered by shift_date then
+      // start_time from the query above) — NOT reset back to index 0 for each
+      // date. A per-date reset meant that with the common case of exactly one
+      // shift per day across a weekly pattern, every single day landed on
+      // staffIds[0] (whoever was clicked first) and the other selected staff
+      // never got used at all — which is exactly "Friday and Sunday keep
+      // going to the wrong person" when what's actually selected is 2+ staff
+      // meant to alternate across the week. A continuous index makes "1st
+      // person clicked" cover day 1, "2nd person clicked" cover day 2, cycling
+      // back around — same rule, applied across the whole pattern instead of
+      // restarting every day.
       const assignments: { id: string; staffId: string; shift_date: any; start_time: string; end_time: string }[] = [];
-      for (const shiftsForDate of byDate.values()) {
-        shiftsForDate.forEach((m, idx) => {
-          assignments.push({ id: m.id, staffId: staffIds[idx % staffIds.length], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
-        });
-      }
+      matched.forEach((m, idx) => {
+        assignments.push({ id: m.id, staffId: staffIds[idx % staffIds.length], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
+      });
 
       // Collect (not block on) overlap/rest-period warnings for each shift's
       // actual assigned staff member, before writing anything — bulk assignment
