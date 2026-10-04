@@ -553,7 +553,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
-  useTaskReminders(!!user)
+  // GET /tasks returns every task in the home unfiltered for manager/admin
+  // roles (they need the full list elsewhere, e.g. for oversight) — but that
+  // meant this popup told a group_admin "You have 391 tasks due today",
+  // which is meaningless noise, not a personal to-do reminder. Frontline
+  // staff get the properly staff/role/team-scoped count; management has
+  // Reports/Audit Trail for oversight instead of a popup.
+  useTaskReminders(!!user && !isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'))
   usePushNotifications(!!user)
 
   // Managers/admins don't clock in via QR, so they aren't gated on shift status.

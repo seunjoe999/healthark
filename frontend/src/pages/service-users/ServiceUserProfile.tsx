@@ -134,7 +134,7 @@ export default function ServiceUserProfile() {
       setMessages(prev => [res.data.data, ...prev])
       setNewMessage('')
       toast.success('Message sent')
-    } catch { toast.error('Failed to send') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to send') }
     finally { setSending(false) }
   }
 
@@ -144,7 +144,7 @@ export default function ServiceUserProfile() {
       await api.delete(`/documents/su/${id}/${docId}`)
       setDocuments(prev => prev.filter(d => d.id !== docId))
       toast.success('Document deleted')
-    } catch { toast.error('Failed to delete') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete') }
   }
 
   const deleteContact = async (contactId: string) => {
@@ -153,7 +153,7 @@ export default function ServiceUserProfile() {
       await suApi.deleteContact(id, contactId)
       setContacts(prev => prev.filter(c => c.id !== contactId))
       toast.success('Contact deleted')
-    } catch { toast.error('Failed to delete contact') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete contact') }
   }
 
   if (loading) return <div className="p-8"><Spinner /></div>
@@ -690,7 +690,14 @@ function AddContactModal({ open, onClose, suId, onAdded, editingContact }: {
         : await suApi.addContact(suId, form)
       onAdded(res.data.data)
       setForm(EMPTY_CONTACT_FORM)
-    } catch { toast.error(editingContact ? 'Failed to update contact' : 'Failed to add contact') }
+    } catch (err: any) {
+      // Previously swallowed the real reason and always showed the same generic
+      // message no matter what actually went wrong (a validation error, a
+      // genuine server error, a dropped connection) — impossible to tell from
+      // the toast alone why a specific attempt failed, or whether it was the
+      // same cause as last time.
+      toast.error(err?.response?.data?.error || (editingContact ? 'Failed to update contact' : 'Failed to add contact'))
+    }
     finally { setLoading(false) }
   }
 
