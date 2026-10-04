@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { sendPushToStaff } from '../services/push.service';
 import { ukDateStr } from '../utils/ukTime';
+import { findStaffShiftConflicts, conflictMessage } from '../utils/shiftConflicts';
 
 const router = Router();
 
@@ -378,7 +379,14 @@ router.post('/', requireRole(...MANAGE_ROLES), [body('staffId').isUUID(), body('
         );
         sendPushToStaff(staffId, { title: 'New shift assigned', body, url: '/rota' }).catch(() => {});
       }
-      res.status(201).json({ success: true, data: stripFinancials(rows[0] as any, role) } as ApiResponse);
+      // Warn (don't block) if this leaves the staff member double-booked or
+      // without the legally-required rest before/after another shift — the
+      // system still has a legitimate "double-up"/shadow shift feature, so
+      // this can't be a hard block.
+      const warnings = staffId
+        ? (await findStaffShiftConflicts(homeId, staffId, shiftDate, startTime, endTime, (rows[0] as any).id)).map(conflictMessage)
+        : [];
+      res.status(201).json({ success: true, data: stripFinancials(rows[0] as any, role), warnings } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
@@ -877,7 +885,12 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
         sendPushToStaff(newStaffId, { title: 'Rota updated', body, url: '/rota' }).catch(() => {});
       }
 
-      res.json({ success: true, data: stripFinancials(updated, role) } as ApiResponse);
+      const warnings = updated.staff_id
+        ? (await findStaffShiftConflicts(
+            updated.home_id, updated.staff_id, fmtDate(updated.shift_date), updated.start_time, updated.end_time, updated.id
+          )).map(conflictMessage)
+        : [];
+      res.json({ success: true, data: stripFinancials(updated, role), warnings } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
@@ -928,7 +941,6 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, startDate, endDate, daysOfWeek, fortnightly, monthly, dayOrNight, onlyUnfilled } = req.body;
       const staffIds: string[] = Array.from(new Set<string>(req.body.staffIds || []));
-      const [primaryStaffId, ...extraStaffIds] = staffIds;
 
       const candidates = await query<any>(
         `SELECT id, shift_date, start_time, end_time, shift_type, label, break_minutes,
@@ -967,37 +979,55 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
           })
         : candidates;
 
-      const ids = matched.map(m => m.id);
-      if (ids.length) {
-        await query(
-          `UPDATE staff_shifts SET staff_id = $1, status = 'filled', updated_at = NOW() WHERE id = ANY($2::uuid[])`,
-          [primaryStaffId, ids]
-        );
+      const fmtDate = (d: unknown) => (d instanceof Date ? d.toISOString().split('T')[0] : String(d).split('T')[0]);
+
+      // A service day with several staff needed (e.g. "3 staff on Monday at Kennedy
+      // Road") already has that many separate UNFILLED shift rows for that date —
+      // one per slot/time-block — created up front via total_staff_required. The
+      // old logic assigned EVERY matched row to the same single primaryStaffId and
+      // then cloned duplicate rows on top for the other selected staff, which is
+      // exactly "allocating one staff for the three days" instead of putting a
+      // DIFFERENT one of the selected staff on each of the three shifts. Instead:
+      // group matched rows by date and round-robin the selected staffIds across
+      // them, one staff member per existing shift row, no duplication.
+      const byDate = new Map<string, any[]>();
+      for (const m of matched) {
+        const d = fmtDate(m.shift_date);
+        if (!byDate.has(d)) byDate.set(d, []);
+        byDate.get(d)!.push(m);
+      }
+      const assignments: { id: string; staffId: string; shift_date: any; start_time: string; end_time: string }[] = [];
+      for (const shiftsForDate of byDate.values()) {
+        shiftsForDate.forEach((m, idx) => {
+          assignments.push({ id: m.id, staffId: staffIds[idx % staffIds.length], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
+        });
       }
 
-      // Every additional selected staff member gets their own cloned shift row on
-      // the same dates — a single row can only hold one staff_id, so "multiple
-      // staff on the same rota slot" means separate linked rows, same as manually
-      // double-booking a shift via the grid.
-      let cloned = 0;
-      if (extraStaffIds.length && matched.length) {
-        const cols = ['home_id', 'staff_id', 'su_id', 'shift_date', 'start_time', 'end_time', 'shift_type',
-          'label', 'break_minutes', 'notes_for_carers', 'notes_for_managers', 'is_standby', 'status', 'total_staff_required'];
+      // Collect (not block on) overlap/rest-period warnings for each shift's
+      // actual assigned staff member, before writing anything — bulk assignment
+      // is exactly the path most likely to accidentally double-book someone or
+      // crash them straight from a night shift into a day shift.
+      const warningSet = new Set<string>();
+      await Promise.all(assignments.map(async a => {
+        const conflicts = await findStaffShiftConflicts(homeId, a.staffId, fmtDate(a.shift_date), a.start_time, a.end_time, a.id);
+        for (const c of conflicts) warningSet.add(conflictMessage(c));
+      }));
+
+      if (assignments.length) {
         const params: any[] = [];
-        const valueRows: string[] = [];
-        for (const m of matched) {
-          for (const sid of extraStaffIds) {
-            const row = [homeId, sid, suId, m.shift_date, m.start_time, m.end_time, m.shift_type,
-              m.label, m.break_minutes, m.notes_for_carers, m.notes_for_managers, m.is_standby, 'filled', 1];
-            const placeholders = row.map((_, i) => `$${params.length + i + 1}`).join(',');
-            valueRows.push(`(${placeholders})`);
-            params.push(...row);
-          }
+        const caseParts: string[] = [];
+        const allIds: string[] = [];
+        for (const a of assignments) {
+          caseParts.push(`WHEN $${params.length + 1}::uuid THEN $${params.length + 2}::uuid`);
+          params.push(a.id, a.staffId);
+          allIds.push(a.id);
         }
-        if (valueRows.length) {
-          const inserted = await query(`INSERT INTO staff_shifts (${cols.join(', ')}) VALUES ${valueRows.join(', ')} RETURNING id`, params);
-          cloned = (inserted as any[]).length;
-        }
+        const idsParam = `$${params.length + 1}::uuid[]`;
+        params.push(allIds);
+        await query(
+          `UPDATE staff_shifts SET staff_id = CASE id ${caseParts.join(' ')} END, status = 'filled', updated_at = NOW() WHERE id = ANY(${idsParam})`,
+          params
+        );
       }
 
       // Pattern dates with no shift at all for this resident used to be silently
@@ -1031,6 +1061,12 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
         }
         if (missing.length) {
           const [st, et] = dayOrNight === 'day' ? ['08:00', '20:00'] : ['20:00', '08:00'];
+          for (const sid of staffIds) {
+            await Promise.all(missing.map(async ds => {
+              const conflicts = await findStaffShiftConflicts(homeId, sid, ds, st, et);
+              for (const c of conflicts) warningSet.add(conflictMessage(c));
+            }));
+          }
           const rows = await query<any>(
             `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, status, total_staff_required)
              SELECT $1, s.staff_id, $3, d::date, $5::time, $6::time, 'regular', 'filled', 1
@@ -1042,10 +1078,10 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
           created = rows.length;
         }
       }
-      const total = ids.length + cloned + created;
+      const total = assignments.length + created;
 
       if (total === 0) {
-        return res.json({ success: true, data: { assigned: 0 } } as ApiResponse);
+        return res.json({ success: true, data: { assigned: 0 }, warnings: [] } as ApiResponse);
       }
 
       for (const sid of staffIds) {
@@ -1056,7 +1092,7 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
         }).catch(() => {});
       }
 
-      res.json({ success: true, data: { assigned: total, created } } as ApiResponse);
+      res.json({ success: true, data: { assigned: total, created }, warnings: Array.from(warningSet) } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

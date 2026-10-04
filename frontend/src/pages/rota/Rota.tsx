@@ -447,6 +447,11 @@ export default function Rota() {
       const failed = results.filter(r => r.status === 'rejected').length
       if (failed === 0) toast.success(`Assigned to ${ids.length} shift${ids.length !== 1 ? 's' : ''}`)
       else toast.error(`Assigned ${ids.length - failed}, ${failed} failed`)
+      const warnings = Array.from(new Set(
+        results.flatMap(r => (r.status === 'fulfilled' ? (r.value.data.warnings || []) : []))
+      ))
+      warnings.slice(0, 4).forEach(w => toast(w, { icon: '⚠️', duration: 6000 }))
+      if (warnings.length > 4) toast(`+ ${warnings.length - 4} more scheduling warning${warnings.length - 4 !== 1 ? 's' : ''}`, { icon: '⚠️', duration: 6000 })
       setBulkAssignOpen(false)
       clearSelection()
       loadAll()
@@ -1772,7 +1777,7 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, serviceLabels, d
     finally { setSaving(false) }
   }
 
-  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` })).sort((a, b) => a.label.localeCompare(b.label))
 
   return (
     <Modal open={open} onClose={onClose} title="Create Standby Shift" size="md">
@@ -1998,8 +2003,10 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     if (!reallocateTo) { toast.error('Select a staff member'); return }
     setSavingReallocate(true)
     try {
-      await api.put(`/shifts/${shift.id}`, { staffId: reallocateTo })
+      const res = await api.put(`/shifts/${shift.id}`, { staffId: reallocateTo })
       toast.success('Shift reallocated')
+      const warnings: string[] = res.data.warnings || []
+      warnings.forEach((w: string) => toast(w, { icon: '⚠️', duration: 6000 }))
       setReallocating(false)
       setReallocateTo('')
       onLinked() // closes the modal and reloads shifts so the new staff name/role join comes through
@@ -2453,6 +2460,9 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
     setDaysOfWeek(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort())
 
   const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
+  // Alphabetical so a long staff list is easy to scan/select from, instead
+  // of whatever order the API happened to return.
+  const sortedStaffList = [...staffList].sort((a, b) => getName(a).localeCompare(getName(b)))
 
   const save = async () => {
     if (!staffIds.length) { toast.error('Select at least one staff member'); return }
@@ -2482,6 +2492,12 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
       })
       const assigned = res.data.data?.assigned || 0
       toast.success(assigned > 0 ? `Allocated ${assigned} shift${assigned !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
+      const warnings: string[] = res.data.warnings || []
+      // Shown as its own warning toast(s), not blocking the allocation — e.g. a
+      // staff member already on an overlapping shift, or a "shift crash" (not
+      // enough rest between a night shift and the next day shift).
+      warnings.slice(0, 4).forEach(w => toast(w, { icon: '⚠️', duration: 6000 }))
+      if (warnings.length > 4) toast(`+ ${warnings.length - 4} more scheduling warning${warnings.length - 4 !== 1 ? 's' : ''}`, { icon: '⚠️', duration: 6000 })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to bulk allocate') }
     finally { setSaving(false) }
@@ -2496,8 +2512,14 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
 
         <div>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Staff member(s) *</label>
-          <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-40 overflow-y-auto">
-            {staffList.map((s: any) => (
+          {/* overscroll-contain stops scroll chaining into the modal's own
+              overflow-y-auto body — without it, scrolling to the end of this
+              list bled straight into scrolling the whole modal, which is
+              what made the list feel broken/unresponsive to scroll. Taller
+              max-h (56 vs the old 40) also means fewer staff need scrolling
+              to reach in the first place. */}
+          <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto overscroll-contain">
+            {sortedStaffList.map((s: any) => (
               <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm">
                 <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
                 <span className="text-slate-700">{getName(s)}</span>
@@ -2614,7 +2636,7 @@ function UnassignModal({ open, onClose, staffList, suList, homeId, onSaved }: {
   const [suId, setSuId] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` })).sort((a, b) => a.label.localeCompare(b.label))
   const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
   const staffName = staffList.find(s => s.id === staffId) ? getName(staffList.find(s => s.id === staffId)) : ''
 
@@ -2673,7 +2695,7 @@ function MarkLeaveModal({ open, onClose, staffList, homeId, defaultDate, onSaved
     finally { setSaving(false) }
   }
 
-  const staffOptions = staffList.map(s => ({ value: s.id, label: getName(s) }))
+  const staffOptions = staffList.map(s => ({ value: s.id, label: getName(s) })).sort((a, b) => a.label.localeCompare(b.label))
 
   return (
     <Modal open={open} onClose={onClose} title="Record absence / leave">
@@ -2722,7 +2744,7 @@ function SwapModal({ shift, staffList, homeId, onClose, onSaved }: {
     finally { setSaving(false) }
   }
 
-  const staffOptions = staffList.filter(s => s.id !== shift.staff_id).map(s => ({ value: s.id, label: getName(s) }))
+  const staffOptions = staffList.filter(s => s.id !== shift.staff_id).map(s => ({ value: s.id, label: getName(s) })).sort((a, b) => a.label.localeCompare(b.label))
 
   return (
     <Modal open={true} onClose={onClose} title="Request shift swap">
@@ -3048,7 +3070,7 @@ function FindCoverModal({ open, onClose, staffList, homeId, defaultDate }: {
                 onChange={e => set('absentStaffId', e.target.value)}
               >
                 <option value="">Select staff...</option>
-                {staffList.map(s => (
+                {[...staffList].sort((a, b) => getName(a).localeCompare(getName(b))).map(s => (
                   <option key={s.id} value={s.id}>{getName(s)}</option>
                 ))}
               </select>

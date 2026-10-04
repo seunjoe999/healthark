@@ -314,14 +314,28 @@ export default function Tasks() {
     setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('complete'); return p }, { replace: true })
   }, [tasks, searchParams])
 
-  const load = async () => {
-    setLoading(true)
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await api.get('/tasks', { params: { homeId: selectedHome, date: viewDate } })
       setTasks(res.data.data || [])
     } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }
+
+  // Tasks are shared across every staff member rostered to the same resident —
+  // e.g. one carer completes a task mid-shift and a colleague coming on for the
+  // same resident needs to see it's already done, not a stale "outstanding"
+  // list from whenever they first opened the page. Without this, the list only
+  // ever updated on navigation, so a completion made by someone else could sit
+  // invisible to anyone who already had the page open.
+  useEffect(() => {
+    if (!selectedHome) return
+    const onVisible = () => { if (document.visibilityState === 'visible') load(true) }
+    document.addEventListener('visibilitychange', onVisible)
+    const poll = setInterval(() => load(true), 60000)
+    return () => { document.removeEventListener('visibilitychange', onVisible); clearInterval(poll) }
+  }, [selectedHome, viewDate])
 
   const loadTemplates = async () => {
     try {
