@@ -780,8 +780,17 @@ export default function Rota() {
       {/* ── Timeline ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto">
 
-        {/* Day headers — sticky */}
-        <div className="flex sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
+        {/* Day headers — sticky. isolate forces this onto its own stacking
+            context — without it, a busy day's many shift cards (each already
+            promoted to its own GPU compositing layer by rounded-xl +
+            overflow-hidden + the hover transform/scale) can end up painted
+            above a `position: sticky` element during scroll despite its
+            explicit z-20, a known WebKit/Chrome compositing quirk that gets
+            worse the more cards are stacked up (hence "only at this end of
+            the rota", the busier days). isolate guarantees this header's
+            z-index is compared fresh, not against however many layers its
+            siblings happened to get promoted to. */}
+        <div className="flex sticky top-0 z-20 isolate bg-white border-b border-slate-200 shadow-sm">
           <div className="w-14 flex-shrink-0 border-r-2 border-slate-300" />
           {dayData.map(({ day, dayShifts, dayLeaves, width }) => {
             const isToday = isSameDay(day, today)
@@ -2542,16 +2551,28 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
               max-h (56 vs the old 40) also means fewer staff need scrolling
               to reach in the first place. */}
           <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto overscroll-contain">
-            {sortedStaffList.map((s: any) => (
-              <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm">
-                <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
-                <span className="text-slate-700">{getName(s)}</span>
-                <span className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
-              </label>
-            ))}
+            {sortedStaffList.map((s: any) => {
+              // Shown in the order staff were CLICKED (staffIds), not the
+              // alphabetical order the list displays in — on a date with
+              // several shift slots, the 1st person clicked fills the
+              // earliest slot, the 2nd fills the next, and so on. The
+              // number makes that order visible/confirmable before saving,
+              // instead of it being an invisible side effect of click order.
+              const order = staffIds.indexOf(s.id)
+              return (
+                <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm">
+                  <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
+                  {order !== -1 && (
+                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center">{order + 1}</span>
+                  )}
+                  <span className="text-slate-700">{getName(s)}</span>
+                  <span className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
+                </label>
+              )
+            })}
           </div>
           {staffIds.length > 1 && (
-            <p className="text-xs text-slate-400 mt-1">Each selected staff member gets their own shift on every matching date — {staffIds.length} shifts per date.</p>
+            <p className="text-xs text-slate-400 mt-1">Each selected staff member gets their own shift on every matching date, in the order you picked them (1st pick → earliest shift that day) — {staffIds.length} shifts per date.</p>
           )}
         </div>
         <Select label="Resident *" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="Select resident" />

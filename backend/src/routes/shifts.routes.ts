@@ -958,7 +958,7 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
              OR ($6 = 'night' AND (start_time >= '20:00'::time OR start_time < '06:00'::time))
            )
            AND (NOT $7 OR staff_id IS NULL)
-         ORDER BY shift_date`,
+         ORDER BY shift_date, start_time`,
         [homeId, startDate, endDate, (daysOfWeek || []).map((d: any) => parseInt(d)),
          suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null, onlyUnfilled !== false,
          !!monthly]
@@ -989,7 +989,12 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       // exactly "allocating one staff for the three days" instead of putting a
       // DIFFERENT one of the selected staff on each of the three shifts. Instead:
       // group matched rows by date and round-robin the selected staffIds across
-      // them, one staff member per existing shift row, no duplication.
+      // them, one staff member per existing shift row, no duplication. Candidates
+      // are ordered by start_time (see the query above) so "first slot of the
+      // day" is well-defined — otherwise, with same-date rows coming back in
+      // arbitrary DB order, the first staff member clicked could land on a later
+      // shift than the second, looking like assignment ignored click order
+      // entirely in favour of something else (e.g. alphabetical).
       const byDate = new Map<string, any[]>();
       for (const m of matched) {
         const d = fmtDate(m.shift_date);
