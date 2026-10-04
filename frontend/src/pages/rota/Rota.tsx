@@ -2046,6 +2046,23 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     finally { setLinking(null) }
   }
 
+  // Clocked in for this shift and hasn't clocked out yet — the manager can see
+  // this directly on the shift they're looking at (the rota's own "Clocked in"
+  // indicator), not just by separately digging into Clock-in Analytics, which
+  // is where this same force-clockout action previously lived exclusively.
+  const stillClockedIn = !!shift.clock_in_time && !shift.clock_out_time
+  const [forcingOut, setForcingOut] = useState(false)
+  const forceClockOut = async () => {
+    if (!window.confirm(`Clock ${shift.staff_name || 'this staff member'} out now? Use this when they're stuck clocked in and can't clock out themselves.`)) return
+    setForcingOut(true)
+    try {
+      await api.post(`/clockin/force-clockout/${shift.staff_id}`)
+      toast.success(`${shift.staff_name || 'Staff member'} clocked out`)
+      onLinked() // closes the modal and reloads shifts
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to clock out') }
+    finally { setForcingOut(false) }
+  }
+
   return (
     <Modal open={true} onClose={onClose} title="Shift details">
       <div className="space-y-4">
@@ -2065,6 +2082,12 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/60">
               {SHIFT_RELATIONS[shift.shift_relation].label}
             </span>
+          )}
+          {canManage && stillClockedIn && (
+            <button onClick={forceClockOut} disabled={forcingOut}
+              className="mt-2 w-full text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors">
+              {forcingOut ? 'Clocking out…' : 'Force clock out — stuck clocked in'}
+            </button>
           )}
         </div>
 
