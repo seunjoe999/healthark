@@ -134,6 +134,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 // Frontline staff are read-only on risk assessments — only managers may write.
 const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+// Team leaders may edit an existing assessment and notify their team to read it
+// (explicitly requested, matching what they already get on Care Plans), but not
+// create new assessments from scratch — that stays management-only.
+const EDIT_ROLES = [...MANAGER_ROLES, 'team_leader'];
 
 // POST /api/risk-management/:id/notify-readers — management picks specific
 // staff from a checklist and sends them a notification to read this
@@ -141,7 +145,7 @@ const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin',
 // already auto-records a read via POST /:id/read above, so this closes the
 // loop the owner asked for ("select staff, they get told to read it, and we
 // can see who has").
-router.post('/:id/notify-readers', requireRole(...MANAGER_ROLES as any),
+router.post('/:id/notify-readers', requireRole(...EDIT_ROLES as any),
   [param('id').isUUID(), body('staffIds').isArray({ min: 1 })], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -227,7 +231,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
     try {
       const staffId = fromToken(req, 'staffId');
       const role = fromToken(req, 'role');
-      if (!MANAGER_ROLES.includes(role)) {
+      if (!EDIT_ROLES.includes(role)) {
         throw new AppError('Only managers can edit risk assessments.', 403);
       }
       const { description, currentRiskLevel, managementPlan, updateNotes,

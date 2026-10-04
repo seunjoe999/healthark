@@ -910,7 +910,10 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
 // Night = starts 20:00–05:59; Day = starts 06:00–19:59.
 
 router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
-  body('staffId').isUUID(),
+  // Multiple staff, not just one — a service with 2+ staff on at once needs each of
+  // them covering the same matching shifts, not one person overwriting the next.
+  body('staffIds').isArray({ min: 1 }),
+  body('staffIds.*').isUUID(),
   // Required — left optional this used to silently match every resident's shifts
   // in the date range, not just the one the manager meant to allocate for.
   body('suId').isUUID(),
@@ -923,10 +926,14 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const { staffId, suId, startDate, endDate, daysOfWeek, fortnightly, monthly, dayOrNight, onlyUnfilled } = req.body;
+      const { suId, startDate, endDate, daysOfWeek, fortnightly, monthly, dayOrNight, onlyUnfilled } = req.body;
+      const staffIds: string[] = Array.from(new Set<string>(req.body.staffIds || []));
+      const [primaryStaffId, ...extraStaffIds] = staffIds;
 
       const candidates = await query<any>(
-        `SELECT id, shift_date FROM staff_shifts
+        `SELECT id, shift_date, start_time, end_time, shift_type, label, break_minutes,
+                notes_for_carers, notes_for_managers, is_standby
+         FROM staff_shifts
          WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
            AND (
              ($8 AND EXTRACT(DAY FROM shift_date)::int = EXTRACT(DAY FROM $2::date)::int)
@@ -964,8 +971,33 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       if (ids.length) {
         await query(
           `UPDATE staff_shifts SET staff_id = $1, status = 'filled', updated_at = NOW() WHERE id = ANY($2::uuid[])`,
-          [staffId, ids]
+          [primaryStaffId, ids]
         );
+      }
+
+      // Every additional selected staff member gets their own cloned shift row on
+      // the same dates — a single row can only hold one staff_id, so "multiple
+      // staff on the same rota slot" means separate linked rows, same as manually
+      // double-booking a shift via the grid.
+      let cloned = 0;
+      if (extraStaffIds.length && matched.length) {
+        const cols = ['home_id', 'staff_id', 'su_id', 'shift_date', 'start_time', 'end_time', 'shift_type',
+          'label', 'break_minutes', 'notes_for_carers', 'notes_for_managers', 'is_standby', 'status', 'total_staff_required'];
+        const params: any[] = [];
+        const valueRows: string[] = [];
+        for (const m of matched) {
+          for (const sid of extraStaffIds) {
+            const row = [homeId, sid, suId, m.shift_date, m.start_time, m.end_time, m.shift_type,
+              m.label, m.break_minutes, m.notes_for_carers, m.notes_for_managers, m.is_standby, 'filled', 1];
+            const placeholders = row.map((_, i) => `$${params.length + i + 1}`).join(',');
+            valueRows.push(`(${placeholders})`);
+            params.push(...row);
+          }
+        }
+        if (valueRows.length) {
+          const inserted = await query(`INSERT INTO staff_shifts (${cols.join(', ')}) VALUES ${valueRows.join(', ')} RETURNING id`, params);
+          cloned = (inserted as any[]).length;
+        }
       }
 
       // Pattern dates with no shift at all for this resident used to be silently
@@ -1001,25 +1033,28 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
           const [st, et] = dayOrNight === 'day' ? ['08:00', '20:00'] : ['20:00', '08:00'];
           const rows = await query<any>(
             `INSERT INTO staff_shifts (home_id, staff_id, su_id, shift_date, start_time, end_time, shift_type, status, total_staff_required)
-             SELECT $1, $2, $3, d::date, $5::time, $6::time, 'regular', 'filled', 1
+             SELECT $1, s.staff_id, $3, d::date, $5::time, $6::time, 'regular', 'filled', 1
              FROM unnest($4::text[]) AS d
+             CROSS JOIN unnest($2::uuid[]) AS s(staff_id)
              RETURNING id`,
-            [homeId, staffId, suId, missing, st, et]
+            [homeId, staffIds, suId, missing, st, et]
           );
           created = rows.length;
         }
       }
-      const total = ids.length + created;
+      const total = ids.length + cloned + created;
 
       if (total === 0) {
         return res.json({ success: true, data: { assigned: 0 } } as ApiResponse);
       }
 
-      sendPushToStaff(staffId, {
-        title: 'Rota updated',
-        body: `You've been assigned ${total} new shift${total !== 1 ? 's' : ''} on the rota.`,
-        url: '/rota',
-      }).catch(() => {});
+      for (const sid of staffIds) {
+        sendPushToStaff(sid, {
+          title: 'Rota updated',
+          body: `You've been assigned new shifts on the rota.`,
+          url: '/rota',
+        }).catch(() => {});
+      }
 
       res.json({ success: true, data: { assigned: total, created } } as ApiResponse);
     } catch (err) { next(err); }

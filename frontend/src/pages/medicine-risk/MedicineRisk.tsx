@@ -9,6 +9,7 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
+import NotifyReadersSection from '../../components/NotifyReadersSection'
 
 const SWALLOWING_RISK = [
   { value: 'none',   label: 'None' },
@@ -894,8 +895,11 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
   record: any; onClose: () => void; onEdit: () => void; onNewAssessment: () => void; onRecordUpdate: () => void
 }) {
   const { theme } = useTheme()
-  const { isRole } = useAuth()
+  const { isRole, user } = useAuth()
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  // Team leaders may edit and notify their team, matching Care Plans / Other Risk
+  // Assessment — not create new assessments, which stays management-only.
+  const canEditRisk = canManage || isRole('team_leader')
   const isDark = theme === 'dark'
   // Sections below used to hardcode light-gray-on-transparent text meant for
   // a dark backdrop — in light theme (or against the modal's actual light
@@ -1047,8 +1051,8 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             </div>}
 
             <div className="flex flex-wrap gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              {canManage && <Button variant="gold" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Assessment</Button>}
-              {canManage && <Button variant="ghost" icon={<History className="w-3.5 h-3.5" />} onClick={onRecordUpdate}>Record Update</Button>}
+              {canEditRisk && <Button variant="gold" icon={<Edit2 className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Assessment</Button>}
+              {canEditRisk && <Button variant="ghost" icon={<History className="w-3.5 h-3.5" />} onClick={onRecordUpdate}>Record Update</Button>}
               <Button variant="ghost" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => printMedRiskAssessment(r)}>Print</Button>
               {canManage && <Button variant="ghost" icon={<Plus className="w-3.5 h-3.5" />} onClick={onNewAssessment}>New Assessment</Button>}
             </div>
@@ -1057,8 +1061,17 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
                 actually read this assessment, same as Care Plans / Risk
                 Assessments. */}
             <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <MedRiskReadTracker assessmentId={r.id} canManage={canManage} />
+              <MedRiskReadTracker assessmentId={r.id} canManage={canEditRisk} />
             </div>
+
+            {/* "Select staff to notify" checklist — previously missing entirely on
+                this page while Care Plans and Other Risk Assessment both had it. */}
+            {canEditRisk && (
+              <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <NotifyReadersSection homeId={user?.homeId || ''}
+                  onSend={async (staffIds) => { await api.post(`/medicine-risk/${r.id}/notify-readers`, { staffIds }) }} />
+              </div>
+            )}
 
             {/* Risk update tracking — dated history of changes to this risk */}
             <div className="pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>

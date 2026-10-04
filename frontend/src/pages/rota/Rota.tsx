@@ -2420,7 +2420,13 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
   seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[] } | null
   onSaved: () => void
 }) {
-  const [staffId, setStaffId] = useState('')
+  // Multiple staff, not just one — most services run with 2+ staff on at once, and
+  // bulk-assigning used to only ever let you pick a single person for the whole
+  // pattern, so a second run for a different staff member just overwrote the first
+  // (or found nothing left to fill). Each selected staff member now gets their own
+  // shift on every matching date, so the rota ends up genuinely multi-staffed.
+  const [staffIds, setStaffIds] = useState<string[]>([])
+  const toggleStaffId = (id: string) => setStaffIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   const [suId, setSuId] = useState(seed?.suId || '')
   // Defaults to "Day" rather than "Any" when opened without a seed (i.e. straight
   // from the toolbar button, not "Bulk assign like this" off a specific shift) —
@@ -2446,11 +2452,10 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
   const toggleDay = (d: number) =>
     setDaysOfWeek(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort())
 
-  const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` }))
   const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
 
   const save = async () => {
-    if (!staffId) { toast.error('Select a staff member'); return }
+    if (!staffIds.length) { toast.error('Select at least one staff member'); return }
     // Resident used to be optional and, left blank, matched EVERY resident's shifts
     // in the date range — a staff member picked for one resident's pattern could
     // silently get allocated onto other residents' shifts too. Now required so a
@@ -2469,7 +2474,7 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
     setSaving(true)
     try {
       const res = await api.post('/shifts/bulk-assign-pattern', {
-        homeId, staffId, suId: suId || null,
+        homeId, staffIds, suId: suId || null,
         dayOrNight, daysOfWeek: effectiveDaysOfWeek,
         fortnightly: repeatMode === 'fortnightly', monthly: repeatMode === 'monthly',
         startDate, endDate: effectiveEndDate,
@@ -2486,10 +2491,24 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
     <Modal open={open} onClose={onClose} title="Bulk Allocate — Recurring Pattern" size="md">
       <div className="space-y-4">
         <p className="text-xs text-slate-500">
-          Assign one staff member to every unfilled shift on the days you pick, over a date range — e.g. every Monday, Tuesday and Saturday, every other week, until you stop it. Reallocate an individual shift instead by clicking it directly on the grid.
+          Assign one or more staff members to every unfilled shift on the days you pick, over a date range — e.g. every Monday, Tuesday and Saturday, every other week, until you stop it. Pick several staff to cover the same slots together. Reallocate an individual shift instead by clicking it directly on the grid.
         </p>
 
-        <Select label="Staff member *" value={staffId} onChange={e => setStaffId(e.target.value)} options={staffOptions} placeholder="Select staff member" />
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Staff member(s) *</label>
+          <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-40 overflow-y-auto">
+            {staffList.map((s: any) => (
+              <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm">
+                <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
+                <span className="text-slate-700">{getName(s)}</span>
+                <span className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
+              </label>
+            ))}
+          </div>
+          {staffIds.length > 1 && (
+            <p className="text-xs text-slate-400 mt-1">Each selected staff member gets their own shift on every matching date — {staffIds.length} shifts per date.</p>
+          )}
+        </div>
         <Select label="Resident *" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="Select resident" />
 
         <div>

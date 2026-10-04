@@ -148,6 +148,39 @@ router.get('/:id/reads', param('id').isUUID(), validateRequest,
 );
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+// Team leaders may edit an existing assessment and notify their team to read it,
+// matching what they already get on Care Plans and Other Risk Assessment — not
+// create new assessments from scratch, which stays management-only.
+const EDIT_ROLES = [...MANAGER_ROLES, 'team_leader'];
+
+// POST /api/medicine-risk/:id/notify-readers — management/team leader picks
+// specific staff to notify to read this assessment, same pattern as Care Plans
+// and Other Risk Assessment (previously missing here entirely).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+router.post('/:id/notify-readers', requireRole(...EDIT_ROLES as any),
+  [param('id').isUUID(), body('staffIds').isArray({ min: 1 })], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = tok(req, 'homeId');
+      const raRows = await query<any>(
+        `SELECT su.first_name || ' ' || su.last_name as su_name
+         FROM medicine_risk_assessments mr JOIN service_users su ON su.id = mr.su_id WHERE mr.id = $1`,
+        [req.params.id]
+      );
+      if (!raRows.length) { res.status(404).json({ success: false, error: 'Assessment not found' }); return; }
+      const link = `/medicine-risk?open=${req.params.id}`;
+      const staffIds: string[] = (req.body.staffIds || []).filter((id: any) => typeof id === 'string' && UUID_RE.test(id));
+      for (const staffId of staffIds) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'info',$5)`,
+          [staffId, homeId, 'Please read — Medication Risk Assessment',
+           `${raRows[0].su_name}'s medication risk assessment needs your review. Open it to confirm you've read it.`, link]
+        ).catch(() => {});
+      }
+      res.json({ success: true, data: { notified: staffIds.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
 
 // POST /api/medicine-risk — staff can read, only managers can write
 router.post('/', requireRole(...MANAGER_ROLES as any), [body('suId').isUUID()], validateRequest,
@@ -201,7 +234,7 @@ router.post('/', requireRole(...MANAGER_ROLES as any), [body('suId').isUUID()], 
 
 // PUT /api/medicine-risk/:id — update existing assessment (also used for the
 // lightweight "Record Update" risk-level log entry) — managers only
-router.put('/:id', requireRole(...MANAGER_ROLES as any), param('id').isUUID(), validateRequest,
+router.put('/:id', requireRole(...EDIT_ROLES as any), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = tok(req, 'staffId');

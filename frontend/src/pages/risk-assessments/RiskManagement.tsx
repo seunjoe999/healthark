@@ -183,6 +183,12 @@ export default function RiskManagement() {
   // backend enforces the same, this just keeps the UI from offering a
   // control that would 403.
   const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  // Owner was explicit (repeatedly, across two videos) that team leaders need the
+  // same Edit + "send to staff" access on risk assessments that they already have
+  // on Care Plans — reviewing/auditing a risk assessment and routing it to their
+  // team is part of their job, not just management's. Deliberately not full
+  // canManage: Archive/Sign Off stay management-only, nothing asked for those.
+  const canEditRisk = canManage || isRole('team_leader')
 
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
@@ -810,7 +816,7 @@ export default function RiskManagement() {
                   <Printer className="w-3.5 h-3.5" />
                   Print
                 </button>
-                {canManage && (
+                {canEditRisk && (
                   <>
                     <button
                       onClick={() => { setUpdateNotesItem(ra); setUpdateRiskLevel(ra.risk_rating || ra.current_risk_level || 'medium') }}
@@ -822,16 +828,18 @@ export default function RiskManagement() {
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors">
                       <Edit2 className="w-3.5 h-3.5" /> Edit
                     </button>
-                    <button
-                      onClick={() => { setViewItem(null); archive(ra.id) }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-rose-500 border border-rose-200 hover:bg-rose-50 transition-colors ml-auto">
-                      <X className="w-3.5 h-3.5" /> Archive
-                    </button>
+                    {canManage && (
+                      <button
+                        onClick={() => { setViewItem(null); archive(ra.id) }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-rose-500 border border-rose-200 hover:bg-rose-50 transition-colors ml-auto">
+                        <X className="w-3.5 h-3.5" /> Archive
+                      </button>
+                    )}
                   </>
                 )}
               </div>
 
-              {canManage && viewReads.length > 0 && (
+              {canEditRisk && viewReads.length > 0 && (
                 <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-2.5">
                   <span className="font-semibold text-slate-600">Read by:</span>{' '}
                   {viewReads.map((r: any) => r.staff_name).join(', ')}
@@ -863,8 +871,8 @@ export default function RiskManagement() {
                     </div>
                   </div>
                 )}
-                <Field label="What I can do" value={ra.what_i_can_do} />
-                <Field label="What you can do to support me" value={ra.how_you_can_support_me} />
+                <Field label="My support needs" value={ra.what_i_can_do} />
+                <Field label="How you can support me" value={ra.how_you_can_support_me} />
                 <Field label={ra.checklist_answers ? 'Additional notes' : 'Update tracking'} value={ra.risk_update_tracking} />
               </div>
 
@@ -898,7 +906,7 @@ export default function RiskManagement() {
                 <UpdateHistory raId={ra.id} />
               </div>
 
-              {canManage && (
+              {canEditRisk && (
                 <div className="pt-3 border-t border-slate-100">
                   <NotifyReadersSection homeId={selectedHome}
                     onSend={async (staffIds) => { await api.post(`/risk-assessments/${ra.id}/notify-readers`, { staffIds }) }} />
@@ -1130,9 +1138,9 @@ function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }
 
       {form.riskType === 'choking' && (
         <>
-          <SpeechTextarea label="What I can do" className="w-full" rows={2} placeholder="What the service user can do for themselves..."
+          <SpeechTextarea label="My support needs" className="w-full" rows={2} placeholder="What the service user can do for themselves..."
             value={form.whatICanDo} onChange={v => setF('whatICanDo', v)} />
-          <SpeechTextarea label="What you can do to support me" className="w-full" rows={2} placeholder="What staff should do to support the service user..."
+          <SpeechTextarea label="How you can support me" className="w-full" rows={2} placeholder="What staff should do to support the service user..."
             value={form.howYouCanSupportMe} onChange={v => setF('howYouCanSupportMe', v)} />
         </>
       )}
