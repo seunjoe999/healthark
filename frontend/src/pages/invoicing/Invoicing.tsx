@@ -20,7 +20,14 @@ interface Invoice {
   created_at: string
   sent_to?: string | null
   sent_at?: string | null
+  due_date?: string | null
+  payment_terms?: string | null
 }
+
+// Matches the invoice number shown on the generated PDF/email (first 8 chars of
+// the id) — previously only ever visible on the sent document itself, so a
+// customer quoting it back for a dispute had nothing on screen to search for.
+function invoiceNo(id: string) { return id.slice(0, 8).toUpperCase() }
 
 export default function Invoicing() {
   const { user } = useAuth()
@@ -125,7 +132,11 @@ export default function Invoicing() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500">Month: {new Date(inv.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</p>
+                    <p className="text-xs text-slate-500">
+                      Month: {new Date(inv.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                      {' · '}Invoice No: <span className="font-mono">{invoiceNo(inv.id)}</span>
+                      {inv.due_date && <> · Due: {new Date(inv.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</>}
+                    </p>
                   </div>
                   <div className="flex items-center gap-8">
                     <div className="text-right">
@@ -246,6 +257,27 @@ function InvoiceDetailModal({ invoice, onClose, onStatusChange, onSent }: { invo
   const [sending, setSending] = useState(false)
   const [emailInput, setEmailInput] = useState(invoice.sent_to || '')
   const [showSendForm, setShowSendForm] = useState(false)
+  // Terms/Due Date were generated behind the scenes onto the PDF/email with no
+  // way to see or amend them from here — a customer disputing an invoice gives
+  // you the invoice number, and you need to be able to look it up and correct
+  // the due date/terms if they were wrong.
+  const [editingTerms, setEditingTerms] = useState(false)
+  const [paymentTerms, setPaymentTerms] = useState(invoice.payment_terms || 'Net 30')
+  const [dueDate, setDueDate] = useState(invoice.due_date ? invoice.due_date.split('T')[0] : '')
+  const [savingTerms, setSavingTerms] = useState(false)
+
+  const saveTerms = async () => {
+    setSavingTerms(true)
+    try {
+      await api.patch(`/invoicing/${invoice.id}`, { paymentTerms, dueDate: dueDate || null })
+      toast.success('Terms updated')
+      setEditingTerms(false)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to update terms')
+    } finally {
+      setSavingTerms(false)
+    }
+  }
 
   const sendInvoice = async () => {
     const emails = emailInput.split(',').map(e => e.trim()).filter(Boolean)
@@ -269,6 +301,10 @@ function InvoiceDetailModal({ invoice, onClose, onStatusChange, onSent }: { invo
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded">
           <div>
+            <p className="text-xs text-slate-500 font-semibold">Invoice No</p>
+            <p className="font-semibold text-slate-800 font-mono">{invoiceNo(invoice.id)}</p>
+          </div>
+          <div>
             <p className="text-xs text-slate-500 font-semibold">Month</p>
             <p className="font-semibold text-slate-800">{new Date(invoice.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</p>
           </div>
@@ -284,6 +320,37 @@ function InvoiceDetailModal({ invoice, onClose, onStatusChange, onSent }: { invo
             <p className="text-xs text-slate-500 font-semibold">Amount</p>
             <p className="font-bold text-2xl text-slate-800">£{parseFloat(String(invoice.invoice_amount || 0)).toFixed(2)}</p>
           </div>
+        </div>
+
+        {/* Terms / Due Date — editable, since a customer dispute referencing these
+            needs to be correctable, not just visible on the sent PDF. */}
+        <div className="p-3 bg-slate-50 rounded border border-slate-200">
+          {editingTerms ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500">Terms</label>
+                  <input className="input text-sm" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} placeholder="e.g. Net 30" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500">Due date</label>
+                  <input type="date" className="input text-sm" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" onClick={() => setEditingTerms(false)}>Cancel</Button>
+                <Button size="sm" loading={savingTerms} onClick={saveTerms}>Save</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-700">
+                <span className="font-semibold">{paymentTerms}</span>
+                {dueDate && <span className="text-slate-500"> · Due {new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+              </div>
+              <button onClick={() => setEditingTerms(true)} className="text-xs font-semibold text-purple-700 underline">Edit</button>
+            </div>
+          )}
         </div>
         {invoice.notes && (
           <div className="p-3 bg-blue-50 rounded border border-blue-200">

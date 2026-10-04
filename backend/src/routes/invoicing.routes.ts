@@ -89,12 +89,17 @@ router.post('/', [
 router.patch('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { status, commissionedHours, invoiceAmount, notes } = req.body;
+      const { status, commissionedHours, invoiceAmount, notes, dueDate, paymentTerms } = req.body;
       const updates: Record<string, any> = {};
       if (status !== undefined) updates.status = status;
       if (commissionedHours !== undefined) updates.commissioned_hours = commissionedHours;
       if (invoiceAmount !== undefined) updates.invoice_amount = invoiceAmount;
       if (notes !== undefined) updates.notes = notes;
+      // Invoice number is derived from the id and shown read-only — Terms and Due
+      // Date are the two fields the owner specifically needs to amend after the
+      // fact (e.g. a customer dispute referencing a due date that needs changing).
+      if (dueDate !== undefined) updates.due_date = dueDate || null;
+      if (paymentTerms !== undefined) updates.payment_terms = paymentTerms || null;
       
       if (!Object.keys(updates).length) { 
         return res.status(400).json({ success: false, error: 'No fields to update' }); 

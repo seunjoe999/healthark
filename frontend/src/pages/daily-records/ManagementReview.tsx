@@ -159,7 +159,7 @@ export default function ManagementReview({ homeId }: { homeId: string }) {
                 <div key={r.id} className="px-5 py-4 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-slate-400">
-                      {r.record_date ? format(new Date(r.record_date), 'd MMM yyyy') : ''} · {typeInfo?.label || r.record_type} · {getSuName(r)}
+                      {r.record_date ? format(new Date(r.record_date), 'd MMM yyyy') : ''}{r.recorded_at ? ` ${format(new Date(r.recorded_at), 'HH:mm')}` : ''} · {typeInfo?.label || r.record_type} · {getSuName(r)}
                     </p>
                     <p className="text-sm text-slate-700 mt-0.5 truncate">{summarize(r)}</p>
                     <p className="text-xs text-slate-400 mt-0.5">By {r.staff_name}</p>
@@ -220,6 +220,7 @@ function ReviewModal({ record, suName, onClose, onSaved }: { record: any; suName
           <p><span className="font-semibold text-slate-600">Resident:</span> {suName}</p>
           <p><span className="font-semibold text-slate-600">Recorded by:</span> {record.staff_name}</p>
           <p><span className="font-semibold text-slate-600">Date:</span> {record.record_date ? format(new Date(record.record_date), 'd MMMM yyyy') : ''}</p>
+          <p><span className="font-semibold text-slate-600">Time:</span> {record.recorded_at ? format(new Date(record.recorded_at), 'HH:mm') : '—'}</p>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Staff documentation</p>
