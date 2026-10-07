@@ -107,6 +107,7 @@ router.post('/', [
       bowel_movement: 'bowel',
       social_visit: 'visit',
       family_visit: 'visit',
+      professional_visit: 'visit',
     };
     const normalizedType = typeAliases[recordType] || recordType;
 
@@ -343,11 +344,16 @@ router.post('/', [
           break;
         }
         case 'visit': {
-          const { visitType, visitorName, relationship, location, timeArrived, timeLeft, suResponse } = req.body;
+          const { visitType, visitorName, relationship, location, timeArrived, timeLeft, suResponse,
+                  visitorRole, purpose, visitAnnounced } = req.body;
           await client.query(
-            `INSERT INTO records_visits (daily_record_id, visit_type, visitor_name, relationship, location, time_arrived, time_left, su_response, notes)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [dr.id, visitType || 'social', visitorName || null, relationship || null, location || null, timeArrived || null, timeLeft || null, suResponse || null, notes || null]
+            `INSERT INTO records_visits (daily_record_id, visit_type, visitor_name, relationship, location, time_arrived, time_left, su_response, notes,
+               visitor_role, purpose, visit_announced)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [dr.id, visitType || 'social', visitorName || null, relationship || null, location || null,
+             timeArrived || null, timeLeft || null, suResponse || null, notes || null,
+             visitorRole || null, purpose || null,
+             visitAnnounced === undefined ? null : !!visitAnnounced]
           );
           break;
         }
@@ -356,7 +362,8 @@ router.post('/', [
                   injuredBodyPart, medicalNeeded, medicalAttentionRequired, medicalDetails, witnesses,
                   immediateAction, immediateActions, reportedTo, agenciesContacted, lessonsLearned,
                   preventionMeasures, reportedToManagement, safeguardingRef,
-                  cqcNotified, cqcNotNotifiedReason, familyNotified, familyNotNotifiedReason } = req.body;
+                  cqcNotified, cqcNotNotifiedReason, familyNotified, familyNotNotifiedReason,
+                  bodyMapData } = req.body;
           // incident_time is TIMESTAMPTZ — the form's time field arrives as a
           // bare "HH:MM", which Postgres cannot cast to a timestamp, so every
           // incident submitted with a time filled in blew up with a 500
@@ -373,11 +380,15 @@ router.post('/', [
           await client.query(
             `INSERT INTO records_incidents (daily_record_id, incident_type, location, incident_time, description,
               injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action, reported_to, safeguarding_ref,
-              cqc_notified, cqc_not_notified_reason, family_notified, family_not_notified_reason)
-             VALUES ($1,$2,$3,COALESCE($4::timestamptz, NOW()),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+              cqc_notified, cqc_not_notified_reason, family_notified, family_not_notified_reason, body_map_data)
+             VALUES ($1,$2,$3,COALESCE($4::timestamptz, NOW()),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,COALESCE($18::jsonb, 'null'::jsonb))`,
             [dr.id, incidentType || null, location || null, incidentTs,
              description || req.body.notes || '',
-             injuries || false, (injuryDetails || '') + (injuredBodyPart ? ' - ' + injuredBodyPart : ''),
+             // A body-map selection or written injury detail both mean there
+             // IS an injury — the active form never sent `injuries`, so it
+             // defaulted to false on every report that clearly had one.
+             injuries ?? !!((injuryDetails || '').trim() || (bodyMapData && Array.isArray(bodyMapData?.selected) && bodyMapData.selected.length)),
+             (injuryDetails || '') + (injuredBodyPart ? ' - ' + injuredBodyPart : ''),
              medicalNeeded || medicalAttentionRequired || false, medicalDetails || null,
              witnesses || null,
              // immediate_action is NOT NULL — an empty form field used to pass
@@ -386,7 +397,8 @@ router.post('/', [
              reportedTo || null,  // UUID column — text strings not accepted
              safeguardingRef || null,
              cqcNotified || false, cqcNotNotifiedReason || null,
-             familyNotified || false, familyNotNotifiedReason || null]
+             familyNotified || false, familyNotNotifiedReason || null,
+             bodyMapData ? JSON.stringify(bodyMapData) : null]
           );
           break;
         }

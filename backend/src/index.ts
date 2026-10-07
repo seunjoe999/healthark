@@ -1205,7 +1205,6 @@ async function createCoreTables() {
       su_response     VARCHAR(30),
       notes           TEXT
     )` },
-
     { label: 'table records_med_stock', sql: `CREATE TABLE IF NOT EXISTS records_med_stock (
       id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
@@ -1921,6 +1920,12 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_perf_staff ON staff_performance(staff_id, created_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_perf_home  ON staff_performance(home_id, created_at DESC)`,
     `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS phone_home VARCHAR(20)`,
+    // Visit records — the Professional/Family Visit template needs a declared
+    // role and a stated purpose, plus whether the visit was announced in
+    // advance, none of which the original records_visits columns captured.
+    `ALTER TABLE records_visits ADD COLUMN IF NOT EXISTS visitor_role VARCHAR(100)`,
+    `ALTER TABLE records_visits ADD COLUMN IF NOT EXISTS purpose TEXT`,
+    `ALTER TABLE records_visits ADD COLUMN IF NOT EXISTS visit_announced BOOLEAN`,
     `ALTER TABLE su_contacts DROP CONSTRAINT IF EXISTS su_contacts_contact_tag_check`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS gender_at_birth VARCHAR(50)`,
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS sexuality VARCHAR(100)`,

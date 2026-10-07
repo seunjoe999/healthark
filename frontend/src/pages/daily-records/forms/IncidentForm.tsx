@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
 import { ukDateStr } from '../../../utils/ukDate'
 import { Button, Input, Select, Toggle, SpeechTextarea } from '../../../components/ui'
+import BodySitePicker, { BODY_ZONES } from '../../../components/BodySitePicker'
 import { AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -36,6 +37,8 @@ const BODY_PARTS = [
   'Chest', 'Back', 'Hip', 'Leg', 'Knee', 'Ankle', 'Foot', 'Other'
 ]
 
+const ZONE_LABEL = (id: string) => BODY_ZONES.find(z => z.id === id)?.label || ''
+
 export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved: () => void }) {
   const [form, setForm] = useState({
     incidentType: '',
@@ -48,6 +51,9 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
     medicalDetails: '',
     injuryDetails: '',
     injuredBodyPart: '',
+    // Visual body map — a legal requirement for incident reports: staff must be
+    // able to show WHERE the injury is, not just describe it in free text.
+    injuredBodyParts: [] as string[],
     immediateActions: '',
     lessonsLearned: '',
     agenciesContacted: '',
@@ -86,6 +92,13 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
     }
     setSaving(true)
     try {
+      // Body map labels folded into injury details too, so the record reads
+      // correctly anywhere injury text is shown (reports, exports) without
+      // needing to join back to body_map_data.
+      const zoneLabels = (form.injuredBodyParts || [])
+        .map((id: string) => ZONE_LABEL(id))
+        .filter(Boolean)
+      const injuryText = [form.injuryDetails, zoneLabels.length ? `Body map: ${zoneLabels.join(', ')}` : ''].filter(Boolean).join(' — ')
       await dailyRecordsApi.create({
         suId,
         recordType: 'incident',
@@ -97,8 +110,9 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
         witnesses: form.witnesses,
         medicalAttentionRequired: form.medicalAttentionRequired,
         medicalDetails: form.medicalDetails,
-        injuryDetails: form.injuryDetails,
-        injuredBodyPart: form.injuredBodyPart,
+        injuryDetails: injuryText,
+        injuredBodyPart: form.injuredBodyPart || (zoneLabels[0] ? zoneLabels[0].toLowerCase() : ''),
+        bodyMapData: { selected: form.injuredBodyParts || [], labels: zoneLabels },
         immediateActions: form.immediateActions,
         lessonsLearned: form.lessonsLearned,
         agenciesContacted: form.agenciesContacted,
@@ -157,6 +171,25 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
           onChange={e => set('injuredBodyPart', e.target.value)}
           options={BODY_PARTS.map(b => ({ value: b.toLowerCase(), label: b }))}
           placeholder="Select if applicable" />
+      </div>
+
+      {/* Legal requirement: the incident report must show WHERE the injury is,
+          not only describe it in words. Tap zones on the body (front/back) to
+          mark every affected area; selections are stored on body_map_data and
+          echoed into the injury details text. */}
+      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Body map — injury location</p>
+        <BodySitePicker
+          multiple
+          label="Tap the injured area(s)"
+          hint="Front and back views — tap again to remove."
+          value={form.injuredBodyParts || []}
+          onChange={(zoneId) => {
+            setForm(p => {
+              const cur: string[] = p.injuredBodyParts || []
+              return { ...p, injuredBodyParts: cur.includes(zoneId) ? cur.filter(z => z !== zoneId) : [...cur, zoneId] }
+            })
+          }} />
       </div>
 
       <SpeechTextarea label="Immediate actions taken" rows={3} value={form.immediateActions} onChange={v => set('immediateActions', v)}

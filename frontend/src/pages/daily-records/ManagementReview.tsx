@@ -31,6 +31,7 @@ const RECORD_TYPES = [
   { value: 'vitals_oxygen', label: 'Oxygen (SpO2)' },
   { value: 'personal_care', label: 'Personal Care' },
   { value: 'prn_medication', label: 'PRN Medication' },
+  { value: 'professional_visit', label: 'Professional Visit' },
   { value: 'repositioning', label: 'Repositioning' },
   { value: 'seizure', label: 'Seizure Episode' },
   { value: 'shopping', label: 'Shopping' },

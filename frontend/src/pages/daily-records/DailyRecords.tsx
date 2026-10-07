@@ -64,6 +64,7 @@ const RECORD_TYPES = [
   { value: 'vitals_oxygen', label: 'Oxygen (SpO2)', icon: '🫁' },
   { value: 'personal_care', label: 'Personal Care', icon: '🧼' },
   { value: 'prn_medication', label: 'PRN Medication', icon: '💊' },
+  { value: 'professional_visit', label: 'Professional Visit', icon: '🩺' },
   { value: 'repositioning', label: 'Repositioning', icon: '🔄' },
   { value: 'seizure', label: 'Seizure Episode', icon: '⚡' },
   { value: 'shopping', label: 'Shopping', icon: '🛍️' },

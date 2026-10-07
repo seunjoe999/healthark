@@ -4,7 +4,16 @@ import { Button, Select, Input } from '../../../components/ui'
 import { SpeechTextarea } from '../../../components/ui/SpeechButton'
 
 const ENGAGEMENT = [{ value: 'good', label: 'Good' }, { value: 'limited', label: 'Limited' }, { value: 'refused', label: 'Refused' }, { value: 'other', label: 'Other' }]
-const VISIT_TYPES = [{ value: 'social', label: 'Social visit' }, { value: 'family', label: 'Family visit' }, { value: 'community', label: 'Community access' }]
+const VISIT_TYPES = [{ value: 'social', label: 'Social visit' }, { value: 'family', label: 'Family visit' }, { value: 'professional', label: 'Professional visit' }, { value: 'community', label: 'Community access' }]
+// Daily Records lists these as their own record types (Professional Visit,
+// Family Visit, Social Visit) but they all land in records_visits — the form
+// block below only used to match the literal type 'visit', which nothing
+// actually sent, so choosing Family Visit gave you a bare notes box with no
+// visit details at all.
+const VISIT_RECORD_TYPES = ['visit', 'professional_visit', 'family_visit', 'social_visit']
+const VISIT_TYPE_BY_RECORD: Record<string, string> = {
+  professional_visit: 'professional', family_visit: 'family', social_visit: 'social', visit: 'social',
+}
 const COMMS_MODES = [{ value: 'verbal', label: 'Verbal' }, { value: 'makaton', label: 'Makaton' }, { value: 'pecs', label: 'PECS' }, { value: 'written', label: 'Written' }, { value: 'eye_gaze', label: 'Eye gaze' }, { value: 'other', label: 'Other' }]
 const CALL_DIRECTIONS = [{ value: 'incoming', label: 'Incoming — they called us' }, { value: 'outgoing', label: 'Outgoing — we called them' }]
 const PAYMENT_METHODS = [{ value: 'cash', label: 'Cash' }, { value: 'debit_card', label: 'Debit card' }, { value: 'credit_card', label: 'Credit card' }, { value: 'bank_transfer', label: 'Bank transfer' }, { value: 'other', label: 'Other' }]
@@ -72,8 +81,35 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         notes = [`Cash withdrawal: £${form.cashWithdrawal || '0.00'}`, `Amount spent: £${form.amountSpent || '0.00'}`,
           form.balanceInBank && `Balance in bank: £${form.balanceInBank}`, form.reasonForWithdrawal && `Reason for withdrawal: ${form.reasonForWithdrawal}`,
           form.receiptUrl && `Receipt attached: ${form.receiptName || form.receiptUrl}`, notes].filter(Boolean).join('\n')
+      } else if (VISIT_RECORD_TYPES.includes(type)) {
+        // Daily Records, Management Review and the Daily Note report all render
+        // `daily_records.notes` as the body of a record (they never join to
+        // records_visits), so the visit template — time, name, role, announced,
+        // purpose — is composed into notes as well as being stored in its own
+        // columns. Without this the structured fields saved fine but were
+        // invisible everywhere anyone actually reads them.
+        const visitTypeLabel = VISIT_TYPES.find(v => v.value === (form.visitType ?? VISIT_TYPE_BY_RECORD[type]))?.label || 'Visit'
+        const announced = form.visitAnnounced === undefined || form.visitAnnounced === null ? '—' : form.visitAnnounced ? 'Yes' : 'No'
+        notes = [
+          `Time: ${form.timeArrived || '—'}`,
+          form.visitorName && `Name: ${form.visitorName}`,
+          form.visitorRole && `Role: ${form.visitorRole}`,
+          form.relationship && `Relationship: ${form.relationship}`,
+          `Visit announced: ${announced}`,
+          form.purpose && `Purpose of visit: ${form.purpose}`,
+          form.suResponse && `Resident's response: ${form.suResponse}`,
+          notes,
+        ].filter(Boolean).join('\n')
+        notes = `${visitTypeLabel} — ${notes}`
       }
-      await dailyRecordsApi.create({ suId, recordType: type, recordedAt, ...form, notes })
+      await dailyRecordsApi.create({
+        suId, recordType: type, recordedAt, ...form, notes,
+        // Defaulted from the record type when never touched (Professional
+        // Visit → professional, Family Visit → family, ...), so the child
+        // records_visits row is tagged correctly instead of falling back to
+        // "social" for every visit kind.
+        ...(VISIT_RECORD_TYPES.includes(type) ? { visitType: form.visitType ?? VISIT_TYPE_BY_RECORD[type] ?? 'social' } : {}),
+      })
       onSaved()
     }
     catch (err: any) { alert(err?.response?.data?.error || 'Failed') }
@@ -112,15 +148,54 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <Input label="Outcome" value={form.outcome || ''} onChange={e => set('outcome', e.target.value)} placeholder="e.g. Call returned, information passed on, callback arranged..." />
       </>)}
 
-      {type === 'visit' && (<>
-        <Select label="Visit type" value={form.visitType || 'social'} onChange={e => set('visitType', e.target.value)} options={VISIT_TYPES} />
-        <Input label="Visitor name" value={form.visitorName || ''} onChange={e => set('visitorName', e.target.value)} placeholder="Full name of visitor..." />
-        <Input label="Relationship" value={form.relationship || ''} onChange={e => set('relationship', e.target.value)} placeholder="e.g. Daughter, friend, GP..." />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Time arrived" type="time" value={form.timeArrived || ''} onChange={e => set('timeArrived', e.target.value)} />
-          <Input label="Time left" type="time" value={form.timeLeft || ''} onChange={e => set('timeLeft', e.target.value)} />
+      {VISIT_RECORD_TYPES.includes(type) && (<>
+        {/* Date + time the visit happened — Date comes from the record's own
+            recorded-at value (the shared field every record type has), Time
+            from the arrival time below, per the owner's requested template. */}
+        <div className="flex items-center gap-4 text-xs text-slate-500">
+          <span><span className="font-semibold text-slate-600">Date:</span> {recordedAt ? new Date(recordedAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}</span>
+          <span className="text-slate-300">·</span>
+          <span>Change the date/time in the "Recorded at" field above.</span>
         </div>
-        <Input label="Resident's response" value={form.suResponse || ''} onChange={e => set('suResponse', e.target.value)} placeholder="How did they react to the visit..." />
+        <div>
+          <label className="label">Visit type</label>
+          <select className="input" value={form.visitType ?? VISIT_TYPE_BY_RECORD[type] ?? 'social'}
+            onChange={e => set('visitType', e.target.value)}>
+            {VISIT_TYPES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Time" type="time" value={form.timeArrived || ''} onChange={e => set('timeArrived', e.target.value)} />
+          <Input label="Name" value={form.visitorName || ''} onChange={e => set('visitorName', e.target.value)} placeholder="Full name of visitor" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Role" value={form.visitorRole || ''} onChange={e => set('visitorRole', e.target.value)} placeholder="e.g. District Nurse, Daughter, GP" />
+          <div>
+            <label className="label">Visit announced?</label>
+            <div className="flex gap-2">
+              {[{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }].map(o => (
+                <button key={o.v} type="button"
+                  onClick={() => set('visitAnnounced', o.v === 'yes')}
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    (form.visitAnnounced ?? null) === (o.v === 'yes')
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                  {o.l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div>
+          <label className="label">Purpose of visit</label>
+          <textarea className="input" rows={2} value={form.purpose || ''} onChange={e => set('purpose', e.target.value)}
+            placeholder="Why did they visit..." />
+        </div>
+        <Input label="Relationship" value={form.relationship || ''} onChange={e => set('relationship', e.target.value)} placeholder="e.g. Daughter, GP, Social worker..." />
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Time left" type="time" value={form.timeLeft || ''} onChange={e => set('timeLeft', e.target.value)} />
+          <Input label="Resident's response" value={form.suResponse || ''} onChange={e => set('suResponse', e.target.value)} placeholder="How did they react to the visit..." />
+        </div>
       </>)}
 
       {type === 'prn_medication' && (<>
