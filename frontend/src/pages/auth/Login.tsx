@@ -18,6 +18,10 @@ export default function Login() {
   const [error, setError] = useState('')
   const [successData, setSuccessData] = useState<any>(null)
   const [useLoginPin, setUseLoginPin] = useState(false)
+  // Care staff / team leaders must enter BOTH password and PIN — the server
+  // answers 403 pin_required after a correct password, and we reveal the PIN
+  // field then (only those roles ever see it, since only they get asked).
+  const [needPin, setNeedPin] = useState(false)
 
   // Login state
   const [email, setEmail] = useState('')
@@ -42,10 +46,15 @@ export default function Login() {
     setLoading(true)
     try {
       if (useLoginPin) await loginWithPin(email, pin)
-      else await login(email, password)
+      else await login(email, password, needPin ? pin : undefined)
       navigate('/messages', { replace: true })
     } catch (err: any) {
-      setError(err?.response?.data?.error || `Invalid email or ${useLoginPin ? 'PIN' : 'password'}`)
+      if (!useLoginPin && err?.response?.status === 403 && err.response.data?.code === 'pin_required') {
+        setNeedPin(true)
+        setError('')
+      } else {
+        setError(err?.response?.data?.error || `Invalid email or ${useLoginPin ? 'PIN' : 'password'}`)
+      }
       setLoading(false)
     }
   }
@@ -133,18 +142,30 @@ export default function Login() {
                         placeholder="••••" value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} required autoFocus />
                     </div>
                   ) : (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
-                      <div className="relative">
-                        <input type={showPw ? 'text' : 'password'} className={inputClass + ' pr-11'}
-                          autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="current-password"
-                          placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-                        <button type="button" onClick={() => setShowPw(v => !v)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
-                          {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                        <div className="relative">
+                          <input type={showPw ? 'text' : 'password'} className={inputClass + ' pr-11'}
+                            autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="current-password"
+                            placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+                          <button type="button" onClick={() => setShowPw(v => !v)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
+                            {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                      {needPin && (
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">PIN</label>
+                          <input type="password" inputMode="numeric" pattern="[0-9]*" maxLength={8}
+                            className={inputClass + ' text-center tracking-[0.5em] text-lg'}
+                            placeholder="••••" value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                            required autoFocus />
+                          <p className="text-xs text-slate-400 mt-1.5">Password accepted — enter your PIN to finish signing in.</p>
+                        </div>
+                      )}
+                    </>
                   )}
                   <button type="submit" disabled={loading}
                     className="w-full mt-2 py-3 rounded-xl font-semibold text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50 group"

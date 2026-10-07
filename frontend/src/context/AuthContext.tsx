@@ -5,7 +5,7 @@ import { reloadIfNewVersion } from '../utils/versionCheck'
 
 interface AuthContextType {
   user: AuthUser | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, pin?: string) => Promise<void>
   loginWithPin: (email: string, pin: string) => Promise<void>
   logout: () => void
   isRole: (...roles: string[]) => boolean
@@ -133,6 +133,12 @@ function clearSession() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => loadSession().user)
+  // Set instead of a full logout on inactivity, for care staff / team leaders
+  // (see the timeout effect below): the session survives behind this overlay
+  // and a PIN entry resumes it, instead of dumping the app back to the login
+  // screen and losing whatever was on screen.
+  const [pinUnlock, setPinUnlock] = useState(false)
+  const [pinUnlockError, setPinUnlockError] = useState('')
 
   // Refresh user profile (incl. merged role access rights) from DB.
   // Called on mount and whenever the window regains focus so access right
@@ -188,14 +194,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('ha:unauthorized', handle)
   }, [])
 
-  // Inactivity timeout — log out after 30 minutes of no interaction
+  // Inactivity timeout — log out after 30 minutes of no interaction. Care
+  // staff and team leaders instead get a PIN unlock (owner directive): the
+  // session is kept, an overlay asks for their PIN, and entering it resumes
+  // exactly where they left off — no full re-login with password. Everyone
+  // else keeps the full logout, as before.
   useEffect(() => {
-    if (!user) return
+    if (!user) { setPinUnlock(false); return }
     const TIMEOUT_MS = 30 * 60 * 1000
+    const pinRoles = ['care_staff', 'team_leader']
     let timer: ReturnType<typeof setTimeout>
     const reset = () => {
       clearTimeout(timer)
-      timer = setTimeout(() => { clearSession(); setUser(null) }, TIMEOUT_MS)
+      timer = setTimeout(() => {
+        if (pinRoles.includes(user.role)) {
+          setPinUnlockError('')
+          setPinUnlock(true)
+        } else {
+          clearSession(); setUser(null)
+        }
+      }, TIMEOUT_MS)
     }
     const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll']
     events.forEach(e => window.addEventListener(e, reset, { passive: true }))
@@ -204,10 +222,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer)
       events.forEach(e => window.removeEventListener(e, reset))
     }
-  }, [!!user])
+  }, [!!user, user?.role])
 
-  const login = async (email: string, password: string) => {
-    const res = await authApi.login(email, password)
+  const login = async (email: string, password: string, pin?: string) => {
+    const res = await authApi.login(email, password, pin)
     const { accessToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
     saveSession(accessToken, authUser)
@@ -233,6 +251,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { authApi.logout() } catch {}
     clearSession()
     setUser(null)
+    setPinUnlock(false)
+    setPinUnlockError('')
+  }
+
+  // Resume a timed-out session with a PIN — issues a fresh token for the same
+  // account and drops the overlay, leaving the app exactly where it was.
+  const resumeWithPin = async (pin: string) => {
+    if (!user?.email) { logout(); return }
+    try {
+      const res = await authApi.pinLogin(user.email, pin)
+      const { accessToken, staff } = res.data.data
+      const authUser = parseUser(staff as Record<string, unknown>)
+      saveSession(accessToken, authUser)
+      setUser(authUser)
+      setPinUnlock(false)
+      setPinUnlockError('')
+      refreshUser()
+    } catch (err: any) {
+      setPinUnlockError(err?.response?.data?.error || 'Incorrect PIN')
+    }
   }
 
   const isRole = (...roles: string[]) => !!user && roles.includes(user.role)
@@ -240,6 +278,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, login, loginWithPin, logout, isRole }}>
       {children}
+      {pinUnlock && user && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6" style={{ background: 'rgba(8,12,24,0.92)', backdropFilter: 'blur(6px)' }}>
+          <div className="w-full max-w-sm rounded-3xl p-7" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <h2 className="text-white text-xl font-semibold mb-1">Session timed out</h2>
+            <p className="text-slate-400 text-sm mb-5">
+              {user.firstName}, enter your PIN to carry on where you left off.
+            </p>
+            <form onSubmit={(e) => { e.preventDefault(); const v = (e.currentTarget.elements.namedItem('unlockPin') as HTMLInputElement).value; if (v) resumeWithPin(v) }}>
+              <input
+                name="unlockPin" type="password" inputMode="numeric" pattern="[0-9]*" maxLength={8} autoFocus
+                placeholder="••••"
+                className="w-full px-3.5 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-center tracking-[0.5em] text-lg outline-none focus:border-amber-400/60 mb-3"
+                onChange={() => setPinUnlockError('')} />
+              {pinUnlockError && <p className="text-rose-300 text-sm mb-3">{pinUnlockError}</p>}
+              <button type="submit" className="w-full py-3 rounded-xl font-semibold text-slate-900 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                Unlock
+              </button>
+            </form>
+            <button onClick={logout} className="w-full mt-3 text-xs text-slate-400 hover:text-white transition-colors">
+              Sign in with password instead
+            </button>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   )
 }

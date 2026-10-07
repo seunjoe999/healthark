@@ -1185,10 +1185,17 @@ function CellDetailModal({ data, currentUser, onClose, onRefresh, onAmend }: { d
   const rec = records[0]
   const [signingOff, setSigningOff] = useState(false)
   const isManager = currentUser?.role === 'home_manager' || currentUser?.role === 'group_admin'
-  // Backend enforces the actual 24h-since-clock-out cutoff (matching daily records/
-  // tasks elsewhere) and rejects with a clear error once it's passed — this button
-  // just needs to be offered to the person who logged it in the first place.
-  const canAmend = rec && rec.given_by === currentUser?.id
+  // Any staff member may amend a recent record — the backend enforces the exact
+  // rule (own record while within the 24h amend window; a colleague's record
+  // also within that window, per the owner's directive that staff can amend
+  // documentation for 24 hours after their shift) and returns a clear error
+  // once it has passed. Was restricted to `given_by === me`, which locked care
+  // staff out of doses logged by the previous shift and left them unable to
+  // close or correct them. Records older than ~36 hours (covering a night
+  // shift ending in the morning) don't offer the button at all.
+  const recDate = rec?.record_date ? String(rec.record_date).slice(0, 10) : ''
+  const earliestAmendable = new Date(Date.now() - 36 * 3600 * 1000).toISOString().slice(0, 10)
+  const canAmend = !!rec && (rec.given_by === currentUser?.id || recDate >= earliestAmendable)
 
   const signOffMgmt = async () => {
     if (!rec) return
@@ -1400,7 +1407,15 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
   const [signoffName, setSignoffName] = useState('')
   const [applicationSite, setApplicationSite] = useState(existingRecord?.application_site || '')
   const [applicationSiteLabel, setApplicationSiteLabel] = useState(existingRecord?.application_site_label || '')
-  const needsApplicationSite = ['cream', 'patch'].includes(med.medicine_type)
+  // Creams/patches (and anything topically applied) must record WHERE they
+  // were applied — a legal requirement the owner has asked for on the
+  // medication task. Was keyed on medicine_type only, so a cream entered as
+  // type "Other" with a topical route (or a name saying cream/ointment) never
+  // prompted for a site at all.
+  const needsApplicationSite =
+    ['cream', 'patch'].includes(med.medicine_type)
+    || med.route === 'topical'
+    || (med.medicine_type === 'other' && /cream|ointment|gel|balm|lotion|spray/i.test(med.medication_name || ''))
 
   const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
   const isControlled = med.is_controlled

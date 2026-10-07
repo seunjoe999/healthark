@@ -21,7 +21,7 @@ const signRefresh = (payload: object) =>
 
 // POST /api/auth/login
 router.post('/login',
-  [body('email').isEmail(), body('password').notEmpty()],
+  [body('email').isEmail(), body('password').notEmpty(), body('pin').optional()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -36,7 +36,7 @@ router.post('/login',
       let extraCols: any = {};
       try {
         const extra = await query<any>(
-          `SELECT first_name, last_name, home_id, organisation_id, photo_url, feature_flags FROM staff WHERE LOWER(email) = $1`, [email]
+          `SELECT first_name, last_name, home_id, organisation_id, photo_url, feature_flags, login_pin_hash FROM staff WHERE LOWER(email) = $1`, [email]
         );
         if (extra.length) extraCols = extra[0];
       } catch {}
@@ -48,6 +48,25 @@ router.post('/login',
       if (!staff.password_hash) throw new AppError('Invalid email or password', 401);
       const valid = await bcrypt.compare(password, staff.password_hash);
       if (!valid) throw new AppError('Invalid email or password', 401);
+
+      // Care staff and team leaders sign in with BOTH password and PIN (owner
+      // directive) — password verified above, PIN required before any session
+      // is issued. Enforced only when a PIN has actually been set: an account
+      // that has never set one must not be locked out of its own system, and
+      // the frontend surfaces the PIN step only for these two roles.
+      const PIN_REQUIRED_ROLES = ['care_staff', 'team_leader'];
+      if (PIN_REQUIRED_ROLES.includes(staff.role) && extraCols.login_pin_hash) {
+        if (!req.body.pin) {
+          res.status(403).json({
+            success: false,
+            code: 'pin_required',
+            error: 'Enter your PIN to finish signing in.',
+          } as ApiResponse);
+          return;
+        }
+        const pinValid = await bcrypt.compare(String(req.body.pin), extraCols.login_pin_hash);
+        if (!pinValid) throw new AppError('Incorrect PIN', 401);
+      }
 
       // If any account has no home_id, resolve from their org's first home so all pages work
       let resolvedHomeId = staff.home_id;

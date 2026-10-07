@@ -96,7 +96,7 @@ api.interceptors.response.use(
 export default api
 
 export const authApi = {
-  login: (email: string, password: string) => api.post('/auth/login', { email, password }),
+  login: (email: string, password: string, pin?: string) => api.post('/auth/login', { email, password, ...(pin ? { pin } : {}) }),
   pinLogin: (email: string, pin: string) => api.post('/auth/pin-login', { email, pin }),
   setPin: (pin: string) => api.post('/auth/set-pin', { pin }),
   removePin: () => api.delete('/auth/pin'),
