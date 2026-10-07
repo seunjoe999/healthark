@@ -13,6 +13,8 @@ import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemp
 const CATEGORY_ICONS: Record<string, any> = {
   housekeeping: Sparkles,
   medication: Pill,
+  // 30-minute post-PRN observation task created after a PRN dose.
+  medication_observation: Pill,
   social_visit: Users,
   personal_care: HeartHandshake,
   health_check: Stethoscope,

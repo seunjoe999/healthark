@@ -18,7 +18,7 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   // clock-out, so getting the date wrong here directly produces a stuck clock-in.
   const todayStr = ukDateStr();
   const rows = await query<any>(
-    `SELECT id, title, due_time, created_by, assigned_staff_id, assigned_role, visible_team_ids, su_id
+    `SELECT id, title, due_time, category, created_by, assigned_staff_id, assigned_role, visible_team_ids, su_id
      FROM tasks WHERE home_id = $1 AND task_date = $2 AND status = 'pending'`,
     [homeId, todayStr]
   );
@@ -29,7 +29,14 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
     myTeamId = staffRows[0]?.team_id || null;
   }
 
-  let visible = rows.filter((t: any) => {
+  // 30-minute post-PRN observation tasks (created by mar.routes) show on the
+  // task list with their due time but must never block clock-out — they're a
+  // follow-up prompt, not a shift-closing prerequisite, and trapping staff
+  // over them is exactly the clock-out deadlock this gate has repeatedly
+  // caused for other task types.
+  const blockable = rows.filter((t: any) => t.category !== 'medication_observation');
+
+  let visible = blockable.filter((t: any) => {
     if (t.created_by === staffId) return true;
     if (t.assigned_staff_id) return t.assigned_staff_id === staffId;
     const hasRoleTarget = !!t.assigned_role;

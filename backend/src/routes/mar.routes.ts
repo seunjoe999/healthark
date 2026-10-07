@@ -347,6 +347,32 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
         } catch (stockErr) { /* non-fatal — MAR record already saved */ }
       }
 
+      // 30-minute observation after a PRN dose: staff reported having no way to
+      // document it — the dose record closes on save and nothing prompts the
+      // follow-up. Generate a task for the administering staff member, due in
+      // 30 minutes, so the observation lands on their to-do list with a time
+      // (they can also reopen the original dose record from MAR within the 24h
+      // amend window). PRN only — scheduled doses have their own timeslots and
+      // generating a task for every one would bury the list. Non-fatal: the
+      // dose record is already saved at this point.
+      try {
+        if (given) {
+          const medRows = await query<any>(
+            'SELECT medication_name, is_prn FROM su_medications WHERE id = $1', [medicationId]
+          );
+          if (medRows[0]?.is_prn) {
+            const medName = medRows[0].medication_name || 'medication';
+            await query(
+              `INSERT INTO tasks (home_id, su_id, created_by, title, category, description, task_date, due_time, priority, status, assigned_staff_id)
+               VALUES ($1,$2,$3,$4,'medication_observation',$5,$6,$7,'high','pending',$3)`,
+              [homeId, suId, staffId, `30-minute check: ${medName}`,
+               `Observation 30 minutes after the ${medName} PRN dose — record the resident's response and whether any further action is needed. The original dose record can be reopened from MAR within 24 hours.`,
+               ukDateStr(), ukTimeHHMM(new Date(Date.now() + 30 * 60 * 1000))]
+            );
+          }
+        }
+      } catch (obsErr) { logger.error('Failed to create 30-minute observation task after MAR record', obsErr); }
+
       // Notify staff member asked to sign off this record (separate from controlled-drug witness)
       if (signoffRequestedBy) {
         try {
