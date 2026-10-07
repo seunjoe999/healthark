@@ -480,7 +480,7 @@ export default function MAR() {
                         className={`block rounded-xl border p-4 shadow-sm transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-purple-400/40' : 'bg-purple-50 border-purple-200 hover:border-purple-300'}`}>
                         <div className="flex items-center justify-between">
                           <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Medication Audit'}</p>
-                          {r.risk_level && <span className="text-xs text-slate-400">{r.risk_level}</span>}
+                          {r.risk_level && Number(r.max_score) > 0 && <span className="text-xs text-slate-400 capitalize">{String(r.risk_level).replace(/_/g, ' ')}</span>}
                         </div>
                         {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
                       </a>
@@ -505,7 +505,7 @@ export default function MAR() {
                         className={`block rounded-xl border p-4 shadow-sm transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-purple-400/40' : 'bg-purple-50 border-purple-200 hover:border-purple-300'}`}>
                         <div className="flex items-center justify-between">
                           <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{r.assessment_date ? format(new Date(r.assessment_date), 'd MMM yyyy') : 'Mar Chart Audit'}</p>
-                          {r.risk_level && <span className="text-xs text-slate-400">{r.risk_level}</span>}
+                          {r.risk_level && Number(r.max_score) > 0 && <span className="text-xs text-slate-400 capitalize">{String(r.risk_level).replace(/_/g, ' ')}</span>}
                         </div>
                         {r.conducted_by_name && <p className="text-xs text-slate-500 mt-0.5">By {r.conducted_by_name}</p>}
                       </a>
@@ -884,6 +884,12 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
             is_controlled: signOffTask.isControlled,
             location_access_code: null,
             medicine_warning: null,
+            // Without these the sign-off form could never tell a cream/patch
+            // from a tablet, so the body map never appeared from the task list.
+            medicine_type: signOffTask.medicineType,
+            route: signOffTask.route,
+            application_site: signOffTask.applicationSite,
+            application_site_label: signOffTask.applicationSiteLabel,
           }}
           date={today}
           slot={signOffTask.scheduledTime}
@@ -1405,17 +1411,16 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
   const [completed, setCompleted] = useState(true)
   const [signoffId, setSignoffId] = useState('')
   const [signoffName, setSignoffName] = useState('')
-  const [applicationSite, setApplicationSite] = useState(existingRecord?.application_site || '')
-  const [applicationSiteLabel, setApplicationSiteLabel] = useState(existingRecord?.application_site_label || '')
+  // Defaults to the site the manager prescribed on the medication, so staff
+  // are shown where to apply it and only change it if they applied elsewhere.
+  const [applicationSite, setApplicationSite] = useState(existingRecord?.application_site || med.application_site || '')
+  const [applicationSiteLabel, setApplicationSiteLabel] = useState(existingRecord?.application_site_label || med.application_site_label || '')
   // Creams/patches (and anything topically applied) must record WHERE they
   // were applied — a legal requirement the owner has asked for on the
   // medication task. Was keyed on medicine_type only, so a cream entered as
   // type "Other" with a topical route (or a name saying cream/ointment) never
   // prompted for a site at all.
-  const needsApplicationSite =
-    ['cream', 'patch'].includes(med.medicine_type)
-    || med.route === 'topical'
-    || (med.medicine_type === 'other' && /cream|ointment|gel|balm|lotion|spray/i.test(med.medication_name || ''))
+  const needsApplicationSite = isBodySiteMed(med.medicine_type, med.route, med.medication_name)
 
   const selected = MAR_CODE_OPTIONS.find(o => o.code === selectedCode)
   const isControlled = med.is_controlled
@@ -1646,8 +1651,21 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
           </div>
         )}
 
-        {needsApplicationSite && selected?.given && (
-          <BodySitePicker value={applicationSite} onChange={(zoneId, zoneLabel) => { setApplicationSite(zoneId); setApplicationSiteLabel(zoneLabel) }} />
+        {/* Shown as soon as the task opens (not only once "Given" is picked) so
+            staff can SEE where the cream/patch goes before they administer it. */}
+        {needsApplicationSite && (!selected || selected.given) && (
+          <div className="space-y-2">
+            {med.application_site_label && (
+              <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
+                <span className="font-semibold">Apply to:</span> {med.application_site_label}
+              </div>
+            )}
+            <BodySitePicker
+              value={applicationSite}
+              label="Where it was applied *"
+              hint={med.application_site_label ? 'The prescribed site is highlighted. Tap a different area only if you applied it elsewhere.' : 'Tap the area of the body where it was applied.'}
+              onChange={(zoneId, zoneLabel) => { setApplicationSite(zoneId); setApplicationSiteLabel(zoneLabel) }} />
+          </div>
         )}
 
         <div>
@@ -1759,9 +1777,34 @@ function TimeSlotsField({ frequency, value, onChange }: { frequency: string; val
   )
 }
 
+// Creams, patches and anything applied topically need a body site: prescribed
+// by the manager on the medication, and recorded by staff on each dose.
+function isBodySiteMed(medicineType?: string | null, route?: string | null, name?: string | null) {
+  return ['cream', 'patch'].includes(medicineType || '')
+    || route === 'topical'
+    || (medicineType === 'other' && /cream|ointment|gel|balm|lotion|spray/i.test(name || ''))
+}
+
+function PrescribedSiteField({ form, set, name }: { form: any; set: (k: string, v: any) => void; name?: string }) {
+  if (!isBodySiteMed(form.medicineType, form.route, name)) return null
+  return (
+    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+      <BodySitePicker
+        value={form.applicationSite}
+        label="Where should this be applied?"
+        hint="Staff will see this on the body map when the medication task comes up."
+        onChange={(zoneId, zoneLabel) => {
+          // Tapping the selected area again clears it.
+          if (form.applicationSite === zoneId) { set('applicationSite', ''); set('applicationSiteLabel', '') }
+          else { set('applicationSite', zoneId); set('applicationSiteLabel', zoneLabel) }
+        }} />
+    </div>
+  )
+}
+
 /* ─── Add Medication Modal ─────────────────────────────────────────────── */
 function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: boolean; onClose: () => void; suId?: string; homeId?: string; onSaved: () => void }) {
-  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', timeSlots: [] as string[], prescribedBy: '', startDate: '', endDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '', medicineTypeOther: '', frequencyOther: '', weeklyDays: [] as number[] }
+  const BLANK = { medicationName: '', dose: '', frequency: '', route: '', medicineType: '', timeSlots: [] as string[], prescribedBy: '', startDate: '', endDate: '', instructions: '', isPrn: false, isControlled: false, pharmacyName: '', pharmacyPhone: '', gpName: '', gpPhone: '', locationAccessCode: '', medicineWarning: '', medicineTypeOther: '', frequencyOther: '', weeklyDays: [] as number[], applicationSite: '', applicationSiteLabel: '' }
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -1808,6 +1851,7 @@ function AddMedicationModal({ open, onClose, suId, homeId, onSaved }: { open: bo
           </div>
           <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
         </div>
+        <PrescribedSiteField form={form} set={set} name={form.medicationName} />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
           <div>
@@ -1900,6 +1944,8 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
     medicineTypeOther: med.medicine_type_other || '',
     frequencyOther: med.frequency_other || '',
     weeklyDays: (Array.isArray(med.weekly_days) ? med.weekly_days.map(Number) : []) as number[],
+    applicationSite: med.application_site || '',
+    applicationSiteLabel: med.application_site_label || '',
   })
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
@@ -1937,6 +1983,7 @@ function EditMedicationModal({ med, onClose, onSaved }: { med: any; onClose: () 
           </div>
           <Select label="Route" value={form.route} onChange={e => set('route', e.target.value)} options={ROUTES} placeholder="Select route" />
         </div>
+        <PrescribedSiteField form={form} set={set} name={med.medication_name} />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} placeholder="e.g. 5mg, 2 tablets..." />
           <div>

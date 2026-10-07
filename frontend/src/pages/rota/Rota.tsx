@@ -231,7 +231,11 @@ function layoutShiftLanes(dayShifts: any[]): { layout: Map<string, { col: number
   const sorted = [...dayShifts].sort((a, b) => {
     const as = timeToMins(a.start_time?.substring(0, 5) || '08:00')
     const bs = timeToMins(b.start_time?.substring(0, 5) || '08:00')
-    return as - bs
+    // Shifts starting together sit side by side — order those lanes by staff
+    // name (unfilled last) so a multi-staff service reads alphabetically.
+    if (as !== bs) return as - bs
+    if (!a.staff_name !== !b.staff_name) return a.staff_name ? -1 : 1
+    return String(a.staff_name || '').localeCompare(String(b.staff_name || ''), undefined, { sensitivity: 'base' })
   })
   let open: { id: string; end: number; col: number }[] = []
   let cluster: string[] = []
@@ -410,7 +414,10 @@ export default function Rota() {
   useEffect(() => {
     if (!selectedHome) return
     Promise.all([staffApi.list({ homeId: selectedHome }), suApi.list(selectedHome, { status: 'live' })])
-      .then(([sRes, suRes]) => { setStaffList(sRes.data.data || []); setSuList(suRes.data.data || []) })
+      .then(([sRes, suRes]) => {
+        // Sorted once here so EVERY staff list on the rota (filter, assign, bulk
+        // assign, reallocate, create rota...) is alphabetical, not in database order.
+        setStaffList([...(sRes.data.data || [])].sort((a: any, b: any) => getName(a).localeCompare(getName(b), undefined, { sensitivity: 'base' }))); setSuList(suRes.data.data || []) })
     loadAll()
     loadSwaps()
   }, [selectedHome, weekStart, dayDate, view])

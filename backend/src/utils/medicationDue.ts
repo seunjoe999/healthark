@@ -36,6 +36,9 @@ export interface DueMedicationTask {
   medicationName: string; dose: string; route: string; instructions: string;
   isControlled: boolean; scheduledTime: string; status: string;
   recordId?: string; givenBy?: string; notes?: string | null; marCode?: string | null;
+  // Needed by the task sign-off form to decide whether to show the body map,
+  // and to show staff the prescribed application site for a cream/patch.
+  medicineType?: string | null; applicationSite?: string | null; applicationSiteLabel?: string | null;
 }
 
 // Medication due-today as a per-staff task list — shared by the /mar/due-today endpoint
@@ -62,6 +65,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
 
   let sql = `SELECT m.id AS medication_id, m.su_id, m.medication_name, m.dose, m.frequency, m.route,
                     m.notes AS instructions, m.is_prn, m.is_controlled, m.apply_time, m.start_date, m.end_date, m.time_slots, m.weekly_days,
+                    m.medicine_type, m.application_site, m.application_site_label,
                     su.first_name || ' ' || su.last_name AS su_name, su.photo_url AS su_photo
              FROM su_medications m
              JOIN service_users su ON su.id = m.su_id
@@ -136,6 +140,8 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
         // previous attempt's handover note instead of reopening to a blank form —
         // see LogMARModal's existingRecord usage in MAR.tsx.
         notes: existing?.notes ?? null, marCode: existing?.mar_code ?? null,
+        medicineType: med.medicine_type ?? null,
+        applicationSite: med.application_site ?? null, applicationSiteLabel: med.application_site_label ?? null,
       });
     }
   }

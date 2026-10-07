@@ -57,7 +57,7 @@ router.post('/medications', requireRole('home_manager', 'group_admin', 'deputy_m
               startDate, endDate, instructions, isPrn, isControlled, pharmacyName, pharmacyPhone,
               gpName, gpPhone, medicationCode, atcCode,
               locationAccessCode, medicineWarning, medicineType, applyTime, timeSlots,
-              medicineTypeOther, frequencyOther, weeklyDays } = req.body;
+              medicineTypeOther, frequencyOther, weeklyDays, applicationSite, applicationSiteLabel } = req.body;
       const bodyHomeId = req.body.homeId;
       const effectiveHomeId = bodyHomeId || homeId;
       const cleanSlots = Array.isArray(timeSlots) ? timeSlots.map((t: string) => String(t).slice(0, 5)).filter(Boolean) : null;
@@ -66,14 +66,16 @@ router.post('/medications', requireRole('home_manager', 'group_admin', 'deputy_m
         `INSERT INTO su_medications (su_id, home_id, medication_name, dose, frequency, route,
           prescriber, start_date, end_date, notes, is_prn, is_controlled, created_by, medicine_type, apply_time, time_slots,
           medicine_type_other, frequency_other, weekly_days,
-          location_access_code, medicine_warning, pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING *`,
+          location_access_code, medicine_warning, pharmacy_name, pharmacy_phone, gp_name, gp_phone, medication_code, atc_code,
+          application_site, application_site_label)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29) RETURNING *`,
         [suId, effectiveHomeId, medicationName, dose || null, frequency || null, route || null,
          prescribedBy || null, nd(startDate), nd(endDate),
          instructions || null, isPrn || false, isControlled || false, staffId, medicineType || null, applyTime || null,
          cleanSlots && cleanSlots.length ? cleanSlots : null,
          nd(medicineTypeOther), nd(frequencyOther), cleanWeeklyDays && cleanWeeklyDays.length ? cleanWeeklyDays : null,
-         nd(locationAccessCode), nd(medicineWarning), nd(pharmacyName), nd(pharmacyPhone), nd(gpName), nd(gpPhone), nd(medicationCode), nd(atcCode)]
+         nd(locationAccessCode), nd(medicineWarning), nd(pharmacyName), nd(pharmacyPhone), nd(gpName), nd(gpPhone), nd(medicationCode), nd(atcCode),
+         nd(applicationSite), nd(applicationSiteLabel)]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -94,8 +96,11 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
       }
       const { dose, frequency, route, prescribedBy, startDate, endDate, instructions, isPrn, isControlled, medicineType, applyTime, timeSlots,
               medicineTypeOther, frequencyOther, weeklyDays,
-              locationAccessCode, medicineWarning, pharmacyName, pharmacyPhone, gpName, gpPhone, medicationCode, atcCode } = req.body;
+              locationAccessCode, medicineWarning, pharmacyName, pharmacyPhone, gpName, gpPhone, medicationCode, atcCode,
+              applicationSite, applicationSiteLabel } = req.body;
       const updates = [
+        { field: 'application_site', val: applicationSite !== undefined ? nd(applicationSite) : undefined },
+        { field: 'application_site_label', val: applicationSiteLabel !== undefined ? nd(applicationSiteLabel) : undefined },
         { field: 'dose', val: dose },
         { field: 'frequency', val: frequency },
         { field: 'route', val: route },

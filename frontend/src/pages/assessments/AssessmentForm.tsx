@@ -172,7 +172,8 @@ export default function AssessmentForm() {
               )}
               {result.risk_level && (
                 <p className={`text-sm font-bold ${result.max_score > 0 ? 'mt-2' : ''} capitalize ${riskColor}`}>
-                  Burnout Level: {result.risk_level.replace(/_/g, ' ')}
+                  {/* low/medium/high only ever comes from the supervision burnout scale */}
+                  {['low', 'medium', 'high'].includes(result.risk_level) ? 'Burnout Level' : 'Rating'}: {result.risk_level.replace(/_/g, ' ')}
                 </p>
               )}
             </div>

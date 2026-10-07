@@ -1996,6 +1996,12 @@ async function ensureColumns() {
     // instead of cramming multiple times into a single due_time.
     `ALTER TABLE task_templates ADD COLUMN IF NOT EXISTS due_times TEXT[]`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS medicine_type VARCHAR(30)`,
+    // Prescribed application site for creams/patches — set once by the manager on
+    // the medication so the task can SHOW staff where to apply it (a legal
+    // requirement), separate from mar_records.application_site which records
+    // where a given dose was actually applied.
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS application_site VARCHAR(50)`,
+    `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS application_site_label VARCHAR(100)`,
     `ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS apply_time TIME`,
     // Explicit, individually-set administration times (e.g. ['06:00','12:00','18:00','22:00'])
     // as chosen by the manager for THIS medication — not derived by evenly offsetting a

@@ -48,6 +48,11 @@ const initTable = async () => {
   // SignaturePad component.
   await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS assessor_signature TEXT`);
   await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS staff_signature TEXT`);
+  // Templates with no scored questions (e.g. MAR Review) used to be stamped
+  // "inadequate" because 0 of 0 points read as 0%. Clear those — an unscored
+  // form has no rating at all. Burnout ratings are low/medium/high, untouched.
+  await query(`UPDATE assessments SET risk_level = NULL
+               WHERE COALESCE(max_score, 0) = 0 AND risk_level IN ('inadequate', 'requires_improvement', 'good')`);
 };
 initTable().catch(() => {});
 
@@ -1759,7 +1764,9 @@ function calcScore(template: Template, answers: Record<string, any>) {
     if (burnoutTotal <= 12) riskLevel = 'low';
     else if (burnoutTotal <= 22) riskLevel = 'medium';
     else riskLevel = 'high';
-  } else {
+  } else if (maxScore > 0) {
+    // Only rate a form that actually has scored questions — an unscored one
+    // (free-text / dropdown only, e.g. MAR Review) gets no rating at all.
     if (scorePct >= 90) riskLevel = 'good';
     else if (scorePct >= 70) riskLevel = 'requires_improvement';
     else riskLevel = 'inadequate';
