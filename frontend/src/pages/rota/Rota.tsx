@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import api from '../../api'
 import { homesApi, staffApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -27,6 +27,62 @@ const START_HOUR = 6
 const END_HOUR = 24
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
 const TOTAL_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT
+
+// ── Shift-clash confirm gate ────────────────────────────────────────────────
+// The shift endpoints answer 409 + warnings (instead of saving) the first
+// time an assignment would clash with an existing shift or leave too little
+// rest between shifts. This hook intercepts that 409, shows a CENTERED
+// confirm dialog ("...do you want me to continue?"), and only retries the
+// same request with confirmConflicts=true if the manager explicitly picks
+// "Assign anyway" — Cancel leaves everything unsaved.
+function useConflictGate() {
+  const [warnings, setWarnings] = useState<string[] | null>(null)
+  const retryRef = useRef<((confirmed: boolean) => Promise<void>) | null>(null)
+
+  const run = async (attempt: (confirmed: boolean) => Promise<void>) => {
+    try {
+      await attempt(false)
+    } catch (err: any) {
+      const w = err?.response?.status === 409 ? (err.response.data?.warnings || []) : []
+      if (w.length) { retryRef.current = attempt; setWarnings(w); return }
+      throw err
+    }
+  }
+  const confirm = async () => {
+    const a = retryRef.current
+    setWarnings(null); retryRef.current = null
+    // Retry runs outside the original try/catch, so surface any hard failure
+    // here instead of letting it become an unhandled rejection.
+    if (a) {
+      try { await a(true) }
+      catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
+    }
+  }
+  const cancel = () => { setWarnings(null); retryRef.current = null }
+  const dialog = warnings ? (
+    <Modal open onClose={cancel} title="Shift clash — assign anyway?" size="md">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600">
+          This person is already on a shift that overlaps this one, or wouldn't get the rest
+          required between shifts. Nothing has been saved yet — do you want to continue?
+        </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+          {warnings.map(w => (
+            <p key={w} className="text-xs text-amber-800 flex gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>{w}</span>
+            </p>
+          ))}
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="secondary" onClick={cancel}>Cancel — don't assign</Button>
+          <Button variant="gold" onClick={confirm}>Yes, assign anyway</Button>
+        </div>
+      </div>
+    </Modal>
+  ) : null
+  return { run, dialog }
+}
 
 const SHIFT_TYPES = [
   { value: 'regular',      label: 'Regular' },
@@ -438,20 +494,37 @@ export default function Rota() {
     })
   }
 
+  const conflictGate = useConflictGate()
+  const bulkConflictIds = useRef<string[]>([])
+
   const bulkAssignStaff = async (staffId: string) => {
     if (selectedShiftIds.size === 0) return
     setBulkDeleting(true)
     try {
       const ids = Array.from(selectedShiftIds)
-      const results = await Promise.allSettled(ids.map(id => api.put(`/shifts/${id}`, { staffId })))
-      const failed = results.filter(r => r.status === 'rejected').length
-      if (failed === 0) toast.success(`Assigned to ${ids.length} shift${ids.length !== 1 ? 's' : ''}`)
-      else toast.error(`Assigned ${ids.length - failed}, ${failed} failed`)
-      const warnings = Array.from(new Set(
-        results.flatMap(r => (r.status === 'fulfilled' ? (r.value.data.warnings || []) : []))
-      ))
-      warnings.slice(0, 4).forEach(w => toast(w, { icon: '⚠️', duration: 6000 }))
-      if (warnings.length > 4) toast(`+ ${warnings.length - 4} more scheduling warning${warnings.length - 4 !== 1 ? 's' : ''}`, { icon: '⚠️', duration: 6000 })
+      await conflictGate.run(async (confirmed) => {
+        // First pass sends everything unconfirmed; clashes come back as 409
+        // (unwritten) while the rest save normally. On "assign anyway" only
+        // the clash-flagged shifts are retried, with confirmConflicts=true —
+        // re-sending the already-saved ones could clash against shifts THIS
+        // very request just wrote.
+        const toSend = confirmed ? bulkConflictIds.current : ids
+        const results = await Promise.allSettled(
+          toSend.map(id => api.put(`/shifts/${id}`, { staffId, confirmConflicts: confirmed }))
+        )
+        const conflicted: string[] = []
+        let hardFailed = 0
+        results.forEach((r, i) => {
+          if (r.status === 'rejected') {
+            if (r.reason?.response?.status === 409) conflicted.push(toSend[i])
+            else hardFailed++
+          }
+        })
+        bulkConflictIds.current = conflicted
+        const saved = toSend.length - conflicted.length - hardFailed
+        if (hardFailed > 0) toast.error(`${hardFailed} shift${hardFailed !== 1 ? 's' : ''} failed to save`)
+        if (saved > 0) toast.success(`Assigned to ${saved} shift${saved !== 1 ? 's' : ''}`)
+      })
       setBulkAssignOpen(false)
       clearSelection()
       loadAll()
@@ -1100,6 +1173,8 @@ export default function Rota() {
           </div>
         </Modal>
       )}
+
+      {conflictGate.dialog}
 
       {manageServicesOpen && (
         <ManageServicesModal
@@ -1962,6 +2037,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [reallocating, setReallocating] = useState(false)
   const [reallocateTo, setReallocateTo] = useState('')
   const [savingReallocate, setSavingReallocate] = useState(false)
+  const conflictGate = useConflictGate()
   const [unassigning, setUnassigning] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [editNotesForCarers, setEditNotesForCarers] = useState(shift.notes_for_carers || '')
@@ -1996,14 +2072,16 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     if (!editDate || !editStart || !editEnd) { toast.error('Date, start and finish times are required'); return }
     setSavingTimes(true)
     try {
-      const res = await api.put(`/shifts/${shift.id}`, {
-        shiftDate: editDate, startTime: editStart, endTime: editEnd,
-        applyToFuture,
+      await conflictGate.run(async (confirmed) => {
+        const res = await api.put(`/shifts/${shift.id}`, {
+          shiftDate: editDate, startTime: editStart, endTime: editEnd,
+          applyToFuture, confirmConflicts: confirmed,
+        })
+        onUpdated(res.data.data)
+        toast.success(applyToFuture ? 'Shift times updated for this and every future occurrence' : 'Shift times updated')
+        setEditingTimes(false)
+        setApplyToFuture(false)
       })
-      onUpdated(res.data.data)
-      toast.success(applyToFuture ? 'Shift times updated for this and every future occurrence' : 'Shift times updated')
-      setEditingTimes(false)
-      setApplyToFuture(false)
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update shift times') }
     finally { setSavingTimes(false) }
   }
@@ -2012,13 +2090,13 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     if (!reallocateTo) { toast.error('Select a staff member'); return }
     setSavingReallocate(true)
     try {
-      const res = await api.put(`/shifts/${shift.id}`, { staffId: reallocateTo })
-      toast.success('Shift reallocated')
-      const warnings: string[] = res.data.warnings || []
-      warnings.forEach((w: string) => toast(w, { icon: '⚠️', duration: 6000 }))
-      setReallocating(false)
-      setReallocateTo('')
-      onLinked() // closes the modal and reloads shifts so the new staff name/role join comes through
+      await conflictGate.run(async (confirmed) => {
+        const res = await api.put(`/shifts/${shift.id}`, { staffId: reallocateTo, confirmConflicts: confirmed })
+        toast.success('Shift reallocated')
+        setReallocating(false)
+        setReallocateTo('')
+        onLinked() // closes the modal and reloads shifts so the new staff name/role join comes through
+      })
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to reallocate shift') }
     finally { setSavingReallocate(false) }
   }
@@ -2073,6 +2151,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   }
 
   return (
+    <>
     <Modal open={true} onClose={onClose} title="Shift details">
       <div className="space-y-4">
         {/* Color stripe */}
@@ -2329,6 +2408,8 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         </div>
       </div>
     </Modal>
+    {conflictGate.dialog}
+    </>
   )
 }
 
@@ -2485,6 +2566,7 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
   const [endDate, setEndDate] = useState('')
   const [onlyUnfilled, setOnlyUnfilled] = useState(true)
   const [saving, setSaving] = useState(false)
+  const conflictGate = useConflictGate()
 
   useEffect(() => { if (open) setStartDate(defaultDate) }, [open, defaultDate])
 
@@ -2515,27 +2597,25 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
     const effectiveDaysOfWeek = repeatMode === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : daysOfWeek
     setSaving(true)
     try {
-      const res = await api.post('/shifts/bulk-assign-pattern', {
-        homeId, staffIds, suId: suId || null,
-        dayOrNight, daysOfWeek: effectiveDaysOfWeek,
-        fortnightly: repeatMode === 'fortnightly', monthly: repeatMode === 'monthly',
-        startDate, endDate: effectiveEndDate,
-        onlyUnfilled,
+      await conflictGate.run(async (confirmed) => {
+        const res = await api.post('/shifts/bulk-assign-pattern', {
+          homeId, staffIds, suId: suId || null,
+          dayOrNight, daysOfWeek: effectiveDaysOfWeek,
+          fortnightly: repeatMode === 'fortnightly', monthly: repeatMode === 'monthly',
+          startDate, endDate: effectiveEndDate,
+          onlyUnfilled,
+          confirmConflicts: confirmed,
+        })
+        const assigned = res.data.data?.assigned || 0
+        toast.success(assigned > 0 ? `Allocated ${assigned} shift${assigned !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
+        onSaved()
       })
-      const assigned = res.data.data?.assigned || 0
-      toast.success(assigned > 0 ? `Allocated ${assigned} shift${assigned !== 1 ? 's' : ''}` : 'No matching shifts found for this pattern')
-      const warnings: string[] = res.data.warnings || []
-      // Shown as its own warning toast(s), not blocking the allocation — e.g. a
-      // staff member already on an overlapping shift, or a "shift crash" (not
-      // enough rest between a night shift and the next day shift).
-      warnings.slice(0, 4).forEach(w => toast(w, { icon: '⚠️', duration: 6000 }))
-      if (warnings.length > 4) toast(`+ ${warnings.length - 4} more scheduling warning${warnings.length - 4 !== 1 ? 's' : ''}`, { icon: '⚠️', duration: 6000 })
-      onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to bulk allocate') }
     finally { setSaving(false) }
   }
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title="Bulk Allocate — Recurring Pattern" size="md">
       <div className="space-y-4">
         <p className="text-xs text-slate-500">
@@ -2663,6 +2743,8 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
         </div>
       </div>
     </Modal>
+    {conflictGate.dialog}
+    </>
   )
 }
 
