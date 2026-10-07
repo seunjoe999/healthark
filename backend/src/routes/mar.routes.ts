@@ -10,6 +10,7 @@ import { assertResidentAccess, RESTRICTED_ROLES } from '../utils/residentAccess'
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { ukDateStr, ukTimeHHMM, ukTimeHHMMSS } from '../utils/ukTime';
 import { isWithinAmendWindow } from '../utils/clockStatus';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -396,11 +397,19 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
       );
       if (!existingRows.length) throw new AppError('MAR record not found', 404);
       const record = existingRows[0];
-      if (record.given_by !== staffId) {
-        throw new AppError('Only the staff member who logged this can amend it.', 403);
-      }
+      // Was a hard 403 if you weren't the original logger — but a record
+      // logged "Attempted" by one worker must be completable by whoever's on
+      // shift now (the same person may be off, or it may have been logged by
+      // the previous shift), and staff were hitting "Only the staff member
+      // who logged this can amend it" and getting trapped at clock-out with
+      // tasks they could never close. Owner directive: staff may amend
+      // medication and documentation for 24 hours after their shift. The
+      // amend-window check below still applies to everyone (logged or not),
+      // so this is bounded — and the logger identity is preserved in
+      // given_by for the audit trail regardless of who amends.
+      const amendingSomeoneElses = record.given_by !== staffId;
 
-      // Was previously gated on "still on shift right now" — the moment a staff
+      // Was gated on "still on shift right now" — the moment a staff
       // member clocked out, they lost the ability to fix a mistake, with no grace
       // period at all (unlike daily records/tasks elsewhere, which allow amending
       // for 24h after clock-out). Aligned with the same shared 24h amend window so
@@ -408,9 +417,25 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
       if (!(await isWithinAmendWindow(staffId))) {
         throw new AppError('The 24-hour window to amend this record has passed.', 403);
       }
+      if (amendingSomeoneElses) {
+        logger.info('MAR record amended by a different staff member within their amend window', {
+          recordId: req.params.id, originalBy: record.given_by, amendedBy: staffId,
+        });
+      }
 
       const { given, refused, reason, notes, marCode, amountTaken, amountUnit,
-              sideEffects, sideEffectsNotes, emotion, applicationSite, applicationSiteLabel } = req.body;
+              sideEffects, sideEffectsNotes, emotion, applicationSite, applicationSiteLabel,
+              completed } = req.body;
+      // completed must be carried across on amend — it never used to be, so an
+      // "Attempted" record (completed=false) amended to "Given" stayed
+      // completed=false forever. getDueTodayTasks treats completed=false as
+      // still-pending, so the dose kept reappearing as an open To-do task and
+      // kept blocking clock-out no matter how many times staff signed it off.
+      // Frontend now always sends it; when absent, a definitive outcome
+      // (given/refused) still completes the record rather than trapping it.
+      const effCompleted = completed !== undefined && completed !== null
+        ? !!completed
+        : ((given === true || refused === true) ? true : undefined);
       const updated = await query(
         `UPDATE mar_records SET
            given = COALESCE($1, given), refused = COALESCE($2, refused),
@@ -419,11 +444,13 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
            amount_unit = COALESCE($7, amount_unit),
            side_effects = COALESCE($8, side_effects), side_effects_notes = COALESCE($9, side_effects_notes),
            emotion = COALESCE($10, emotion),
-           application_site = COALESCE($11, application_site), application_site_label = COALESCE($12, application_site_label)
-         WHERE id = $13 RETURNING *`,
+           application_site = COALESCE($11, application_site), application_site_label = COALESCE($12, application_site_label),
+           completed = COALESCE($13, completed)
+         WHERE id = $14 RETURNING *`,
         [given ?? null, refused ?? null, reason || null, notes || null, marCode || null,
          amountTaken || null, amountUnit || null, sideEffects ?? null, sideEffectsNotes || null,
-         emotion || null, applicationSite || null, applicationSiteLabel || null, req.params.id]
+         emotion || null, applicationSite || null, applicationSiteLabel || null,
+         effCompleted ?? null, req.params.id]
       );
       res.json({ success: true, data: updated[0] } as ApiResponse);
     } catch (err) { next(err); }

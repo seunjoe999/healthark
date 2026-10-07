@@ -1442,6 +1442,12 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
           given: selected?.given ?? false,
           refused: selected?.refused ?? false,
           marCode: selectedCode,
+          // Must be sent on amend — without it the backend kept the record's
+          // original completed=false from an "Attempted" outcome, so amending
+          // to "Given" left the dose permanently pending (still on the to-do
+          // list, still blocking clock-out) no matter how many times it was
+          // signed off.
+          completed,
           notes: notes || undefined,
           reason: reason || undefined,
           amountTaken: amountTaken || undefined,

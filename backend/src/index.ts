@@ -1498,6 +1498,10 @@ async function ensureColumns() {
     // ── New columns ────────────────────────────────────────────────────────────
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed    BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS manager_reviewed_at TIMESTAMPTZ`,
+    // Facility/location for facility-wide audits — without it every audit not
+    // tied to a resident displayed as "General" and there was no way to say
+    // WHICH facility/service area an audit covered.
+    `ALTER TABLE audit_reports ADD COLUMN IF NOT EXISTS location TEXT`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS last_review_date DATE`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS next_review_date DATE`,
     `ALTER TABLE care_plans ADD COLUMN IF NOT EXISTS is_active        BOOLEAN NOT NULL DEFAULT TRUE`,

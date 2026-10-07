@@ -182,10 +182,10 @@ export default function Audits() {
     finally { setLoading(false) }
   }
 
-  const startAudit = async (auditType: string, customName: string, reviewFrequency: string, suId: string | null) => {
+  const startAudit = async (auditType: string, customName: string, reviewFrequency: string, suId: string | null, location?: string) => {
     setGenerating(true)
     try {
-      const res = await api.post('/audits/generate', { homeId: selectedHome, auditType, customName, reviewFrequency, suId })
+      const res = await api.post('/audits/generate', { homeId: selectedHome, auditType, customName, reviewFrequency, suId, location: location || null })
       const auditId = res.data.data.id
       toast.success('Audit started — generating report...')
       setGenerateOpen(false)
@@ -300,7 +300,7 @@ export default function Audits() {
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{lastAssessed}</td>
                         <td className="px-4 py-3">
                           <span className="font-semibold text-slate-800">{audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}</span>
-                          <span className="ml-2 text-xs text-slate-400">({audit.su_name || 'General'})</span>
+                          <span className="ml-2 text-xs text-slate-400">({audit.su_name || audit.location || 'General'})</span>
                           {audit.status === 'generating' && <span className="ml-2 text-xs text-purple-500">generating…</span>}
                         </td>
                         <td className="px-4 py-3 text-slate-600">{score !== null ? `${score}%` : '—'}</td>
@@ -433,7 +433,7 @@ function AuditReport({ audit, templates, homeName, homeAddress, canDelete, onDel
               <h1 className="font-display text-2xl text-slate-900 font-bold leading-tight">
                 {audit.custom_name || typeInfo?.label || audit.audit_type?.replace(/_/g, ' ')}
               </h1>
-              <p className="text-slate-400 text-sm mt-0.5">Internal Compliance Audit Report &middot; {audit.su_name || 'General'}</p>
+              <p className="text-slate-400 text-sm mt-0.5">Internal Compliance Audit Report &middot; {audit.su_name || audit.location || 'General'}</p>
             </div>
             {canDelete && (
               <button onClick={() => onDelete(audit.id)}
@@ -1388,7 +1388,7 @@ function AIComplianceFixModal({ audit, onClose, onGenerateNew }: { audit: any; o
 }
 
 function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemplateCreated, homeId }: {
-  open: boolean; onClose: () => void; onGenerate: (type: string, name: string, reviewFrequency: string, suId: string | null) => void; loading: boolean
+  open: boolean; onClose: () => void; onGenerate: (type: string, name: string, reviewFrequency: string, suId: string | null, location?: string) => void; loading: boolean
   templates: any[]; onTemplateCreated: () => void; homeId?: string
 }) {
   const [auditType, setAuditType] = useState('care_plan')
@@ -1398,6 +1398,9 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
   const [builderOpen, setBuilderOpen] = useState(false)
   const [subjectType, setSubjectType] = useState<'service_user' | 'other'>('other')
   const [suId, setSuId] = useState('')
+  // Which facility/service area a non-resident audit covers — without it every
+  // facility audit was recorded with no location and displayed as "General".
+  const [location, setLocation] = useState('')
   const [residents, setResidents] = useState<any[]>([])
 
   useEffect(() => {
@@ -1488,9 +1491,13 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
             <p className="text-xs text-slate-400 mt-1">This audit is per resident — required before you can start it.</p>
           </div>
         ) : templateScope === 'service' ? (
-          <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
-            This audit covers the whole service/facility, not one resident.
-          </p>
+          <div>
+            <label className="label">Facility / location</label>
+            <input className="input" list="facility-locations" value={location} onChange={e => setLocation(e.target.value)}
+              placeholder="e.g. Kitchen, Ground floor, KENNEDY SERVICE..." />
+            <FacilityLocationDatalist homeId={homeId} />
+            <p className="text-xs text-slate-400 mt-1">This audit covers the whole service/facility, not one resident — record which one below so it isn't logged as "General".</p>
+          </div>
         ) : (
           <div>
             <label className="label">Who is this audit for?</label>
@@ -1501,7 +1508,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
               </button>
               <button type="button" onClick={() => { setSubjectType('other'); setSuId('') }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${subjectType === 'other' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500'}`}>
-                Other (General)
+                Other (facility)
               </button>
             </div>
             {subjectType === 'service_user' && (
@@ -1514,6 +1521,14 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
                 ))}
               </select>
             )}
+            {subjectType === 'other' && (
+              <div>
+                <label className="label">Facility / location</label>
+                <input className="input" list="facility-locations" value={location} onChange={e => setLocation(e.target.value)}
+                  placeholder="e.g. Kitchen, Ground floor, KENNEDY SERVICE..." />
+                <FacilityLocationDatalist homeId={homeId} />
+              </div>
+            )}
           </div>
         )}
         <div>
@@ -1525,7 +1540,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
         <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button loading={loading} disabled={templateScope === 'service_user' && !suId} icon={<Activity className="w-4 h-4" />}
-            onClick={() => onGenerate(auditType, customName, reviewFrequency, templateScope === 'service_user' ? suId : (templateScope === 'service' ? null : (subjectType === 'service_user' && suId ? suId : null)))}>
+            onClick={() => onGenerate(auditType, customName, reviewFrequency, templateScope === 'service_user' ? suId : (templateScope === 'service' ? null : (subjectType === 'service_user' && suId ? suId : null)), location)}>
             Start Audit
           </Button>
         </div>
@@ -1592,5 +1607,25 @@ function CreateCustomAuditModal({ open, onClose, onCreated }: { open: boolean; o
         </div>
       </div>
     </Modal>
+  )
+}
+
+// Suggested facility/location values for audits — the home's configured
+// service areas (Manage Services postcodes) plus common building areas, so
+// the auditor picks from a list instead of typing free text every time.
+function FacilityLocationDatalist({ homeId }: { homeId: string }) {
+  const [labels, setLabels] = useState<string[]>([])
+  useEffect(() => {
+    if (!homeId) return
+    api.get(`/clockin/postcodes/${homeId}`).then(res => {
+      setLabels((res.data.data || []).map((p: any) => String(p.label || p.postcode || '').trim()).filter(Boolean))
+    }).catch(() => {})
+  }, [homeId])
+  const COMMON = ['Kitchen', 'Lounge', 'Dining room', 'Bedroom', 'Bathroom', 'Garden', 'Office', 'Ground floor', 'First floor']
+  const opts = Array.from(new Set([...labels, ...COMMON]))
+  return (
+    <datalist id="facility-locations">
+      {opts.map(o => <option key={o} value={o} />)}
+    </datalist>
   )
 }

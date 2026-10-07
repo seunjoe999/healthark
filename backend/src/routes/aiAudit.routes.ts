@@ -225,6 +225,11 @@ router.post('/generate',
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { auditType, customName, periodFrom, periodTo, reviewFrequency } = req.body;
       const suId = req.body.suId || null;
+      // Free-text facility/service area for audits not tied to a resident —
+      // previously there was nowhere to record it, so every facility audit
+      // fell back to showing "General".
+      const location = typeof req.body.location === 'string' && req.body.location.trim()
+        ? req.body.location.trim().slice(0, 120) : null;
 
       // The 21 built-in templates have a fixed scope (Activity/Falls are about one
       // resident; Fridge Temperature/Infection Control are about the whole service) —
@@ -240,9 +245,9 @@ router.post('/generate',
 
       // Create pending audit record
       const auditRows = await query(
-        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, review_frequency, su_id)
-         VALUES ($1,$2,$3,$4,$5,$6,'generating',$7,$8) RETURNING *`,
-        [homeId, auditType, customName || null, from, to, staffId, reviewFrequency || 'every_4_weeks', suId]
+        `INSERT INTO audit_reports (home_id, audit_type, custom_name, period_from, period_to, generated_by, status, review_frequency, su_id, location)
+         VALUES ($1,$2,$3,$4,$5,$6,'generating',$7,$8,$9) RETURNING *`,
+        [homeId, auditType, customName || null, from, to, staffId, reviewFrequency || 'every_4_weeks', suId, location]
       );
       const auditId = (auditRows[0] as any).id;
 

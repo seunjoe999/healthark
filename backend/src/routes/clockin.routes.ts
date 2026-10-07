@@ -339,6 +339,13 @@ router.post('/event', authenticate,
             const candidates = [raw, raw + 1440];
             const schedMins = candidates.find(c => shiftStartMins == null || (c >= shiftStartMins && c <= (shiftEndMins ?? Infinity))) ?? raw;
             if (shiftStartMins != null && schedMins < shiftStartMins) return false;
+            // The shift window is [start, END) — a dose scheduled exactly AT
+            // the shift's end time belongs to whoever comes on next, not to
+            // the shift that's ending. A day worker finishing at 20:00 was
+            // being blocked by the resident's 20:00 dose, which is the night
+            // staff's to give — "the 8pm meds which is for the night staff"
+            // trapped them at clock-out every day.
+            if (shiftEndMins != null && schedMins >= shiftEndMins) return false;
             return schedMins <= cutoffMins;
           });
         } catch (medCheckErr) {

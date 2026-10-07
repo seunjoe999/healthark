@@ -146,9 +146,10 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
 export interface StockCountStatus { total: number; counted: number; done: boolean }
 
 // Medication Count is required at both ends of a shift: a soft reminder from
-// clock-in onward (checked against "today"), and a hard block at clock-out
-// (checked against "since this shift started" — a count done on an earlier
-// shift today doesn't excuse skipping it on this one).
+// clock-in onward, and a hard block at clock-out. Counting is scoped to TODAY
+// (not "since this shift's clock-in") — see the counted query below for why
+// the stricter window trapped staff who had genuinely done the count.
+// `since` is retained for callers but no longer affects the result.
 export async function getStockCountStatus(homeId: string, since?: Date, suIds?: string[]): Promise<StockCountStatus> {
   // "Counted" used to mean a row in medication_stock got touched — but that table
   // only updates itself automatically off MAR administration (see mar.routes.ts),
@@ -170,25 +171,30 @@ export async function getStockCountStatus(homeId: string, since?: Date, suIds?: 
   const suScope = suIds && suIds.length > 0;
   const [totalRows, countedRows] = await Promise.all([
     query<any>(
-      `SELECT COUNT(DISTINCT su_id) AS total FROM su_medications sm
+      // Only residents with a real SCHEDULED (non-PRN) MAR — a resident with
+      // no active medications, or PRN-only (no charted doses to check stock
+      // against), has an empty MAR and must never inflate the denominator.
+      // Staff reported being blocked at clock-out with "0/2 residents counted"
+      // over residents who have nothing to be counted for.
+      `SELECT COUNT(DISTINCT sm.su_id) AS total FROM su_medications sm
        JOIN service_users su ON su.id = sm.su_id
        WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true
+         AND sm.is_prn = false
+         AND (sm.end_date IS NULL OR sm.end_date >= CURRENT_DATE)
          AND ($2::uuid[] IS NULL OR sm.su_id = ANY($2::uuid[]))`,
       [homeId, suScope ? suIds : null]
     ),
-    since
-      ? query<any>(
-          `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
-           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at >= $2
-             AND ($3::uuid[] IS NULL OR su_id = ANY($3::uuid[]))`,
-          [homeId, since, suScope ? suIds : null]
-        )
-      : query<any>(
-          `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
-           WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at::date = CURRENT_DATE
-             AND ($2::uuid[] IS NULL OR su_id = ANY($2::uuid[]))`,
-          [homeId, suScope ? suIds : null]
-        ),
+    // Counted = a Medication Count record filed TODAY, regardless of when this
+    // particular shift clocked in. Was scoped to "since this shift's clock-in",
+    // which silently discarded a count filed minutes before clocking in or
+    // during an earlier shift the same day — staff had genuinely done the count
+    // and still got 0/N blocked at clock-out, repeatedly.
+    query<any>(
+      `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
+       WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at::date = CURRENT_DATE
+         AND ($2::uuid[] IS NULL OR su_id = ANY($2::uuid[]))`,
+      [homeId, suScope ? suIds : null]
+    ),
   ]);
   const total = parseInt(totalRows[0]?.total || '0', 10);
   const counted = parseInt(countedRows[0]?.counted || '0', 10);

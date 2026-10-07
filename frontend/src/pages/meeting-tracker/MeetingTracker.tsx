@@ -145,9 +145,12 @@ export default function MeetingTracker() {
                   </button>
                 </div>
               </div>
-              {en.follow_up && <p className="text-xs text-slate-600 mt-2"><strong>Follow-up:</strong> {en.follow_up}</p>}
-              {en.action_plan && <p className="text-xs text-slate-600 mt-1"><strong>Action plan:</strong> {en.action_plan}</p>}
-              {en.notes && <p className="text-xs text-slate-500 mt-1">{en.notes}</p>}
+              {/* whitespace-pre-wrap — minutes/action plans are typed with real
+                  line breaks and paragraph spacing; <p> collapses them into one
+                  unreadable wall of text otherwise. */}
+              {en.follow_up && <p className="text-xs text-slate-600 mt-2 whitespace-pre-wrap"><strong>Follow-up:</strong> {en.follow_up}</p>}
+              {en.action_plan && <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap"><strong>Action plan:</strong> {en.action_plan}</p>}
+              {en.notes && <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{en.notes}</p>}
             </div>
           ))}
         </div>

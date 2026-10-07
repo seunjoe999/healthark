@@ -357,16 +357,32 @@ router.post('/', [
                   immediateAction, immediateActions, reportedTo, agenciesContacted, lessonsLearned,
                   preventionMeasures, reportedToManagement, safeguardingRef,
                   cqcNotified, cqcNotNotifiedReason, familyNotified, familyNotNotifiedReason } = req.body;
+          // incident_time is TIMESTAMPTZ — the form's time field arrives as a
+          // bare "HH:MM", which Postgres cannot cast to a timestamp, so every
+          // incident submitted with a time filled in blew up with a 500
+          // ("Internal server error") and nothing saved. Combine date+time
+          // into a real timestamp, and fall back to the date alone, then NOW —
+          // never a raw "HH:MM" and never NULL (the column is NOT NULL).
+          let incidentTs: string | null = null;
+          if (/^\d{2}:\d{2}$/.test(incidentTime || '')) {
+            incidentTs = /^\d{4}-\d{2}-\d{2}$/.test(incidentDate || '')
+              ? `${incidentDate}T${incidentTime}:00` : `${ukDateStr()}T${incidentTime}:00`;
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(incidentDate || '')) {
+            incidentTs = `${incidentDate}T00:00:00`;
+          }
           await client.query(
             `INSERT INTO records_incidents (daily_record_id, incident_type, location, incident_time, description,
               injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action, reported_to, safeguarding_ref,
               cqc_notified, cqc_not_notified_reason, family_notified, family_not_notified_reason)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-            [dr.id, incidentType || null, location || null, incidentTime || incidentDate || new Date(),
-             description || req.body.notes,
+             VALUES ($1,$2,$3,COALESCE($4::timestamptz, NOW()),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+            [dr.id, incidentType || null, location || null, incidentTs,
+             description || req.body.notes || '',
              injuries || false, (injuryDetails || '') + (injuredBodyPart ? ' - ' + injuredBodyPart : ''),
              medicalNeeded || medicalAttentionRequired || false, medicalDetails || null,
-             witnesses || null, immediateAction || immediateActions || null,
+             witnesses || null,
+             // immediate_action is NOT NULL — an empty form field used to pass
+             // null straight in and 500 the whole submission.
+             immediateAction || immediateActions || '',
              reportedTo || null,  // UUID column — text strings not accepted
              safeguardingRef || null,
              cqcNotified || false, cqcNotNotifiedReason || null,
@@ -377,12 +393,39 @@ router.post('/', [
         case 'prn_medication': {
           const { medicationName, medicationId, dose, reason, witnessedBy, outcomeNotes,
                   medicineType, administered, sideEffects, sideEffectsNotes, emotion, completed } = req.body;
+          // Both column values are UUIDs — and both arrived as free text often
+          // enough to 500 the whole submission: medication_id gets the literal
+          // string "other" when staff pick "Other / not listed…", and
+          // witnessed_by got the witness's NAME typed into a text field. Cast
+          // errors ("invalid input syntax for type uuid") are exactly the
+          // "Internal server error" staff reported when documenting a PRN.
+          const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const safeMedicationId = UUID_RE.test(medicationId || '') ? medicationId : null;
+          let witnessedById: string | null = null;
+          let witnessNote: string | null = null;
+          if (witnessedBy && String(witnessedBy).trim()) {
+            if (UUID_RE.test(witnessedBy)) {
+              witnessedById = witnessedBy;
+            } else {
+              // Free-text name: resolve to a staff member in this home if we
+              // can; otherwise keep the name in the outcome notes rather than
+              // dropping it or crashing the insert.
+              const wRows = await query<any>(
+                `SELECT id FROM staff WHERE home_id = $1 AND TRIM(LOWER(first_name || ' ' || last_name)) = TRIM(LOWER($2)) LIMIT 1`,
+                [homeId, String(witnessedBy).trim()]
+              );
+              if (wRows.length) witnessedById = wRows[0].id;
+              else witnessNote = `Witnessed by: ${String(witnessedBy).trim()}`;
+            }
+          }
+          const outNotes = [witnessNote, outcomeNotes || notes || null].filter(Boolean).join('\n') || null;
           await client.query(
             `INSERT INTO records_prn_medication (daily_record_id, medication_name, medication_id, dose, reason, administered_by, witnessed_by, outcome_notes,
                medicine_type, administered, side_effects, side_effects_notes, emotion, completed)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-            [dr.id, medicationName, medicationId || null, dose || null, reason || null, staffId,
-             witnessedBy || null, outcomeNotes || notes || null,
+            [dr.id, medicationName, safeMedicationId, dose || null, reason || null, staffId,
+             witnessedById,
+             outNotes,
              medicineType || null,
              administered !== undefined ? administered : true,
              sideEffects || false, sideEffectsNotes || null,
@@ -528,15 +571,20 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       if (!existing.length) throw new AppError('Record not found', 404);
       const rec = existing[0];
 
-      // care_staff can only edit their own records, and only while still
-      // clocked in or within 24 hours of clocking out — e.g. a night shift
-      // ends in the morning and an issue is spotted later that day, they
-      // shouldn't be locked out the instant they clock out. Locks fully once
-      // 24 hours have passed since their last clock-out.
+      // care_staff may edit records while clocked in or within 24 hours of
+      // clocking out — e.g. a night shift ends in the morning and an issue is
+      // spotted later that day, they shouldn't be locked out the instant they
+      // clock out. Locks fully once 24 hours have passed since their last
+      // clock-out. Was ALSO restricted to their own records only, which
+      // trapped shift tasks logged by a colleague (or a previous shift) in an
+      // unclosable state — "Only the staff member who logged this can amend
+      // it" with nobody able to hand it over — and that open task then
+      // blocked everyone on clock-out. Owner directive: any staff on the
+      // current shift may amend documentation for 24 hours after their shift;
+      // the amend window is the boundary, not who originally logged it.
       if (role === 'care_staff') {
-        if (rec.staff_id !== staffId) throw new AppError('You can only edit your own records', 403);
         if (!(await isWithinAmendWindow(staffId))) {
-          throw new AppError('You can only edit your own records for up to 24 hours after your shift ends', 403);
+          throw new AppError('You can only amend records for up to 24 hours after your shift ends', 403);
         }
       }
 
