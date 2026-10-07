@@ -178,6 +178,13 @@ router.get('/monthly-summary', async (req: Request, res: Response, next: NextFun
 router.get('/mar-report', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    // home_id is a UUID — an empty/malformed value (e.g. a page that never
+    // resolved a home) used to reach the query and throw a cast error, which
+    // surfaced as a generic failed/blank report instead of a clear message.
+    if (!homeId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(homeId)) {
+      res.status(400).json({ success: false, error: 'No service selected — pick a service and run the report again.' } as ApiResponse);
+      return;
+    }
     const { from, to } = req.query as Record<string, string>;
     const rows = await query(
       `SELECT mr.id, mr.su_id, mr.home_id,
