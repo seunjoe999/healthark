@@ -398,9 +398,14 @@ export default function Tasks() {
     setGeneratingDaily(false)
   }
 
-  const filtered = tasks
-    .filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
+  // Resident filter applies to the whole page — the stat tiles AND the list —
+  // not just the list. The tiles used to count the full unfiltered set while
+  // the list below honoured the dropdown, so picking a resident showed e.g.
+  // "14 Pending" over an empty list reading "No pending tasks".
+  const residentFiltered = tasks
     .filter(t => !residentSearch.trim() || (t.su_name || '').toLowerCase().includes(residentSearch.trim().toLowerCase()))
+  const filtered = residentFiltered
+    .filter(t => filter === 'all' ? true : filter === 'pending' ? t.status === 'pending' : t.status === 'completed')
   // On the "All" view, pending and completed get their own sections instead
   // of one intermixed list — a task you just ticked off should land somewhere
   // clearly labelled "Completed", not vanish into the middle of the pile.
@@ -503,9 +508,9 @@ export default function Tasks() {
               which filter is currently applied, not just a faint outline. */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Total today', value: tasks.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', solid: 'bg-blue-600 border-blue-600', filterValue: 'all' as const },
-              { label: 'Pending', value: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', solid: 'bg-amber-600 border-amber-600', filterValue: 'pending' as const },
-              { label: 'Completed', value: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', solid: 'bg-emerald-600 border-emerald-600', filterValue: 'completed' as const },
+              { label: 'Total today', value: residentFiltered.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', solid: 'bg-blue-600 border-blue-600', filterValue: 'all' as const },
+              { label: 'Pending', value: residentFiltered.filter(t => t.status === 'pending').length, color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', solid: 'bg-amber-600 border-amber-600', filterValue: 'pending' as const },
+              { label: 'Completed', value: residentFiltered.filter(t => t.status === 'completed').length, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', solid: 'bg-emerald-600 border-emerald-600', filterValue: 'completed' as const },
             ].map(s => {
               const active = filter === s.filterValue
               return (
@@ -592,7 +597,9 @@ export default function Tasks() {
 
           {loading ? <Spinner /> : filtered.length === 0 ? (
             <EmptyState title={filter === 'pending' ? 'No pending tasks' : 'No tasks found'}
-              description="All tasks completed for today!"
+              description={residentSearch.trim()
+                ? `No ${filter === 'pending' ? 'pending ' : ''}tasks for ${residentSearch.trim()} today.`
+                : 'All tasks completed for today!'}
               action={isRole(...TASK_CREATOR_ROLES) ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button> : undefined} />
           ) : filter === 'all' ? (
             <>

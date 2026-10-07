@@ -237,7 +237,9 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <Select label="Resident's response" value={form.emotion || ''} onChange={e => set('emotion', e.target.value)}
           options={[{ value: 'settled', label: 'Settled / relieved' }, { value: 'no_change', label: 'No change' }, { value: 'distressed', label: 'Still distressed' }, { value: 'other', label: 'Other' }]}
           placeholder="How were they afterwards..." />
-        <Input label="Outcome notes" value={form.outcomeNotes || ''} onChange={e => set('outcomeNotes', e.target.value)} placeholder="Effect of the medication, follow-up needed..." />
+        {/* Outcome notes is rendered AFTER the shared Notes field below (see the
+            end of this form) — the owner asked for Note first, then Outcome
+            Note, so it can't sit above it here. */}
       </>)}
 
       {type === 'medication_disposed' && (<>
@@ -297,6 +299,12 @@ export default function GeneralForm({ type, suId, onSaved, recordedAt }: { type:
         <SpeechTextarea label="Describe the support provided *" required rows={7} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="What support did you give and how did the resident respond...&#10;&#10;Tip: press Enter to start a new paragraph for each separate point — it'll display clearly spaced out, not jammed together." />
       ) : (
         <SpeechTextarea label="Notes" rows={4} value={form.notes || ''} onChange={v => set('notes', v)} placeholder="Any additional notes..." />
+      )}
+      {/* PRN only: the owner asked for Note to come BEFORE Outcome Note — so
+          this sits below the Notes field above, not up in the PRN block. */}
+      {type === 'prn_medication' && (
+        <Input label="Outcome notes" value={form.outcomeNotes || ''} onChange={e => set('outcomeNotes', e.target.value)}
+          placeholder="Effect of the medication, follow-up needed..." />
       )}
       <Button type="submit" loading={loading} className="w-full">Save record</Button>
     </form>

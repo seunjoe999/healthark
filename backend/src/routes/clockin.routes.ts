@@ -230,10 +230,33 @@ router.post('/event', authenticate,
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
       const lastEventRows = await query<any>(
-        `SELECT event_type, event_time FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        `SELECT id, event_type, event_time, home_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
         [staffId]
       );
-      const isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
+      let isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
+
+      // A session left open from an EARLIER day — app crashed, phone died, nobody
+      // force-clocked them out — used to block every single later clock-in with
+      // "You are already clocked in. Try again", permanently. Several staff
+      // reported this as an everyday problem they could not get past. Close the
+      // stale session honestly (a clock_out stamped now, no invented end time)
+      // and let them clock in for the shift they're actually standing at.
+      if (isClockedIn && lastEventRows[0]?.event_time) {
+        const openedAt = lastEventRows[0].event_time instanceof Date
+          ? lastEventRows[0].event_time : new Date(lastEventRows[0].event_time);
+        if (!isNaN(openedAt.getTime()) && ukDateStr(openedAt) !== ukDateStr()) {
+          logger.warn('Closing a stale clock-in session left open from an earlier day', {
+            staffId, openedAt: openedAt.toISOString(),
+          });
+          await query(
+            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality)
+             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time')`,
+            [staffId, lastEventRows[0].home_id || homeId]
+          );
+          isClockedIn = false;
+        }
+      }
+
       if (eventType === 'clock_out' && !isClockedIn) {
         return res.status(400).json({ success: false, error: 'You need to clock in before you can clock out.' });
       }
