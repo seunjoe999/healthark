@@ -410,6 +410,12 @@ const UK_TZ = { timezone: 'Europe/London' };
 export function startScheduler(): void {
   logger.info('Starting CompCare Hub scheduler');
 
+  // 4pm: tomorrow's shifts still without staff. 9:30am: yesterday's missing
+  // handovers. 10am: nobody's bowel movement recorded for 3+ days.
+  cron.schedule('0 16 * * *', async () => { await alertsService.checkTomorrowsUnfilledShifts(); }, UK_TZ);
+  cron.schedule('30 9 * * *', async () => { await alertsService.checkHandoverNotCompleted(); }, UK_TZ);
+  cron.schedule('0 10 * * *', async () => { await alertsService.checkNoBowelMovement(); }, UK_TZ);
+
   // Every hour: check fluid intake
   cron.schedule('0 * * * *', async () => {
     logger.info('Scheduler: checking fluid intake');

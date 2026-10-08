@@ -358,6 +358,49 @@ export default function Rota() {
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [adjustPickerOpen, setAdjustPickerOpen] = useState(false)
   const [auditorOpen, setAuditorOpen] = useState(false)
+  // Bulk changes to every highlighted shift: time slot, shift type, cancel, reinstate.
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const runBulkChange = async (kind: string) => {
+    const ids = Array.from(selectedShiftIds)
+    if (!ids.length || !kind) return
+    const isTime = (v: string | null) => !!v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim())
+    let build: (s: any) => Promise<any>
+    let label = ''
+    if (kind === 'time') {
+      const st = window.prompt(`New START time for ${ids.length} shift${ids.length !== 1 ? 's' : ''} (24-hour, e.g. 08:00)`)
+      if (st === null) return
+      const et = window.prompt('New END time (24-hour, e.g. 20:00)')
+      if (et === null) return
+      if (!isTime(st) || !isTime(et)) { toast.error('Enter times as HH:MM, e.g. 08:00'); return }
+      build = (s) => api.put(`/shifts/${s.id}`, { startTime: st.trim(), endTime: et.trim() })
+      label = `moved to ${st.trim()}–${et.trim()}`
+    } else if (kind.startsWith('type:')) {
+      const t = kind.slice(5)
+      build = (s) => api.put(`/shifts/${s.id}`, { shiftType: t })
+      label = `changed to ${SHIFT_TYPES.find(x => x.value === t)?.label || t}`
+    } else if (kind === 'cancel') {
+      const reason = window.prompt(`Why are these ${ids.length} shift${ids.length !== 1 ? 's' : ''} being cancelled?`)
+      if (reason === null) return
+      build = (s) => api.put(`/shifts/${s.id}/status`, { status: 'cancelled', cancelReason: reason.trim() || undefined })
+      label = 'cancelled'
+    } else if (kind === 'reinstate') {
+      build = (s) => s.status === 'cancelled'
+        ? api.put(`/shifts/${s.id}/status`, { status: s.staff_id ? 'filled' : 'unfilled' })
+        : Promise.resolve(null)
+      label = 'reinstated'
+    } else return
+    setBulkBusy(true)
+    try {
+      const targets = shifts.filter(s => selectedShiftIds.has(s.id))
+      const results = await Promise.allSettled(targets.map(build))
+      const failed = results.filter(r => r.status === 'rejected').length
+      const done = results.length - failed
+      if (done) toast.success(`${done} shift${done !== 1 ? 's' : ''} ${label}`)
+      if (failed) toast.error(`${failed} shift${failed !== 1 ? 's' : ''} could not be changed (e.g. the new time clashes with another shift for that staff member)`)
+      clearSelection()
+      loadAll()
+    } finally { setBulkBusy(false) }
+  }
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
   const [unassignOpen, setUnassignOpen] = useState(false)
@@ -804,6 +847,18 @@ export default function Rota() {
               icon={<Users className="w-3.5 h-3.5" />} onClick={() => setBulkAssignOpen(true)}>
               Bulk assign staff
             </Button>
+            <select disabled={bulkBusy || bulkDeleting} value=""
+              onChange={e => { const v = e.target.value; e.target.value = ''; runBulkChange(v) }}
+              className="border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-blue-800 bg-white"
+              title="Change every highlighted shift at once">
+              <option value="">{bulkBusy ? 'Working…' : 'More bulk actions…'}</option>
+              <option value="time">Change time slot</option>
+              <optgroup label="Change shift type to">
+                {SHIFT_TYPES.map(t => <option key={t.value} value={`type:${t.value}`}>{t.label}</option>)}
+              </optgroup>
+              <option value="cancel">Cancel shifts (keep on rota with a reason)</option>
+              <option value="reinstate">Reinstate cancelled shifts</option>
+            </select>
             <Button size="sm" variant="danger" loading={bulkDeleting}
               icon={<Trash2 className="w-3.5 h-3.5" />} onClick={bulkDeleteShifts}>
               Delete selected

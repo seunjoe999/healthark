@@ -222,7 +222,95 @@ export async function checkIncidentReviews(): Promise<void> {
   }
 }
 
+// "Tomorrow's shifts": one alert per home each afternoon when tomorrow still
+// has shifts with nobody assigned, so cover can be arranged the day before.
+export async function checkTomorrowsUnfilledShifts(): Promise<void> {
+  try {
+    const today = ukDateStr();
+    const rows = await query<{ home_id: string; n: string; slots: string }>(
+      `SELECT sh.home_id, COUNT(*) AS n,
+              string_agg(DISTINCT COALESCE(sh.label, su.first_name || ' ' || su.last_name, 'shift') || ' ' || to_char(sh.start_time, 'HH24:MI'), ', ') AS slots
+       FROM staff_shifts sh LEFT JOIN service_users su ON su.id = sh.su_id
+       WHERE sh.shift_date = $1::date + 1 AND sh.staff_id IS NULL AND sh.status <> 'cancelled'
+         AND NOT EXISTS (SELECT 1 FROM business_alerts ba WHERE ba.home_id = sh.home_id
+                           AND ba.alert_type = 'tomorrows_unfilled_shifts' AND ba.created_at::date = CURRENT_DATE)
+       GROUP BY sh.home_id`,
+      [today]
+    );
+    for (const r of rows) {
+      await createAlert({
+        homeId: r.home_id, alertType: 'tomorrows_unfilled_shifts', severity: 'warning',
+        title: `${r.n} shift${r.n === '1' ? '' : 's'} tomorrow with no staff assigned`,
+        description: `Unfilled tomorrow: ${String(r.slots || '').slice(0, 900)}`,
+      });
+    }
+  } catch (err) {
+    logger.warn('checkTomorrowsUnfilledShifts skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
+// "Handover not completed": staff who worked a shift yesterday and filed no handover record.
+export async function checkHandoverNotCompleted(): Promise<void> {
+  try {
+    const today = ukDateStr();
+    const rows = await query<{ home_id: string; n: string; names: string }>(
+      `SELECT sh.home_id, COUNT(DISTINCT sh.staff_id) AS n,
+              string_agg(DISTINCT s.first_name || ' ' || s.last_name, ', ') AS names
+       FROM staff_shifts sh JOIN staff s ON s.id = sh.staff_id
+       WHERE sh.shift_date = $1::date - 1 AND sh.status <> 'cancelled'
+         AND EXISTS (SELECT 1 FROM staff_clock_events ce WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in'
+                       AND (ce.event_time AT TIME ZONE 'Europe/London')::date = sh.shift_date)
+         AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.staff_id = sh.staff_id AND dr.record_type = 'handover'
+                           AND dr.record_date BETWEEN $1::date - 1 AND $1::date)
+         AND NOT EXISTS (SELECT 1 FROM business_alerts ba WHERE ba.home_id = sh.home_id
+                           AND ba.alert_type = 'handover_not_completed' AND ba.created_at::date = CURRENT_DATE)
+       GROUP BY sh.home_id`,
+      [today]
+    );
+    for (const r of rows) {
+      await createAlert({
+        homeId: r.home_id, alertType: 'handover_not_completed', severity: 'info',
+        title: `Handover not completed by ${r.n} staff yesterday`,
+        description: `Worked a shift yesterday but filed no handover: ${String(r.names || '').slice(0, 900)}`,
+      });
+    }
+  } catch (err) {
+    logger.warn('checkHandoverNotCompleted skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
+// "Stool alert": someone whose bowel movements are being recorded has had none
+// logged for 3 days. Only people with a bowel record in the last 30 days are
+// considered, so residents who aren't on bowel monitoring never trigger it.
+export async function checkNoBowelMovement(): Promise<void> {
+  try {
+    const today = ukDateStr();
+    const rows = await query<{ id: string; home_id: string; first_name: string; last_name: string; last_date: string }>(
+      `SELECT su.id, su.home_id, su.first_name, su.last_name, to_char(MAX(dr.record_date), 'DD Mon') AS last_date
+       FROM service_users su
+       JOIN daily_records dr ON dr.su_id = su.id AND dr.record_type IN ('bowel', 'bowel_movement')
+                              AND dr.record_date >= $1::date - 30
+       WHERE su.status = 'live'
+         AND NOT EXISTS (SELECT 1 FROM business_alerts ba WHERE ba.su_id = su.id
+                           AND ba.alert_type = 'no_bowel_movement' AND ba.is_resolved = FALSE)
+       GROUP BY su.id, su.home_id, su.first_name, su.last_name
+       HAVING MAX(dr.record_date) < $1::date - 3`,
+      [today]
+    );
+    for (const r of rows) {
+      await createAlert({
+        homeId: r.home_id, alertType: 'no_bowel_movement', severity: 'warning', suId: r.id,
+        title: `No bowel movement recorded for 3+ days: ${r.first_name} ${r.last_name}`,
+        description: `Last bowel record was on ${r.last_date}. Check on them and record, or escalate if there has been no movement.`,
+      });
+    }
+  } catch (err) {
+    logger.warn('checkNoBowelMovement skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
 export const alertsService = {
+  checkTomorrowsUnfilledShifts, checkHandoverNotCompleted, checkNoBowelMovement,
   createAlert,
   checkCarePlanReviews,
   checkFluidIntake,
