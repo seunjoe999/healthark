@@ -22,11 +22,20 @@ import toast from 'react-hot-toast'
 // always-visible checkbox as the only way to multi-select there.
 const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
-const HOUR_HEIGHT = 64
-const START_HOUR = 6
+// The grid's scale is set per render (see setGridScale) so the whole day can be
+// fitted to the height of the screen instead of always being 1150px tall, which
+// forced constant up-and-down scrolling at 100% zoom.
+let HOUR_HEIGHT = 64
+let START_HOUR = 6
 const END_HOUR = 24
-const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
-const TOTAL_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT
+let HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
+let TOTAL_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT
+function setGridScale(startHour: number, hourHeight: number) {
+  START_HOUR = startHour
+  HOUR_HEIGHT = hourHeight
+  HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
+  TOTAL_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT
+}
 
 // ── Shift-clash confirm gate ────────────────────────────────────────────────
 // The shift endpoints answer 409 + warnings (instead of saving) the first
@@ -396,7 +405,24 @@ export default function Rota() {
   // Every upcoming shift for the staff member picked in the filter, across all
   // services and all weeks (the grid itself only ever shows one week).
   const [staffAllShifts, setStaffAllShifts] = useState<any[] | null>(null)
-  const [staffAllOpen, setStaffAllOpen] = useState(true)
+  const [staffAllOpen, setStaffAllOpen] = useState(false)
+  // Rota size: "fit" squeezes the whole day into the visible height so there is
+  // no up-and-down scrolling; medium / large are fixed, taller scales.
+  const [rotaSize, setRotaSize] = useState<'fit' | 'medium' | 'large'>(() => {
+    try { const v = localStorage.getItem('rota_size'); return v === 'medium' || v === 'large' ? v : 'fit' } catch { return 'fit' }
+  })
+  const chooseRotaSize = (v: 'fit' | 'medium' | 'large') => { setRotaSize(v); try { localStorage.setItem('rota_size', v) } catch { /* ignore */ } }
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [gridH, setGridH] = useState(0)
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const measure = () => setGridH(el.clientHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   useEffect(() => {
     if (!filterStaff || !selectedHome) { setStaffAllShifts(null); return }
     let cancelled = false
@@ -726,6 +752,14 @@ export default function Rota() {
     return { day, dayShifts, dayLeaves, shiftLanes, width }
   })
 
+  // Start the grid at the earliest shift on screen (never later than 08:00) and
+  // size each hour so the day fits the space available.
+  const earliestHour = dayData.reduce((min, d) => d.dayShifts.reduce((m: number, sh: any) =>
+    Math.min(m, Math.floor(timeToMins(sh.start_time?.substring(0, 5) || '08:00') / 60)), min), 8)
+  const gridStartHour = Math.max(0, Math.min(8, earliestHour))
+  const fitHour = gridH > 0 ? Math.floor((gridH - 46) / (END_HOUR - gridStartHour)) : 40
+  setGridScale(gridStartHour, rotaSize === 'large' ? 84 : rotaSize === 'medium' ? 58 : Math.max(26, Math.min(64, fitHour)))
+
   const nav = (dir: 1 | -1) => {
     if (view === 'week') setWeekStart(d => addDays(d, dir * 7))
     else setDayDate(d => addDays(d, dir))
@@ -909,6 +943,12 @@ export default function Rota() {
             <X className="w-3 h-3" /> Clear
           </button>
         )}
+        <span className="inline-flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0" title="Fit: the whole day on one screen, no scrolling up and down. Medium / Large: taller blocks.">
+          {([['fit', 'Fit day'], ['medium', 'Medium'], ['large', 'Large']] as const).map(([v, l]) => (
+            <button key={v} onClick={() => chooseRotaSize(v)}
+              className={`text-xs font-bold px-2 py-1 ${rotaSize === v ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{l}</button>
+          ))}
+        </span>
         <div className="ml-auto text-xs font-bold text-slate-600">
           {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''} today
         </div>
@@ -927,7 +967,7 @@ export default function Rota() {
           <div className="px-4 py-2 border-b border-indigo-100 bg-indigo-50/70">
             <button onClick={() => setStaffAllOpen(v => !v)} className="text-sm font-bold text-indigo-900 hover:underline text-left">
               {staffAllShifts === null ? `Loading every shift for ${who ? getName(who) : 'this person'}…`
-                : `${who ? getName(who) : 'This person'}: ${list.length} shift${list.length !== 1 ? 's' : ''} in the next 8 weeks (${hours % 1 === 0 ? hours : hours.toFixed(1)}h) across ${places.length} service${places.length !== 1 ? 's' : ''} — ${staffAllOpen ? 'hide' : 'show'}`}
+                : `${who ? getName(who) : 'This person'}: ${list.length} shift${list.length !== 1 ? 's' : ''} in the next 8 weeks (${hours % 1 === 0 ? hours : hours.toFixed(1)}h) across ${places.length} service${places.length !== 1 ? 's' : ''}. The calendar below shows this week's — ${staffAllOpen ? 'hide the full list' : 'show the full list'}`}
             </button>
             {staffAllOpen && staffAllShifts !== null && (
               list.length === 0 ? <p className="text-xs text-slate-600 mt-1">No shifts allocated from today onward.</p> : (
@@ -1085,7 +1125,7 @@ export default function Rota() {
       })()}
 
       {/* ── Timeline ────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto">
+      <div ref={gridRef} className="flex-1 overflow-auto">
 
         {/* Day headers — sticky. isolate forces this onto its own stacking
             context — without it, a busy day's many shift cards (each already
@@ -1109,23 +1149,21 @@ export default function Rota() {
             const isToday = isSameDay(day, today)
             const count = dayShifts.length + dayLeaves.length
             return (
-              <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0 }}
-                className={`py-2 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : 'bg-white'}`}>
+              <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0, flexGrow: 1, flexBasis: width }}
+                className={`py-1.5 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : 'bg-white'}`}>
                 {/* A busy day's column is thousands of pixels wide. Centred in that,
                     the day name was off-screen at almost every scroll position — the
                     rota showed shifts with no visible date above them. Pinning the
                     label to the left edge of the visible area keeps the current
                     day's name on screen for as long as any of its column is. */}
-                <div className="sticky left-16 inline-block text-center px-3">
-                <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-700'}`}>{format(day, 'EEE')}</p>
-                <p className={`text-xl font-bold leading-tight ${isToday ? 'text-white' : 'text-slate-700'}`}>
-                  {format(day, 'd')}
-                </p>
-                <p className={`text-[10px] font-bold ${isToday ? 'text-indigo-100' : 'text-slate-600'}`}>{format(day, 'MMM')}</p>
+                <div className="sticky left-16 inline-flex items-baseline gap-1.5 px-3 whitespace-nowrap">
+                <span className={`text-xs font-bold uppercase tracking-wide ${isToday ? 'text-indigo-100' : 'text-slate-700'}`}>{format(day, 'EEE')}</span>
+                <span className={`text-xl font-bold leading-none ${isToday ? 'text-white' : 'text-slate-800'}`}>{format(day, 'd')}</span>
+                <span className={`text-xs font-bold ${isToday ? 'text-indigo-100' : 'text-slate-600'}`}>{format(day, 'MMM')}</span>
                 {count > 0 && (
-                  <div className={`mx-auto mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isToday ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`ml-1 px-1.5 h-5 min-w-[20px] rounded-full inline-flex items-center justify-center text-[11px] font-bold self-center ${isToday ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
                     {count}
-                  </div>
+                  </span>
                 )}
                 </div>
               </div>
@@ -1143,8 +1181,8 @@ export default function Rota() {
             <div className="w-14 flex-shrink-0 border-r-2 border-slate-300 sticky left-0 z-[15] bg-white">
               {HOURS.map(h => (
                 <div key={h} style={{ height: HOUR_HEIGHT }}
-                  className="flex items-start justify-end pr-2 pt-1 border-t border-slate-200">
-                  <span className="text-[11px] font-bold text-slate-500">{String(h).padStart(2, '0')}:00</span>
+                  className="flex items-start justify-end pr-2 pt-0.5 border-t border-slate-200">
+                  <span className="text-xs font-bold text-slate-600">{String(h).padStart(2, '0')}:00</span>
                 </div>
               ))}
             </div>
@@ -1157,7 +1195,7 @@ export default function Rota() {
               const isToday  = isSameDay(day, today)
 
               return (
-                <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0, height: TOTAL_HEIGHT }}
+                <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0, flexGrow: 1, flexBasis: width, height: TOTAL_HEIGHT }}
                   className={`relative border-l-2 ${isToday ? 'bg-indigo-50 border-indigo-300' : 'border-slate-300'}`}>
 
                   {/* Hour gridlines */}
@@ -1259,25 +1297,29 @@ export default function Rota() {
                             <Trash2 className="w-3 h-3" />
                           </span>
                         )}
-                        <div className="px-2 py-1.5 h-full flex flex-col">
-                          <p className="text-[12px] font-extrabold leading-tight truncate flex items-center gap-1">
-                            {status === 'clocked_in' && <CheckCircle className="w-3 h-3 flex-shrink-0" />}
-                            {(status === 'late' || status === 'missed') && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
-                            {status === 'unfilled'
+                        <div className="px-2 py-1 h-full flex flex-col">
+                          {/* Looking at one person: the useful thing on each block is WHERE they
+                              are working, so the service leads and the name is dropped. */}
+                          <p className="text-sm font-extrabold leading-tight truncate flex items-center gap-1 pr-5">
+                            {status === 'clocked_in' && <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />}
+                            {(status === 'late' || status === 'missed') && <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />}
+                            {filterStaff && shift.staff_id
+                              ? (shift.label || shift.su_names || shift.su_name || 'Shift')
+                              : status === 'unfilled'
                               ? 'Unfilled'
                               : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
                           </p>
                           {/* How late they actually clocked in — the colour alone doesn't say by how much. */}
                           {lateLabel(shift) && (
-                            <p className="text-[10px] leading-tight font-bold truncate">{lateLabel(shift)}</p>
+                            <p className="text-[11px] leading-tight font-bold truncate">{lateLabel(shift)}</p>
                           )}
-                          {height > 40 && (shift.label || shift.su_names || shift.su_name) && (
-                            <p className="text-[10.5px] leading-tight truncate font-bold" title={shift.label || shift.su_names || shift.su_name}>
+                          {height > 40 && !(filterStaff && shift.staff_id) && (shift.label || shift.su_names || shift.su_name) && (
+                            <p className="text-xs leading-tight truncate font-bold" title={shift.label || shift.su_names || shift.su_name}>
                               {shift.label || shift.su_names || shift.su_name}
                             </p>
                           )}
-                          {height > 54 && (
-                            <p className="text-[10px] leading-tight opacity-70">{st}–{et}</p>
+                          {height > (filterStaff ? 40 : 54) && (
+                            <p className="text-xs leading-tight font-semibold opacity-80">{st}–{et}</p>
                           )}
                           {relation && height > 68 && (
                             <span className="mt-auto inline-block w-fit text-[9px] font-bold px-1.5 py-0.5 rounded-full"
