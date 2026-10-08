@@ -2972,6 +2972,30 @@ async function ensureColumns() {
        updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
        PRIMARY KEY (home_id, alert_type)
      )`,
+    // A record of every time a manager knowingly booked staff onto overlapping shifts.
+    `CREATE TABLE IF NOT EXISTS shift_clash_log (
+       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       home_id     UUID NOT NULL,
+       staff_id    UUID,
+       assigned_by UUID,
+       shift_date  DATE,
+       start_time  VARCHAR(8),
+       end_time    VARCHAR(8),
+       details     TEXT,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    // Dates that are sensitive for a person (anniversary of a bereavement, etc.) so staff are warned beforehand.
+    `CREATE TABLE IF NOT EXISTS su_sensitive_dates (
+       id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       su_id          UUID NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+       home_id        UUID NOT NULL,
+       event_date     DATE NOT NULL,
+       label          VARCHAR(255) NOT NULL,
+       notes          TEXT,
+       repeats_yearly BOOLEAN NOT NULL DEFAULT TRUE,
+       created_by     UUID,
+       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,

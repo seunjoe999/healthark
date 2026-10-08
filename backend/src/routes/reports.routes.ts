@@ -382,6 +382,9 @@ router.get('/cancelled-shifts', requireRole(...REPORT_MGMT_ROLES), async (req: R
     const rows = await query(
       `SELECT to_char(sh.shift_date, 'Dy DD Mon YYYY') AS shift_date,
               to_char(sh.start_time, 'HH24:MI') || ' - ' || to_char(sh.end_time, 'HH24:MI') AS shift_time,
+              ROUND((EXTRACT(EPOCH FROM (CASE WHEN sh.end_time <= sh.start_time
+                    THEN sh.end_time - sh.start_time + interval '24 hours'
+                    ELSE sh.end_time - sh.start_time END)) / 3600)::numeric, 2) AS total_hours,
               COALESCE(sh.label, su.first_name || ' ' || su.last_name, '—') AS service,
               COALESCE(s.first_name || ' ' || s.last_name, 'Unfilled') AS staff,
               COALESCE(sh.cancel_reason, 'No reason recorded') AS reason,
@@ -393,6 +396,27 @@ router.get('/cancelled-shifts', requireRole(...REPORT_MGMT_ROLES), async (req: R
        LEFT JOIN service_users su ON su.id = sh.su_id
        WHERE sh.home_id = $1 AND sh.status = 'cancelled' AND sh.shift_date BETWEEN $2::date AND $3::date
        ORDER BY sh.shift_date DESC, sh.start_time`,
+      [homeId, fromDate, toDate]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Bookings a manager confirmed even though the staff member was already on another shift.
+router.get('/clash-bookings', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate } = reportRange(req);
+    const rows = await query(
+      `SELECT to_char(c.created_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY HH24:MI') AS booked_at,
+              COALESCE(b.first_name || ' ' || b.last_name, '—') AS assigned_by,
+              COALESCE(s.first_name || ' ' || s.last_name, '—') AS staff,
+              to_char(c.shift_date, 'Dy DD Mon YYYY') || ' ' || c.start_time || ' - ' || c.end_time AS shift,
+              c.details AS clashed_with
+       FROM shift_clash_log c
+       LEFT JOIN staff s ON s.id = c.staff_id
+       LEFT JOIN staff b ON b.id = c.assigned_by
+       WHERE c.home_id = $1 AND (c.created_at AT TIME ZONE 'Europe/London')::date BETWEEN $2::date AND $3::date
+       ORDER BY c.created_at DESC`,
       [homeId, fromDate, toDate]
     );
     res.json({ success: true, data: rows } as ApiResponse);

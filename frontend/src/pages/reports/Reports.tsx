@@ -17,6 +17,7 @@ const REPORT_TYPES = [
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'cancelled-shifts', label: 'Cancelled Shifts', description: 'Shifts cancelled, with the reason' },
   { value: 'careplan-review-matrix', label: 'Careplan Review Matrix', description: 'Care plan, risk assessment and MAR review dates per person' },
+  { value: 'clash-bookings', label: 'Clash Bookings', description: 'Bookings confirmed despite a shift clash warning' },
   { value: 'clock-in-locations', label: 'Clock In Locations', description: 'How far staff were from the service when they clocked in or out' },
   { value: 'clocked-in-integrity', label: 'Clocked In Integrity', description: 'Shift start against actual clock-in' },
   { value: 'daily-records', label: 'Daily Records', description: 'All care records for a date range' },

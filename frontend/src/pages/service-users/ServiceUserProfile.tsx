@@ -417,6 +417,7 @@ export default function ServiceUserProfile() {
               ))}
             </div>
           )}
+          <SensitiveDatesCard suId={su.id} />
           <AddContactModal open={addContactOpen} onClose={() => { setAddContactOpen(false); setEditingContact(null) }} suId={su.id}
             editingContact={editingContact}
             onAdded={(c) => {
@@ -650,6 +651,66 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="text-center p-4 bg-slate-50 rounded-xl">
       <p className="text-xl font-bold text-slate-900 font-display">{value}</p>
       <p className="text-xs text-slate-400 mt-0.5 font-medium">{label}</p>
+    </div>
+  )
+}
+
+// Sensitive dates — anniversaries and other dates that may be hard for this
+// person. An alert is raised the day before and on the day.
+function SensitiveDatesCard({ suId }: { suId: string }) {
+  const [rows, setRows] = useState<any[]>([])
+  const [form, setForm] = useState({ eventDate: '', label: '', notes: '', repeatsYearly: true })
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    api.get(`/service-users/${suId}/sensitive-dates`).then(res => setRows(res.data.data || [])).catch(() => {})
+  }, [suId])
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.eventDate || !form.label.trim()) { toast.error('Enter the date and what it is'); return }
+    setSaving(true)
+    try {
+      const res = await api.post(`/service-users/${suId}/sensitive-dates`, form)
+      setRows(prev => [...prev, res.data.data])
+      setForm({ eventDate: '', label: '', notes: '', repeatsYearly: true })
+      toast.success('Sensitive date added')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not save') }
+    finally { setSaving(false) }
+  }
+  const remove = async (id: string) => {
+    if (!window.confirm('Remove this sensitive date?')) return
+    try { await api.delete(`/service-users/${suId}/sensitive-dates/${id}`); setRows(prev => prev.filter(r => r.id !== id)) }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Only managers can remove a sensitive date') }
+  }
+  return (
+    <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-5">
+      <h3 className="font-semibold text-slate-900">Sensitive dates</h3>
+      <p className="text-xs text-slate-500 mt-0.5 mb-3">Anniversaries or dates that may be difficult. Staff get an alert the day before and on the day.</p>
+      {rows.length > 0 && (
+        <div className="divide-y divide-slate-100 mb-3">
+          {rows.map(r => (
+            <div key={r.id} className="py-2 flex items-start gap-3 text-sm">
+              <span className="font-semibold text-slate-800 whitespace-nowrap">
+                {format(parseISO(r.event_date), r.repeats_yearly ? 'd MMM' : 'd MMM yyyy')}{r.repeats_yearly ? ' (every year)' : ''}
+              </span>
+              <span className="flex-1 text-slate-700">{r.label}{r.notes ? <span className="block text-xs text-slate-500">{r.notes}</span> : null}</span>
+              <button type="button" onClick={() => remove(r.id)} className="text-xs text-rose-600 hover:underline">Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={add} className="grid sm:grid-cols-[150px_1fr_auto] gap-2 items-start">
+        <input type="date" className="input" value={form.eventDate} onChange={e => setForm(p => ({ ...p, eventDate: e.target.value }))} />
+        <div className="space-y-2">
+          <input className="input" placeholder="What is it? e.g. Anniversary of mother's death" value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} />
+          <input className="input" placeholder="How to support them (optional)" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input type="checkbox" checked={form.repeatsYearly} onChange={e => setForm(p => ({ ...p, repeatsYearly: e.target.checked }))} /> Repeats every year
+          </label>
+        </div>
+        <button type="submit" disabled={saving} className="px-3 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold disabled:opacity-50">
+          {saving ? 'Saving…' : 'Add'}
+        </button>
+      </form>
     </div>
   )
 }

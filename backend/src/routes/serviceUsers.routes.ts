@@ -388,6 +388,48 @@ router.put('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
+// ── Sensitive dates ───────────────────────────────────────────────
+router.get('/:id/sensitive-dates', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query(
+        `SELECT id, to_char(event_date, 'YYYY-MM-DD') AS event_date, label, notes, repeats_yearly
+         FROM su_sensitive_dates WHERE su_id = $1 ORDER BY EXTRACT(MONTH FROM event_date), EXTRACT(DAY FROM event_date)`,
+        [req.params.id]);
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.post('/:id/sensitive-dates', param('id').isUUID(),
+  [body('eventDate').isDate(), body('label').notEmpty()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const su = await query<any>('SELECT home_id FROM service_users WHERE id = $1', [req.params.id]);
+      if (!su.length) throw new AppError('Service user not found', 404);
+      const rows = await query(
+        `INSERT INTO su_sensitive_dates (su_id, home_id, event_date, label, notes, repeats_yearly, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         RETURNING id, to_char(event_date, 'YYYY-MM-DD') AS event_date, label, notes, repeats_yearly`,
+        [req.params.id, su[0].home_id, req.body.eventDate, String(req.body.label).trim().slice(0, 255),
+         req.body.notes ? String(req.body.notes).trim() : null, req.body.repeatsYearly !== false,
+         (req as any).staff?.staffId || null]);
+      res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/:id/sensitive-dates/:dateId',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  [param('id').isUUID(), param('dateId').isUUID()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await query('DELETE FROM su_sensitive_dates WHERE id = $1 AND su_id = $2', [req.params.dateId, req.params.id]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // ── Contacts ──────────────────────────────────────────────────────
 router.get('/:id/contacts', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

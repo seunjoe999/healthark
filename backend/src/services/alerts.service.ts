@@ -382,7 +382,35 @@ export async function autoClearAlerts(): Promise<void> {
   }
 }
 
+// "Sensitive date": warn the day before and on the day itself.
+export async function checkSensitiveDates(): Promise<void> {
+  try {
+    const today = ukDateStr();
+    const rows = await query<any>(
+      `SELECT sd.id, sd.home_id, sd.su_id, sd.label, sd.notes, su.first_name, su.last_name,
+              CASE WHEN to_char(sd.event_date, 'MM-DD') = to_char($1::date, 'MM-DD') THEN 'today' ELSE 'tomorrow' END AS when_is
+       FROM su_sensitive_dates sd JOIN service_users su ON su.id = sd.su_id
+       WHERE su.status = 'live'
+         AND ((sd.repeats_yearly AND to_char(sd.event_date, 'MM-DD') IN (to_char($1::date, 'MM-DD'), to_char($1::date + 1, 'MM-DD')))
+           OR (NOT sd.repeats_yearly AND sd.event_date IN ($1::date, $1::date + 1)))
+         AND NOT EXISTS (SELECT 1 FROM business_alerts ba WHERE ba.record_id = sd.id
+                           AND ba.alert_type = 'sensitive_date' AND ba.created_at::date = CURRENT_DATE)`,
+      [today]);
+    for (const r of rows) {
+      await createAlert({
+        homeId: r.home_id, alertType: 'sensitive_date', severity: 'info', suId: r.su_id,
+        recordId: r.id, recordType: 'sensitive_date',
+        title: `Sensitive date ${r.when_is}: ${r.first_name} ${r.last_name} — ${r.label}`,
+        description: r.notes || 'Be mindful of how they may be feeling and offer extra support.',
+      });
+    }
+  } catch (err) {
+    logger.warn('checkSensitiveDates skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
 export const alertsService = {
+  checkSensitiveDates,
   autoClearAlerts,
   checkClockedInTooFar, checkNoNotesWritten,
   checkTomorrowsUnfilledShifts, checkHandoverNotCompleted, checkNoBowelMovement,

@@ -368,6 +368,8 @@ router.post('/', requireRole(...MANAGE_ROLES), [body('staffId').isUUID(), body('
         if (pre.length) {
           return res.status(409).json({ success: false, warnings: pre, requiresConfirm: true });
         }
+      } else if (staffId) {
+        await logClashOverride(homeId, staffId, fromToken(req, 'staffId'), shiftDate, startTime, endTime);
       }
       const rows = await query(
         `INSERT INTO staff_shifts (
@@ -837,6 +839,12 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
         if (pre.length) {
           return res.status(409).json({ success: false, warnings: pre, requiresConfirm: true });
         }
+      } else if (effStaff && (staffChanged || timesChanged)) {
+        const cd2 = (d: any) => (d instanceof Date ? d.toISOString().split('T')[0] : String(d).split('T')[0]);
+        await logClashOverride(existing[0].home_id, effStaff, fromToken(req, 'staffId'),
+          shiftDate !== undefined ? shiftDate : cd2(existing[0].shift_date),
+          startTime !== undefined ? startTime : String(existing[0].start_time),
+          endTime !== undefined ? endTime : String(existing[0].end_time), req.params.id);
       }
 
       if (fields.length === 0) return res.json({ success: true, data: stripFinancials(existing[0], role) } as ApiResponse);
@@ -940,6 +948,19 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
     } catch (err) { next(err); }
   }
 );
+
+// When a manager confirms a booking despite the clash warning, keep a record
+// of it (who, which staff member, which shift, what it overlapped with).
+async function logClashOverride(homeId: string, staffId: string, by: string, date: string, start: string, end: string, excludeId?: string): Promise<void> {
+  try {
+    const clashes = (await findStaffShiftConflicts(homeId, staffId, date, start, end, excludeId)).map(conflictMessage);
+    if (!clashes.length) return;
+    await query(
+      `INSERT INTO shift_clash_log (home_id, staff_id, assigned_by, shift_date, start_time, end_time, details)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [homeId, staffId, by || null, date, String(start).substring(0, 5), String(end).substring(0, 5), clashes.join(' | ').slice(0, 2000)]);
+  } catch { /* the log must never block a booking */ }
+}
 
 // ── Open shifts ───────────────────────────────────────────────────
 // GET /api/shifts/open — advertised, still-unfilled shifts from today onwards. Any staff member can see these.
