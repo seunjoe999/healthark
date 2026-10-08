@@ -1035,6 +1035,37 @@ router.post('/:id/offer', param('id').isUUID(), validateRequest,
   }
 );
 
+// GET /api/shifts/:id/history — every change to who was on this shift, with
+// the user whose rota action caused it (the action logged within a minute before the change).
+router.get('/:id/history', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query<any>(
+        `SELECT to_char(c.changed_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY HH24:MI:SS') AS at,
+                COALESCE(o.first_name || ' ' || o.last_name, 'Unfilled') AS from_staff,
+                COALESCE(n.first_name || ' ' || n.last_name, 'Unfilled') AS to_staff,
+                COALESCE(a.who, 'No user action found') AS changed_by,
+                COALESCE(a.how, '') AS how
+         FROM shift_change_log c
+         LEFT JOIN staff o ON o.id = c.old_staff_id
+         LEFT JOIN staff n ON n.id = c.new_staff_id
+         LEFT JOIN LATERAL (
+           SELECT s.first_name || ' ' || s.last_name AS who,
+                  CASE WHEN ra.path LIKE '%bulk-assign-pattern%' THEN 'Bulk assign'
+                       WHEN ra.path LIKE '%bulk-unassign%' THEN 'Bulk unassign'
+                       WHEN ra.path LIKE '%swaps%' THEN 'Shift swap'
+                       WHEN ra.path LIKE '%auto-schedule%' THEN 'Auto schedule'
+                       ELSE 'Edited this shift' END AS how
+           FROM rota_actions ra LEFT JOIN staff s ON s.id = ra.staff_id
+           WHERE ra.created_at BETWEEN c.changed_at - interval '60 seconds' AND c.changed_at + interval '2 seconds'
+           ORDER BY ra.created_at DESC LIMIT 1
+         ) a ON TRUE
+         WHERE c.shift_id = $1 ORDER BY c.changed_at DESC LIMIT 50`, [req.params.id]);
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/shifts/:id/series-stats — totals for the repeating series this shift
 // belongs to (same template), so a manager can see how much of it is covered.
 router.get('/:id/series-stats', param('id').isUUID(), validateRequest,

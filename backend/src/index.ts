@@ -114,6 +114,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api', (req, res, next) => {
   (req as any).__issueLogged = true;
   const origJson = res.json.bind(res);
+  // Every rota action a signed-in user starts (assign, bulk assign, unassign,
+  // swap...) is noted the moment it arrives, so each allocation change the
+  // database records can be matched to the person who caused it.
+  try {
+    const full = String(req.originalUrl || '').split('?')[0];
+    if (req.method !== 'GET' && full.startsWith('/api/shifts')) {
+      let actor: string | null = null;
+      try { const t = req.headers.authorization?.substring(7); if (t) actor = (jwt.decode(t) as any)?.staffId || null; } catch { /* ignore */ }
+      pool.query('INSERT INTO rota_actions (staff_id, method, path) VALUES ($1,$2,$3)', [actor, req.method, full.slice(0, 300)]).catch(() => {});
+    }
+  } catch { /* never block a request */ }
   res.json = ((body: any) => {
     try {
       const code = res.statusCode;
@@ -3050,6 +3061,40 @@ async function ensureColumns() {
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_reason TEXT`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_of TEXT`,
     `DELETE FROM error_log WHERE created_at < NOW() - interval '60 days'`,
+    // Allocation history. The database itself records every change to who is
+    // on a shift (a trigger, so it catches ANY change whatever caused it), and
+    // every rota action a signed-in user takes is recorded alongside. A change
+    // with no user action next to it would be the system altering a rota by
+    // itself — System Health counts those, so "it changed on its own" can be
+    // proved or ruled out instead of argued about.
+    `CREATE TABLE IF NOT EXISTS shift_change_log (
+       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       shift_id      UUID NOT NULL,
+       home_id       UUID,
+       old_staff_id  UUID,
+       new_staff_id  UUID,
+       changed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_shift_change_log_shift ON shift_change_log(shift_id, changed_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_shift_change_log_at ON shift_change_log(changed_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS rota_actions (
+       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       staff_id   UUID,
+       method     VARCHAR(10),
+       path       TEXT,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_rota_actions_at ON rota_actions(created_at DESC)`,
+    `CREATE OR REPLACE FUNCTION log_shift_staff_change() RETURNS trigger AS $fn$
+     BEGIN
+       INSERT INTO shift_change_log (shift_id, home_id, old_staff_id, new_staff_id)
+       VALUES (NEW.id, NEW.home_id, OLD.staff_id, NEW.staff_id);
+       RETURN NEW;
+     END;
+     $fn$ LANGUAGE plpgsql`,
+    `DROP TRIGGER IF EXISTS trg_log_shift_staff_change ON staff_shifts`,
+    `CREATE TRIGGER trg_log_shift_staff_change AFTER UPDATE OF staff_id ON staff_shifts
+     FOR EACH ROW WHEN (OLD.staff_id IS DISTINCT FROM NEW.staff_id) EXECUTE FUNCTION log_shift_staff_change()`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,

@@ -85,9 +85,32 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
        WHERE ce.auto_closed = TRUE AND ce.home_id = $1 AND ce.event_time > NOW() - interval '7 days'
        ORDER BY ce.event_time DESC LIMIT 60`, [homeId]), []);
 
+    // Allocation changes in the last 7 days, and how many have no user rota
+    // action in the minute before them (which would mean the system did it).
+    const rotaChanges = await safe(() => query<any>(
+      `SELECT COUNT(*) AS total,
+              COUNT(*) FILTER (WHERE NOT EXISTS (
+                SELECT 1 FROM rota_actions ra
+                WHERE ra.created_at BETWEEN c.changed_at - interval '60 seconds' AND c.changed_at + interval '2 seconds')) AS unexplained
+       FROM shift_change_log c WHERE c.home_id = $1 AND c.changed_at > NOW() - interval '7 days'`, [homeId]), [{ total: '0', unexplained: '0' }]);
+    const unexplainedList = await safe(() => query<any>(
+      `SELECT to_char(c.changed_at AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI:SS') AS at,
+              to_char(sh.shift_date, 'Dy DD Mon') || ' ' || to_char(sh.start_time, 'HH24:MI') || '-' || to_char(sh.end_time, 'HH24:MI') AS shift,
+              COALESCE(sh.label, '') AS service,
+              COALESCE(o.first_name || ' ' || o.last_name, 'Unfilled') AS from_staff,
+              COALESCE(n.first_name || ' ' || n.last_name, 'Unfilled') AS to_staff
+       FROM shift_change_log c
+       LEFT JOIN staff_shifts sh ON sh.id = c.shift_id
+       LEFT JOIN staff o ON o.id = c.old_staff_id LEFT JOIN staff n ON n.id = c.new_staff_id
+       WHERE c.home_id = $1 AND c.changed_at > NOW() - interval '7 days'
+         AND NOT EXISTS (SELECT 1 FROM rota_actions ra
+                         WHERE ra.created_at BETWEEN c.changed_at - interval '60 seconds' AND c.changed_at + interval '2 seconds')
+       ORDER BY c.changed_at DESC LIMIT 40`, [homeId]), []);
+
     res.json({
       success: true,
       data: {
+        rota: { changes7d: parseInt(rotaChanges[0]?.total || '0', 10), unexplained7d: parseInt(rotaChanges[0]?.unexplained || '0', 10), unexplained: unexplainedList },
         topIssues: topIssues.map((t: any) => ({ ...t, times: parseInt(t.times, 10), people: parseInt(t.people, 10) })),
         byArea: byArea.map((a: any) => ({ area: a.area, times: parseInt(a.times, 10) })),
         autoClockedOut: autoClosed,

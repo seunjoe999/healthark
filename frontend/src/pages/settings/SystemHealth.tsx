@@ -67,6 +67,24 @@ export default function SystemHealth() {
             <Tile label="Running since" value={format(new Date(data.startedAt), 'd MMM HH:mm')} tone="plain" hint={`${data.uptimeHours} hours · ${data.memoryMb} MB memory`} />
           </div>
 
+          {data.rota && (
+            <div className={`rounded-2xl border p-4 ${data.rota.unexplained7d > 0 ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
+              <h2 className="font-bold text-slate-900">Rota allocations changed by the system on its own</h2>
+              <p className={`text-2xl font-bold mt-1 ${data.rota.unexplained7d > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{data.rota.unexplained7d}</p>
+              <p className="text-xs text-slate-600 mt-1">
+                The database records every change to who is on a shift. {data.rota.changes7d} change{data.rota.changes7d !== 1 ? 's' : ''} in the last 7 days;
+                this number is how many had no manager's rota action in the minute before them. It should be 0. Open any shift to see its full allocation history.
+              </p>
+              {data.rota.unexplained.length > 0 && (
+                <ul className="mt-2 text-xs divide-y divide-rose-100">
+                  {data.rota.unexplained.map((r: any, i: number) => (
+                    <li key={i} className="py-1">{r.at} — {r.service} {r.shift}: {r.from_staff} → {r.to_staff}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
               <h2 className="font-bold text-slate-900">Top issues, last 7 days</h2>

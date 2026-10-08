@@ -2527,6 +2527,15 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     finally { setUnassigning(false) }
   }
 
+  // Who has been on this shift, and who changed it — recorded by the database for every change.
+  const [history, setHistory] = useState<any[] | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  useEffect(() => {
+    if (!historyOpen) return
+    let cancelled = false
+    api.get(`/shifts/${shift.id}/history`).then(res => { if (!cancelled) setHistory(res.data?.data || []) }).catch(() => { if (!cancelled) setHistory([]) })
+    return () => { cancelled = true }
+  }, [historyOpen, shift.id, shift.staff_id])
   // Totals for the repeating series this shift belongs to.
   const [seriesStats, setSeriesStats] = useState<any>(null)
   useEffect(() => {
@@ -2631,6 +2640,30 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               {Number(seriesStats.cancelled) > 0 && <> · {seriesStats.cancelled} cancelled</>}
               {Number(seriesStats.upcoming_unassigned) > 0 && <> · {seriesStats.upcoming_unassigned} still to fill from today</>}
             </p>
+          </div>
+        )}
+
+        {canManage && (
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+            <button type="button" onClick={() => setHistoryOpen(v => !v)} className="font-bold text-slate-900 hover:underline">
+              {historyOpen ? 'Hide allocation history' : 'Allocation history — who changed this shift'}
+            </button>
+            {historyOpen && (
+              history === null ? <p className="mt-1 text-slate-500">Loading…</p>
+              : history.length === 0 ? <p className="mt-1 text-slate-500">No changes recorded since history began (8 Oct 2026).</p>
+              : (
+                <ul className="mt-1.5 divide-y divide-slate-100">
+                  {history.map((h, i) => (
+                    <li key={i} className="py-1">
+                      <span className="text-slate-500">{h.at}</span> — {h.from_staff} → <span className="font-semibold">{h.to_staff}</span>
+                      <span className={`block ${h.changed_by === 'No user action found' ? 'text-rose-600 font-semibold' : 'text-slate-500'}`}>
+                        {h.changed_by === 'No user action found' ? 'No user action found — changed by the system' : `by ${h.changed_by}${h.how ? ` (${h.how})` : ''}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
           </div>
         )}
 
