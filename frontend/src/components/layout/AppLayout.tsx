@@ -210,6 +210,7 @@ const navSections = [
     label: 'SETTINGS', highlight: true,
     items: [
       { label: 'Settings', to: '/settings', icon: Settings, roles: ['group_admin'], featureKey: 'settings' },
+      { label: 'System Health', to: '/system-health', icon: Shield, roles: ['group_admin'], featureKey: 'settings' },
     ]
   },
   {

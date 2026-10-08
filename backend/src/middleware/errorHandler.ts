@@ -2,6 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { logger } from '../config/logger';
 import { ApiResponse } from '../types';
+import { query } from '../config/database';
+
+// Keep a record of every server-side failure (not ordinary "not allowed" /
+// validation refusals) for the System Health page. Never allowed to throw.
+function recordError(req: Request, statusCode: number, message: string): void {
+  try {
+    query(
+      'INSERT INTO error_log (method, path, status_code, message, staff_id) VALUES ($1,$2,$3,$4,$5)',
+      [req.method, String(req.originalUrl || req.path).split('?')[0].slice(0, 300), statusCode, String(message || '').slice(0, 1000), req.staff?.staffId || null]
+    ).catch(() => {});
+  } catch { /* ignore */ }
+}
 
 export class AppError extends Error {
   constructor(
@@ -82,6 +94,7 @@ export function errorHandler(
       '23502': `A required value is missing${col}`,
       '23514': 'One of the values is not an allowed option',
     };
+    recordError(req, 400, err.message);
     res.status(400).json({
       success: false,
       error: `Could not save — ${friendly[pgCode] || 'one of the values was rejected'}. [${err.message}]`,
@@ -94,6 +107,7 @@ export function errorHandler(
   // same broken form impossible to diagnose from a screenshot — include the
   // database's own one-line reason so the cause is visible straight away.
   if (/^[0-9A-Z]{5}$/.test(pgCode) && (err as any).severity) {
+    recordError(req, 500, `${err.message} [${pgCode}]`);
     res.status(500).json({
       success: false,
       error: `Server error — ${err.message} [${pgCode}]`,
@@ -103,6 +117,7 @@ export function errorHandler(
 
   // Default 500 — only expose error detail in development; hide internals in production
   const isProd = process.env.NODE_ENV === 'production';
+  recordError(req, 500, err.message);
   res.status(500).json({
     success: false,
     error: isProd ? 'Internal server error' : (err.message || 'Internal server error'),

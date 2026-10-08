@@ -19,6 +19,7 @@ import authRoutes from './routes/auth.routes';
 import homesRoutes from './routes/homes.routes';
 import staffRoutes, { computeProratedLeave } from './routes/staff.routes';
 import alertsRoutes from './routes/alerts.routes';
+import systemRoutes from './routes/system.routes';
 import serviceUserRoutes from './routes/serviceUsers.routes';
 import dailyRecordRoutes from './routes/dailyRecords.routes';
 import carePlanRoutes from './routes/carePlans.routes';
@@ -157,6 +158,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/homes', homesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/system', systemRoutes);
 app.use('/api/service-users', serviceUserRoutes);
 app.use('/api/daily-records', dailyRecordRoutes);
 app.use('/api/care-plans', carePlanRoutes);
@@ -2997,6 +2999,18 @@ async function ensureColumns() {
        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_billable BOOLEAN`,
+    // Every failed request is recorded so problems are visible on the System Health page.
+    `CREATE TABLE IF NOT EXISTS error_log (
+       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       method      VARCHAR(10),
+       path        TEXT,
+       status_code INTEGER,
+       message     TEXT,
+       staff_id    UUID,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at DESC)`,
+    `DELETE FROM error_log WHERE created_at < NOW() - interval '60 days'`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,
