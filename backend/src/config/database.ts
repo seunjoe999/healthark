@@ -8,9 +8,14 @@ if (process.env.DATABASE_URL) {
   config = {
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    max: 5,
+    // Was 5 — a limit set for a free hosted database the app no longer runs
+    // on. With dozens of staff signed in plus the scheduled jobs, five
+    // connections fill up at busy times and every other request waits (then
+    // fails after 10 seconds), which shows up as pages hanging or "server
+    // error" until things quieten down. Override with DB_POOL_MAX if needed.
+    max: parseInt(process.env.DB_POOL_MAX || '15', 10),
     min: 1,
-    idleTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
   };
 } else {
