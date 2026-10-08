@@ -388,6 +388,7 @@ router.get('/cancelled-shifts', requireRole(...REPORT_MGMT_ROLES), async (req: R
               COALESCE(sh.label, su.first_name || ' ' || su.last_name, '—') AS service,
               COALESCE(s.first_name || ' ' || s.last_name, 'Unfilled') AS staff,
               COALESCE(sh.cancel_reason, 'No reason recorded') AS reason,
+              CASE WHEN sh.cancel_billable IS TRUE THEN 'Yes' WHEN sh.cancel_billable IS FALSE THEN 'No' ELSE '—' END AS billable,
               COALESCE(cb.first_name || ' ' || cb.last_name, '—') AS cancelled_by,
               to_char(sh.cancelled_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY HH24:MI') AS cancelled_on
        FROM staff_shifts sh

@@ -382,7 +382,8 @@ export default function Rota() {
     } else if (kind === 'cancel') {
       const reason = window.prompt(`Why are these ${ids.length} shift${ids.length !== 1 ? 's' : ''} being cancelled?`)
       if (reason === null) return
-      build = (s) => api.put(`/shifts/${s.id}/status`, { status: 'cancelled', cancelReason: reason.trim() || undefined })
+      const billable = window.confirm('Are these cancelled shifts still BILLABLE to the funder?\n\nOK = Yes, still billable\nCancel = No, not billable')
+      build = (s) => api.put(`/shifts/${s.id}/status`, { status: 'cancelled', cancelReason: reason.trim() || undefined, cancelBillable: billable })
       label = 'cancelled'
     } else if (kind === 'advertise') {
       setBulkBusy(true)
@@ -2264,6 +2265,30 @@ function ShiftAuditorModal({ shifts, onClose, onReviewed }: {
     .sort((a, b) => endOf(b) - endOf(a))
   const rows = finished.filter(s => show === 'all' ? true : show === 'reviewed' ? !!s.reviewed_at : !s.reviewed_at)
   const hhmm = (v: any) => { try { return v ? format(new Date(v), 'HH:mm') : '—' } catch { return '—' } }
+  // Opens a clean printable copy of the list; the browser's print dialog can save it as a PDF.
+  const printAudit = () => {
+    const e = (v: any) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const body = rows.map(s => `<tr>
+      <td>${e(format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM yyyy'))}<br>${e(s.start_time?.substring(0, 5))} – ${e(s.end_time?.substring(0, 5))}</td>
+      <td>${e(s.label || s.su_names || s.su_name || '—')}</td>
+      <td>${e(s.staff_name || '—')}</td>
+      <td>${s.clock_in_time ? e(hhmm(s.clock_in_time) + ' / ' + hhmm(s.clock_out_time)) : 'Did not clock in'}</td>
+      <td>${s.reviewed_at ? 'Reviewed ' + e(format(new Date(s.reviewed_at), 'd MMM yyyy HH:mm')) : 'Not reviewed'}</td>
+    </tr>`).join('')
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Allow pop-ups for this site to print'); return }
+    w.document.write(`<!doctype html><html><head><title>Shift Auditor</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;margin:24px}
+      h1{font-size:18px;margin:0 0 4px} p{margin:0 0 12px;color:#555}
+      table{border-collapse:collapse;width:100%} th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top}
+      th{background:#f1f5f9}
+    </style></head><body><h1>Shift Auditor</h1><p>Printed ${e(format(new Date(), 'd MMM yyyy HH:mm'))} · ${rows.length} shift${rows.length !== 1 ? 's' : ''}</p>
+    <table><thead><tr><th>Date</th><th>Service / service user</th><th>Staff</th><th>Clocked in / out</th><th>Review</th></tr></thead><tbody>${body}</tbody></table>
+    </body></html>`)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
   const toggle = async (s: any) => {
     setBusy(s.id)
     try {
@@ -2281,6 +2306,10 @@ function ShiftAuditorModal({ shifts, onClose, onReviewed }: {
               className={`px-3 py-1 rounded-full text-xs font-semibold border ${show === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>{l}</button>
           ))}
           <span className="text-xs text-slate-500 ml-auto">Finished shifts in the period shown on the rota</span>
+          <button onClick={printAudit} disabled={!rows.length}
+            className="px-3 py-1 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+            Print / save as PDF
+          </button>
         </div>
         {rows.length === 0 ? (
           <p className="text-sm text-slate-500 py-6 text-center">Nothing to show.</p>
@@ -2433,14 +2462,16 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     // Cancelling keeps the shift on the rota (greyed out) with the reason, so
     // there is a record of what was cancelled and why — unlike deleting it.
     let cancelReason: string | undefined
+    let cancelBillable: boolean | undefined
     if (newStatus === 'cancelled') {
       const r = window.prompt('Why is this shift being cancelled? (e.g. service user in hospital, family visiting)')
       if (r === null) return
       cancelReason = r.trim() || undefined
+      cancelBillable = window.confirm('Is this cancelled shift still BILLABLE to the funder?\n\nOK = Yes, still billable\nCancel = No, not billable')
     }
     setSavingStatus(true)
     try {
-      const res = await api.put(`/shifts/${shift.id}/status`, { status: newStatus, cancelReason })
+      const res = await api.put(`/shifts/${shift.id}/status`, { status: newStatus, cancelReason, cancelBillable })
       onUpdated(res.data.data)
       toast.success('Shift status updated')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update status') }
@@ -2527,6 +2558,8 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             <span className="font-bold">Cancelled</span>
             {shift.cancelled_at && <> on {format(new Date(shift.cancelled_at), 'd MMM yyyy, HH:mm')}</>}
             {shift.cancel_reason ? <> — {shift.cancel_reason}</> : <> — no reason recorded</>}
+            {shift.cancel_billable === true && <> · still billable</>}
+            {shift.cancel_billable === false && <> · not billable</>}
             {canManage && <span className="block text-slate-500 mt-0.5">Pick another status below to reinstate it.</span>}
           </div>
         )}

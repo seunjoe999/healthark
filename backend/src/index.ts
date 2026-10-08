@@ -2996,6 +2996,7 @@ async function ensureColumns() {
        created_by     UUID,
        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_billable BOOLEAN`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,

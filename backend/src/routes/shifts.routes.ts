@@ -939,9 +939,11 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
         `UPDATE staff_shifts SET status = $1, updated_at = NOW(),
            cancel_reason = CASE WHEN $3::boolean THEN COALESCE($4::text, cancel_reason) ELSE NULL END,
            cancelled_by  = CASE WHEN $3::boolean THEN COALESCE(cancelled_by, $5::uuid) ELSE NULL END,
-           cancelled_at  = CASE WHEN $3::boolean THEN COALESCE(cancelled_at, NOW()) ELSE NULL END
+           cancelled_at  = CASE WHEN $3::boolean THEN COALESCE(cancelled_at, NOW()) ELSE NULL END,
+           cancel_billable = CASE WHEN $3::boolean THEN COALESCE($6::boolean, cancel_billable) ELSE NULL END
          WHERE id = $2 RETURNING *`,
-        [req.body.status, req.params.id, cancelling, reason, fromToken(req, 'staffId')]
+        [req.body.status, req.params.id, cancelling, reason, fromToken(req, 'staffId'),
+         typeof req.body.cancelBillable === 'boolean' ? req.body.cancelBillable : null]
       );
       if (!rows[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
       res.json({ success: true, data: stripFinancials(rows[0], role) } as ApiResponse);
