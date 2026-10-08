@@ -1007,13 +1007,19 @@ export default function Rota() {
             those dates when scrolled to the top. Each day cell also carries its
             own white background for the same reason. */}
         <div className="flex sticky top-0 z-20 isolate bg-white border-b border-slate-200 shadow-sm w-max min-w-full">
-          <div className="w-14 flex-shrink-0 border-r-2 border-slate-300" />
+          <div className="w-14 flex-shrink-0 border-r-2 border-slate-300 sticky left-0 z-10 bg-white" />
           {dayData.map(({ day, dayShifts, dayLeaves, width }) => {
             const isToday = isSameDay(day, today)
             const count = dayShifts.length + dayLeaves.length
             return (
               <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0 }}
-                className={`text-center py-2 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : 'bg-white'}`}>
+                className={`py-2 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : 'bg-white'}`}>
+                {/* A busy day's column is thousands of pixels wide. Centred in that,
+                    the day name was off-screen at almost every scroll position — the
+                    rota showed shifts with no visible date above them. Pinning the
+                    label to the left edge of the visible area keeps the current
+                    day's name on screen for as long as any of its column is. */}
+                <div className="sticky left-16 inline-block text-center px-3">
                 <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-700'}`}>{format(day, 'EEE')}</p>
                 <p className={`text-xl font-bold leading-tight ${isToday ? 'text-white' : 'text-slate-700'}`}>
                   {format(day, 'd')}
@@ -1024,6 +1030,7 @@ export default function Rota() {
                     {count}
                   </div>
                 )}
+                </div>
               </div>
             )
           })}
@@ -1035,8 +1042,8 @@ export default function Rota() {
         ) : (
           <div className="flex w-max min-w-full">
 
-            {/* Time labels */}
-            <div className="w-14 flex-shrink-0 border-r-2 border-slate-300">
+            {/* Time labels — pinned so the hours stay readable while scrolling across a wide day */}
+            <div className="w-14 flex-shrink-0 border-r-2 border-slate-300 sticky left-0 z-[15] bg-white">
               {HOURS.map(h => (
                 <div key={h} style={{ height: HOUR_HEIGHT }}
                   className="flex items-start justify-end pr-2 pt-1 border-t border-slate-200">
