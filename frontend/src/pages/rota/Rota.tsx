@@ -393,6 +393,21 @@ export default function Rota() {
   const [auditorOpen, setAuditorOpen] = useState(false)
   const [openShiftsOpen, setOpenShiftsOpen] = useState(false)
   const [clashesOpen, setClashesOpen] = useState(false)
+  // Every upcoming shift for the staff member picked in the filter, across all
+  // services and all weeks (the grid itself only ever shows one week).
+  const [staffAllShifts, setStaffAllShifts] = useState<any[] | null>(null)
+  const [staffAllOpen, setStaffAllOpen] = useState(true)
+  useEffect(() => {
+    if (!filterStaff || !selectedHome) { setStaffAllShifts(null); return }
+    let cancelled = false
+    setStaffAllShifts(null)
+    const from = format(new Date(), 'yyyy-MM-dd')
+    const to = format(addDays(new Date(), 56), 'yyyy-MM-dd')
+    api.get('/shifts', { params: { homeId: selectedHome, from, to, staffId: filterStaff } })
+      .then(res => { if (!cancelled) setStaffAllShifts((res.data?.data || []).filter((s: any) => s.status !== 'cancelled')) })
+      .catch(() => { if (!cancelled) setStaffAllShifts([]) })
+    return () => { cancelled = true }
+  }, [filterStaff, selectedHome, shifts])
   // Bulk changes to every highlighted shift: time slot, shift type, cancel, reinstate.
   const [bulkBusy, setBulkBusy] = useState(false)
   const runBulkChange = async (kind: string) => {
@@ -898,6 +913,42 @@ export default function Rota() {
           {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''} today
         </div>
       </div>
+
+      {filterStaff && (() => {
+        const who = staffList.find((s: any) => s.id === filterStaff)
+        const list = staffAllShifts || []
+        const hours = list.reduce((sum: number, sh: any) => {
+          let m = timeToMins(sh.end_time?.substring(0, 5) || '00:00') - timeToMins(sh.start_time?.substring(0, 5) || '00:00')
+          if (m <= 0) m += 1440
+          return sum + m / 60
+        }, 0)
+        const places = Array.from(new Set(list.map((s: any) => s.label || s.su_names || s.su_name || 'Shift')))
+        return (
+          <div className="px-4 py-2 border-b border-indigo-100 bg-indigo-50/70">
+            <button onClick={() => setStaffAllOpen(v => !v)} className="text-sm font-bold text-indigo-900 hover:underline text-left">
+              {staffAllShifts === null ? `Loading every shift for ${who ? getName(who) : 'this person'}…`
+                : `${who ? getName(who) : 'This person'}: ${list.length} shift${list.length !== 1 ? 's' : ''} in the next 8 weeks (${hours % 1 === 0 ? hours : hours.toFixed(1)}h) across ${places.length} service${places.length !== 1 ? 's' : ''} — ${staffAllOpen ? 'hide' : 'show'}`}
+            </button>
+            {staffAllOpen && staffAllShifts !== null && (
+              list.length === 0 ? <p className="text-xs text-slate-600 mt-1">No shifts allocated from today onward.</p> : (
+                <>
+                  <p className="text-xs text-slate-600 mt-0.5">{places.join(' · ')}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                    {list.map((s: any) => (
+                      <button key={s.id} title="Go to this shift"
+                        onClick={() => { const d = parseISO(String(s.shift_date).substring(0, 10)); setView('week'); setWeekStart(startOfWeek(d, { weekStartsOn: 1 })); setDetailShift(s) }}
+                        className="px-2 py-1 rounded-lg bg-white border border-indigo-200 text-[11px] text-slate-800 hover:border-indigo-400 text-left">
+                        <span className="font-bold">{format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM')}</span>{' '}
+                        {s.start_time?.substring(0, 5)}–{s.end_time?.substring(0, 5)} · {s.label || s.su_names || s.su_name || 'Shift'}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Bulk selection action bar — appears the moment anything's highlighted ── */}
       {selectedShiftIds.size > 0 && (
@@ -1467,6 +1518,7 @@ export default function Rota() {
           staffList={staffList}
           suList={suList}
           homeId={selectedHome}
+          serviceLabels={serviceLabels}
           onSaved={() => { setUnassignOpen(false); loadAll() }}
         />
       )}
@@ -3310,26 +3362,52 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
 // shift individually. Un-fills the shift (goes back to unfilled) rather than
 // deleting it, so the rota slot is still there to cover.
 
-function UnassignModal({ open, onClose, staffList, suList, homeId, onSaved }: {
+function UnassignModal({ open, onClose, staffList, suList, homeId, onSaved, serviceLabels = [], defaultFrom }: {
   open: boolean; onClose: () => void
   staffList: any[]; suList: any[]; homeId: string; onSaved: () => void
+  serviceLabels?: string[]; defaultFrom?: string
 }) {
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
   const [staffId, setStaffId] = useState('')
   const [suId, setSuId] = useState('')
+  const [label, setLabel] = useState('')
+  // From / To: the manager chooses exactly which dates are cleared. Nothing
+  // before the From date is ever touched.
+  const [fromDate, setFromDate] = useState(defaultFrom || todayStr)
+  const [toDate, setToDate] = useState('')
+  const [preview, setPreview] = useState<{ wouldUnassign: number; first: string | null; last: string | null } | null>(null)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => { if (open) { setFromDate(defaultFrom || todayStr); setToDate(''); setPreview(null) } }, [open])
 
   const staffOptions = staffList.map(s => ({ value: s.id, label: `${getName(s)} (${(s.role || '').replace(/_/g, ' ')})` })).sort((a, b) => a.label.localeCompare(b.label))
   const suOptions = suList.map(su => ({ value: su.id, label: getName(su) }))
   const staffName = staffList.find(s => s.id === staffId) ? getName(staffList.find(s => s.id === staffId)) : ''
+  const body = () => ({ homeId, staffId, suId: suId || null, label: label || null, fromDate, toDate: toDate || null })
+
+  // Live count of what would be removed, refreshed whenever a choice changes.
+  useEffect(() => {
+    if (!open || !staffId || !fromDate) { setPreview(null); return }
+    let cancelled = false
+    api.post('/shifts/bulk-unassign', { ...body(), preview: true })
+      .then(res => { if (!cancelled) setPreview(res.data.data) })
+      .catch(() => { if (!cancelled) setPreview(null) })
+    return () => { cancelled = true }
+  }, [open, staffId, suId, label, fromDate, toDate])
 
   const save = async () => {
     if (!staffId) { toast.error('Select a staff member'); return }
-    if (!window.confirm(`Remove ${staffName} from all their current and future shifts${suId ? ' for this resident' : ''}? Past shifts are kept for the record. This cannot be undone.`)) return
+    if (!fromDate) { toast.error('Choose the date to unassign from'); return }
+    if (toDate && toDate < fromDate) { toast.error('The "to" date is before the "from" date'); return }
+    const n = preview?.wouldUnassign ?? 0
+    if (n === 0) { toast.error('No shifts match — nothing to unassign'); return }
+    const range = toDate ? `from ${format(parseISO(fromDate), 'd MMM yyyy')} to ${format(parseISO(toDate), 'd MMM yyyy')}` : `from ${format(parseISO(fromDate), 'd MMM yyyy')} onward`
+    if (!window.confirm(`Remove ${staffName} from ${n} shift${n !== 1 ? 's' : ''} ${range}${label ? ` at ${label}` : ''}?\n\nShifts before ${format(parseISO(fromDate), 'd MMM yyyy')} are not touched.`)) return
     setSaving(true)
     try {
-      const res = await api.post('/shifts/bulk-unassign', { homeId, staffId, suId: suId || null })
+      const res = await api.post('/shifts/bulk-unassign', body())
       const unassigned = res.data.data?.unassigned || 0
-      toast.success(unassigned > 0 ? `Unassigned from ${unassigned} shift${unassigned !== 1 ? 's' : ''}` : 'No current or future shifts found for this staff member')
+      toast.success(`Unassigned from ${unassigned} shift${unassigned !== 1 ? 's' : ''}`)
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to unassign') }
     finally { setSaving(false) }
@@ -3339,15 +3417,33 @@ function UnassignModal({ open, onClose, staffList, suList, homeId, onSaved }: {
     <Modal open={open} onClose={onClose} title="Unassign Staff from Shifts" size="md">
       <div className="space-y-4">
         <p className="text-xs text-slate-500">
-          Removes this staff member from every shift they're on today or in the future — the shifts stay on the rota as unfilled, ready to reassign. Past shifts are left alone.
+          Removes this staff member from their shifts between the dates you choose. The shifts stay on the rota as unfilled, ready to reassign. Nothing before the "from" date is changed.
         </p>
 
         <Select label="Staff member *" value={staffId} onChange={e => setStaffId(e.target.value)} options={staffOptions} placeholder="Select staff member" />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Unassign from *" type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+          <Input label="Until (leave blank for all later shifts)" type="date" value={toDate} min={fromDate} onChange={e => setToDate(e.target.value)} />
+        </div>
+
+        {serviceLabels.length > 0 && (
+          <Select label="Service (optional)" value={label} onChange={e => setLabel(e.target.value)}
+            options={serviceLabels.map(l => ({ value: l, label: l }))} placeholder="All services" />
+        )}
         <Select label="Resident (optional)" value={suId} onChange={e => setSuId(e.target.value)} options={suOptions} placeholder="All residents — every shift, not just one" />
+
+        {staffId && (
+          <div className={`rounded-xl border px-3 py-2.5 text-sm ${preview && preview.wouldUnassign > 0 ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+            {preview === null ? 'Checking…'
+              : preview.wouldUnassign === 0 ? 'No shifts match these choices.'
+              : <>This will remove <strong>{staffName}</strong> from <strong>{preview.wouldUnassign}</strong> shift{preview.wouldUnassign !== 1 ? 's' : ''}, the first on {preview.first} and the last on {preview.last}.</>}
+          </div>
+        )}
 
         <div className="flex gap-3 justify-end pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="danger" loading={saving} onClick={save} icon={<UserMinus className="w-4 h-4" />}>Unassign</Button>
+          <Button variant="danger" loading={saving} disabled={!preview || preview.wouldUnassign === 0} onClick={save} icon={<UserMinus className="w-4 h-4" />}>Unassign</Button>
         </div>
       </div>
     </Modal>

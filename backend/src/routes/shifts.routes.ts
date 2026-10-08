@@ -258,6 +258,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // what should have been a handful of days, which is what was actually
     // making the dashboard slow to load.
     const from = req.query.from as string;
+    // Optional: only one staff member's shifts (used by the rota's "all shifts for this person" list).
+    const onlyStaffId = typeof req.query.staffId === 'string' && /^[0-9a-f-]{36}$/i.test(req.query.staffId) ? req.query.staffId : null;
     const to = req.query.to as string;
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
@@ -329,6 +331,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       sql += ` AND (sh.staff_id = ANY($${params.length+1}) OR sh.staff_id IS NULL)`;
       params.push(teamStaffIds);
     }
+    if (onlyStaffId) { sql += ` AND sh.staff_id = $${params.length+1}`; params.push(onlyStaffId); }
     if (date) { sql += ` AND sh.shift_date = $${params.length+1}`; params.push(date); }
     else if (weekStart) {
       sql += ` AND sh.shift_date >= $${params.length+1} AND sh.shift_date < $${params.length+1}::date + interval '7 days'`;
@@ -1411,13 +1414,31 @@ router.post('/bulk-unassign', requireRole(...MANAGE_ROLES), [
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { staffId, suId } = req.body;
       const today = ukDateStr();
+      // The manager chooses the dates. This used to remove the person from EVERY
+      // shift from today onward with no way to limit it, so correcting one
+      // mistake wiped out allocations that were right.
+      const isDate = (d: any) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+      const fromDate: string = isDate(req.body.fromDate) ? req.body.fromDate : today;
+      const toDate: string | null = isDate(req.body.toDate) ? req.body.toDate : null;
+      const label: string | null = typeof req.body.label === 'string' && req.body.label.trim() ? req.body.label.trim() : null;
+      const where = `home_id = $1 AND staff_id = $2 AND shift_date >= $3::date
+           AND ($4::date IS NULL OR shift_date <= $4::date)
+           AND ($5::uuid IS NULL OR su_id = $5)
+           AND ($6::text IS NULL OR label = $6)`;
+      const params = [homeId, staffId, fromDate, toDate, suId || null, label];
+
+      // Preview: how many shifts would be affected, and their date range, without changing anything.
+      if (req.body.preview === true) {
+        const c = await query<any>(
+          `SELECT COUNT(*) AS n, to_char(MIN(shift_date), 'DD Mon YYYY') AS first, to_char(MAX(shift_date), 'DD Mon YYYY') AS last
+           FROM staff_shifts WHERE ${where}`, params);
+        return res.json({ success: true, data: { wouldUnassign: parseInt(c[0]?.n || '0', 10), first: c[0]?.first || null, last: c[0]?.last || null } } as ApiResponse);
+      }
 
       const rows = await query<any>(
         `UPDATE staff_shifts SET staff_id = NULL, status = 'unfilled', updated_at = NOW()
-         WHERE home_id = $1 AND staff_id = $2 AND shift_date >= $3
-           AND ($4::uuid IS NULL OR su_id = $4)
-         RETURNING id`,
-        [homeId, staffId, today, suId || null]
+         WHERE ${where}
+         RETURNING id`, params
       );
 
       res.json({ success: true, data: { unassigned: rows.length } } as ApiResponse);
