@@ -2945,7 +2945,9 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
   // Started from one specific shift: only that timing is allocated, one staff
   // member at a time (tick a person, save, then do the next shift the same way).
   const seededTiming = !!(seed?.startTime && seed?.endTime)
-  const [thisTimingOnly, setThisTimingOnly] = useState(seededTiming)
+  // Which shift time is being allocated ('' = every day/night shift, the old behaviour).
+  const [timing, setTiming] = useState(seededTiming ? `${seed!.startTime}-${seed!.endTime}` : '')
+  const thisTimingOnly = !!timing
   const toggleStaffId = (id: string) => setStaffIds(prev =>
     thisTimingOnly ? (prev.includes(id) ? [] : [id])
       : (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
@@ -3006,9 +3008,11 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
           fortnightly: repeatMode === 'fortnightly', monthly: repeatMode === 'monthly',
           startDate, endDate: effectiveEndDate,
           onlyUnfilled,
-          ...(thisTimingOnly && seededTiming ? {
-            startTime: seed!.startTime, endTime: seed!.endTime, label: seed!.label || '',
-            replaceStaffId: seed!.replaceStaffId || undefined,
+          ...(timing ? {
+            startTime: timing.split('-')[0], endTime: timing.split('-')[1],
+            // Service and "who is being replaced" only apply to the exact shift this was opened from.
+            ...(seededTiming && timing === `${seed!.startTime}-${seed!.endTime}`
+              ? { label: seed!.label || '', replaceStaffId: seed!.replaceStaffId || undefined } : {}),
           } : {}),
           confirmConflicts: confirmed,
         })
@@ -3028,24 +3032,32 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
           Assign one or more staff members to every unfilled shift on the days you pick, over a date range — e.g. every Monday, Tuesday and Saturday, every other week, until you stop it. Pick several staff to cover the same slots together. Reallocate an individual shift instead by clicking it directly on the grid.
         </p>
 
-        {seededTiming && (
-          <div className={`rounded-xl border px-3 py-2.5 text-sm ${thisTimingOnly ? 'border-indigo-200 bg-indigo-50 text-indigo-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input type="checkbox" className="mt-0.5 rounded" checked={thisTimingOnly}
-                onChange={e => { setThisTimingOnly(e.target.checked); setStaffIds([]) }} />
-              <span>
-                <span className="font-bold">Only the {seed!.startTime}–{seed!.endTime} shift{seed!.label ? ` at ${seed!.label}` : ''}</span>
-                <span className="block text-xs mt-0.5">
-                  {thisTimingOnly
-                    ? (seed!.replaceStaffName
-                        ? `Hands over ${seed!.replaceStaffName}'s ${seed!.startTime}–${seed!.endTime} shifts on the days below to the person you pick. Other shifts on those days are not touched.`
-                        : `Fills the unfilled ${seed!.startTime}–${seed!.endTime} shifts on the days below. Other shifts on those days (longer or shorter) are not touched. Pick one person, save, then do the next shift.`)
-                    : 'Unticked: every daytime or night shift on those days can be allocated, including shifts with different times.'}
-                </span>
-              </span>
-            </label>
-          </div>
-        )}
+        {(() => {
+          // Shift times that exist for this resident/service in the period on screen.
+          const counts: Record<string, number> = {}
+          shifts.filter((sh: any) => sh.status !== 'cancelled' && (!suId || sh.su_id === suId || (Array.isArray(sh.su_ids) && sh.su_ids.includes(suId)))
+            && (!seededTiming || !seed!.label || sh.label === seed!.label))
+            .forEach((sh: any) => { const k = `${sh.start_time?.substring(0, 5)}-${sh.end_time?.substring(0, 5)}`; counts[k] = (counts[k] || 0) + 1 })
+          if (timing && !counts[timing]) counts[timing] = 0
+          const options = Object.keys(counts).sort()
+          if (!options.length) return null
+          return (
+            <div className={`rounded-xl border px-3 py-2.5 ${timing ? 'border-indigo-200 bg-indigo-50' : 'border-amber-200 bg-amber-50'}`}>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Which shift? *</label>
+              <select className="input text-sm" value={timing} onChange={e => { setTiming(e.target.value); setStaffIds([]) }}>
+                {options.map(k => <option key={k} value={k}>Only the {k.replace('-', ' – ')} shift{seededTiming && seed!.label && k === `${seed!.startTime}-${seed!.endTime}` ? ` at ${seed!.label}` : ''}</option>)}
+                <option value="">All shifts on those days (every time, several staff)</option>
+              </select>
+              <p className={`text-xs mt-1.5 ${timing ? 'text-indigo-900' : 'text-amber-900'}`}>
+                {timing
+                  ? (seededTiming && seed!.replaceStaffName && timing === `${seed!.startTime}-${seed!.endTime}`
+                      ? `Only ${timing.replace('-', ' – ')} shifts are changed. Where ${seed!.replaceStaffName} is on that shift, it is handed to the person you pick; otherwise an unfilled one is used. Shifts with other times are never touched.`
+                      : `Only ${timing.replace('-', ' – ')} shifts are allocated. Shifts with other times on the same days (longer or shorter) are never touched. Pick one person, save, then do the next shift.`)
+                  : 'Every daytime or night shift on those days can be allocated, whatever its times. Choose a shift time above to allocate just one.'}
+              </p>
+            </div>
+          )
+        })()}
 
         <div>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">{thisTimingOnly ? 'Staff member *' : 'Staff member(s) *'}</label>

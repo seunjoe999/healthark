@@ -1118,7 +1118,8 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       const exactStart = hhmm(req.body.startTime);
       const exactEnd = hhmm(req.body.endTime);
       const exact = !!(exactStart && exactEnd);
-      const labelFilter: string | null = exact ? String(req.body.label || '') : null;
+      // Only narrow by service when the caller says which one (started from a shift).
+      const labelFilter: string | null = exact && typeof req.body.label === 'string' ? req.body.label : null;
       // Reassigning a run: the shift it was started from already had someone on
       // it, so only that person's shifts in the run are handed over.
       const replaceStaffId: string | null = exact && typeof req.body.replaceStaffId === 'string' && /^[0-9a-f-]{36}$/i.test(req.body.replaceStaffId)
@@ -1147,8 +1148,8 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
          ORDER BY shift_date, start_time, (staff_id IS NOT NULL), id`,
         [homeId, startDate, endDate, (daysOfWeek || []).map((d: any) => parseInt(d)),
          suId || null, !exact && (dayOrNight === 'day' || dayOrNight === 'night') ? dayOrNight : null,
-         replaceStaffId ? false : onlyUnfilled !== false,
-         !!monthly, exactStart, exactEnd, labelFilter, replaceStaffId]
+         exact ? false : onlyUnfilled !== false,
+         !!monthly, exactStart, exactEnd, labelFilter, null]
       );
 
       // Fortnightly: keep only shifts in the same alternating week as startDate.
@@ -1200,9 +1201,18 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
           if (!byDate.has(k)) byDate.set(k, []);
           byDate.get(k)!.push(m);
         }
+        // Which slot of this timing each picked person takes, per date:
+        //   1st choice — the slot held by the person being replaced (the shift this was started from)
+        //   2nd choice — an unfilled slot
+        //   last       — a slot someone else holds, and only when "only unfilled" is unticked
+        // Someone already on a slot of this timing that day is skipped for that day.
+        const rank = (r: any) => (replaceStaffId && r.staff_id === replaceStaffId ? 0 : !r.staff_id ? 1 : 2);
         for (const rowsForDate of byDate.values()) {
-          rowsForDate.slice(0, staffIds.length).forEach((m, i) => {
-            assignments.push({ id: m.id, staffId: staffIds[i], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
+          const alreadyOn = new Set(rowsForDate.map(r => r.staff_id).filter(Boolean));
+          const eligible = rowsForDate.filter(r => rank(r) < 2 || onlyUnfilled === false).sort((a, b) => rank(a) - rank(b));
+          const picks = staffIds.filter(sid => !alreadyOn.has(sid));
+          eligible.slice(0, picks.length).forEach((m, i) => {
+            assignments.push({ id: m.id, staffId: picks[i], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
           });
         }
       } else {
