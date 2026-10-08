@@ -6,6 +6,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDa
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
 import { CalendarDays, Plus, Check, X, ChevronLeft, ChevronRight, Clock, ListFilter, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { printTable, downloadCsv } from '../../utils/exportTable'
 
 const LEAVE_TYPES = [
   { value: 'annual', label: 'Annual leave' },
@@ -173,6 +174,22 @@ export default function Holidays() {
               {allPending.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">{allPending.length > 9 ? '9+' : allPending.length}</span>}
             </button>
           </div>
+          {(() => {
+            const d = (v: any) => { try { return v ? format(parseISO(String(v).substring(0, 10)), 'd MMM yyyy') : '' } catch { return '' } }
+            const cols = [{ key: 'staff', label: 'Staff' }, { key: 'type', label: 'Leave type' }, { key: 'from', label: 'From' }, { key: 'to', label: 'To' },
+              { key: 'hours', label: 'Hours' }, { key: 'status', label: 'Status' }, { key: 'remaining', label: 'Balance remaining (h)' }, { key: 'notes', label: 'Notes / reason' }]
+            const src: any[] = (allLeaves && allLeaves.length ? allLeaves : leaves) as any[]
+            const rows = src.map(l => ({
+              staff: l.staff_name || '', type: String(l.leave_type || '').replace(/_/g, ' '), from: d(l.start_date), to: d(l.end_date),
+              hours: l.hours_requested ?? '', status: l.status || '', remaining: l.leave_hours_remaining ?? '', notes: l.reason || l.notes || '',
+            }))
+            return (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => { if (!printTable('Leave & Holidays', cols, rows)) toast.error('Allow pop-ups for this site to print') }}>Print</Button>
+                <Button size="sm" variant="secondary" onClick={() => downloadCsv('leave-and-holidays', cols, rows)}>Download</Button>
+              </>
+            )
+          })()}
           <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Request leave</Button>
         </div>
       </div>

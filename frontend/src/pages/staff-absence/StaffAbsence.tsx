@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { printTable, downloadCsv } from '../../utils/exportTable';
 
 interface Absence {
   id: number;
@@ -130,6 +131,26 @@ export default function StaffAbsence() {
           <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
             <RefreshCw size={16} />
           </button>
+          {(() => {
+            // Print / Download whichever list is on screen (absences or Bradford scores).
+            const d = (v: any) => { try { return v ? format(new Date(v), 'dd MMM yyyy') : '' } catch { return '' } }
+            const isBradford = tab !== 'absences'
+            const cols = isBradford
+              ? [{ key: 'staff', label: 'Staff' }, { key: 'score', label: 'Bradford score' }, { key: 'spells', label: 'Absence spells' }, { key: 'days', label: 'Total days' }]
+              : [{ key: 'staff', label: 'Staff' }, { key: 'type', label: 'Type' }, { key: 'from', label: 'From' }, { key: 'to', label: 'To' }, { key: 'days', label: 'Days' }, { key: 'reason', label: 'Reason' }, { key: 'notes', label: 'Notes' }]
+            const rows = isBradford
+              ? (bradford as any[]).map(b => ({ staff: b.staff_name, score: b.bradford_score, spells: b.spells, days: b.total_days }))
+              : (absences as any[]).map(a => ({ staff: a.staff_name, type: a.absence_type, from: d(a.absence_start), to: a.absence_end ? d(a.absence_end) : 'Ongoing', days: a.days_so_far ?? '', reason: a.reason || '', notes: a.notes || '' }))
+            const title = isBradford ? 'Staff Absence — Bradford scores' : 'Staff Absence'
+            return (
+              <>
+                <button onClick={() => { if (!printTable(title, cols, rows)) toast.error('Allow pop-ups for this site to print') }}
+                  className="px-3 py-2 rounded-xl text-sm font-medium text-gray-300 hover:text-white" style={{ background: btnGhostBg }}>Print</button>
+                <button onClick={() => downloadCsv(isBradford ? 'bradford-scores' : 'staff-absence', cols, rows)}
+                  className="px-3 py-2 rounded-xl text-sm font-medium text-gray-300 hover:text-white" style={{ background: btnGhostBg }}>Download</button>
+              </>
+            )
+          })()}
           <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
             <Plus size={16} /> Record Absence
           </button>

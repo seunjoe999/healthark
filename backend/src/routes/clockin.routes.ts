@@ -12,6 +12,7 @@ import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
 import { getMyPendingTasksToday } from '../utils/taskDue';
 import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 import { logger } from '../config/logger';
+import { createAlert } from '../services/alerts.service';
 
 const router = Router();
 
@@ -293,6 +294,14 @@ router.post('/event', authenticate,
       // time has already passed (an evening dose isn't "overdue" on an early shift), AND
       // only for residents this staff member was actually rostered with today — not their
       // whole standing caseload.
+      // Owner decision: staff are no longer trapped at clock-out. If medication,
+      // the medication count or tasks are outstanding they are still told, but
+      // they may clock out by giving a reason — recorded on the clock-out and
+      // sent to managers as an alert, so every exception is seen and the
+      // clock-out time is the real one (not an automatic one hours later).
+      const overrideReason = typeof req.body.overrideReason === 'string' && req.body.overrideReason.trim().length >= 5
+        ? req.body.overrideReason.trim().slice(0, 500) : '';
+      const overridden: string[] = [];
       if (eventType === 'clock_out') {
         const nowHHMM = ukTimeHHMM();
 
@@ -382,7 +391,9 @@ router.post('/event', authenticate,
           logger.error('Clock-out medication check failed — allowing clock-out rather than blocking on an internal error', medCheckErr);
           overdue = [];
         }
-        if (overdue.length > 0) {
+        if (overdue.length > 0 && overrideReason) {
+          overridden.push(`${overdue.length} medication${overdue.length > 1 ? 's' : ''} still due (${Array.from(new Set(overdue.map(t => t.suName))).join(', ')})`);
+        } else if (overdue.length > 0) {
           const residents = Array.from(new Set(overdue.map(t => t.suName)));
           return res.status(403).json({
             success: false,
@@ -399,7 +410,9 @@ router.post('/event', authenticate,
         // comment in getStockCountStatus for why the unscoped home-wide total
         // could never actually be cleared by any one person.
         const stockStatus = await getStockCountStatus(homeId, shiftStart ? new Date(shiftStart) : undefined, todayShiftSuIds);
-        if (!stockStatus.done) {
+        if (!stockStatus.done && overrideReason) {
+          overridden.push(`Medication Count not done (${stockStatus.counted}/${stockStatus.total} residents counted)`);
+        } else if (!stockStatus.done) {
           return res.status(403).json({
             success: false,
             reason: 'medication_incomplete',
@@ -414,7 +427,9 @@ router.post('/event', authenticate,
         // (see getMyPendingTasksToday), so this never blocks someone over a
         // task they were never shown.
         const pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole);
-        if (pendingTasks.length > 0) {
+        if (pendingTasks.length > 0 && overrideReason) {
+          overridden.push(`${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} not completed (${pendingTasks.slice(0, 3).map(t => t.title).join(', ')}${pendingTasks.length > 3 ? ', …' : ''})`);
+        } else if (pendingTasks.length > 0) {
           const titles = pendingTasks.slice(0, 3).map(t => t.title).join(', ');
           return res.status(403).json({
             success: false,
@@ -432,6 +447,19 @@ router.post('/event', authenticate,
          VALUES ($1,$2,$3,NOW(),$4,$5,$6) RETURNING *`,
         [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality]
       );
+      if (overridden.length) {
+        try {
+          await query('UPDATE staff_clock_events SET override_reason = $1, override_of = $2 WHERE id = $3',
+            [overrideReason, overridden.join(' | ').slice(0, 1500), (rows[0] as any).id]);
+          const who = staffRows[0] ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'A staff member';
+          await createAlert({
+            homeId, alertType: 'clock_out_with_reason', severity: 'warning', staffId,
+            recordId: (rows[0] as any).id, recordType: 'clock_event',
+            title: `${who} clocked out with work outstanding`,
+            description: `Outstanding: ${overridden.join('; ')}. Their reason: "${overrideReason}"`.slice(0, 1800),
+          });
+        } catch (ovErr) { logger.warn('Could not record clock-out override: ' + (ovErr as any)?.message); }
+      }
 
       res.status(201).json({
         success: true,

@@ -16,6 +16,9 @@ export default function ClockIn() {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState('')
   const [errorReason, setErrorReason] = useState('')
+  // When clock-out is refused for outstanding medication/tasks, staff can still
+  // clock out by saying why — it is recorded and sent to managers.
+  const [overrideReason, setOverrideReason] = useState('')
   const [eventType, setEventType] = useState<'clock_in' | 'clock_out'>('clock_in')
 
   useEffect(() => {
@@ -53,6 +56,7 @@ export default function ClockIn() {
               staffLng: pos.coords.longitude,
               accuracy: pos.coords.accuracy,
               eventType,
+              overrideReason: eventType === 'clock_out' && overrideReason.trim().length >= 5 ? overrideReason.trim() : undefined,
             }),
           })
           const data = await res.json()
@@ -255,6 +259,19 @@ export default function ClockIn() {
                   style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
                   Go complete them now
                 </button>
+              )}
+              {eventType === 'clock_out' && (errorReason === 'medication_incomplete' || errorReason === 'tasks_incomplete') && (
+                <div className="text-left mb-3 p-3 rounded-xl border border-white/15 bg-white/5">
+                  <p className="text-white text-sm font-semibold mb-1">Can't finish it? Clock out with a reason</p>
+                  <p className="text-slate-400 text-xs mb-2">Your manager will be told what was outstanding and what you wrote.</p>
+                  <textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)} rows={3}
+                    placeholder="e.g. Night staff are giving the 8pm medication; handed over to Sarah."
+                    className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm outline-none focus:border-amber-400/60" />
+                  <button onClick={() => { if (overrideReason.trim().length < 5) { setError('Please write a short reason (at least a few words) before clocking out.'); return } doClockIn() }}
+                    className="w-full mt-2 py-2.5 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors">
+                    Clock out anyway
+                  </button>
+                </div>
               )}
               {errorReason === 'no_shift_today' && (
                 <button onClick={() => navigate('/rota')}

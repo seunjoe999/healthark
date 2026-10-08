@@ -3042,6 +3042,8 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at DESC)`,
     `ALTER TABLE error_log ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'server'`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS auto_closed BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_reason TEXT`,
+    `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_of TEXT`,
     `DELETE FROM error_log WHERE created_at < NOW() - interval '60 days'`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
