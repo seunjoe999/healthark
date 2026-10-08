@@ -424,7 +424,7 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
       const homeId = fromToken(req, 'homeId');
 
       const existingRows = await query<any>(
-        'SELECT given_by, home_id, record_date FROM mar_records WHERE id = $1', [req.params.id]
+        'SELECT given_by, home_id, record_date, created_at FROM mar_records WHERE id = $1', [req.params.id]
       );
       if (!existingRows.length) throw new AppError('MAR record not found', 404);
       const record = existingRows[0];
@@ -445,7 +445,16 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
       // period at all (unlike daily records/tasks elsewhere, which allow amending
       // for 24h after clock-out). Aligned with the same shared 24h amend window so
       // medication records follow the same rule as the rest of the system.
-      if (!(await isWithinAmendWindow(staffId))) {
+      // Three ways to be allowed: the record itself is under 24 hours old (so the
+      // 30-60 minute outcome note can always be added, whether or not the person
+      // is clocked in or ever clocks in), the staff member is within their own
+      // 24-hour post-shift window, or they are management. The clock-based check
+      // alone refused a note on a dose given seconds earlier by anyone who had
+      // no clock-in on record.
+      const amendRole = fromToken(req, 'role');
+      const MAR_AMEND_MGMT = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+      const recordAgeHours = record.created_at ? (Date.now() - new Date(record.created_at).getTime()) / 3600000 : Infinity;
+      if (!(recordAgeHours <= 24) && !MAR_AMEND_MGMT.includes(amendRole) && !(await isWithinAmendWindow(staffId))) {
         throw new AppError('The 24-hour window to amend this record has passed.', 403);
       }
       if (amendingSomeoneElses) {
