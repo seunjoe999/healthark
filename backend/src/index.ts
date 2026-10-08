@@ -119,14 +119,14 @@ app.use('/api', (req, res, next) => {
       const code = res.statusCode;
       const msg = body && typeof body === 'object' ? String(body.error || body.message || '') : '';
       const sessionNoise = code === 401 && !/password|PIN|inactive/i.test(msg);
-      if (code >= 400 && !sessionNoise && !req.path.startsWith('/system/client-error')) {
+      if (code >= 400 && !sessionNoise && !String(req.originalUrl || '').includes('/system/client-error')) {
         let staffId: string | null = (req as any).staff?.staffId || null;
         if (!staffId) {
           try { const t = req.headers.authorization?.substring(7); if (t) staffId = (jwt.decode(t) as any)?.staffId || null; } catch { /* ignore */ }
         }
         pool.query(
           'INSERT INTO error_log (method, path, status_code, message, staff_id, source) VALUES ($1,$2,$3,$4,$5,$6)',
-          [req.method, ('/api' + req.path).slice(0, 300), code, (msg || 'No message').slice(0, 1000), staffId, 'server']
+          [req.method, String(req.originalUrl || req.url).split('?')[0].slice(0, 300), code, (msg || 'No message').slice(0, 1000), staffId, 'server']
         ).catch(() => {});
       }
     } catch { /* logging must never break a response */ }
