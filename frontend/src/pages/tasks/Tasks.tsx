@@ -508,6 +508,23 @@ export default function Tasks() {
           {/* Stats — act as sort/filter buttons, like the Pending/Completed/All
               pills below: the active one gets a solid fill so it's obvious
               which filter is currently applied, not just a faint outline. */}
+          {/* Overall progress for the day — one glance tells a manager how far
+              through today's tasks the shift is. */}
+          {residentFiltered.length > 0 && (() => {
+            const done = residentFiltered.filter(t => t.status === 'completed').length
+            const pct = Math.round((done / residentFiltered.length) * 100)
+            return (
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1">
+                  <span>{done} of {residentFiltered.length} tasks done</span>
+                  <span>{pct}% complete</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )
+          })()}
           <div className="grid grid-cols-3 gap-4 mb-6">
             {[
               { label: 'Total today', value: residentFiltered.length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', solid: 'bg-blue-600 border-blue-600', filterValue: 'all' as const },

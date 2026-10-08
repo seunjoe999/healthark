@@ -166,6 +166,17 @@ function getDisplayStatus(shift: any, now: Date): string {
   if (now.getTime() > shiftStart.getTime() + LATE_GRACE_MINS * 60000) return 'late'
   return 'filled'
 }
+// "17 min late" / "1h 10m late" for a shift whose staff clocked in after the
+// grace period. Empty when on time, not clocked in, or unassigned.
+function lateLabel(shift: any): string {
+  if (!shift?.staff_id || !shift.clock_in_time) return ''
+  const st = shift.start_time?.substring(0, 5) || '08:00'
+  const start = new Date(`${String(shift.shift_date).substring(0, 10)}T${st}:00`)
+  const mins = Math.round((new Date(shift.clock_in_time).getTime() - start.getTime()) / 60000)
+  // Over 12h "late" means the first clock-in of the day belonged to another shift.
+  if (!(mins > LATE_GRACE_MINS) || mins > 720) return ''
+  return mins < 60 ? `${mins} min late` : `${Math.floor(mins / 60)}h ${mins % 60}m late`
+}
 const SHIFT_RELATIONS: Record<string, { label: string; bg: string; text: string }> = {
   shadow:     { label: 'Shadow shift',     bg: '#ede9fe', text: '#5b21b6' },
   double_up:  { label: 'Double-up shift',  bg: '#fce7f3', text: '#9d174d' },
@@ -305,6 +316,8 @@ export default function Rota() {
   const [filterStaff, setFilterStaff] = useState('')
   const [filterLabel, setFilterLabel] = useState('')
   const [filterType,  setFilterType]  = useState('')
+  // "Only show unassigned shifts" — lets a manager see just the gaps left to fill.
+  const [filterUnfilled, setFilterUnfilled] = useState(false)
   // Individual = each resident's own rota (no service label). Service = shared-service
   // rota entries created via "Create Rota for Service" (has a label). "All" shows both
   // mixed together, which is how the grid behaved before this switch existed.
@@ -584,6 +597,7 @@ export default function Rota() {
     if (filterStaff) r = r.filter(s => s.staff_id === filterStaff)
     if (filterLabel) r = r.filter(s => s.label === filterLabel)
     if (filterType)  r = r.filter(s => s.shift_type === filterType)
+    if (filterUnfilled) r = r.filter(s => !s.staff_id)
     return r
   }
   const getDayLeaves = (day: Date) =>
@@ -750,8 +764,13 @@ export default function Rota() {
           <option value="">All Shift Types</option>
           {SHIFT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        {(filterSu || filterStaff || filterLabel || filterType) && (
-          <button onClick={() => { setFilterSu(''); setFilterStaff(''); setFilterLabel(''); setFilterType('') }}
+        <button onClick={() => setFilterUnfilled(v => !v)}
+          className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${filterUnfilled ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-200 text-slate-800 hover:bg-slate-50'}`}
+          title="Show only shifts with no staff assigned yet">
+          Unfilled only
+        </button>
+        {(filterSu || filterStaff || filterLabel || filterType || filterUnfilled) && (
+          <button onClick={() => { setFilterSu(''); setFilterStaff(''); setFilterLabel(''); setFilterType(''); setFilterUnfilled(false) }}
             className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100">
             <X className="w-3 h-3" /> Clear
           </button>
@@ -1058,6 +1077,10 @@ export default function Rota() {
                               ? 'Unfilled'
                               : `${ROLE_ABBR[shift.staff_role] || 'ST'} ${shift.staff_name?.split(' ')[0] || ''} ${(shift.staff_name?.split(' ')[1] || '')[0] || ''}`}
                           </p>
+                          {/* How late they actually clocked in — the colour alone doesn't say by how much. */}
+                          {lateLabel(shift) && (
+                            <p className="text-[10px] leading-tight font-bold truncate">{lateLabel(shift)}</p>
+                          )}
                           {height > 40 && (shift.label || shift.su_names || shift.su_name) && (
                             <p className="text-[10.5px] leading-tight truncate font-bold" title={shift.label || shift.su_names || shift.su_name}>
                               {shift.label || shift.su_names || shift.su_name}
