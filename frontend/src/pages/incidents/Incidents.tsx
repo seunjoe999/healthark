@@ -777,6 +777,119 @@ function IncidentAnalyticsPanel({ incidents, analytics, startDate, endDate }: {
         </div>
       )}
 
+      {/* Incident types by staff — which kinds of incident each staff member
+          has logged, so a pattern (one person, one type) stands out. */}
+      {(() => {
+        const types = Array.from(new Set(incidents.map(inc => TYPE_LABELS[inc.incident_type] || inc.incident_type || 'Unknown'))).sort()
+        const rows: Record<string, Record<string, number>> = {}
+        incidents.forEach(inc => {
+          const staff = inc.recorded_by_name || 'Unknown'
+          const t = TYPE_LABELS[inc.incident_type] || inc.incident_type || 'Unknown'
+          rows[staff] = rows[staff] || {}
+          rows[staff][t] = (rows[staff][t] || 0) + 1
+        })
+        const staffNames = Object.keys(rows).sort((x, y) => x.localeCompare(y))
+        if (!staffNames.length || !types.length) return null
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">Incident Types by Staff (logged by)</h3>
+            <div className="overflow-x-auto">
+              <table className="text-xs border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left font-bold text-slate-700 px-2 py-1.5 border-b border-slate-200 sticky left-0 bg-white">Staff</th>
+                    {types.map(t => <th key={t} className="font-semibold text-slate-600 px-2 py-1.5 border-b border-slate-200 whitespace-nowrap">{t}</th>)}
+                    <th className="font-bold text-slate-700 px-2 py-1.5 border-b border-slate-200">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffNames.map(n => (
+                    <tr key={n} className="odd:bg-slate-50">
+                      <td className="px-2 py-1.5 font-semibold text-slate-800 whitespace-nowrap sticky left-0 bg-inherit">{n}</td>
+                      {types.map(t => (
+                        <td key={t} className={`px-2 py-1.5 text-center ${rows[n][t] ? 'font-bold text-slate-900' : 'text-slate-300'}`}>{rows[n][t] || 0}</td>
+                      ))}
+                      <td className="px-2 py-1.5 text-center font-bold text-slate-900">{Object.values(rows[n]).reduce((x, y) => x + y, 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Physical intervention by service user */}
+      {(() => {
+        const by: Record<string, number> = {}
+        incidents.filter(inc => inc.physical_intervention).forEach(inc => {
+          const n = inc.resident_name || 'Unknown'
+          by[n] = (by[n] || 0) + 1
+        })
+        const entries = Object.entries(by).sort((x, y) => y[1] - x[1])
+        const max = Math.max(1, ...entries.map(e => e[1]))
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">Physical Intervention by Service User</h3>
+            {entries.length === 0
+              ? <p className="text-xs text-slate-500">No physical interventions recorded in this period.</p>
+              : <div className="space-y-2">{entries.map(([label, value]) => <HorizontalBar key={label} label={label} value={value} max={max} color="#dc2626" />)}</div>}
+          </div>
+        )
+      })()}
+
+      {/* Monthly incident report — a plain-English summary of each month,
+          ready to read out at a governance meeting or paste into a report. */}
+      {(() => {
+        const months: Record<string, any[]> = {}
+        incidents.forEach(inc => {
+          const d = (inc.incident_date || inc.record_date || '').toString().slice(0, 7)
+          if (!d) return
+          months[d] = months[d] || []
+          months[d].push(inc)
+        })
+        const keys = Object.keys(months).sort().reverse()
+        if (!keys.length) return null
+        const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="text-sm font-bold text-slate-700 mb-3">Monthly Incident Report</h3>
+            <div className="space-y-4">
+              {keys.map(k => {
+                const list = months[k]
+                const [y, m] = k.split('-').map(Number)
+                const title = new Date(y, (m || 1) - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+                const falls = list.filter(i => /fall|slip|trip/i.test(String(i.incident_type || ''))).length
+                const seizures = list.filter(i => /seizure/i.test(String(i.incident_type || ''))).length
+                const injuries = list.filter(i => i.injuries).length
+                const ambulance = list.filter(i => ['Ambulance Called', 'Both GP and Ambulance'].includes(i.medical_details)).length
+                const gp = list.filter(i => ['GP Called', 'Both GP and Ambulance'].includes(i.medical_details)).length
+                const witnessed = list.filter(i => i.witnessed_by && i.witnessed_by !== 'Nobody').length
+                const interventions = list.filter(i => i.physical_intervention).length
+                const people = Array.from(new Set(list.map(i => i.resident_name).filter(Boolean))).sort()
+                const locCount: Record<string, number> = {}
+                list.forEach(i => { if (i.location) locCount[i.location] = (locCount[i.location] || 0) + 1 })
+                const topLoc = Object.entries(locCount).sort((x, z) => z[1] - x[1])[0]
+                return (
+                  <div key={k} className="text-xs text-slate-700 leading-relaxed">
+                    <p className="font-bold text-slate-900 underline mb-1">{title}</p>
+                    <p>{plural(list.length, 'incident', 'incidents')} recorded this month.</p>
+                    <p>{plural(falls, 'was a fall/slip/trip', 'were falls/slips/trips')}.</p>
+                    <p>{plural(seizures, 'seizure', 'seizures')}.</p>
+                    <p>{plural(injuries, 'incident involved an injury', 'incidents involved an injury')}.</p>
+                    {people.length > 0 && <p>{people.join(', ')} {people.length === 1 ? 'was' : 'were'} involved.</p>}
+                    <p>{ambulance === 0 ? 'No ambulances were called' : `${plural(ambulance, 'ambulance', 'ambulances')} had to be called`}; {gp === 0 ? 'no GP was called' : `a GP was called ${plural(gp, 'time', 'times')}`}.</p>
+                    <p>{plural(witnessed, 'incident was witnessed', 'incidents were witnessed')}.</p>
+                    <p>{plural(interventions, 'physical intervention', 'physical interventions')}.</p>
+                    {topLoc && <p className="mt-1">The most common location was {topLoc[0]}.</p>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* CQC summary box */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
         <h3 className="text-sm font-bold text-slate-700 mb-2">CQC Evidence Summary</h3>
