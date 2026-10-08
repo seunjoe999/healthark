@@ -195,6 +195,9 @@ const RECURRENCE_OPTIONS = [
   { value: 'weekly', label: 'Specific Days' },
   { value: 'fortnightly', label: 'Fortnightly' },
   { value: 'every_3_weeks', label: 'Every 3 Weeks' },
+  { value: 'every_4_weeks', label: 'Every 4 Weeks' },
+  { value: 'every_6_weeks', label: 'Every 6 Weeks' },
+  { value: 'every_8_weeks', label: 'Every 8 Weeks' },
   { value: 'monthly', label: 'Monthly' },
 ]
 const NEEDS_DAY_PICKER = (r: string) => r !== 'daily' && r !== 'monthly'
@@ -204,6 +207,8 @@ function summarizeRecurrence(recurrence: string, daysOfWeek: number[]): string {
   const days = daysOfWeek.map(d => DAY_SHORT[d]).join(', ')
   if (recurrence === 'fortnightly') return `${days} — fortnightly`
   if (recurrence === 'every_3_weeks') return `${days} — every 3 weeks`
+  const everyN = /^every_(d+)_weeks$/.exec(recurrence)
+  if (everyN) return `${days} — every ${everyN[1]} weeks`
   return days
 }
 

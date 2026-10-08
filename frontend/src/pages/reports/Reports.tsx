@@ -14,7 +14,12 @@ const REPORT_TYPES = [
   { value: 'calendar', label: 'Calendar & Appointments', description: 'Everything added to the calendar' },
   { value: 'care-plan-compliance', label: 'Care Plan Compliance', description: 'Review status and overdue plans' },
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
+  { value: 'cancelled-shifts', label: 'Cancelled Shifts', description: 'Shifts cancelled, with the reason' },
+  { value: 'careplan-review-matrix', label: 'Careplan Review Matrix', description: 'Care plan, risk assessment and MAR review dates per person' },
+  { value: 'clocked-in-integrity', label: 'Clocked In Integrity', description: 'Shift start against actual clock-in' },
   { value: 'daily-records', label: 'Daily Records', description: 'All care records for a date range' },
+  { value: 'delivered-hours', label: 'Delivered Hours', description: "Rota'd hours and clock-ins per staff member" },
+  { value: 'documents-matrix', label: 'Documents Matrix', description: 'DBS, right to work, references and training per staff member' },
   { value: 'fluid', label: 'Fluid Intake', description: 'Fluid totals and threshold alerts' },
   { value: 'incident-analysis', label: 'Incident Analysis', description: 'Analysis of incident patterns' },
   { value: 'incidents', label: 'Incidents', description: 'All incident reports' },
@@ -24,7 +29,10 @@ const REPORT_TYPES = [
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
   { value: 'staff-attendance', label: 'Staff Attendance', description: 'Clock in/out history' },
   { value: 'system-activity', label: 'System Activity', description: 'Anything done on the system, by any staff member' },
+  { value: 'tasks-not-completed', label: 'Tasks Not Completed', description: 'Tasks that were due and never done' },
   { value: 'training-compliance', label: 'Training Compliance', description: 'Expiring and expired certificates' },
+  { value: 'weekly-summary', label: 'Weekly Summary', description: 'Incidents, falls, seizures, bowel records and visits per person' },
+  { value: 'wellbeing', label: 'Well Being', description: 'Average weight, blood pressure and observations per person' },
 ]
 
 // Kept in sync with RECORD_TYPES in pages/daily-records/DailyRecords.tsx — this list drives the

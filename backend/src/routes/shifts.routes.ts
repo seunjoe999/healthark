@@ -75,7 +75,7 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
   // just against a different interval — so one map covers all of them instead of
   // a separate if-branch per option.
   const WEEK_INTERVALS: Record<string, number> = {
-    biweekly: 2, every_other_week: 2, fortnightly: 2, every_3_weeks: 3,
+    biweekly: 2, every_other_week: 2, fortnightly: 2, every_3_weeks: 3, every_4_weeks: 4, every_6_weeks: 6, every_8_weeks: 8,
   };
 
   const dateStrs: string[] = [];

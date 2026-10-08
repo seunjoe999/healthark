@@ -299,6 +299,232 @@ router.get('/care-plan-reviews', async (req: Request, res: Response, next: NextF
   } catch (err) { next(err); }
 });
 
+// ── Management reports ────────────────────────────────────────────
+// Each returns flat rows with plain-English column names; the Reports page
+// renders them as-is, so the SELECT column order is the on-screen order.
+const REPORT_MGMT_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+function reportRange(req: Request): { homeId: string; fromDate: string; toDate: string; suId: string | null } {
+  const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+  const { from, to, suId } = req.query as Record<string, string>;
+  const ok = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  return {
+    homeId,
+    fromDate: ok(from) ? from : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    toDate: ok(to) ? to : ukDateStr(),
+    suId: suId && /^[0-9a-f-]{36}$/i.test(suId) ? suId : null,
+  };
+}
+
+// Care plan / risk assessment / MAR review dates for every live service user in one grid.
+router.get('/careplan-review-matrix', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, suId } = reportRange(req);
+    const rows = await query(
+      `SELECT service_user,
+              to_char(cp_last, 'DD Mon YYYY') AS care_plan_last_reviewed,
+              to_char(cp_next, 'DD Mon YYYY') AS care_plan_next_due,
+              to_char(ra_last, 'DD Mon YYYY') AS risk_assessment_last_reviewed,
+              to_char(ra_next, 'DD Mon YYYY') AS risk_assessment_next_due,
+              to_char(mar_last, 'DD Mon YYYY') AS mar_last_reviewed,
+              to_char(mar_next, 'DD Mon YYYY') AS mar_review_next_due,
+              CASE WHEN LEAST(cp_next, ra_next, mar_next) < CURRENT_DATE THEN 'Overdue'
+                   WHEN LEAST(cp_next, ra_next, mar_next) < CURRENT_DATE + 14 THEN 'Due within 14 days'
+                   WHEN cp_next IS NULL AND ra_next IS NULL AND mar_next IS NULL THEN 'No review dates set'
+                   ELSE 'Up to date' END AS status
+       FROM (
+         SELECT su.first_name || ' ' || su.last_name AS service_user,
+           (SELECT MAX(cp.last_review_date) FROM care_plans cp WHERE cp.su_id = su.id) AS cp_last,
+           (SELECT MIN(cp.next_review_date) FROM care_plans cp WHERE cp.su_id = su.id) AS cp_next,
+           (SELECT MAX(ra.last_review_date) FROM risk_assessments ra WHERE ra.su_id = su.id) AS ra_last,
+           (SELECT MIN(ra.next_review_date) FROM risk_assessments ra WHERE ra.su_id = su.id) AS ra_next,
+           (SELECT MAX(a.assessment_date) FROM assessments a WHERE a.subject_id = su.id AND a.template_key = 'mar_review') AS mar_last,
+           (SELECT MAX(a.next_review_date) FROM assessments a WHERE a.subject_id = su.id AND a.template_key = 'mar_review') AS mar_next
+         FROM service_users su
+         WHERE su.home_id = $1 AND su.status = 'live' AND ($2::uuid IS NULL OR su.id = $2::uuid)
+       ) x ORDER BY service_user`,
+      [homeId, suId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Hours each staff member was rota'd for in the period, and how many of those shifts they clocked in to.
+router.get('/delivered-hours', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate } = reportRange(req);
+    const rows = await query(
+      `SELECT s.first_name || ' ' || s.last_name AS staff,
+              COUNT(*) AS shifts,
+              ROUND(SUM(EXTRACT(EPOCH FROM (CASE WHEN sh.end_time <= sh.start_time
+                    THEN sh.end_time - sh.start_time + interval '24 hours'
+                    ELSE sh.end_time - sh.start_time END)) / 3600)::numeric, 2) AS rota_hours,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM staff_clock_events ce WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in'
+                  AND (ce.event_time AT TIME ZONE 'Europe/London')::date = sh.shift_date)) AS shifts_clocked_in,
+              COUNT(*) FILTER (WHERE sh.shift_date < CURRENT_DATE AND NOT EXISTS (
+                SELECT 1 FROM staff_clock_events ce WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in'
+                  AND (ce.event_time AT TIME ZONE 'Europe/London')::date = sh.shift_date)) AS shifts_not_clocked_in,
+              s.contracted_hours AS contracted_hours_per_week
+       FROM staff_shifts sh JOIN staff s ON s.id = sh.staff_id
+       WHERE sh.home_id = $1 AND sh.shift_date BETWEEN $2::date AND $3::date AND sh.status <> 'cancelled'
+       GROUP BY s.id, s.first_name, s.last_name, s.contracted_hours
+       ORDER BY 1`,
+      [homeId, fromDate, toDate]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Shifts cancelled in the period, with the recorded reason.
+router.get('/cancelled-shifts', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate } = reportRange(req);
+    const rows = await query(
+      `SELECT to_char(sh.shift_date, 'Dy DD Mon YYYY') AS shift_date,
+              to_char(sh.start_time, 'HH24:MI') || ' - ' || to_char(sh.end_time, 'HH24:MI') AS shift_time,
+              COALESCE(sh.label, su.first_name || ' ' || su.last_name, '—') AS service,
+              COALESCE(s.first_name || ' ' || s.last_name, 'Unfilled') AS staff,
+              COALESCE(sh.cancel_reason, 'No reason recorded') AS reason,
+              COALESCE(cb.first_name || ' ' || cb.last_name, '—') AS cancelled_by,
+              to_char(sh.cancelled_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY HH24:MI') AS cancelled_on
+       FROM staff_shifts sh
+       LEFT JOIN staff s ON s.id = sh.staff_id
+       LEFT JOIN staff cb ON cb.id = sh.cancelled_by
+       LEFT JOIN service_users su ON su.id = sh.su_id
+       WHERE sh.home_id = $1 AND sh.status = 'cancelled' AND sh.shift_date BETWEEN $2::date AND $3::date
+       ORDER BY sh.shift_date DESC, sh.start_time`,
+      [homeId, fromDate, toDate]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Scheduled start vs actual clock-in for every staffed shift in the period.
+router.get('/clocked-in-integrity', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate } = reportRange(req);
+    const rows = await query(
+      `SELECT to_char(sh.shift_date, 'Dy DD Mon YYYY') AS shift_date,
+              to_char(sh.start_time, 'HH24:MI') || ' - ' || to_char(sh.end_time, 'HH24:MI') AS shift_time,
+              s.first_name || ' ' || s.last_name AS staff,
+              COALESCE(sh.label, su.first_name || ' ' || su.last_name, '—') AS service,
+              to_char(ci.t, 'HH24:MI') AS clocked_in,
+              to_char(co.t, 'HH24:MI') AS clocked_out,
+              CASE WHEN ci.t IS NULL THEN 'Did not clock in'
+                   WHEN EXTRACT(EPOCH FROM (ci.t - (sh.shift_date + sh.start_time))) / 60 > 15
+                     THEN ROUND(EXTRACT(EPOCH FROM (ci.t - (sh.shift_date + sh.start_time))) / 60)::int || ' min late'
+                   ELSE 'On time' END AS result
+       FROM staff_shifts sh
+       JOIN staff s ON s.id = sh.staff_id
+       LEFT JOIN service_users su ON su.id = sh.su_id
+       LEFT JOIN LATERAL (SELECT MIN(ce.event_time AT TIME ZONE 'Europe/London') AS t FROM staff_clock_events ce
+                          WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in'
+                            AND (ce.event_time AT TIME ZONE 'Europe/London')::date = sh.shift_date) ci ON TRUE
+       LEFT JOIN LATERAL (SELECT MAX(ce.event_time AT TIME ZONE 'Europe/London') AS t FROM staff_clock_events ce
+                          WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_out'
+                            AND (ce.event_time AT TIME ZONE 'Europe/London')::date = sh.shift_date) co ON TRUE
+       WHERE sh.home_id = $1 AND sh.shift_date BETWEEN $2::date AND LEAST($3::date, CURRENT_DATE)
+         AND sh.status <> 'cancelled'
+       ORDER BY sh.shift_date DESC, sh.start_time, staff`,
+      [homeId, fromDate, toDate]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Per service user: what was recorded in the period (incidents, falls, bowel, visits, PRN...).
+router.get('/weekly-summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate, suId } = reportRange(req);
+    const rows = await query(
+      `SELECT su.first_name || ' ' || su.last_name AS service_user,
+              COUNT(dr.id) AS total_records,
+              COUNT(dr.id) FILTER (WHERE dr.record_type = 'incident') AS incidents,
+              COUNT(dr.id) FILTER (WHERE dr.record_type = 'incident' AND ri.incident_type ILIKE '%fall%') AS falls,
+              COUNT(dr.id) FILTER (WHERE dr.record_type = 'incident' AND ri.incident_type ILIKE '%seizure%') AS seizures,
+              COUNT(dr.id) FILTER (WHERE dr.record_type IN ('bowel', 'bowel_movement')) AS bowel_records,
+              COUNT(dr.id) FILTER (WHERE dr.record_type = 'visit') AS visits,
+              COUNT(dr.id) FILTER (WHERE dr.record_type = 'prn_medication') AS prn_given
+       FROM service_users su
+       LEFT JOIN daily_records dr ON dr.su_id = su.id AND dr.record_date BETWEEN $2::date AND $3::date
+       LEFT JOIN records_incidents ri ON ri.daily_record_id = dr.id
+       WHERE su.home_id = $1 AND su.status = 'live' AND ($4::uuid IS NULL OR su.id = $4::uuid)
+       GROUP BY su.id, su.first_name, su.last_name
+       ORDER BY 1`,
+      [homeId, fromDate, toDate, suId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Average observations per service user over the period.
+router.get('/wellbeing', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate, suId } = reportRange(req);
+    const rows = await query(
+      `SELECT su.first_name || ' ' || su.last_name AS service_user,
+              EXTRACT(YEAR FROM age(su.date_of_birth))::int AS age,
+              ROUND(AVG(v.weight_kg)::numeric, 1) AS average_weight_kg,
+              ROUND(AVG(v.systolic)::numeric, 0) || '/' || ROUND(AVG(v.diastolic)::numeric, 0) AS average_blood_pressure,
+              ROUND(AVG(v.pulse)::numeric, 0) AS average_pulse,
+              ROUND(AVG(v.temp_celsius)::numeric, 1) AS average_temperature,
+              ROUND(AVG(v.spo2_percent)::numeric, 0) AS average_oxygen_percent,
+              COUNT(v.id) AS readings
+       FROM service_users su
+       LEFT JOIN daily_records dr ON dr.su_id = su.id AND dr.record_date BETWEEN $2::date AND $3::date
+       LEFT JOIN records_vitals v ON v.daily_record_id = dr.id
+       WHERE su.home_id = $1 AND su.status = 'live' AND ($4::uuid IS NULL OR su.id = $4::uuid)
+       GROUP BY su.id, su.first_name, su.last_name, su.date_of_birth
+       ORDER BY 1`,
+      [homeId, fromDate, toDate, suId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Tasks that were due in the period and never completed.
+router.get('/tasks-not-completed', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate, suId } = reportRange(req);
+    const rows = await query(
+      `SELECT to_char(t.task_date, 'Dy DD Mon YYYY') AS task_date,
+              COALESCE(t.due_time, '—') AS due_time,
+              t.title AS task,
+              COALESCE(t.category, '—') AS category,
+              COALESCE(su.first_name || ' ' || su.last_name, '—') AS service_user,
+              t.status
+       FROM tasks t LEFT JOIN service_users su ON su.id = t.su_id
+       WHERE t.home_id = $1 AND t.task_date BETWEEN $2::date AND LEAST($3::date, CURRENT_DATE)
+         AND t.status <> 'completed' AND ($4::uuid IS NULL OR t.su_id = $4::uuid)
+       ORDER BY t.task_date DESC, t.due_time`,
+      [homeId, fromDate, toDate, suId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// One row per active staff member: which compliance documents are on file.
+router.get('/documents-matrix', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId } = reportRange(req);
+    const rows = await query(
+      `SELECT s.first_name || ' ' || s.last_name AS staff,
+              REPLACE(s.role::text, '_', ' ') AS job_role,
+              s.contracted_hours AS contracted_hours,
+              COALESCE((SELECT to_char(MAX(d.issue_date), 'DD Mon YYYY') FROM staff_dbs d WHERE d.staff_id = s.id), 'Missing') AS dbs_issued,
+              COALESCE((SELECT to_char(MAX(d.expiry_date), 'DD Mon YYYY') FROM staff_dbs d WHERE d.staff_id = s.id), '—') AS dbs_expires,
+              CASE WHEN EXISTS (SELECT 1 FROM staff_right_to_work r WHERE r.staff_id = s.id) THEN 'On file' ELSE 'Missing' END AS right_to_work,
+              (SELECT COUNT(*) FROM staff_references r WHERE r.staff_id = s.id) AS references_on_file,
+              (SELECT COUNT(*) FROM staff_training t WHERE t.staff_id = s.id) AS training_records
+       FROM staff s
+       WHERE s.home_id = $1 AND s.is_active = TRUE
+       ORDER BY 1`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // Safeguarding report
 router.get('/safeguarding', async (req: Request, res: Response, next: NextFunction) => {
   try {
