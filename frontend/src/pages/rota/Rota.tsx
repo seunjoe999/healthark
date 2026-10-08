@@ -335,7 +335,7 @@ function layoutShiftLanes(dayShifts: any[]): { layout: Map<string, { col: number
 // regardless of how many staff are on at once, so blocks stay readable; the grid
 // scrolls horizontally instead (see layoutShiftLanes above).
 const LANE_MIN_WIDTH = 130
-const DAY_MIN_WIDTH = 210
+const DAY_MIN_WIDTH = 170
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
