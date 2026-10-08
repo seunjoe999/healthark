@@ -2962,6 +2962,9 @@ async function ensureColumns() {
     // instead of deleting it, and a finished shift can be ticked as reviewed
     // by a manager (shift auditor).
     `ALTER TABLE staff_leave ADD COLUMN IF NOT EXISTS hours_deducted DECIMAL(6,2)`,
+    // Open shifts: a manager advertises unfilled shifts, staff offer to cover them.
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancelled_by UUID`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,

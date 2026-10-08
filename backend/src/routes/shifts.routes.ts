@@ -941,6 +941,77 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
   }
 );
 
+// ── Open shifts ───────────────────────────────────────────────────
+// GET /api/shifts/open — advertised, still-unfilled shifts from today onwards. Any staff member can see these.
+router.get('/open', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const rows = await query<any>(
+      `SELECT sh.id, sh.shift_date, sh.start_time, sh.end_time, sh.shift_type, sh.label, sh.cover_offers, sh.advertised_at,
+              (SELECT string_agg(su2.first_name || ' ' || su2.last_name, ', ' ORDER BY su2.first_name)
+                 FROM service_users su2 WHERE su2.id = ANY(COALESCE(sh.su_ids, ARRAY[sh.su_id]))) AS su_names
+       FROM staff_shifts sh
+       WHERE sh.home_id = $1 AND sh.advertised_at IS NOT NULL AND sh.staff_id IS NULL
+         AND sh.status <> 'cancelled' AND sh.shift_date >= CURRENT_DATE
+       ORDER BY sh.shift_date, sh.start_time LIMIT 300`, [homeId]);
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// POST /api/shifts/advertise — mark unfilled shifts as open and tell care staff.
+router.post('/advertise', requireRole(...MANAGE_ROLES), [body('ids').isArray({ min: 1, max: 500 }), body('ids.*').isUUID()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await query<any>(
+        `UPDATE staff_shifts SET advertised_at = NOW()
+         WHERE id = ANY($1::uuid[]) AND staff_id IS NULL AND status <> 'cancelled' RETURNING id, home_id`, [req.body.ids]);
+      const homes = Array.from(new Set(rows.map((r: any) => r.home_id)));
+      for (const h of homes) {
+        const n = rows.filter((r: any) => r.home_id === h).length;
+        try {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+             SELECT s.id, $1, $2, $3, 'shift', '/rota' FROM staff s
+             WHERE s.home_id = $1 AND s.is_active = TRUE AND s.role::text IN ('care_staff', 'senior_carer', 'team_leader')`,
+            [h, `${n} open shift${n !== 1 ? 's' : ''} available`, 'Shifts need cover. Open the rota and tap "Open shifts" to offer to work one.']);
+        } catch { /* notifying is best-effort */ }
+      }
+      res.json({ success: true, data: { count: rows.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/shifts/:id/offer — a staff member offers to cover an open shift (or withdraws the offer).
+router.post('/:id/offer', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const withdraw = req.body.withdraw === true;
+      const sh = await query<any>('SELECT * FROM staff_shifts WHERE id = $1', [req.params.id]);
+      if (!sh[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
+      if (sh[0].staff_id || !sh[0].advertised_at) return res.status(400).json({ success: false, error: 'This shift is no longer open' } as ApiResponse);
+      const me = await query<any>('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
+      const name = me[0] ? `${me[0].first_name} ${me[0].last_name}` : 'Staff';
+      const existing: any[] = Array.isArray(sh[0].cover_offers) ? sh[0].cover_offers : [];
+      const others = existing.filter(o => o.staffId !== staffId);
+      const next = withdraw ? others : [...others, { staffId, name, at: new Date().toISOString() }];
+      await query('UPDATE staff_shifts SET cover_offers = $1::jsonb WHERE id = $2', [JSON.stringify(next), req.params.id]);
+      if (!withdraw && !existing.some(o => o.staffId === staffId)) {
+        try {
+          await query(
+            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+             SELECT s.id, $1, $2, $3, 'shift', '/rota' FROM staff s
+             WHERE s.home_id = $1 AND s.is_active = TRUE AND s.role::text = ANY($4::text[])`,
+            [sh[0].home_id, `${name} can cover an open shift`,
+             `${String(sh[0].shift_date).substring(0, 10)} ${String(sh[0].start_time).substring(0, 5)}–${String(sh[0].end_time).substring(0, 5)}${sh[0].label ? ' · ' + sh[0].label : ''}. Open the shift on the rota to assign them.`,
+             [...MANAGE_ROLES]]);
+        } catch { /* best-effort */ }
+      }
+      res.json({ success: true, data: { cover_offers: next } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/shifts/:id/series-stats — totals for the repeating series this shift
 // belongs to (same template), so a manager can see how much of it is covered.
 router.get('/:id/series-stats', param('id').isUUID(), validateRequest,

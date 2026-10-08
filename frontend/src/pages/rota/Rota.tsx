@@ -358,6 +358,7 @@ export default function Rota() {
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [adjustPickerOpen, setAdjustPickerOpen] = useState(false)
   const [auditorOpen, setAuditorOpen] = useState(false)
+  const [openShiftsOpen, setOpenShiftsOpen] = useState(false)
   // Bulk changes to every highlighted shift: time slot, shift type, cancel, reinstate.
   const [bulkBusy, setBulkBusy] = useState(false)
   const runBulkChange = async (kind: string) => {
@@ -383,6 +384,17 @@ export default function Rota() {
       if (reason === null) return
       build = (s) => api.put(`/shifts/${s.id}/status`, { status: 'cancelled', cancelReason: reason.trim() || undefined })
       label = 'cancelled'
+    } else if (kind === 'advertise') {
+      setBulkBusy(true)
+      try {
+        const res = await api.post('/shifts/advertise', { ids })
+        const n = res.data?.data?.count ?? 0
+        if (n) toast.success(`${n} unfilled shift${n !== 1 ? 's' : ''} advertised to staff`)
+        else toast.error('None of the highlighted shifts are unfilled — only shifts with no staff can be advertised')
+        clearSelection(); loadAll()
+      } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not advertise') }
+      finally { setBulkBusy(false) }
+      return
     } else if (kind === 'reinstate') {
       build = (s) => s.status === 'cancelled'
         ? api.put(`/shifts/${s.id}/status`, { status: s.staff_id ? 'filled' : 'unfilled' })
@@ -796,6 +808,11 @@ export default function Rota() {
             <Trash2 className="w-3 h-3" /> Manage Services
           </button>
         )}
+        <button onClick={() => setOpenShiftsOpen(true)}
+          className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+          title="Shifts that need cover — staff can offer to work them">
+          <Users className="w-3 h-3" /> Open shifts{shifts.filter(s => s.advertised_at && !s.staff_id && s.status !== 'cancelled').length > 0 ? ` (${shifts.filter(s => s.advertised_at && !s.staff_id && s.status !== 'cancelled').length})` : ''}
+        </button>
         <button onClick={() => setSwapPanelOpen(v => !v)}
           className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
           title="View shift swap requests">
@@ -856,6 +873,7 @@ export default function Rota() {
               <optgroup label="Change shift type to">
                 {SHIFT_TYPES.map(t => <option key={t.value} value={`type:${t.value}`}>{t.label}</option>)}
               </optgroup>
+              <option value="advertise">Advertise to staff as open shifts</option>
               <option value="cancel">Cancel shifts (keep on rota with a reason)</option>
               <option value="reinstate">Reinstate cancelled shifts</option>
             </select>
@@ -1246,6 +1264,10 @@ export default function Rota() {
         />
       )}
 
+      {openShiftsOpen && (
+        <OpenShiftsModal homeId={selectedHome} myId={user?.id || ''} canManage={canManage}
+          onClose={() => { setOpenShiftsOpen(false); loadAll() }} />
+      )}
       {auditorOpen && (
         <ShiftAuditorModal shifts={shifts} onClose={() => setAuditorOpen(false)}
           onReviewed={(id, data) => setShifts(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))} />
@@ -2159,6 +2181,61 @@ function AdjustShiftPicker({ shifts, onClose, onPick }: {
 
 // ── Shift Detail Modal ────────────────────────────────────────────────────────
 
+// Open shifts — unfilled shifts a manager has advertised. Staff tap "I can cover
+// this"; managers see who offered and assign from the shift itself.
+function OpenShiftsModal({ homeId, myId, canManage, onClose }: { homeId: string; myId: string; canManage: boolean; onClose: () => void }) {
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<string | null>(null)
+  const load = () => {
+    setLoading(true)
+    api.get('/shifts/open', { params: { homeId } })
+      .then(res => setRows(res.data?.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+  useEffect(() => { load() }, [homeId])
+  const offer = async (s: any, withdraw: boolean) => {
+    setBusy(s.id)
+    try {
+      const res = await api.post(`/shifts/${s.id}/offer`, { withdraw })
+      setRows(prev => prev.map(r => r.id === s.id ? { ...r, cover_offers: res.data.data.cover_offers } : r))
+      toast.success(withdraw ? 'Offer withdrawn' : 'Offer sent — a manager will confirm')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not update'); load() }
+    finally { setBusy(null) }
+  }
+  return (
+    <Modal open={true} onClose={onClose} title={`Open shifts (${rows.length})`} size="lg">
+      {loading ? <p className="text-sm text-slate-500 py-6 text-center">Loading…</p> : rows.length === 0 ? (
+        <p className="text-sm text-slate-500 py-6 text-center">
+          No open shifts right now.{canManage ? ' To advertise one, highlight unfilled shifts on the rota and choose "Advertise to staff" under More bulk actions.' : ''}
+        </p>
+      ) : (
+        <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+          {rows.map(s => {
+            const offers: any[] = Array.isArray(s.cover_offers) ? s.cover_offers : []
+            const mine = offers.some(o => o.staffId === myId)
+            return (
+              <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900">
+                    {format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM')} · {s.start_time?.substring(0, 5)}–{s.end_time?.substring(0, 5)}
+                  </p>
+                  <p className="text-xs text-slate-600 truncate">{s.label || s.su_names || 'Shift'}</p>
+                  {offers.length > 0 && <p className="text-xs text-emerald-700 mt-0.5">Offered: {offers.map(o => o.name).join(', ')}</p>}
+                </div>
+                <Button size="sm" variant={mine ? 'outline' : 'gold'} loading={busy === s.id} onClick={() => offer(s, mine)}>
+                  {mine ? 'Withdraw offer' : 'I can cover this'}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 // Shift Auditor — every finished, staffed shift in the period on screen, with
 // when the staff member actually clocked in/out, for a manager to tick as reviewed.
 function ShiftAuditorModal({ shifts, onClose, onReviewed }: {
@@ -2419,6 +2496,12 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           )}
         </div>
 
+        {!shift.staff_id && Array.isArray(shift.cover_offers) && shift.cover_offers.length > 0 && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+            <span className="font-bold">Offered to cover:</span> {shift.cover_offers.map((o: any) => o.name).join(', ')}
+            {canManage && <span className="block text-emerald-700 mt-0.5">Use Assign / Reallocate below to give them the shift.</span>}
+          </div>
+        )}
         {seriesStats && (
           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
             <p className="font-bold text-slate-900 mb-0.5">This shift is part of a repeating series</p>

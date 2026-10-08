@@ -567,12 +567,20 @@ export default function Holidays() {
 // now request any days, including weekends; management decides at approval
 // time whether it's actually grantable. Matches the same all-days fallback
 // staff-hr/leave/:id/approve now uses when no explicit hours are stored.
-function countWeekdays(startDate: string, endDate: string): number {
+function countWeekdays(startDate: string, endDate: string, includeWeekends = true): number {
   if (!startDate || !endDate) return 0
   const start = new Date(startDate)
   const end = new Date(endDate)
   if (end < start) return 0
-  return Math.round((end.getTime() - start.getTime()) / 86400000) + 1
+  const total = Math.round((end.getTime() - start.getTime()) / 86400000) + 1
+  if (includeWeekends) return total
+  // Count Monday–Friday only, for staff who don't work weekends.
+  let n = 0
+  for (let i = 0; i < total; i++) {
+    const d = new Date(start.getTime() + i * 86400000).getUTCDay()
+    if (d !== 0 && d !== 6) n++
+  }
+  return n
 }
 
 function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId, onSaved }: {
@@ -583,7 +591,8 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
   const options = staffList.map(s => ({ value: s.id, label: `${s.first_name || s.firstName} ${s.last_name || s.lastName}` }))
 
-  const dayCount = countWeekdays(form.startDate, form.endDate)
+  const [includeWeekends, setIncludeWeekends] = useState(true)
+  const dayCount = countWeekdays(form.startDate, form.endDate, includeWeekends)
   const hoursPerDayNum = parseFloat(form.hoursPerDay) || 0
   const totalHours = dayCount * hoursPerDayNum
 
@@ -611,6 +620,13 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
         <div className="grid grid-cols-2 gap-3">
           <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Include weekends?</label>
+          <select className="input" value={includeWeekends ? 'yes' : 'no'} onChange={e => setIncludeWeekends(e.target.value === 'yes')}>
+            <option value="yes">Yes — count Saturdays and Sundays</option>
+            <option value="no">No — count Monday to Friday only</option>
+          </select>
         </div>
         <Input label="Hours per day *" type="number" step="0.5" required value={form.hoursPerDay} onChange={e => set('hoursPerDay', e.target.value)}
           hint="e.g. 11 — the system multiplies this by the number of days in the range" />
