@@ -419,12 +419,15 @@ export function startScheduler(): void {
   // worked yesterday and wrote no daily record.
   cron.schedule('*/15 * * * *', async () => { await alertsService.checkClockedInTooFar(); }, UK_TZ);
   cron.schedule('45 9 * * *', async () => { await alertsService.checkNoNotesWritten(); }, UK_TZ);
+  // Hourly: clock out anyone still "clocked in" 16+ hours after their clock-in.
+  cron.schedule('5 * * * *', async () => { await alertsService.autoClockOutStaleSessions(); }, UK_TZ);
   // 7:15am: sensitive dates today or tomorrow.
   cron.schedule('15 7 * * *', async () => { await alertsService.checkSensitiveDates(); }, UK_TZ);
   // Hourly: clear alerts that have passed their home's auto-clear time.
   cron.schedule('20 * * * *', async () => { await alertsService.autoClearAlerts(); }, UK_TZ);
 
   setTimeout(() => {
+    alertsService.autoClockOutStaleSessions().catch(() => {});
     alertsService.checkFluidIntake().catch(() => {});
     alertsService.checkLowMedicationStock().catch(() => {});
   }, 45000);

@@ -69,6 +69,7 @@ const ALERT_TYPE_LABELS: Record<string, string> = {
   clocked_in_too_far: 'Clocked in away from the service',
   no_notes_written: 'Worked a shift without writing a daily record',
   sensitive_date: 'Sensitive date for a service user',
+  auto_clocked_out: 'Staff clocked out automatically',
 };
 
 // GET /api/alerts/settings — every alert type this home uses, with its on/off and auto-clear setting.

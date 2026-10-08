@@ -7,6 +7,7 @@ import { query } from '../config/database';
 // Keep a record of every server-side failure (not ordinary "not allowed" /
 // validation refusals) for the System Health page. Never allowed to throw.
 function recordError(req: Request, statusCode: number, message: string): void {
+  if ((req as any).__issueLogged) return; // the /api issue logger in index.ts records it
   try {
     query(
       'INSERT INTO error_log (method, path, status_code, message, staff_id) VALUES ($1,$2,$3,$4,$5)',

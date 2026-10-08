@@ -15,6 +15,7 @@ installPeriodicVersionCheck()
 class GlobalBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
+  componentDidCatch(error: any) { try { (window as any).__haReport?.(`Screen crashed: ${error?.message || String(error)}`) } catch { /* ignore */ } }
   render() {
     if (this.state.hasError) {
       return (
@@ -27,6 +28,33 @@ class GlobalBoundary extends React.Component<{children: React.ReactNode}, {hasEr
     return this.props.children;
   }
 }
+
+// Report browser-side crashes to the System Health issue log, so a screen
+// that breaks on someone's phone is seen without them having to describe it.
+// Capped per page load so a looping error cannot flood the log.
+let __reported = 0
+const __reportClientError = (message: string) => {
+  try {
+    if (__reported >= 5 || !message) return
+    const token = sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
+    if (!token) return
+    __reported++
+    fetch('/api/system/client-error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ message: String(message).slice(0, 900), page: window.location.pathname }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch { /* never let reporting cause another error */ }
+}
+;(window as any).__haReport = __reportClientError
+window.addEventListener('error', e => __reportClientError(`${e.message || 'Script error'}${e.filename ? ` (${String(e.filename).split('/').pop()}:${e.lineno})` : ''}`))
+window.addEventListener('unhandledrejection', e => {
+  const r: any = (e as PromiseRejectionEvent).reason
+  // Failed API calls are already recorded by the server; only report genuine code errors.
+  if (r && (r.isAxiosError || r.response)) return
+  __reportClientError(`Unhandled: ${r?.message || String(r)}`)
+})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -5,14 +5,17 @@ import { Spinner, Button } from '../../components/ui'
 import { RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 
-// System Health — shows whether anything is quietly going wrong (server
-// errors, staff left clocked in, alerts building up) so it is seen here first
-// rather than reported by staff days later.
+// System Health — the issue log. Every action the system refused or failed
+// (a blocked clock-out, a form that would not save, a screen that crashed on
+// someone's phone) is recorded automatically with who, where and the exact
+// message they saw, so it is seen here first rather than reported days later.
 export default function SystemHealth() {
   const { user } = useAuth()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState('')
+  const [area, setArea] = useState('')
+  const [kind, setKind] = useState<'' | 'error' | 'refused'>('')
 
   const load = async () => {
     setLoading(true); setFailed('')
@@ -31,13 +34,24 @@ export default function SystemHealth() {
       {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
     </div>
   )
+  const KindBadge = ({ k }: { k: string }) => (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${k === 'error' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+      {k === 'error' ? 'Fault' : 'Refused'}
+    </span>
+  )
+
+  const match = (r: any) => (!area || r.area === area) && (!kind || r.kind === kind)
+  const copyIssues = () => {
+    const lines = (data?.topIssues || []).filter(match).map((t: any) => `[${t.area}] x${t.times} (${t.people} people, last ${t.last_seen}) — ${t.message}`)
+    navigator.clipboard?.writeText(lines.join('\n')).then(() => alert('Copied — paste it to your developer.')).catch(() => {})
+  }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">System Health</h1>
-          <p className="text-sm text-slate-500">What the system has run into on its own. Check this weekly, or when staff report a problem.</p>
+          <p className="text-sm text-slate-500">Everything the system refused or failed to do, recorded automatically. "Fault" means the system broke; "Refused" means it stopped someone on purpose (a rule) and told them why.</p>
         </div>
         <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />} onClick={load}>Refresh</Button>
       </div>
@@ -45,26 +59,73 @@ export default function SystemHealth() {
       {loading ? <Spinner /> : failed ? <p className="text-rose-600 text-sm">{failed}</p> : data && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Tile label="Errors, last 24 hours" value={data.errors.last24h} tone={data.errors.last24h === 0 ? 'good' : data.errors.last24h < 10 ? 'warn' : 'bad'}
+            <Tile label="Issues, last 24 hours" value={data.errors.last24h} tone={data.errors.last24h === 0 ? 'good' : data.errors.last24h < 20 ? 'warn' : 'bad'}
               hint={`${data.errors.last7d} in the last 7 days`} />
             <Tile label="Staff left clocked in" value={data.stuckClockIns.length} tone={data.stuckClockIns.length === 0 ? 'good' : 'warn'} hint="Clocked in over 16 hours ago" />
             <Tile label="Requests waiting" value={data.db.waiting} tone={data.db.waiting === 0 ? 'good' : 'bad'}
-              hint={`${data.db.connections} database connections in use or ready`} />
+              hint={`${data.db.connections} database connections open`} />
             <Tile label="Running since" value={format(new Date(data.startedAt), 'd MMM HH:mm')} tone="plain" hint={`${data.uptimeHours} hours · ${data.memoryMb} MB memory`} />
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
-            <h2 className="font-bold text-slate-900 mb-1">Staff left clocked in</h2>
-            {data.stuckClockIns.length === 0 ? <p className="text-sm text-slate-500">Nobody.</p> : (
-              <>
-                <p className="text-xs text-slate-500 mb-2">They will not be able to clock in for their next shift until this is cleared. Open their shift on the rota and use "Force clock out".</p>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <h2 className="font-bold text-slate-900">Top issues, last 7 days</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <select className="input py-1 text-sm w-auto" value={area} onChange={e => setArea(e.target.value)}>
+                  <option value="">All areas</option>
+                  {(data.byArea || []).map((a: any) => <option key={a.area} value={a.area}>{a.area} ({a.times})</option>)}
+                </select>
+                <select className="input py-1 text-sm w-auto" value={kind} onChange={e => setKind(e.target.value as any)}>
+                  <option value="">Faults and refusals</option>
+                  <option value="error">Faults only</option>
+                  <option value="refused">Refusals only</option>
+                </select>
+                <button onClick={copyIssues} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">Copy for developer</button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mb-2">The same message repeated is one issue. Sorted by how often it happened.</p>
+            {(data.topIssues || []).filter(match).length === 0 ? <p className="text-sm text-slate-500">Nothing recorded.</p> : (
+              <table className="w-full text-xs">
+                <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">Area</th><th className="py-1 pr-3">Times</th><th className="py-1 pr-3">People</th><th className="py-1 pr-3">Last seen</th><th className="py-1">What they were told</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.topIssues.filter(match).map((t: any, i: number) => (
+                    <tr key={i} className="align-top">
+                      <td className="py-1.5 pr-3 whitespace-nowrap font-medium text-slate-800">{t.area} <KindBadge k={t.kind} /></td>
+                      <td className="py-1.5 pr-3 font-bold">{t.times}</td>
+                      <td className="py-1.5 pr-3">{t.people}</td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{t.last_seen}</td>
+                      <td className="py-1.5 text-slate-700">{t.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <h2 className="font-bold text-slate-900 mb-1">Staff left clocked in</h2>
+              {data.stuckClockIns.length === 0 ? <p className="text-sm text-slate-500">Nobody. Anyone still clocked in after 16 hours is clocked out automatically.</p> : (
                 <ul className="text-sm divide-y divide-slate-100">
                   {data.stuckClockIns.map((s: any, i: number) => (
                     <li key={i} className="py-1.5 flex justify-between"><span className="font-medium text-slate-800">{s.staff}</span><span className="text-slate-500">since {s.clocked_in_at} ({s.hours_ago} hours)</span></li>
                   ))}
                 </ul>
-              </>
-            )}
+              )}
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <h2 className="font-bold text-slate-900 mb-1">Clocked out automatically, last 7 days</h2>
+              {(data.autoClockedOut || []).length === 0 ? <p className="text-sm text-slate-500">Nobody.</p> : (
+                <>
+                  <p className="text-xs text-slate-500 mb-1">Their real finish time is unknown — check their timesheets.</p>
+                  <ul className="text-sm divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                    {data.autoClockedOut.map((s: any, i: number) => (
+                      <li key={i} className="py-1.5 flex justify-between"><span className="font-medium text-slate-800">{s.staff}</span><span className="text-slate-500">{s.at}</span></li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
@@ -80,17 +141,17 @@ export default function SystemHealth() {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-4 overflow-x-auto">
-            <h2 className="font-bold text-slate-900 mb-1">Recent errors</h2>
-            <p className="text-xs text-slate-500 mb-2">Every time a screen failed to save or load, with the reason. Send these to your developer.</p>
-            {data.errors.recent.length === 0 ? <p className="text-sm text-slate-500">No errors recorded.</p> : (
+            <h2 className="font-bold text-slate-900 mb-1">Every issue, newest first</h2>
+            {data.errors.recent.filter(match).length === 0 ? <p className="text-sm text-slate-500">Nothing recorded.</p> : (
               <table className="w-full text-xs">
-                <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">When</th><th className="py-1 pr-3">Who</th><th className="py-1 pr-3">Action</th><th className="py-1">Reason</th></tr></thead>
+                <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">When</th><th className="py-1 pr-3">Who</th><th className="py-1 pr-3">Area</th><th className="py-1 pr-3">Where</th><th className="py-1">What they were told</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data.errors.recent.map((e: any, i: number) => (
+                  {data.errors.recent.filter(match).map((e: any, i: number) => (
                     <tr key={i} className="align-top">
                       <td className="py-1.5 pr-3 whitespace-nowrap">{e.at}</td>
                       <td className="py-1.5 pr-3 whitespace-nowrap">{e.staff}</td>
-                      <td className="py-1.5 pr-3 whitespace-nowrap">{e.method} {e.path}</td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{e.area} <KindBadge k={e.kind} /></td>
+                      <td className="py-1.5 pr-3 whitespace-nowrap text-slate-500">{e.method} {String(e.path).replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, '…')}</td>
                       <td className="py-1.5 text-slate-700">{e.message}</td>
                     </tr>
                   ))}

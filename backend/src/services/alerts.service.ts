@@ -430,7 +430,49 @@ export async function checkSensitiveDates(): Promise<void> {
   }
 }
 
+// Anyone still "clocked in" 16 hours after their clock-in has not really been
+// working that long — they left without clocking out (or were blocked from
+// it). Left alone they stay stuck and cannot clock in for their next shift.
+// Close the session, mark it as closed automatically, and tell managers who.
+export async function autoClockOutStaleSessions(): Promise<void> {
+  try {
+    const stuck = await query<any>(
+      `SELECT s.id, COALESCE(l.home_id, s.home_id) AS home_id, s.first_name || ' ' || s.last_name AS name,
+              to_char(l.event_time AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS since
+       FROM staff s
+       JOIN LATERAL (SELECT event_type, event_time, home_id FROM staff_clock_events ce WHERE ce.staff_id = s.id ORDER BY event_time DESC LIMIT 1) l ON TRUE
+       WHERE l.event_type = 'clock_in' AND l.event_time < NOW() - interval '16 hours'
+         -- never while a rota shift for them is still running (long or sleep-in shifts)
+         AND NOT EXISTS (
+           SELECT 1 FROM staff_shifts sh
+           WHERE sh.staff_id = s.id AND sh.status <> 'cancelled'
+             AND (NOW() AT TIME ZONE 'Europe/London') BETWEEN (sh.shift_date + sh.start_time)
+                 AND (sh.shift_date + sh.end_time
+                      + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
+                      + interval '1 hour'))`);
+    const byHome: Record<string, string[]> = {};
+    for (const r of stuck) {
+      if (!r.home_id) continue;
+      await query(
+        `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed)
+         VALUES ($1,$2,'clock_out',NOW(),true,'on_time',TRUE)`, [r.id, r.home_id]);
+      (byHome[r.home_id] = byHome[r.home_id] || []).push(`${r.name} (clocked in ${r.since})`);
+    }
+    for (const homeId of Object.keys(byHome)) {
+      await createAlert({
+        homeId, alertType: 'auto_clocked_out', severity: 'warning',
+        title: `${byHome[homeId].length} staff were clocked out automatically`,
+        description: `Still clocked in 16+ hours after clocking in, so the system closed their session. Their real finish time is not known — check timesheets: ${byHome[homeId].join('; ').slice(0, 900)}`,
+      });
+    }
+    if (stuck.length) logger.info(`Auto clocked out ${stuck.length} stale session(s)`);
+  } catch (err) {
+    logger.warn('autoClockOutStaleSessions skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
 export const alertsService = {
+  autoClockOutStaleSessions,
   checkSensitiveDates,
   autoClearAlerts,
   checkClockedInTooFar, checkNoNotesWritten,

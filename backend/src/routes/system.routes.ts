@@ -11,6 +11,33 @@ router.use(authenticate);
 
 const STARTED_AT = new Date();
 
+// POST /api/system/client-error — a crash reported by someone's browser.
+router.post('/client-error', async (req: Request, res: Response) => {
+  try {
+    const message = String(req.body?.message || '').slice(0, 1000);
+    const page = String(req.body?.page || '').slice(0, 280);
+    if (message) {
+      await query(
+        'INSERT INTO error_log (method, path, status_code, message, staff_id, source) VALUES ($1,$2,$3,$4,$5,$6)',
+        ['SCREEN', page || '/', 0, message, req.staff?.staffId || null, 'browser']);
+    }
+  } catch { /* never fail the caller */ }
+  res.json({ success: true } as ApiResponse);
+});
+
+// What part of the system an issue belongs to, worked out from the address it happened on.
+const AREA_SQL = `CASE
+  WHEN e.source = 'browser' THEN 'Screen crash'
+  WHEN e.path LIKE '/api/clockin%' THEN 'Clock in / out'
+  WHEN e.path LIKE '/api/auth%' THEN 'Sign in'
+  WHEN e.path LIKE '/api/mar%' THEN 'Medication'
+  WHEN e.path LIKE '/api/shifts%' THEN 'Rota'
+  WHEN e.path LIKE '/api/daily-records%' OR e.path LIKE '/api/incidents%' THEN 'Daily records & incidents'
+  WHEN e.path LIKE '/api/tasks%' THEN 'Tasks'
+  WHEN e.path LIKE '/api/staff%' THEN 'Staff & leave'
+  WHEN e.path LIKE '/api/service-users%' OR e.path LIKE '/api/care-plans%' THEN 'Service users & care plans'
+  ELSE 'Other' END`;
+
 router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || req.staff.homeId;
@@ -23,9 +50,10 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
          FROM error_log`), [{ last_24h: '0', last_7d: '0' }]),
       safe(() => query<any>(
         `SELECT to_char(e.created_at AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS at, e.method, e.path, e.status_code, e.message,
-                COALESCE(s.first_name || ' ' || s.last_name, '—') AS staff
+                COALESCE(s.first_name || ' ' || s.last_name, '—') AS staff, ${AREA_SQL} AS area,
+                CASE WHEN e.status_code >= 500 OR e.source = 'browser' THEN 'error' ELSE 'refused' END AS kind
          FROM error_log e LEFT JOIN staff s ON s.id = e.staff_id
-         ORDER BY e.created_at DESC LIMIT 40`), []),
+         ORDER BY e.created_at DESC LIMIT 200`), []),
       // Latest clock event is a clock-in more than 16 hours old: almost certainly forgot to clock out.
       safe(() => query<any>(
         `SELECT s.first_name || ' ' || s.last_name AS staff,
@@ -41,9 +69,28 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
         `SELECT COUNT(*) AS n FROM tasks WHERE home_id = $1 AND status <> 'completed' AND task_date BETWEEN CURRENT_DATE - 7 AND CURRENT_DATE - 1`, [homeId]), [{ n: '0' }]),
     ]);
 
+    // The same problem repeated many times is one issue: group by area + message.
+    const topIssues = await safe(() => query<any>(
+      `SELECT ${AREA_SQL} AS area, e.message, COUNT(*) AS times, COUNT(DISTINCT e.staff_id) AS people,
+              to_char(MAX(e.created_at) AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS last_seen,
+              CASE WHEN MAX(e.status_code) >= 500 OR bool_or(e.source = 'browser') THEN 'error' ELSE 'refused' END AS kind
+       FROM error_log e WHERE e.created_at > NOW() - interval '7 days'
+       GROUP BY 1, e.message ORDER BY COUNT(*) DESC LIMIT 30`), []);
+    const byArea = await safe(() => query<any>(
+      `SELECT ${AREA_SQL} AS area, COUNT(*) AS times FROM error_log e
+       WHERE e.created_at > NOW() - interval '7 days' GROUP BY 1 ORDER BY COUNT(*) DESC`), []);
+    const autoClosed = await safe(() => query<any>(
+      `SELECT s.first_name || ' ' || s.last_name AS staff, to_char(ce.event_time AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS at
+       FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id
+       WHERE ce.auto_closed = TRUE AND ce.home_id = $1 AND ce.event_time > NOW() - interval '7 days'
+       ORDER BY ce.event_time DESC LIMIT 60`, [homeId]), []);
+
     res.json({
       success: true,
       data: {
+        topIssues: topIssues.map((t: any) => ({ ...t, times: parseInt(t.times, 10), people: parseInt(t.people, 10) })),
+        byArea: byArea.map((a: any) => ({ area: a.area, times: parseInt(a.times, 10) })),
+        autoClockedOut: autoClosed,
         startedAt: STARTED_AT.toISOString(),
         uptimeHours: Math.round((Date.now() - STARTED_AT.getTime()) / 360000) / 10,
         memoryMb: Math.round(process.memoryUsage().rss / 1048576),

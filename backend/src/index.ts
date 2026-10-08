@@ -105,6 +105,35 @@ app.use('/api/auth/pin-login', rateLimit({ windowMs: 900000, max: 20, standardHe
 // â”€â”€ General middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
+
+// Issue log — every API response that refuses or fails (status 400+) is
+// recorded with who, what and the exact message shown to them, so a blocked
+// clock-out, a form that would not save or a crash is visible on the System
+// Health page without anyone having to report it. Expired-session 401s are
+// skipped (they happen constantly and are not problems).
+app.use('/api', (req, res, next) => {
+  (req as any).__issueLogged = true;
+  const origJson = res.json.bind(res);
+  res.json = ((body: any) => {
+    try {
+      const code = res.statusCode;
+      const msg = body && typeof body === 'object' ? String(body.error || body.message || '') : '';
+      const sessionNoise = code === 401 && !/password|PIN|inactive/i.test(msg);
+      if (code >= 400 && !sessionNoise && !req.path.startsWith('/system/client-error')) {
+        let staffId: string | null = (req as any).staff?.staffId || null;
+        if (!staffId) {
+          try { const t = req.headers.authorization?.substring(7); if (t) staffId = (jwt.decode(t) as any)?.staffId || null; } catch { /* ignore */ }
+        }
+        pool.query(
+          'INSERT INTO error_log (method, path, status_code, message, staff_id, source) VALUES ($1,$2,$3,$4,$5,$6)',
+          [req.method, ('/api' + req.path).slice(0, 300), code, (msg || 'No message').slice(0, 1000), staffId, 'server']
+        ).catch(() => {});
+      }
+    } catch { /* logging must never break a response */ }
+    return origJson(body);
+  }) as any;
+  next();
+});
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
@@ -3010,6 +3039,8 @@ async function ensureColumns() {
        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at DESC)`,
+    `ALTER TABLE error_log ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'server'`,
+    `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS auto_closed BOOLEAN NOT NULL DEFAULT FALSE`,
     `DELETE FROM error_log WHERE created_at < NOW() - interval '60 days'`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,

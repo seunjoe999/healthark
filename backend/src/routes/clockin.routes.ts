@@ -99,12 +99,19 @@ router.get('/home/:token', async (req: Request, res: Response, next: NextFunctio
 
 // POST /api/clockin/event — staff clocks in/out with GPS, checked against home postcodes
 router.post('/event', authenticate,
-  [body('homeId').isUUID(), body('staffLat').isNumeric(), body('staffLng').isNumeric()],
+  // Location is required to clock IN. Clock-OUT is never location-checked, so
+  // it must not be refused just because the phone could not get a GPS fix —
+  // that left staff unable to clock out at all and stuck "clocked in".
+  [body('homeId').isUUID(),
+   body('staffLat').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isNumeric(),
+   body('staffLng').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isNumeric()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { homeId, suId, staffLat, staffLng, eventType } = req.body;
+      const { homeId, suId, eventType } = req.body;
+      const staffLat = Number.isFinite(Number(req.body.staffLat)) ? Number(req.body.staffLat) : 0;
+      const staffLng = Number.isFinite(Number(req.body.staffLng)) ? Number(req.body.staffLng) : 0;
       const gpsAccuracy = parseFloat(req.body.accuracy) || null;
 
       // Build list of valid check points. Which QR the staff member happened to

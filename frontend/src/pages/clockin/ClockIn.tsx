@@ -37,13 +37,10 @@ export default function ClockIn() {
 
   const doClockIn = () => {
     setState('locating')
-    if (!navigator.geolocation) {
-      setError('Your device does not support GPS location. Please enable location services.')
-      setState('error')
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+    // Clocking OUT is never location-checked, so it must not depend on getting
+    // a GPS fix. If the phone has no location (permission off, indoors, timed
+    // out) the clock-out is sent anyway. Clocking IN still needs a location.
+    const submit = async (pos: GeolocationPosition) => {
         try {
           const authToken = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
           const res = await fetch('/api/clockin/event', {
@@ -74,14 +71,24 @@ export default function ClockIn() {
           setError('Network error. Please try again.')
           setState('error')
         }
-      },
+    }
+    const sendWithoutLocation = () => submit({ coords: { latitude: undefined, longitude: undefined, accuracy: undefined } } as any)
+    if (!navigator.geolocation) {
+      if (eventType === 'clock_out') { sendWithoutLocation(); return }
+      setError('Your device does not support GPS location. Please enable location services.')
+      setState('error')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      submit,
       (err) => {
+        if (eventType === 'clock_out') { sendWithoutLocation(); return }
         if (err.code === 1) setError('Location access denied. This is a device/browser setting, not a fault in the app — on iPhone: Settings → Safari (or Chrome) → Location → Ask/Allow. On Android: Chrome menu (⋮) → Settings → Site settings → Location → allow for this site, or check the phone\'s own Location toggle is on. Then reopen this page and try again.')
         else if (err.code === 2) setError('Could not determine your location. Make sure you are outdoors or near a window.')
         else setError('Location timed out. Please try again.')
         setState('error')
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: eventType === 'clock_out' ? 6000 : 15000, maximumAge: 0 }
     )
   }
 
