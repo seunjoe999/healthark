@@ -456,7 +456,8 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
 
       const { given, refused, reason, notes, marCode, amountTaken, amountUnit,
               sideEffects, sideEffectsNotes, emotion, applicationSite, applicationSiteLabel,
-              completed } = req.body;
+              completed, outcomeNote } = req.body;
+      const outcomeNoteClean = typeof outcomeNote === 'string' && outcomeNote.trim() ? outcomeNote.trim() : null;
       // completed must be carried across on amend — it never used to be, so an
       // "Attempted" record (completed=false) amended to "Given" stayed
       // completed=false forever. getDueTodayTasks treats completed=false as
@@ -476,12 +477,15 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
            side_effects = COALESCE($8, side_effects), side_effects_notes = COALESCE($9, side_effects_notes),
            emotion = COALESCE($10, emotion),
            application_site = COALESCE($11, application_site), application_site_label = COALESCE($12, application_site_label),
-           completed = COALESCE($13, completed)
+           completed = COALESCE($13, completed),
+           outcome_note = COALESCE($15::text, outcome_note),
+           outcome_note_at = CASE WHEN $15::text IS NOT NULL THEN NOW() ELSE outcome_note_at END,
+           outcome_note_by = CASE WHEN $15::text IS NOT NULL THEN $16::uuid ELSE outcome_note_by END
          WHERE id = $14 RETURNING *`,
         [given ?? null, refused ?? null, reason || null, notes || null, marCode || null,
          amountTaken || null, amountUnit || null, sideEffects ?? null, sideEffectsNotes || null,
          emotion || null, applicationSite || null, applicationSiteLabel || null,
-         effCompleted ?? null, req.params.id]
+         effCompleted ?? null, req.params.id, outcomeNoteClean, staffId]
       );
       res.json({ success: true, data: updated[0] } as ApiResponse);
     } catch (err) { next(err); }

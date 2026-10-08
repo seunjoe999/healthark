@@ -1920,6 +1920,17 @@ async function ensureColumns() {
     `CREATE INDEX IF NOT EXISTS idx_perf_staff ON staff_performance(staff_id, created_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_perf_home  ON staff_performance(home_id, created_at DESC)`,
     `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS phone_home VARCHAR(20)`,
+    // Phone columns were VARCHAR(20) — a number written with spaces, an
+    // extension or "(mobile)" overflowed and failed the whole contact save.
+    `ALTER TABLE su_contacts ALTER COLUMN phone_primary TYPE VARCHAR(60)`,
+    `ALTER TABLE su_contacts ALTER COLUMN phone_secondary TYPE VARCHAR(60)`,
+    `ALTER TABLE su_contacts ALTER COLUMN phone_home TYPE VARCHAR(60)`,
+    `ALTER TABLE su_contacts ALTER COLUMN postcode TYPE VARCHAR(20)`,
+    `ALTER TABLE records_incidents ALTER COLUMN incident_type TYPE VARCHAR(120)`,
+    // 30–60 minute post-administration observation, added after the dose is signed off.
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS outcome_note TEXT`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS outcome_note_at TIMESTAMPTZ`,
+    `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS outcome_note_by UUID`,
     // Visit records — the Professional/Family Visit template needs a declared
     // role and a stated purpose, plus whether the visit was announced in
     // advance, none of which the original records_visits columns captured.

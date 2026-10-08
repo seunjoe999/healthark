@@ -766,6 +766,25 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [signOffTask, setSignOffTask] = useState<any>(null)
+  // Outcome note — staff must record how the person was 30–60 minutes after a
+  // dose. A signed-off task used to be completely locked, so there was nowhere
+  // to write it; now a given dose can have its outcome note added or edited
+  // (within the same 24-hour amend window as every other record).
+  const [obsTask, setObsTask] = useState<any>(null)
+  const [obsText, setObsText] = useState('')
+  const [obsSaving, setObsSaving] = useState(false)
+  const saveObservation = async () => {
+    if (!obsTask?.recordId) return
+    if (!obsText.trim()) { toast.error('Write the outcome note first'); return }
+    setObsSaving(true)
+    try {
+      await api.patch(`/mar/records/${obsTask.recordId}`, { outcomeNote: obsText.trim() })
+      toast.success('Outcome note saved')
+      setObsTask(null); setObsText('')
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not save the outcome note') }
+    finally { setObsSaving(false) }
+  }
   const [filterSu, setFilterSu] = useState('')
   const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -862,6 +881,9 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
                     </div>
                     <p className={`text-xs font-medium mt-0.5 ${textSecondary}`}>{t.suName} · {t.scheduledTime}</p>
                     {t.instructions && <p className={`text-xs mt-1 ${textTertiary}`}>{t.instructions}</p>}
+                    {t.outcomeNote && (
+                      <p className={`text-xs mt-1.5 ${textSecondary}`}><span className="font-semibold">Outcome note:</span> {t.outcomeNote}</p>
+                    )}
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: style.color, background: style.bg }}>
                     {style.label}
@@ -869,12 +891,36 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
                   {isPending && (
                     <Button size="sm" variant="gold" onClick={() => setSignOffTask(t)}>Sign off</Button>
                   )}
+                  {!isPending && t.recordId && (
+                    <Button size="sm" variant="secondary" onClick={() => { setObsTask(t); setObsText(t.outcomeNote || '') }}>
+                      {t.outcomeNote ? 'Edit outcome note' : 'Add outcome note'}
+                    </Button>
+                  )}
                 </div>
               )
             })}
           </div>
         )}
       </div>
+
+      {obsTask && (
+        <Modal open={true} onClose={() => { setObsTask(null); setObsText('') }} title="Outcome note">
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              <span className="font-semibold">{obsTask.medicationName}</span> for {obsTask.suName} · {obsTask.scheduledTime}
+            </p>
+            <div>
+              <label className="label">How was the person after the medication? *</label>
+              <textarea className="input" rows={4} autoFocus value={obsText} onChange={e => setObsText(e.target.value)}
+                placeholder="Record your observation 30–60 minutes after administration — e.g. settled, no side effects, pain reduced..." />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => { setObsTask(null); setObsText('') }}>Cancel</Button>
+              <Button loading={obsSaving} onClick={saveObservation}>Save outcome note</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {signOffTask && (
         <LogMARModal

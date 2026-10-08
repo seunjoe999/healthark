@@ -379,10 +379,15 @@ router.post('/', [
           }
           await client.query(
             `INSERT INTO records_incidents (daily_record_id, incident_type, location, incident_time, description,
-              injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action, reported_to, safeguarding_ref,
+              injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action,
               cqc_notified, cqc_not_notified_reason, family_notified, family_not_notified_reason, body_map_data)
-             VALUES ($1,$2,$3,COALESCE($4::timestamptz, NOW()),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,COALESCE($18::jsonb, 'null'::jsonb))`,
-            [dr.id, incidentType || null, location || null, incidentTs,
+             VALUES ($1,$2,$3,COALESCE($4::timestamptz, NOW()),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,COALESCE($16::jsonb, 'null'::jsonb))`,
+            // reported_to and safeguarding_ref are deliberately NOT in this INSERT.
+            // safeguarding_ref is BOOLEAN NOT NULL and the form never sends it, so
+            // the explicit NULL this used to pass violated the constraint and 500'd
+            // EVERY incident report; reported_to is a staff UUID that received
+            // free text. Left to their column defaults, they can no longer fail.
+            [dr.id, incidentType ? String(incidentType).slice(0, 50) : null, location || null, incidentTs,
              description || req.body.notes || '',
              // A body-map selection or written injury detail both mean there
              // IS an injury — the active form never sent `injuries`, so it
@@ -394,8 +399,6 @@ router.post('/', [
              // immediate_action is NOT NULL — an empty form field used to pass
              // null straight in and 500 the whole submission.
              immediateAction || immediateActions || '',
-             reportedTo || null,  // UUID column — text strings not accepted
-             safeguardingRef || null,
              cqcNotified || false, cqcNotNotifiedReason || null,
              familyNotified || false, familyNotNotifiedReason || null,
              bodyMapData ? JSON.stringify(bodyMapData) : null]

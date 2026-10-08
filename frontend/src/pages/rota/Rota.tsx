@@ -336,6 +336,7 @@ export default function Rota() {
   const [serviceRotaOpen, setServiceRotaOpen] = useState(false)
   const [leaveOpen,   setLeaveOpen]   = useState(false)
   const [detailShift, setDetailShift] = useState<any>(null)
+  const [hoverTip, setHoverTip] = useState<{ shift: any; x: number; y: number } | null>(null)
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [adjustPickerOpen, setAdjustPickerOpen] = useState(false)
   const [coverOpen,   setCoverOpen]   = useState(false)
@@ -857,6 +858,30 @@ export default function Rota() {
         </div>
       )}
 
+      {hoverTip && !detailShift && (() => {
+        const s = hoverTip.shift
+        const st = s.start_time?.substring(0, 5) || ''
+        const et = s.end_time?.substring(0, 5) || ''
+        let mins = timeToMins(et || '00:00') - timeToMins(st || '00:00')
+        if (mins <= 0) mins += 1440
+        const dur = `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
+        let dateLabel = ''
+        try { dateLabel = format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM yyyy') } catch { }
+        const where = s.label || s.su_names || s.su_name
+        return (
+          <div className="fixed z-[60] w-[260px] pointer-events-none rounded-xl border border-slate-200 bg-white shadow-xl p-3 text-xs text-slate-700"
+            style={{ left: hoverTip.x, top: Math.max(8, hoverTip.y) }}>
+            <p className="font-bold text-slate-900 text-sm mb-1">{where || 'Shift'}</p>
+            <p><span className="font-semibold">Date:</span> {dateLabel}</p>
+            <p><span className="font-semibold">Time:</span> {st} – {et} ({dur})</p>
+            <p><span className="font-semibold">Staff:</span> {s.staff_name || 'Unfilled — no one assigned'}</p>
+            {s.label && (s.su_names || s.su_name) && <p><span className="font-semibold">Service users:</span> {s.su_names || s.su_name}</p>}
+            {s.shift_type && <p className="capitalize"><span className="font-semibold">Type:</span> {String(s.shift_type).replace(/_/g, ' ')}</p>}
+            <p className="mt-1 text-slate-400">Double-click to open</p>
+          </div>
+        )
+      })()}
+
       {/* ── Timeline ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto">
 
@@ -870,14 +895,20 @@ export default function Rota() {
             the rota", the busier days). isolate guarantees this header's
             z-index is compared fresh, not against however many layers its
             siblings happened to get promoted to. */}
-        <div className="flex sticky top-0 z-20 isolate bg-white border-b border-slate-200 shadow-sm">
+        {/* w-max: the header row must be as wide as ALL the day columns, not
+            just the visible area. As a plain block it stopped at the edge of the
+            screen, so the last days' headers (and their white background) ran
+            past the end of the bar — shift cards then showed through and over
+            those dates when scrolled to the top. Each day cell also carries its
+            own white background for the same reason. */}
+        <div className="flex sticky top-0 z-20 isolate bg-white border-b border-slate-200 shadow-sm w-max min-w-full">
           <div className="w-14 flex-shrink-0 border-r-2 border-slate-300" />
           {dayData.map(({ day, dayShifts, dayLeaves, width }) => {
             const isToday = isSameDay(day, today)
             const count = dayShifts.length + dayLeaves.length
             return (
               <div key={day.toString()} style={{ width, minWidth: width, flexShrink: 0 }}
-                className={`text-center py-2 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : ''}`}>
+                className={`text-center py-2 border-l-2 border-slate-300 ${isToday ? 'bg-indigo-600' : 'bg-white'}`}>
                 <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-indigo-100' : 'text-slate-700'}`}>{format(day, 'EEE')}</p>
                 <p className={`text-xl font-bold leading-tight ${isToday ? 'text-white' : 'text-slate-700'}`}>
                   {format(day, 'd')}
@@ -897,7 +928,7 @@ export default function Rota() {
         {loading ? (
           <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading...</div>
         ) : (
-          <div className="flex">
+          <div className="flex w-max min-w-full">
 
             {/* Time labels */}
             <div className="w-14 flex-shrink-0 border-r-2 border-slate-300">
@@ -978,6 +1009,14 @@ export default function Rota() {
                         // invalid nesting while keeping identical click/dblclick/keyboard behaviour.
                         onClick={() => { if (selectedShiftIds.size === 0 && IS_TOUCH_DEVICE) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
                         onDoubleClick={() => setDetailShift(shift)}
+                        // Hover summary — who, where, when and how long, without opening the shift.
+                        onMouseEnter={e => {
+                          if (IS_TOUCH_DEVICE) return
+                          const r = e.currentTarget.getBoundingClientRect()
+                          const toRight = r.right + 270 < window.innerWidth
+                          setHoverTip({ shift, x: toRight ? r.right + 8 : Math.max(8, r.left - 268), y: Math.min(r.top, window.innerHeight - 190) })
+                        }}
+                        onMouseLeave={() => setHoverTip(null)}
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleShiftSelected(shift.id) } }}
                         className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm cursor-pointer"
                         style={{

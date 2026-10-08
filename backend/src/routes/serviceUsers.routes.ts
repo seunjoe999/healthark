@@ -427,17 +427,36 @@ router.put('/:id/contacts/:contactId',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { fullName, relationship, contactTag, phonePrimary, phoneSecondary,
-              phoneHome, email, isPrimary, notes, displayOrder } = req.body;
+              phoneHome, email, address1, address2, postcode, isPrimary, notes, displayOrder } = req.body;
+      // A field that was sent (even blank) is written as-is so it can be
+      // cleared; a field that wasn't sent is left alone. Blank strings become
+      // NULL — a blank display_order used to reach the INTEGER column as ''
+      // and crash the save — and address fields were never saved on edit at all.
+      const sent = (v: any) => v !== undefined;
+      const txt = (v: any) => (v === undefined || v === null || String(v).trim() === '') ? null : String(v).trim();
+      const order = displayOrder !== '' && displayOrder !== null && displayOrder !== undefined && Number.isFinite(Number(displayOrder))
+        ? Math.trunc(Number(displayOrder)) : null;
       const rows = await query(
         `UPDATE su_contacts SET
-          full_name=COALESCE($1,full_name), relationship=COALESCE($2,relationship),
-          contact_tag=COALESCE($3,contact_tag), phone_primary=COALESCE($4,phone_primary),
-          phone_secondary=COALESCE($5,phone_secondary), phone_home=COALESCE($6,phone_home),
-          email=COALESCE($7,email), is_primary=COALESCE($8,is_primary),
-          notes=COALESCE($9,notes), display_order=COALESCE($10,display_order)
+          full_name=COALESCE($1,full_name),
+          relationship=CASE WHEN $13::boolean THEN $2 ELSE relationship END,
+          contact_tag=COALESCE($3,contact_tag),
+          phone_primary=CASE WHEN $14::boolean THEN $4 ELSE phone_primary END,
+          phone_secondary=CASE WHEN $15::boolean THEN $5 ELSE phone_secondary END,
+          phone_home=CASE WHEN $16::boolean THEN $6 ELSE phone_home END,
+          email=CASE WHEN $17::boolean THEN $7 ELSE email END,
+          is_primary=COALESCE($8,is_primary),
+          notes=CASE WHEN $18::boolean THEN $9 ELSE notes END,
+          display_order=COALESCE($10,display_order),
+          address1=CASE WHEN $19::boolean THEN $20 ELSE address1 END,
+          address2=CASE WHEN $21::boolean THEN $22 ELSE address2 END,
+          postcode=CASE WHEN $23::boolean THEN $24 ELSE postcode END
          WHERE id=$11 AND su_id=$12 RETURNING *`,
-        [fullName, relationship, contactTag, phonePrimary, phoneSecondary,
-         phoneHome, email, isPrimary, notes, displayOrder, req.params.contactId, req.params.id]
+        [txt(fullName), txt(relationship), txt(contactTag), txt(phonePrimary), txt(phoneSecondary),
+         txt(phoneHome), txt(email), typeof isPrimary === 'boolean' ? isPrimary : null, txt(notes), order,
+         req.params.contactId, req.params.id,
+         sent(relationship), sent(phonePrimary), sent(phoneSecondary), sent(phoneHome), sent(email), sent(notes),
+         sent(address1), txt(address1), sent(address2), txt(address2), sent(postcode), txt(postcode)]
       );
       if (!rows.length) throw new AppError('Contact not found', 404);
       res.json({ success: true, data: rows[0] } as ApiResponse);

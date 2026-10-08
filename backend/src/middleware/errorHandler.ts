@@ -66,6 +66,29 @@ export function errorHandler(
     return;
   }
 
+  // PostgreSQL data errors (class 22 = bad value, 23 = constraint). These are
+  // "this value can't be saved" problems, not server faults — reporting them
+  // as a bare "Internal server error" left staff and the owner with no way to
+  // tell what was wrong with a form. Say which field/what kind of problem.
+  const pgCode = String((err as any).code || '');
+  if (/^(22|23)[0-9A-Z]{3}$/.test(pgCode)) {
+    const col = (err as any).column ? ` (${String((err as any).column).replace(/_/g, ' ')})` : '';
+    const friendly: Record<string, string> = {
+      '22001': 'One of the values is too long for its field',
+      '22P02': 'One of the values is in the wrong format',
+      '22007': 'A date or time is in the wrong format',
+      '22008': 'A date or time is out of range',
+      '22003': 'A number is out of range',
+      '23502': `A required value is missing${col}`,
+      '23514': 'One of the values is not an allowed option',
+    };
+    res.status(400).json({
+      success: false,
+      error: `Could not save — ${friendly[pgCode] || 'one of the values was rejected'}. [${err.message}]`,
+    } as ApiResponse);
+    return;
+  }
+
   // Default 500 — only expose error detail in development; hide internals in production
   const isProd = process.env.NODE_ENV === 'production';
   res.status(500).json({

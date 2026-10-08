@@ -273,11 +273,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Care staff and team leaders sign in with password + PIN and unlock a
+  // timed-out session with the PIN. That only works once they HAVE a PIN, so
+  // anyone in those roles without one is made to create it straight after
+  // signing in — otherwise the PIN step silently never appeared for them.
+  const [needPinSetup, setNeedPinSetup] = useState(false)
+  const [pinSetupError, setPinSetupError] = useState('')
+  const [pinSetupSaving, setPinSetupSaving] = useState(false)
+  useEffect(() => {
+    if (!user || !['care_staff', 'team_leader'].includes(user.role)) { setNeedPinSetup(false); return }
+    let cancelled = false
+    authApi.pinStatus()
+      .then(res => { if (!cancelled) setNeedPinSetup(res.data?.data?.hasPin === false) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user?.id, user?.role])
+
+  const savePinSetup = async (pin: string, confirm: string) => {
+    if (!/^[0-9]{4,8}$/.test(pin)) { setPinSetupError('Your PIN must be 4 to 8 digits.'); return }
+    if (pin !== confirm) { setPinSetupError('The two PINs do not match.'); return }
+    setPinSetupSaving(true)
+    try {
+      await authApi.setPin(pin)
+      setNeedPinSetup(false)
+      setPinSetupError('')
+    } catch (err: any) {
+      setPinSetupError(err?.response?.data?.error || 'Could not save your PIN. Try again.')
+    } finally { setPinSetupSaving(false) }
+  }
+
   const isRole = (...roles: string[]) => !!user && roles.includes(user.role)
 
   return (
     <AuthContext.Provider value={{ user, login, loginWithPin, logout, isRole }}>
       {children}
+      {needPinSetup && user && !pinUnlock && (
+        <div className="fixed inset-0 z-[119] flex items-center justify-center p-6" style={{ background: 'rgba(8,12,24,0.92)', backdropFilter: 'blur(6px)' }}>
+          <div className="w-full max-w-sm rounded-3xl p-7" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <h2 className="text-white text-xl font-semibold mb-1">Create your PIN</h2>
+            <p className="text-slate-400 text-sm mb-5">
+              {user.firstName}, you need a PIN as well as your password to sign in, and to unlock the app when it times out. Choose 4 to 8 digits.
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              const els = e.currentTarget.elements
+              savePinSetup((els.namedItem('newPin') as HTMLInputElement).value, (els.namedItem('confirmPin') as HTMLInputElement).value)
+            }}>
+              <input name="newPin" type="password" inputMode="numeric" pattern="[0-9]*" maxLength={8} autoFocus placeholder="New PIN"
+                className="w-full px-3.5 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-center tracking-[0.4em] text-lg outline-none focus:border-amber-400/60 mb-3"
+                onChange={() => setPinSetupError('')} />
+              <input name="confirmPin" type="password" inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="Confirm PIN"
+                className="w-full px-3.5 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-center tracking-[0.4em] text-lg outline-none focus:border-amber-400/60 mb-3"
+                onChange={() => setPinSetupError('')} />
+              {pinSetupError && <p className="text-rose-300 text-sm mb-3">{pinSetupError}</p>}
+              <button type="submit" disabled={pinSetupSaving} className="w-full py-3 rounded-xl font-semibold text-slate-900 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                {pinSetupSaving ? 'Saving…' : 'Save PIN'}
+              </button>
+            </form>
+            <button onClick={logout} className="w-full mt-3 text-xs text-slate-400 hover:text-white transition-colors">
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
       {pinUnlock && user && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-6" style={{ background: 'rgba(8,12,24,0.92)', backdropFilter: 'blur(6px)' }}>
           <div className="w-full max-w-sm rounded-3xl p-7" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>

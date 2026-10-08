@@ -26,6 +26,28 @@ export default function Alerts() {
   const [showResolved, setShowResolved] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const toggleSelected = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+  const allSelected = alerts.length > 0 && alerts.every(a => selectedIds.has(a.id))
+  const bulk = async (action: 'resolve' | 'delete') => {
+    const ids = alerts.filter(a => selectedIds.has(a.id)).map(a => a.id)
+    if (!ids.length) return
+    if (action === 'delete' && !window.confirm(`Permanently delete ${ids.length} alert${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    setBulkBusy(true)
+    try {
+      const res = await api.post('/alerts/bulk', { ids, action })
+      const n = res.data?.data?.count ?? ids.length
+      toast.success(`${n} alert${n !== 1 ? 's' : ''} ${action === 'delete' ? 'deleted' : 'resolved'}`)
+      setSelectedIds(new Set())
+      await load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Bulk action failed') }
+    finally { setBulkBusy(false) }
+  }
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -98,12 +120,36 @@ export default function Alerts() {
         />
       ) : (
         <div className="space-y-3">
+          <div className="flex items-center gap-3 flex-wrap bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-2.5">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4" checked={allSelected}
+                onChange={() => setSelectedIds(allSelected ? new Set() : new Set(alerts.map(a => a.id)))} />
+              Select all
+            </label>
+            <span className="text-xs text-slate-500">{selectedIds.size} selected</span>
+            <div className="ml-auto flex gap-2">
+              {!showResolved && (
+                <Button size="sm" variant="secondary" disabled={!selectedIds.size} loading={bulkBusy}
+                  icon={<CheckCircle className="w-4 h-4" />} onClick={() => bulk('resolve')}>
+                  Resolve selected
+                </Button>
+              )}
+              <button type="button" disabled={!selectedIds.size || bulkBusy} onClick={() => bulk('delete')}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                Delete selected
+              </button>
+            </div>
+          </div>
           {alerts.map((alert: any) => {
             const isExpanded = expandedId === alert.id
             return (
               <div key={alert.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-stretch">
+                <label className="flex items-start pt-5 pl-4 cursor-pointer" title="Select this alert">
+                  <input type="checkbox" className="w-4 h-4" checked={selectedIds.has(alert.id)} onChange={() => toggleSelected(alert.id)} />
+                </label>
                 <button onClick={() => setExpandedId(p => p === alert.id ? null : alert.id)}
-                  className="w-full p-4 text-left hover:bg-slate-50 transition-colors">
+                  className="flex-1 min-w-0 p-4 text-left hover:bg-slate-50 transition-colors">
                   <div className="flex items-start gap-3">
                     <div className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${severityDot(alert.severity)}`} />
                     <div className="flex-1 min-w-0">
@@ -128,6 +174,7 @@ export default function Alerts() {
                     </div>
                   </div>
                 </button>
+                </div>
 
                 {isExpanded && (
                   <div className="px-5 pb-5 pt-2 border-t border-slate-100 space-y-3">

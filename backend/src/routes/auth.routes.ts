@@ -199,6 +199,16 @@ router.post('/pin-login',
   }
 );
 
+// GET /api/auth/pin-status — whether the signed-in user has a PIN yet. Care
+// staff and team leaders must have one (password + PIN sign-in, PIN unlock on
+// timeout), so the app uses this to force PIN creation at first sign-in.
+router.get('/pin-status', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rows = await query<any>('SELECT login_pin_hash FROM staff WHERE id = $1', [req.staff.staffId]);
+    res.json({ success: true, data: { hasPin: !!rows[0]?.login_pin_hash } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // POST /api/auth/set-pin — authenticated staff sets/updates their own quick-login PIN
 router.post('/set-pin', authenticate,
   [body('pin').isLength({ min: 4, max: 8 }).matches(/^[0-9]+$/)],

@@ -512,7 +512,10 @@ function AddRecordModal({ suId, homeId, onClose, onSaved, initialType }: { suId:
     <Modal open={true} onClose={onClose} title="Add daily record" size="lg">
       <div className="space-y-4 pr-1">
         <Select label="Record type" value={type} onChange={e => setType(e.target.value)}
-          options={RECORD_TYPES.map(r => ({ value: r.value, label: `${r.icon} ${r.label}` }))} />
+          // Name first, icon after: a dropdown jumps to the option whose text
+          // STARTS with what you type, and a leading emoji meant typing "in"
+          // never found "Incident report".
+          options={[...RECORD_TYPES].sort((a, b) => a.label.localeCompare(b.label)).map(r => ({ value: r.value, label: `${r.label}  ${r.icon}` }))} />
         <div>
           <label className="label">Time this actually happened</label>
           <input type="datetime-local" className="input w-full" value={recordedAtInput}

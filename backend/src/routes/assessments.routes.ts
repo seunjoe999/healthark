@@ -1775,6 +1775,30 @@ function calcScore(template: Template, answers: Record<string, any>) {
   return { totalScore, maxScore, scorePct, riskLevel, burnoutTotal };
 }
 
+// Scores are stored at save time, so audits saved before a question was
+// marked reverse-scored ("Are there any gaps…?" — No is the good answer)
+// kept their old, wrong rating. Re-score every saved assessment whose
+// template has such a question; only rows whose result actually changes are written.
+const rescoreReverseScored = async () => {
+  const keys = Array.from(new Set(TEMPLATES
+    .filter(t => !t.burnoutScoring && t.sections.some(s => s.questions.some(q => q.reverseScored)))
+    .map(t => t.key)));
+  if (!keys.length) return;
+  const rows = await query<any>(
+    'SELECT id, template_key, answers, total_score, max_score, risk_level FROM assessments WHERE template_key = ANY($1)', [keys]);
+  for (const r of rows) {
+    const template = TEMPLATES.find(t => t.key === r.template_key);
+    if (!template) continue;
+    const ans = typeof r.answers === 'string' ? JSON.parse(r.answers) : (r.answers || {});
+    const c = calcScore(template, ans);
+    if (c.totalScore !== Number(r.total_score) || c.maxScore !== Number(r.max_score) || (c.riskLevel || null) !== (r.risk_level || null)) {
+      await query('UPDATE assessments SET total_score=$1, max_score=$2, score_pct=$3, risk_level=$4 WHERE id=$5',
+        [c.totalScore, c.maxScore, c.scorePct, c.riskLevel || null, r.id]);
+    }
+  }
+};
+setTimeout(() => { rescoreReverseScored().catch(() => {}); }, 15000);
+
 // ── Barthel & MUST tables ─────────────────────────────────────────
 const initBarthelTable = async () => {
   await query(`

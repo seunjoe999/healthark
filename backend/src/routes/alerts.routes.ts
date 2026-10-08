@@ -55,6 +55,32 @@ router.put('/:id/resolve',
   }
 );
 
+// POST /api/alerts/bulk — resolve or delete many alerts at once. Clearing a
+// backlog one alert at a time was the only option before.
+router.post('/bulk',
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  [body('ids').isArray({ min: 1, max: 500 }), body('ids.*').isUUID(), body('action').isIn(['resolve', 'delete'])],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { ids, action } = req.body;
+      // Group admins act across homes; everyone else only on their own home's alerts.
+      const scopeHome = req.staff.role === 'group_admin' ? null : (req.staff.homeId || null);
+      if (req.staff.role !== 'group_admin' && !scopeHome) throw new AppError('No home on your account', 400);
+      const rows = action === 'delete'
+        ? await query(
+            'DELETE FROM business_alerts WHERE id = ANY($1::uuid[]) AND ($2::uuid IS NULL OR home_id = $2::uuid) RETURNING id',
+            [ids, scopeHome])
+        : await query(
+            `UPDATE business_alerts SET is_resolved = TRUE, resolved_by = $3, resolved_at = NOW(),
+                    resolution_notes = COALESCE(resolution_notes, 'Resolved in bulk via alerts dashboard')
+              WHERE id = ANY($1::uuid[]) AND ($2::uuid IS NULL OR home_id = $2::uuid) AND is_resolved = FALSE RETURNING id`,
+            [ids, scopeHome, req.staff.staffId]);
+      res.json({ success: true, data: { count: rows.length } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/alerts - create manual alert (internal use & AI engine)
 router.post('/',
   requireRole('home_manager', 'group_admin'),
