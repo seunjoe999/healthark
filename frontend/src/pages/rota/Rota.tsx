@@ -421,7 +421,7 @@ export default function Rota() {
   // detail modal ("Bulk assign like this"), so staff don't have to re-pick the
   // resident/day-or-night that's already obvious from the shift they clicked.
   const [patternSeed, setPatternSeed] = useState<{ suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[];
-    startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string } | null>(null)
+    startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string; templateId?: string } | null>(null)
 
   // Drives clock-in/late/missed shift colouring — re-evaluated every minute so a
   // shift flips from "on time" to "late" (and a green block flips to red once its
@@ -1315,6 +1315,7 @@ export default function Rota() {
               label: detailShift.label || '',
               replaceStaffId: detailShift.staff_id || undefined,
               replaceStaffName: detailShift.staff_name || undefined,
+              templateId: detailShift.template_id || undefined,
               startDate: String(detailShift.shift_date).substring(0, 10),
             })
             setDetailShift(null)
@@ -2933,7 +2934,7 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
   open: boolean; onClose: () => void
   staffList: any[]; shifts?: any[]; suList: any[]; homeId: string; defaultDate: string
   seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[];
-    startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string } | null
+    startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string; templateId?: string } | null
   onSaved: () => void
 }) {
   // Multiple staff, not just one — most services run with 2+ staff on at once, and
@@ -3012,7 +3013,7 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
             startTime: timing.split('-')[0], endTime: timing.split('-')[1],
             // Service and "who is being replaced" only apply to the exact shift this was opened from.
             ...(seededTiming && timing === `${seed!.startTime}-${seed!.endTime}`
-              ? { label: seed!.label || '', replaceStaffId: seed!.replaceStaffId || undefined } : {}),
+              ? { label: seed!.label || '', replaceStaffId: seed!.replaceStaffId || undefined, templateId: (seed as any).templateId || undefined } : {}),
           } : {}),
           confirmConflicts: confirmed,
         })
@@ -3051,8 +3052,10 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
               <p className={`text-xs mt-1.5 ${timing ? 'text-indigo-900' : 'text-amber-900'}`}>
                 {timing
                   ? (seededTiming && seed!.replaceStaffName && timing === `${seed!.startTime}-${seed!.endTime}`
-                      ? `Only ${timing.replace('-', ' – ')} shifts are changed. Where ${seed!.replaceStaffName} is on that shift, it is handed to the person you pick; otherwise an unfilled one is used. Shifts with other times are never touched.`
-                      : `Only ${timing.replace('-', ' – ')} shifts are allocated. Shifts with other times on the same days (longer or shorter) are never touched. Pick one person, save, then do the next shift.`)
+                      ? `Only the shift you clicked is changed — ${seed!.replaceStaffName}'s ${timing.replace('-', ' – ')} slot — on the days you pick below. It goes to the one person you tick. The other shifts that day, including another ${timing.replace('-', ' – ')} shift, are not touched.`
+                      : (seededTiming && timing === `${seed!.startTime}-${seed!.endTime}`
+                          ? `Only the shift you clicked is allocated, on the days you pick below, to the one person you tick. The other shifts that day — including another shift with the same times — are not touched. Then click the next shift and do the same.`
+                          : `Only ${timing.replace('-', ' – ')} shifts are allocated. Shifts with other times on the same days (longer or shorter) are never touched. Pick one person, save, then do the next shift.`))
                   : 'Every daytime or night shift on those days can be allocated, whatever its times. Choose a shift time above to allocate just one.'}
               </p>
             </div>

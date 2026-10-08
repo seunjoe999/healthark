@@ -1124,10 +1124,19 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       // it, so only that person's shifts in the run are handed over.
       const replaceStaffId: string | null = exact && typeof req.body.replaceStaffId === 'string' && /^[0-9a-f-]{36}$/i.test(req.body.replaceStaffId)
         ? req.body.replaceStaffId : null;
+      // The exact slot this was started from. A service needing 3 staff has 3
+      // separate slots per day, each its own repeating series — two of them can
+      // have identical times (two long days), so time alone cannot say which one
+      // the manager clicked. The slot's series id can.
+      const slotTemplateId: string | null = exact && typeof req.body.templateId === 'string' && /^[0-9a-f-]{36}$/i.test(req.body.templateId)
+        ? req.body.templateId : null;
+      // Slots a picked person is moved OFF so they are never left on two slots of the same shift time on one day.
+      const clears: string[] = [];
+      const movedKeys = new Set<string>();
 
       const candidates = await query<any>(
         `SELECT id, shift_date, start_time, end_time, shift_type, label, break_minutes,
-                notes_for_carers, notes_for_managers, is_standby, staff_id
+                notes_for_carers, notes_for_managers, is_standby, staff_id, template_id
          FROM staff_shifts
          WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
            AND status <> 'cancelled'
@@ -1206,14 +1215,30 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
         //   2nd choice — an unfilled slot
         //   last       — a slot someone else holds, and only when "only unfilled" is unticked
         // Someone already on a slot of this timing that day is skipped for that day.
-        const rank = (r: any) => (replaceStaffId && r.staff_id === replaceStaffId ? 0 : !r.staff_id ? 1 : 2);
-        for (const rowsForDate of byDate.values()) {
-          const alreadyOn = new Set(rowsForDate.map(r => r.staff_id).filter(Boolean));
-          const eligible = rowsForDate.filter(r => rank(r) < 2 || onlyUnfilled === false).sort((a, b) => rank(a) - rank(b));
-          const picks = staffIds.filter(sid => !alreadyOn.has(sid));
-          eligible.slice(0, picks.length).forEach((m, i) => {
-            assignments.push({ id: m.id, staffId: picks[i], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
-          });
+        //   0 — the exact slot the manager clicked (same repeating series): always used,
+        //       whoever is on it, because "give THIS shift to Oliver" means this slot
+        //   1 — a slot held by the person being replaced   2 — an unfilled slot
+        //   3 — a slot someone else holds (only when "only unfilled" is unticked)
+        const rank = (r: any) => (slotTemplateId && r.template_id === slotTemplateId ? 0
+          : replaceStaffId && r.staff_id === replaceStaffId ? 1 : !r.staff_id ? 2 : 3);
+        for (const [dateKey, rowsForDate] of byDate.entries()) {
+          const eligible = rowsForDate.filter(r => rank(r) < 3 || onlyUnfilled === false).sort((a, b) => rank(a) - rank(b));
+          let next = 0;
+          for (const sid of staffIds) {
+            const onAnother = rowsForDate.filter(r => r.staff_id === sid);
+            // Not started from a specific slot: someone already on this shift time that day is left alone.
+            if (!slotTemplateId && onAnother.length) continue;
+            const target = eligible[next];
+            if (!target) break;
+            next++;
+            if (target.staff_id === sid) continue; // already exactly where they should be
+            // Started from a specific slot and they are on a different slot of the same
+            // time that day: move them (free the other slot) instead of doubling them up.
+            for (const other of onAnother) {
+              if (other.id !== target.id) { clears.push(other.id); movedKeys.add(`${sid}|${dateKey}`); }
+            }
+            assignments.push({ id: target.id, staffId: sid, shift_date: target.shift_date, start_time: target.start_time, end_time: target.end_time });
+          }
         }
       } else {
         matched.forEach((m, idx) => {
@@ -1228,7 +1253,12 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       const warningSet = new Set<string>();
       await Promise.all(assignments.map(async a => {
         const conflicts = await findStaffShiftConflicts(homeId, a.staffId, fmtDate(a.shift_date), a.start_time, a.end_time, a.id);
-        for (const c of conflicts) warningSet.add(conflictMessage(c));
+        for (const c of conflicts) {
+          // The "clash" is the very slot this person is being moved off — not a real clash.
+          if (c.type === 'overlap' && exact && movedKeys.has(`${a.staffId}|${fmtDate(a.shift_date)}`)
+              && c.withDate === fmtDate(a.shift_date) && c.withStart.slice(0, 5) === exactStart && c.withEnd.slice(0, 5) === exactEnd) continue;
+          warningSet.add(conflictMessage(c));
+        }
       }));
 
       // Pattern dates with no shift at all for this resident used to be silently
@@ -1285,6 +1315,9 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
         return res.status(409).json({ success: false, warnings: Array.from(warningSet), requiresConfirm: true });
       }
 
+      if (clears.length) {
+        await query(`UPDATE staff_shifts SET staff_id = NULL, status = 'unfilled', updated_at = NOW() WHERE id = ANY($1::uuid[])`, [clears]);
+      }
       if (assignments.length) {
         const params: any[] = [];
         const caseParts: string[] = [];
