@@ -166,6 +166,35 @@ function getDisplayStatus(shift: any, now: Date): string {
   if (now.getTime() > shiftStart.getTime() + LATE_GRACE_MINS * 60000) return 'late'
   return 'filled'
 }
+// Pairs of shifts where the same person is on two that overlap in time
+// (cancelled shifts ignored; a shift ending at or before it starts runs overnight).
+function findShiftClashes(shifts: any[]): [any, any][] {
+  const span = (s: any): [number, number] => {
+    const day = Math.floor(new Date(String(s.shift_date).substring(0, 10) + 'T00:00:00Z').getTime() / 60000)
+    const st = timeToMins(s.start_time?.substring(0, 5) || '00:00')
+    let en = timeToMins(s.end_time?.substring(0, 5) || '00:00')
+    if (en <= st) en += 1440
+    return [day + st, day + en]
+  }
+  const byStaff: Record<string, any[]> = {}
+  for (const s of shifts) {
+    if (!s.staff_id || s.status === 'cancelled') continue
+    ;(byStaff[s.staff_id] = byStaff[s.staff_id] || []).push(s)
+  }
+  const out: [any, any][] = []
+  for (const list of Object.values(byStaff)) {
+    list.sort((x, y) => span(x)[0] - span(y)[0])
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const [as, ae] = span(list[i]); const [bs, be] = span(list[j])
+        if (bs >= ae) break
+        if (as < be && bs < ae) out.push([list[i], list[j]])
+      }
+    }
+  }
+  return out.sort((x, y) => span(x[0])[0] - span(y[0])[0])
+}
+
 // "17 min late" / "1h 10m late" for a shift whose staff clocked in after the
 // grace period. Empty when on time, not clocked in, or unassigned.
 function lateLabel(shift: any): string {
@@ -363,6 +392,7 @@ export default function Rota() {
   const [adjustPickerOpen, setAdjustPickerOpen] = useState(false)
   const [auditorOpen, setAuditorOpen] = useState(false)
   const [openShiftsOpen, setOpenShiftsOpen] = useState(false)
+  const [clashesOpen, setClashesOpen] = useState(false)
   // Bulk changes to every highlighted shift: time slot, shift type, cancel, reinstate.
   const [bulkBusy, setBulkBusy] = useState(false)
   const runBulkChange = async (kind: string) => {
@@ -814,6 +844,16 @@ export default function Rota() {
             <Trash2 className="w-3 h-3" /> Manage Services
           </button>
         )}
+        {(() => {
+          const n = findShiftClashes(shifts).length
+          return (
+            <button onClick={() => setClashesOpen(true)}
+              className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg border ${n > 0 ? 'bg-rose-600 border-rose-600 text-white hover:bg-rose-500' : 'border-slate-200 text-slate-800 hover:bg-slate-50'}`}
+              title="The same person on two shifts that overlap, in the period on screen">
+              <AlertTriangle className="w-3 h-3" /> Clashes{n > 0 ? ` (${n})` : ''}
+            </button>
+          )
+        })()}
         <button onClick={() => setOpenShiftsOpen(true)}
           className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
           title="Shifts that need cover — staff can offer to work them">
@@ -1277,6 +1317,32 @@ export default function Rota() {
         />
       )}
 
+      {clashesOpen && (
+        <Modal open={true} onClose={() => setClashesOpen(false)} title={`Clashes (${findShiftClashes(shifts).length})`} size="lg">
+          {findShiftClashes(shifts).length === 0 ? (
+            <p className="text-sm text-slate-500 py-6 text-center">No one is on two overlapping shifts in the period shown. Use the arrows to check other weeks.</p>
+          ) : (
+            <div className="space-y-2 max-h-[65vh] overflow-y-auto">
+              <p className="text-xs text-slate-500">The same person on two shifts that overlap. Open the shift that is wrong and either reallocate it or unassign them.</p>
+              {findShiftClashes(shifts).map(([a, b], i) => (
+                <div key={i} className="border border-rose-200 bg-rose-50 rounded-xl px-3 py-2 text-sm">
+                  <p className="font-bold text-slate-900">
+                    {format(parseISO(String(a.shift_date).substring(0, 10)), 'EEE d MMM')} — {a.staff_name}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {[a, b].map((s: any) => (
+                      <button key={s.id} onClick={() => { setClashesOpen(false); setDetailShift(s) }}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-800 hover:border-slate-400">
+                        {s.start_time?.substring(0, 5)}–{s.end_time?.substring(0, 5)} · {s.label || s.su_names || s.su_name || 'Shift'} — open
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
       {openShiftsOpen && (
         <OpenShiftsModal homeId={selectedHome} myId={user?.id || ''} canManage={canManage}
           onClose={() => { setOpenShiftsOpen(false); loadAll() }} />
