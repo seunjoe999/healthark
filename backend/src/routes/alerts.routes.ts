@@ -84,7 +84,7 @@ router.get('/settings', requireRole(...ALERT_SETTINGS_ROLES), async (req: Reques
       const s = saved.find((x: any) => x.alert_type === t);
       return {
         alertType: t,
-        label: ALERT_TYPE_LABELS[t] || t.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()),
+        label: ALERT_TYPE_LABELS[t] || t.replace(/_/g, ' ').replace(/^./, (c: string) => c.toUpperCase()),
         enabled: s ? s.enabled : true,
         autoClearHours: s ? s.auto_clear_hours : null,
         open: parseInt(used.find((u: any) => u.alert_type === t)?.open || '0', 10),
