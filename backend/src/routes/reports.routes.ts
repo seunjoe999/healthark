@@ -512,18 +512,22 @@ router.get('/overdue-signatures', requireRole(...REPORT_MGMT_ROLES), async (req:
   try {
     const { homeId } = reportRange(req);
     const rows = await query(
+      // One row per staff member. Listing every unsigned policy separately gave
+      // thousands of rows (each staff member x each policy), which no one can act on.
       `SELECT s.first_name || ' ' || s.last_name AS staff,
-              p.title AS document,
-              COALESCE(p.version, '—') AS version,
-              COALESCE(to_char(pso.sent_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY'), '—') AS sent_on,
-              CASE WHEN pso.sent_at IS NULL THEN '—'
-                   ELSE (CURRENT_DATE - (pso.sent_at AT TIME ZONE 'Europe/London')::date)::text || ' days' END AS waiting,
-              'Not signed' AS signature_status
+              REPLACE(s.role::text, '_', ' ') AS job_role,
+              COUNT(*) AS policies_not_signed,
+              (SELECT COUNT(*) FROM policy_sign_offs d WHERE d.staff_id = s.id AND d.signed_at IS NOT NULL) AS policies_signed,
+              COALESCE(to_char(MIN(pso.sent_at) AT TIME ZONE 'Europe/London', 'DD Mon YYYY'), '—') AS oldest_sent_on,
+              CASE WHEN MIN(pso.sent_at) IS NULL THEN '—'
+                   ELSE (CURRENT_DATE - (MIN(pso.sent_at) AT TIME ZONE 'Europe/London')::date)::text || ' days' END AS longest_waiting,
+              LEFT(string_agg(p.title, '; ' ORDER BY p.title), 300) AS documents
        FROM policy_sign_offs pso
        JOIN staff s ON s.id = pso.staff_id
        JOIN policies p ON p.id = pso.policy_id
        WHERE pso.signed_at IS NULL AND s.home_id = $1 AND s.is_active = TRUE
-       ORDER BY pso.sent_at ASC NULLS LAST, staff`,
+       GROUP BY s.id, s.first_name, s.last_name, s.role
+       ORDER BY COUNT(*) DESC, staff`,
       [homeId]
     );
     res.json({ success: true, data: rows } as ApiResponse);

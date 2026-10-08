@@ -566,20 +566,22 @@ function GenericTable({ data, reportType }: { data: any[]; reportType: string })
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-x-auto">
       <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-700">{data.length} records</p>
+        <p className="text-sm font-medium text-slate-700">
+          {data.length} records{data.length > 1000 ? ' — showing the first 1,000; download the report for all of them' : ''}
+        </p>
       </div>
       <table className="w-full text-sm">
         <thead className="bg-slate-50 border-b border-slate-100">
           <tr>{cols.map(c => <th key={c} className="px-4 py-3 text-left font-medium text-slate-600 text-xs capitalize">{c.replace(/_/g, ' ')}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {data.slice(0, 100).map((row: any, i: number) => (
+          {data.slice(0, 1000).map((row: any, i: number) => (
             <tr key={i} className="hover:bg-slate-50">
               {cols.map(c => (
                 <td key={c} className="px-4 py-3 text-slate-700 max-w-xs truncate">
                   {row[c] instanceof Date ? format(new Date(row[c]), 'd MMM yyyy') :
                    typeof row[c] === 'boolean' ? (row[c] ? 'Yes' : 'No') :
-                   String(row[c] ?? '—').substring(0, 80)}
+                   String(row[c] ?? '—').substring(0, 300)}
                 </td>
               ))}
             </tr>

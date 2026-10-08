@@ -424,6 +424,11 @@ export function startScheduler(): void {
   // Hourly: clear alerts that have passed their home's auto-clear time.
   cron.schedule('20 * * * *', async () => { await alertsService.autoClearAlerts(); }, UK_TZ);
 
+  setTimeout(() => {
+    alertsService.checkFluidIntake().catch(() => {});
+    alertsService.checkLowMedicationStock().catch(() => {});
+  }, 45000);
+
   // Every hour: check fluid intake
   cron.schedule('0 * * * *', async () => {
     logger.info('Scheduler: checking fluid intake');

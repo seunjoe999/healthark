@@ -80,6 +80,13 @@ export async function checkCarePlanReviews(): Promise<void> {
 export async function checkFluidIntake(): Promise<void> {
   try {
     const today = ukDateStr();
+    // A low-fluid alert is about ONE day. A new one was raised per person every
+    // day and none ever closed, so they piled up into the hundreds. Yesterday's
+    // (and older) are closed here once the day they refer to is over.
+    await query(
+      `UPDATE business_alerts SET is_resolved = TRUE, resolved_at = NOW(),
+              resolution_notes = COALESCE(resolution_notes, 'Closed automatically — that day has ended')
+       WHERE alert_type = 'fluid_below_threshold' AND is_resolved = FALSE AND DATE(created_at) < $1`, [today]);
     const flagged = await query<{
       su_id: string; home_id: string; total_ml: number;
       first_name: string; last_name: string; min_fluid_ml: number;
@@ -117,6 +124,20 @@ export async function checkFluidIntake(): Promise<void> {
 export async function checkLowMedicationStock(): Promise<void> {
   try {
     const today = ukDateStr();
+    // The same low-stock item raised a fresh alert every morning. Keep only the
+    // newest open alert per item, and close alerts for items that have since
+    // been restocked above their reorder threshold.
+    await query(
+      `UPDATE business_alerts ba SET is_resolved = TRUE, resolved_at = NOW(),
+              resolution_notes = COALESCE(ba.resolution_notes, 'Closed automatically — duplicate of a newer alert for the same item')
+       WHERE ba.alert_type = 'medication_stock_low' AND ba.is_resolved = FALSE
+         AND EXISTS (SELECT 1 FROM business_alerts n WHERE n.alert_type = 'medication_stock_low' AND n.is_resolved = FALSE
+                       AND n.record_id = ba.record_id AND n.created_at > ba.created_at)`);
+    await query(
+      `UPDATE business_alerts ba SET is_resolved = TRUE, resolved_at = NOW(),
+              resolution_notes = COALESCE(ba.resolution_notes, 'Closed automatically — stock is back above the reorder level')
+       WHERE ba.alert_type = 'medication_stock_low' AND ba.is_resolved = FALSE
+         AND EXISTS (SELECT 1 FROM medication_stock ms WHERE ms.id = ba.record_id AND ms.current_stock > ms.reorder_threshold)`);
     const lowStock = await query<{
       id: string; home_id: string; medication_name: string;
       current_stock: number; reorder_threshold: number; unit: string; su_id: string | null;
@@ -127,8 +148,8 @@ export async function checkLowMedicationStock(): Promise<void> {
          AND NOT EXISTS (
            SELECT 1 FROM business_alerts ba
            WHERE ba.record_id = ms.id AND ba.alert_type = 'medication_stock_low'
-             AND DATE(ba.created_at) = $1 AND ba.is_resolved = FALSE
-         )`,
+             AND ba.is_resolved = FALSE
+         ) AND $1::text IS NOT NULL`,
       [today]
     );
 
