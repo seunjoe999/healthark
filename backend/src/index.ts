@@ -118,7 +118,8 @@ app.use('/api', (req, res, next) => {
     try {
       const code = res.statusCode;
       const msg = body && typeof body === 'object' ? String(body.error || body.message || '') : '';
-      const sessionNoise = code === 401 && !/password|PIN|inactive/i.test(msg);
+      // Expired sessions, and the normal 'now enter your PIN' step of signing in, are not problems.
+      const sessionNoise = (code === 401 && !/password|PIN|inactive/i.test(msg)) || (body && body.code === 'pin_required');
       if (code >= 400 && !sessionNoise && !String(req.originalUrl || '').includes('/system/client-error')) {
         let staffId: string | null = (req as any).staff?.staffId || null;
         if (!staffId) {
