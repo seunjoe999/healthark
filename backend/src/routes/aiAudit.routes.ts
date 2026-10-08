@@ -18,6 +18,31 @@ type AuditTemplate = {
 const AUDIT_TEMPLATES = auditTemplates as AuditTemplate[];
 const AUDIT_TEMPLATE_MAP = new Map(AUDIT_TEMPLATES.map(t => [t.suggestedKey, t]));
 
+// Pass/fail counts are stored when an audit is saved, so audits saved before a
+// question was marked "No is the good answer" (gaps / discrepancies / missing
+// signatures on the MAR) kept the wrong score. Recount every saved audit whose
+// template has such a question; only rows whose counts change are written.
+setTimeout(async () => {
+  try {
+    const keys = AUDIT_TEMPLATES.filter((t: any) => (t.questions || []).some((q: any) => q.invertedScore)).map((t: any) => t.suggestedKey);
+    if (!keys.length) return;
+    const rows = await query<any>(
+      `SELECT id, audit_type, checklist_answers, checks_passed, total_checks FROM audit_reports
+       WHERE audit_type = ANY($1) AND checklist_answers IS NOT NULL`, [keys]);
+    for (const r of rows) {
+      const template: any = AUDIT_TEMPLATE_MAP.get(r.audit_type);
+      const ans = typeof r.checklist_answers === 'string' ? JSON.parse(r.checklist_answers) : r.checklist_answers;
+      if (!template || !ans || typeof ans !== 'object') continue;
+      const entries = Object.entries(ans as Record<string, string>).filter(([, v]) => v === 'yes' || v === 'no');
+      const passed = entries.filter(([i, v]) => (template.questions[Number(i)]?.invertedScore ? v === 'no' : v === 'yes')).length;
+      if (passed !== Number(r.checks_passed) || entries.length !== Number(r.total_checks)) {
+        await query('UPDATE audit_reports SET total_checks=$1, checks_passed=$2, checks_failed=$3 WHERE id=$4',
+          [entries.length, passed, entries.length - passed, r.id]);
+      }
+    }
+  } catch { /* non-fatal: scores simply stay as saved */ }
+}, 20000);
+
 // Every template in auditTemplates.json is tagged category:"service_user" regardless
 // of whether it's actually about one resident (Activity, Falls) or the whole home/
 // service (Fridge Temperature, Infection Control, Fire Safety) — so the "who is

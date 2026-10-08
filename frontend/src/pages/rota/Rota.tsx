@@ -1280,6 +1280,7 @@ export default function Rota() {
           open={patternAssignOpen}
           onClose={() => { setPatternAssignOpen(false); setPatternSeed(null) }}
           staffList={staffList}
+          shifts={shifts}
           suList={suList}
           homeId={selectedHome}
           defaultDate={format(weekStart, 'yyyy-MM-dd')}
@@ -2711,9 +2712,9 @@ const WEEKDAY_OPTIONS = [
   { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' },
 ]
 
-function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultDate, seed, onSaved }: {
+function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, homeId, defaultDate, seed, onSaved }: {
   open: boolean; onClose: () => void
-  staffList: any[]; suList: any[]; homeId: string; defaultDate: string
+  staffList: any[]; shifts?: any[]; suList: any[]; homeId: string; defaultDate: string
   seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[] } | null
   onSaved: () => void
 }) {
@@ -2816,6 +2817,15 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
               // number makes that order visible/confirmable before saving,
               // instead of it being an invisible side effect of click order.
               const order = staffIds.indexOf(s.id)
+              // Hours already on the rota in the period on screen vs contracted
+              // hours — so it's clear who has room before assigning more.
+              const rotaHrs = shifts.filter((sh: any) => sh.staff_id === s.id && sh.status !== 'cancelled').reduce((sum: number, sh: any) => {
+                let m = timeToMins(sh.end_time?.substring(0, 5) || '00:00') - timeToMins(sh.start_time?.substring(0, 5) || '00:00')
+                if (m <= 0) m += 1440
+                return sum + m / 60
+              }, 0)
+              const contracted = Number(s.contracted_hours) || 0
+              const over = contracted > 0 && rotaHrs > contracted
               return (
                 <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm">
                   <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
@@ -2824,6 +2834,10 @@ function PatternAssignModal({ open, onClose, staffList, suList, homeId, defaultD
                   )}
                   <span className="text-slate-700">{getName(s)}</span>
                   <span className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
+                  <span className={`ml-auto text-xs font-semibold whitespace-nowrap ${over ? 'text-amber-600' : rotaHrs === 0 ? 'text-emerald-600' : 'text-slate-500'}`}
+                    title="Hours on the rota in the period currently shown, against contracted hours">
+                    {rotaHrs === 0 ? 'Free' : `${rotaHrs % 1 === 0 ? rotaHrs : rotaHrs.toFixed(1)}h on rota`}{contracted > 0 ? ` / ${contracted}h` : ''}
+                  </span>
                 </label>
               )
             })}

@@ -1927,6 +1927,22 @@ async function ensureColumns() {
     `ALTER TABLE su_contacts ALTER COLUMN phone_home TYPE VARCHAR(60)`,
     `ALTER TABLE su_contacts ALTER COLUMN postcode TYPE VARCHAR(20)`,
     `ALTER TABLE records_incidents ALTER COLUMN incident_type TYPE VARCHAR(120)`,
+    // body_map_data only ever existed in the CREATE TABLE statement, which does
+    // nothing on a database where the table was already there — so the incident
+    // save (which has written this column since the body map was added) failed
+    // with "column does not exist" on every submission.
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS body_map_data JSONB`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS injury_details TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS medical_details TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS witnesses TEXT`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS location TEXT`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS address1 VARCHAR(255)`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS address2 VARCHAR(255)`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS postcode VARCHAR(20)`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS phone_secondary VARCHAR(60)`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE su_contacts ADD COLUMN IF NOT EXISTS notes TEXT`,
     // 30–60 minute post-administration observation, added after the dose is signed off.
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS outcome_note TEXT`,
     `ALTER TABLE mar_records ADD COLUMN IF NOT EXISTS outcome_note_at TIMESTAMPTZ`,

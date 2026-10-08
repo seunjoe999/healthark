@@ -1761,11 +1761,13 @@
       },
       {
         "text": "Were any discrepancies identified on the MAR Chart?",
-        "type": "yes_no"
+        "type": "yes_no",
+        "invertedScore": true
       },
       {
         "text": "Are there any gaps on MAR? If so what date is missing?",
-        "type": "yes_no"
+        "type": "yes_no",
+        "invertedScore": true
       },
       {
         "text": "Are regular refusals of medicines raised with the GP, Social worker and Management? If so what date?",
@@ -1781,7 +1783,8 @@
       },
       {
         "text": "Are there any gaps in signature/initials on MAR Chart?",
-        "type": "yes_no"
+        "type": "yes_no",
+        "invertedScore": true
       },
       {
         "text": "Were all medications entered correctly on the MAR?",

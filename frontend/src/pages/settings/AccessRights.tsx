@@ -82,12 +82,12 @@ const FEATURES = [
   { key: 'family_portal',       label: 'Family Portal',               group: 'Other' },
   { key: 'notifications',       label: 'Notification Manager',        group: 'Other' },
   { key: 'clockin_analytics',   label: 'Clock In Analytics',          group: 'Other' },
-  { key: 'bed_occupancy',       label: 'Bed Occupancy',               group: 'Capacity & Operations' },
-  { key: 'waiting_list',        label: 'Waiting List',                group: 'Capacity & Operations' },
-  { key: 'visitor_log',         label: 'Visitor Log',                 group: 'Capacity & Operations' },
-  { key: 'contractors',         label: 'Contractor Register',         group: 'Capacity & Operations' },
-  { key: 'external_contacts',   label: 'External Contacts',           group: 'Capacity & Operations' },
-  { key: 'environmental',       label: 'Environmental Checks',        group: 'Capacity & Operations' },
+  { key: 'bed_occupancy',       label: 'Bed Occupancy',               group: 'Capacity' },
+  { key: 'waiting_list',        label: 'Waiting List',                group: 'Capacity' },
+  { key: 'visitor_log',         label: 'Visitor Log',                 group: 'Capacity' },
+  { key: 'contractors',         label: 'Contractor Register',         group: 'Capacity' },
+  { key: 'external_contacts',   label: 'External Contacts',           group: 'Capacity' },
+  { key: 'environmental',       label: 'Environmental Checks',        group: 'Capacity' },
   { key: 'staff_absence',       label: 'Staff Absence',                group: 'HR & Development' },
   { key: 'training_matrix',     label: 'Training Matrix',              group: 'HR & Development' },
   { key: 'lessons_learned',     label: 'Lessons Learned',              group: 'Governance' },
@@ -95,7 +95,7 @@ const FEATURES = [
   { key: 'evidence_pack',       label: 'CQC Evidence Pack',            group: 'Governance' },
 ]
 
-const GROUPS = ['General', 'Residents', 'Daily Records', 'Medication', 'Staff', 'Operations', 'Capacity & Operations', 'HR & Development', 'Governance', 'Quality', 'Other']
+const GROUPS = ['General', 'Residents', 'Daily Records', 'Medication', 'Staff', 'Operations', 'Capacity', 'HR & Development', 'Governance', 'Quality', 'Other']
 
 type RoleFlags = Record<string, Record<string, boolean>>
 

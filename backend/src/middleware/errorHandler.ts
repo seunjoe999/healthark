@@ -89,6 +89,18 @@ export function errorHandler(
     return;
   }
 
+  // Any other database error (missing column, bad query...). Still a server
+  // fault, but the bare "Internal server error" made repeated reports of the
+  // same broken form impossible to diagnose from a screenshot — include the
+  // database's own one-line reason so the cause is visible straight away.
+  if (/^[0-9A-Z]{5}$/.test(pgCode) && (err as any).severity) {
+    res.status(500).json({
+      success: false,
+      error: `Server error — ${err.message} [${pgCode}]`,
+    } as ApiResponse);
+    return;
+  }
+
   // Default 500 — only expose error detail in development; hide internals in production
   const isProd = process.env.NODE_ENV === 'production';
   res.status(500).json({
