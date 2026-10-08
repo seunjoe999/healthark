@@ -176,7 +176,7 @@ const navSections = [
     ]
   },
   {
-    label: 'CAPACITY & OPERATIONS', highlight: true,
+    label: 'CAPACITY', highlight: true,
     items: [
       { label: 'Bed Occupancy',       to: '/bed-occupancy',      icon: LayoutDashboard, roles: [], featureKey: 'bed_occupancy' },
       { label: 'Contractor Register', to: '/contractors',        icon: Wrench,          roles: [], featureKey: 'contractors' },
