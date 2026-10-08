@@ -250,8 +250,12 @@ function layoutShiftLanes(dayShifts: any[]): { layout: Map<string, { col: number
     // Shifts starting together sit side by side — order those lanes by staff
     // name (unfilled last) so a multi-staff service reads alphabetically.
     if (as !== bs) return as - bs
-    if (!a.staff_name !== !b.staff_name) return a.staff_name ? -1 : 1
-    return String(a.staff_name || '').localeCompare(String(b.staff_name || ''), undefined, { sensitivity: 'base' })
+    // Same start time: keep each slot in a FIXED column (by its repeating series),
+    // whoever is on it. Ordering these by staff name made a slot jump to a
+    // different column the moment its person changed, so after allocating it
+    // looked as if the shifts themselves had been swapped around.
+    const ak = String(a.template_id || a.id || ''), bk = String(b.template_id || b.id || '')
+    return ak < bk ? -1 : ak > bk ? 1 : 0
   })
   let open: { id: string; end: number; col: number }[] = []
   let cluster: string[] = []
