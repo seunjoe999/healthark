@@ -758,7 +758,7 @@ export default function Rota() {
     Math.min(m, Math.floor(timeToMins(sh.start_time?.substring(0, 5) || '08:00') / 60)), min), 8)
   const gridStartHour = Math.max(0, Math.min(8, earliestHour))
   const fitHour = gridH > 0 ? Math.floor((gridH - 46) / (END_HOUR - gridStartHour)) : 40
-  setGridScale(gridStartHour, rotaSize === 'large' ? 84 : rotaSize === 'medium' ? 58 : Math.max(26, Math.min(64, fitHour)))
+  setGridScale(gridStartHour, rotaSize === 'large' ? 84 : rotaSize === 'medium' ? 58 : Math.max(22, Math.min(64, fitHour)))
 
   const nav = (dir: 1 | -1) => {
     if (view === 'week') setWeekStart(d => addDays(d, dir * 7))
@@ -1236,7 +1236,9 @@ export default function Rota() {
                     const st = shift.start_time?.substring(0, 5) || '08:00'
                     const et = shift.end_time?.substring(0, 5)   || '09:00'
                     const top    = shiftTopPx(st)
-                    const height = shiftHeightPx(st, et)
+                    // A night shift runs past midnight; stop its block at the bottom of the
+                    // day instead of letting it hang below the grid and add scrolling.
+                    const height = Math.max(28, Math.min(shiftHeightPx(st, et), TOTAL_HEIGHT - top))
                     const status = getDisplayStatus(shift, nowTick)
                     const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
                     const relation = SHIFT_RELATIONS[shift.shift_relation]
