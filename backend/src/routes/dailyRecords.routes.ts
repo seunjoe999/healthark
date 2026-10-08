@@ -13,6 +13,15 @@ import { logger } from '../config/logger';
 
 const router = Router();
 
+// "14:30" -> today's date at 14:30 UK time, as a timestamp string Postgres accepts.
+// A full date-time is passed through; anything else becomes NULL rather than failing the save.
+function visitClockToTimestamp(v: any): string | null {
+  if (v === undefined || v === null || String(v).trim() === '') return null;
+  const s = String(v).trim();
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return `${ukDateStr()} ${s.length <= 5 ? s + ':00' : s} Europe/London`;
+  return isNaN(new Date(s).getTime()) ? null : s;
+}
+
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
 router.use(authenticate);
@@ -344,8 +353,14 @@ router.post('/', [
           break;
         }
         case 'visit': {
-          const { visitType, visitorName, relationship, location, timeArrived, timeLeft, suResponse,
+          const { visitType, visitorName, relationship, location, suResponse,
                   visitorRole, purpose, visitAnnounced } = req.body;
+          // time_arrived / time_left are TIMESTAMPTZ but the form sends a bare
+          // "HH:MM" — every visit saved with a time filled in was refused
+          // ("invalid input syntax for type timestamp"). Seen in the issue log:
+          // staff retrying the same visit record seven times.
+          const timeArrived = visitClockToTimestamp(req.body.timeArrived);
+          const timeLeft = visitClockToTimestamp(req.body.timeLeft);
           await client.query(
             `INSERT INTO records_visits (daily_record_id, visit_type, visitor_name, relationship, location, time_arrived, time_left, su_response, notes,
                visitor_role, purpose, visit_announced)
@@ -663,7 +678,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
         visit: { table: 'records_visits', fields: [
           { body: 'visitType', col: 'visit_type' }, { body: 'visitorName', col: 'visitor_name' },
           { body: 'relationship', col: 'relationship' }, { body: 'location', col: 'location' },
-          { body: 'timeArrived', col: 'time_arrived' }, { body: 'timeLeft', col: 'time_left' }, { body: 'suResponse', col: 'su_response' },
+          { body: 'timeArrived', col: 'time_arrived', cast: visitClockToTimestamp }, { body: 'timeLeft', col: 'time_left', cast: visitClockToTimestamp }, { body: 'suResponse', col: 'su_response' },
         ] },
         prn_medication: { table: 'records_prn_medication', fields: [
           { body: 'medicationName', col: 'medication_name' }, { body: 'medicationId', col: 'medication_id' },

@@ -292,10 +292,27 @@ router.post('/event', authenticate,
           return res.status(400).json({ success: false, reason: 'already_clocked_out',
             error: `You are already clocked out — your clock-out was recorded at ${at}. There is nothing more you need to do.` });
         }
-        return res.status(400).json({ success: false, error: 'You need to clock in before you can clock out.' });
+        return res.status(400).json({ success: false, reason: 'no_clock_in',
+          error: 'There is no clock-in recorded for you on this shift, so there is nothing to clock out of. Tell your manager so your hours can be added by hand.' });
       }
       if (eventType !== 'clock_out' && isClockedIn) {
-        return res.status(400).json({ success: false, error: 'You are already clocked in.' });
+        const openedAt = new Date(lastEventRows[0].event_time);
+        const hoursOpen = (Date.now() - openedAt.getTime()) / 3600000;
+        if (hoursOpen >= 3) {
+          // Still "clocked in" from an earlier shift today that was never clocked
+          // out. Close that one (marked automatic) and let this clock-in through —
+          // they are standing at a new shift and must not be turned away.
+          await query(
+            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed)
+             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE)`,
+            [staffId, lastEventRows[0].home_id || homeId]);
+          isClockedIn = false;
+        } else {
+          // A second tap shortly after a successful clock-in: tell them it worked.
+          const at = openedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+          return res.status(400).json({ success: false, reason: 'already_clocked_in',
+            error: `You are already clocked in — your clock-in was recorded at ${at}. There is nothing more you need to do.` });
+        }
       }
 
       // A staff member can belong to — and clock in at — multiple services

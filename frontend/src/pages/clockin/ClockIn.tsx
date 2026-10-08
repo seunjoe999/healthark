@@ -243,6 +243,9 @@ export default function ClockIn() {
               <h2 className="text-white font-display text-xl mb-2">
                 {errorReason === 'medication_incomplete' ? 'Medication not finished yet'
                   : errorReason === 'tasks_incomplete' ? 'Tasks not finished yet'
+                  : errorReason === 'already_clocked_in' ? 'You are already clocked in'
+                  : errorReason === 'already_clocked_out' ? 'You are already clocked out'
+                  : errorReason === 'no_clock_in' ? 'No clock-in found'
                   : 'Something went wrong'}
               </h2>
               <p className="text-slate-400 text-sm mb-6">{error}</p>

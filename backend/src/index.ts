@@ -117,10 +117,15 @@ app.use('/api', (req, res, next) => {
   res.json = ((body: any) => {
     try {
       const code = res.statusCode;
-      const msg = body && typeof body === 'object' ? String(body.error || body.message || '') : '';
+      const msg = body && typeof body === 'object'
+        ? String(body.error || body.message || (Array.isArray(body.warnings) && body.warnings.length ? 'Shift clash warning shown: ' + body.warnings.join(' | ') : ''))
+        : '';
       // Expired sessions, and the normal 'now enter your PIN' step of signing in, are not problems.
       const sessionNoise = (code === 401 && !/password|PIN|inactive/i.test(msg)) || (body && body.code === 'pin_required');
-      if (code >= 400 && !sessionNoise && !String(req.originalUrl || '').includes('/system/client-error')) {
+      // Automated scanners on the internet probe addresses that do not exist
+      // (/api/config, /api/trpc ...). Not signed in + "not found" = not a real user.
+      const scannerNoise = code === 404 && !req.headers.authorization;
+      if (code >= 400 && !sessionNoise && !scannerNoise && !String(req.originalUrl || '').includes('/system/client-error')) {
         let staffId: string | null = (req as any).staff?.staffId || null;
         if (!staffId) {
           try { const t = req.headers.authorization?.substring(7); if (t) staffId = (jwt.decode(t) as any)?.staffId || null; } catch { /* ignore */ }
