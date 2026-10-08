@@ -482,6 +482,73 @@ router.get('/wellbeing', async (req: Request, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 });
 
+// Policies sent to staff for signature that are still unsigned.
+router.get('/overdue-signatures', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId } = reportRange(req);
+    const rows = await query(
+      `SELECT s.first_name || ' ' || s.last_name AS staff,
+              p.title AS document,
+              COALESCE(p.version, '—') AS version,
+              COALESCE(to_char(pso.sent_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY'), '—') AS sent_on,
+              CASE WHEN pso.sent_at IS NULL THEN '—'
+                   ELSE (CURRENT_DATE - (pso.sent_at AT TIME ZONE 'Europe/London')::date)::text || ' days' END AS waiting,
+              'Not signed' AS signature_status
+       FROM policy_sign_offs pso
+       JOIN staff s ON s.id = pso.staff_id
+       JOIN policies p ON p.id = pso.policy_id
+       WHERE pso.signed_at IS NULL AND s.home_id = $1 AND s.is_active = TRUE
+       ORDER BY pso.sent_at ASC NULLS LAST, staff`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// One row per active staff member: how many staff assessments are on file and when the next is due.
+router.get('/assessment-matrix', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId } = reportRange(req);
+    const rows = await query(
+      `SELECT s.first_name || ' ' || s.last_name AS staff,
+              REPLACE(s.role::text, '_', ' ') AS job_role,
+              COUNT(a.id) AS assessments_on_file,
+              COALESCE(to_char(MAX(a.assessment_date), 'DD Mon YYYY'), 'None') AS last_assessment,
+              COALESCE(to_char(MIN(a.next_review_date) FILTER (WHERE a.next_review_date >= CURRENT_DATE), 'DD Mon YYYY'), '—') AS next_review_due,
+              COUNT(a.id) FILTER (WHERE a.next_review_date < CURRENT_DATE) AS reviews_overdue,
+              COUNT(a.id) FILTER (WHERE a.staff_signature IS NULL) AS awaiting_staff_signature
+       FROM staff s
+       LEFT JOIN assessments a ON a.subject_id = s.id AND a.category = 'staff'
+       WHERE s.home_id = $1 AND s.is_active = TRUE
+       GROUP BY s.id, s.first_name, s.last_name, s.role
+       ORDER BY 1`,
+      [homeId]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// Where staff were when they clocked in/out, against the permitted distance.
+router.get('/clock-in-locations', requireRole(...REPORT_MGMT_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { homeId, fromDate, toDate } = reportRange(req);
+    const rows = await query(
+      `SELECT to_char(ce.event_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY') AS event_date,
+              to_char(ce.event_time AT TIME ZONE 'Europe/London', 'HH24:MI') AS event_time,
+              s.first_name || ' ' || s.last_name AS staff,
+              REPLACE(ce.event_type, '_', ' ') AS event,
+              CASE WHEN ce.distance_metres IS NULL THEN 'No location' ELSE ce.distance_metres::text || ' m' END AS distance_from_service,
+              CASE WHEN ce.geofence_passed IS FALSE THEN 'Outside permitted area'
+                   WHEN ce.geofence_passed IS TRUE THEN 'Within permitted area' ELSE '—' END AS location_check
+       FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id
+       WHERE ce.home_id = $1 AND (ce.event_time AT TIME ZONE 'Europe/London')::date BETWEEN $2::date AND $3::date
+       ORDER BY (ce.geofence_passed IS FALSE) DESC, ce.event_time DESC`,
+      [homeId, fromDate, toDate]
+    );
+    res.json({ success: true, data: rows } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // Tasks that were due in the period and never completed.
 router.get('/tasks-not-completed', async (req: Request, res: Response, next: NextFunction) => {
   try {

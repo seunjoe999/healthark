@@ -2333,6 +2333,17 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     finally { setUnassigning(false) }
   }
 
+  // Totals for the repeating series this shift belongs to.
+  const [seriesStats, setSeriesStats] = useState<any>(null)
+  useEffect(() => {
+    let cancelled = false
+    if (!shift.template_id) { setSeriesStats(null); return }
+    api.get(`/shifts/${shift.id}/series-stats`)
+      .then(res => { if (!cancelled) setSeriesStats(res.data?.data || null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [shift.id, shift.template_id])
+
   const changeStatus = async (newStatus: string) => {
     if (newStatus === status) return
     // Cancelling keeps the shift on the rota (greyed out) with the reason, so
@@ -2407,6 +2418,19 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             </button>
           )}
         </div>
+
+        {seriesStats && (
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+            <p className="font-bold text-slate-900 mb-0.5">This shift is part of a repeating series</p>
+            <p>{seriesStats.total} shifts from {seriesStats.first_date} to {seriesStats.last_date}</p>
+            <p>
+              <span className="text-emerald-700 font-semibold">{seriesStats.assigned} assigned</span> ·{' '}
+              <span className={Number(seriesStats.unassigned) > 0 ? 'text-rose-600 font-semibold' : ''}>{seriesStats.unassigned} unassigned</span>
+              {Number(seriesStats.cancelled) > 0 && <> · {seriesStats.cancelled} cancelled</>}
+              {Number(seriesStats.upcoming_unassigned) > 0 && <> · {seriesStats.upcoming_unassigned} still to fill from today</>}
+            </p>
+          </div>
+        )}
 
         {shift.status === 'cancelled' && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">

@@ -11,11 +11,13 @@ import { buildLetterheadPage, openLetterheadPrint, esc, type PrintSection } from
 
 // Alphabetical by label, so the "All Types" list reads in a predictable order.
 const REPORT_TYPES = [
+  { value: 'assessment-matrix', label: 'Assessment Matrix', description: 'Staff assessments on file and reviews due' },
   { value: 'calendar', label: 'Calendar & Appointments', description: 'Everything added to the calendar' },
   { value: 'care-plan-compliance', label: 'Care Plan Compliance', description: 'Review status and overdue plans' },
   { value: 'care-plan-reviews', label: 'Care Plan Reviews', description: 'Overdue and upcoming reviews' },
   { value: 'cancelled-shifts', label: 'Cancelled Shifts', description: 'Shifts cancelled, with the reason' },
   { value: 'careplan-review-matrix', label: 'Careplan Review Matrix', description: 'Care plan, risk assessment and MAR review dates per person' },
+  { value: 'clock-in-locations', label: 'Clock In Locations', description: 'How far staff were from the service when they clocked in or out' },
   { value: 'clocked-in-integrity', label: 'Clocked In Integrity', description: 'Shift start against actual clock-in' },
   { value: 'daily-records', label: 'Daily Records', description: 'All care records for a date range' },
   { value: 'delivered-hours', label: 'Delivered Hours', description: "Rota'd hours and clock-ins per staff member" },
@@ -26,6 +28,7 @@ const REPORT_TYPES = [
   { value: 'mar-report', label: 'MAR Report', description: 'Medication administration records' },
   { value: 'medication-report', label: 'Medication Report', description: 'All medications by resident' },
   { value: 'medication-stock', label: 'Medication Stock', description: 'Stock counts, home-wide or per resident' },
+  { value: 'overdue-signatures', label: 'Overdue Signatures', description: 'Policies sent to staff and still unsigned' },
   { value: 'safeguarding', label: 'Safeguarding', description: 'All safeguarding concerns' },
   { value: 'staff-attendance', label: 'Staff Attendance', description: 'Clock in/out history' },
   { value: 'system-activity', label: 'System Activity', description: 'Anything done on the system, by any staff member' },

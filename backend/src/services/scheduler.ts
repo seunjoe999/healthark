@@ -415,6 +415,10 @@ export function startScheduler(): void {
   cron.schedule('0 16 * * *', async () => { await alertsService.checkTomorrowsUnfilledShifts(); }, UK_TZ);
   cron.schedule('30 9 * * *', async () => { await alertsService.checkHandoverNotCompleted(); }, UK_TZ);
   cron.schedule('0 10 * * *', async () => { await alertsService.checkNoBowelMovement(); }, UK_TZ);
+  // Every 15 minutes: clock-ins made away from the service. 9:45am: staff who
+  // worked yesterday and wrote no daily record.
+  cron.schedule('*/15 * * * *', async () => { await alertsService.checkClockedInTooFar(); }, UK_TZ);
+  cron.schedule('45 9 * * *', async () => { await alertsService.checkNoNotesWritten(); }, UK_TZ);
 
   // Every hour: check fluid intake
   cron.schedule('0 * * * *', async () => {

@@ -941,6 +941,28 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
   }
 );
 
+// GET /api/shifts/:id/series-stats — totals for the repeating series this shift
+// belongs to (same template), so a manager can see how much of it is covered.
+router.get('/:id/series-stats', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sh = await query<any>('SELECT template_id FROM staff_shifts WHERE id = $1', [req.params.id]);
+      if (!sh[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
+      if (!sh[0].template_id) return res.json({ success: true, data: null } as ApiResponse);
+      const rows = await query<any>(
+        `SELECT COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE staff_id IS NOT NULL AND status <> 'cancelled') AS assigned,
+                COUNT(*) FILTER (WHERE staff_id IS NULL AND status <> 'cancelled') AS unassigned,
+                COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+                COUNT(*) FILTER (WHERE shift_date >= CURRENT_DATE AND staff_id IS NULL AND status <> 'cancelled') AS upcoming_unassigned,
+                to_char(MIN(shift_date), 'DD Mon YYYY') AS first_date,
+                to_char(MAX(shift_date), 'DD Mon YYYY') AS last_date
+         FROM staff_shifts WHERE template_id = $1`, [sh[0].template_id]);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // PUT /api/shifts/:id/review — shift auditor: a manager ticks a finished shift
 // as reviewed (or un-ticks it), optionally with a note.
 router.put('/:id/review', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateRequest,

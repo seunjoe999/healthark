@@ -309,7 +309,61 @@ export async function checkNoBowelMovement(): Promise<void> {
   }
 }
 
+// "Clocked in too far": a clock-in/out recorded outside the permitted distance from the service.
+export async function checkClockedInTooFar(): Promise<void> {
+  try {
+    const rows = await query<{ id: string; home_id: string; staff_id: string; name: string; event_type: string; distance_metres: number | null; at: string }>(
+      `SELECT ce.id, ce.home_id, ce.staff_id, s.first_name || ' ' || s.last_name AS name, ce.event_type, ce.distance_metres,
+              to_char(ce.event_time AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS at
+       FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id
+       WHERE ce.geofence_passed IS FALSE AND ce.event_time > NOW() - interval '24 hours'
+         AND NOT EXISTS (SELECT 1 FROM business_alerts ba WHERE ba.record_id = ce.id AND ba.alert_type = 'clocked_in_too_far')`
+    );
+    for (const r of rows) {
+      await createAlert({
+        homeId: r.home_id, alertType: 'clocked_in_too_far', severity: 'warning', staffId: r.staff_id,
+        recordId: r.id, recordType: 'clock_event',
+        title: `${r.name} ${r.event_type === 'clock_out' ? 'clocked out' : 'clocked in'} away from the service`,
+        description: `${r.at} — ${r.distance_metres != null ? r.distance_metres + ' metres from the service' : 'location was outside the permitted area'}.`,
+      });
+    }
+  } catch (err) {
+    logger.warn('checkClockedInTooFar skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
+// "Mandatory notes entry": staff who clocked in yesterday and wrote no daily record at all.
+export async function checkNoNotesWritten(): Promise<void> {
+  try {
+    const today = ukDateStr();
+    const rows = await query<{ home_id: string; n: string; names: string }>(
+      `SELECT x.home_id, COUNT(*) AS n, string_agg(x.name, ', ') AS names FROM (
+         SELECT DISTINCT ce.home_id, ce.staff_id, s.first_name || ' ' || s.last_name AS name
+         FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id
+         WHERE ce.event_type = 'clock_in' AND (ce.event_time AT TIME ZONE 'Europe/London')::date = $1::date - 1
+           AND s.role::text IN ('care_staff', 'senior_carer', 'team_leader')
+           AND NOT EXISTS (SELECT 1 FROM daily_records dr WHERE dr.staff_id = ce.staff_id
+                             AND dr.record_date BETWEEN $1::date - 1 AND $1::date)
+       ) x
+       WHERE NOT EXISTS (SELECT 1 FROM business_alerts ba WHERE ba.home_id = x.home_id
+                           AND ba.alert_type = 'no_notes_written' AND ba.created_at::date = CURRENT_DATE)
+       GROUP BY x.home_id`,
+      [today]
+    );
+    for (const r of rows) {
+      await createAlert({
+        homeId: r.home_id, alertType: 'no_notes_written', severity: 'warning',
+        title: `${r.n} staff worked yesterday without writing any daily record`,
+        description: `No daily records from: ${String(r.names || '').slice(0, 900)}`,
+      });
+    }
+  } catch (err) {
+    logger.warn('checkNoNotesWritten skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
 export const alertsService = {
+  checkClockedInTooFar, checkNoNotesWritten,
   checkTomorrowsUnfilledShifts, checkHandoverNotCompleted, checkNoBowelMovement,
   createAlert,
   checkCarePlanReviews,
