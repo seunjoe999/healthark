@@ -17,6 +17,12 @@ export async function createAlert(params: {
   recordType?: string;
 }): Promise<void> {
   try {
+    // A manager can switch an alert type off for their home (Alerts → Alert settings).
+    try {
+      const off = await query<any>(
+        'SELECT 1 FROM alert_settings WHERE home_id = $1 AND alert_type = $2 AND enabled = FALSE', [params.homeId, params.alertType]);
+      if (off.length) return;
+    } catch { /* settings table not ready yet — alert as normal */ }
     await query(
       `INSERT INTO business_alerts
          (home_id, alert_type, severity, title, description, su_id, staff_id, record_id, record_type)
@@ -362,7 +368,22 @@ export async function checkNoNotesWritten(): Promise<void> {
   }
 }
 
+// Alerts whose type has an auto-clear time set are resolved once they are that old.
+export async function autoClearAlerts(): Promise<void> {
+  try {
+    await query(
+      `UPDATE business_alerts ba SET is_resolved = TRUE, resolved_at = NOW(),
+              resolution_notes = COALESCE(ba.resolution_notes, 'Cleared automatically (alert settings)')
+       FROM alert_settings st
+       WHERE st.home_id = ba.home_id AND st.alert_type = ba.alert_type AND st.auto_clear_hours IS NOT NULL
+         AND ba.is_resolved = FALSE AND ba.created_at < NOW() - (st.auto_clear_hours || ' hours')::interval`);
+  } catch (err) {
+    logger.warn('autoClearAlerts skipped: ' + (err as any)?.message?.split('\n')[0]);
+  }
+}
+
 export const alertsService = {
+  autoClearAlerts,
   checkClockedInTooFar, checkNoNotesWritten,
   checkTomorrowsUnfilledShifts, checkHandoverNotCompleted, checkNoBowelMovement,
   createAlert,

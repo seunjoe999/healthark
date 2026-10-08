@@ -419,6 +419,8 @@ export function startScheduler(): void {
   // worked yesterday and wrote no daily record.
   cron.schedule('*/15 * * * *', async () => { await alertsService.checkClockedInTooFar(); }, UK_TZ);
   cron.schedule('45 9 * * *', async () => { await alertsService.checkNoNotesWritten(); }, UK_TZ);
+  // Hourly: clear alerts that have passed their home's auto-clear time.
+  cron.schedule('20 * * * *', async () => { await alertsService.autoClearAlerts(); }, UK_TZ);
 
   // Every hour: check fluid intake
   cron.schedule('0 * * * *', async () => {

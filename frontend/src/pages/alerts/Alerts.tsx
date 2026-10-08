@@ -26,6 +26,25 @@ export default function Alerts() {
   const [showResolved, setShowResolved] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settings, setSettings] = useState<any[]>([])
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const openSettings = async () => {
+    setSettingsOpen(true); setSettingsLoading(true)
+    try { const res = await api.get('/alerts/settings', { params: { homeId: selectedHome } }); setSettings(res.data.data || []) }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Could not load alert settings'); setSettingsOpen(false) }
+    finally { setSettingsLoading(false) }
+  }
+  const saveSetting = async (row: any, change: any) => {
+    const next = { ...row, ...change }
+    setSettings(prev => prev.map(s => s.alertType === row.alertType ? next : s))
+    try {
+      await api.put('/alerts/settings', { homeId: selectedHome, alertType: row.alertType, enabled: next.enabled, autoClearHours: next.autoClearHours })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not save')
+      setSettings(prev => prev.map(s => s.alertType === row.alertType ? row : s))
+    }
+  }
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const toggleSelected = (id: string) => setSelectedIds(prev => {
@@ -106,12 +125,62 @@ export default function Alerts() {
             </select>
           )}
           <Button variant="secondary" size="sm" icon={<RefreshCw className="w-4 h-4" />} onClick={load}>Refresh</Button>
+          <Button variant="secondary" size="sm" icon={<Bell className="w-4 h-4" />} onClick={openSettings}>Alert settings</Button>
           <button onClick={() => setShowResolved(!showResolved)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showResolved ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
             {showResolved ? 'Show active' : 'Show resolved'}
           </button>
         </div>
       </div>
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setSettingsOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-slate-900">Alert settings</h2>
+                <p className="text-xs text-slate-500">Switch an alert off, or have it clear itself after a set time. Changes save straight away.</p>
+              </div>
+              <button onClick={() => setSettingsOpen(false)} className="text-sm text-slate-500 hover:text-slate-800">Close</button>
+            </div>
+            <div className="overflow-y-auto p-5">
+              {settingsLoading ? <Spinner /> : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500">
+                      <th className="pb-2 font-semibold">Alert</th>
+                      <th className="pb-2 font-semibold text-center">Open now</th>
+                      <th className="pb-2 font-semibold text-center">On</th>
+                      <th className="pb-2 font-semibold">Clear automatically</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {settings.map(s => (
+                      <tr key={s.alertType}>
+                        <td className="py-2 pr-2 font-medium text-slate-800">{s.label}</td>
+                        <td className="py-2 text-center text-slate-600">{s.open}</td>
+                        <td className="py-2 text-center">
+                          <input type="checkbox" className="w-4 h-4" checked={!!s.enabled} onChange={e => saveSetting(s, { enabled: e.target.checked })} />
+                        </td>
+                        <td className="py-2">
+                          <select className="input py-1 text-sm w-auto" value={s.autoClearHours ?? ''}
+                            onChange={e => saveSetting(s, { autoClearHours: e.target.value ? Number(e.target.value) : null })}>
+                            <option value="">Never — until resolved</option>
+                            <option value="24">After 24 hours</option>
+                            <option value="48">After 48 hours</option>
+                            <option value="168">After 7 days</option>
+                            <option value="720">After 30 days</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? <Spinner /> : alerts.length === 0 ? (
         <EmptyState

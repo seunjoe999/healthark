@@ -2963,6 +2963,15 @@ async function ensureColumns() {
     // by a manager (shift auditor).
     `ALTER TABLE staff_leave ADD COLUMN IF NOT EXISTS hours_deducted DECIMAL(6,2)`,
     // Open shifts: a manager advertises unfilled shifts, staff offer to cover them.
+    // Per-home alert settings: switch an alert type off, or have it clear itself after a set time.
+    `CREATE TABLE IF NOT EXISTS alert_settings (
+       home_id          UUID NOT NULL,
+       alert_type       VARCHAR(100) NOT NULL,
+       enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+       auto_clear_hours INTEGER,
+       updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY (home_id, alert_type)
+     )`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS advertised_at TIMESTAMPTZ`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cover_offers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,

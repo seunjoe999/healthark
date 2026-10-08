@@ -55,6 +55,64 @@ router.put('/:id/resolve',
   }
 );
 
+// ── Alert settings ────────────────────────────────────────────────
+const ALERT_SETTINGS_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  care_plan_overdue: 'Care plan review overdue',
+  fluid_below_threshold: 'Fluid intake below target',
+  medication_stock_low: 'Medication stock low',
+  training_expiring: 'Staff training expiring',
+  incident_not_reviewed: 'Incident not reviewed',
+  tomorrows_unfilled_shifts: "Tomorrow's shifts with no staff",
+  handover_not_completed: 'Handover not completed',
+  no_bowel_movement: 'No bowel movement for 3+ days',
+  clocked_in_too_far: 'Clocked in away from the service',
+  no_notes_written: 'Worked a shift without writing a daily record',
+};
+
+// GET /api/alerts/settings — every alert type this home uses, with its on/off and auto-clear setting.
+router.get('/settings', requireRole(...ALERT_SETTINGS_ROLES), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeId = (req.query.homeId as string) || req.staff.homeId;
+    if (!homeId) throw new AppError('homeId required', 400);
+    const [used, saved] = await Promise.all([
+      query<any>('SELECT alert_type, COUNT(*) FILTER (WHERE is_resolved = FALSE) AS open FROM business_alerts WHERE home_id = $1 GROUP BY alert_type', [homeId]),
+      query<any>('SELECT alert_type, enabled, auto_clear_hours FROM alert_settings WHERE home_id = $1', [homeId]),
+    ]);
+    const types = Array.from(new Set([...Object.keys(ALERT_TYPE_LABELS), ...used.map((u: any) => u.alert_type)]));
+    const data = types.map(t => {
+      const s = saved.find((x: any) => x.alert_type === t);
+      return {
+        alertType: t,
+        label: ALERT_TYPE_LABELS[t] || t.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()),
+        enabled: s ? s.enabled : true,
+        autoClearHours: s ? s.auto_clear_hours : null,
+        open: parseInt(used.find((u: any) => u.alert_type === t)?.open || '0', 10),
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+    res.json({ success: true, data } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/alerts/settings — save one alert type's setting for a home.
+router.put('/settings', requireRole(...ALERT_SETTINGS_ROLES),
+  [body('homeId').isUUID(), body('alertType').isString().isLength({ min: 1, max: 100 }), body('enabled').isBoolean()],
+  validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { homeId, alertType, enabled } = req.body;
+      const hrs = Number(req.body.autoClearHours);
+      const autoClear = Number.isFinite(hrs) && hrs > 0 ? Math.min(Math.trunc(hrs), 24 * 365) : null;
+      await query(
+        `INSERT INTO alert_settings (home_id, alert_type, enabled, auto_clear_hours, updated_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (home_id, alert_type) DO UPDATE SET enabled = $3, auto_clear_hours = $4, updated_at = NOW()`,
+        [homeId, alertType, !!enabled, autoClear]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // POST /api/alerts/bulk — resolve or delete many alerts at once. Clearing a
 // backlog one alert at a time was the only option before.
 router.post('/bulk',
