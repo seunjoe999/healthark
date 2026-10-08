@@ -227,7 +227,13 @@ export default function EditStaff() {
       const payload: any = { ...form }
       if (newPassword) {
         if (newPassword.length < 8) { toast.error('Password must be at least 8 characters'); setSaving(false); return }
-        payload.password = newPassword
+        // The password has its own endpoint. It used to be tucked into the
+        // profile update below, which ignores it — so "Staff profile updated"
+        // appeared, the password never changed, and the staff member still
+        // could not sign in with the new one.
+        await api.put(`/staff/${id}/password`, { newPassword })
+        setNewPassword('')
+        toast.success('Password changed — they can sign in with the new password now')
       }
       await staffApi.update(id!, payload)
       toast.success('Staff profile updated')

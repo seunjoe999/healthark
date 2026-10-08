@@ -145,9 +145,9 @@ export default function StaffAbsence() {
             return (
               <>
                 <button onClick={() => { if (!printTable(title, cols, rows)) toast.error('Allow pop-ups for this site to print') }}
-                  className="px-3 py-2 rounded-xl text-sm font-medium text-gray-300 hover:text-white" style={{ background: btnGhostBg }}>Print</button>
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors">Print</button>
                 <button onClick={() => downloadCsv(isBradford ? 'bradford-scores' : 'staff-absence', cols, rows)}
-                  className="px-3 py-2 rounded-xl text-sm font-medium text-gray-300 hover:text-white" style={{ background: btnGhostBg }}>Download</button>
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors">Download</button>
               </>
             )
           })()}

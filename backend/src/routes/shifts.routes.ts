@@ -1109,12 +1109,30 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       const homeId = req.body.homeId || fromToken(req, 'homeId');
       const { suId, startDate, endDate, daysOfWeek, fortnightly, monthly, dayOrNight, onlyUnfilled } = req.body;
       const staffIds: string[] = Array.from(new Set<string>(req.body.staffIds || []));
+      // "This timing only": started from one specific shift (e.g. the 11:00-15:00
+      // short shift). Only shifts with that EXACT start and end time, on the same
+      // service, are touched. Without this, "Day" matched every daytime shift on
+      // those dates, so allocating the long day also grabbed the short shift (and
+      // the other way round) — the mix-up the owner kept having to undo.
+      const hhmm = (v: any) => (typeof v === 'string' && /^\d{2}:\d{2}/.test(v) ? v.substring(0, 5) : null);
+      const exactStart = hhmm(req.body.startTime);
+      const exactEnd = hhmm(req.body.endTime);
+      const exact = !!(exactStart && exactEnd);
+      const labelFilter: string | null = exact ? String(req.body.label || '') : null;
+      // Reassigning a run: the shift it was started from already had someone on
+      // it, so only that person's shifts in the run are handed over.
+      const replaceStaffId: string | null = exact && typeof req.body.replaceStaffId === 'string' && /^[0-9a-f-]{36}$/i.test(req.body.replaceStaffId)
+        ? req.body.replaceStaffId : null;
 
       const candidates = await query<any>(
         `SELECT id, shift_date, start_time, end_time, shift_type, label, break_minutes,
-                notes_for_carers, notes_for_managers, is_standby
+                notes_for_carers, notes_for_managers, is_standby, staff_id
          FROM staff_shifts
          WHERE home_id = $1 AND shift_date BETWEEN $2 AND $3
+           AND status <> 'cancelled'
+           AND ($9::text IS NULL OR (to_char(start_time, 'HH24:MI') = $9 AND to_char(end_time, 'HH24:MI') = $10))
+           AND ($11::text IS NULL OR COALESCE(label, '') = $11)
+           AND ($12::uuid IS NULL OR staff_id = $12::uuid)
            AND (
              ($8 AND EXTRACT(DAY FROM shift_date)::int = EXTRACT(DAY FROM $2::date)::int)
              OR (NOT $8 AND EXTRACT(DOW FROM shift_date)::int = ANY($4::int[]))
@@ -1126,10 +1144,11 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
              OR ($6 = 'night' AND (start_time >= '20:00'::time OR start_time < '06:00'::time))
            )
            AND (NOT $7 OR staff_id IS NULL)
-         ORDER BY shift_date, start_time`,
+         ORDER BY shift_date, start_time, (staff_id IS NOT NULL), id`,
         [homeId, startDate, endDate, (daysOfWeek || []).map((d: any) => parseInt(d)),
-         suId || null, dayOrNight === 'day' || dayOrNight === 'night' ? dayOrNight : null, onlyUnfilled !== false,
-         !!monthly]
+         suId || null, !exact && (dayOrNight === 'day' || dayOrNight === 'night') ? dayOrNight : null,
+         replaceStaffId ? false : onlyUnfilled !== false,
+         !!monthly, exactStart, exactEnd, labelFilter, replaceStaffId]
       );
 
       // Fortnightly: keep only shifts in the same alternating week as startDate.
@@ -1170,9 +1189,27 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       // back around — same rule, applied across the whole pattern instead of
       // restarting every day.
       const assignments: { id: string; staffId: string; shift_date: any; start_time: string; end_time: string }[] = [];
-      matched.forEach((m, idx) => {
-        assignments.push({ id: m.id, staffId: staffIds[idx % staffIds.length], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
-      });
+      if (exact) {
+        // One timing: on each date, the 1st picked staff takes the 1st slot of
+        // that timing, the 2nd the 2nd, and so on. A person is never put on two
+        // slots of the same shift on the same day, and slots beyond the number
+        // of staff picked are left exactly as they were.
+        const byDate = new Map<string, any[]>();
+        for (const m of matched) {
+          const k = fmtDate(m.shift_date);
+          if (!byDate.has(k)) byDate.set(k, []);
+          byDate.get(k)!.push(m);
+        }
+        for (const rowsForDate of byDate.values()) {
+          rowsForDate.slice(0, staffIds.length).forEach((m, i) => {
+            assignments.push({ id: m.id, staffId: staffIds[i], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
+          });
+        }
+      } else {
+        matched.forEach((m, idx) => {
+          assignments.push({ id: m.id, staffId: staffIds[idx % staffIds.length], shift_date: m.shift_date, start_time: m.start_time, end_time: m.end_time });
+        });
+      }
 
       // Collect overlap/rest-period warnings for each shift's actual assigned
       // staff member — bulk assignment is exactly the path most likely to
@@ -1195,7 +1232,8 @@ router.post('/bulk-assign-pattern', requireRole(...MANAGE_ROLES), [
       let created = 0;
       let missing: string[] = [];
       let missingTimes: [string, string] = ['08:00', '20:00'];
-      if (dayOrNight === 'day' || dayOrNight === 'night') {
+      // (Not in "this timing only" mode — that only ever assigns shifts that already exist.)
+      if (!exact && (dayOrNight === 'day' || dayOrNight === 'night')) {
         const existing = await query<any>(
           `SELECT shift_date::text AS d FROM staff_shifts
            WHERE home_id = $1 AND su_id = $2 AND shift_date BETWEEN $3 AND $4

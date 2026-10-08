@@ -420,7 +420,8 @@ export default function Rota() {
   // Pre-fills Bulk Assign — Recurring Pattern when opened from a specific shift's
   // detail modal ("Bulk assign like this"), so staff don't have to re-pick the
   // resident/day-or-night that's already obvious from the shift they clicked.
-  const [patternSeed, setPatternSeed] = useState<{ suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[] } | null>(null)
+  const [patternSeed, setPatternSeed] = useState<{ suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[];
+    startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string } | null>(null)
 
   // Drives clock-in/late/missed shift colouring — re-evaluated every minute so a
   // shift flips from "on time" to "late" (and a green block flips to red once its
@@ -1306,7 +1307,16 @@ export default function Rota() {
             const st = detailShift.start_time?.substring(0, 5) || '08:00'
             const dayOrNight: 'day' | 'night' = st >= '06:00' && st < '20:00' ? 'day' : 'night'
             const dow = parseISO(detailShift.shift_date).getDay()
-            setPatternSeed({ suId: detailShift.su_id || undefined, dayOrNight, daysOfWeek: [dow] })
+            setPatternSeed({
+              suId: detailShift.su_id || undefined, dayOrNight, daysOfWeek: [dow],
+              // The exact shift this was started from — bulk assign then only
+              // touches shifts with these times on this service.
+              startTime: st, endTime: detailShift.end_time?.substring(0, 5) || '',
+              label: detailShift.label || '',
+              replaceStaffId: detailShift.staff_id || undefined,
+              replaceStaffName: detailShift.staff_name || undefined,
+              startDate: String(detailShift.shift_date).substring(0, 10),
+            })
             setDetailShift(null)
             setPatternAssignOpen(true)
           }}
@@ -2922,7 +2932,8 @@ const WEEKDAY_OPTIONS = [
 function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, homeId, defaultDate, seed, onSaved }: {
   open: boolean; onClose: () => void
   staffList: any[]; shifts?: any[]; suList: any[]; homeId: string; defaultDate: string
-  seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[] } | null
+  seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[];
+    startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string } | null
   onSaved: () => void
 }) {
   // Multiple staff, not just one — most services run with 2+ staff on at once, and
@@ -2931,7 +2942,13 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
   // (or found nothing left to fill). Each selected staff member now gets their own
   // shift on every matching date, so the rota ends up genuinely multi-staffed.
   const [staffIds, setStaffIds] = useState<string[]>([])
-  const toggleStaffId = (id: string) => setStaffIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  // Started from one specific shift: only that timing is allocated, one staff
+  // member at a time (tick a person, save, then do the next shift the same way).
+  const seededTiming = !!(seed?.startTime && seed?.endTime)
+  const [thisTimingOnly, setThisTimingOnly] = useState(seededTiming)
+  const toggleStaffId = (id: string) => setStaffIds(prev =>
+    thisTimingOnly ? (prev.includes(id) ? [] : [id])
+      : (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
   const [suId, setSuId] = useState(seed?.suId || '')
   // Defaults to "Day" rather than "Any" when opened without a seed (i.e. straight
   // from the toolbar button, not "Bulk assign like this" off a specific shift) —
@@ -2953,7 +2970,7 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
   const [saving, setSaving] = useState(false)
   const conflictGate = useConflictGate()
 
-  useEffect(() => { if (open) setStartDate(defaultDate) }, [open, defaultDate])
+  useEffect(() => { if (open) setStartDate(seed?.startDate || defaultDate) }, [open, defaultDate])
 
   const toggleDay = (d: number) =>
     setDaysOfWeek(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort())
@@ -2989,6 +3006,10 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
           fortnightly: repeatMode === 'fortnightly', monthly: repeatMode === 'monthly',
           startDate, endDate: effectiveEndDate,
           onlyUnfilled,
+          ...(thisTimingOnly && seededTiming ? {
+            startTime: seed!.startTime, endTime: seed!.endTime, label: seed!.label || '',
+            replaceStaffId: seed!.replaceStaffId || undefined,
+          } : {}),
           confirmConflicts: confirmed,
         })
         const assigned = res.data.data?.assigned || 0
@@ -3007,8 +3028,27 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
           Assign one or more staff members to every unfilled shift on the days you pick, over a date range — e.g. every Monday, Tuesday and Saturday, every other week, until you stop it. Pick several staff to cover the same slots together. Reallocate an individual shift instead by clicking it directly on the grid.
         </p>
 
+        {seededTiming && (
+          <div className={`rounded-xl border px-3 py-2.5 text-sm ${thisTimingOnly ? 'border-indigo-200 bg-indigo-50 text-indigo-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" className="mt-0.5 rounded" checked={thisTimingOnly}
+                onChange={e => { setThisTimingOnly(e.target.checked); setStaffIds([]) }} />
+              <span>
+                <span className="font-bold">Only the {seed!.startTime}–{seed!.endTime} shift{seed!.label ? ` at ${seed!.label}` : ''}</span>
+                <span className="block text-xs mt-0.5">
+                  {thisTimingOnly
+                    ? (seed!.replaceStaffName
+                        ? `Hands over ${seed!.replaceStaffName}'s ${seed!.startTime}–${seed!.endTime} shifts on the days below to the person you pick. Other shifts on those days are not touched.`
+                        : `Fills the unfilled ${seed!.startTime}–${seed!.endTime} shifts on the days below. Other shifts on those days (longer or shorter) are not touched. Pick one person, save, then do the next shift.`)
+                    : 'Unticked: every daytime or night shift on those days can be allocated, including shifts with different times.'}
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
+
         <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Staff member(s) *</label>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">{thisTimingOnly ? 'Staff member *' : 'Staff member(s) *'}</label>
           {/* overscroll-contain stops scroll chaining into the modal's own
               overflow-y-auto body — without it, scrolling to the end of this
               list bled straight into scrolling the whole modal, which is

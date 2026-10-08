@@ -238,7 +238,7 @@ router.post('/event', authenticate,
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
       const lastEventRows = await query<any>(
-        `SELECT id, event_type, event_time, home_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        `SELECT id, event_type, event_time, home_id, auto_closed FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
         [staffId]
       );
       let isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
@@ -249,7 +249,12 @@ router.post('/event', authenticate,
       // reported this as an everyday problem they could not get past. Close the
       // stale session honestly (a clock_out stamped now, no invented end time)
       // and let them clock in for the shift they're actually standing at.
-      if (isClockedIn && lastEventRows[0]?.event_time) {
+      // Only when they are trying to clock IN. If they are clocking OUT of a
+      // shift that began yesterday (a night shift, or a late clock-out) the
+      // open session is exactly the one they want to close — closing it for
+      // them here and then answering "you need to clock in before you can
+      // clock out" refused a perfectly valid clock-out.
+      if (eventType !== 'clock_out' && isClockedIn && lastEventRows[0]?.event_time) {
         const openedAt = lastEventRows[0].event_time instanceof Date
           ? lastEventRows[0].event_time : new Date(lastEventRows[0].event_time);
         if (!isNaN(openedAt.getTime()) && ukDateStr(openedAt) !== ukDateStr()) {
@@ -257,15 +262,36 @@ router.post('/event', authenticate,
             staffId, openedAt: openedAt.toISOString(),
           });
           await query(
-            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality)
-             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time')`,
+            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed)
+             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE)`,
             [staffId, lastEventRows[0].home_id || homeId]
           );
           isClockedIn = false;
         }
       }
 
+      // The system clocked them out automatically (left clocked in 16+ hours)
+      // and they are now clocking out themselves: treat this as their real
+      // clock-out and replace the automatic one with the true time.
+      if (eventType === 'clock_out' && !isClockedIn && lastEventRows[0]?.event_type === 'clock_out' && lastEventRows[0]?.auto_closed === true
+          && (Date.now() - new Date(lastEventRows[0].event_time).getTime()) < 24 * 3600 * 1000) {
+        const fixed = await query(
+          'UPDATE staff_clock_events SET event_time = NOW(), auto_closed = FALSE WHERE id = $1 RETURNING *', [lastEventRows[0].id]);
+        return res.status(201).json({
+          success: true,
+          data: { ...(fixed[0] as object), geofencePassed: true, distanceMetres: null, punctuality: 'on_time',
+                  staffName: staffRows[0] ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : '' },
+        });
+      }
       if (eventType === 'clock_out' && !isClockedIn) {
+        // Already clocked out recently: say so plainly instead of the confusing
+        // "you need to clock in" — there is nothing left for them to do.
+        const last = lastEventRows[0];
+        if (last?.event_type === 'clock_out' && (Date.now() - new Date(last.event_time).getTime()) < 14 * 3600 * 1000) {
+          const at = new Date(last.event_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+          return res.status(400).json({ success: false, reason: 'already_clocked_out',
+            error: `You are already clocked out — your clock-out was recorded at ${at}. There is nothing more you need to do.` });
+        }
         return res.status(400).json({ success: false, error: 'You need to clock in before you can clock out.' });
       }
       if (eventType !== 'clock_out' && isClockedIn) {
