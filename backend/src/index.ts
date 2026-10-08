@@ -2942,6 +2942,15 @@ async function ensureColumns() {
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS break_minutes INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS template_id UUID REFERENCES shift_templates(id) ON DELETE SET NULL`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS notes_for_carers TEXT`,
+    // Cancelling a shift keeps it on the rota with a reason (who/why/when)
+    // instead of deleting it, and a finished shift can be ticked as reviewed
+    // by a manager (shift auditor).
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancelled_by UUID`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS reviewed_by UUID`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ`,
+    `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS review_note TEXT`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS notes_for_managers TEXT`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS is_standby BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS notes TEXT`,

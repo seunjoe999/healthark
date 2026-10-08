@@ -352,6 +352,7 @@ export default function Rota() {
   const [hoverTip, setHoverTip] = useState<{ shift: any; x: number; y: number } | null>(null)
   const [swapShift,   setSwapShift]   = useState<any>(null)
   const [adjustPickerOpen, setAdjustPickerOpen] = useState(false)
+  const [auditorOpen, setAuditorOpen] = useState(false)
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
   const [unassignOpen, setUnassignOpen] = useState(false)
@@ -752,6 +753,13 @@ export default function Rota() {
           title="View shift swap requests">
           <ArrowLeftRight className="w-3 h-3" /> Swap Requests{swapRequests.length > 0 ? ` (${swapRequests.length})` : ''}
         </button>
+        {canManage && (
+          <button onClick={() => setAuditorOpen(true)}
+            className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
+            title="Tick off finished shifts as reviewed — checks who worked, when they clocked in and out">
+            <CheckCircle className="w-3 h-3" /> Shift Auditor
+          </button>
+        )}
         {canManage && (
           <button onClick={() => setAdjustPickerOpen(true)}
             className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
@@ -1178,6 +1186,10 @@ export default function Rota() {
         />
       )}
 
+      {auditorOpen && (
+        <ShiftAuditorModal shifts={shifts} onClose={() => setAuditorOpen(false)}
+          onReviewed={(id, data) => setShifts(prev => prev.map(s => s.id === id ? { ...s, ...data } : s))} />
+      )}
       {adjustPickerOpen && (
         <AdjustShiftPicker
           shifts={shifts}
@@ -2086,6 +2098,85 @@ function AdjustShiftPicker({ shifts, onClose, onPick }: {
 
 // ── Shift Detail Modal ────────────────────────────────────────────────────────
 
+// Shift Auditor — every finished, staffed shift in the period on screen, with
+// when the staff member actually clocked in/out, for a manager to tick as reviewed.
+function ShiftAuditorModal({ shifts, onClose, onReviewed }: {
+  shifts: any[]; onClose: () => void; onReviewed: (id: string, data: any) => void
+}) {
+  const [show, setShow] = useState<'not_reviewed' | 'reviewed' | 'all'>('not_reviewed')
+  const [busy, setBusy] = useState<string | null>(null)
+  const now = Date.now()
+  const endOf = (s: any) => {
+    const st = s.start_time?.substring(0, 5) || '00:00'
+    const et = s.end_time?.substring(0, 5) || '00:00'
+    const d = String(s.shift_date).substring(0, 10)
+    let end = new Date(`${d}T${et}:00`).getTime()
+    if (end <= new Date(`${d}T${st}:00`).getTime()) end += 86400000
+    return end
+  }
+  const finished = shifts
+    .filter(s => s.staff_id && s.status !== 'cancelled' && endOf(s) < now)
+    .sort((a, b) => endOf(b) - endOf(a))
+  const rows = finished.filter(s => show === 'all' ? true : show === 'reviewed' ? !!s.reviewed_at : !s.reviewed_at)
+  const hhmm = (v: any) => { try { return v ? format(new Date(v), 'HH:mm') : '—' } catch { return '—' } }
+  const toggle = async (s: any) => {
+    setBusy(s.id)
+    try {
+      const res = await api.put(`/shifts/${s.id}/review`, { reviewed: !s.reviewed_at })
+      onReviewed(s.id, res.data.data)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not update') }
+    finally { setBusy(null) }
+  }
+  return (
+    <Modal open={true} onClose={onClose} title={`Shift Auditor (${rows.length})`} size="lg">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {([['not_reviewed', 'Not reviewed'], ['reviewed', 'Reviewed'], ['all', 'All']] as const).map(([v, l]) => (
+            <button key={v} onClick={() => setShow(v)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border ${show === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>{l}</button>
+          ))}
+          <span className="text-xs text-slate-500 ml-auto">Finished shifts in the period shown on the rota</span>
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-sm text-slate-500 py-6 text-center">Nothing to show.</p>
+        ) : (
+          <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr className="text-left text-slate-600">
+                  <th className="px-3 py-2 font-bold">Date</th>
+                  <th className="px-3 py-2 font-bold">Service / service user</th>
+                  <th className="px-3 py-2 font-bold">Staff</th>
+                  <th className="px-3 py-2 font-bold">Clocked in / out</th>
+                  <th className="px-3 py-2 font-bold text-center">Reviewed?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(s => (
+                  <tr key={s.id} className="border-t border-slate-100">
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM')}<br />
+                      <span className="text-slate-500">{s.start_time?.substring(0, 5)} – {s.end_time?.substring(0, 5)}</span>
+                    </td>
+                    <td className="px-3 py-2">{s.label || s.su_names || s.su_name || '—'}</td>
+                    <td className="px-3 py-2">{s.staff_name || '—'}</td>
+                    <td className={`px-3 py-2 whitespace-nowrap ${s.clock_in_time ? '' : 'text-rose-600 font-semibold'}`}>
+                      {s.clock_in_time ? `${hhmm(s.clock_in_time)} / ${hhmm(s.clock_out_time)}` : 'Did not clock in'}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" className="w-4 h-4" checked={!!s.reviewed_at} disabled={busy === s.id} onChange={() => toggle(s)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onDeleteSeries, onSwap, onUpdated, onLinked, onBulkAssign, staffList }: {
   shift: any; canManage: boolean; canSeeFinancials: boolean; onClose: () => void
   onDelete: () => void; onDeleteSeries: () => void; onSwap: () => void
@@ -2183,9 +2274,17 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
 
   const changeStatus = async (newStatus: string) => {
     if (newStatus === status) return
+    // Cancelling keeps the shift on the rota (greyed out) with the reason, so
+    // there is a record of what was cancelled and why — unlike deleting it.
+    let cancelReason: string | undefined
+    if (newStatus === 'cancelled') {
+      const r = window.prompt('Why is this shift being cancelled? (e.g. service user in hospital, family visiting)')
+      if (r === null) return
+      cancelReason = r.trim() || undefined
+    }
     setSavingStatus(true)
     try {
-      const res = await api.put(`/shifts/${shift.id}/status`, { status: newStatus })
+      const res = await api.put(`/shifts/${shift.id}/status`, { status: newStatus, cancelReason })
       onUpdated(res.data.data)
       toast.success('Shift status updated')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update status') }
@@ -2247,6 +2346,15 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
             </button>
           )}
         </div>
+
+        {shift.status === 'cancelled' && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            <span className="font-bold">Cancelled</span>
+            {shift.cancelled_at && <> on {format(new Date(shift.cancelled_at), 'd MMM yyyy, HH:mm')}</>}
+            {shift.cancel_reason ? <> — {shift.cancel_reason}</> : <> — no reason recorded</>}
+            {canManage && <span className="block text-slate-500 mt-0.5">Pick another status below to reinstate it.</span>}
+          </div>
+        )}
 
         {/* Status changer */}
         {canManage && (

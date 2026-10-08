@@ -923,12 +923,41 @@ router.put('/:id/status', requireRole(...MANAGE_ROLES), param('id').isUUID(), bo
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = fromToken(req, 'role');
+      // A cancellation records why, who and when; moving a shift back out of
+      // "cancelled" clears that so a reinstated shift doesn't carry a stale reason.
+      const cancelling = req.body.status === 'cancelled';
+      const reason = typeof req.body.cancelReason === 'string' && req.body.cancelReason.trim() ? req.body.cancelReason.trim() : null;
       const rows = await query<any>(
-        `UPDATE staff_shifts SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-        [req.body.status, req.params.id]
+        `UPDATE staff_shifts SET status = $1, updated_at = NOW(),
+           cancel_reason = CASE WHEN $3::boolean THEN COALESCE($4::text, cancel_reason) ELSE NULL END,
+           cancelled_by  = CASE WHEN $3::boolean THEN COALESCE(cancelled_by, $5::uuid) ELSE NULL END,
+           cancelled_at  = CASE WHEN $3::boolean THEN COALESCE(cancelled_at, NOW()) ELSE NULL END
+         WHERE id = $2 RETURNING *`,
+        [req.body.status, req.params.id, cancelling, reason, fromToken(req, 'staffId')]
       );
       if (!rows[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
       res.json({ success: true, data: stripFinancials(rows[0], role) } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/shifts/:id/review — shift auditor: a manager ticks a finished shift
+// as reviewed (or un-ticks it), optionally with a note.
+router.put('/:id/review', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const reviewed = req.body.reviewed !== false;
+      const note = typeof req.body.note === 'string' && req.body.note.trim() ? req.body.note.trim() : null;
+      const rows = await query<any>(
+        `UPDATE staff_shifts SET
+           reviewed_by = CASE WHEN $2::boolean THEN $3::uuid ELSE NULL END,
+           reviewed_at = CASE WHEN $2::boolean THEN NOW() ELSE NULL END,
+           review_note = CASE WHEN $2::boolean THEN COALESCE($4::text, review_note) ELSE NULL END
+         WHERE id = $1 RETURNING id, reviewed_by, reviewed_at, review_note`,
+        [req.params.id, reviewed, fromToken(req, 'staffId'), note]
+      );
+      if (!rows[0]) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
