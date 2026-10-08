@@ -584,13 +584,36 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const sidebarProps: SidebarProps = { user, logout: guardedLogout, isRole, onNavClick: () => setMobileOpen(false), theme, toggleTheme }
   const contentBg = theme === 'dark' ? '#0a0a0a' : '#f8f7fb'
+  // The rota opens full width, without the side menu, so as much of the week
+  // as possible is visible. A small button brings the menu back; the choice is
+  // remembered on this device.
+  const onRota = location.pathname.startsWith('/rota')
+  const [rotaMenuHidden, setRotaMenuHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem('rota_show_menu') !== '1' } catch { return true }
+  })
+  const toggleRotaMenu = () => setRotaMenuHidden(prev => {
+    const next = !prev
+    try { localStorage.setItem('rota_show_menu', next ? '0' : '1') } catch { /* ignore */ }
+    return next
+  })
+  const hideSidebar = onRota && rotaMenuHidden
 
   return (
     <div className={clsx('app-shell flex h-screen overflow-hidden', theme === 'dark' && 'theme-dark')} style={{ background: contentBg }}>
       {/* Desktop sidebar — hidden on mobile */}
+      {!hideSidebar && (
       <aside className="no-print hidden lg:flex flex-col w-64 flex-shrink-0" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6), 2px 0 0 rgba(232,177,48,0.15)' }}>
         <Sidebar {...sidebarProps} />
       </aside>
+      )}
+      {onRota && (
+        <button onClick={toggleRotaMenu}
+          className="no-print hidden lg:flex fixed bottom-12 left-3 z-40 items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-white shadow-lg hover:opacity-90"
+          style={{ background: '#0f172a', border: '1px solid rgba(232,177,48,0.5)' }}
+          title={rotaMenuHidden ? 'Show the side menu' : 'Hide the side menu so the rota fills the screen'}>
+          {rotaMenuHidden ? '☰ Menu' : '✕ Hide menu'}
+        </button>
+      )}
 
       {/* Mobile sidebar drawer */}
       <div
