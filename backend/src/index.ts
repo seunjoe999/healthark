@@ -2961,6 +2961,7 @@ async function ensureColumns() {
     // Cancelling a shift keeps it on the rota with a reason (who/why/when)
     // instead of deleting it, and a finished shift can be ticked as reviewed
     // by a manager (shift auditor).
+    `ALTER TABLE staff_leave ADD COLUMN IF NOT EXISTS hours_deducted DECIMAL(6,2)`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancel_reason TEXT`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancelled_by UUID`,
     `ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,

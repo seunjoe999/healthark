@@ -373,12 +373,20 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
         const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
         hoursToDeduct = Math.max(0, days) * 7.5;
       }
+      // Only ANNUAL leave comes out of the holiday balance. Sick, unpaid,
+      // unauthorised, maternity etc. are recorded as time off but used to be
+      // deducted from holiday entitlement as well. hours_deducted records what
+      // was actually taken, so cancelling refunds exactly that and no more.
+      const deductsBalance = leave.leave_type === 'annual';
       if (hoursToDeduct > 0) {
-        await query(
-          'UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) - $1, 0) WHERE id = $2',
-          [hoursToDeduct, leave.staff_id]
-        );
-        await query('UPDATE staff_leave SET hours_requested=$1 WHERE id=$2', [hoursToDeduct, req.params.id]);
+        if (deductsBalance) {
+          await query(
+            'UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) - $1, 0) WHERE id = $2',
+            [hoursToDeduct, leave.staff_id]
+          );
+        }
+        await query('UPDATE staff_leave SET hours_requested=$1, hours_deducted=$2 WHERE id=$3',
+          [hoursToDeduct, deductsBalance ? hoursToDeduct : 0, req.params.id]);
       }
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
         VALUES ($1,$2,'Leave request approved','Your leave request has been approved.','success','/holidays')`,
@@ -402,7 +410,11 @@ router.put('/leave/:id/cancel', param('id').isUUID(), validateRequest,
       const leave = rows[0];
       if (leave.status !== 'approved') throw new AppError('Only approved leave can be cancelled', 400);
       await query('UPDATE staff_leave SET status=$1, decline_reason=$2 WHERE id=$3', ['cancelled', reason || null, req.params.id]);
-      const hoursToRefund = parseFloat(String(leave.hours_requested || 0));
+      // Refund what was actually deducted (0 for non-annual leave). Older
+      // records have no hours_deducted, and for those every type was deducted.
+      const hoursToRefund = leave.hours_deducted !== null && leave.hours_deducted !== undefined
+        ? parseFloat(String(leave.hours_deducted || 0))
+        : parseFloat(String(leave.hours_requested || 0));
       if (hoursToRefund > 0) {
         await query(
           `UPDATE staff SET leave_hours_remaining = LEAST(

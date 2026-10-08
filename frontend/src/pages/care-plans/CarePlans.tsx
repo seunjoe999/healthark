@@ -1580,6 +1580,17 @@ export default function CarePlans() {
     suApi.list(selectedHome, { status: 'live' }).then(res => setSus(res.data.data || []))
   }, [selectedHome])
 
+  // Deep link (?su=<id>) — e.g. the "Care plan" link on a task — opens that
+  // person's care plans straight away instead of the resident list.
+  const [deepLinked, setDeepLinked] = useState(false)
+  useEffect(() => {
+    if (deepLinked || !sus.length) return
+    const wanted = new URLSearchParams(window.location.search).get('su')
+    if (!wanted) return
+    const match = sus.find((s: any) => s.id === wanted)
+    if (match) { setDeepLinked(true); selectSu(match) }
+  }, [sus])
+
   const selectSu = async (su: any) => {
     setSelectedSu(su)
     setViewPlan(null)

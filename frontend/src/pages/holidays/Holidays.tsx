@@ -13,6 +13,10 @@ const LEAVE_TYPES = [
   { value: 'maternity', label: 'Maternity' },
   { value: 'paternity', label: 'Paternity' },
   { value: 'unpaid', label: 'Unpaid leave' },
+  { value: 'authorised_unpaid', label: 'Authorised unpaid leave' },
+  { value: 'comp_leave', label: 'Comp leave (time off in lieu)' },
+  { value: 'compassionate', label: 'Compassionate leave' },
+  { value: 'unauthorised', label: 'Unauthorised leave' },
   { value: 'other', label: 'Other' },
 ]
 
@@ -603,6 +607,7 @@ function AddLeaveRequestModal({ open, onClose, staffList, homeId, defaultStaffId
       <form onSubmit={save} className="space-y-4">
         {staffList.length > 0 && <Select label="Staff member *" required value={form.staffId} onChange={e => set('staffId', e.target.value)} options={options} placeholder="Select staff member..." />}
         <Select label="Leave type *" required value={form.leaveType} onChange={e => set('leaveType', e.target.value)} options={LEAVE_TYPES} />
+        <p className="text-xs text-slate-500 -mt-2">Only annual leave is taken from the holiday balance. Other types are recorded as time off without reducing it.</p>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Start date *" type="date" required value={form.startDate} onChange={e => set('startDate', e.target.value)} />
           <Input label="End date *" type="date" required value={form.endDate} onChange={e => set('endDate', e.target.value)} />

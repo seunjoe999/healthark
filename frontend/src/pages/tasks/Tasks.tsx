@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { homesApi, suApi, staffApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -187,6 +187,12 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
             </div>
           )}
           <span className="text-[11px] font-semibold text-slate-700 text-center leading-tight truncate w-full">{task.su_name.split(' ')[0]}</span>
+          {task.su_id && (
+            <Link to={`/care-plans?su=${task.su_id}`} onClick={e => e.stopPropagation()}
+              className="text-[10px] font-semibold text-blue-600 hover:underline" title={`Open ${task.su_name}'s care plans`}>
+              Care plan
+            </Link>
+          )}
         </div>
       )}
 
