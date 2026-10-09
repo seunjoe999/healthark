@@ -62,6 +62,13 @@ function deleteCookie(name: string) {
 // the app whenever it locks for inactivity, until the day is over. The next day
 // starts with the password again.
 const LOCK_AFTER_MS = 10 * 60 * 1000
+// Admin accounts have no PIN (owner directive): they are never asked to create
+// one and never get the PIN lock. They are signed out after 30 minutes of
+// inactivity instead, as before, and sign back in with the password.
+const NO_PIN_ROLES = ['group_admin', 'admin']
+const ADMIN_SIGN_OUT_AFTER_MS = 30 * 60 * 1000
+const usesPin = (role?: string | null) => !NO_PIN_ROLES.includes(String(role))
+const idleLimit = (role?: string | null) => usesPin(role) ? LOCK_AFTER_MS : ADMIN_SIGN_OUT_AFTER_MS
 function ukDay(): string {
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date()) } catch { return new Date().toISOString().slice(0, 10) }
 }
@@ -75,9 +82,9 @@ function signInDayIsOver(): boolean {
   if (!d) { lsSet('ha_login_day', ukDay()); return false }
   return d !== ukDay()
 }
-function idleTooLong(): boolean {
+function idleTooLong(role?: string | null): boolean {
   const t = Number(lsGet('ha_last_active') || 0)
-  return t > 0 && Date.now() - t > LOCK_AFTER_MS
+  return t > 0 && Date.now() - t > idleLimit(role)
 }
 
 function saveSession(token: string, user: AuthUser) {
@@ -159,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = loadSession().user
     // Opened again on a later day: the password is needed first.
     if (u && signInDayIsOver()) { clearSession(); return null }
+    // An admin account left too long is signed out, not locked.
+    if (u && !usesPin(u.role) && idleTooLong(u.role)) { clearSession(); return null }
     return u
   })
   // Set instead of a full logout on inactivity, for care staff / team leaders
@@ -167,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // screen and losing whatever was on screen.
   // Starts locked if the app was closed or reloaded while locked, or has been
   // left longer than the limit — closing and reopening must not skip the PIN.
-  const [pinUnlock, setPinUnlockState] = useState(() => !!loadSession().user && (lsGet('ha_locked') === '1' || idleTooLong()))
+  const [pinUnlock, setPinUnlockState] = useState(() => { const u = loadSession().user; return !!u && usesPin(u.role) && (lsGet('ha_locked') === '1' || idleTooLong(u.role)) })
   const setPinUnlock = (v: boolean) => { if (v) lsSet('ha_locked', '1'); else { lsDel('ha_locked'); lsSet('ha_last_active', String(Date.now())) }; setPinUnlockState(v) }
   const [pinUnlockError, setPinUnlockError] = useState('')
 
@@ -237,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let timer: ReturnType<typeof setTimeout>
     let lastWrite = 0
     const lock = () => {
-      if (signInDayIsOver()) { clearSession(); setUser(null); return }
+      if (signInDayIsOver() || !usesPin(user.role)) { clearSession(); setUser(null); return }
       setPinUnlockError('')
       setPinUnlock(true)
     }
@@ -245,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const now = Date.now()
       if (now - lastWrite > 15000) { lastWrite = now; lsSet('ha_last_active', String(now)) }
       clearTimeout(timer)
-      timer = setTimeout(lock, LOCK_AFTER_MS)
+      timer = setTimeout(lock, idleLimit(user.role))
     }
     // Phones pause timers while the screen is off, so check the clock again
     // whenever the app comes back to the front. Also covers a token that ran
@@ -253,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const check = () => {
       if (document.visibilityState !== 'visible') return
       const { token } = loadSession()
-      if (idleTooLong() || !token) lock()
+      if (idleTooLong(user.role) || !token) lock()
     }
     const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll']
     events.forEach(e => window.addEventListener(e, reset, { passive: true }))
@@ -267,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       events.forEach(e => window.removeEventListener(e, reset))
       document.removeEventListener('visibilitychange', check)
     }
-  }, [!!user, pinUnlock])
+  }, [!!user, user?.role, pinUnlock])
 
   const login = async (email: string, password: string, pin?: string) => {
     const res = await authApi.login(email, password, pin)
@@ -332,7 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pinSetupError, setPinSetupError] = useState('')
   const [pinSetupSaving, setPinSetupSaving] = useState(false)
   useEffect(() => {
-    if (!user) { setNeedPinSetup(false); return }
+    if (!user || !usesPin(user.role)) { setNeedPinSetup(false); return }
     let cancelled = false
     authApi.pinStatus()
       .then(res => { if (!cancelled) setNeedPinSetup(res.data?.data?.hasPin === false) })
