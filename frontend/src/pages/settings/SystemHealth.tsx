@@ -103,6 +103,8 @@ export default function SystemHealth() {
                   <option value="error">Faults only</option>
                   <option value="refused">Refusals only</option>
                 </select>
+                <button onClick={() => { const list = (data?.topIssues || []).filter(match).map((t: any) => t.message); if (list.length && window.confirm(`Mark all ${list.length} issues shown as fixed? Any that happen again will come back.`)) markFixed(list) }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500">Mark all as fixed</button>
                 <button onClick={copyIssues} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">Copy for developer</button>
               </div>
             </div>

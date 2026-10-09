@@ -353,7 +353,8 @@ export default function StaffModule() {
                 <Card>
                   <SectionHeading title="Personal details" />
                   <dl className="space-y-3">
-                    <InfoField label="Email" value={selected.email} />
+                    <InfoField label="Email (used to sign in)" value={selected.email} />
+                    <InfoField label="Personal email" value={selected.personal_email || 'Not added yet'} />
                     <InfoField label="Phone" value={selected.phone} />
                     <InfoField label="Date of birth" value={selected.date_of_birth ? format(parseISO(selected.date_of_birth), 'd MMMM yyyy') : null} />
                     <InfoField label="Gender" value={selected.gender} />
