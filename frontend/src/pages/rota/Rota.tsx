@@ -823,7 +823,9 @@ export default function Rota() {
   // returned nothing, so the calendar's own leave blocks never actually showed.
   const getDayLeaves = (day: Date) => {
     const d = format(day, 'yyyy-MM-dd')
-    return leaves.filter(l => isActiveLeave(l) && String(l.start_date).slice(0, 10) <= d && String(l.end_date).slice(0, 10) >= d)
+    let r = leaves.filter(l => isActiveLeave(l) && String(l.start_date).slice(0, 10) <= d && String(l.end_date).slice(0, 10) >= d)
+    if (filterStaff) r = r.filter(l => l.staff_id === filterStaff)
+    return r
   }
 
   // Computed once per render and shared by both the sticky day headers and the grid
@@ -1315,13 +1317,17 @@ export default function Rota() {
                     )
                   })()}
 
-                  {/* Leave blocks */}
-                  {dayLeaves.map((l: any) => (
+                  {/* Leave blocks — stacked as a compact strip at the top of the
+                      column instead of each spanning the whole day: with more
+                      than one person off the same day (common), full-height
+                      blocks all sat at the exact same position and only the
+                      last one in the DOM was ever visible. */}
+                  {dayLeaves.map((l: any, i: number) => (
                     <div key={l.id}
-                      className="absolute left-0.5 right-0.5 rounded border bg-rose-50 border-rose-200 px-1.5 py-1 overflow-hidden"
-                      style={{ top: shiftTopPx('08:00'), height: shiftHeightPx('08:00', '20:00') }}>
-                      <p className="text-[11px] font-bold text-rose-700 truncate">{l.staff_name?.split(' ')[0]}</p>
-                      <p className="text-[10px] text-rose-500">{LEAVE_LABELS[l.leave_type] || l.leave_type}</p>
+                      className="absolute left-0.5 right-0.5 rounded border bg-rose-50 border-rose-200 px-1.5 overflow-hidden flex items-center gap-1"
+                      style={{ top: i * 20, height: 18 }}>
+                      <p className="text-[10px] font-bold text-rose-700 truncate">{l.staff_name?.split(' ')[0]}</p>
+                      <p className="text-[9px] text-rose-500 truncate">{LEAVE_LABELS[l.leave_type] || l.leave_type}</p>
                     </div>
                   ))}
 
