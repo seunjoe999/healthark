@@ -2066,6 +2066,9 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_year INTEGER`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_password_login TIMESTAMPTZ`,
+    // A shift with someone on it marked 'unfilled' (or the reverse) showed the wrong status. Keep the two in step.
+    `UPDATE staff_shifts SET status = 'filled' WHERE staff_id IS NOT NULL AND status = 'unfilled'`,
+    `UPDATE staff_shifts SET status = 'unfilled' WHERE staff_id IS NULL AND status = 'filled'`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,
     // "Visible to" targeting — null/empty means visible to all staff (as before);

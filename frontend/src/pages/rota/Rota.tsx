@@ -1044,7 +1044,7 @@ export default function Rota() {
       })()}
 
       {/* ── Bulk selection action bar — appears the moment anything's highlighted ── */}
-      {selectedShiftIds.size > 0 && (
+      {canManage && selectedShiftIds.size > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-blue-100 bg-blue-50 flex-wrap">
           <p className="text-sm font-bold text-blue-800">
             {`${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — only these are changed`}
@@ -1126,7 +1126,7 @@ export default function Rota() {
                     for an "open" request (no specific target picked), once a specific
                     target has agreed, or even while still awaiting that target's response
                     (a manager can force the swap through immediately without waiting). */}
-                {canManage && !swap.is_my_inbox && (swap.status === 'pending_manager' || swap.status === 'pending') && (
+                {canManage && !swap.is_my_inbox && swap.requesting_staff_id !== user?.id && swap.target_staff_id !== user?.id && (swap.status === 'pending_manager' || swap.status === 'pending') && (
                   <div className="flex gap-1.5 ml-auto items-center">
                     <span className="text-emerald-600 font-semibold text-xs">
                       {swap.status === 'pending_manager' ? 'Both agreed —' : (swap.target_staff_id ? 'Awaiting staff response —' : 'Open request —')}
@@ -1148,7 +1148,7 @@ export default function Rota() {
                 {/* The person who requested the swap can withdraw it themselves —
                     e.g. it got sorted out directly with a colleague outside the
                     app — without waiting on a manager or the target staff member. */}
-                {!canManage && !swap.is_my_inbox && swap.requesting_staff_id === user?.id && (
+                {!swap.is_my_inbox && swap.requesting_staff_id === user?.id && (
                   <button
                     disabled={swapActing === swap.id}
                     onClick={() => cancelSwap(swap.id)}
@@ -1318,7 +1318,7 @@ export default function Rota() {
                         // but a single click doesn't register with the parent's selection state,
                         // only a double-click does). Plain <div> with the same handlers removes the
                         // invalid nesting while keeping identical click/dblclick/keyboard behaviour.
-                        onClick={() => { if (selectedShiftIds.size === 0 && IS_TOUCH_DEVICE) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
+                        onClick={() => { if (!canManage || (selectedShiftIds.size === 0 && IS_TOUCH_DEVICE)) setDetailShift(shift); else toggleShiftSelected(shift.id) }}
                         onDoubleClick={() => setDetailShift(shift)}
                         // Hover summary — who, where, when and how long, without opening the shift.
                         onMouseEnter={e => {
@@ -1328,7 +1328,7 @@ export default function Rota() {
                           setHoverTip({ shift, x: toRight ? r.right + 8 : Math.max(8, r.left - 268), y: Math.min(r.top, window.innerHeight - 190) })
                         }}
                         onMouseLeave={() => setHoverTip(null)}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleShiftSelected(shift.id) } }}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (canManage) toggleShiftSelected(shift.id); else setDetailShift(shift) } }}
                         className="group absolute rounded-xl border-2 text-left overflow-hidden hover:z-10 hover:shadow-lg hover:scale-[1.01] transition-all duration-100 shadow-sm cursor-pointer"
                         style={{
                           top: top + 1,
@@ -1347,11 +1347,11 @@ export default function Rota() {
                             details directly instead — this checkbox becomes the only way to
                             select for bulk actions there, always visible (no hover needed),
                             with stopPropagation so tapping it doesn't also open the shift. */}
-                        <div role="button" title="Select this shift"
+                        {canManage && <div role="button" title="Select this shift"
                           onClick={(e) => { e.stopPropagation(); toggleShiftSelected(shift.id) }}
                           className={`absolute top-1 right-1 flex items-center justify-center rounded border cursor-pointer ${IS_TOUCH_DEVICE ? 'w-5 h-5' : 'w-4 h-4'} ${selected ? 'bg-amber-500 border-amber-500' : 'bg-white/80 border-slate-300'}`}>
                           {selected && <Check className={IS_TOUCH_DEVICE ? 'w-3.5 h-3.5 text-white' : 'w-3 h-3 text-white'} />}
-                        </div>
+                        </div>}
                         {canManage && (
                           <span
                             role="button"
@@ -2596,7 +2596,10 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   onUpdated: (updated: any) => void; onLinked: () => void; onBulkAssign: () => void
   staffList: any[]
 }) {
-  const status = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
+  // Someone is on the shift, so it is not unfilled, whatever the stored status says (and the reverse).
+  const rawStatus = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
+  const status = shift.staff_id && rawStatus === 'unfilled' ? 'filled' : !shift.staff_id && rawStatus === 'filled' ? 'unfilled' : rawStatus
+  const { user: me } = useAuth()
   const colors = STATUS_COLORS[status] || STATUS_COLORS.unfilled
   const [savingStatus, setSavingStatus] = useState(false)
   const [linking, setLinking] = useState<'shadow' | 'double_up' | null>(null)
@@ -3030,7 +3033,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               <X className="w-3.5 h-3.5" /> {unassigning ? 'Unassigning…' : 'Unassign staff'}
             </button>
           )}
-          {shift.staff_id && (
+          {shift.staff_id && (canManage || shift.staff_id === me?.id) && (
             <button onClick={onSwap}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-slate-800 border border-slate-800 hover:bg-slate-900 transition-colors">
               <ArrowLeftRight className="w-3.5 h-3.5" /> Request swap

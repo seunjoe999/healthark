@@ -530,6 +530,13 @@ router.post('/swaps', async (req: Request, res: Response, next: NextFunction) =>
     const requestingStaffId = fromToken(req, 'staffId');
     const { shiftId, targetStaffId, notes } = req.body;
     if (!shiftId) return res.status(400).json({ success: false, error: 'shiftId required' } as ApiResponse);
+    // Staff can only ask to swap a shift they are on themselves. Managers may raise one for anyone.
+    if (!(MANAGE_ROLES as readonly string[]).includes(fromToken(req, 'role'))) {
+      const own = await query<any>('SELECT staff_id FROM staff_shifts WHERE id = $1', [shiftId]);
+      if (!own[0] || own[0].staff_id !== requestingStaffId) {
+        return res.status(403).json({ success: false, error: 'You can only request a swap for your own shift' } as ApiResponse);
+      }
+    }
     const rows = await query(
       `INSERT INTO shift_swap_requests (home_id, shift_id, requesting_staff_id, target_staff_id, notes)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
@@ -575,6 +582,17 @@ router.delete('/swaps/:id', async (req: Request, res: Response, next: NextFuncti
 router.put('/swaps/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, responseNotes } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, error: 'Status must be approved or rejected' } as ApiResponse);
+    }
+    // Nobody decides a swap they are part of, whatever their role: someone
+    // else with rota rights has to approve or reject it.
+    const me = fromToken(req, 'staffId');
+    const mine = await query<any>('SELECT requesting_staff_id, target_staff_id FROM shift_swap_requests WHERE id = $1', [req.params.id]);
+    if (!mine[0]) return res.status(404).json({ success: false, error: 'Swap request not found' } as ApiResponse);
+    if (mine[0].requesting_staff_id === me || mine[0].target_staff_id === me) {
+      return res.status(403).json({ success: false, error: 'You cannot approve or reject a swap you are part of. Another manager has to decide it.' } as ApiResponse);
+    }
     // Ensure column exists
     await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_agreed BOOLEAN DEFAULT NULL`).catch(() => {});
     const rows = await query(
@@ -589,7 +607,8 @@ router.put('/swaps/:id', requireRole(...MANAGE_ROLES), async (req: Request, res:
       const swap = rows[0];
       if (swap) {
         await query(
-          `UPDATE staff_shifts SET staff_id = $1 WHERE id = $2`,
+          `UPDATE staff_shifts SET staff_id = $1::uuid, status = CASE WHEN $1::uuid IS NULL THEN 'unfilled' ELSE 'filled' END, updated_at = NOW()
+            WHERE id = $2 AND status NOT IN ('cancelled', 'completed')`,
           [swap.target_staff_id, swap.shift_id]
         ).catch(() => {});
       }
@@ -1578,7 +1597,9 @@ router.post('/:id/link', requireRole(...MANAGE_ROLES), param('id').isUUID(), bod
 );
 
 // DELETE /api/shifts/:id
-router.delete('/:id', param('id').isUUID(), validateRequest,
+// Managers only. This route had no role check, so any signed-in member of
+// staff could delete any shift on the rota.
+router.delete('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existing = await query<any>('SELECT staff_id, home_id, shift_date FROM staff_shifts WHERE id = $1', [req.params.id]);
