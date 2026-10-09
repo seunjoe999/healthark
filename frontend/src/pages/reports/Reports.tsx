@@ -164,7 +164,7 @@ export default function Reports() {
           }).join(''),
         }]
       : (() => {
-          const cols = Object.keys(rows[0]).filter(k => !['id', 'home_id', 'su_id', 'staff_id'].includes(k)).slice(0, 8)
+          const cols = Object.keys(rows[0]).filter(k => !['id', 'home_id', 'su_id', 'staff_id'].includes(k)).slice(0, 9)
           const tableRows = rows.slice(0, 200).map(row => `<tr>${cols.map(c => {
             const v = row[c]
             const display = v instanceof Date ? v.toLocaleDateString('en-GB')
@@ -562,7 +562,7 @@ function GenericTable({ data, reportType }: { data: any[]; reportType: string })
     description={reportType === 'mar-report'
       ? 'No medication administration records for this date range and service — check the From/To dates and the service above, or pick a wider range.'
       : 'No records found for this date range'} />
-  const cols = Object.keys(data[0]).filter(k => !['id','home_id','su_id','staff_id'].includes(k)).slice(0, 8)
+  const cols = Object.keys(data[0]).filter(k => !['id','home_id','su_id','staff_id'].includes(k)).slice(0, 9)
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-x-auto">
       <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">

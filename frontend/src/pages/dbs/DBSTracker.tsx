@@ -195,7 +195,7 @@ export default function DBSTracker() {
     if (tab === 'overview') {
       title = 'Staff Compliance Overview'
       const rows = overview.map((s: any) => `
-        <tr><th>${esc(s.first_name)} ${esc(s.last_name)}</th><td>${esc(s.dbs_status ? String(s.dbs_status).replace('_', ' ') : 'No DBS')} · References ${esc(s.refs_received)}/2 · RTW ${s.rtw_docs > 0 ? 'Yes' : 'No'}</td></tr>
+        <tr><th>${esc(s.first_name)} ${esc(s.last_name)}</th><td>${esc(s.dbs_status ? String(s.dbs_status).replace('_', ' ') : 'No DBS')} · References ${esc(s.refs_received)}/2 · RTW ${s.rtw_docs > 0 ? 'Yes' : 'No'} · Work start ${esc(s.work_start_date || '—')} · Contracted ${s.contracted_hours != null ? Number(s.contracted_hours) + 'h' : '—'}</td></tr>
       `).join('')
       table = `<table class="fields"><tr><th>Staff Member</th><th>Compliance</th></tr>${rows || '<tr><td colspan="2">No staff found.</td></tr>'}</table>`
     } else if (tab === 'dbs') {
@@ -304,6 +304,14 @@ export default function DBSTracker() {
                       <div className="text-center">
                         <div className={clsx('font-semibold', s.rtw_docs > 0 ? 'text-emerald-400' : 'text-rose-400')}>{s.rtw_docs > 0 ? <Check className="w-4 h-4 mx-auto" /> : '—'}</div>
                         <div className="text-slate-500">RTW</div>
+                      </div>
+                      <div className="text-center" title={s.start_date_extracted ? 'No start date on their record: taken from their first clock-in or first rota shift' : 'From their staff record'}>
+                        <div className="font-semibold text-white whitespace-nowrap">{s.work_start_date || '—'}</div>
+                        <div className="text-slate-500">Work start</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-semibold text-white">{s.contracted_hours != null ? Number(s.contracted_hours) + 'h' : '—'}</div>
+                        <div className="text-slate-500">Contracted</div>
                       </div>
                     </div>
                   </div>

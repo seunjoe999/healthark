@@ -606,10 +606,13 @@ router.get('/documents-matrix', requireRole(...REPORT_MGMT_ROLES), async (req: R
     const rows = await query(
       `SELECT s.first_name || ' ' || s.last_name AS staff,
               REPLACE(s.role::text, '_', ' ') AS job_role,
-              s.contracted_hours AS contracted_hours,
               COALESCE((SELECT to_char(MAX(d.issue_date), 'DD Mon YYYY') FROM staff_dbs d WHERE d.staff_id = s.id), 'Missing') AS dbs_issued,
               COALESCE((SELECT to_char(MAX(d.expiry_date), 'DD Mon YYYY') FROM staff_dbs d WHERE d.staff_id = s.id), '—') AS dbs_expires,
               CASE WHEN EXISTS (SELECT 1 FROM staff_right_to_work r WHERE r.staff_id = s.id) THEN 'On file' ELSE 'Missing' END AS right_to_work,
+              -- Work start date: the date on the staff record; where none was entered it is taken
+              -- from their first clock-in or first rota shift, and failing that the day the account was made.
+              to_char(COALESCE(s.start_date, LEAST((SELECT MIN(ce.event_time)::date FROM staff_clock_events ce WHERE ce.staff_id = s.id), (SELECT MIN(sh.shift_date) FROM staff_shifts sh WHERE sh.staff_id = s.id)), s.created_at::date), 'DD Mon YYYY') AS work_start_date,
+              COALESCE(s.contracted_hours, 40) AS contracted_hours,
               (SELECT COUNT(*) FROM staff_references r WHERE r.staff_id = s.id) AS references_on_file,
               (SELECT COUNT(*) FROM staff_training t WHERE t.staff_id = s.id) AS training_records
        FROM staff s

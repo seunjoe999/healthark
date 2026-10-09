@@ -2066,6 +2066,10 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_year INTEGER`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_password_login TIMESTAMPTZ`,
+    // Contracted hours are 40 for everyone (owner directive, 9 Oct 2026). Applied ONCE, so hours a manager edits afterwards are kept; new staff default to 40.
+    `CREATE TABLE IF NOT EXISTS one_time_changes (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+    `WITH first_run AS (INSERT INTO one_time_changes (name) VALUES ('contracted_hours_40') ON CONFLICT DO NOTHING RETURNING name) UPDATE staff SET contracted_hours = 40 WHERE EXISTS (SELECT 1 FROM first_run)`,
+    `ALTER TABLE staff ALTER COLUMN contracted_hours SET DEFAULT 40`,
     // A shift with someone on it marked 'unfilled' (or the reverse) showed the wrong status. Keep the two in step.
     `UPDATE staff_shifts SET status = 'filled' WHERE staff_id IS NOT NULL AND status = 'unfilled'`,
     `UPDATE staff_shifts SET status = 'unfilled' WHERE staff_id IS NULL AND status = 'filled'`,

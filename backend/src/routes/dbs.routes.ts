@@ -205,6 +205,8 @@ router.get('/compliance-overview', async (req: Request, res: Response, next: Nex
     const rows = await query(`
       SELECT
         s.id, s.first_name, s.last_name, s.photo_url, s.role,
+        to_char(COALESCE(s.start_date, LEAST((SELECT MIN(ce.event_time)::date FROM staff_clock_events ce WHERE ce.staff_id = s.id), (SELECT MIN(sh.shift_date) FROM staff_shifts sh WHERE sh.staff_id = s.id)), s.created_at::date), 'DD Mon YYYY') AS work_start_date, (s.start_date IS NULL) AS start_date_extracted,
+        COALESCE(s.contracted_hours, 40) AS contracted_hours,
         d.dbs_number, d.expiry_date AS dbs_expiry, d.status AS dbs_status,
         (SELECT COUNT(*) FROM staff_references sr WHERE sr.staff_id = s.id AND sr.home_id = $1 AND sr.status = 'valid')::int AS refs_received,
         (SELECT COUNT(*) FROM staff_right_to_work rw WHERE rw.staff_id = s.id AND rw.home_id = $1 AND rw.status = 'valid')::int AS rtw_docs
