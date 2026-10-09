@@ -763,6 +763,54 @@ router.post('/templates', requireRole(...MANAGE_ROLES), async (req: Request, res
   } catch (err) { next(err); }
 });
 
+// POST /api/shifts/delete-future — "remove this + all future" for one or more
+// shifts. For a repeating shift that is every later occurrence of the same
+// series. A shift with no series behind it (a one-off, or one created by bulk
+// assign) had no such button at all; for those it is every later shift at the
+// same service, for the same resident, with the same times, on the same weekday.
+// Nothing before the chosen shift's date, and nothing before today, is removed.
+// With preview=true it only counts.
+router.post('/delete-future', requireRole(...MANAGE_ROLES), [
+  body('ids').isArray({ min: 1, max: 500 }),
+  body('ids.*').isUUID(),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = req.body.homeId || fromToken(req, 'homeId');
+      const today = ukDateStr();
+      const targets = await query<any>(
+        `SELECT DISTINCT t.id, t.shift_date
+           FROM staff_shifts s
+           JOIN staff_shifts t ON t.home_id = s.home_id
+            AND t.shift_date >= GREATEST(s.shift_date, $3::date)
+            AND (
+              (s.template_id IS NOT NULL AND t.template_id = s.template_id)
+              OR (s.template_id IS NULL AND t.template_id IS NULL
+                  AND COALESCE(t.label, '') = COALESCE(s.label, '')
+                  AND t.su_id IS NOT DISTINCT FROM s.su_id
+                  AND t.start_time = s.start_time AND t.end_time = s.end_time
+                  AND EXTRACT(DOW FROM t.shift_date) = EXTRACT(DOW FROM s.shift_date))
+            )
+          WHERE s.id = ANY($1::uuid[]) AND s.home_id = $2`,
+        [req.body.ids, homeId, today]);
+      const ids = targets.map(t => t.id);
+      if (req.body.preview === true) {
+        const r = ids.length ? await query<any>(
+          `SELECT to_char(MIN(shift_date), 'DD Mon YYYY') AS first, to_char(MAX(shift_date), 'DD Mon YYYY') AS last
+             FROM staff_shifts WHERE id = ANY($1::uuid[])`, [ids]) : [];
+        return res.json({ success: true, data: { wouldDelete: ids.length, first: r[0]?.first || null, last: r[0]?.last || null } } as ApiResponse);
+      }
+      if (ids.length) await query(`DELETE FROM staff_shifts WHERE id = ANY($1::uuid[])`, [ids]);
+      // Stop the repeating series so the removed shifts are not generated again.
+      await query(
+        `UPDATE shift_templates SET is_active = FALSE
+          WHERE id IN (SELECT template_id FROM staff_shifts WHERE id = ANY($1::uuid[]) AND home_id = $2 AND template_id IS NOT NULL)`,
+        [req.body.ids, homeId]).catch(() => {});
+      res.json({ success: true, data: { deleted: ids.length, ids } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // DELETE /api/shifts/templates/:id — remove template + future generated shifts
 router.delete('/templates/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {

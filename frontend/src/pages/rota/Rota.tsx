@@ -579,7 +579,7 @@ export default function Rota() {
   // In-app confirm dialog for anything destructive below — a native
   // window.confirm() blocks automated/assistive click-through and is
   // inconsistent with the confirm-modal pattern Manage Services already uses.
-  const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; onConfirm: () => void; confirmLabel?: string } | null>(null)
 
   const deleteShift = (id: string) => {
     setPendingConfirm({
@@ -601,19 +601,35 @@ export default function Rota() {
   // from it (past shifts stay, for the record) — for an "ongoing"/recurring
   // shift, deleting just today's occurrence via deleteShift() leaves every
   // future day still scheduled.
-  const deleteShiftSeries = (shift: any) => {
-    if (!shift.template_id) return deleteShift(shift.id)
+  const deleteShiftSeries = (shift: any) => deleteFutureShifts([shift.id])
+
+  // "This + all future" for one shift or for every highlighted shift. The server
+  // counts first, so the confirmation says exactly how many shifts will go and
+  // up to what date. Nothing before the chosen shift (or before today) is removed.
+  const deleteFutureShifts = async (ids: string[]) => {
+    if (!ids.length) return
+    let preview: any
+    try { preview = (await api.post('/shifts/delete-future', { homeId: selectedHome, ids, preview: true })).data?.data }
+    catch (err: any) { toast.error(err?.response?.data?.error || 'Could not check the future shifts'); return }
+    const n = preview?.wouldDelete || 0
+    if (n === 0) { toast.error('Nothing to remove — these shifts are in the past, and past shifts are kept for the record'); return }
     setPendingConfirm({
-      title: 'Remove this recurring shift?',
-      message: 'Remove this AND all future occurrences of this recurring shift? Past shifts are kept for the record.',
+      title: ids.length > 1 ? `Delete ${ids.length} shifts and all their future ones?` : 'Delete this shift and all future ones?',
+      message: `This deletes ${n} shift${n !== 1 ? 's' : ''}, from ${preview.first} to ${preview.last}: ${ids.length > 1 ? 'each highlighted shift' : 'this shift'} and every later one that repeats it (same service, same times, same day of the week). Past shifts are kept. This cannot be undone.`,
+      confirmLabel: `Delete ${n} shift${n !== 1 ? 's' : ''}`,
       onConfirm: async () => {
         setPendingConfirm(null)
+        setBulkDeleting(true)
         try {
-          await api.delete(`/shifts/templates/${shift.template_id}`)
-          setShifts(prev => prev.filter(s => !(s.template_id === shift.template_id && s.shift_date >= format(new Date(), 'yyyy-MM-dd'))))
+          const res = await api.post('/shifts/delete-future', { homeId: selectedHome, ids })
+          const gone: string[] = res.data?.data?.ids || []
+          setShifts(prev => prev.filter(s => !gone.includes(s.id)))
           setDetailShift(null)
-          toast.success('Recurring shift removed from today onwards')
-        } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to remove recurring shift') }
+          clearSelection()
+          toast.success(`${res.data?.data?.deleted ?? gone.length} shift(s) deleted`)
+          loadAll()
+        } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete the future shifts') }
+        finally { setBulkDeleting(false) }
       },
     })
   }
@@ -629,6 +645,17 @@ export default function Rota() {
   }
 
   const clearSelection = () => setSelectedShiftIds(new Set())
+  // A highlight only lasts while its shift is on screen. Highlights used to
+  // survive moving to another week, so a later bulk action also changed shifts
+  // that were no longer visible.
+  useEffect(() => {
+    setSelectedShiftIds(prev => {
+      if (prev.size === 0) return prev
+      const onScreen = new Set(shifts.map(s => s.id))
+      const next = new Set(Array.from(prev).filter(id => onScreen.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [shifts])
 
   const bulkDeleteShifts = () => {
     if (selectedShiftIds.size === 0) return
@@ -653,6 +680,32 @@ export default function Rota() {
     })
   }
 
+  // Takes the staff member off the highlighted shifts ONLY. The "Unassign"
+  // button used to open the by-staff window whatever was highlighted, which
+  // clears every shift that person has from a date onward.
+  const bulkUnassignSelected = () => {
+    const targets = shifts.filter(s => selectedShiftIds.has(s.id) && s.staff_id)
+    if (!targets.length) { toast.error('None of the highlighted shifts has anyone assigned'); return }
+    const n = targets.length
+    setPendingConfirm({
+      title: 'Unassign the highlighted shifts?',
+      message: `Take the staff off ${n} highlighted shift${n !== 1 ? 's' : ''}? The shifts stay on the rota as unfilled. No other shift is changed.`,
+      confirmLabel: `Unassign ${n} shift${n !== 1 ? 's' : ''}`,
+      onConfirm: async () => {
+        setPendingConfirm(null)
+        setBulkDeleting(true)
+        try {
+          const results = await Promise.allSettled(targets.map(s => api.put(`/shifts/${s.id}`, { staffId: null })))
+          const failed = results.filter(r => r.status === 'rejected').length
+          if (n - failed) toast.success(`${n - failed} shift${n - failed !== 1 ? 's' : ''} unassigned`)
+          if (failed) toast.error(`${failed} shift${failed !== 1 ? 's' : ''} could not be unassigned`)
+          clearSelection()
+          loadAll()
+        } finally { setBulkDeleting(false) }
+      },
+    })
+  }
+
   const conflictGate = useConflictGate()
   const bulkConflictIds = useRef<string[]>([])
 
@@ -660,7 +713,7 @@ export default function Rota() {
     if (selectedShiftIds.size === 0) return
     setBulkDeleting(true)
     try {
-      const ids = Array.from(selectedShiftIds)
+      const ids = shifts.filter(s => selectedShiftIds.has(s.id)).map(s => s.id)
       await conflictGate.run(async (confirmed) => {
         // First pass sends everything unconfirmed; clashes come back as 409
         // (unwritten) while the rest save normally. On "assign anyway" only
@@ -791,9 +844,12 @@ export default function Rota() {
                 title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern — use this to fill in a rota someone already created">
                 Bulk Assign Staff to Shifts
               </Button>
-              <Button variant="outline" icon={<UserMinus className="w-4 h-4" />} onClick={() => setUnassignOpen(true)}
-                title="Remove a staff member from all of their current and future shifts (today onwards) — the shifts stay on the rota as unfilled, ready to reassign">
-                Unassign
+              <Button variant="outline" icon={<UserMinus className="w-4 h-4" />}
+                onClick={() => selectedShiftIds.size > 0 ? bulkUnassignSelected() : setUnassignOpen(true)}
+                title={selectedShiftIds.size > 0
+                  ? 'Take the staff off the highlighted shifts only — the shifts stay on the rota as unfilled'
+                  : 'Remove a staff member from their shifts between dates you choose — the shifts stay on the rota as unfilled, ready to reassign. To unassign particular shifts, highlight them first.'}>
+                {selectedShiftIds.size > 0 ? `Unassign ${selectedShiftIds.size} selected` : 'Unassign'}
               </Button>
               <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
                 Report Absence + Find Cover
@@ -994,12 +1050,16 @@ export default function Rota() {
       {selectedShiftIds.size > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-blue-100 bg-blue-50 flex-wrap">
           <p className="text-sm font-bold text-blue-800">
-            {`${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — assign staff to all of them, or delete them`}
+            {`${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — only these are changed`}
           </p>
           <div className="ml-auto flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={bulkDeleting}
               icon={<Users className="w-3.5 h-3.5" />} onClick={() => setBulkAssignOpen(true)}>
               Bulk assign staff
+            </Button>
+            <Button size="sm" variant="outline" disabled={bulkDeleting}
+              icon={<UserMinus className="w-3.5 h-3.5" />} onClick={bulkUnassignSelected}>
+              Unassign selected
             </Button>
             <select disabled={bulkBusy || bulkDeleting} value=""
               onChange={e => { const v = e.target.value; e.target.value = ''; runBulkChange(v) }}
@@ -1017,6 +1077,11 @@ export default function Rota() {
             <Button size="sm" variant="danger" loading={bulkDeleting}
               icon={<Trash2 className="w-3.5 h-3.5" />} onClick={bulkDeleteShifts}>
               Delete selected
+            </Button>
+            <Button size="sm" variant="danger" disabled={bulkDeleting}
+              icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => deleteFutureShifts(Array.from(selectedShiftIds))}
+              title="Deletes each highlighted shift and every later one that repeats it. You are shown how many before anything is deleted.">
+              Delete selected + all future
             </Button>
             <Button size="sm" variant="ghost" onClick={clearSelection}>Cancel</Button>
           </div>
@@ -1516,7 +1581,7 @@ export default function Rota() {
           <p className="text-sm text-slate-600 mb-5">{pendingConfirm.message}</p>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setPendingConfirm(null)}>Cancel</Button>
-            <Button variant="danger" onClick={pendingConfirm.onConfirm}>Delete</Button>
+            <Button variant="danger" onClick={pendingConfirm.onConfirm}>{pendingConfirm.confirmLabel || 'Delete'}</Button>
           </div>
         </Modal>
       )}
@@ -2988,12 +3053,11 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
           )}
           {canManage && (
             <div className="ml-auto flex items-center gap-2">
-              {shift.template_id && (
-                <button onClick={onDeleteSeries}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-700 border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" /> Remove this + all future
-                </button>
-              )}
+              <button onClick={onDeleteSeries}
+                title="Deletes this shift and every later one that repeats it. You are shown how many before anything is deleted."
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-700 border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" /> Delete this + all future shifts
+              </button>
               <button onClick={onDelete}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-600 border border-rose-100 hover:bg-rose-50 transition-colors">
                 <Trash2 className="w-3.5 h-3.5" /> Remove
