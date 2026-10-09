@@ -31,15 +31,21 @@ function defaultTimesForDays(daysOfWeek: number[]): { startTime: string; endTime
   return { startTime: allWeekend ? '10:00' : '08:00', endTime: '19:00' }
 }
 
-// Approved leave on one day, or overlapping a date range — used wherever a
-// manager is about to put someone on a shift, so leave is visible right where
-// the decision is made instead of only on the calendar's own leave blocks.
+// Leave on one day, or overlapping a date range — used wherever a manager is
+// about to put someone on a shift, so leave is visible right where the
+// decision is made instead of only on the calendar's own leave blocks. Not
+// restricted to status 'approved': the rota's own "Mark absence" button
+// creates these rows with the table's default status ('pending') and deletes
+// the person's shifts immediately — it's already a done, effective absence,
+// not a request awaiting a decision. Only an explicitly declined or
+// cancelled leave request is excluded.
+function isActiveLeave(l: any): boolean { return l.status !== 'declined' && l.status !== 'cancelled' }
 function leaveOnDate(leaves: any[], staffId: string, dateStr: string): any {
-  return leaves.find(l => l.staff_id === staffId && l.status === 'approved'
+  return leaves.find(l => l.staff_id === staffId && isActiveLeave(l)
     && String(l.start_date).slice(0, 10) <= dateStr && String(l.end_date).slice(0, 10) >= dateStr)
 }
 function leaveOverlapsRange(leaves: any[], staffId: string, fromStr: string, toStr: string): any {
-  return leaves.find(l => l.staff_id === staffId && l.status === 'approved'
+  return leaves.find(l => l.staff_id === staffId && isActiveLeave(l)
     && String(l.start_date).slice(0, 10) <= toStr && String(l.end_date).slice(0, 10) >= fromStr)
 }
 
@@ -817,7 +823,7 @@ export default function Rota() {
   // returned nothing, so the calendar's own leave blocks never actually showed.
   const getDayLeaves = (day: Date) => {
     const d = format(day, 'yyyy-MM-dd')
-    return leaves.filter(l => l.status === 'approved' && String(l.start_date).slice(0, 10) <= d && String(l.end_date).slice(0, 10) >= d)
+    return leaves.filter(l => isActiveLeave(l) && String(l.start_date).slice(0, 10) <= d && String(l.end_date).slice(0, 10) >= d)
   }
 
   // Computed once per render and shared by both the sticky day headers and the grid
