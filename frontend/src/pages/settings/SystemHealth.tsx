@@ -64,8 +64,8 @@ export default function SystemHealth() {
       {loading ? <Spinner /> : failed ? <p className="text-rose-600 text-sm">{failed}</p> : data && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Tile label="Issues, last 24 hours" value={data.errors.last24h} tone={data.errors.last24h === 0 ? 'good' : data.errors.last24h < 20 ? 'warn' : 'bad'}
-              hint={`${data.errors.last7d} in the last 7 days`} />
+            <Tile label="Faults, last 7 days" value={data.errors.faults7d ?? 0} tone={(data.errors.faults7d ?? 0) === 0 ? 'good' : 'bad'}
+              hint={`Times the system broke. Separately, it refused ${Math.max(0, data.errors.last7d - (data.errors.faults7d ?? 0))} actions on purpose (rules), ${data.errors.last24h} of everything in the last 24 hours`} />
             <Tile label="Staff left clocked in" value={data.stuckClockIns.length} tone={data.stuckClockIns.length === 0 ? 'good' : 'warn'} hint="Clocked in over 16 hours ago" />
             <Tile label="Requests waiting" value={data.db.waiting} tone={data.db.waiting === 0 ? 'good' : 'bad'}
               hint={`${data.db.connections} database connections open`} />

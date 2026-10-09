@@ -59,7 +59,8 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
     const [errCounts, recentErrors, stuck, openAlerts, unsignedMeds] = await Promise.all([
       safe(() => query<any>(
         `SELECT COUNT(*) FILTER (WHERE created_at > NOW() - interval '24 hours') AS last_24h,
-                COUNT(*) FILTER (WHERE created_at > NOW() - interval '7 days') AS last_7d
+                COUNT(*) FILTER (WHERE created_at > NOW() - interval '7 days') AS last_7d,
+                COUNT(*) FILTER (WHERE created_at > NOW() - interval '7 days' AND (status_code >= 500 OR source = 'browser')) AS faults_7d
          FROM error_log WHERE resolved_at IS NULL`), [{ last_24h: '0', last_7d: '0' }]),
       safe(() => query<any>(
         `SELECT to_char(e.created_at AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS at, e.method, e.path, e.status_code, e.message,
@@ -132,7 +133,7 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
         uptimeHours: Math.round((Date.now() - STARTED_AT.getTime()) / 360000) / 10,
         memoryMb: Math.round(process.memoryUsage().rss / 1048576),
         db: { connections: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
-        errors: { last24h: parseInt(errCounts[0]?.last_24h || '0', 10), last7d: parseInt(errCounts[0]?.last_7d || '0', 10), recent: recentErrors },
+        errors: { faults7d: parseInt((errCounts[0] as any)?.faults_7d || '0', 10), last24h: parseInt(errCounts[0]?.last_24h || '0', 10), last7d: parseInt(errCounts[0]?.last_7d || '0', 10), recent: recentErrors },
         stuckClockIns: stuck,
         openAlerts: openAlerts.map((a: any) => ({ type: String(a.alert_type).replace(/_/g, ' '), open: parseInt(a.open, 10) })),
         tasksNotCompletedLast7Days: parseInt(unsignedMeds[0]?.n || '0', 10),
