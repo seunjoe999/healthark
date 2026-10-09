@@ -290,6 +290,21 @@ router.put('/role-access-rights', requireRole('home_manager', 'group_admin', 'de
 
 // ── Per-user routes (/api/staff/:id) ─────────────────────────────
 
+// PUT /api/staff/me/personal-email — any member of staff records their own
+// personal email. Separate from the profile update because care staff and team
+// leaders cannot edit their profile, and separate from the sign-in email, which
+// only a manager may change.
+router.put('/me/personal-email', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const raw = String(req.body?.personalEmail ?? '').trim().toLowerCase();
+    if (raw && (raw.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw))) {
+      throw new AppError('That does not look like an email address — please check it', 400);
+    }
+    await query('UPDATE staff SET personal_email = $1 WHERE id = $2', [raw || null, req.staff.staffId]);
+    res.json({ success: true, data: { personalEmail: raw || null } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/staff/:id
 router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -539,7 +554,8 @@ router.put(
           ni_number = COALESCE($24, ni_number),
           feature_flags = CASE WHEN $25 THEN '{}'::jsonb ELSE feature_flags END,
           start_date = COALESCE($26, start_date),
-          contracted_hours = COALESCE($27, contracted_hours)
+          contracted_hours = COALESCE($27, contracted_hours),
+          personal_email = CASE WHEN $28::boolean THEN $29 ELSE personal_email END
          WHERE id = $22
          RETURNING id, first_name, last_name, email, role, status, is_active, home_id`,
         [firstName || null, lastName || null, preferredName || null, phone || null,
@@ -563,7 +579,10 @@ router.put(
          // silently never persisted, for anyone, ever. Write them here
          // unconditionally (when a manager provided them) instead.
          canManage ? nd(startDate) : null,
-         canManage && contractedHours !== undefined ? (contractedHours === '' ? null : contractedHours) : null]
+         canManage && contractedHours !== undefined ? (contractedHours === '' ? null : contractedHours) : null,
+         req.body.personalEmail !== undefined,
+         typeof req.body.personalEmail === 'string' && req.body.personalEmail.trim() ? req.body.personalEmail.trim().toLowerCase().slice(0, 255) : null,
+        ]
       );
 
       if (!rows.length) throw new AppError('Staff not found', 404);

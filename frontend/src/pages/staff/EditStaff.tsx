@@ -129,6 +129,7 @@ function norm(s: any) {
     firstName: s.first_name || s.firstName || '',
     lastName: s.last_name || s.lastName || '',
     email: s.email || '',
+    personalEmail: s.personal_email || s.personalEmail || '',
     phone: s.phone || '',
     role: s.role || 'care_staff',
     status: s.status || 'active',
@@ -295,7 +296,8 @@ export default function EditStaff() {
           <div className="grid md:grid-cols-2 gap-4">
             <Input label="First name *" value={form.firstName} onChange={e => set('firstName', e.target.value)} />
             <Input label="Last name *" value={form.lastName} onChange={e => set('lastName', e.target.value)} />
-            <Input label="Email address *" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+            <Input label="Email address (used to sign in) *" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+            <Input label="Personal email" type="email" value={form.personalEmail} onChange={e => set('personalEmail', e.target.value)} placeholder="Their own email, e.g. Gmail" />
             <Input label="Phone number" value={form.phone} onChange={e => set('phone', e.target.value)} />
             <Input label="Date of birth" type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} />
             <Select label="Gender" value={form.gender} onChange={e => set('gender', e.target.value)} options={GENDERS} placeholder="Select gender" />

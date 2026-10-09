@@ -21,6 +21,21 @@ export default function StaffDashboard() {
   const [myLeave, setMyLeave] = useState<any[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [myProfile, setMyProfile] = useState<any>(null)
+  const [personalEmail, setPersonalEmail] = useState('')
+  const [emailEditing, setEmailEditing] = useState(false)
+  const [emailSaving, setEmailSaving] = useState(false)
+  const savePersonalEmail = async () => {
+    const v = personalEmail.trim()
+    if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) { toast.error('That does not look like an email address'); return }
+    setEmailSaving(true)
+    try {
+      await api.put('/staff/me/personal-email', { personalEmail: v })
+      setMyProfile((p: any) => ({ ...(p || {}), personal_email: v || null }))
+      setEmailEditing(false)
+      toast.success(v ? 'Personal email saved' : 'Personal email removed')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not save your email') }
+    finally { setEmailSaving(false) }
+  }
   const [residents, setResidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showTaskPopup, setShowTaskPopup] = useState(false)
@@ -122,6 +137,7 @@ export default function StaffDashboard() {
         setMyLeave(v(leaveR)?.data.data || [])
         setNotifications((v(notifR)?.data.data || []).filter((n: any) => !n.is_read).slice(0, 5))
         setMyProfile(profileData)
+        setPersonalEmail(profileData?.personal_email || '')
         setResidents(v(suR)?.data.data || [])
         setClockedIn(!!v(clockStatusR)?.data.data?.clockedIn)
         const qrToken = v(homeQrR)?.data.data?.qrToken
@@ -152,6 +168,30 @@ export default function StaffDashboard() {
         <h1 className="font-display text-2xl text-slate-900 mt-0.5">{greeting}, {user?.firstName} 👋</h1>
         {myProfile?.role && <p className="text-sm text-slate-400 capitalize mt-0.5">{myProfile.role.replace(/_/g, ' ')} · {myProfile.home_name || ''}</p>}
       </div>
+
+      {/* Personal email — every member of staff adds their own */}
+      {myProfile && (
+        <div className={`rounded-2xl border p-4 mb-4 ${myProfile.personal_email ? 'bg-white border-slate-200' : 'bg-amber-50 border-amber-300'}`}>
+          <p className="font-bold text-slate-900 text-sm">Your personal email</p>
+          {myProfile.personal_email && !emailEditing ? (
+            <div className="flex items-center justify-between gap-3 mt-1">
+              <p className="text-sm text-slate-700 break-all">{myProfile.personal_email}</p>
+              <button onClick={() => setEmailEditing(true)} className="text-sm font-bold text-indigo-700 hover:underline flex-shrink-0">Change</button>
+            </div>
+          ) : (
+            <>
+              {!myProfile.personal_email && <p className="text-xs text-slate-700 mt-0.5">Please add your own email address (for example Gmail) so we can contact you.</p>}
+              <div className="flex gap-2 mt-2">
+                <input type="email" inputMode="email" autoComplete="email" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="flex-1 min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" />
+                <button onClick={savePersonalEmail} disabled={emailSaving}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-60">{emailSaving ? 'Saving…' : 'Save'}</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Clock in first — before anything else */}
       {!clockedIn && (

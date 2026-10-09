@@ -2051,6 +2051,7 @@ async function ensureColumns() {
     `ALTER TABLE service_users ADD COLUMN IF NOT EXISTS eat_team_preference TEXT`,
     // ── Staff columns that login depends on ───────────────────────────────────
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS refresh_token TEXT`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS personal_email VARCHAR(255)`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS feature_flags JSONB NOT NULL DEFAULT '{}'`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_total NUMERIC(6,2) NOT NULL DEFAULT 210`,
