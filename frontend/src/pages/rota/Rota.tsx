@@ -31,6 +31,18 @@ function defaultTimesForDays(daysOfWeek: number[]): { startTime: string; endTime
   return { startTime: allWeekend ? '10:00' : '08:00', endTime: '19:00' }
 }
 
+// Approved leave on one day, or overlapping a date range — used wherever a
+// manager is about to put someone on a shift, so leave is visible right where
+// the decision is made instead of only on the calendar's own leave blocks.
+function leaveOnDate(leaves: any[], staffId: string, dateStr: string): any {
+  return leaves.find(l => l.staff_id === staffId && l.status === 'approved'
+    && String(l.start_date).slice(0, 10) <= dateStr && String(l.end_date).slice(0, 10) >= dateStr)
+}
+function leaveOverlapsRange(leaves: any[], staffId: string, fromStr: string, toStr: string): any {
+  return leaves.find(l => l.staff_id === staffId && l.status === 'approved'
+    && String(l.start_date).slice(0, 10) <= toStr && String(l.end_date).slice(0, 10) >= fromStr)
+}
+
 // The grid's scale is set per render (see setGridScale) so the whole day can be
 // fitted to the height of the screen instead of always being 1150px tall, which
 // forced constant up-and-down scrolling at 100% zoom.
@@ -800,8 +812,13 @@ export default function Rota() {
     if (filterUnfilled) r = r.filter(s => !s.staff_id)
     return r
   }
-  const getDayLeaves = (day: Date) =>
-    leaves.filter(l => { try { return isSameDay(parseISO(l.leave_date), day) } catch { return false } })
+  // Leave records are a start_date/end_date range with a status, not a single
+  // "leave_date" — matching on a field that doesn't exist meant this always
+  // returned nothing, so the calendar's own leave blocks never actually showed.
+  const getDayLeaves = (day: Date) => {
+    const d = format(day, 'yyyy-MM-dd')
+    return leaves.filter(l => l.status === 'approved' && String(l.start_date).slice(0, 10) <= d && String(l.end_date).slice(0, 10) >= d)
+  }
 
   // Computed once per render and shared by both the sticky day headers and the grid
   // columns below, so a day's width (driven by how many staff are on at once) stays
@@ -1558,6 +1575,7 @@ export default function Rota() {
             setPatternAssignOpen(true)
           }}
           staffList={staffList}
+          leaves={leaves}
         />
       )}
 
@@ -1569,6 +1587,8 @@ export default function Rota() {
           count={selectedShiftIds.size}
           assigning={bulkDeleting}
           onAssign={bulkAssignStaff}
+          leaves={leaves}
+          dates={Array.from(new Set(shifts.filter(s => selectedShiftIds.has(s.id)).map(s => String(s.shift_date).substring(0, 10))))}
         />
       )}
 
@@ -1622,6 +1642,7 @@ export default function Rota() {
           homeId={selectedHome}
           defaultDate={format(weekStart, 'yyyy-MM-dd')}
           seed={patternSeed}
+          leaves={leaves}
           onSaved={() => { setPatternAssignOpen(false); setPatternSeed(null); loadAll() }}
         />
       )}
@@ -2629,11 +2650,11 @@ function ShiftAuditorModal({ shifts, onClose, onReviewed }: {
   )
 }
 
-function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onDeleteSeries, onSwap, onUpdated, onLinked, onBulkAssign, staffList }: {
+function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelete, onDeleteSeries, onSwap, onUpdated, onLinked, onBulkAssign, staffList, leaves = [] }: {
   shift: any; canManage: boolean; canSeeFinancials: boolean; onClose: () => void
   onDelete: () => void; onDeleteSeries: () => void; onSwap: () => void
   onUpdated: (updated: any) => void; onLinked: () => void; onBulkAssign: () => void
-  staffList: any[]
+  staffList: any[]; leaves?: any[]
 }) {
   // Someone is on the shift, so it is not unfilled, whatever the stored status says (and the reverse).
   const rawStatus = shift.status || (shift.staff_id ? 'filled' : 'unfilled')
@@ -3118,7 +3139,10 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
         {canManage && reallocating && (
           <div className="rounded-xl border border-slate-200 p-3 space-y-2.5 bg-slate-50">
             <Select label="Reallocate to" value={reallocateTo} onChange={e => setReallocateTo(e.target.value)}
-              options={staffList.filter(s => s.id !== shift.staff_id).map(s => ({ value: s.id, label: getName(s) }))}
+              options={staffList.filter(s => s.id !== shift.staff_id).map(s => {
+                const onLeave = leaveOnDate(leaves, s.id, String(shift.shift_date).substring(0, 10))
+                return { value: s.id, label: onLeave ? `${getName(s)} — on leave (${LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type})` : getName(s) }
+              })}
               placeholder="Select staff member" />
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={() => { setReallocating(false); setReallocateTo('') }}>Cancel</Button>
@@ -3253,13 +3277,18 @@ function StaffFilterCombobox({ staffList, value, onChange }: {
 // ── Bulk Assign Staff Modal ────────────────────────────────────────────────────
 // Assigns one staff member to every currently-selected shift on the grid.
 
-function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assigning }: {
+function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assigning, leaves = [], dates = [] }: {
   open: boolean; onClose: () => void
   staffList: any[]; count: number
   onAssign: (staffId: string) => void; assigning: boolean
+  leaves?: any[]; dates?: string[]
 }) {
   const [search, setSearch] = useState('')
   const filtered = staffList.filter(s => getName(s).toLowerCase().includes(search.toLowerCase()))
+  // Any of the selected shifts' dates falling inside the person's approved
+  // leave — so a manager isn't assigning someone who's actually off, without
+  // having to cross-check the calendar's own leave blocks first.
+  const onLeaveFor = (staffId: string) => dates.map(d => leaveOnDate(leaves, staffId, d)).find(Boolean)
 
   return (
     <Modal open={open} onClose={onClose} title={`Assign staff to ${count} selected shift${count !== 1 ? 's' : ''}`} size="sm">
@@ -3273,18 +3302,24 @@ function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assig
           {filtered.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-6">No staff found</p>
           ) : (
-            filtered.map((s: any) => (
+            filtered.map((s: any) => {
+              const onLeave = onLeaveFor(s.id)
+              return (
               <button key={s.id} type="button" disabled={assigning} onClick={() => onAssign(s.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-slate-50 last:border-0 text-left hover:bg-slate-50 transition-colors disabled:opacity-50">
-                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                title={onLeave ? `On ${LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type} — ${onLeave.start_date} to ${onLeave.end_date}` : undefined}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 border-b last:border-0 text-left transition-colors disabled:opacity-50 ${onLeave ? 'bg-rose-50 border-rose-100 hover:bg-rose-100' : 'border-slate-50 hover:bg-slate-50'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${onLeave ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
                   {getName(s).split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{getName(s)}</p>
-                  <p className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</p>
+                  <p className={`text-sm font-medium truncate ${onLeave ? 'text-rose-700' : 'text-slate-800'}`}>{getName(s)}</p>
+                  <p className={`text-xs capitalize ${onLeave ? 'text-rose-500 font-semibold' : 'text-slate-400'}`}>
+                    {onLeave ? `On leave — ${LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type}` : (s.role || '').replace(/_/g, ' ')}
+                  </p>
                 </div>
               </button>
-            ))
+              )
+            })
           )}
         </div>
         <div className="flex justify-end pt-1">
@@ -3307,12 +3342,12 @@ const WEEKDAY_OPTIONS = [
   { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' },
 ]
 
-function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, homeId, defaultDate, seed, onSaved }: {
+function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, homeId, defaultDate, seed, onSaved, leaves = [] }: {
   open: boolean; onClose: () => void
   staffList: any[]; shifts?: any[]; suList: any[]; homeId: string; defaultDate: string
   seed?: { suId?: string; dayOrNight?: 'any' | 'day' | 'night'; daysOfWeek?: number[];
     startTime?: string; endTime?: string; label?: string; replaceStaffId?: string; replaceStaffName?: string; startDate?: string; templateId?: string } | null
-  onSaved: () => void
+  onSaved: () => void; leaves?: any[]
 }) {
   // Multiple staff, not just one — most services run with 2+ staff on at once, and
   // bulk-assigning used to only ever let you pick a single person for the whole
@@ -3359,6 +3394,18 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
   // Alphabetical so a long staff list is easy to scan/select from, instead
   // of whatever order the API happened to return.
   const sortedStaffList = [...staffList].sort((a, b) => getName(a).localeCompare(getName(b)))
+  // Same preset-to-end-date rule save() uses below, computed here too so the
+  // staff list can flag anyone whose approved leave falls inside this range
+  // before the manager picks them, not only after the clash comes back from
+  // the server.
+  const previewEndDate = (() => {
+    const presetDays: Record<string, number> = { '1w': 6, '2w': 13, '4w': 27 }
+    try {
+      return endPreset === 'ongoing' ? format(addDays(parseISO(startDate), 365), 'yyyy-MM-dd')
+        : endPreset === 'custom' ? (endDate || startDate)
+        : format(addDays(parseISO(startDate), presetDays[endPreset]), 'yyyy-MM-dd')
+    } catch { return startDate }
+  })()
 
   const save = async () => {
     if (!staffIds.length) { toast.error('Select at least one staff member'); return }
@@ -3465,14 +3512,23 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
               }, 0)
               const contracted = Number(s.contracted_hours) || 0
               const over = contracted > 0 && rotaHrs > contracted
+              // Approved leave any time inside the dates this allocation would cover.
+              const onLeave = leaveOverlapsRange(leaves, s.id, startDate, previewEndDate)
               return (
-                <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 text-sm">
+                <label key={s.id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm ${onLeave ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50'}`}>
                   <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
                   {order !== -1 && (
                     <span className="flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center">{order + 1}</span>
                   )}
-                  <span className="text-slate-700">{getName(s)}</span>
-                  <span className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
+                  <span className={onLeave ? 'text-rose-700 font-semibold' : 'text-slate-700'}>{getName(s)}</span>
+                  {onLeave ? (
+                    <span className="text-xs text-rose-500 font-semibold whitespace-nowrap"
+                      title={`${onLeave.start_date} to ${onLeave.end_date}`}>
+                      On leave — {LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400 capitalize">{(s.role || '').replace(/_/g, ' ')}</span>
+                  )}
                   <span className={`ml-auto text-xs font-semibold whitespace-nowrap ${over ? 'text-amber-600' : rotaHrs === 0 ? 'text-emerald-600' : 'text-slate-500'}`}
                     title="Hours on the rota in the period currently shown, against contracted hours">
                     {rotaHrs === 0 ? 'Free' : `${rotaHrs % 1 === 0 ? rotaHrs : rotaHrs.toFixed(1)}h on rota`}{contracted > 0 ? ` / ${contracted}h` : ''}

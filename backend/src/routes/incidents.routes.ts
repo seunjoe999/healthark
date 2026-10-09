@@ -44,7 +44,7 @@ function fromToken(req: Request, field: string): string {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const { start_date, end_date, incident_type, search, suId } = req.query;
+    const { start_date, end_date, incident_type, search, suId, status } = req.query;
     if (suId) await assertResidentAccess(req, suId as string);
 
     let sql = `
@@ -90,6 +90,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (search) {
       params.push(`%${search}%`);
       sql += ` AND (su.first_name || ' ' || su.last_name) ILIKE $${params.length}`;
+    }
+    // The dashboard's "Open Incidents" widget has always asked for status=open,
+    // but this route never read the param, so it ignored the filter and handed
+    // back every incident ever recorded — reviewed or not — and the widget just
+    // took the count of all of them. "Open" = not yet reviewed by a manager.
+    if (status === 'open') {
+      sql += ` AND ri.manager_reviewed = FALSE`;
+    } else if (status === 'closed') {
+      sql += ` AND ri.manager_reviewed = TRUE`;
     }
 
     sql += ' ORDER BY dr.created_at DESC';
@@ -330,8 +339,16 @@ router.post('/:id/review-note', requireRole('home_manager', 'group_admin', 'depu
     const staffRows = await query<any>('SELECT first_name, last_name FROM staff WHERE id = $1', [staffId]);
     const authorName = staffRows.length ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'Unknown';
     const entry = { text: note.trim(), author: authorName, timestamp: new Date().toISOString() };
+    // Adding a review note IS the manager's review of the incident — this is
+    // what the Incidents page itself already treats as "reviewed" on screen
+    // (review_notes/signature present), but manager_reviewed was never set
+    // here, so the record stayed "open" everywhere else (dashboard widget,
+    // compliance counts, the overdue-review alert) no matter how many notes
+    // were added or how long ago.
     await query(
-      `UPDATE records_incidents SET review_notes = review_notes || $1::jsonb, updated_at = NOW() WHERE id = $2`,
+      `UPDATE records_incidents SET review_notes = review_notes || $1::jsonb, updated_at = NOW(),
+         manager_reviewed = TRUE, manager_reviewed_at = COALESCE(manager_reviewed_at, NOW())
+       WHERE id = $2`,
       [JSON.stringify([entry]), req.params.id]
     );
     res.json({ success: true, data: entry } as ApiResponse);
@@ -346,9 +363,19 @@ router.post('/:id/signature', async (req: Request, res: Response, next: NextFunc
     if (!staffRows.length) throw new AppError('Staff member not found', 404);
     const s = staffRows[0];
     const sig = { name: `${s.first_name} ${s.last_name}`, role: s.role, timestamp: new Date().toISOString() };
+    // Anyone involved can sign (the reporter signing their own account, not
+    // just a manager), so only a signature from a reviewing role actually
+    // closes the incident — the same roles /review-note requires. A care
+    // staff member's own signature still saves, it just doesn't mark the
+    // incident reviewed by itself.
+    const REVIEW_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'];
+    const closesIt = REVIEW_ROLES.includes(s.role);
     await query(
-      `UPDATE records_incidents SET signature = $1::jsonb, updated_at = NOW() WHERE id = $2`,
-      [JSON.stringify(sig), req.params.id]
+      `UPDATE records_incidents SET signature = $1::jsonb, updated_at = NOW(),
+         manager_reviewed = CASE WHEN $3::boolean THEN TRUE ELSE manager_reviewed END,
+         manager_reviewed_at = CASE WHEN $3::boolean THEN COALESCE(manager_reviewed_at, NOW()) ELSE manager_reviewed_at END
+       WHERE id = $2`,
+      [JSON.stringify(sig), req.params.id, closesIt]
     );
 
     // The signature is what marks an incident report as completed — tell

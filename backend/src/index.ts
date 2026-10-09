@@ -2073,6 +2073,24 @@ async function ensureColumns() {
     // A shift with someone on it marked 'unfilled' (or the reverse) showed the wrong status. Keep the two in step.
     `UPDATE staff_shifts SET status = 'filled' WHERE staff_id IS NOT NULL AND status = 'unfilled'`,
     `UPDATE staff_shifts SET status = 'unfilled' WHERE staff_id IS NULL AND status = 'filled'`,
+    // Incidents already showing review notes and/or a manager's signature on screen
+    // (the Incidents page's own "reviewed" display) but never actually marked
+    // manager_reviewed in the database, because the review-note/signature routes
+    // never set it — so they stayed "open" everywhere else (dashboard widget,
+    // compliance counts, the overdue-review alert) however long ago they were
+    // really reviewed. One-off catch-up for the backlog; the routes now set this
+    // themselves going forward.
+    // review_notes can only ever have been added by a manager-equivalent role
+    // (the route that writes it is role-gated); a signature can come from
+    // anyone, including the reporter signing their own account, so only one
+    // signed by a reviewing role counts here — same rule the live route uses.
+    `WITH first_run AS (INSERT INTO one_time_changes (name) VALUES ('incident_reviewed_backfill') ON CONFLICT DO NOTHING RETURNING name)
+     UPDATE records_incidents SET manager_reviewed = TRUE, manager_reviewed_at = COALESCE(manager_reviewed_at, updated_at)
+     WHERE EXISTS (SELECT 1 FROM first_run) AND manager_reviewed = FALSE
+       AND (
+         jsonb_array_length(review_notes) > 0
+         OR (signature ->> 'role') IN ('home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer')
+       )`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS picture_url TEXT`,
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL`,
     // "Visible to" targeting — null/empty means visible to all staff (as before);
