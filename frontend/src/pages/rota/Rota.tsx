@@ -22,6 +22,15 @@ import toast from 'react-hot-toast'
 // always-visible checkbox as the only way to multi-select there.
 const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
+// Default shift times by day of the week (owner directive, 9 Oct 2026): weekdays
+// 08:00–19:00, Saturday and Sunday 10:00–19:00. Suggested automatically in the
+// shift-creation forms as days are picked, and fully editable — typing a
+// different time stops it being overwritten when more days are then toggled.
+function defaultTimesForDays(daysOfWeek: number[]): { startTime: string; endTime: string } {
+  const allWeekend = daysOfWeek.length > 0 && daysOfWeek.every(d => d === 0 || d === 6)
+  return { startTime: allWeekend ? '10:00' : '08:00', endTime: '19:00' }
+}
+
 // The grid's scale is set per render (see setGridScale) so the whole day can be
 // fitted to the height of the screen instead of always being 1150px tall, which
 // forced constant up-and-down scrolling at 100% zoom.
@@ -1651,7 +1660,7 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
   const [form, setForm] = useState({
     suId: '', startDate: defaultDate, isOngoing: true, endDate: '',
     recurrence: 'daily', daysOfWeek: [1, 2, 3, 4, 5],
-    startTime: '08:00', endTime: '20:00',
+    ...defaultTimesForDays([1, 2, 3, 4, 5]),
     shiftType: 'regular', totalStaffRequired: '1',
     breakMins: '30',
     notesForCarers: '', notesForManagers: '',
@@ -1664,13 +1673,23 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
   const [staffSearch,   setStaffSearch]   = useState('')
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  // Weekdays default to 08:00–19:00, Saturday/Sunday to 10:00–19:00 (see
+  // defaultTimesForDays) — recomputed as days are toggled, until the manager
+  // types a time themselves, at which point their time is left alone.
+  const timesTouchedRef = useRef(false)
 
   useEffect(() => {
-    if (open) { setStep(1); setSelectedStaff([]); setStaffSearch(''); setForm(f => ({ ...f, startDate: defaultDate })) }
+    if (open) {
+      setStep(1); setSelectedStaff([]); setStaffSearch(''); timesTouchedRef.current = false
+      setForm(f => ({ ...f, startDate: defaultDate, ...defaultTimesForDays(f.daysOfWeek) }))
+    }
   }, [open, defaultDate])
 
   const toggleDay = (d: number) =>
-    setForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
+    setForm(p => {
+      const daysOfWeek = p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort()
+      return { ...p, daysOfWeek, ...(timesTouchedRef.current ? {} : defaultTimesForDays(daysOfWeek)) }
+    })
 
   const toggleStaff = (id: string) =>
     setSelectedStaff(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -1772,11 +1791,11 @@ function CreateShiftModal({ open, onClose, suList, staffList, homeId, defaultDat
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start Time *</label>
-              <input type="time" required className="input" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
+              <input type="time" required className="input" value={form.startTime} onChange={e => { timesTouchedRef.current = true; set('startTime', e.target.value) }} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End Time *</label>
-              <input type="time" required className="input" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
+              <input type="time" required className="input" value={form.endTime} onChange={e => { timesTouchedRef.current = true; set('endTime', e.target.value) }} />
             </div>
           </div>
 
@@ -1927,7 +1946,7 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
     label: '',
     startDate: defaultDate, isOngoing: true, endDate: '',
     recurrence: 'daily', daysOfWeek: [1, 2, 3, 4, 5],
-    startTime: '08:00', endTime: '20:00',
+    ...defaultTimesForDays([1, 2, 3, 4, 5]),
     shiftType: 'regular', totalStaffRequired: '1',
     breakMins: '30',
     notesForCarers: '', notesForManagers: '',
@@ -1941,13 +1960,22 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
   const [staffSearch, setStaffSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  // See defaultTimesForDays — weekdays 08:00–19:00, Sat/Sun 10:00–19:00, until
+  // the manager types a time themselves.
+  const timesTouchedRef = useRef(false)
 
   useEffect(() => {
-    if (open) { setStep(1); setSelectedSus([]); setSelectedStaff([]); setSuSearch(''); setStaffSearch(''); setForm(f => ({ ...f, startDate: defaultDate })) }
+    if (open) {
+      setStep(1); setSelectedSus([]); setSelectedStaff([]); setSuSearch(''); setStaffSearch(''); timesTouchedRef.current = false
+      setForm(f => ({ ...f, startDate: defaultDate, ...defaultTimesForDays(f.daysOfWeek) }))
+    }
   }, [open, defaultDate])
 
   const toggleDay = (d: number) =>
-    setForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
+    setForm(p => {
+      const daysOfWeek = p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort()
+      return { ...p, daysOfWeek, ...(timesTouchedRef.current ? {} : defaultTimesForDays(daysOfWeek)) }
+    })
 
   const toggleSu = (id: string) =>
     setSelectedSus(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -2107,11 +2135,11 @@ function CreateServiceRotaModal({ open, onClose, suList, staffList, homeId, defa
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start Time *</label>
-              <input type="time" required className="input" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
+              <input type="time" required className="input" value={form.startTime} onChange={e => { timesTouchedRef.current = true; set('startTime', e.target.value) }} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End Time *</label>
-              <input type="time" required className="input" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
+              <input type="time" required className="input" value={form.endTime} onChange={e => { timesTouchedRef.current = true; set('endTime', e.target.value) }} />
             </div>
           </div>
 
@@ -2231,16 +2259,27 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, serviceLabels, d
   const [form, setForm] = useState({
     label: '', staffId: '', startDate: defaultDate, isOngoing: false, endDate: defaultDate,
     recurrence: 'daily', daysOfWeek: [1, 2, 3, 4, 5],
-    startTime: '08:00', endTime: '20:00',
+    ...defaultTimesForDays([1, 2, 3, 4, 5]),
     workDetails: '', carerPayRegular: '', carerPayBankHoliday: '', carerPayBy: 'hour',
   })
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+  // See defaultTimesForDays — weekdays 08:00–19:00, Sat/Sun 10:00–19:00, until
+  // the manager types a time themselves.
+  const timesTouchedRef = useRef(false)
 
-  useEffect(() => { if (open) setForm(f => ({ ...f, startDate: defaultDate, endDate: defaultDate })) }, [open, defaultDate])
+  useEffect(() => {
+    if (open) {
+      timesTouchedRef.current = false
+      setForm(f => ({ ...f, startDate: defaultDate, endDate: defaultDate, ...defaultTimesForDays(f.daysOfWeek) }))
+    }
+  }, [open, defaultDate])
 
   const toggleDay = (d: number) =>
-    setForm(p => ({ ...p, daysOfWeek: p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort() }))
+    setForm(p => {
+      const daysOfWeek = p.daysOfWeek.includes(d) ? p.daysOfWeek.filter(x => x !== d) : [...p.daysOfWeek, d].sort()
+      return { ...p, daysOfWeek, ...(timesTouchedRef.current ? {} : defaultTimesForDays(daysOfWeek)) }
+    })
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -2335,11 +2374,11 @@ function CreateStandbyModal({ open, onClose, staffList, homeId, serviceLabels, d
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Start Time *</label>
-            <input type="time" required className="input" value={form.startTime} onChange={e => set('startTime', e.target.value)} />
+            <input type="time" required className="input" value={form.startTime} onChange={e => { timesTouchedRef.current = true; set('startTime', e.target.value) }} />
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">End Time *</label>
-            <input type="time" required className="input" value={form.endTime} onChange={e => set('endTime', e.target.value)} />
+            <input type="time" required className="input" value={form.endTime} onChange={e => { timesTouchedRef.current = true; set('endTime', e.target.value) }} />
           </div>
         </div>
 
@@ -2873,15 +2912,22 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
                 <input type="time" className="input text-sm" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
               </div>
             </div>
-            {shift.template_id && (
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" checked={applyToFuture} onChange={e => setApplyToFuture(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 mt-0.5" />
-                <span className="text-xs text-slate-600">
-                  Apply changes to future shifts <span className="text-slate-400">— also update the start/finish time on every later occurrence of this recurring shift. Leave unticked to change only this one.</span>
-                </span>
-              </label>
-            )}
+            {(() => {
+              // Works for a recurring shift (every later shift from the same series)
+              // and for a one-off shift too (every later shift at the same service/
+              // resident on the same day of the week) — so "apply to future" reaches
+              // every future Wednesday, every future Monday, whichever day this is.
+              const weekday = shift.shift_date ? format(parseISO(String(shift.shift_date).substring(0, 10)), 'EEEE') : 'this day'
+              return (
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={applyToFuture} onChange={e => setApplyToFuture(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 mt-0.5" />
+                  <span className="text-xs text-slate-600">
+                    Apply changes to future shifts <span className="text-slate-400">— also update the start/finish time on every future {weekday} {shift.template_id ? 'in this recurring shift' : (shift.label || shift.su_name ? 'at this service' : '')}. Leave unticked to change only this one.</span>
+                  </span>
+                </label>
+              )
+            })()}
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={() => { setEditingTimes(false); setApplyToFuture(false) }}>Cancel</Button>
               <Button size="sm" loading={savingTimes} onClick={saveTimes}>Save</Button>

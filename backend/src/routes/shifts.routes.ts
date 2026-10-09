@@ -930,33 +930,60 @@ router.put('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validateR
       const fmtDate = (d: unknown) => (d instanceof Date ? d.toISOString().split('T')[0] : String(d).split('T')[0]);
 
       // "Apply changes to future shifts" — cascades a start/end time change to every
-      // later occurrence of the same recurring shift, instead of the manager having
-      // to open and edit each future date by hand. Only the time fields carry over;
-      // date, staff assignment, status etc. stay whatever each individual occurrence
-      // already has. Only applies to shifts generated from a template — a one-off
-      // shift has no "future occurrences" to cascade to.
-      if (applyToFuture && updated.template_id && (startTime !== undefined || endTime !== undefined)) {
+      // later occurrence of the same shift, instead of the manager having to open
+      // and edit each future date by hand. Only the time fields carry over; date,
+      // staff assignment, status etc. stay whatever each individual occurrence
+      // already has. Click any day (Wednesday, Monday, whichever) and this reaches
+      // every later shift on that same day of the week — for a shift generated
+      // from a recurring template, every later shift from that template; for a
+      // one-off shift, every later shift at the same service/resident with the
+      // same day of the week (same matching rule as "delete this + all future").
+      if (applyToFuture && (startTime !== undefined || endTime !== undefined)) {
         const futureFields: string[] = [];
         const futureValues: unknown[] = [];
         const setFuture = (col: string, val: unknown) => { futureFields.push(`${col} = $${futureFields.length + 1}`); futureValues.push(val); };
         if (startTime !== undefined) setFuture('start_time', startTime);
         if (endTime !== undefined) setFuture('end_time', endTime);
-        futureValues.push(updated.template_id, updated.id, fmtDate(updated.shift_date));
-        await query(
-          `UPDATE staff_shifts SET ${futureFields.join(', ')}, updated_at = NOW()
-           WHERE template_id = $${futureValues.length - 2} AND id != $${futureValues.length - 1} AND shift_date > $${futureValues.length}`,
-          futureValues
-        );
-        // Keep the template itself in sync too, so shifts generated from it later
-        // (e.g. extending the date range) use the new time, not the old one.
-        const templateFields: string[] = [];
-        const templateValues: unknown[] = [];
-        const setTemplate = (col: string, val: unknown) => { templateFields.push(`${col} = $${templateFields.length + 1}`); templateValues.push(val); };
-        if (startTime !== undefined) setTemplate('start_time', startTime);
-        if (endTime !== undefined) setTemplate('end_time', endTime);
-        templateValues.push(updated.template_id);
-        await query(`UPDATE shift_templates SET ${templateFields.join(', ')} WHERE id = $${templateValues.length}`, templateValues)
-          .catch(() => {});
+        if (updated.template_id) {
+          futureValues.push(updated.template_id, updated.id, fmtDate(updated.shift_date));
+          await query(
+            `UPDATE staff_shifts SET ${futureFields.join(', ')}, updated_at = NOW()
+             WHERE template_id = $${futureValues.length - 2} AND id != $${futureValues.length - 1} AND shift_date > $${futureValues.length}`,
+            futureValues
+          );
+          // Keep the template itself in sync too, so shifts generated from it later
+          // (e.g. extending the date range) use the new time, not the old one.
+          const templateFields: string[] = [];
+          const templateValues: unknown[] = [];
+          const setTemplate = (col: string, val: unknown) => { templateFields.push(`${col} = $${templateFields.length + 1}`); templateValues.push(val); };
+          if (startTime !== undefined) setTemplate('start_time', startTime);
+          if (endTime !== undefined) setTemplate('end_time', endTime);
+          templateValues.push(updated.template_id);
+          await query(`UPDATE shift_templates SET ${templateFields.join(', ')} WHERE id = $${templateValues.length}`, templateValues)
+            .catch(() => {});
+        } else {
+          // No template behind it: match every later shift at the same service
+          // and resident, on the same day of the week, whatever its current time —
+          // that's what "every future Wednesday" (or Monday, or any other day)
+          // means for a shift that wasn't set up as a recurring series. The WHERE
+          // placeholders are offset past whatever SET placeholders came before
+          // them (1 or 2, depending on which of start/end time changed) — reusing
+          // $1/$2/$3 here would collide with the SET clause's own values.
+          futureValues.push(updated.home_id, updated.id, fmtDate(updated.shift_date), updated.label ?? null, updated.su_id ?? null);
+          const homeIdx = futureValues.length - 4;
+          const idIdx = futureValues.length - 3;
+          const dateIdx = futureValues.length - 2;
+          const labelIdx = futureValues.length - 1;
+          const suIdx = futureValues.length;
+          await query(
+            `UPDATE staff_shifts SET ${futureFields.join(', ')}, updated_at = NOW()
+             WHERE home_id = $${homeIdx} AND id != $${idIdx} AND shift_date > $${dateIdx} AND template_id IS NULL
+               AND EXTRACT(DOW FROM shift_date) = EXTRACT(DOW FROM $${dateIdx}::date)
+               AND COALESCE(label, '') = COALESCE($${labelIdx}::text, '')
+               AND su_id IS NOT DISTINCT FROM $${suIdx}::uuid`,
+            futureValues
+          );
+        }
       }
 
       // Tell the affected staff member(s) their rota has changed — a swapped
