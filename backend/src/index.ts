@@ -136,14 +136,20 @@ app.use('/api', (req, res, next) => {
       // Automated scanners on the internet probe addresses that do not exist
       // (/api/config, /api/trpc ...). Not signed in + "not found" = not a real user.
       const scannerNoise = code === 404 && !req.headers.authorization;
-      if (code >= 400 && !sessionNoise && !scannerNoise && !String(req.originalUrl || '').includes('/system/client-error')) {
+      // "This clashes with another shift — continue?" is a question the rota asks,
+      // not something that went wrong. Overrides are recorded in the clash log.
+      const confirmPrompt = !!(body && body.requiresConfirm);
+      // Extra detail for the log only (never shown to the person), e.g. which
+      // email address a failed sign-in was for.
+      const detail = (req as any).__issueDetail ? ' — ' + String((req as any).__issueDetail) : '';
+      if (code >= 400 && !sessionNoise && !scannerNoise && !confirmPrompt && !String(req.originalUrl || '').includes('/system/client-error')) {
         let staffId: string | null = (req as any).staff?.staffId || null;
         if (!staffId) {
           try { const t = req.headers.authorization?.substring(7); if (t) staffId = (jwt.decode(t) as any)?.staffId || null; } catch { /* ignore */ }
         }
         pool.query(
           'INSERT INTO error_log (method, path, status_code, message, staff_id, source) VALUES ($1,$2,$3,$4,$5,$6)',
-          [req.method, String(req.originalUrl || req.url).split('?')[0].slice(0, 300), code, (msg || 'No message').slice(0, 1000), staffId, 'server']
+          [req.method, String(req.originalUrl || req.url).split('?')[0].slice(0, 300), code, ((msg || 'No message') + detail).slice(0, 1000), staffId, 'server']
         ).catch(() => {});
       }
     } catch { /* logging must never break a response */ }
@@ -3058,6 +3064,17 @@ async function ensureColumns() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at DESC)`,
     `ALTER TABLE error_log ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'server'`,
+    `ALTER TABLE error_log ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ`,
+    // Opening any policy failed with a server error: the attachments table was never created.
+    `CREATE TABLE IF NOT EXISTS policy_attachments (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       policy_id UUID NOT NULL,
+       file_name TEXT NOT NULL,
+       file_url TEXT NOT NULL,
+       mime_type VARCHAR(120),
+       uploaded_by UUID,
+       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+    `CREATE INDEX IF NOT EXISTS idx_policy_attachments_policy ON policy_attachments(policy_id)`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS auto_closed BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_reason TEXT`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_of TEXT`,

@@ -38,6 +38,19 @@ const AREA_SQL = `CASE
   WHEN e.path LIKE '/api/service-users%' OR e.path LIKE '/api/care-plans%' THEN 'Service users & care plans'
   ELSE 'Other' END`;
 
+// POST /api/system/resolve — mark an issue as dealt with. Every entry with that
+// exact message leaves the list; if it happens again it comes back as new.
+router.post('/resolve', requireRole('group_admin', 'home_manager'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const messages: string[] = (Array.isArray(req.body?.messages) ? req.body.messages : [req.body?.message])
+      .filter((m: any) => typeof m === 'string' && m.length > 0).slice(0, 100);
+    if (!messages.length) return res.status(400).json({ success: false, error: 'Nothing to mark as fixed' } as ApiResponse);
+    const rows = await query<any>(
+      'UPDATE error_log SET resolved_at = NOW() WHERE resolved_at IS NULL AND message = ANY($1::text[]) RETURNING id', [messages]);
+    res.json({ success: true, data: { resolved: rows.length } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || req.staff.homeId;
@@ -47,12 +60,13 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
       safe(() => query<any>(
         `SELECT COUNT(*) FILTER (WHERE created_at > NOW() - interval '24 hours') AS last_24h,
                 COUNT(*) FILTER (WHERE created_at > NOW() - interval '7 days') AS last_7d
-         FROM error_log`), [{ last_24h: '0', last_7d: '0' }]),
+         FROM error_log WHERE resolved_at IS NULL`), [{ last_24h: '0', last_7d: '0' }]),
       safe(() => query<any>(
         `SELECT to_char(e.created_at AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS at, e.method, e.path, e.status_code, e.message,
                 COALESCE(s.first_name || ' ' || s.last_name, '—') AS staff, ${AREA_SQL} AS area,
                 CASE WHEN e.status_code >= 500 OR e.source = 'browser' THEN 'error' ELSE 'refused' END AS kind
          FROM error_log e LEFT JOIN staff s ON s.id = e.staff_id
+         WHERE e.resolved_at IS NULL
          ORDER BY e.created_at DESC LIMIT 200`), []),
       // Latest clock event is a clock-in more than 16 hours old: almost certainly forgot to clock out.
       safe(() => query<any>(
@@ -74,11 +88,11 @@ router.get('/health', requireRole('group_admin', 'home_manager'), async (req: Re
       `SELECT ${AREA_SQL} AS area, e.message, COUNT(*) AS times, COUNT(DISTINCT e.staff_id) AS people,
               to_char(MAX(e.created_at) AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS last_seen,
               CASE WHEN MAX(e.status_code) >= 500 OR bool_or(e.source = 'browser') THEN 'error' ELSE 'refused' END AS kind
-       FROM error_log e WHERE e.created_at > NOW() - interval '7 days'
-       GROUP BY 1, e.message ORDER BY COUNT(*) DESC LIMIT 30`), []);
+       FROM error_log e WHERE e.created_at > NOW() - interval '7 days' AND e.resolved_at IS NULL
+       GROUP BY 1, e.message ORDER BY COUNT(*) DESC LIMIT 60`), []);
     const byArea = await safe(() => query<any>(
       `SELECT ${AREA_SQL} AS area, COUNT(*) AS times FROM error_log e
-       WHERE e.created_at > NOW() - interval '7 days' GROUP BY 1 ORDER BY COUNT(*) DESC`), []);
+       WHERE e.created_at > NOW() - interval '7 days' AND e.resolved_at IS NULL GROUP BY 1 ORDER BY COUNT(*) DESC`), []);
     const autoClosed = await safe(() => query<any>(
       `SELECT s.first_name || ' ' || s.last_name AS staff, to_char(ce.event_time AT TIME ZONE 'Europe/London', 'DD Mon HH24:MI') AS at
        FROM staff_clock_events ce JOIN staff s ON s.id = ce.staff_id

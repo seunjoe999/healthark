@@ -196,7 +196,8 @@ export default function Dashboard() {
       /* 5 */ api.get('/mar/records/today', { params: { homeId: selectedHome } }),
       /* 6 */ api.get('/incidents', { params: { homeId: selectedHome, status: 'open' } }),
       /* 7 */ api.get('/alerts', { params: { homeId: selectedHome, unread: 'true' } }),
-      /* 8 */ api.get('/compliance', { params: { homeId: selectedHome } }),
+      // Only roles allowed to see compliance ask for it; others were refused every time the dashboard loaded.
+      /* 8 */ ['home_manager', 'group_admin', 'senior_carer'].includes(String(user?.role)) ? api.get('/compliance', { params: { homeId: selectedHome } }) : Promise.resolve(null as any),
       /* 9 */ api.get('/daily-records', { params: { homeId: selectedHome, from: sevenAgo, to: todayStr } }),
       /* 10 */ api.get('/tasks', { params: { homeId: selectedHome, date: todayStr } }),
       /* 11 */ api.get('/service-users/health-reviews-due', { params: { homeId: selectedHome } }),

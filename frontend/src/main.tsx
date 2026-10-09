@@ -36,6 +36,9 @@ let __reported = 0
 const __reportClientError = (message: string) => {
   try {
     if (__reported >= 5 || !message) return
+    // The browser failing to fetch an app update in the background (poor signal)
+    // is not a fault anyone sees; the next attempt picks it up.
+    if (/ServiceWorker|service worker/i.test(message)) return
     const token = sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
     if (!token) return
     __reported++

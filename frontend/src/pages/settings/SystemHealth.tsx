@@ -40,6 +40,11 @@ export default function SystemHealth() {
     </span>
   )
 
+  const markFixed = async (messages: string[]) => {
+    if (!messages.length) return
+    try { await api.post('/system/resolve', { messages }); await load() }
+    catch (err: any) { setFailed(err?.response?.data?.error || 'Could not mark as fixed') }
+  }
   const match = (r: any) => (!area || r.area === area) && (!kind || r.kind === kind)
   const copyIssues = () => {
     const lines = (data?.topIssues || []).filter(match).map((t: any) => `[${t.area}] x${t.times} (${t.people} people, last ${t.last_seen}) — ${t.message}`)
@@ -101,10 +106,10 @@ export default function SystemHealth() {
                 <button onClick={copyIssues} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">Copy for developer</button>
               </div>
             </div>
-            <p className="text-xs text-slate-500 mb-2">The same message repeated is one issue. Sorted by how often it happened.</p>
+            <p className="text-xs text-slate-500 mb-2">The same message repeated is one issue. Sorted by how often it happened. "Mark fixed" removes an issue from this page; if it ever happens again it comes back.</p>
             {(data.topIssues || []).filter(match).length === 0 ? <p className="text-sm text-slate-500">Nothing recorded.</p> : (
               <table className="w-full text-xs">
-                <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">Area</th><th className="py-1 pr-3">Times</th><th className="py-1 pr-3">People</th><th className="py-1 pr-3">Last seen</th><th className="py-1">What they were told</th></tr></thead>
+                <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">Area</th><th className="py-1 pr-3">Times</th><th className="py-1 pr-3">People</th><th className="py-1 pr-3">Last seen</th><th className="py-1">What they were told</th><th className="py-1" /></tr></thead>
                 <tbody className="divide-y divide-slate-100">
                   {data.topIssues.filter(match).map((t: any, i: number) => (
                     <tr key={i} className="align-top">
@@ -113,6 +118,9 @@ export default function SystemHealth() {
                       <td className="py-1.5 pr-3">{t.people}</td>
                       <td className="py-1.5 pr-3 whitespace-nowrap">{t.last_seen}</td>
                       <td className="py-1.5 text-slate-700">{t.message}</td>
+                      <td className="py-1.5 pl-2 whitespace-nowrap text-right">
+                        <button onClick={() => markFixed([t.message])} className="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-500">Mark fixed</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

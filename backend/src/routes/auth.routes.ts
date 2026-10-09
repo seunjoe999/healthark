@@ -40,14 +40,16 @@ router.post('/login',
         );
         if (extra.length) extraCols = extra[0];
       } catch {}
-      if (!rows.length) throw new AppError('Invalid email or password', 401);
+      // Which address a failed sign-in was for goes in the issue log (not to the
+      // person signing in), so the owner can see who is locked out and why.
+      if (!rows.length) { (req as any).__issueDetail = `${email}: no account has this email`; throw new AppError('Invalid email or password', 401); }
       const staff = { ...rows[0], ...extraCols };
       if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
         throw new AppError('Account is inactive. Contact your administrator.', 401);
       // Guard against null/missing password_hash (e.g. externally-created accounts)
       if (!staff.password_hash) throw new AppError('Invalid email or password', 401);
       const valid = await bcrypt.compare(password, staff.password_hash);
-      if (!valid) throw new AppError('Invalid email or password', 401);
+      if (!valid) { (req as any).__issueDetail = `${email}: wrong password`; throw new AppError('Invalid email or password', 401); }
 
       // Care staff and team leaders sign in with BOTH password and PIN (owner
       // directive) — password verified above, PIN required before any session
