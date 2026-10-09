@@ -179,6 +179,9 @@ export default function Login() {
                     className="text-xs transition-opacity hover:opacity-80" style={{ color: 'rgba(255,255,255,0.5)' }}>
                     {useLoginPin ? 'Use password instead' : 'Use PIN instead'}
                   </button>
+                  <p className="text-[11px] mt-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    Your first sign-in each day is with your password. Your PIN works for the rest of that day.
+                  </p>
                 </div>
 
                 <div className="mt-4 pt-5 border-t border-white/10 text-center">

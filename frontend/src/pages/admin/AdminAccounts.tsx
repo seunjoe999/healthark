@@ -559,6 +559,19 @@ export default function AdminAccounts() {
     finally { setSavingPin(false) }
   }
 
+  const [resettingPins, setResettingPins] = useState(false)
+  const resetAllPins = async () => {
+    const n = admins.filter(a => a.has_pin).length
+    if (!window.confirm(`Reset the PIN of every staff member${n ? ` (${n} have one)` : ''}?\n\nEach person will be asked to choose a new PIN after their next password sign-in. Passwords are not changed. Anyone whose app is locked right now will have to sign in with their password.`)) return
+    setResettingPins(true)
+    try {
+      const res = await api.post('/auth/reset-all-pins')
+      toast.success(`${res.data?.data?.reset ?? 0} PIN(s) reset`)
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not reset the PINs') }
+    finally { setResettingPins(false) }
+  }
+
   const removePin = async (admin: AdminUser) => {
     if (!window.confirm(`Remove ${admin.first_name} ${admin.last_name}'s PIN?`)) return
     try {
@@ -585,6 +598,10 @@ export default function AdminAccounts() {
               Set up Super Admin
             </Button>
           )}
+          <Button variant="outline" icon={<Shield className="w-4 h-4" />} loading={resettingPins} onClick={resetAllPins}
+            title="Clears every staff member's PIN. Each person chooses a new one after their next password sign-in. Passwords are not changed.">
+            Reset everyone's PIN
+          </Button>
           <Button icon={<UserPlus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>
             Create account
           </Button>

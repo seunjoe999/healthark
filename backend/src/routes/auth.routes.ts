@@ -51,24 +51,10 @@ router.post('/login',
       const valid = await bcrypt.compare(password, staff.password_hash);
       if (!valid) { (req as any).__issueDetail = `${email}: wrong password`; throw new AppError('Invalid email or password', 401); }
 
-      // Care staff and team leaders sign in with BOTH password and PIN (owner
-      // directive) — password verified above, PIN required before any session
-      // is issued. Enforced only when a PIN has actually been set: an account
-      // that has never set one must not be locked out of its own system, and
-      // the frontend surfaces the PIN step only for these two roles.
-      const PIN_REQUIRED_ROLES = ['care_staff', 'team_leader'];
-      if (PIN_REQUIRED_ROLES.includes(staff.role) && extraCols.login_pin_hash) {
-        if (!req.body.pin) {
-          res.status(403).json({
-            success: false,
-            code: 'pin_required',
-            error: 'Enter your PIN to finish signing in.',
-          } as ApiResponse);
-          return;
-        }
-        const pinValid = await bcrypt.compare(String(req.body.pin), extraCols.login_pin_hash);
-        if (!pinValid) throw new AppError('Incorrect PIN', 401);
-      }
+      // Sign-in rule (owner directive, as RoundSys does it): the first sign-in
+      // of the day is with the PASSWORD alone. After that the PIN unlocks the
+      // app when it locks for inactivity, until the day is over. The password
+      // sign-in is stamped below so the PIN route knows it has happened today.
 
       // If any account has no home_id, resolve from their org's first home so all pages work
       let resolvedHomeId = staff.home_id;
@@ -94,7 +80,7 @@ router.post('/login',
       const refreshToken = signRefresh(payload);
       // Non-critical: persist refresh token and audit log — don't fail login if these columns/tables missing
       try {
-        await query('UPDATE staff SET refresh_token=$1, last_login=NOW() WHERE id=$2', [refreshToken, staff.id]);
+        await query('UPDATE staff SET refresh_token=$1, last_login=NOW(), last_password_login=NOW() WHERE id=$2', [refreshToken, staff.id]);
       } catch {
         try { await query('UPDATE staff SET refresh_token=$1 WHERE id=$2', [refreshToken, staff.id]); } catch {}
       }
@@ -144,16 +130,26 @@ router.post('/pin-login',
       const email = (req.body.email as string).toLowerCase().trim();
       const { pin } = req.body;
       const rows = await query<any>(
-        `SELECT id, email, login_pin_hash, role, status, is_active FROM staff WHERE LOWER(email) = $1`,
+        `SELECT id, email, login_pin_hash, role, status, is_active,
+                ((COALESCE(last_password_login, last_login) AT TIME ZONE 'Europe/London')::date
+                  = (NOW() AT TIME ZONE 'Europe/London')::date) AS password_today
+           FROM staff WHERE LOWER(email) = $1`,
         [email]
       );
-      if (!rows.length) throw new AppError('Invalid email or PIN', 401);
+      if (!rows.length) { (req as any).__issueDetail = `${email}: no account has this email`; throw new AppError('Invalid email or PIN', 401); }
       const staff = rows[0];
+      // The PIN only works once the password has been used today. A new day
+      // starts with the password again.
+      if (!staff.password_today) {
+        res.status(401).json({ success: false, code: 'password_required',
+          error: 'Sign in with your password first today. After that your PIN unlocks the app for the rest of the day.' } as ApiResponse);
+        return;
+      }
       if (!staff.is_active || staff.status === 'terminated' || staff.status === 'pending')
         throw new AppError('Account is inactive. Contact your administrator.', 401);
       if (!staff.login_pin_hash) throw new AppError('No PIN set for this account. Sign in with your password and set one in Settings.', 401);
       const valid = await bcrypt.compare(pin, staff.login_pin_hash);
-      if (!valid) throw new AppError('Invalid email or PIN', 401);
+      if (!valid) { (req as any).__issueDetail = `${email}: wrong PIN`; throw new AppError('Invalid email or PIN', 401); }
 
       let extraCols: any = {};
       try {
@@ -222,6 +218,29 @@ router.post('/set-pin', authenticate,
       const hash = await bcrypt.hash(req.body.pin, 10);
       await query('UPDATE staff SET login_pin_hash = $1 WHERE id = $2', [hash, staffId]);
       res.json({ success: true, message: 'PIN set' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/auth/reset-all-pins — clears every staff member's PIN in the
+// organisation. Each person is asked to choose a new PIN straight after their
+// next password sign-in. Passwords are not touched.
+router.post('/reset-all-pins', authenticate, requireRole('group_admin', 'home_manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orgId = (req.staff as any)?.organisationId || null;
+      const homeId = (req.staff as any)?.homeId || null;
+      if (!orgId && !homeId) throw new AppError('Your account is not linked to an organisation', 400);
+      const rows = await query<any>(
+        `UPDATE staff SET login_pin_hash = NULL
+          WHERE login_pin_hash IS NOT NULL
+            AND (($1::uuid IS NOT NULL AND organisation_id = $1::uuid) OR ($1::uuid IS NULL AND home_id = $2::uuid))
+          RETURNING id`, [orgId, homeId]);
+      try {
+        await query(`INSERT INTO audit_log (staff_id, home_id, action, ip_address) VALUES ($1,$2,'reset_all_pins',$3)`,
+          [(req.staff as any).staffId, homeId, req.ip]);
+      } catch {}
+      res.json({ success: true, data: { reset: rows.length } } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

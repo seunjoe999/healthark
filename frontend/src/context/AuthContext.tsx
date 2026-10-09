@@ -58,6 +58,28 @@ function deleteCookie(name: string) {
   try { document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict` } catch {}
 }
 
+// Sign-in rule: password for the first sign-in of the day, then the PIN unlocks
+// the app whenever it locks for inactivity, until the day is over. The next day
+// starts with the password again.
+const LOCK_AFTER_MS = 10 * 60 * 1000
+function ukDay(): string {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date()) } catch { return new Date().toISOString().slice(0, 10) }
+}
+function lsGet(k: string): string | null { try { return localStorage.getItem(k) } catch { return null } }
+function lsSet(k: string, v: string) { try { localStorage.setItem(k, v) } catch {} }
+function lsDel(k: string) { try { localStorage.removeItem(k) } catch {} }
+// The day the password was last used on this device. Sessions from before this
+// rule existed have no record; they count as today so nobody is thrown out mid-task.
+function signInDayIsOver(): boolean {
+  const d = lsGet('ha_login_day')
+  if (!d) { lsSet('ha_login_day', ukDay()); return false }
+  return d !== ukDay()
+}
+function idleTooLong(): boolean {
+  const t = Number(lsGet('ha_last_active') || 0)
+  return t > 0 && Date.now() - t > LOCK_AFTER_MS
+}
+
 function saveSession(token: string, user: AuthUser) {
   ;(window as any).__HA_TOKEN__ = token
   ;(window as any).__HA_USER__ = user
@@ -129,15 +151,24 @@ function clearSession() {
   try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
   deleteCookie('ha_token')
   deleteCookie('ha_user')
+  lsDel('ha_login_day'); lsDel('ha_last_active'); lsDel('ha_locked')
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => loadSession().user)
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const u = loadSession().user
+    // Opened again on a later day: the password is needed first.
+    if (u && signInDayIsOver()) { clearSession(); return null }
+    return u
+  })
   // Set instead of a full logout on inactivity, for care staff / team leaders
   // (see the timeout effect below): the session survives behind this overlay
   // and a PIN entry resumes it, instead of dumping the app back to the login
   // screen and losing whatever was on screen.
-  const [pinUnlock, setPinUnlock] = useState(false)
+  // Starts locked if the app was closed or reloaded while locked, or has been
+  // left longer than the limit — closing and reopening must not skip the PIN.
+  const [pinUnlock, setPinUnlockState] = useState(() => !!loadSession().user && (lsGet('ha_locked') === '1' || idleTooLong()))
+  const setPinUnlock = (v: boolean) => { if (v) lsSet('ha_locked', '1'); else { lsDel('ha_locked'); lsSet('ha_last_active', String(Date.now())) }; setPinUnlockState(v) }
   const [pinUnlockError, setPinUnlockError] = useState('')
 
   // Refresh user profile (incl. merged role access rights) from DB.
@@ -194,41 +225,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('ha:unauthorized', handle)
   }, [])
 
-  // Inactivity timeout — log out after 30 minutes of no interaction. Care
-  // staff and team leaders instead get a PIN unlock (owner directive): the
-  // session is kept, an overlay asks for their PIN, and entering it resumes
-  // exactly where they left off — no full re-login with password. Everyone
-  // else keeps the full logout, as before.
+  // Inactivity lock, for everyone: after LOCK_AFTER_MS with no interaction the
+  // app locks behind a PIN screen. The session is kept, so entering the PIN
+  // carries on exactly where they left off. Once the day is over the lock
+  // becomes a full sign-out, and the next sign-in is with the password.
+  // The day is only checked at the moment of locking or reopening — never in
+  // the middle of someone typing a record just after midnight.
   useEffect(() => {
-    if (!user) { setPinUnlock(false); return }
-    const TIMEOUT_MS = 30 * 60 * 1000
-    const pinRoles = ['care_staff', 'team_leader']
+    if (!user) { setPinUnlockState(false); return }
+    if (pinUnlock) return // locked: activity must not count until the PIN is entered
     let timer: ReturnType<typeof setTimeout>
+    let lastWrite = 0
+    const lock = () => {
+      if (signInDayIsOver()) { clearSession(); setUser(null); return }
+      setPinUnlockError('')
+      setPinUnlock(true)
+    }
     const reset = () => {
+      const now = Date.now()
+      if (now - lastWrite > 15000) { lastWrite = now; lsSet('ha_last_active', String(now)) }
       clearTimeout(timer)
-      timer = setTimeout(() => {
-        if (pinRoles.includes(user.role)) {
-          setPinUnlockError('')
-          setPinUnlock(true)
-        } else {
-          clearSession(); setUser(null)
-        }
-      }, TIMEOUT_MS)
+      timer = setTimeout(lock, LOCK_AFTER_MS)
+    }
+    // Phones pause timers while the screen is off, so check the clock again
+    // whenever the app comes back to the front. Also covers a token that ran
+    // out while the app sat open.
+    const check = () => {
+      if (document.visibilityState !== 'visible') return
+      const { token } = loadSession()
+      if (idleTooLong() || !token) lock()
     }
     const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll']
     events.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    document.addEventListener('visibilitychange', check)
+    const poll = setInterval(check, 60000)
+    lsSet('ha_last_active', String(Date.now()))
     reset()
     return () => {
       clearTimeout(timer)
+      clearInterval(poll)
       events.forEach(e => window.removeEventListener(e, reset))
+      document.removeEventListener('visibilitychange', check)
     }
-  }, [!!user, user?.role])
+  }, [!!user, pinUnlock])
 
   const login = async (email: string, password: string, pin?: string) => {
     const res = await authApi.login(email, password, pin)
     const { accessToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
     saveSession(accessToken, authUser)
+    lsSet('ha_login_day', ukDay())
+    setPinUnlock(false)
     setUser(authUser)
     checkForAppUpdate()
     // A fresh login is always a safe moment to reload — there's nothing
@@ -242,6 +289,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { accessToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
     saveSession(accessToken, authUser)
+    // The server only accepts the PIN once the password has been used today.
+    lsSet('ha_login_day', ukDay())
+    setPinUnlock(false)
     setUser(authUser)
     checkForAppUpdate()
     reloadIfNewVersion()
@@ -269,19 +319,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPinUnlockError('')
       refreshUser()
     } catch (err: any) {
+      // A new day has started: back to the sign-in page for the password.
+      if (err?.response?.data?.code === 'password_required') { logout(); return }
       setPinUnlockError(err?.response?.data?.error || 'Incorrect PIN')
     }
   }
 
-  // Care staff and team leaders sign in with password + PIN and unlock a
-  // timed-out session with the PIN. That only works once they HAVE a PIN, so
-  // anyone in those roles without one is made to create it straight after
-  // signing in — otherwise the PIN step silently never appeared for them.
+  // Everyone unlocks the app with a PIN after inactivity. That only works once
+  // they HAVE a PIN, so anyone without one (new starter, or after a manager
+  // reset the PINs) is made to create it straight after signing in.
   const [needPinSetup, setNeedPinSetup] = useState(false)
   const [pinSetupError, setPinSetupError] = useState('')
   const [pinSetupSaving, setPinSetupSaving] = useState(false)
   useEffect(() => {
-    if (!user || !['care_staff', 'team_leader'].includes(user.role)) { setNeedPinSetup(false); return }
+    if (!user) { setNeedPinSetup(false); return }
     let cancelled = false
     authApi.pinStatus()
       .then(res => { if (!cancelled) setNeedPinSetup(res.data?.data?.hasPin === false) })
@@ -312,7 +363,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           <div className="w-full max-w-sm rounded-3xl p-7" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
             <h2 className="text-white text-xl font-semibold mb-1">Create your PIN</h2>
             <p className="text-slate-400 text-sm mb-5">
-              {user.firstName}, you need a PIN as well as your password to sign in, and to unlock the app when it times out. Choose 4 to 8 digits.
+              {user.firstName}, choose a PIN. You sign in with your password once a day; after that your PIN unlocks the app when it locks. Choose 4 to 8 digits.
             </p>
             <form onSubmit={(e) => {
               e.preventDefault()
@@ -340,7 +391,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {pinUnlock && user && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-6" style={{ background: 'rgba(8,12,24,0.92)', backdropFilter: 'blur(6px)' }}>
           <div className="w-full max-w-sm rounded-3xl p-7" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <h2 className="text-white text-xl font-semibold mb-1">Session timed out</h2>
+            <h2 className="text-white text-xl font-semibold mb-1">Locked</h2>
             <p className="text-slate-400 text-sm mb-5">
               {user.firstName}, enter your PIN to carry on where you left off.
             </p>

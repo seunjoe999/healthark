@@ -100,6 +100,7 @@ export const authApi = {
   pinLogin: (email: string, pin: string) => api.post('/auth/pin-login', { email, pin }),
   setPin: (pin: string) => api.post('/auth/set-pin', { pin }),
   pinStatus: () => api.get('/auth/pin-status'),
+  resetAllPins: () => api.post('/auth/reset-all-pins'),
   removePin: () => api.delete('/auth/pin'),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
