@@ -680,9 +680,9 @@ export default function Rota() {
     })
   }
 
-  // Takes the staff member off the highlighted shifts ONLY. The "Unassign"
-  // button used to open the by-staff window whatever was highlighted, which
-  // clears every shift that person has from a date onward.
+  // Takes the staff member off the highlighted shifts ONLY. The toolbar
+  // "Unassign" always opens the by-staff window, which works by staff member
+  // and dates, not by what is highlighted.
   const bulkUnassignSelected = () => {
     const targets = shifts.filter(s => selectedShiftIds.has(s.id) && s.staff_id)
     if (!targets.length) { toast.error('None of the highlighted shifts has anyone assigned'); return }
@@ -844,12 +844,9 @@ export default function Rota() {
                 title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern — use this to fill in a rota someone already created">
                 Bulk Assign Staff to Shifts
               </Button>
-              <Button variant="outline" icon={<UserMinus className="w-4 h-4" />}
-                onClick={() => selectedShiftIds.size > 0 ? bulkUnassignSelected() : setUnassignOpen(true)}
-                title={selectedShiftIds.size > 0
-                  ? 'Take the staff off the highlighted shifts only — the shifts stay on the rota as unfilled'
-                  : 'Remove a staff member from their shifts between dates you choose — the shifts stay on the rota as unfilled, ready to reassign. To unassign particular shifts, highlight them first.'}>
-                {selectedShiftIds.size > 0 ? `Unassign ${selectedShiftIds.size} selected` : 'Unassign'}
+              <Button variant="outline" icon={<UserMinus className="w-4 h-4" />} onClick={() => setUnassignOpen(true)}
+                title="Remove a staff member from their shifts between dates you choose — the shifts stay on the rota as unfilled, ready to reassign. To unassign particular shifts, highlight them and use Unassign selected.">
+                Unassign
               </Button>
               <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
                 Report Absence + Find Cover
