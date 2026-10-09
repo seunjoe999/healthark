@@ -830,6 +830,77 @@ router.post('/delete-future', requireRole(...MANAGE_ROLES), [
   }
 );
 
+// POST /api/shifts/:id/apply-times — give this shift a new start/finish time and
+// repeat it on the days of the week the manager picks, from the date they pick.
+// "Same shift" means the same repeating series; for a shift with no series, the
+// same service and resident with the SAME current times, so a night shift or a
+// short shift at that service is never pulled onto day times. allServices widens
+// it to every shift in the home that currently has those same times (how "every
+// Sunday is 10:00 to 19:00" is applied in one go). Nothing before today is
+// changed, and cancelled or completed shifts are left alone. preview=true counts only.
+router.post('/:id/apply-times', requireRole(...MANAGE_ROLES), [
+  param('id').isUUID(),
+  body('startTime').matches(/^([01]\d|2[0-3]):[0-5]\d/),
+  body('endTime').matches(/^([01]\d|2[0-3]):[0-5]\d/),
+  body('daysOfWeek').isArray({ min: 1, max: 7 }),
+], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = fromToken(req, 'role');
+      const seedRows = await query<any>('SELECT * FROM staff_shifts WHERE id = $1', [req.params.id]);
+      const seed = seedRows[0];
+      if (!seed) return res.status(404).json({ success: false, error: 'Shift not found' } as ApiResponse);
+      const days = Array.from(new Set((req.body.daysOfWeek as any[]).map(d => parseInt(d)).filter(d => d >= 0 && d <= 6)));
+      if (!days.length) return res.status(400).json({ success: false, error: 'Pick at least one day of the week' } as ApiResponse);
+      const today = ukDateStr();
+      const fromDate: string = typeof req.body.fromDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.body.fromDate) && req.body.fromDate > today
+        ? req.body.fromDate : today;
+      const allServices = req.body.allServices === true;
+      const startTime = String(req.body.startTime).substring(0, 5);
+      const endTime = String(req.body.endTime).substring(0, 5);
+
+      const targets = await query<any>(
+        `SELECT t.id, t.shift_date FROM staff_shifts t
+          WHERE t.home_id = $1 AND t.shift_date >= $2::date
+            AND EXTRACT(DOW FROM t.shift_date)::int = ANY($3::int[])
+            AND t.status NOT IN ('cancelled', 'completed')
+            AND (
+              ($4::boolean AND t.start_time = $5::time AND t.end_time = $6::time)
+              OR (NOT $4::boolean AND $7::uuid IS NOT NULL AND t.template_id = $7::uuid)
+              OR (NOT $4::boolean AND $7::uuid IS NULL AND t.template_id IS NULL
+                  AND COALESCE(t.label, '') = COALESCE($8::text, '')
+                  AND t.su_id IS NOT DISTINCT FROM $9::uuid
+                  AND t.start_time = $5::time AND t.end_time = $6::time)
+            )`,
+        [seed.home_id, fromDate, days, allServices, seed.start_time, seed.end_time, seed.template_id || null, seed.label ?? null, seed.su_id ?? null]);
+      // The shift that was clicked is always changed, whatever day it falls on.
+      const ids = Array.from(new Set<string>([seed.id, ...targets.map(t => t.id)]));
+
+      if (req.body.preview === true) {
+        const r = await query<any>(
+          `SELECT to_char(MIN(shift_date), 'DD Mon YYYY') AS first, to_char(MAX(shift_date), 'DD Mon YYYY') AS last
+             FROM staff_shifts WHERE id = ANY($1::uuid[])`, [ids]);
+        return res.json({ success: true, data: { wouldChange: ids.length, first: r[0]?.first || null, last: r[0]?.last || null } } as ApiResponse);
+      }
+
+      await query(
+        `UPDATE staff_shifts SET start_time = $1::time, end_time = $2::time, updated_at = NOW() WHERE id = ANY($3::uuid[])`,
+        [startTime, endTime, ids]);
+      // A repeating series stores one time for all its days, so it only takes the
+      // new time when every day it runs on was included; otherwise the series
+      // keeps its time and only the shifts already on the rota change.
+      if (!allServices && seed.template_id) {
+        await query(
+          `UPDATE shift_templates SET start_time = $1::time, end_time = $2::time
+            WHERE id = $3 AND days_of_week <@ $4::int[]`,
+          [startTime, endTime, seed.template_id, days]).catch(() => {});
+      }
+      const updated = await query<any>('SELECT * FROM staff_shifts WHERE id = $1', [seed.id]);
+      res.json({ success: true, data: { changed: ids.length, shift: stripFinancials(updated[0], role) } } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // DELETE /api/shifts/templates/:id — remove template + future generated shifts
 router.delete('/templates/:id', requireRole(...MANAGE_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {

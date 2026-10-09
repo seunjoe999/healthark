@@ -1,10 +1,4 @@
-// Shared letterhead print styling — matches Care Plans / Risk Management's
-// navy-blue print layout so every clinical assessment tool prints the same
-// professional document instead of a raw browser print of the live page.
-
-import { parseISO } from 'date-fns'
-
-export const LETTERHEAD_PRINT_CSS = `
+import{p as l}from"./vendor-utils-Zqm3BGA8.js";const d=`
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Georgia,'Cambria','Times New Roman',serif;color:#1a1a1a;font-size:11.5px;line-height:1.5;background:#fff}
   .page{max-width:190mm;margin:0 auto;padding:16mm 14mm 20mm;page-break-after:always}
@@ -53,50 +47,13 @@ export const LETTERHEAD_PRINT_CSS = `
     @page{margin:0;size:A4}
     .page{padding:14mm 14mm 16mm}
   }
-`
-
-export function fmtDate(d: string | null | undefined): string {
-  return d ? parseISO(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
-}
-
-export function esc(v: any): string {
-  return v === null || v === undefined || v === '' ? '—' : String(v)
-}
-
-export function nl(v: any): string {
-  return esc(v).replace(/\n/g, '<br/>')
-}
-
-export type PrintSection = { title: string; inner: string }
-
-export function buildLetterheadPage(opts: {
-  docTitle: string
-  docSubtitle: string
-  docRefPrefix: string
-  docRefId: string | number
-  residentName: string
-  residentLabel?: string
-  residentPhotoUrl?: string | null
-  extraIdCells?: string
-  sections: PrintSection[]
-}): string {
-  const sectionsHtml = opts.sections.map((s, i) =>
-    `<h2 class="sec"><span class="num">${i + 1}.</span>${s.title}</h2>${s.inner}`
-  ).join('')
-
-  const photoHtml = opts.residentPhotoUrl
-    ? `<img class="res-photo" src="${opts.residentPhotoUrl}" alt="Resident photo" />`
-    : `<div class="res-photo-fallback">${esc(opts.residentName).charAt(0).toUpperCase()}</div>`
-
-  const idTable = `
+`;function n(e){return e?l(e).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):"—"}function i(e){return e==null||e===""?"—":String(e)}function f(e){return i(e).replace(/\n/g,"<br/>")}function c(e){const a=e.sections.map((r,s)=>`<h2 class="sec"><span class="num">${s+1}.</span>${r.title}</h2>${r.inner}`).join(""),o=e.residentPhotoUrl?`<img class="res-photo" src="${e.residentPhotoUrl}" alt="Resident photo" />`:`<div class="res-photo-fallback">${i(e.residentName).charAt(0).toUpperCase()}</div>`,t=`
     <table class="idtable">
       <tr>
-        <td class="lbl">${esc(opts.residentLabel || 'Resident')}</td><td class="val">${esc(opts.residentName)}</td>
-        ${opts.extraIdCells || ''}
+        <td class="lbl">${i(e.residentLabel||"Resident")}</td><td class="val">${i(e.residentName)}</td>
+        ${e.extraIdCells||""}
       </tr>
-    </table>`
-
-  return `
+    </table>`;return`
   <div class="page">
     <div class="letterhead">
       <div>
@@ -104,40 +61,24 @@ export function buildLetterheadPage(opts: {
         <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
       </div>
       <div class="doc-meta">
-        <div>Document ref: ${opts.docRefPrefix}-${esc(opts.docRefId)}</div>
-        <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+        <div>Document ref: ${e.docRefPrefix}-${i(e.docRefId)}</div>
+        <div>Printed: <strong>${n(new Date().toISOString())}</strong></div>
       </div>
     </div>
 
-    <div class="doc-title">${esc(opts.docTitle)}</div>
-    <div class="doc-subtitle">${esc(opts.docSubtitle)}</div>
+    <div class="doc-title">${i(e.docTitle)}</div>
+    <div class="doc-subtitle">${i(e.docSubtitle)}</div>
 
     <div class="res-head">
-      ${photoHtml}
-      <div style="flex:1">${idTable}</div>
+      ${o}
+      <div style="flex:1">${t}</div>
     </div>
 
-    ${sectionsHtml}
+    ${a}
 
     <div class="footer">
       <span class="confid">CONFIDENTIAL — Resident health record</span>
-      <span>Printed ${fmtDate(new Date().toISOString())}</span>
+      <span>Printed ${n(new Date().toISOString())}</span>
     </div>
   </div>
-  `
-}
-
-export function openLetterheadPrint(title: string, bodyHtml: string) {
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${title}</title><style>${LETTERHEAD_PRINT_CSS}</style></head><body>${bodyHtml}</body></html>`
-  const w = window.open('', '_blank', 'width=1000,height=750')
-  if (!w) { return false }
-  w.document.write(html)
-  w.document.close()
-  w.focus()
-  // Same as Care Plans' own print (doPrint in CarePlans.tsx) — print() called
-  // right after document.write/close used to fire before the new window had
-  // actually laid the page out, so the print preview came up blank/white even
-  // though the HTML was there. Waiting a beat for layout fixes it.
-  setTimeout(() => { w.print() }, 900)
-  return true
-}
+  `}function m(e,a){const o=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${e}</title><style>${d}</style></head><body>${a}</body></html>`,t=window.open("","_blank","width=1000,height=750");return t?(t.document.write(o),t.document.close(),t.focus(),setTimeout(()=>{t.print()},900),!0):!1}export{d as L,c as b,i as e,n as f,f as n,m as o};

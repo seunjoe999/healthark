@@ -2648,6 +2648,21 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
   const [editStart, setEditStart] = useState(shift.start_time?.substring(0, 5) || '')
   const [editEnd, setEditEnd] = useState(shift.end_time?.substring(0, 5) || '')
   const [applyToFuture, setApplyToFuture] = useState(false)
+  // Repeating a time change: which days of the week, from which date, and how wide.
+  const shiftDay = shift.shift_date ? String(shift.shift_date).substring(0, 10) : ''
+  const [repeatDays, setRepeatDays] = useState<number[]>(shiftDay ? [parseISO(shiftDay).getDay()] : [])
+  const [repeatFrom, setRepeatFrom] = useState(shiftDay)
+  const [repeatAllServices, setRepeatAllServices] = useState(false)
+  const [repeatPreview, setRepeatPreview] = useState<{ wouldChange: number; first: string | null; last: string | null } | null>(null)
+  useEffect(() => {
+    if (!applyToFuture || !repeatDays.length || !editStart || !editEnd) { setRepeatPreview(null); return }
+    let cancelled = false
+    setRepeatPreview(null)
+    api.post(`/shifts/${shift.id}/apply-times`, { startTime: editStart, endTime: editEnd, daysOfWeek: repeatDays, fromDate: repeatFrom, allServices: repeatAllServices, preview: true })
+      .then(res => { if (!cancelled) setRepeatPreview(res.data.data) })
+      .catch(() => { if (!cancelled) setRepeatPreview(null) })
+    return () => { cancelled = true }
+  }, [applyToFuture, repeatDays, repeatFrom, repeatAllServices, editStart, editEnd, shift.id])
   const [savingTimes, setSavingTimes] = useState(false)
   const [reallocating, setReallocating] = useState(false)
   const [reallocateTo, setReallocateTo] = useState('')
@@ -2685,15 +2700,30 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
 
   const saveTimes = async () => {
     if (!editDate || !editStart || !editEnd) { toast.error('Date, start and finish times are required'); return }
+    if (applyToFuture) {
+      if (!repeatDays.length) { toast.error('Pick at least one day of the week'); return }
+      const n = repeatPreview?.wouldChange ?? 0
+      if (!window.confirm(`Change ${n || 'these'} shift${n === 1 ? '' : 's'} to ${editStart} – ${editEnd}${repeatPreview?.first ? `, from ${repeatPreview.first} to ${repeatPreview.last}` : ''}?${repeatAllServices ? '\n\nThis covers EVERY service, for shifts that currently run ' + (shift.start_time?.substring(0, 5) || '') + ' – ' + (shift.end_time?.substring(0, 5) || '') + '.' : ''}`)) return
+      setSavingTimes(true)
+      try {
+        const res = await api.post(`/shifts/${shift.id}/apply-times`, { startTime: editStart, endTime: editEnd, daysOfWeek: repeatDays, fromDate: repeatFrom, allServices: repeatAllServices })
+        toast.success(`${res.data?.data?.changed ?? 0} shift(s) now ${editStart} – ${editEnd}`)
+        setEditingTimes(false)
+        setApplyToFuture(false)
+        onLinked() // closes the shift and reloads the rota so every changed day shows
+      } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to update shift times') }
+      finally { setSavingTimes(false) }
+      return
+    }
     setSavingTimes(true)
     try {
       await conflictGate.run(async (confirmed) => {
         const res = await api.put(`/shifts/${shift.id}`, {
           shiftDate: editDate, startTime: editStart, endTime: editEnd,
-          applyToFuture, confirmConflicts: confirmed,
+          confirmConflicts: confirmed,
         })
         onUpdated(res.data.data)
-        toast.success(applyToFuture ? 'Shift times updated for this and every future occurrence' : 'Shift times updated')
+        toast.success('Shift times updated')
         setEditingTimes(false)
         setApplyToFuture(false)
       })
@@ -2918,14 +2948,52 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
               // resident on the same day of the week) — so "apply to future" reaches
               // every future Wednesday, every future Monday, whichever day this is.
               const weekday = shift.shift_date ? format(parseISO(String(shift.shift_date).substring(0, 10)), 'EEEE') : 'this day'
+              const oldTimes = `${shift.start_time?.substring(0, 5) || ''} – ${shift.end_time?.substring(0, 5) || ''}`
               return (
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" checked={applyToFuture} onChange={e => setApplyToFuture(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 mt-0.5" />
-                  <span className="text-xs text-slate-600">
-                    Apply changes to future shifts <span className="text-slate-400">— also update the start/finish time on every future {weekday} {shift.template_id ? 'in this recurring shift' : (shift.label || shift.su_name ? 'at this service' : '')}. Leave unticked to change only this one.</span>
-                  </span>
-                </label>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" checked={applyToFuture} onChange={e => setApplyToFuture(e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 mt-0.5" />
+                    <span className="text-xs text-slate-700 font-semibold">
+                      Apply to future shifts too <span className="text-slate-500 font-normal">— this {weekday} and every later {weekday}. You can add other days of the week and choose the week it starts from. Leave unticked to change only this one.</span>
+                    </span>
+                  </label>
+                  {applyToFuture && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 space-y-2">
+                      <div>
+                        <p className="text-xs font-bold text-slate-700 mb-1">On these days</p>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {WEEKDAY_OPTIONS.map(d => (
+                            <button key={d.value} type="button"
+                              onClick={() => setRepeatDays(prev => prev.includes(d.value) ? prev.filter(x => x !== d.value) : [...prev, d.value])}
+                              className={`w-11 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${repeatDays.includes(d.value) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'}`}>
+                              {d.label}
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => setRepeatDays([1, 2, 3, 4, 5])} className="px-2 py-1.5 rounded-lg text-xs font-semibold border bg-white text-slate-700 border-slate-300">Mon–Fri</button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 block mb-1">Starting from</label>
+                          <input type="date" className="input text-sm" value={repeatFrom} onChange={e => setRepeatFrom(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 block mb-1">Which shifts</label>
+                          <select className="input text-sm" value={repeatAllServices ? 'all' : 'this'} onChange={e => setRepeatAllServices(e.target.value === 'all')}>
+                            <option value="this">{shift.template_id ? 'This repeating shift only' : 'This service only'}</option>
+                            <option value="all">Every service ({oldTimes} shifts)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-700">
+                        {!repeatDays.length ? 'Pick at least one day.'
+                          : repeatPreview === null ? 'Counting…'
+                          : <>This will set <strong>{repeatPreview.wouldChange}</strong> shift{repeatPreview.wouldChange !== 1 ? 's' : ''} to <strong>{editStart} – {editEnd}</strong>{repeatPreview.first ? <>, from {repeatPreview.first} to {repeatPreview.last}</> : null}. {repeatAllServices ? `Only shifts that currently run ${oldTimes} are changed, so night and short shifts are left alone.` : ''} Past, cancelled and completed shifts are not changed.</>}
+                      </p>
+                    </div>
+                  )}
+                </div>
               )
             })()}
             <div className="flex gap-2 justify-end">

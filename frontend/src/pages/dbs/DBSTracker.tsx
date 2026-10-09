@@ -394,22 +394,29 @@ export default function DBSTracker() {
         </>
       )}
 
-      {/* Preview Modal */}
+      {/* Preview Modal — its background flips white/dark with the theme toggle
+          (see Modal's own cardStyle), but this content was hardcoded to
+          text-white, so on the light theme every value here was white text
+          on a white card: present in the DOM, invisible on screen. valText/
+          mutedText follow the same theme check Modal itself uses. */}
       <Modal open={!!preview} onClose={() => setPreview(null)} title="Document Details" size="lg">
-        {preview && (
+        {(() => {
+          const valText = theme === 'dark' ? 'text-white' : 'text-slate-900'
+          const mutedText = theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+          return preview && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="font-bold text-white text-lg">{preview.staff_name}</p>
+              <p className={clsx('font-bold text-lg', valText)}>{preview.staff_name}</p>
               <span className={clsx('badge', statusColor[preview.status])}>{statusLabel[preview.status]}</span>
             </div>
             {preview._type === 'dbs' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-xs text-slate-500">DBS Type</p><p className="text-white capitalize">{preview.dbs_type?.replace(/_/g, ' ')}</p></div>
-                {preview.dbs_number && <div><p className="text-xs text-slate-500">Certificate No.</p><p className="text-white font-mono">{preview.dbs_number}</p></div>}
-                <div><p className="text-xs text-slate-500">Issue Date</p><p className="text-white">{preview.issue_date ? new Date(preview.issue_date).toLocaleDateString('en-GB') : '—'}</p></div>
-                <div><p className="text-xs text-slate-500">Expiry Date</p><p className={preview.status === 'expired' ? 'text-rose-400' : preview.status === 'expiring_soon' ? 'text-amber-400' : 'text-white'}>{preview.expiry_date ? new Date(preview.expiry_date).toLocaleDateString('en-GB') : 'No expiry'}</p></div>
+                <div><p className="text-xs text-slate-500">DBS Type</p><p className={clsx('capitalize', valText)}>{preview.dbs_type?.replace(/_/g, ' ')}</p></div>
+                {preview.dbs_number && <div><p className="text-xs text-slate-500">Certificate No.</p><p className={clsx('font-mono', valText)}>{preview.dbs_number}</p></div>}
+                <div><p className="text-xs text-slate-500">Issue Date</p><p className={valText}>{preview.issue_date ? new Date(preview.issue_date).toLocaleDateString('en-GB') : '—'}</p></div>
+                <div><p className="text-xs text-slate-500">Expiry Date</p><p className={preview.status === 'expired' ? 'text-rose-400' : preview.status === 'expiring_soon' ? 'text-amber-400' : valText}>{preview.expiry_date ? new Date(preview.expiry_date).toLocaleDateString('en-GB') : 'No expiry'}</p></div>
                 {preview.update_service && <div className="col-span-2 text-emerald-400 text-sm font-medium flex items-center gap-1"><Check className="w-3.5 h-3.5" />On DBS Update Service</div>}
-                {preview.notes && <div className="col-span-2"><p className="text-xs text-slate-500 mb-1">Notes</p><p className="text-slate-300">{preview.notes}</p></div>}
+                {preview.notes && <div className="col-span-2"><p className="text-xs text-slate-500 mb-1">Notes</p><p className={mutedText}>{preview.notes}</p></div>}
               </div>
             )}
             {preview.document_url && (
@@ -420,22 +427,23 @@ export default function DBSTracker() {
             )}
             {preview._type === 'ref' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-xs text-slate-500">Referee</p><p className="text-white">{preview.referee_name}</p></div>
-                {preview.referee_position && <div><p className="text-xs text-slate-500">Position</p><p className="text-white">{preview.referee_position}</p></div>}
-                {preview.referee_company && <div><p className="text-xs text-slate-500">Company</p><p className="text-white">{preview.referee_company}</p></div>}
-                {preview.referee_email && <div><p className="text-xs text-slate-500">Email</p><p className="text-white">{preview.referee_email}</p></div>}
-                {preview.received_date && <div><p className="text-xs text-slate-500">Received</p><p className="text-white">{new Date(preview.received_date).toLocaleDateString('en-GB')}</p></div>}
+                <div><p className="text-xs text-slate-500">Referee</p><p className={valText}>{preview.referee_name}</p></div>
+                {preview.referee_position && <div><p className="text-xs text-slate-500">Position</p><p className={valText}>{preview.referee_position}</p></div>}
+                {preview.referee_company && <div><p className="text-xs text-slate-500">Company</p><p className={valText}>{preview.referee_company}</p></div>}
+                {preview.referee_email && <div><p className="text-xs text-slate-500">Email</p><p className={valText}>{preview.referee_email}</p></div>}
+                {preview.received_date && <div><p className="text-xs text-slate-500">Received</p><p className={valText}>{new Date(preview.received_date).toLocaleDateString('en-GB')}</p></div>}
               </div>
             )}
             {preview._type === 'rtw' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-xs text-slate-500">Document Type</p><p className="text-white">{preview.document_type}</p></div>
-                {preview.document_number && <div><p className="text-xs text-slate-500">Document No.</p><p className="text-white font-mono">{preview.document_number}</p></div>}
-                {preview.expiry_date && <div><p className="text-xs text-slate-500">Expiry</p><p className={preview.status === 'expired' ? 'text-rose-400' : 'text-white'}>{new Date(preview.expiry_date).toLocaleDateString('en-GB')}</p></div>}
+                <div><p className="text-xs text-slate-500">Document Type</p><p className={valText}>{preview.document_type}</p></div>
+                {preview.document_number && <div><p className="text-xs text-slate-500">Document No.</p><p className={clsx('font-mono', valText)}>{preview.document_number}</p></div>}
+                {preview.expiry_date && <div><p className="text-xs text-slate-500">Expiry</p><p className={preview.status === 'expired' ? 'text-rose-400' : valText}>{new Date(preview.expiry_date).toLocaleDateString('en-GB')}</p></div>}
               </div>
             )}
           </div>
-        )}
+          )
+        })()}
       </Modal>
 
       {/* Add Document Modal */}
