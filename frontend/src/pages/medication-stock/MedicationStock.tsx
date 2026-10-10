@@ -17,7 +17,7 @@ interface StockItem {
   medication_name: string
   form: string | null
   strength: string | null
-  quantity_remaining: number
+  current_stock: number
   unit: string
   expiry_date: string | null
   reorder_threshold: number
@@ -113,7 +113,7 @@ function AddEditModal({
     medicationName: editItem.medication_name,
     form: editItem.form || '',
     strength: editItem.strength || '',
-    quantityRemaining: String(editItem.quantity_remaining),
+    quantityRemaining: String(editItem.current_stock),
     unit: editItem.unit,
     expiryDate: editItem.expiry_date ? editItem.expiry_date.split('T')[0] : '',
     reorderThreshold: String(editItem.reorder_threshold),
@@ -241,7 +241,7 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
     const raw = parseFloat(quantityChange)
     if (isNaN(raw) || raw === 0) return null
     const change = isReceived ? Math.abs(raw) : -Math.abs(raw)
-    return Math.max(0, item.quantity_remaining + change)
+    return Math.max(0, item.current_stock + change)
   })()
 
   return (
@@ -249,7 +249,7 @@ function AdjustModal({ item, onClose, onSaved }: { item: StockItem; onClose: () 
       <div className="space-y-4">
         <div className="rounded-xl p-3 text-center" style={{ background: theme === 'dark' ? '#1a1a1a' : '#f8fafc', border: theme === 'dark' ? '1px solid rgba(232,177,48,0.15)' : '1px solid rgba(15,23,42,0.08)' }}>
           <p className="text-xs text-slate-500">Current quantity</p>
-          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
+          <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.current_stock)} <span className="text-sm font-normal text-slate-500">{item.unit}</span></p>
         </div>
         <Field label="Reason">
           <select className={inputCls} value={adjustmentType} onChange={e => setAdjustmentType(e.target.value)}>
@@ -322,7 +322,7 @@ function StockCard({
       {/* Quantity */}
       <div className="flex items-end justify-between">
         <div>
-          <span className={`text-2xl font-bold ${isLow ? (theme === 'dark' ? 'text-amber-400' : 'text-amber-600') : theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.quantity_remaining)}</span>
+          <span className={`text-2xl font-bold ${isLow ? (theme === 'dark' ? 'text-amber-400' : 'text-amber-600') : theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatQty(item.current_stock)}</span>
           <span className="text-sm text-slate-500 ml-1">{item.unit}</span>
           <p className="text-xs text-slate-500 mt-0.5">Reorder at ≤ {item.reorder_threshold}</p>
         </div>
