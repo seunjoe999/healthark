@@ -22,6 +22,14 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
+// Base URL for QR codes / clock-in links. FRONTEND_URL overrides when the
+// frontend is served from a different host than the API; otherwise derive
+// it from the request (trust proxy is on, so this reflects the public
+// compcarehub.co.uk host behind nginx, not the container's internal one).
+function frontendBase(req: Request): string {
+  return process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+}
+
 // "HH:MM" / "HH:MM:SS" -> minutes since midnight, or null if unset.
 function hhmmToMins(t?: string | null): number | null {
   if (!t) return null;
@@ -730,7 +738,7 @@ router.get('/home-qr/:homeId', authenticate, param('homeId').isUUID(), validateR
         await query('UPDATE homes SET qr_token = $1 WHERE id = $2', [newToken, req.params.homeId]);
         home = { ...home, qr_token: newToken };
       }
-      const base = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const base = frontendBase(req);
       const qrUrl = `${base}/clockin/home/${home.qr_token}`;
       res.json({
         success: true,
@@ -797,7 +805,7 @@ router.put('/home-location/:homeId', authenticate, param('homeId').isUUID(),
 router.get('/residents/:homeId', authenticate, param('homeId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const base = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const base = frontendBase(req);
       const rows = await query<any>(
         `SELECT id, first_name, last_name, room_number, qr_token, latitude, longitude, geofence_radius
          FROM service_users WHERE home_id = $1 AND status = 'live' ORDER BY room_number NULLS LAST, first_name`,
@@ -864,7 +872,7 @@ router.get('/generate/:suId', authenticate, param('suId').isUUID(), validateRequ
       const rows = await query<any>('SELECT qr_token, first_name, last_name, latitude, longitude FROM service_users WHERE id = $1', [req.params.suId]);
       if (!rows.length) throw new AppError('Service user not found', 404);
       const su = rows[0];
-      const qrUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/clockin/${su.qr_token}`;
+      const qrUrl = `${frontendBase(req)}/clockin/${su.qr_token}`;
       res.json({ success: true, data: { qrToken: su.qr_token, qrUrl, hasLocation: !!(su.latitude && su.longitude) } } as ApiResponse);
     } catch (err) { next(err); }
   }
