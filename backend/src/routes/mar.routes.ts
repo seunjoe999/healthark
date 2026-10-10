@@ -327,13 +327,16 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       // so a stock-table issue never blocks the MAR record itself from saving.
       if (given) {
         try {
+          // medication_stock is keyed by (su_id, medication_name), not a
+          // medication_id FK (see GET /stock/:suId and POST /stock/:medicationId/count
+          // above) — look the name up first, same as those routes do.
+          const doseRows = await query<any>('SELECT dose, medication_name FROM su_medications WHERE id = $1', [medicationId]);
           const stockRows = await query<any>(
-            'SELECT id, current_stock FROM medication_stock WHERE su_id = $1 AND medication_id = $2',
-            [suId, medicationId]
+            'SELECT id, current_stock FROM medication_stock WHERE su_id = $1 AND medication_name = $2',
+            [suId, doseRows[0]?.medication_name]
           );
           if (stockRows.length) {
             const stock = stockRows[0];
-            const doseRows = await query<any>('SELECT dose FROM su_medications WHERE id = $1', [medicationId]);
             const doseMatch = String(doseRows[0]?.dose || '').match(/^(\d+(\.\d+)?)/);
             const qtyPerDose = doseMatch ? parseFloat(doseMatch[1]) : 1;
             const before = parseFloat(stock.current_stock);
