@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import api from '../../api'
 import { homesApi, staffApi, suApi } from '../../api'
+import { openLetterheadPrint, buildLetterheadPage, esc } from '../../utils/letterheadPrint'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns'
 import { Button, Modal, Input, Select } from '../../components/ui'
@@ -272,7 +273,7 @@ function summarizeRecurrence(recurrence: string, daysOfWeek: number[]): string {
   const days = daysOfWeek.map(d => DAY_SHORT[d]).join(', ')
   if (recurrence === 'fortnightly') return `${days} — fortnightly`
   if (recurrence === 'every_3_weeks') return `${days} — every 3 weeks`
-  const everyN = /^every_(d+)_weeks$/.exec(recurrence)
+  const everyN = /^every_(\d+)_weeks$/.exec(recurrence)
   if (everyN) return `${days} — every ${everyN[1]} weeks`
   return days
 }
@@ -856,6 +857,48 @@ export default function Rota() {
     ? `${format(weekStart, 'd MMM')} — ${format(addDays(weekStart, 6), 'd MMM yyyy')}`
     : format(dayDate, 'EEEE, d MMMM yyyy')
 
+  // The Print button used to call window.print() on the live app itself —
+  // the dark sidebar, filter bar and buttons, scrollbars, and a grid built
+  // from thousands of pixels of horizontal absolute-positioned blocks, none
+  // of which translates to a printed page. Every other print feature in this
+  // app (Care Plans, Staff Compliance, Shift Auditor) opens a dedicated
+  // printable document instead; the rota never did.
+  const printRota = () => {
+    const title = view === 'week' ? 'Weekly Rota' : 'Daily Rota'
+    const sections = dayData.map(({ day, dayShifts, dayLeaves }) => {
+      const sorted = [...dayShifts].sort((a, b) =>
+        timeToMins(a.start_time?.substring(0, 5) || '00:00') - timeToMins(b.start_time?.substring(0, 5) || '00:00'))
+      const shiftRows = sorted.map(s => `<tr>
+        <td>${esc(s.start_time?.substring(0, 5))}–${esc(s.end_time?.substring(0, 5))}</td>
+        <td>${esc(s.label || s.su_names || s.su_name || 'Individual shift')}</td>
+        <td>${esc(s.staff_name || 'Unfilled')}</td>
+        <td>${esc((s.status || (s.staff_id ? 'filled' : 'unfilled')).replace(/_/g, ' '))}</td>
+      </tr>`).join('')
+      const leaveRows = dayLeaves.map(l => `<tr>
+        <td colspan="2">${esc(LEAVE_LABELS[l.leave_type] || l.leave_type)}</td>
+        <td>${esc(l.staff_name)}</td>
+        <td>On leave</td>
+      </tr>`).join('')
+      const rows = shiftRows + leaveRows
+      return {
+        title: format(day, 'EEEE d MMMM'),
+        inner: `<table class="data"><thead><tr><th>Time</th><th>Service / resident</th><th>Staff</th><th>Status</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">No shifts.</td></tr>'}</tbody></table>`,
+      }
+    })
+    const homeName = homes.find(h => h.id === selectedHome)?.name || 'Rota'
+    const body = buildLetterheadPage({
+      docTitle: title,
+      docSubtitle: navLabel,
+      docRefPrefix: 'ROTA',
+      docRefId: format(new Date(), 'yyyyMMdd-HHmm'),
+      residentName: homeName,
+      residentLabel: 'Home',
+      sections,
+    })
+    openLetterheadPrint(title, body)
+  }
+
   const today = new Date()
   const todayShifts = getDayShifts(today)
 
@@ -924,7 +967,7 @@ export default function Rota() {
               <CalendarX className="w-4 h-4" />
             </button>
           )}
-          <button onClick={() => window.print()} title="Print"
+          <button onClick={printRota} title="Print"
             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <Printer className="w-4 h-4" />
           </button>
@@ -958,7 +1001,12 @@ export default function Rota() {
           onChange={id => { setFilterStaff(id); setFilterLabel('') }} />
         {filterStaff && (() => {
           const selectedStaff = staffList.find((s: any) => s.id === filterStaff)
-          const contractedHours = selectedStaff?.contracted_hours ?? 36
+          // Falls back to 40 to match the rest of the app (Staff Compliance,
+          // Documents Matrix) — contracted_hours now defaults to 40 for
+          // everyone (owner directive, 9 Oct 2026), so this stayed the one
+          // place still showing the old 36h fallback for anyone without a
+          // number explicitly on their record.
+          const contractedHours = selectedStaff?.contracted_hours ?? 40
           const rotaHours = dayData.reduce((sum, d) => sum + d.dayShifts.reduce((s: number, sh: any) => {
             const start = timeToMins(sh.start_time?.substring(0, 5) || '00:00')
             let end = timeToMins(sh.end_time?.substring(0, 5) || '00:00')
