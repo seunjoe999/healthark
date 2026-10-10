@@ -839,8 +839,7 @@ router.put('/resident-location/:suId', authenticate, param('suId').isUUID(),
 
 // ── Legacy per-SU routes (kept for backward compatibility) ─────────
 
-router.get('/qr/:token', param('token').isUUID(), validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
+router.get('/qr/:token', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query<any>(
         `SELECT su.id, su.first_name, su.last_name, su.latitude, su.longitude,
