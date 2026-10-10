@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import QRCode from 'qrcode'
 
 export default function PrintQR() {
   const { token } = useParams<{ token: string }>()
   const [suInfo, setSuInfo] = useState<any>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const clockInUrl = `${window.location.origin}/clockin/${token}`
 
   useEffect(() => {
@@ -12,6 +14,13 @@ export default function PrintQR() {
       .then(r => r.json())
       .then(d => { if (d.success) setSuInfo(d.data) })
   }, [token])
+
+  useEffect(() => {
+    if (!suInfo || !canvasRef.current) return
+    QRCode.toCanvas(canvasRef.current, clockInUrl, {
+      width: 180, margin: 1, color: { dark: '#111827', light: '#ffffff' },
+    }).catch(() => {})
+  }, [suInfo, clockInUrl])
 
   useEffect(() => {
     if (suInfo) setTimeout(() => window.print(), 500)
@@ -34,16 +43,8 @@ export default function PrintQR() {
           {suInfo.address && <p className="text-slate-400 text-xs mt-1">{suInfo.address}</p>}
         </div>
 
-        {/* QR code placeholder — in production use qrcode.react */}
-        <div className="bg-gray-900 rounded-2xl p-6 mb-6 flex items-center justify-center mx-auto w-48 h-48">
-          <div className="text-center">
-            <div className="text-white text-xs mb-2 font-mono break-all opacity-70">{token?.substring(0, 8)}...</div>
-            <div className="grid grid-cols-8 gap-0.5">
-              {Array.from({ length: 64 }).map((_, i) => (
-                <div key={i} className={`w-2 h-2 ${Math.random() > 0.4 ? 'bg-white' : 'bg-transparent'}`} />
-              ))}
-            </div>
-          </div>
+        <div className="bg-white border-2 border-gray-200 rounded-2xl p-3 mb-6 flex items-center justify-center mx-auto w-48 h-48">
+          <canvas ref={canvasRef} />
         </div>
 
         <div className="bg-blue-50 rounded-xl p-4 mb-6 text-left border border-blue-200">

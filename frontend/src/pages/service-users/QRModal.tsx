@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import QRCode from 'qrcode'
 import api from '../../api'
 import { Modal, Button, Spinner } from '../../components/ui'
 import { QrCode, Download, MapPin, AlertTriangle, Search } from 'lucide-react'
@@ -40,43 +41,9 @@ export function QRModal({ open, onClose, suId, suName }: { open: boolean; onClos
 
   useEffect(() => {
     if (!qrData?.qrUrl || !canvasRef.current) return
-    // Draw simple QR code representation using canvas
-    // In production you'd use qrcode.js — for now draw the URL as text
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    canvas.width = 200
-    canvas.height = 200
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, 200, 200)
-    ctx.fillStyle = '#151f35'
-    ctx.font = '8px monospace'
-    ctx.textAlign = 'center'
-    // Draw border squares (QR corner markers)
-    const drawSquare = (x: number, y: number, size: number) => {
-      ctx.fillStyle = '#151f35'
-      ctx.fillRect(x, y, size, size)
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(x+3, y+3, size-6, size-6)
-      ctx.fillStyle = '#151f35'
-      ctx.fillRect(x+6, y+6, size-12, size-12)
-    }
-    drawSquare(10, 10, 35)
-    drawSquare(155, 10, 35)
-    drawSquare(10, 155, 35)
-    // Draw some dots to look like QR
-    ctx.fillStyle = '#151f35'
-    for (let i = 0; i < 8; i++) {
-      for (let j = 0; j < 8; j++) {
-        if (Math.random() > 0.45) {
-          ctx.fillRect(55 + i * 12, 55 + j * 12, 9, 9)
-        }
-      }
-    }
-    ctx.fillStyle = '#151f35'
-    ctx.font = 'bold 9px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('Scan to clock in', 100, 190)
+    QRCode.toCanvas(canvasRef.current, qrData.qrUrl, {
+      width: 200, margin: 1, color: { dark: '#151f35', light: '#ffffff' },
+    }).catch(() => {})
   }, [qrData])
 
   const saveLocation = async () => {
