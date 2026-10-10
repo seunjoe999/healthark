@@ -3794,18 +3794,41 @@ function MarkLeaveModal({ open, onClose, staffList, homeId, defaultDate, onSaved
   open: boolean; onClose: () => void
   staffList: any[]; homeId: string; defaultDate: string; onSaved: () => void
 }) {
-  const [form, setForm] = useState({ staffId: '', leaveDate: defaultDate, leaveType: 'annual', notes: '' })
+  // fromDate/toDate — the backend ('/shifts/leave') already accepted a
+  // startDate/endDate range, but this form only ever sent a single leaveDate
+  // (start = end = that one day), so a multi-day absence needed clicking
+  // "Mark absence" once per day. toDate defaults to fromDate (a single day,
+  // the previous behaviour) and only needs changing for a longer absence.
+  const [form, setForm] = useState({ staffId: '', fromDate: defaultDate, toDate: defaultDate, leaveType: 'annual', notes: '' })
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  // How many of their shifts already on the rota fall in this range — the
+  // same side effect UnassignModal previews before saving, reused here via
+  // the existing shifts-by-staff endpoint (no new backend route needed).
+  const [affected, setAffected] = useState<number | null>(null)
 
-  useEffect(() => { if (open) setForm(f => ({ ...f, leaveDate: defaultDate })) }, [open, defaultDate])
+  useEffect(() => { if (open) setForm(f => ({ ...f, fromDate: defaultDate, toDate: defaultDate })) }, [open, defaultDate])
+
+  useEffect(() => {
+    if (!open || !form.staffId || !form.fromDate || !form.toDate || form.toDate < form.fromDate) { setAffected(null); return }
+    let cancelled = false
+    setAffected(null)
+    api.get('/shifts', { params: { homeId, from: form.fromDate, to: form.toDate, staffId: form.staffId } })
+      .then(res => { if (!cancelled) setAffected((res.data?.data || []).filter((s: any) => s.status !== 'cancelled').length) })
+      .catch(() => { if (!cancelled) setAffected(null) })
+    return () => { cancelled = true }
+  }, [open, homeId, form.staffId, form.fromDate, form.toDate])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.staffId) { toast.error('Select a staff member'); return }
+    if (form.toDate < form.fromDate) { toast.error('The "to" date is before the "from" date'); return }
     setSaving(true)
     try {
-      await api.post('/shifts/leave', { homeId, ...form })
+      await api.post('/shifts/leave', {
+        homeId, staffId: form.staffId, startDate: form.fromDate, endDate: form.toDate,
+        leaveType: form.leaveType, notes: form.notes,
+      })
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed') }
     finally { setSaving(false) }
@@ -3818,19 +3841,27 @@ function MarkLeaveModal({ open, onClose, staffList, homeId, defaultDate, onSaved
       <form onSubmit={save} className="space-y-4">
         <Select label="Staff member *" required value={form.staffId} onChange={e => set('staffId', e.target.value)} options={staffOptions} placeholder="Select staff..." />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Date *" type="date" required value={form.leaveDate} onChange={e => set('leaveDate', e.target.value)} />
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Type</label>
-            <select className="input" value={form.leaveType} onChange={e => set('leaveType', e.target.value)}>
-              <option value="annual">Annual leave</option>
-              <option value="sick">Sick leave</option>
-              <option value="other">Other absence</option>
-            </select>
-          </div>
+          <Input label="From *" type="date" required value={form.fromDate} onChange={e => set('fromDate', e.target.value)} />
+          <Input label="To *" type="date" required min={form.fromDate} value={form.toDate} onChange={e => set('toDate', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Type</label>
+          <select className="input" value={form.leaveType} onChange={e => set('leaveType', e.target.value)}>
+            <option value="annual">Annual leave</option>
+            <option value="sick">Sick leave</option>
+            <option value="other">Other absence</option>
+          </select>
         </div>
         <div><label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Notes</label>
           <textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
         </div>
+        {form.staffId && form.toDate >= form.fromDate && (
+          <p className={`text-xs rounded-lg px-3 py-2 ${affected ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+            {affected === null ? 'Checking the rota for these dates…'
+              : affected === 0 ? 'No shifts already on the rota for these dates.'
+              : `This removes them from ${affected} shift${affected !== 1 ? 's' : ''} already on the rota in this range — those go back to unfilled, ready to reassign.`}
+          </p>
+        )}
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>Record absence</Button>
