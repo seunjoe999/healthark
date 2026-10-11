@@ -1098,36 +1098,55 @@ export default function Rota() {
           return sum + m / 60
         }, 0)
         const places = Array.from(new Set(list.map((s: any) => s.label || s.su_names || s.su_name || 'Shift')))
+        // Kept to one line (truncated, never wraps) and a small toggle instead
+        // of one long sentence inside the clickable element itself — the full
+        // sentence used to wrap across several lines on a narrower screen and
+        // took up real vertical space even while "collapsed" (nothing to
+        // collapse when the overflow was the one-liner, not the list below
+        // it). An explicit × clears the filter without hunting for the
+        // separate "Clear" button in the toolbar above.
         return (
-          <div className="px-4 py-2 border-b border-indigo-100 bg-indigo-50/70">
-            <button onClick={() => setStaffAllOpen(v => !v)} className="text-sm font-bold text-indigo-900 hover:underline text-left">
-              {staffAllShifts === null ? `Loading every shift for ${who ? getName(who) : 'this person'}…`
-                : `${who ? getName(who) : 'This person'}: ${list.length} shift${list.length !== 1 ? 's' : ''} in the next 8 weeks (${hours % 1 === 0 ? hours : hours.toFixed(1)}h) across ${places.length} service${places.length !== 1 ? 's' : ''}. The calendar below shows this week's — ${staffAllOpen ? 'hide the full list' : 'show the full list'}`}
+          <div className="px-4 py-1.5 border-b border-indigo-100 bg-indigo-50/70 flex items-center gap-2">
+            <button onClick={() => setStaffAllOpen(v => !v)}
+              className="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-bold text-indigo-900 hover:underline text-left">
+              <span className="truncate">
+                {staffAllShifts === null ? `Loading shifts for ${who ? getName(who) : 'this person'}…`
+                  : `${who ? getName(who) : 'This person'}: ${list.length} shift${list.length !== 1 ? 's' : ''} · ${hours % 1 === 0 ? hours : hours.toFixed(1)}h · ${places.length} service${places.length !== 1 ? 's' : ''} (next 8 wks)`}
+              </span>
+              {staffAllShifts !== null && (
+                <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${staffAllOpen ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+            <button onClick={() => setFilterStaff('')} title="Clear staff filter" className="text-indigo-400 hover:text-indigo-700 flex-shrink-0">
+              <X className="w-4 h-4" />
             </button>
             {staffAllOpen && staffAllShifts !== null && (
-              list.length === 0 ? <p className="text-xs text-slate-600 mt-1">No shifts allocated from today onward.</p> : (
-                <>
-                  <p className="text-xs text-slate-600 mt-0.5">{places.join(' · ')}</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
-                    {list.map((s: any) => (
-                      <button key={s.id} title="Go to this shift"
-                        onClick={() => { const d = parseISO(String(s.shift_date).substring(0, 10)); setView('week'); setWeekStart(startOfWeek(d, { weekStartsOn: 1 })); setDetailShift(s) }}
-                        className="px-2 py-1 rounded-lg bg-white border border-indigo-200 text-[11px] text-slate-800 hover:border-indigo-400 text-left">
-                        <span className="font-bold">{format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM')}</span>{' '}
-                        {s.start_time?.substring(0, 5)}–{s.end_time?.substring(0, 5)} · {s.label || s.su_names || s.su_name || 'Shift'}
-                      </button>
-                    ))}
-                  </div>
-                </>
+              list.length === 0 ? <p className="text-xs text-slate-600 mt-1 basis-full">No shifts allocated from today onward.</p> : (
+                <div className="basis-full mt-1.5 flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                  {list.map((s: any) => (
+                    <button key={s.id} title="Go to this shift"
+                      onClick={() => { const d = parseISO(String(s.shift_date).substring(0, 10)); setView('week'); setWeekStart(startOfWeek(d, { weekStartsOn: 1 })); setDetailShift(s) }}
+                      className="px-2 py-1 rounded-lg bg-white border border-indigo-200 text-[11px] text-slate-800 hover:border-indigo-400 text-left">
+                      <span className="font-bold">{format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM')}</span>{' '}
+                      {s.start_time?.substring(0, 5)}–{s.end_time?.substring(0, 5)} · {s.label || s.su_names || s.su_name || 'Shift'}
+                    </button>
+                  ))}
+                </div>
               )
             )}
           </div>
         )
       })()}
 
-      {/* ── Bulk selection action bar — appears the moment anything's highlighted ── */}
+      {/* ── Bulk selection action bar — appears the moment anything's highlighted.
+          Fixed/floating rather than inline: this used to sit in normal flow
+          above the grid, so selecting a shift (the first click of someone
+          trying to double-click it open) pushed the whole calendar down a
+          row before the second click landed — which then missed the shift
+          entirely ("you will continue clicking and clicking before it
+          opens"). Floating it means selecting never moves the grid. ── */}
       {canManage && selectedShiftIds.size > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-blue-100 bg-blue-50 flex-wrap">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl border border-blue-200 bg-blue-50 flex-wrap max-w-[95vw]">
           <p className="text-sm font-bold text-blue-800">
             {`${selectedShiftIds.size} shift${selectedShiftIds.size !== 1 ? 's' : ''} selected — only these are changed`}
           </p>
