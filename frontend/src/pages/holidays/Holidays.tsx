@@ -37,6 +37,7 @@ export default function Holidays() {
   const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'declined' | 'cancelled'>('all')
   const [requestStaffFilter, setRequestStaffFilter] = useState('')
   const [myBalance, setMyBalance] = useState<{ total: number; remaining: number } | null>(null)
+  const [filteredStaffBalance, setFilteredStaffBalance] = useState<{ total: number; remaining: number; name: string } | null>(null)
   const [declineTarget, setDeclineTarget] = useState<any>(null)
   const [declineReason, setDeclineReason] = useState('')
   const [declineMode, setDeclineMode] = useState<'decline' | 'cancel'>('decline')
@@ -53,15 +54,37 @@ export default function Holidays() {
     if (!user?.id) return
     staffApi.get(user.id).then(res => {
       const s = res.data.data
-      const total = s?.leave_hours_total ?? 224
+      const total = s?.leave_hours_total ?? 210
       const remaining = s?.leave_hours_remaining ?? total
       setMyBalance({ total, remaining })
     }).catch(() => {})
   }, [user?.id])
 
+  // The summary cards below were always "my own" balance regardless of the
+  // staff filter on the Requests tab — a manager filtering to a specific
+  // colleague saw their own leave balance under a generic "Total leave
+  // entitled" label and mistook it for that colleague's, since nothing on
+  // screen said "mine". Fetch that staff member's real balance when one is
+  // selected so the cards show (and clearly label) whoever is actually
+  // being looked at.
+  useEffect(() => {
+    if (!requestStaffFilter) { setFilteredStaffBalance(null); return }
+    staffApi.get(requestStaffFilter).then(res => {
+      const s = res.data.data
+      const total = s?.leave_hours_total ?? 210
+      const remaining = s?.leave_hours_remaining ?? total
+      setFilteredStaffBalance({ total, remaining, name: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || 'Staff member' })
+    }).catch(() => setFilteredStaffBalance(null))
+  }, [requestStaffFilter])
+
   useEffect(() => {
     if (!selectedHome) return
-    staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || []))
+    staffApi.list({ homeId: selectedHome }).then(res => {
+      const list = res.data.data || []
+      list.sort((a: any, b: any) =>
+        `${a.first_name || a.firstName || ''} ${a.last_name || a.lastName || ''}`.localeCompare(`${b.first_name || b.firstName || ''} ${b.last_name || b.lastName || ''}`))
+      setStaffList(list)
+    })
     load()
     loadAllRequests()
   }, [selectedHome, currentMonth])
@@ -194,23 +217,28 @@ export default function Holidays() {
         </div>
       </div>
 
-      {/* My annual leave balance */}
-      {myBalance && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-4">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total leave entitled</p>
-            <p className="text-2xl font-bold text-slate-900">{myBalance.total}h</p>
+      {/* Annual leave balance — whoever is selected in the Requests staff
+          filter, otherwise the logged-in user's own */}
+      {(filteredStaffBalance || myBalance) && (() => {
+        const b = filteredStaffBalance || myBalance!
+        const whose = filteredStaffBalance ? `${filteredStaffBalance.name}'s` : 'My'
+        return (
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{whose} leave entitled</p>
+              <p className="text-2xl font-bold text-slate-900">{b.total}h</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{whose} leave used</p>
+              <p className="text-2xl font-bold text-slate-900">{Math.max(b.total - b.remaining, 0)}h</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-emerald-100 shadow-card p-4">
+              <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1">{whose} leave remaining</p>
+              <p className="text-2xl font-bold text-emerald-600">{b.remaining}h</p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-4">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total leave used</p>
-            <p className="text-2xl font-bold text-slate-900">{Math.max(myBalance.total - myBalance.remaining, 0)}h</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-emerald-100 shadow-card p-4">
-            <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1">Total leave remaining</p>
-            <p className="text-2xl font-bold text-emerald-600">{myBalance.remaining}h</p>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Pending approvals banner */}
       {allPending.length > 0 && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && view !== 'requests' && (

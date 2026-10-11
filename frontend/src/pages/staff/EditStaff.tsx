@@ -146,7 +146,7 @@ function norm(s: any) {
     emergencyNotes: s.emergency_notes || s.emergencyNotes || '',
     photoUrl: s.photo_url || s.photoUrl || '',
     niNumber: s.ni_number || s.niNumber || '',
-    leaveHoursTotal: s.leave_hours_total || s.leaveHoursTotal || 224,
+    leaveHoursTotal: s.leave_hours_total || s.leaveHoursTotal || 210,
     contractedHours: s.contracted_hours || s.contractedHours || '',
     homeId: s.home_id || s.homeId || '',
     isActive: s.is_active ?? true,

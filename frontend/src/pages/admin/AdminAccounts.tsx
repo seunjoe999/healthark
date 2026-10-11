@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
-import { Shield, UserPlus, Copy, Trash2, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp, Mail, Send } from 'lucide-react'
+import { Shield, UserPlus, Copy, Trash2, UserX, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp, Mail, Send, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 
@@ -479,6 +479,8 @@ export default function AdminAccounts() {
   const [created, setCreated] = useState<{ email: string; temporaryPassword: string } | null>(null)
   const [accessModal, setAccessModal] = useState<AdminUser | null>(null)
   const [superAdminOpen, setSuperAdminOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const hasSuperAdmin = admins.some(a => a.role === 'super_admin')
 
   const load = async () => {
@@ -523,13 +525,16 @@ export default function AdminAccounts() {
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to deactivate') }
   }
 
-  const deleteAccount = async (admin: AdminUser) => {
-    if (!window.confirm(`Permanently delete ${admin.first_name} ${admin.last_name}'s account? This cannot be undone.`)) return
+  const confirmDeleteAccount = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      await api.delete(`/staff/${admin.id}`)
-      setAdmins(prev => prev.filter(a => a.id !== admin.id))
+      await api.delete(`/staff/${deleteTarget.id}`)
+      setAdmins(prev => prev.filter(a => a.id !== deleteTarget.id))
       toast.success('Account deleted')
+      setDeleteTarget(null)
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to delete account') }
+    finally { setDeleting(false) }
   }
 
   const resetPassword = async () => {
@@ -676,13 +681,13 @@ export default function AdminAccounts() {
                   </Button>
                 )}
                 {admin.status === 'active' && (
-                  <Button size="sm" variant="outline" icon={<Trash2 className="w-3.5 h-3.5" />}
+                  <Button size="sm" variant="outline" icon={<UserX className="w-3.5 h-3.5" />}
                     onClick={() => deactivate(admin)}>
                     Deactivate
                   </Button>
                 )}
                 <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
-                  onClick={() => deleteAccount(admin)}>
+                  onClick={() => setDeleteTarget(admin)}>
                   Delete
                 </Button>
               </div>
@@ -753,6 +758,30 @@ export default function AdminAccounts() {
             <div className="flex gap-3 justify-end pt-2">
               <Button variant="outline" onClick={() => setPinOpen(null)}>Cancel</Button>
               <Button loading={savingPin} onClick={savePin}>{pinOpen.has_pin ? 'Reset PIN' : 'Create PIN'}</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete account confirmation — a plain window.confirm() here is too easy
+          to click through without reading, especially next to Deactivate (same
+          row, same size). This spells out the consequence and needs a second,
+          clearly-labelled click on a button that only appears in this modal. */}
+      {deleteTarget && (
+        <Modal open={true} onClose={() => setDeleteTarget(null)} title="Delete account">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-xl p-4">
+              <AlertTriangle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-rose-700">
+                <p className="font-semibold">You're about to delete {deleteTarget.first_name} {deleteTarget.last_name}'s account.</p>
+                <p className="mt-1">They will lose access immediately. This cannot be undone from here — recovering it needs a developer to restore it directly.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button variant="danger" loading={deleting} icon={<Trash2 className="w-3.5 h-3.5" />} onClick={confirmDeleteAccount}>
+                Yes, delete permanently
+              </Button>
             </div>
           </div>
         </Modal>

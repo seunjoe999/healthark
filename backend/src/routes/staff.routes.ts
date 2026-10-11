@@ -305,6 +305,29 @@ router.put('/me/personal-email', async (req: Request, res: Response, next: NextF
   } catch (err) { next(err); }
 });
 
+// GET /api/staff/deleted — list soft-deleted accounts for this org, so a
+// mistaken delete (no confirmation prompt existed until now) can actually
+// be found and undone instead of requiring direct database access. Must
+// stay registered before GET /:id below, or Express would try to match
+// "deleted" against that route's UUID param first and 400 before this
+// handler is ever reached.
+router.get('/deleted', requireRole('group_admin', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? jwt.decode(token) as any : {};
+      const organisationId = req.staff?.organisationId || decoded?.organisationId || '';
+      const rows = await query<any>(
+        `SELECT id, first_name, last_name, email, role, home_id, updated_at
+         FROM staff WHERE organisation_id = $1 AND status = 'terminated'
+         ORDER BY updated_at DESC`,
+        [organisationId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/staff/:id
 router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -864,6 +887,31 @@ router.delete('/:id', requireRole('group_admin', 'admin'),
         logAudit({ homeId: s.home_id || '', staffId: decoded?.staffId || '', staffName: '', action: 'delete', resourceType: 'staff', resourceId: req.params.id, resourceLabel: `${s.first_name} ${s.last_name}` });
       }
       res.json({ success: true, message: 'Account deleted' } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/staff/:id/restore — undo a soft delete
+router.post('/:id/restore', requireRole('group_admin', 'admin'),
+  param('id').matches(laxUuid), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization?.substring(7);
+      const decoded = token ? jwt.decode(token) as any : {};
+      const rows = await query<any>(
+        // Strip the "+deleted-<id>" tag the delete route adds to the email so
+        // the account can be recreated with the same address; restoring must
+        // reverse that too or the login email would stay wrong forever.
+        `UPDATE staff SET is_active=true, status='active',
+           email = regexp_replace(email, '\\+deleted-[0-9a-f-]+@', '@')
+         WHERE id=$1 AND status='terminated'
+         RETURNING id, first_name, last_name, email`,
+        [req.params.id]
+      );
+      if (!rows.length) throw new AppError('No deleted account found with that id', 404);
+      const s = rows[0];
+      logAudit({ homeId: '', staffId: decoded?.staffId || '', staffName: '', action: 'restore', resourceType: 'staff', resourceId: req.params.id, resourceLabel: `${s.first_name} ${s.last_name}` });
+      res.json({ success: true, data: s } as ApiResponse);
     } catch (err) { next(err); }
   }
 );
