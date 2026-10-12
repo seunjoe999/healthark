@@ -41,7 +41,6 @@ export default function StaffDashboard() {
   const [showTaskPopup, setShowTaskPopup] = useState(false)
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInUrl, setClockInUrl] = useState<string | null>(null)
-  const [stockCount, setStockCount] = useState<{ total: number; counted: number; done: boolean } | null>(null)
   const [medDueToday, setMedDueToday] = useState<{ total: number; pending: number }>({ total: 0, pending: 0 })
   const [myMeds, setMyMeds] = useState<any[]>([])
 
@@ -111,7 +110,7 @@ export default function StaffDashboard() {
       try {
         const todayStr = await getServerTodayStr()
         const weekAheadStr = format(addDays(new Date(todayStr), 6), 'yyyy-MM-dd')
-        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, stockR, medDueR] = await Promise.allSettled([
+        const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, medDueR] = await Promise.allSettled([
           // Pull a 7-day window (not just today) so staff see their upcoming
           // shifts on the dashboard and can't miss a reassignment or a shift
           // further out that they never scrolled to in the full Rota view.
@@ -123,7 +122,6 @@ export default function StaffDashboard() {
           suApi.list(user.homeId || '', { status: 'live' }),
           api.get('/clockin/status'),
           user.homeId ? api.get(`/clockin/home-qr/${user.homeId}`) : Promise.resolve(null),
-          api.get('/mar/stock-count-status', { params: { homeId: user.homeId } }),
           api.get('/mar/due-today', { params: { homeId: user.homeId } }),
         ])
         const v = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null
@@ -146,7 +144,6 @@ export default function StaffDashboard() {
         setClockedIn(!!v(clockStatusR)?.data.data?.clockedIn)
         const qrToken = v(homeQrR)?.data.data?.qrToken
         setClockInUrl(qrToken ? `/clockin/home/${qrToken}` : null)
-        setStockCount(v(stockR)?.data.data || null)
         const medTasks = v(medDueR)?.data.data || []
         setMyMeds(medTasks)
         setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
@@ -336,20 +333,10 @@ export default function StaffDashboard() {
             View all <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-        {myTasks.length === 0 && (!stockCount || stockCount.done) ? (
+        {myTasks.length === 0 ? (
           <p className="text-sm text-slate-400 px-5 py-4">No tasks assigned for today</p>
         ) : (
           <div>
-            {stockCount && !stockCount.done && (
-              <Link to="/medication-stock" className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0 bg-rose-50 hover:bg-rose-100 transition-colors">
-                <Pill className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-rose-800 font-semibold">Medication Count</p>
-                  <p className="text-xs text-rose-700 mt-0.5">Do this at the start and end of your shift. {stockCount.counted}/{stockCount.total} residents counted.</p>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-              </Link>
-            )}
             {pendingTasks.slice(0, 4).map((t: any) => (
               <div key={t.id} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
                 <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />

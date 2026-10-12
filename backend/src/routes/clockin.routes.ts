@@ -8,7 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import https from 'https';
 import { evaluateGeofence, GeofenceCheckPoint } from '../utils/geofence';
-import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
+import { getDueTodayTasks } from '../utils/medicationDue';
 import { getMyPendingTasksToday } from '../utils/taskDue';
 import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 import { logger } from '../config/logger';
@@ -453,23 +453,12 @@ router.post('/event', authenticate,
           });
         }
 
-        // Medication Count is required at both ends of a shift — a count done
-        // on an earlier shift today doesn't excuse skipping it on this one, so
-        // this checks against the current shift's clock-in time, not just "today".
-        const shiftStart = lastEventRows[0]?.event_time;
-        // Scoped to this staff member's own rota residents today — see the
-        // comment in getStockCountStatus for why the unscoped home-wide total
-        // could never actually be cleared by any one person.
-        const stockStatus = await getStockCountStatus(homeId, shiftStart ? new Date(shiftStart) : undefined, todayShiftSuIds);
-        if (!stockStatus.done && overrideReason) {
-          overridden.push(`Medication Count not done (${stockStatus.counted}/${stockStatus.total} residents counted)`);
-        } else if (!stockStatus.done) {
-          return res.status(403).json({
-            success: false,
-            reason: 'medication_incomplete',
-            error: `Medication Count is not done for this shift (${stockStatus.counted}/${stockStatus.total} residents counted). Complete it before clocking out.`,
-          });
-        }
+        // Medication Count used to also gate clock-out here, but the owner asked
+        // for it to be removed entirely — it was wrongly flagging "Tasks not
+        // finished yet" and forcing staff through the override-reason flow even
+        // when they'd genuinely completed everything, and the stock-count
+        // feature itself isn't functioning as intended ("it's not even doing
+        // the function at the moment"). Clock-out is no longer blocked on it.
 
         // General (non-medication) tasks due today that are still pending also
         // block clock-out — same principle as medication: a task not silently

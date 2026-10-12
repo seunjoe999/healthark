@@ -15,7 +15,7 @@ import {
   ShieldAlert, Bell, Settings, LogOut, Menu, X,
   Activity, Calendar, Package, BookOpen, BarChart3, MessageSquare,
   Pill, CheckSquare, ChevronRight, ChevronDown, ClipboardCheck, CalendarRange, Palmtree, GraduationCap, ArrowLeftRight, FileCheck, QrCode,
-  AlertTriangle, ShieldCheck, Boxes, Users2, Send, BarChart2, Shield,
+  AlertTriangle, ShieldCheck, Users2, Send, BarChart2, Shield,
   Wrench, Droplets, Target, History, Clock, UserCheck, Newspaper, Thermometer, Zap,
   Stethoscope, DollarSign, AlertCircle, ThumbsUp, Music,
   FileSignature, Search, Lock, Brain, WifiOff, RefreshCw, Scale, Sun, Moon, Frown, Download, Shirt, Banknote, CalendarClock
@@ -61,7 +61,9 @@ const navSections = [
       { label: 'Medication',                        to: '/mar',                 icon: Pill,          roles: [], featureKey: 'mar' },
       { label: 'Medication Risk Assessment',        to: '/medicine-risk',       icon: ShieldAlert,   roles: [], featureKey: 'medicine_risk' },
       { label: 'Other Risk Assessment',             to: '/risk-management',     icon: Shield,        roles: [], featureKey: 'risk_management' },
-      { label: 'Medication Stock',                  to: '/medication-stock',    icon: Boxes,         roles: [], featureKey: 'medication_stock' },
+      // Removed from the menu entirely at the owner's request — it was
+      // falsely flagging "Tasks not finished yet" and blocking staff from
+      // clocking out, and wasn't reliably prompting reorders either.
       { label: 'Support Plans',                    to: '/care-plans',          icon: FileText,      roles: [], featureKey: 'care_plans' },
       { label: 'Care Reviews',                      to: '/reviews',             icon: ClipboardCheck,roles: [], featureKey: 'reviews' },
       { label: 'Confidential Information',          to: '/confidential',        icon: Lock,          roles: [], featureKey: 'confidential' },
@@ -81,22 +83,27 @@ const navSections = [
     ]
   },
   {
+    // Owner asked for this exact order on the staff menu (so it reads top to
+    // bottom the way staff actually move through their records): Staff
+    // Profile > Staff Performance > Staff Assessment > Training > DBS >
+    // Teams > Clock In > Clock In Analytics > Calendar > Resident Assignments.
     label: 'STAFF RECORDS', highlight: true,
     items: [
-      { label: 'Calendar',               to: '/staff-calendar',        icon: Calendar,      roles: [], featureKey: 'staff_calendar' },
-      { label: 'Clock In',               to: '/clockin-admin',         icon: QrCode,        roles: [], featureKey: 'clockin' },
+      { label: 'Staff Profile',          to: '/staff',                 icon: UserSquare,    roles: [], featureKey: 'staff' },
+      { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
+      { label: 'Staff Assessment',       to: '/assessments?tab=staff', icon: FileCheck,     roles: [], featureKey: 'staff_assessment' },
       { label: 'Comp Care Hub Training', to: '/training',              icon: GraduationCap, roles: [], featureKey: 'training' },
       { label: 'DBS Compliance',         to: '/dbs',                   icon: UserCheck,     roles: [], featureKey: 'dbs' },
+      { label: 'Teams',                  to: '/settings/teams',        icon: Users2,        roles: MANAGEMENT_ONLY, featureKey: 'teams' },
+      { label: 'Clock In',               to: '/clockin-admin',         icon: QrCode,        roles: [], featureKey: 'clockin' },
+      { label: 'Clock In Analytics',     to: '/clockin-analytics',     icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
+      { label: 'Calendar',               to: '/staff-calendar',        icon: Calendar,      roles: [], featureKey: 'staff_calendar' },
       // Previously only reachable via Settings, which is hard-restricted to group_admin —
       // meaning nobody else could ever be given access no matter what Access Rights said.
       // Standalone nav items here use the same broad non-care-staff baseline as the rest
       // of this section, so the owner can grant/revoke access per role from Access Rights
       // the normal way instead of it being all-or-nothing.
       { label: 'Resident Assignments',   to: '/settings/resident-assignments', icon: UserCheck, roles: NOT_CARE_STAFF, featureKey: 'resident_assignments' },
-      { label: 'Staff Assessment',       to: '/assessments?tab=staff', icon: FileCheck,     roles: [], featureKey: 'staff_assessment' },
-      { label: 'Staff Performance',      to: '/performance',           icon: BarChart3,     roles: [], featureKey: 'performance' },
-      { label: 'Staff Profile',          to: '/staff',                 icon: UserSquare,    roles: [], featureKey: 'staff' },
-      { label: 'Teams',                  to: '/settings/teams',        icon: Users2,        roles: MANAGEMENT_ONLY, featureKey: 'teams' },
     ]
   },
   {
@@ -136,7 +143,6 @@ const navSections = [
     label: 'OPERATIONS', highlight: true,
     items: [
       { label: 'Alerts',             to: '/alerts',            icon: Bell,          roles: [], featureKey: 'alerts' },
-      { label: 'Clock In Analytics', to: '/clockin-analytics', icon: BarChart2,     roles: [], featureKey: 'clockin_analytics' },
       { label: 'Download App',       to: '/install',           icon: Download,      roles: [], featureKey: 'install_app' },
       { label: 'Finance Tracking',   to: '/finance-tracking',  icon: Banknote,      roles: [], featureKey: 'finance_tracking' },
       { label: 'Invoicing',          to: '/invoicing',         icon: DollarSign,    roles: ['admin', 'group_admin'], featureKey: 'invoicing' },

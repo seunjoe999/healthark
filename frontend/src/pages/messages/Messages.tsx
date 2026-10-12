@@ -4,7 +4,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal } from '../../components/ui'
-import { MessageSquare, Plus, Send, Inbox, Trash2, Reply, Bell, AlertTriangle, AlertCircle, Info, CheckCircle, Paperclip, Camera, X, Users2 } from 'lucide-react'
+import { MessageSquare, Plus, Send, Inbox, Trash2, Reply, Bell, AlertTriangle, AlertCircle, Info, CheckCircle, Paperclip, Camera, X, Users2, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const NOTIF_ICON: Record<string, any> = {
@@ -18,13 +18,15 @@ export default function Messages() {
   const { user } = useAuth()
   const [messages, setMessages] = useState<any[]>([])
   const [alerts, setAlerts] = useState<any[]>([])
+  const [deletedItems, setDeletedItems] = useState<any[]>([])
   const [staffList, setStaffList] = useState<any[]>([])
   const [teamsList, setTeamsList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [composeOpen, setComposeOpen] = useState(false)
   const [selected, setSelected] = useState<any>(null)
   const [selectedAlert, setSelectedAlert] = useState<any>(null)
-  const [view, setView] = useState<'inbox' | 'sent' | 'alerts'>('inbox')
+  const [selectedDeleted, setSelectedDeleted] = useState<any>(null)
+  const [view, setView] = useState<'inbox' | 'sent' | 'alerts' | 'deleted'>('inbox')
   const [replyDefaults, setReplyDefaults] = useState<{ recipientId: string; subject: string } | null>(null)
 
   useEffect(() => {
@@ -33,9 +35,26 @@ export default function Messages() {
     return () => clearInterval(interval)
   }, [view])
 
+  const loadDeleted = async () => {
+    const [delMsgRes, delNotifRes] = await Promise.all([
+      api.get('/messages?type=deleted'),
+      api.get('/notifications', { params: { deleted: 'true' } }),
+    ])
+    const delMsgs = (delMsgRes.data.data || []).map((m: any) => ({ ...m, _kind: 'message' }))
+    const delAlerts = (delNotifRes.data.data || []).map((n: any) => ({ ...n, _kind: 'alert' }))
+    const combined = [...delMsgs, ...delAlerts].sort((a, b) => {
+      const da = a._kind === 'message' ? (a.deleted_by_sender_at || a.deleted_by_recipient_at) : a.deleted_at
+      const db = b._kind === 'message' ? (b.deleted_by_sender_at || b.deleted_by_recipient_at) : b.deleted_at
+      return new Date(db || 0).getTime() - new Date(da || 0).getTime()
+    })
+    setDeletedItems(combined)
+  }
+
   const backgroundLoad = async () => {
     try {
-      if (view === 'alerts') {
+      if (view === 'deleted') {
+        await loadDeleted()
+      } else if (view === 'alerts') {
         const notifRes = await api.get('/notifications')
         setAlerts(notifRes.data.data || [])
       } else {
@@ -45,11 +64,19 @@ export default function Messages() {
     } catch (_e) {}
   }
 
-  const load = async (typeOverride?: 'inbox' | 'sent' | 'alerts') => {
+  const load = async (typeOverride?: 'inbox' | 'sent' | 'alerts' | 'deleted') => {
     const activeType = typeOverride ?? view
     setLoading(true)
     try {
-      if (activeType === 'alerts') {
+      if (activeType === 'deleted') {
+        const [staffRes, teamsRes] = await Promise.all([
+          staffApi.list(),
+          api.get('/teams', { params: { homeId: user?.homeId } }).catch(() => ({ data: { data: [] } })),
+        ])
+        await loadDeleted()
+        setStaffList(staffRes.data.data || [])
+        setTeamsList(teamsRes.data.data || [])
+      } else if (activeType === 'alerts') {
         const [notifRes, staffRes, teamsRes] = await Promise.all([
           api.get('/notifications'),
           staffApi.list(),
@@ -84,7 +111,17 @@ export default function Messages() {
       await api.delete(`/messages/${id}`)
       setMessages(prev => prev.filter(m => m.id !== id))
       if (selected?.id === id) setSelected(null)
-      toast.success('Message deleted')
+      toast.success('Message deleted — find it under Deleted Items if you need it back')
+    } catch { toast.error('Failed to delete') }
+  }
+
+  const deleteAlert = async (id: string) => {
+    if (!window.confirm('Delete this alert?')) return
+    try {
+      await api.delete(`/notifications/${id}`)
+      setAlerts(prev => prev.filter(a => a.id !== id))
+      if (selectedAlert?.id === id) setSelectedAlert(null)
+      toast.success('Alert deleted — find it under Deleted Items if you need it back')
     } catch { toast.error('Failed to delete') }
   }
 
@@ -95,8 +132,18 @@ export default function Messages() {
     setComposeOpen(true)
   }
 
-  const hasDetail = !!(selected || selectedAlert)
-  const clearDetail = () => { setSelected(null); setSelectedAlert(null) }
+  const restoreItem = async (item: any) => {
+    try {
+      if (item._kind === 'message') await api.put(`/messages/${item.id}/restore`)
+      else await api.put(`/notifications/${item.id}/restore`)
+      setDeletedItems(prev => prev.filter(x => x.id !== item.id))
+      setSelectedDeleted(null)
+      toast.success('Restored')
+    } catch { toast.error('Failed to restore') }
+  }
+
+  const hasDetail = !!(selected || selectedAlert || selectedDeleted)
+  const clearDetail = () => { setSelected(null); setSelectedAlert(null); setSelectedDeleted(null) }
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -115,11 +162,11 @@ export default function Messages() {
             </button>
           </div>
           <div className="flex gap-1 rounded-lg p-1" style={{ background: 'rgba(255,255,255,0.05)' }}>
-            {(['inbox', 'sent', 'alerts'] as const).map(v => (
-              <button key={v} onClick={() => { setView(v); setSelected(null); setSelectedAlert(null) }}
+            {(['inbox', 'sent', 'alerts', 'deleted'] as const).map(v => (
+              <button key={v} onClick={() => { setView(v); setSelected(null); setSelectedAlert(null); setSelectedDeleted(null) }}
                 className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors relative ${view === v ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 style={view === v ? { background: 'rgba(255,255,255,0.12)' } : {}}>
-                {v === 'alerts' ? 'Alerts' : v.charAt(0).toUpperCase() + v.slice(1)}
+                {v === 'deleted' ? 'Deleted' : v.charAt(0).toUpperCase() + v.slice(1)}
                 {v === 'alerts' && unreadAlerts > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)', color: '#111' }}>
                     {unreadAlerts > 9 ? '9+' : unreadAlerts}
@@ -130,7 +177,29 @@ export default function Messages() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {loading ? <div className="flex justify-center py-12"><Spinner /></div> : view === 'alerts' ? (
+          {loading ? <div className="flex justify-center py-12"><Spinner /></div> : view === 'deleted' ? (
+            deletedItems.length === 0 ? (
+              <div className="text-center p-8"><Trash2 className="w-8 h-8 text-slate-600 mx-auto mb-2" /><p className="text-sm text-slate-500">No deleted items</p></div>
+            ) : deletedItems.map((item: any) => {
+              const isMessage = item._kind === 'message'
+              const title = isMessage ? (item.subject || item.message?.substring(0, 50) || '(No subject)') : item.title
+              const subtitle = isMessage ? (item.deleted_from === 'sent' ? `To: ${item.recipient_name || 'Unknown'}` : `From: ${item.sender_name || 'Unknown'}`) : (item.body || '')
+              return (
+                <button key={`${item._kind}-${item.id}`} onClick={() => { setSelectedDeleted(item); setSelected(null); setSelectedAlert(null) }}
+                  className="w-full text-left px-4 py-3 transition-colors"
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: selectedDeleted?.id === item.id ? 'rgba(232,177,48,0.08)' : 'transparent' }}>
+                  <div className="flex items-start gap-3">
+                    <Trash2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-500" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-slate-300">{title}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</p>
+                      <p className="text-xs text-slate-600 mt-1 capitalize">{isMessage ? item.deleted_from : 'alert'}</p>
+                    </div>
+                  </div>
+                </button>
+              )
+            })
+          ) : view === 'alerts' ? (
             alerts.length === 0 ? (
               <div className="text-center p-8"><Bell className="w-8 h-8 text-slate-600 mx-auto mb-2" /><p className="text-sm text-slate-500">No alerts</p></div>
             ) : alerts.map((n: any) => {
@@ -186,7 +255,31 @@ export default function Messages() {
         </button>
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-        {selectedAlert ? (
+        {selectedDeleted ? (
+          <div className="max-w-2xl mx-auto rounded-xl p-5 lg:p-6" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="pb-4 mb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <h2 className="text-base font-bold text-white mb-2">
+                {selectedDeleted._kind === 'message' ? (selectedDeleted.subject || '(No subject)') : selectedDeleted.title}
+              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-1 text-sm text-slate-500">
+                {selectedDeleted._kind === 'message' ? (
+                  <span>{selectedDeleted.deleted_from === 'sent' ? 'To' : 'From'}: <span className="font-medium text-slate-300">{selectedDeleted.deleted_from === 'sent' ? (selectedDeleted.recipient_name || 'Unknown') : (selectedDeleted.sender_name || 'Unknown')}</span></span>
+                ) : <span />}
+                <span>{(selectedDeleted.created_at) ? format(new Date(selectedDeleted.created_at), 'd MMM yyyy, HH:mm') : ''}</span>
+              </div>
+            </div>
+            <p className="text-slate-300 whitespace-pre-line leading-relaxed text-sm">
+              {selectedDeleted._kind === 'message' ? (selectedDeleted.message || selectedDeleted.body) : selectedDeleted.body}
+            </p>
+            <div className="flex gap-3 mt-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <button onClick={() => restoreItem(selectedDeleted)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-emerald-400 transition-colors"
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                <RotateCcw className="w-4 h-4" /> Restore
+              </button>
+            </div>
+          </div>
+        ) : selectedAlert ? (
           <div className="max-w-2xl mx-auto rounded-xl p-5 lg:p-6" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
             {(() => {
               const Icon = NOTIF_ICON[selectedAlert.type] || Bell
@@ -204,6 +297,13 @@ export default function Messages() {
                   {selectedAlert.link && selectedAlert.link !== '/messages' && (
                     <a href={selectedAlert.link} className="inline-flex items-center gap-1 mt-4 text-sm text-amber-400 hover:text-amber-300 underline">View related record →</a>
                   )}
+                  <div className="flex gap-3 mt-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <button onClick={() => deleteAlert(selectedAlert.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-rose-400 transition-colors"
+                      style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                  </div>
                 </>
               )
             })()}

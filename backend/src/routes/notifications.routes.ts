@@ -18,13 +18,24 @@ function fromToken(req: Request, field: string): string {
   return '';
 }
 
-// GET /api/notifications
+// Soft-delete column — deleting a notification used to be a hard DELETE
+// with no way to get it back ("I don't have a deleted button to view
+// them"). A deleted_at timestamp lets it be hidden from the normal list
+// but recovered from a "Deleted Items" view.
+async function ensureSchema() {
+  await query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`, []);
+}
+router.use(async (_req, _res, next) => { try { await ensureSchema(); } catch (_) {} next(); });
+
+// GET /api/notifications — pass ?deleted=true to list the caller's trash instead
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = req.staff.staffId;
     if (!staffId) { res.json({ success: true, data: [], unread: 0 } as ApiResponse); return; }
+    const showDeleted = req.query.deleted === 'true';
     const rows = await query(
-      `SELECT * FROM notifications WHERE recipient_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      `SELECT * FROM notifications WHERE recipient_id = $1 AND deleted_at IS ${showDeleted ? 'NOT NULL' : 'NULL'}
+       ORDER BY ${showDeleted ? 'deleted_at' : 'created_at'} DESC LIMIT 50`,
       [staffId]
     );
     const unread = rows.filter((r: any) => !r.is_read).length;
@@ -77,7 +88,7 @@ router.delete('/clear-all', async (req: Request, res: Response, next: NextFuncti
   try {
     const staffId = req.staff.staffId;
     if (!staffId) { res.json({ success: true, data: { count: 0 } } as ApiResponse); return; }
-    const rows = await query<any>('DELETE FROM notifications WHERE recipient_id = $1 RETURNING id', [staffId]);
+    const rows = await query<any>('UPDATE notifications SET deleted_at = NOW() WHERE recipient_id = $1 AND deleted_at IS NULL RETURNING id', [staffId]);
     res.json({ success: true, data: { count: rows.length } } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -89,20 +100,33 @@ router.delete('/bulk', async (req: Request, res: Response, next: NextFunction) =
     const staffId = req.staff.staffId;
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((id: any) => typeof id === 'string') : [];
     if (!staffId || !ids.length) { res.json({ success: true, data: { count: 0 } } as ApiResponse); return; }
-    const rows = await query<any>('DELETE FROM notifications WHERE recipient_id = $1 AND id = ANY($2) RETURNING id', [staffId, ids]);
+    const rows = await query<any>('UPDATE notifications SET deleted_at = NOW() WHERE recipient_id = $1 AND id = ANY($2) AND deleted_at IS NULL RETURNING id', [staffId, ids]);
     res.json({ success: true, data: { count: rows.length } } as ApiResponse);
   } catch (err) { next(err); }
 });
 
-// DELETE /api/notifications/:id — delete one of the caller's own
-// notifications. Any authenticated staff member may delete their own
-// (it's their own inbox, not an admin-gated resource); scoped to
-// recipient_id so nobody can delete someone else's by guessing an id.
+// DELETE /api/notifications/:id — soft-delete one of the caller's own
+// notifications (moves it to "Deleted Items" instead of removing it
+// outright, so an accidental delete can be recovered). Any authenticated
+// staff member may delete their own (it's their own inbox, not an
+// admin-gated resource); scoped to recipient_id so nobody can delete
+// someone else's by guessing an id.
 router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = req.staff.staffId;
-      await query('DELETE FROM notifications WHERE id = $1 AND recipient_id = $2', [req.params.id, staffId]);
+      await query('UPDATE notifications SET deleted_at = NOW() WHERE id = $1 AND recipient_id = $2', [req.params.id, staffId]);
+      res.json({ success: true } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+// PUT /api/notifications/:id/restore — undo a soft delete.
+router.put('/:id/restore', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = req.staff.staffId;
+      await query('UPDATE notifications SET deleted_at = NULL WHERE id = $1 AND recipient_id = $2', [req.params.id, staffId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
