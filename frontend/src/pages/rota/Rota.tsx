@@ -373,6 +373,12 @@ export default function Rota() {
   // Financial fields (wage/charge rates, funder billing) are only for management/admin roles —
   // must match the backend's FINANCIAL_ROLES gate in shifts.routes.ts.
   const canSeeFinancials = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  // Matches shifts.routes.ts PRIVILEGED_ROLES exactly — everyone else's /shifts
+  // data is already scoped server-side to their own days + service, so the
+  // Service User picker here must match that scoping too (care_staff reported
+  // being able to browse every resident/service at the home from this list).
+  const seesWholeRota = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
+    'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor', 'senior_carer')
 
   const [view, setView]           = useState<'week' | 'day'>('week')
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }))
@@ -593,14 +599,29 @@ export default function Rota() {
 
   useEffect(() => {
     if (!selectedHome) return
-    Promise.all([staffApi.list({ homeId: selectedHome }), suApi.list(selectedHome, { status: 'live' })])
-      .then(([sRes, suRes]) => {
-        // Sorted once here so EVERY staff list on the rota (filter, assign, bulk
-        // assign, reallocate, create rota...) is alphabetical, not in database order.
-        setStaffList([...(sRes.data.data || [])].sort((a: any, b: any) => getName(a).localeCompare(getName(b), undefined, { sensitivity: 'base' }))); setSuList(suRes.data.data || []) })
+    staffApi.list({ homeId: selectedHome }).then(sRes => {
+      // Sorted once here so EVERY staff list on the rota (filter, assign, bulk
+      // assign, reallocate, create rota...) is alphabetical, not in database order.
+      setStaffList([...(sRes.data.data || [])].sort((a: any, b: any) => getName(a).localeCompare(getName(b), undefined, { sensitivity: 'base' })))
+    })
+    // Only roles that see the whole home's rota get the full resident list —
+    // everyone else's Service User picker is derived from their own (already
+    // service-scoped) shifts below, once those load.
+    if (seesWholeRota) suApi.list(selectedHome, { status: 'live' }).then(suRes => setSuList(suRes.data.data || []))
     loadAll()
     loadSwaps()
   }, [selectedHome, weekStart, dayDate, view])
+
+  // Derives the Service User filter list from the shifts actually visible to
+  // a non-privileged member of staff, instead of fetching the home's full
+  // resident roster (reported: care_staff could browse every service/
+  // resident at the home from this dropdown, not just their own).
+  useEffect(() => {
+    if (seesWholeRota) return
+    const byId = new Map<string, any>()
+    shifts.forEach((s: any) => { if (s.su_id && s.su_name && !byId.has(s.su_id)) byId.set(s.su_id, { id: s.su_id, first_name: s.su_name, last_name: '' }) })
+    setSuList(Array.from(byId.values()).sort((a, b) => getName(a).localeCompare(getName(b), undefined, { sensitivity: 'base' })))
+  }, [shifts, seesWholeRota])
 
   // ── Actions ───────────────────────────────────────────────────────────────
 

@@ -27,6 +27,12 @@ function fromToken(req: Request, field: string): string {
 // any shift regardless of what the UI showed them.
 const MANAGE_ROLES = ['home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin'] as const;
 
+// Roles that see the whole home's rota, unrestricted by date or service —
+// everyone else only sees their own scheduled days, scoped to their own
+// service (see GET / below).
+const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
+  'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor', 'senior_carer'];
+
 // Roles allowed to see/set wage & charge rates and funder billing details — these
 // are financial fields and must stay hidden from ordinary care staff.
 const FINANCIAL_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
@@ -162,18 +168,31 @@ export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12
 router.get('/service-labels', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
     // Deactivated templates (deleted via Manage Services) must not leak their
     // label back into this suggestion list — without the is_active filter, a
     // service someone already deleted (e.g. a duplicate "Kennedy Road") kept
     // reappearing as a selectable "existing service" forever, even though it
     // had zero real shifts and never showed up in Manage Services itself.
-    const rows = await query<{ label: string }>(
-      `SELECT DISTINCT label FROM staff_shifts WHERE home_id = $1 AND label IS NOT NULL AND label != ''
-       UNION
-       SELECT DISTINCT label FROM shift_templates WHERE home_id = $1 AND label IS NOT NULL AND label != '' AND is_active = true
-       ORDER BY label`,
-      [homeId]
-    );
+    //
+    // Same team-only scoping as GET / above: a care_staff member only gets
+    // the service(s) they're actually rostered under, not every service in
+    // the home, so this filter dropdown can't be used to browse services
+    // they have nothing to do with.
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
+    const rows = isPrivileged
+      ? await query<{ label: string }>(
+          `SELECT DISTINCT label FROM staff_shifts WHERE home_id = $1 AND label IS NOT NULL AND label != ''
+           UNION
+           SELECT DISTINCT label FROM shift_templates WHERE home_id = $1 AND label IS NOT NULL AND label != '' AND is_active = true
+           ORDER BY label`,
+          [homeId]
+        )
+      : await query<{ label: string }>(
+          `SELECT DISTINCT label FROM staff_shifts WHERE home_id = $1 AND staff_id = $2 AND label IS NOT NULL AND label != '' ORDER BY label`,
+          [homeId, myStaffId]
+        );
     res.json({ success: true, data: rows.map((r: any) => r.label) } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -264,17 +283,23 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
 
-    const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
-      'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor', 'senior_carer'];
     const isPrivileged = PRIVILEGED_ROLES.includes(role);
 
     // Non-privileged staff (care_staff) only see shifts on days they themselves
     // are scheduled — i.e. who else is working alongside them — not the entire
     // home's rota. senior_carer is privileged here to match the frontend, which
     // already lets them create and edit shifts for the whole team.
+    //
+    // That alone still let them see every OTHER service running at the home on
+    // a day they happen to work too (reported: "I can see all rota and all
+    // service" — RoundSys-style apps only ever show your own team's service),
+    // so also restrict to the service label(s) they themselves are rostered
+    // under in this period. Their own shifts always pass regardless of label,
+    // so a shift with no label set never hides their own row.
     let restrictDates: string[] | null = null;
+    let restrictLabels: string[] | null = null;
     if (!isPrivileged) {
-      let myDatesSql = `SELECT DISTINCT shift_date FROM staff_shifts WHERE home_id = $1 AND staff_id = $2`;
+      let myDatesSql = `SELECT DISTINCT shift_date, label FROM staff_shifts WHERE home_id = $1 AND staff_id = $2`;
       const myDatesParams: unknown[] = [homeId, myStaffId];
       if (date) { myDatesSql += ` AND shift_date = $3`; myDatesParams.push(date); }
       else if (weekStart) {
@@ -285,7 +310,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         myDatesParams.push(from, to);
       }
       const myShifts = await query<any>(myDatesSql, myDatesParams);
-      restrictDates = myShifts.map((r: any) => r.shift_date);
+      restrictDates = Array.from(new Set(myShifts.map((r: any) => r.shift_date)));
+      restrictLabels = Array.from(new Set(myShifts.map((r: any) => r.label).filter(Boolean)));
       if (restrictDates.length === 0) {
         return res.json({ success: true, data: [] } as ApiResponse);
       }
@@ -343,6 +369,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (restrictDates) {
       sql += ` AND sh.shift_date = ANY($${params.length+1})`;
       params.push(restrictDates);
+    }
+    if (restrictLabels) {
+      // Always include their own shifts regardless of label (so an unlabelled
+      // shift of theirs never disappears), plus anyone else's shift under a
+      // service they're themselves rostered on in this period.
+      sql += ` AND (sh.staff_id = $${params.length+1} OR sh.label = ANY($${params.length+2}))`;
+      params.push(myStaffId, restrictLabels);
     }
     sql += ' ORDER BY sh.shift_date, sh.start_time';
 
