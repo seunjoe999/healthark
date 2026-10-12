@@ -137,14 +137,16 @@ export default function StaffAbsence() {
             const isBradford = tab !== 'absences'
             const cols = isBradford
               ? [{ key: 'staff', label: 'Staff' }, { key: 'score', label: 'Bradford score' }, { key: 'spells', label: 'Absence spells' }, { key: 'days', label: 'Total days' }]
-              : [{ key: 'staff', label: 'Staff' }, { key: 'type', label: 'Type' }, { key: 'from', label: 'From' }, { key: 'to', label: 'To' }, { key: 'days', label: 'Days' }, { key: 'reason', label: 'Reason' }, { key: 'notes', label: 'Notes' }]
+              : [{ key: 'staff', label: 'Staff' }, { key: 'type', label: 'Type' }, { key: 'from', label: 'From' }, { key: 'to', label: 'To' }, { key: 'days', label: 'Days' }, { key: 'reason', label: 'Reason' }, { key: 'rtw', label: 'Return to work' }, { key: 'notes', label: 'Notes' }]
             const rows = isBradford
               ? (bradford as any[]).map(b => ({ staff: b.staff_name, score: b.bradford_score, spells: b.spells, days: b.total_days }))
-              : (absences as any[]).map(a => ({ staff: a.staff_name, type: a.absence_type, from: d(a.absence_start), to: a.absence_end ? d(a.absence_end) : 'Ongoing', days: a.days_so_far ?? '', reason: a.reason || '', notes: a.notes || '' }))
+              : (absences as any[]).map(a => ({ staff: a.staff_name, type: a.absence_type, from: d(a.absence_start), to: a.absence_end ? d(a.absence_end) : 'Ongoing', days: a.days_so_far ?? '', reason: a.reason || '', rtw: a.absence_end ? (a.return_to_work_completed ? 'Completed' : 'Outstanding') : 'N/A — ongoing', notes: a.notes || '' }))
             const title = isBradford ? 'Staff Absence — Bradford scores' : 'Staff Absence'
+            const filteredStaffName = staffFilter ? staffList.find(s => s.id === staffFilter) : null
+            const subtitle = !isBradford && filteredStaffName ? `Filtered by staff: ${filteredStaffName.first_name} ${filteredStaffName.last_name}` : undefined
             return (
               <>
-                <button onClick={() => { if (!printTable(title, cols, rows)) toast.error('Allow pop-ups for this site to print') }}
+                <button onClick={() => { if (!printTable(title, cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print') }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors">Print</button>
                 <button onClick={() => downloadCsv(isBradford ? 'bradford-scores' : 'staff-absence', cols, rows)}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors">Download</button>

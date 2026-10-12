@@ -6,6 +6,7 @@ import { format, parseISO, isSameDay, eachDayOfInterval } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
 import { Calendar, Check, X, AlertTriangle, Clock, User, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { printTable, downloadCsv } from '../../utils/exportTable'
 
 const STATUS_COLORS: Record<string, string> = {
   pending:  'bg-amber-50 border-amber-200 text-amber-800',
@@ -119,11 +120,40 @@ export default function LeaveManagement() {
             </h1>
             <p className="text-sm text-slate-500 mt-1">Manage staff leave — requests ordered by submission time (first come, first served)</p>
           </div>
-          {homes.length > 1 && (
-            <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
-              {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-            </select>
-          )}
+          <div className="flex items-center gap-2">
+            {homes.length > 1 && (
+              <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+                {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+              </select>
+            )}
+            <Button size="sm" variant="secondary" onClick={() => {
+              const cols = [
+                { key: 'staff', label: 'Staff' }, { key: 'type', label: 'Type' }, { key: 'from', label: 'From' },
+                { key: 'to', label: 'To' }, { key: 'hours', label: 'Hours' }, { key: 'status', label: 'Status' }, { key: 'requested', label: 'Requested' },
+              ]
+              const rows = filtered.map(l => ({
+                staff: l.staff_name, type: LEAVE_LABELS[l.leave_type] || l.leave_type,
+                from: format(parseISO(l.start_date), 'd MMM yyyy'), to: format(parseISO(l.end_date), 'd MMM yyyy'),
+                hours: l.hours_requested ?? '', status: l.status,
+                requested: format(new Date(l.created_at), 'd MMM yyyy, HH:mm'),
+              }))
+              const subtitle = filter === 'all' ? undefined : `Filtered by status: ${filter}`
+              if (!printTable('Leave Requests', cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print')
+            }}>Print</Button>
+            <Button size="sm" variant="secondary" onClick={() => {
+              const cols = [
+                { key: 'staff', label: 'Staff' }, { key: 'type', label: 'Type' }, { key: 'from', label: 'From' },
+                { key: 'to', label: 'To' }, { key: 'hours', label: 'Hours' }, { key: 'status', label: 'Status' }, { key: 'requested', label: 'Requested' },
+              ]
+              const rows = filtered.map(l => ({
+                staff: l.staff_name, type: LEAVE_LABELS[l.leave_type] || l.leave_type,
+                from: format(parseISO(l.start_date), 'd MMM yyyy'), to: format(parseISO(l.end_date), 'd MMM yyyy'),
+                hours: l.hours_requested ?? '', status: l.status,
+                requested: format(new Date(l.created_at), 'd MMM yyyy, HH:mm'),
+              }))
+              downloadCsv('leave-requests', cols, rows)
+            }}>Download</Button>
+          </div>
         </div>
       </div>
 
