@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import { staffApi, suApi } from '../../api'
-import { format } from 'date-fns'
+import { format, addDays, parseISO } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Spinner } from '../../components/ui'
 import TaskPopup from '../../components/TaskPopup'
@@ -110,8 +110,12 @@ export default function StaffDashboard() {
     const load = async () => {
       try {
         const todayStr = await getServerTodayStr()
+        const weekAheadStr = format(addDays(new Date(todayStr), 6), 'yyyy-MM-dd')
         const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, stockR, medDueR] = await Promise.allSettled([
-          api.get('/shifts', { params: { homeId: user.homeId, date: todayStr } }),
+          // Pull a 7-day window (not just today) so staff see their upcoming
+          // shifts on the dashboard and can't miss a reassignment or a shift
+          // further out that they never scrolled to in the full Rota view.
+          api.get('/shifts', { params: { homeId: user.homeId, from: todayStr, to: weekAheadStr } }),
           api.get('/tasks', { params: { homeId: user.homeId, date: todayStr } }),
           api.get('/staff-hr/leave', { params: { staffId: user.id } }),
           api.get('/notifications'),
@@ -155,7 +159,11 @@ export default function StaffDashboard() {
 
   const pendingTasks = myTasks.filter(t => t.status === 'pending')
   const completedTasks = myTasks.filter(t => t.status === 'completed')
-  const myTodayShift = myShifts[0]
+  const todayStr0 = format(new Date(), 'yyyy-MM-dd')
+  const myTodayShift = myShifts.find((s: any) => String(s.shift_date).substring(0, 10) === todayStr0)
+  const myUpcomingShifts = myShifts
+    .filter((s: any) => String(s.shift_date).substring(0, 10) !== todayStr0)
+    .sort((a: any, b: any) => String(a.shift_date).localeCompare(String(b.shift_date)))
   const pendingLeave = myLeave.filter(l => l.status === 'pending')
 
   if (loading) return <div className="flex items-center justify-center h-full"><Spinner /></div>
@@ -226,6 +234,37 @@ export default function StaffDashboard() {
           <p className="text-slate-500 text-sm">No shift scheduled today</p>
         )}
       </div>
+
+      {/* Upcoming shifts — rest of the week, so a reassignment or a shift
+          further out never gets missed just because it isn't today's. */}
+      {myUpcomingShifts.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card mb-4">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-purple-500" /> Upcoming shifts
+            </h2>
+            <Link to="/rota" className="text-xs text-purple-600 font-semibold flex items-center gap-1">
+              View rota <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div>
+            {myUpcomingShifts.slice(0, 6).map((s: any) => {
+              let dateLabel = String(s.shift_date).substring(0, 10)
+              try { dateLabel = format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM') } catch {}
+              return (
+                <div key={s.id} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0">
+                  <Calendar className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800">{dateLabel}</p>
+                    <p className="text-xs text-slate-400 capitalize mt-0.5">{(s.shift_type || 'Regular').replace('_', ' ')}{s.su_name ? ` · ${s.su_name}` : ''}</p>
+                  </div>
+                  <p className="text-xs text-slate-500 flex-shrink-0">{s.start_time?.substring(0, 5)}–{s.end_time?.substring(0, 5)}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Unread notifications */}
       {notifications.length > 0 && (
