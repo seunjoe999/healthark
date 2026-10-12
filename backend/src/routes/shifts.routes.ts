@@ -1240,24 +1240,17 @@ router.get('/open', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/shifts/advertise — mark unfilled shifts as open and tell care staff.
+// POST /api/shifts/advertise — mark unfilled shifts as open. Staff find these
+// themselves on the rota's "Open shifts" view (GET /open below) — this no
+// longer broadcasts a notification to every care_staff/senior_carer/
+// team_leader in the home, per the owner's request to stop alerting staff
+// about changes that aren't individually theirs.
 router.post('/advertise', requireRole(...MANAGE_ROLES), [body('ids').isArray({ min: 1, max: 500 }), body('ids.*').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const rows = await query<any>(
         `UPDATE staff_shifts SET advertised_at = NOW()
          WHERE id = ANY($1::uuid[]) AND staff_id IS NULL AND status <> 'cancelled' RETURNING id, home_id`, [req.body.ids]);
-      const homes = Array.from(new Set(rows.map((r: any) => r.home_id)));
-      for (const h of homes) {
-        const n = rows.filter((r: any) => r.home_id === h).length;
-        try {
-          await query(
-            `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
-             SELECT s.id, $1, $2, $3, 'shift', '/rota' FROM staff s
-             WHERE s.home_id = $1 AND s.is_active = TRUE AND s.role::text IN ('care_staff', 'senior_carer', 'team_leader')`,
-            [h, `${n} open shift${n !== 1 ? 's' : ''} available`, 'Shifts need cover. Open the rota and tap "Open shifts" to offer to work one.']);
-        } catch { /* notifying is best-effort */ }
-      }
       res.json({ success: true, data: { count: rows.length } } as ApiResponse);
     } catch (err) { next(err); }
   }
