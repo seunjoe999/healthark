@@ -3,7 +3,7 @@ import api from '../../api'
 import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
-import { Shield, UserPlus, Copy, Trash2, UserX, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp, Mail, Send, AlertTriangle } from 'lucide-react'
+import { Shield, UserPlus, Copy, Trash2, UserX, RefreshCw, Eye, EyeOff, Sliders, Briefcase, Check, X, Edit2, Plus, ChevronDown, ChevronUp, Mail, Send, AlertTriangle, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 
@@ -481,7 +481,17 @@ export default function AdminAccounts() {
   const [superAdminOpen, setSuperAdminOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [search, setSearch] = useState('')
   const hasSuperAdmin = admins.some(a => a.role === 'super_admin')
+  // Scrolling through every account to find one got worse as the list grew —
+  // search by name, email or role instead.
+  const filteredAdmins = admins.filter(a => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return `${a.first_name} ${a.last_name}`.toLowerCase().includes(q)
+      || (a.email || '').toLowerCase().includes(q)
+      || (a.role || '').replace(/_/g, ' ').toLowerCase().includes(q)
+  })
 
   const load = async () => {
     setLoading(true)
@@ -620,14 +630,25 @@ export default function AdminAccounts() {
         </div>
       )}
 
+      {/* Search */}
+      {admins.length > 0 && (
+        <div className="relative mb-4 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input className="input pl-9 w-full" placeholder="Search accounts by name, email or role..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      )}
+
       {/* Accounts list */}
       {loading ? (
         <div className="text-center py-12 text-slate-400">Loading accounts...</div>
       ) : admins.length === 0 ? (
         <div className="text-center py-12 text-slate-400">No admin accounts found.</div>
+      ) : filteredAdmins.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">No accounts match "{search}".</div>
       ) : (
         <div className="space-y-3">
-          {admins.map(admin => (
+          {filteredAdmins.map(admin => (
             <div key={admin.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${admin.role === 'group_admin' ? 'bg-slate-900 text-white' : admin.role === 'home_manager' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 {admin.first_name?.[0]}{admin.last_name?.[0]}

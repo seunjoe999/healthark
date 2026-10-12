@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react'
 import api from '../../api'
-import { Bell, Check, X } from 'lucide-react'
+import { Bell, Check, X, Trash2, ListChecks } from 'lucide-react'
 import { format } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 const TYPE_STYLES: Record<string, string> = {
   success: 'bg-emerald-500/10 border-emerald-500/20',
@@ -24,6 +25,9 @@ export default function NotificationsBell({ align = 'right', viewportAnchored = 
   const [notifications, setNotifications] = useState<any[]>([])
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -64,6 +68,46 @@ export default function NotificationsBell({ align = 'right', viewportAnchored = 
     setUnread(0)
   }
 
+  // Everyone's notification list only ever grew — no way to select several
+  // and clear them out, or wipe the whole list, short of clicking into each
+  // one individually in this small panel ("too much, no room to highlight
+  // and bulk delete"). toggleSelect/clearAll/deleteSelected give every
+  // staff member that, not just managers.
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  const deleteSelected = async () => {
+    if (!selectedIds.size) return
+    setDeleting(true)
+    try {
+      await api.delete('/notifications/bulk', { data: { ids: Array.from(selectedIds) } })
+      setNotifications(prev => prev.filter(n => !selectedIds.has(n.id)))
+      setUnread(prev => Math.max(0, prev - notifications.filter(n => selectedIds.has(n.id) && !n.is_read).length))
+      toast.success(`${selectedIds.size} notification${selectedIds.size !== 1 ? 's' : ''} deleted`)
+      setSelectedIds(new Set())
+      setSelectMode(false)
+    } catch { toast.error('Failed to delete') }
+    finally { setDeleting(false) }
+  }
+
+  const clearAll = async () => {
+    if (!notifications.length) return
+    if (!window.confirm(`Delete all ${notifications.length} notifications? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      await api.delete('/notifications/clear-all')
+      setNotifications([])
+      setUnread(0)
+      setSelectedIds(new Set())
+      setSelectMode(false)
+      toast.success('Notifications cleared')
+    } catch { toast.error('Failed to clear notifications') }
+    finally { setDeleting(false) }
+  }
+
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(v => !v)}
@@ -99,9 +143,23 @@ export default function NotificationsBell({ align = 'right', viewportAnchored = 
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(232,177,48,0.15)' }}>
             <h3 className="text-white font-semibold text-sm">Notifications</h3>
             <div className="flex items-center gap-2">
-              {unread > 0 && (
+              {notifications.length > 0 && (
+                <button onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+                  title="Select notifications to delete"
+                  className="text-xs font-medium transition-colors flex items-center gap-1"
+                  style={{ color: selectMode ? '#fff' : '#9ca3af' }}>
+                  <ListChecks className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {unread > 0 && !selectMode && (
                 <button onClick={markAllRead} className="text-xs font-medium transition-colors" style={{ color: '#e8b130' }}>
                   Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && !selectMode && (
+                <button onClick={clearAll} disabled={deleting} title="Delete all notifications"
+                  className="text-slate-400 hover:text-rose-400 p-0.5 disabled:opacity-40">
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white p-0.5">
@@ -109,6 +167,25 @@ export default function NotificationsBell({ align = 'right', viewportAnchored = 
               </button>
             </div>
           </div>
+
+          {/* Bulk action bar — only while actively selecting, so the panel
+              doesn't permanently lose space to controls most opens never use. */}
+          {selectMode && notifications.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 border-b" style={{ borderColor: 'rgba(232,177,48,0.15)' }}>
+              <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" className="w-3.5 h-3.5"
+                  checked={selectedIds.size > 0 && selectedIds.size === notifications.length}
+                  onChange={() => setSelectedIds(selectedIds.size === notifications.length ? new Set() : new Set(notifications.map(n => n.id)))} />
+                All
+              </label>
+              <span className="text-xs text-slate-500">{selectedIds.size} selected</span>
+              <button onClick={deleteSelected} disabled={!selectedIds.size || deleting}
+                className="ml-auto text-xs font-semibold px-2 py-1 rounded-lg disabled:opacity-40"
+                style={{ background: 'rgba(244,63,94,0.15)', color: '#fb7185' }}>
+                Delete
+              </button>
+            </div>
+          )}
 
           {/* Notifications list */}
           <div className="max-h-96 overflow-y-auto">
@@ -119,10 +196,14 @@ export default function NotificationsBell({ align = 'right', viewportAnchored = 
               </div>
             ) : notifications.map((n: any) => (
               <div key={n.id}
-                onClick={() => markRead(n.id, n.link)}
+                onClick={() => selectMode ? toggleSelect(n.id) : markRead(n.id, n.link)}
                 className={`px-4 py-3 border-b border-white/5 cursor-pointer transition-colors hover:bg-white/5 ${!n.is_read ? 'bg-white/5' : ''}`}>
                 <div className="flex items-start gap-3">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${n.is_read ? 'bg-slate-600' : (TYPE_DOT[n.type] || TYPE_DOT.info)}`} />
+                  {selectMode ? (
+                    <input type="checkbox" className="w-3.5 h-3.5 mt-1 flex-shrink-0" checked={selectedIds.has(n.id)} onChange={() => toggleSelect(n.id)} onClick={e => e.stopPropagation()} />
+                  ) : (
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${n.is_read ? 'bg-slate-600' : (TYPE_DOT[n.type] || TYPE_DOT.info)}`} />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium leading-snug ${n.is_read ? 'text-slate-400' : 'text-white'}`}>{n.title}</p>
                     {n.body && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>}

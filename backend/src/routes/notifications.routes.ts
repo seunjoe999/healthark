@@ -67,11 +67,42 @@ router.post('/send', requireRole('home_manager', 'group_admin', 'deputy_manager'
   } catch (err) { next(err); }
 });
 
-// DELETE /api/notifications/:id — delete a notification (admin only)
-router.delete('/:id', requireRole('home_manager', 'group_admin'), param('id').isUUID(), validateRequest,
+// DELETE /api/notifications/clear-all — delete every notification in the
+// caller's own inbox. Must be registered before /:id below (same ordering
+// reason as /read-all above) or Express tries to match "clear-all" as a
+// UUID :id first. Staff had no way to clear their own notification list —
+// the only delete route that existed required home_manager/group_admin and
+// didn't even check the notification belonged to the caller.
+router.delete('/clear-all', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.staff.staffId;
+    if (!staffId) { res.json({ success: true, data: { count: 0 } } as ApiResponse); return; }
+    const rows = await query<any>('DELETE FROM notifications WHERE recipient_id = $1 RETURNING id', [staffId]);
+    res.json({ success: true, data: { count: rows.length } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/notifications/bulk — delete a chosen set of the caller's own
+// notifications (the "highlight several, delete" flow).
+router.delete('/bulk', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.staff.staffId;
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((id: any) => typeof id === 'string') : [];
+    if (!staffId || !ids.length) { res.json({ success: true, data: { count: 0 } } as ApiResponse); return; }
+    const rows = await query<any>('DELETE FROM notifications WHERE recipient_id = $1 AND id = ANY($2) RETURNING id', [staffId, ids]);
+    res.json({ success: true, data: { count: rows.length } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/notifications/:id — delete one of the caller's own
+// notifications. Any authenticated staff member may delete their own
+// (it's their own inbox, not an admin-gated resource); scoped to
+// recipient_id so nobody can delete someone else's by guessing an id.
+router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('DELETE FROM notifications WHERE id = $1', [req.params.id]);
+      const staffId = req.staff.staffId;
+      await query('DELETE FROM notifications WHERE id = $1 AND recipient_id = $2', [req.params.id, staffId]);
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }
   }
