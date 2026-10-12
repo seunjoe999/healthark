@@ -208,8 +208,13 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
       // Notify whoever the task is actually visible to — a manager setting a
       // task up expects staff to be alerted, not to have to stumble on it in
       // the day's list. Mirrors GET /'s own visibility rule: a specific
-      // assignee only, otherwise anyone matching the role/team target, or
-      // every active staff member in the home for a general task.
+      // assignee only, otherwise anyone matching the role/team target.
+      //
+      // A general task with no assignee/role/team used to notify every
+      // active staff member in the home, including plain care_staff — the
+      // owner asked for care staff to stop getting an alert for every change
+      // that isn't actually about them (a general task still shows up in
+      // their own task list via GET /, this just stops the proactive ping).
       try {
         let recipientRows: any[];
         if (assignedStaffId) {
@@ -222,7 +227,7 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
           );
         } else {
           recipientRows = await query<any>(
-            `SELECT id FROM staff WHERE home_id = $1 AND status != 'terminated' AND id != $2`,
+            `SELECT id FROM staff WHERE home_id = $1 AND status != 'terminated' AND id != $2 AND role != 'care_staff'`,
             [homeId, createdBy]
           );
         }

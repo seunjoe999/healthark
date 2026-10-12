@@ -52,6 +52,30 @@ function stripFinancials<T extends Record<string, any>>(row: T, role: string): T
 const SHIFT_STATUSES = ['unfilled', 'filled', 'cancelled', 'on_hold', 'completed'];
 const SHIFT_RELATIONS = ['shadow', 'double_up'];
 
+// Resolves the set of staff IDs that belong to the viewer's own team, so
+// their rota and the "who's on leave" list only ever shows their team, not
+// the whole home. A team leader's team is resolved via teams.leader_staff_id
+// first, falling back to their own staff.team_id if they're a member rather
+// than leader. Returns null when no team is configured for them (an
+// unconfigured team — just the leader, nobody added yet — falls back the
+// same way, so a home not yet using the Teams feature keeps the existing
+// per-service rota behaviour instead of showing an empty rota).
+async function resolveTeamStaffIds(role: string, myStaffId: string): Promise<string[] | null> {
+  let teamId: string | undefined;
+  if (role === 'team_leader') {
+    const teamRows = await query<any>('SELECT id FROM teams WHERE leader_staff_id = $1 LIMIT 1', [myStaffId]);
+    teamId = teamRows[0]?.id;
+  }
+  if (!teamId) {
+    const own = await query<any>('SELECT team_id FROM staff WHERE id = $1', [myStaffId]);
+    teamId = own[0]?.team_id || undefined;
+  }
+  if (!teamId) return null;
+  const members = await query<any>('SELECT id FROM staff WHERE team_id = $1', [teamId]);
+  if (members.length <= 1) return null;
+  return members.map((m: any) => m.id);
+}
+
 export async function generateFromTemplate(tmpl: any, homeId: string, weeks = 12): Promise<number> {
   // Bulk-generate instead of one DB round-trip per calendar day — with the
   // "ongoing" default (52 weeks, daily) the old day-by-day loop meant up to
@@ -317,26 +341,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       }
     }
 
-    // Team leaders only see shifts belonging to their own team's staff (plus
-    // still-unfilled shifts, so they can help fill them) — not the whole
-    // home's rota. Team is resolved via teams.leader_staff_id first, falling
-    // back to their own staff.team_id if they're a member rather than leader.
-    let teamStaffIds: string[] | null = null;
-    if (role === 'team_leader') {
-      const teamRows = await query<any>('SELECT id FROM teams WHERE leader_staff_id = $1 LIMIT 1', [myStaffId]);
-      let teamId = teamRows[0]?.id as string | undefined;
-      if (!teamId) {
-        const own = await query<any>('SELECT team_id FROM staff WHERE id = $1', [myStaffId]);
-        teamId = own[0]?.team_id || undefined;
-      }
-      if (teamId) {
-        const members = await query<any>('SELECT id FROM staff WHERE team_id = $1', [teamId]);
-        // An unconfigured team (just the leader, nobody added yet) would
-        // otherwise restrict the rota down to only the leader's own shifts —
-        // fall back to the whole home's rota until the team has real members.
-        if (members.length > 1) teamStaffIds = members.map((m: any) => m.id);
-      }
-    }
+    // Team leaders and ordinary (non-privileged) staff only see shifts
+    // belonging to their own team's staff (plus still-unfilled shifts, so
+    // team leaders can help fill them) — not the whole home's rota. Team is
+    // resolved via teams.leader_staff_id first, falling back to their own
+    // staff.team_id if they're a member rather than leader.
+    const teamStaffIds = (role === 'team_leader' || !isPrivileged) ? await resolveTeamStaffIds(role, myStaffId) : null;
 
     let sql = `SELECT sh.*,
       s.first_name || ' ' || s.last_name as staff_name, s.role as staff_role, s.photo_url as staff_photo,
@@ -474,6 +484,9 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const weekStart = req.query.weekStart as string;
+    const role = fromToken(req, 'role');
+    const myStaffId = fromToken(req, 'staffId');
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
     let sql = `SELECT sl.*, s.first_name || ' ' || s.last_name as staff_name
                FROM staff_leave sl JOIN staff s ON s.id = sl.staff_id
                WHERE sl.home_id = $1`;
@@ -481,6 +494,15 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
     if (weekStart) {
       sql += ` AND sl.start_date < $2::date + interval '7 days' AND sl.end_date >= $2::date`;
       params.push(weekStart);
+    }
+    // Ordinary staff should only see people on leave within their own team,
+    // not the whole home's leave calendar — same team resolution as the
+    // rota itself. No team configured for them falls back to just their own
+    // leave record, never the whole home's.
+    if (!isPrivileged) {
+      const teamStaffIds = await resolveTeamStaffIds(role, myStaffId);
+      sql += ` AND sl.staff_id = ANY($${params.length + 1})`;
+      params.push(teamStaffIds && teamStaffIds.length ? teamStaffIds : [myStaffId]);
     }
     sql += ' ORDER BY sl.start_date, s.last_name';
     const rows = await query(sql, params);
@@ -607,6 +629,16 @@ router.delete('/swaps/:id', async (req: Request, res: Response, next: NextFuncti
       throw new AppError('This swap request has already been resolved', 400);
     }
     await query('DELETE FROM shift_swap_requests WHERE id = $1', [req.params.id]);
+    // Only tell the requester if someone else (a manager) cancelled it for
+    // them — cancelling your own request needs no notification to yourself.
+    if (isManager && swap.requesting_staff_id !== staffId) {
+      const body = 'Your shift swap request has been cancelled.';
+      await query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+        [swap.requesting_staff_id, swap.home_id, 'Shift swap cancelled', body]
+      ).catch(() => {});
+      sendPushToStaff(swap.requesting_staff_id, { title: 'Shift swap cancelled', body, url: '/rota' }).catch(() => {});
+    }
     res.json({ success: true } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -646,6 +678,23 @@ router.put('/swaps/:id', requireRole(...MANAGE_ROLES), async (req: Request, res:
         ).catch(() => {});
       }
     }
+    // Tell the staff involved the outcome — this used to only update the
+    // record, with nobody actually told their swap request had been decided.
+    const decided = rows[0] as any;
+    if (decided) {
+      const recipients = new Set<string>([mine[0].requesting_staff_id, mine[0].target_staff_id].filter(Boolean));
+      const title = status === 'approved' ? 'Shift swap approved' : 'Shift swap declined';
+      const body = status === 'approved'
+        ? 'Your shift swap request has been approved.'
+        : (responseNotes ? `Your shift swap request has been declined: ${responseNotes}` : 'Your shift swap request has been declined.');
+      for (const recipientId of recipients) {
+        await query(
+          `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+          [recipientId, decided.home_id, title, body]
+        ).catch(() => {});
+        sendPushToStaff(recipientId, { title, body, url: '/rota' }).catch(() => {});
+      }
+    }
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -677,6 +726,15 @@ router.put('/swaps/:id/agree', async (req: Request, res: Response, next: NextFun
           [m.id, existing[0].home_id, 'Shift swap agreed', 'Both staff members have agreed to a shift swap — please review and approve.']
         ).catch(() => {});
       }
+    } else if (existing[0].requesting_staff_id) {
+      // Declined at the colleague stage — the requester never got told their
+      // swap had already been turned down before it even reached a manager.
+      const body = notes ? `Your shift swap request has been declined: ${notes}` : 'Your shift swap request has been declined.';
+      await query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link) VALUES ($1,$2,$3,$4,'shift','/rota')`,
+        [existing[0].requesting_staff_id, existing[0].home_id, 'Shift swap declined', body]
+      ).catch(() => {});
+      sendPushToStaff(existing[0].requesting_staff_id, { title: 'Shift swap declined', body, url: '/rota' }).catch(() => {});
     }
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
