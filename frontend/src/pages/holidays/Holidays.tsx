@@ -6,7 +6,8 @@ import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDa
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card } from '../../components/ui'
 import { CalendarDays, Plus, Check, X, ChevronLeft, ChevronRight, Clock, ListFilter, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { printTable, downloadCsv } from '../../utils/exportTable'
+import { downloadCsv } from '../../utils/exportTable'
+import { printLetterheadTable } from '../../utils/letterheadPrint'
 
 const LEAVE_TYPES = [
   { value: 'annual', label: 'Annual leave' },
@@ -208,7 +209,7 @@ export default function Holidays() {
             }))
             return (
               <>
-                <Button size="sm" variant="secondary" onClick={() => { if (!printTable('Leave & Holidays', cols, rows)) toast.error('Allow pop-ups for this site to print') }}>Print</Button>
+                <Button size="sm" variant="secondary" onClick={() => { if (!printLetterheadTable('Leave & Holidays', cols, rows)) toast.error('Allow pop-ups for this site to print') }}>Print</Button>
                 <Button size="sm" variant="secondary" onClick={() => downloadCsv('leave-and-holidays', cols, rows)}>Download</Button>
               </>
             )

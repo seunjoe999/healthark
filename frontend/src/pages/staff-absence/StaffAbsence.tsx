@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { printTable, downloadCsv } from '../../utils/exportTable';
+import { downloadCsv } from '../../utils/exportTable';
+import { printLetterheadTable } from '../../utils/letterheadPrint';
 
 interface Absence {
   id: number;
@@ -146,7 +147,7 @@ export default function StaffAbsence() {
             const subtitle = !isBradford && filteredStaffName ? `Filtered by staff: ${filteredStaffName.first_name} ${filteredStaffName.last_name}` : undefined
             return (
               <>
-                <button onClick={() => { if (!printTable(title, cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print') }}
+                <button onClick={() => { if (!printLetterheadTable(title, cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print') }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors">Print</button>
                 <button onClick={() => downloadCsv(isBradford ? 'bradford-scores' : 'staff-absence', cols, rows)}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors">Download</button>

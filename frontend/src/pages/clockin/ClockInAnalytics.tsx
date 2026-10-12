@@ -4,8 +4,9 @@ import { homesApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, startOfWeek, endOfWeek, addDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState } from '../../components/ui'
-import { Clock, Users, AlertCircle, BarChart2, TrendingUp } from 'lucide-react'
+import { Clock, Users, AlertCircle, BarChart2, TrendingUp, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { printLetterheadTable } from '../../utils/letterheadPrint'
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -178,6 +179,27 @@ export default function ClockInAnalytics() {
 
   const homeName = homes.find(h => h.id === selectedHome)?.name || ''
 
+  const printAnalytics = () => {
+    if (!data) return
+    const cols = [
+      { key: 'staff', label: 'Staff member' }, { key: 'clockIns', label: 'Clock-ins' },
+      { key: 'lastIn', label: 'Last clock-in' }, { key: 'lastOut', label: 'Last clock-out' }, { key: 'status', label: 'Status' },
+    ]
+    const rows = (data.byStaff || []).map((row: any) => {
+      const isActiveToday = row.last_event ? new Date(row.last_event).toDateString() === new Date().toDateString() : false
+      const lastClockOut = data.clockOuts?.find((c: any) => c.staff_id === row.staff_id)
+      const lastClockIn = row.currently_clocked_in ? row.last_event : null
+      return {
+        staff: row.staff_name, clockIns: parseInt(row.clock_ins || '0'),
+        lastIn: lastClockIn ? formatTime(lastClockIn) : '—',
+        lastOut: lastClockOut?.event_time ? formatTime(lastClockOut.event_time) : '—',
+        status: row.currently_clocked_in ? 'Clocked in now' : isActiveToday ? 'Active today' : 'Not today',
+      }
+    })
+    const subtitle = `${homeName ? homeName + ' · ' : ''}${format(parseISO(startDate), 'd MMM yyyy')} – ${format(parseISO(endDate), 'd MMM yyyy')}`
+    if (!printLetterheadTable('Clock-in Analytics — Staff Breakdown', cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print')
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -218,6 +240,14 @@ export default function ClockInAnalytics() {
           >
             This week
           </button>
+          {data && (
+            <button
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 self-end"
+              onClick={printAnalytics}
+            >
+              <Printer className="w-3.5 h-3.5" /> Print
+            </button>
+          )}
         </div>
       </div>
 

@@ -39,6 +39,12 @@ export const LETTERHEAD_PRINT_CSS = `
   table.fields td{border:1px solid #999;padding:6px 10px;font-size:11px}
   table.fields tr.on td{font-weight:700}
 
+  table.list{width:100%;border-collapse:collapse;margin:10px 0 16px;font-family:Arial,sans-serif;font-size:10.5px;page-break-inside:auto}
+  table.list th{background:#132a4f;color:#fff;text-align:left;padding:7px 9px;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  table.list td{border:1px solid #ccc;padding:6px 9px;vertical-align:top;font-size:10.5px}
+  table.list tr:nth-child(even) td{background:#f8fafc}
+  table.list tr{page-break-inside:avoid}
+
   .risk-box{border:1.5px solid #132a4f;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;page-break-inside:avoid}
   .risk-box .rb-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#444}
   .risk-box .rb-value{font-size:14px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
@@ -125,6 +131,46 @@ export function buildLetterheadPage(opts: {
     </div>
   </div>
   `
+}
+
+// Branded letterhead version of a plain list-table print — same header/
+// footer as a care-plan document, so staff get one consistent "official
+// document" look across clinical records AND admin lists (leave, absence,
+// clock-in, etc.) instead of the plain black-and-white table style.
+export function printLetterheadTable(
+  title: string,
+  columns: { key: string; label: string }[],
+  rows: Record<string, any>[],
+  subtitle?: string
+): boolean {
+  const head = columns.map(c => `<th>${esc(c.label)}</th>`).join('')
+  const body = rows.map(r => `<tr>${columns.map(c => `<td>${nl(r[c.key])}</td>`).join('')}</tr>`).join('')
+  const html = `
+  <div class="page">
+    <div class="letterhead">
+      <div>
+        <div class="org-name">Comprehensive Care Ltd</div>
+        <div class="org-addr">Ivy Business Centre, Office 3-13 Crown Street, Failsworth, Manchester, M35 9BG</div>
+      </div>
+      <div class="doc-meta">
+        <div>Printed: <strong>${fmtDate(new Date().toISOString())}</strong></div>
+      </div>
+    </div>
+
+    <div class="doc-title">${esc(title)}</div>
+    <div class="doc-subtitle">${subtitle ? esc(subtitle) + ' · ' : ''}${rows.length} record${rows.length !== 1 ? 's' : ''}</div>
+
+    <table class="list">
+      <thead><tr>${head}</tr></thead>
+      <tbody>${body || `<tr><td colspan="${columns.length}">No records</td></tr>`}</tbody>
+    </table>
+
+    <div class="footer">
+      <span class="confid">CONFIDENTIAL — Internal record</span>
+      <span>Printed ${fmtDate(new Date().toISOString())}</span>
+    </div>
+  </div>`
+  return openLetterheadPrint(title, html)
 }
 
 export function openLetterheadPrint(title: string, bodyHtml: string) {

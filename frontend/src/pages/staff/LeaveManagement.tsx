@@ -6,7 +6,8 @@ import { format, parseISO, isSameDay, eachDayOfInterval } from 'date-fns'
 import { Spinner, EmptyState, Button } from '../../components/ui'
 import { Calendar, Check, X, AlertTriangle, Clock, User, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { printTable, downloadCsv } from '../../utils/exportTable'
+import { downloadCsv } from '../../utils/exportTable'
+import { printLetterheadTable } from '../../utils/letterheadPrint'
 
 const STATUS_COLORS: Record<string, string> = {
   pending:  'bg-amber-50 border-amber-200 text-amber-800',
@@ -138,7 +139,7 @@ export default function LeaveManagement() {
                 requested: format(new Date(l.created_at), 'd MMM yyyy, HH:mm'),
               }))
               const subtitle = filter === 'all' ? undefined : `Filtered by status: ${filter}`
-              if (!printTable('Leave Requests', cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print')
+              if (!printLetterheadTable('Leave Requests', cols, rows, subtitle)) toast.error('Allow pop-ups for this site to print')
             }}>Print</Button>
             <Button size="sm" variant="secondary" onClick={() => {
               const cols = [
