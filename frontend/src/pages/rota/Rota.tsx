@@ -1405,17 +1405,18 @@ export default function Rota() {
                     )
                   })()}
 
-                  {/* Leave blocks — stacked as a compact strip at the top of the
-                      column instead of each spanning the whole day: with more
-                      than one person off the same day (common), full-height
+                  {/* Leave blocks — solid orange, like RoundSys, so a day off reads
+                      at a glance instead of being an easy-to-miss red sliver.
+                      Still stacked rather than each spanning the whole day: with
+                      more than one person off the same day (common), full-height
                       blocks all sat at the exact same position and only the
                       last one in the DOM was ever visible. */}
                   {dayLeaves.map((l: any, i: number) => (
                     <div key={l.id}
-                      className="absolute left-0.5 right-0.5 rounded border bg-rose-50 border-rose-200 px-1.5 overflow-hidden flex items-center gap-1"
-                      style={{ top: i * 20, height: 18 }}>
-                      <p className="text-[10px] font-bold text-rose-700 truncate">{l.staff_name?.split(' ')[0]}</p>
-                      <p className="text-[9px] text-rose-500 truncate">{LEAVE_LABELS[l.leave_type] || l.leave_type}</p>
+                      className="absolute left-0.5 right-0.5 rounded-lg px-2 overflow-hidden flex flex-col justify-center shadow-sm"
+                      style={{ top: i * 38, height: 34, backgroundColor: '#f59e0b' }}>
+                      <p className="text-[11px] font-extrabold text-white truncate leading-tight">{l.staff_name} — On Holiday</p>
+                      <p className="text-[9px] text-white/90 truncate leading-tight">{LEAVE_LABELS[l.leave_type] || l.leave_type}</p>
                     </div>
                   ))}
 
@@ -1555,7 +1556,7 @@ export default function Rota() {
           <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS.missed.dot }} />Missed clock-in
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#fb7185' }} />Leave
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#f59e0b' }} />Leave
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#fcd34d' }} />Standby
@@ -3407,13 +3408,13 @@ function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assig
               return (
               <button key={s.id} type="button" disabled={assigning} onClick={() => onAssign(s.id)}
                 title={onLeave ? `On ${LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type} — ${onLeave.start_date} to ${onLeave.end_date}` : undefined}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 border-b last:border-0 text-left transition-colors disabled:opacity-50 ${onLeave ? 'bg-rose-50 border-rose-100 hover:bg-rose-100' : 'border-slate-50 hover:bg-slate-50'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${onLeave ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-slate-50 last:border-0 text-left transition-colors disabled:opacity-50 hover:bg-slate-50">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-slate-100 text-slate-600">
                   {getName(s).split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${onLeave ? 'text-rose-700' : 'text-slate-800'}`}>{getName(s)}</p>
-                  <p className={`text-xs capitalize ${onLeave ? 'text-rose-500 font-semibold' : 'text-slate-400'}`}>
+                  <p className="text-sm font-medium truncate text-slate-800">{getName(s)}</p>
+                  <p className={`text-xs capitalize ${onLeave ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
                     {onLeave ? `On leave — ${LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type}` : (s.role || '').replace(/_/g, ' ')}
                   </p>
                 </div>
@@ -3615,14 +3616,14 @@ function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, hom
               // Approved leave any time inside the dates this allocation would cover.
               const onLeave = leaveOverlapsRange(leaves, s.id, startDate, previewEndDate)
               return (
-                <label key={s.id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm ${onLeave ? 'bg-rose-50 hover:bg-rose-100' : 'hover:bg-slate-50'}`}>
+                <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm hover:bg-slate-50">
                   <input type="checkbox" checked={staffIds.includes(s.id)} onChange={() => toggleStaffId(s.id)} className="rounded" />
                   {order !== -1 && (
                     <span className="flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center">{order + 1}</span>
                   )}
-                  <span className={onLeave ? 'text-rose-700 font-semibold' : 'text-slate-700'}>{getName(s)}</span>
+                  <span className="text-slate-700">{getName(s)}</span>
                   {onLeave ? (
-                    <span className="text-xs text-rose-500 font-semibold whitespace-nowrap"
+                    <span className="text-xs text-amber-600 font-semibold whitespace-nowrap"
                       title={`${onLeave.start_date} to ${onLeave.end_date}`}>
                       On leave — {LEAVE_LABELS[onLeave.leave_type] || onLeave.leave_type}
                     </span>
