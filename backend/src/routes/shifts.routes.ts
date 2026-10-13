@@ -14,6 +14,14 @@ const router = Router();
 
 router.use(authenticate);
 
+// GET / below reads staff_clock_events.shift_id (added by clockin.routes.ts)
+// directly — ensure it exists here too, so this route never 500s on a
+// fresh deploy before any clock-in request has run that migration.
+router.use(async (_req, _res, next) => {
+  try { await query(`ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS shift_id UUID`, []); } catch (_) {}
+  next();
+});
+
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return d?.[field] || ''; }
@@ -353,25 +361,26 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       su.first_name || ' ' || su.last_name as su_name,
       (SELECT string_agg(su2.first_name || ' ' || su2.last_name, ', ' ORDER BY su2.first_name)
        FROM service_users su2 WHERE su2.id = ANY(COALESCE(sh.su_ids, ARRAY[sh.su_id]))) as su_names,
-      -- Scoped to THIS shift's own time window (with a generous early/late
-      -- buffer), not just "same calendar date" — a staff member working two
-      -- shifts on the same date (e.g. a short day shift, then a night shift)
-      -- used to have both shifts show the SAME clock-in/out time, because
-      -- matching only on the date pulled in whichever shift's events came
-      -- first. That made a second shift look like it was already clocked
-      -- into before the staff member had even started it.
+      -- Each clock event now records which specific shift it belongs to
+      -- (shift_id) — matched directly here, so two shifts on the same date
+      -- (e.g. a short day shift, then a night shift) each show their own
+      -- clock-in/out time instead of one bleeding into the other. Events
+      -- from before shift_id existed fall back to the same time-window
+      -- match used previously, so old history still displays something.
       (SELECT MIN(ce.event_time) FROM staff_clock_events ce
        WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in'
-         AND ce.event_time BETWEEN (sh.shift_date + sh.start_time - interval '2 hours')
-                                AND (sh.shift_date + sh.end_time
-                                     + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
-                                     + interval '4 hours')) as clock_in_time,
+         AND (ce.shift_id = sh.id OR (ce.shift_id IS NULL
+               AND ce.event_time BETWEEN (sh.shift_date + sh.start_time - interval '2 hours')
+                                      AND (sh.shift_date + sh.end_time
+                                           + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
+                                           + interval '4 hours')))) as clock_in_time,
       (SELECT MAX(ce.event_time) FROM staff_clock_events ce
        WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_out'
-         AND ce.event_time BETWEEN (sh.shift_date + sh.start_time - interval '2 hours')
-                                AND (sh.shift_date + sh.end_time
-                                     + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
-                                     + interval '4 hours')) as clock_out_time
+         AND (ce.shift_id = sh.id OR (ce.shift_id IS NULL
+               AND ce.event_time BETWEEN (sh.shift_date + sh.start_time - interval '2 hours')
+                                      AND (sh.shift_date + sh.end_time
+                                           + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
+                                           + interval '4 hours')))) as clock_out_time
       FROM staff_shifts sh
       LEFT JOIN staff s ON s.id = sh.staff_id
       LEFT JOIN service_users su ON su.id = sh.su_id

@@ -16,6 +16,19 @@ import { createAlert } from '../services/alerts.service';
 
 const router = Router();
 
+// Each clock event now records WHICH of today's rota shifts it belongs to.
+// Without this, a staff member with two shifts on the same date (a short
+// day shift and a night shift) had a single global "am I clocked in"
+// state — one clock-in silently covered both shifts, there was no way to
+// tell which shift a clock-out was closing, and the clock-out gate's
+// "pending tasks/medication due" checks were scoped to the combined window
+// of ALL of today's shifts instead of just the one being closed, which
+// could block closing shift 1 over something only due during shift 2.
+async function ensureClockEventShiftColumn() {
+  await query(`ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS shift_id UUID`, []);
+}
+router.use(async (_req, _res, next) => { try { await ensureClockEventShiftColumn(); } catch (_) {} next(); });
+
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
@@ -36,6 +49,29 @@ function hhmmToMins(t?: string | null): number | null {
   const [h, m] = t.slice(0, 5).split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
+}
+
+// Which of today's rota shifts a clock event should be tied to right now:
+// whichever shift is actually in progress, else the next one still to
+// come today, else (everything already ended) the last one of the day.
+// Mirrors the same "which shift is this really about" logic used on the
+// staff dashboard, so the clock-in flow and the dashboard never disagree
+// about which shift "now" belongs to.
+function pickShiftForNow(shifts: any[], nowMins: number): any | null {
+  const windows = shifts
+    .map(sh => {
+      const s = hhmmToMins(sh.start_time);
+      let e = hhmmToMins(sh.end_time);
+      if (s != null && e != null && e <= s) e += 1440; // overnight shift
+      return { sh, s, e };
+    })
+    .filter((w): w is { sh: any; s: number; e: number } => w.s != null && w.e != null);
+  if (!windows.length) return shifts[0] || null;
+  const inProgress = windows.find(w => nowMins >= w.s && nowMins <= w.e);
+  if (inProgress) return inProgress.sh;
+  const upcoming = windows.filter(w => w.s > nowMins).sort((a, b) => a.s - b.s)[0];
+  if (upcoming) return upcoming.sh;
+  return windows.sort((a, b) => b.s - a.s)[0].sh;
 }
 
 function geocodePostcode(postcode: string): Promise<{ latitude: number; longitude: number } | null> {
@@ -161,9 +197,14 @@ router.post('/event', authenticate,
       // why this class of bug matters most right around UK midnight during BST.
       const todayStr = ukDateStr();
       const rotaShifts = await query<any>(
-        `SELECT su_id, su_ids, label, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        `SELECT id, su_id, su_ids, label, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
         [staffId, homeId, todayStr]
       );
+      // Which shift "now" actually belongs to — used below to tie this clock
+      // event to a specific shift, and to require closing a DIFFERENT shift's
+      // still-open clock-in before this one can start.
+      const nowMins = hhmmToMins(ukTimeHHMM())!;
+      const targetShift = pickShiftForNow(rotaShifts, nowMins);
       for (const sh of rotaShifts) {
         if (sh.su_id) await addServiceUserCheckPoint(sh.su_id);
         if (Array.isArray(sh.su_ids)) for (const id of sh.su_ids) await addServiceUserCheckPoint(id);
@@ -246,7 +287,7 @@ router.post('/event', authenticate,
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
       const lastEventRows = await query<any>(
-        `SELECT id, event_type, event_time, home_id, auto_closed FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        `SELECT id, event_type, event_time, home_id, auto_closed, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
         [staffId]
       );
       let isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
@@ -306,14 +347,32 @@ router.post('/event', authenticate,
       if (eventType !== 'clock_out' && isClockedIn) {
         const openedAt = new Date(lastEventRows[0].event_time);
         const hoursOpen = (Date.now() - openedAt.getTime()) / 3600000;
+        const openShiftId: string | null = lastEventRows[0].shift_id || null;
+        // Known to be a DIFFERENT shift from the one "now" belongs to (both
+        // sides known, and they don't match) — e.g. still clocked in to an
+        // earlier day shift while trying to clock in to tonight's night
+        // shift. These must never be silently merged: the earlier shift has
+        // to be explicitly clocked out of first, so each shift gets its own
+        // clock-in and clock-out, not one clock-in covering both.
+        const knownDifferentShift = !!openShiftId && !!targetShift?.id && openShiftId !== targetShift.id;
+        if (knownDifferentShift) {
+          const openShift = rotaShifts.find((s: any) => s.id === openShiftId);
+          const at = openedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+          const openShiftLabel = openShift ? ` (${String(openShift.start_time).slice(0, 5)}–${String(openShift.end_time).slice(0, 5)})` : '';
+          return res.status(400).json({
+            success: false, reason: 'clock_out_required_first',
+            error: `You're still clocked in to your earlier shift${openShiftLabel} — clocked in at ${at}. Please clock out of that shift before clocking in to this one.`,
+          });
+        }
         if (hoursOpen >= 3) {
-          // Still "clocked in" from an earlier shift today that was never clocked
-          // out. Close that one (marked automatic) and let this clock-in through —
-          // they are standing at a new shift and must not be turned away.
+          // Forgot to clock out of the SAME shift (or shift_id isn't known
+          // for this older session) and it's been a while — close it
+          // (marked automatic) and let this clock-in through rather than
+          // trapping them.
           await query(
-            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed)
-             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE)`,
-            [staffId, lastEventRows[0].home_id || homeId]);
+            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed, shift_id)
+             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE, $3)`,
+            [staffId, lastEventRows[0].home_id || homeId, openShiftId]);
           isClockedIn = false;
         } else {
           // A second tap shortly after a successful clock-in: tell them it worked.
@@ -356,24 +415,34 @@ router.post('/event', authenticate,
       if (eventType === 'clock_out') {
         const nowHHMM = ukTimeHHMM();
 
-        // The residents tied to today's rota shift(s) for this staff member — reused from
-        // the geofence check-point lookup above. When known, this scopes the clock-out
-        // medication check to just those residents (see getDueTodayTasks), so a morning
-        // shift worker isn't blocked over an evening dose for a resident on their general
-        // caseload they weren't rostered with today.
+        // Scope every check below to the SPECIFIC shift this clock-out is
+        // closing (the one the open clock-in recorded), not every shift the
+        // staff member has today — otherwise closing shift 1 could be
+        // blocked by a task or medication that's only due during shift 2.
+        // Falls back to every shift today when the closing shift isn't
+        // known (an older clock-in from before shift_id existed), same
+        // fail-open behaviour as before for that edge case.
+        const closingShiftId: string | null = lastEventRows[0]?.shift_id || null;
+        const closingShift = closingShiftId ? rotaShifts.find((s: any) => s.id === closingShiftId) : null;
+        const shiftsForClose = closingShift ? [closingShift] : rotaShifts;
+
+        // The residents tied to the shift being closed — reused from the geofence
+        // check-point lookup above. When known, this scopes the clock-out medication
+        // check to just those residents (see getDueTodayTasks), so a morning shift
+        // worker isn't blocked over an evening dose for a resident on their general
+        // caseload (or on a later shift) they weren't rostered with on this shift.
         const todayShiftSuIds = Array.from(new Set(
-          rotaShifts.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+          shiftsForClose.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
         ));
 
         // Cap the "due by" cutoff at this shift's own end time (not the live clock) — a
         // dose that only looks overdue because staff forgot to clock out after their
         // shift genuinely ended belongs to whoever is on shift when it actually comes
-        // due, not to this shift. Combines every shift row for today in case there's
-        // more than one; handles an overnight shift (end time before start time) by
-        // treating its end as the following day.
+        // due, not to this shift. Handles an overnight shift (end time before start
+        // time) by treating its end as the following day.
         let shiftStartMins: number | null = null;
         let shiftEndMins: number | null = null;
-        for (const sh of rotaShifts) {
+        for (const sh of shiftsForClose) {
           const s = hhmmToMins(sh.start_time);
           let e = hhmmToMins(sh.end_time);
           if (s != null && e != null) {
@@ -403,7 +472,7 @@ router.post('/event', authenticate,
         // internal-error case: with no rota record to scope against, don't block.
         let overdue: any[] = [];
         try {
-          if (rotaShifts.length === 0) throw new Error('no rota shift on record for today — nothing reliable to scope the check against');
+          if (shiftsForClose.length === 0) throw new Error('no rota shift on record for today — nothing reliable to scope the check against');
           const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
           overdue = dueTasks.filter(t => {
             if (t.status !== 'pending') return false;
@@ -466,7 +535,7 @@ router.post('/event', authenticate,
         // this staff member would actually see on their own task list count
         // (see getMyPendingTasksToday), so this never blocks someone over a
         // task they were never shown.
-        const pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole);
+        const pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole, closingShiftId || undefined);
         if (pendingTasks.length > 0 && overrideReason) {
           overridden.push(`${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} not completed (${pendingTasks.slice(0, 3).map(t => t.title).join(', ')}${pendingTasks.length > 3 ? ', …' : ''})`);
         } else if (pendingTasks.length > 0) {
@@ -481,11 +550,18 @@ router.post('/event', authenticate,
 
       const punctuality = 'on_time';
 
+      // A clock-out records the same shift_id as the clock-in it's closing
+      // (so the pair stays matched); a clock-in records whichever shift
+      // "now" belongs to.
+      const eventShiftId: string | null = eventType === 'clock_out'
+        ? (lastEventRows[0]?.shift_id || null)
+        : (targetShift?.id || null);
+
       const rows = await query(
         `INSERT INTO staff_clock_events
-           (staff_id, home_id, event_type, event_time, geofence_passed, distance_metres, punctuality)
-         VALUES ($1,$2,$3,NOW(),$4,$5,$6) RETURNING *`,
-        [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality]
+           (staff_id, home_id, event_type, event_time, geofence_passed, distance_metres, punctuality, shift_id)
+         VALUES ($1,$2,$3,NOW(),$4,$5,$6,$7) RETURNING *`,
+        [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality, eventShiftId]
       );
       if (overridden.length) {
         try {

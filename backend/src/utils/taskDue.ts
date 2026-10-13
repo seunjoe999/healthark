@@ -9,7 +9,7 @@ export interface DueGeneralTask { id: string; title: string; dueTime: string | n
 // uses (creator / direct assignment / role match / team match / general "all staff"
 // tasks with no restriction), so a task that wouldn't even show on a staff member's own
 // list can never block them from clocking out over it.
-export async function getMyPendingTasksToday(homeId: string, staffId: string, role: string): Promise<DueGeneralTask[]> {
+export async function getMyPendingTasksToday(homeId: string, staffId: string, role: string, onlyShiftId?: string): Promise<DueGeneralTask[]> {
   // UK date, not the server's own UTC clock — during BST the server's UTC date is
   // still "yesterday" for up to an hour after UK midnight, so this used to check
   // yesterday's task list (and yesterday's rota shift, below) against a staff
@@ -52,10 +52,16 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   // (see tasks.routes.ts) instead of the static staff_service_user_assignments
   // caseload, so a carer only sees/is blocked by tasks for whoever they're
   // actually rostered with today, not their whole long-term assignment list.
+  //
+  // onlyShiftId narrows this to ONE specific shift (the one actually being
+  // clocked out of) — without it, a staff member with two shifts today had
+  // tasks due during shift 2 block them from clocking out of shift 1.
   const shiftRows = staffId
     ? await query<any>(
-        `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-        [staffId, homeId, todayStr]
+        onlyShiftId
+          ? `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3 AND id = $4`
+          : `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        onlyShiftId ? [staffId, homeId, todayStr, onlyShiftId] : [staffId, homeId, todayStr]
       )
     : [];
 
