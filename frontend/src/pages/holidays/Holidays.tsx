@@ -293,7 +293,19 @@ export default function Holidays() {
               </select>
             </div>
             {(() => {
-              const byStaff = (items: any[]) => requestStaffFilter ? items.filter(l => l.staff_id === requestStaffFilter) : items
+              // allLeaves comes back ordered by WHEN THE REQUEST WAS APPLIED
+              // FOR (orderBy=applied, used so new pending requests surface
+              // first) — that's a different order than the actual leave
+              // dates, so filtering down to one staff member's history
+              // showed May, July, September, then back to May, August: still
+              // application order, not chronological. Re-sort by the real
+              // start date for display here, independent of fetch order.
+              const byDate = (items: any[]) => [...items].sort((a, b) => {
+                const da = a.start_date ? new Date(a.start_date).getTime() : 0
+                const db = b.start_date ? new Date(b.start_date).getTime() : 0
+                return da - db
+              })
+              const byStaff = (items: any[]) => byDate(requestStaffFilter ? items.filter(l => l.staff_id === requestStaffFilter) : items)
               const sections = [
                 { status: 'pending', label: 'Pending', items: byStaff(allPending), accent: 'border-amber-400', badge: 'badge-warning' },
                 { status: 'approved', label: 'Approved', items: byStaff(allApproved), accent: 'border-emerald-400', badge: 'badge-success' },
@@ -542,7 +554,9 @@ export default function Holidays() {
             )}
 
             {isRole('home_manager', 'group_admin', 'senior_carer') && (() => {
-              const approvedForStaff = allLeaves.filter(x => x.staff_id === preview.staff_id && x.status === 'approved' && x.id !== preview.id)
+              const approvedForStaff = allLeaves
+                .filter(x => x.staff_id === preview.staff_id && x.status === 'approved' && x.id !== preview.id)
+                .sort((a, b) => (a.start_date ? new Date(a.start_date).getTime() : 0) - (b.start_date ? new Date(b.start_date).getTime() : 0))
               if (!approvedForStaff.length) return null
               return (
                 <div>
