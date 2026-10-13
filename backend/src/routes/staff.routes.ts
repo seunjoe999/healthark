@@ -67,6 +67,20 @@ export function computeProratedLeave(contractedHours: any, startDate: string | n
 
 router.use(authenticate);
 
+// Guards a manually-corrected annual leave balance against ever being
+// silently recalculated again by the contracted-hours/start-date proration
+// below. The owner has hit this directly: correcting a staff member's leave
+// hours, then saving an unrelated profile field later, reverted the balance
+// back to a wrong auto-computed figure. Once a leave balance has been
+// explicitly set via the admin-override path, it stays exactly what was
+// typed — no future save, formula change, or global recalculation may
+// touch it again until someone explicitly edits the leave hours fields
+// themselves (which re-affirms this flag, it never gets cleared any other way).
+async function ensureLeaveManualFlagColumn() {
+  await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_manually_set BOOLEAN DEFAULT FALSE`, []);
+}
+router.use(async (_req, _res, next) => { try { await ensureLeaveManualFlagColumn(); } catch (_) {} next(); });
+
 // GET /api/staff - list staff (scoped to org/home)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -508,7 +522,7 @@ router.put(
       // — an admin correcting a wrong balance means exactly what they typed,
       // not a value derived from contracted hours / start date.
       if (canManage && (leaveHoursTotal !== undefined || leaveHoursRemaining !== undefined)) {
-        const setParts: string[] = [];
+        const setParts: string[] = [`leave_hours_manually_set = TRUE`];
         const vals: unknown[] = [];
         let idx = 1;
         if (leaveHoursTotal !== undefined) { setParts.push(`leave_hours_total = $${idx++}`); vals.push(leaveHoursTotal === '' ? null : leaveHoursTotal); }
@@ -527,7 +541,17 @@ router.put(
       // the manager had just manually typed in. This is why "annual leave is
       // not calculating properly": the edit visibly failed to stick because a
       // second calculation immediately overwrote it in the same request.
-      if (canManage && (contractedHours !== undefined || startDate !== undefined) && leaveHoursTotal === undefined && leaveHoursRemaining === undefined) {
+      //
+      // leave_hours_manually_set is the second, permanent layer of the same
+      // protection: once set (by the admin-override block above, on ANY past
+      // save), this recompute never runs again for this staff member, full
+      // stop — not just within the same request. A later save that touches
+      // contracted hours/start date for an unrelated reason (or a future
+      // formula change) must never resurrect the old auto-calculated figure
+      // over a balance the owner has deliberately corrected.
+      const manuallySetRow = await query<any>('SELECT leave_hours_manually_set FROM staff WHERE id = $1', [targetId]);
+      const alreadyManuallySet = !!manuallySetRow[0]?.leave_hours_manually_set;
+      if (canManage && !alreadyManuallySet && (contractedHours !== undefined || startDate !== undefined) && leaveHoursTotal === undefined && leaveHoursRemaining === undefined) {
         const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
         const cur = existing[0] || {};
         const effContractedHours = contractedHours !== undefined ? contractedHours : cur.contracted_hours;

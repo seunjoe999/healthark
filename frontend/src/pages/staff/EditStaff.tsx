@@ -5,7 +5,7 @@ import api, { resolveUploadUrl } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { Button, Input, Select, Card, SectionHeading, Spinner, Modal } from '../../components/ui'
 import PhotoUpload from '../../components/ui/PhotoUpload'
-import { ArrowLeft, Save, Trash2, Upload, FileText, FileImage, Eye, Plus } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Archive, Upload, FileText, FileImage, Eye, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -146,7 +146,9 @@ function norm(s: any) {
     emergencyNotes: s.emergency_notes || s.emergencyNotes || '',
     photoUrl: s.photo_url || s.photoUrl || '',
     niNumber: s.ni_number || s.niNumber || '',
-    leaveHoursTotal: s.leave_hours_total || s.leaveHoursTotal || 210,
+    // Falsy-but-valid 0 must not fall back to 210 — that silently echoed a
+    // wrong default back on save for anyone whose real balance is 0.
+    leaveHoursTotal: s.leave_hours_total ?? s.leaveHoursTotal ?? 210,
     contractedHours: s.contracted_hours || s.contractedHours || '',
     homeId: s.home_id || s.homeId || '',
     isActive: s.is_active ?? true,
@@ -245,14 +247,32 @@ export default function EditStaff() {
   }
 
   const deleteStaff = async () => {
-    if (!confirm(`Are you sure you want to permanently delete this staff member? This cannot be undone.`)) return
+    // "Delete" and "Archive" both land a staff member in the same recoverable
+    // terminated/deleted bucket (Staff → Deleted accounts has a Restore
+    // button for it) — Delete additionally frees up their email address for
+    // reuse and forces an immediate logout, which Archive deliberately
+    // doesn't do. Kept as two separate, clearly-labelled actions after a
+    // mistaken Delete (meant as an archive) had to be manually reverted.
+    if (!confirm(`Delete this staff member? Their account is deactivated and their email is freed up for reuse. This can be undone from Staff → Deleted accounts.`)) return
     setDeleting(true)
     try {
       await api.delete(`/staff/${id}`)
-      toast.success('Staff member deleted')
+      toast.success('Staff member deleted — restorable from Staff → Deleted accounts')
       navigate('/staff')
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to delete')
+    } finally { setDeleting(false) }
+  }
+
+  const archiveStaff = async () => {
+    if (!confirm(`Archive this staff member? They'll be hidden from the active staff list but all their records, documents and history stay intact — restore them anytime from Staff → Deleted accounts.`)) return
+    setDeleting(true)
+    try {
+      await api.put(`/staff/${id}`, { status: 'terminated', isActive: false })
+      toast.success('Staff member archived — restorable from Staff → Deleted accounts')
+      navigate('/staff')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to archive')
     } finally { setDeleting(false) }
   }
 
@@ -266,6 +286,7 @@ export default function EditStaff() {
           <ArrowLeft className="w-3.5 h-3.5" /> Back to staff
         </Link>
         <div className="flex gap-2">
+          {canDelete && <Button variant="outline" size="sm" icon={<Archive className="w-3.5 h-3.5" />} loading={deleting} onClick={archiveStaff}>Archive</Button>}
           {canDelete && <Button variant="danger" size="sm" icon={<Trash2 className="w-3.5 h-3.5" />} loading={deleting} onClick={deleteStaff}>Delete</Button>}
           <Button icon={<Save className="w-4 h-4" />} loading={saving} onClick={save}>Save changes</Button>
         </div>

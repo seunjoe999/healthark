@@ -43,6 +43,7 @@ export default function StaffModule() {
   const [staff, setStaff] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
   const [editLeaveFor, setEditLeaveFor] = useState<any>(null)
+  const [deletedOpen, setDeletedOpen] = useState(false)
   const [tab, setTab] = useState<StaffTab>('profile')
   const [loading, setLoading] = useState(true)
   const [homes, setHomes] = useState<any[]>([])
@@ -91,6 +92,11 @@ export default function StaffModule() {
       setSelectedHome(user?.homeId || h[0]?.id || '')
     }).catch(e => { console.error('homes load error:', e); setLoading(false) })
   }, [user])
+
+  const reloadStaff = () => {
+    if (!selectedHome) return
+    staffApi.list({ homeId: selectedHome }).then(res => setStaff(res.data.data || [])).catch(console.error)
+  }
 
   useEffect(() => {
     if (!selectedHome) return
@@ -209,16 +215,24 @@ export default function StaffModule() {
           <p className="text-xs font-semibold text-slate-500">My profile</p>
         )}
 
-        {canCreateStaff && (
-          <div className="sm:ml-auto">
+        <div className={`flex items-center gap-2 ${canCreateStaff ? '' : 'sm:ml-auto'}`}>
+          {isRole('group_admin') && (
+            <button type="button" onClick={() => setDeletedOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">
+              Deleted accounts
+            </button>
+          )}
+          {canCreateStaff && (
             <Link to="/staff/new">
               <button className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-900 transition-all" style={{background:'linear-gradient(135deg,#e8b130,#d4961a)'}}>
                 + Add staff member
               </button>
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      <DeletedAccountsModal open={deletedOpen} onClose={() => setDeletedOpen(false)} onRestored={reloadStaff} />
 
       {/* Staff detail — full width */}
       <div className="flex flex-col flex-1 overflow-y-auto bg-slate-50">
@@ -1187,6 +1201,57 @@ function EditLeaveModal({ staff, onClose, onSaved }: { staff: any; onClose: () =
           <Button type="submit" loading={saving}>Save</Button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+// Deleted/archived staff (Delete and Archive both set status='terminated')
+// had no way to find and undo by anyone but a developer with direct
+// database access — this surfaces the backend's existing GET /staff/deleted
+// + POST /:id/restore endpoints so a mistaken Delete/Archive can be reversed
+// from the UI in one click.
+function DeletedAccountsModal({ open, onClose, onRestored }: { open: boolean; onClose: () => void; onRestored: () => void }) {
+  const [rows, setRows] = React.useState<any[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [restoringId, setRestoringId] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    api.get('/staff/deleted').then(res => setRows(res.data.data || [])).catch(console.error).finally(() => setLoading(false))
+  }, [open])
+
+  const restore = async (id: string) => {
+    setRestoringId(id)
+    try {
+      await api.post(`/staff/${id}/restore`)
+      toast.success('Staff member restored')
+      setRows(prev => prev.filter(r => r.id !== id))
+      onRestored()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to restore') }
+    finally { setRestoringId(null) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Deleted accounts" size="md">
+      <div className="space-y-3">
+        <p className="text-xs text-slate-500">Staff members deleted or archived from this organisation. Restoring brings their account, and all their records and history, straight back.</p>
+        {loading ? <Spinner /> : rows.length === 0 ? (
+          <EmptyState title="Nothing deleted" description="Deleted and archived staff will appear here" />
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {rows.map(r => (
+              <div key={r.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl border border-slate-200 p-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900 text-sm truncate">{r.first_name} {r.last_name}</p>
+                  <p className="text-xs text-slate-400 capitalize truncate">{(r.role || '').replace(/_/g, ' ')} · {r.updated_at ? format(new Date(r.updated_at), 'd MMM yyyy') : ''}</p>
+                </div>
+                <Button size="sm" variant="secondary" loading={restoringId === r.id} onClick={() => restore(r.id)}>Restore</Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }
