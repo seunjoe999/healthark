@@ -455,15 +455,17 @@ router.put(
       const { role, staffId, organisationId } = req.staff;
       const targetId = req.params.id;
       const isSelf = targetId === staffId;
-      const canManage = role === 'group_admin' || role === 'home_manager';
-
-      // Care staff and team leaders must never be able to edit their own
-      // personal/staff record — it's read-only for them everywhere in the
-      // system — even though isSelf would otherwise let a self-edit through
-      // for other non-manager roles. Owner explicitly asked for team leaders'
-      // profiles (name, phone, address, leave entitlements) to be read-only
-      // and the Edit button removed for that role.
-      if (!canManage && (!isSelf || role === 'care_staff' || role === 'team_leader')) {
+      // Only the super admin (group_admin) may edit ANY staff profile,
+      // including their own and every office-staff role (home_manager,
+      // admin, director, etc). This used to also let home_manager manage
+      // others, and let any non-care_staff/team_leader role self-edit their
+      // own record — which is how office staff were able to change their own
+      // profile fields, including annual leave entitlement (leaveHoursTotal/
+      // leaveHoursRemaining further below are also gated on canManage).
+      // Owner explicitly asked for a hard lock: nobody but them edits any
+      // profile, full stop.
+      const canManage = role === 'group_admin';
+      if (!canManage) {
         throw new AppError('Not authorised to edit this profile', 403);
       }
 

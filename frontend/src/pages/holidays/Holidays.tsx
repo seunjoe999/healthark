@@ -51,15 +51,22 @@ export default function Holidays() {
     })
   }, [user])
 
+  // The year being viewed — derived from currentMonth so the month-nav
+  // arrows and the Year dropdown below always agree (clicking "next month"
+  // past December updates both together). staff.leave_hours_total/remaining
+  // is only ever the CURRENT leave year's balance; any other year is
+  // fetched from /staff-hr/leave/entitlement below, which is also what
+  // approving a leave request in that year actually deducts from.
+  const viewYear = currentMonth.getFullYear()
+  const yearOptions = [viewYear - 1, viewYear, viewYear + 1, viewYear + 2].filter((y, i, arr) => arr.indexOf(y) === i)
+  const jumpToYear = (y: number) => setCurrentMonth(m => { const n = new Date(m); n.setFullYear(y); return n })
+
   useEffect(() => {
     if (!user?.id) return
-    staffApi.get(user.id).then(res => {
-      const s = res.data.data
-      const total = s?.leave_hours_total ?? 210
-      const remaining = s?.leave_hours_remaining ?? total
-      setMyBalance({ total, remaining })
-    }).catch(() => {})
-  }, [user?.id])
+    api.get('/staff-hr/leave/entitlement', { params: { staffId: user.id, year: viewYear } })
+      .then(res => setMyBalance({ total: res.data.data.total, remaining: res.data.data.remaining }))
+      .catch(() => {})
+  }, [user?.id, viewYear])
 
   // The summary cards below were always "my own" balance regardless of the
   // staff filter on the Requests tab — a manager filtering to a specific
@@ -67,16 +74,20 @@ export default function Holidays() {
   // entitled" label and mistook it for that colleague's, since nothing on
   // screen said "mine". Fetch that staff member's real balance when one is
   // selected so the cards show (and clearly label) whoever is actually
-  // being looked at.
+  // being looked at — for whichever leave year is currently selected.
   useEffect(() => {
     if (!requestStaffFilter) { setFilteredStaffBalance(null); return }
-    staffApi.get(requestStaffFilter).then(res => {
-      const s = res.data.data
-      const total = s?.leave_hours_total ?? 210
-      const remaining = s?.leave_hours_remaining ?? total
-      setFilteredStaffBalance({ total, remaining, name: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || 'Staff member' })
+    Promise.all([
+      api.get('/staff-hr/leave/entitlement', { params: { staffId: requestStaffFilter, year: viewYear } }),
+      staffApi.get(requestStaffFilter),
+    ]).then(([balRes, sRes]) => {
+      const s = sRes.data.data
+      setFilteredStaffBalance({
+        total: balRes.data.data.total, remaining: balRes.data.data.remaining,
+        name: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || 'Staff member',
+      })
     }).catch(() => setFilteredStaffBalance(null))
-  }, [requestStaffFilter])
+  }, [requestStaffFilter, viewYear])
 
   useEffect(() => {
     if (!selectedHome) return
@@ -190,6 +201,10 @@ export default function Holidays() {
         </div>
         <div className="flex gap-3">
           {homes.length > 1 && <select className="input w-auto text-sm" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>{homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select>}
+          <select className="input w-auto text-sm" value={viewYear} onChange={e => jumpToYear(parseInt(e.target.value))}
+            title="Leave year — switch to approve/view a future year's entitlement">
+            {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
             <button onClick={() => setView('calendar')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Calendar</button>
             <button onClick={() => setView('list')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>List</button>

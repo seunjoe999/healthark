@@ -282,12 +282,14 @@ export default function StaffModule() {
               </button>
             )}
             {/* Header */}
-            {/* WhatsApp-style clickable profile header — read-only (no edit
-                link) for care staff viewing their own profile; managers can
-                still edit any profile, including their own. */}
+            {/* WhatsApp-style clickable profile header. Editing any staff
+                profile — including leave entitlement — is locked to the
+                super admin (group_admin) only; every other role, including
+                other managers, gets a read-only header here. */}
             {(() => {
-              const HeaderWrap: any = isManager ? Link : 'div'
-              const wrapProps = isManager ? { to: `/staff/${selected.id}/edit` } : {}
+              const canEditProfile = isRole('group_admin')
+              const HeaderWrap: any = canEditProfile ? Link : 'div'
+              const wrapProps = canEditProfile ? { to: `/staff/${selected.id}/edit` } : {}
               return (
             <HeaderWrap {...wrapProps} className="block bg-white/5 rounded-xl border border-white/10 shadow-sm p-5 mb-4 hover:border-purple-400/40 hover:shadow-md transition-all group">
               <div className="flex items-center gap-4">
@@ -303,13 +305,13 @@ export default function StaffModule() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="inline-block max-w-full font-bold text-black text-xl truncate bg-emerald-100 border border-emerald-200 rounded-lg px-3 py-1">{getName(selected)}</h2>
-                    {isManager && <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors flex-shrink-0" />}
+                    {canEditProfile && <Edit className="w-4 h-4 text-slate-300 group-hover:text-purple-400 transition-colors flex-shrink-0" />}
                   </div>
                   <p className="text-sm text-slate-500 capitalize mt-1.5">{(selected.role || '').replace(/_/g, ' ')} · {selected.status}</p>
                   <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
                     {selected.start_date && <span>Started {format(new Date(selected.start_date), 'd MMM yyyy')}</span>}
                     <span className="text-emerald-600 font-medium">{selected.leave_hours_remaining ?? 210} hrs leave remaining</span>
-                    {isRole('home_manager', 'group_admin', 'admin', 'director', 'registered_manager') && (
+                    {canEditProfile && (
                       <button type="button"
                         onClick={e => { e.preventDefault(); e.stopPropagation(); setEditLeaveFor(selected) }}
                         className="text-purple-500 hover:text-purple-700 font-medium underline underline-offset-2">
@@ -317,7 +319,7 @@ export default function StaffModule() {
                       </button>
                     )}
                   </div>
-                  {isManager && <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>}
+                  {canEditProfile && <p className="text-xs text-purple-400 mt-1.5 font-medium group-hover:text-purple-600 transition-colors">Tap to edit profile →</p>}
                 </div>
               </div>
             </HeaderWrap>
@@ -491,7 +493,15 @@ export default function StaffModule() {
                   <EmptyState title="No leave requests" description="Submit a leave request using the button above" />
                 ) : (
                   <div className="space-y-2">
-                    {leave.map((l: any) => (
+                    {/* Chronological by start date (month order) — this list came
+                        back sorted by when the request was applied for, which
+                        scattered a staff member's approved leave out of order
+                        and made it hard to track against the calendar year. */}
+                    {[...leave].sort((a: any, b: any) => {
+                      const da = a.start_date ? new Date(a.start_date).getTime() : 0
+                      const db = b.start_date ? new Date(b.start_date).getTime() : 0
+                      return da - db
+                    }).map((l: any) => (
                       <div key={l.id} className="bg-white/5 rounded-xl border border-white/10 shadow-sm p-4 flex items-center gap-4">
                         <Calendar className="w-5 h-5 flex-shrink-0 text-slate-600" />
                         <div className="flex-1">

@@ -798,9 +798,17 @@ export default function Rota() {
       if (action === 'agree' || action === 'decline') {
         await api.put(`/shifts/swaps/${swapId}/agree`, { agreed: action === 'agree' })
         toast.success(action === 'agree' ? 'Swap agreed — manager will be notified' : 'Swap declined')
+      } else if (action === 'approved') {
+        // Approving can hand the shift to someone already clashing with it —
+        // same confirm-to-override dialog used for direct rota assignment.
+        await conflictGate.run(async (confirmed) => {
+          await api.put(`/shifts/swaps/${swapId}`, { status: action, confirmConflicts: confirmed })
+          toast.success('Swap approved and applied')
+          loadAll()
+        })
       } else {
         await api.put(`/shifts/swaps/${swapId}`, { status: action })
-        toast.success(action === 'approved' ? 'Swap approved and applied' : 'Swap rejected')
+        toast.success('Swap rejected')
         loadAll()
       }
       loadSwaps()

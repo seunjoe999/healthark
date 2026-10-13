@@ -13,6 +13,87 @@ function nd(v: any): string | null { return v && String(v).trim() ? String(v).tr
 
 router.use(authenticate);
 
+// staff.leave_hours_total/leave_hours_remaining/leave_year are a SINGLE
+// "current year" bucket — there was no way to approve or deduct leave for a
+// future year (e.g. booking January 2027 while 2026 is still the active
+// year) without it coming out of this year's balance. This table holds a
+// separate bucket per (staff, year) for every year that ISN'T the staff
+// member's current leave_year, so approving/cancelling a future-dated leave
+// request never touches the staff.* columns — the 2026 balances the owner
+// has manually corrected are only ever read/written when the leave date
+// actually falls in the staff member's current leave_year.
+async function ensureLeaveYearTable() {
+  await query(`CREATE TABLE IF NOT EXISTS staff_leave_year_entitlements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+    leave_year INT NOT NULL,
+    hours_total NUMERIC NOT NULL,
+    hours_remaining NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(staff_id, leave_year)
+  )`, []);
+}
+router.use(async (_req, _res, next) => { try { await ensureLeaveYearTable(); } catch (_) {} next(); });
+
+// Business rule given explicitly by the owner: from the 2027 leave year
+// onward, Care Staff get 201.6 hours and every other (office) role gets 210
+// — replacing the contracted-hours proration used for the current/legacy
+// year, which was producing a wrong 224h default. Only applies to a
+// brand-new year bucket; never recalculates an existing one.
+function defaultAnnualLeaveHoursForRole(role: string): number {
+  return role === 'care_staff' ? 201.6 : 210;
+}
+
+// Resolves the (total, remaining) leave bucket a given leave date should be
+// deducted from/refunded to. If the date's year is the staff member's
+// current leave_year, that's the existing staff.* columns — untouched by
+// this function. Otherwise it's a row in staff_leave_year_entitlements,
+// created on first use with the role-based default above.
+async function resolveLeaveYearBucket(staffId: string, year: number): Promise<{ usesLegacyColumns: boolean; total: number; remaining: number }> {
+  const staffRows = await query<any>('SELECT role, leave_year, leave_hours_total, leave_hours_remaining FROM staff WHERE id = $1', [staffId]);
+  const s = staffRows[0] || {};
+  const currentLeaveYear = s.leave_year === null || s.leave_year === undefined ? new Date().getFullYear() : Number(s.leave_year);
+  if (year === currentLeaveYear) {
+    return { usesLegacyColumns: true, total: parseFloat(s.leave_hours_total ?? 210), remaining: parseFloat(s.leave_hours_remaining ?? s.leave_hours_total ?? 210) };
+  }
+  const existing = await query<any>('SELECT hours_total, hours_remaining FROM staff_leave_year_entitlements WHERE staff_id = $1 AND leave_year = $2', [staffId, year]);
+  if (existing[0]) {
+    return { usesLegacyColumns: false, total: parseFloat(existing[0].hours_total), remaining: parseFloat(existing[0].hours_remaining) };
+  }
+  const total = defaultAnnualLeaveHoursForRole(s.role);
+  await query(
+    `INSERT INTO staff_leave_year_entitlements (staff_id, leave_year, hours_total, hours_remaining) VALUES ($1,$2,$3,$3)
+     ON CONFLICT (staff_id, leave_year) DO NOTHING`,
+    [staffId, year, total]
+  );
+  return { usesLegacyColumns: false, total, remaining: total };
+}
+
+// Applies a +/- hours delta (negative = deduct, positive = refund) to
+// whichever bucket the given leave date belongs to.
+async function adjustLeaveYearBucket(staffId: string, leaveDate: string, deltaHours: number): Promise<void> {
+  const year = new Date(leaveDate).getFullYear();
+  const bucket = await resolveLeaveYearBucket(staffId, year);
+  if (bucket.usesLegacyColumns) {
+    if (deltaHours < 0) {
+      await query('UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) + $1, 0) WHERE id = $2', [deltaHours, staffId]);
+    } else {
+      await query(
+        `UPDATE staff SET leave_hours_remaining = LEAST(
+           COALESCE(leave_hours_remaining, 0) + $1,
+           COALESCE(leave_hours_total, COALESCE(leave_hours_remaining, 0) + $1)
+         ) WHERE id = $2`,
+        [deltaHours, staffId]
+      );
+    }
+    return;
+  }
+  const newRemaining = deltaHours < 0
+    ? Math.max(0, bucket.remaining + deltaHours)
+    : Math.min(bucket.total, bucket.remaining + deltaHours);
+  await query('UPDATE staff_leave_year_entitlements SET hours_remaining = $1 WHERE staff_id = $2 AND leave_year = $3', [newRemaining, staffId, year]);
+}
+
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return (req.staff as any)?.[field] || d?.[field] || ''; }
@@ -317,6 +398,26 @@ router.post('/assessments',
 );
 
 
+// GET /api/staff-hr/leave/entitlement?staffId=&year= — the leave balance
+// (total/remaining) for one staff member in one specific leave year. Lets
+// the Leave & Holidays year selector show the right balance whether that
+// year is the staff member's current one (staff.* columns, untouched here)
+// or a future one (staff_leave_year_entitlements, auto-created on first look).
+router.get('/leave/entitlement', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.query.staffId as string;
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    if (!staffId) return res.status(400).json({ success: false, error: 'staffId required' } as ApiResponse);
+    const role = fromToken(req, 'role');
+    const tokenStaffId = fromToken(req, 'staffId');
+    if (!LEAVE_MANAGER_ROLES.includes(role) && staffId !== tokenStaffId) {
+      throw new AppError('Forbidden', 403);
+    }
+    const bucket = await resolveLeaveYearBucket(staffId, year);
+    res.json({ success: true, data: { year, total: bucket.total, remaining: bucket.remaining } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // GET /api/staff-hr/leave/all — all leave for a home (for holiday calendar)
 router.get('/leave/all', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -380,10 +481,11 @@ router.put('/leave/:id/approve', param('id').isUUID(), validateRequest,
       const deductsBalance = leave.leave_type === 'annual';
       if (hoursToDeduct > 0) {
         if (deductsBalance) {
-          await query(
-            'UPDATE staff SET leave_hours_remaining = GREATEST(COALESCE(leave_hours_remaining, leave_hours_total) - $1, 0) WHERE id = $2',
-            [hoursToDeduct, leave.staff_id]
-          );
+          // Deduct from whichever leave-year bucket this request's start
+          // date actually falls in — not always the staff member's current
+          // year, so a 2027 request deducts from a 2027 bucket rather than
+          // this year's balance.
+          await adjustLeaveYearBucket(leave.staff_id, leave.start_date, -hoursToDeduct);
         }
         await query('UPDATE staff_leave SET hours_requested=$1, hours_deducted=$2 WHERE id=$3',
           [hoursToDeduct, deductsBalance ? hoursToDeduct : 0, req.params.id]);
@@ -416,13 +518,7 @@ router.put('/leave/:id/cancel', param('id').isUUID(), validateRequest,
         ? parseFloat(String(leave.hours_deducted || 0))
         : parseFloat(String(leave.hours_requested || 0));
       if (hoursToRefund > 0) {
-        await query(
-          `UPDATE staff SET leave_hours_remaining = LEAST(
-             COALESCE(leave_hours_remaining, 0) + $1,
-             COALESCE(leave_hours_total, COALESCE(leave_hours_remaining, 0) + $1)
-           ) WHERE id = $2`,
-          [hoursToRefund, leave.staff_id]
-        );
+        await adjustLeaveYearBucket(leave.staff_id, leave.start_date, hoursToRefund);
       }
       await query(`INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
         VALUES ($1,$2,'Leave cancelled',$3,'warning','/holidays')`,

@@ -684,6 +684,29 @@ router.put('/swaps/:id', requireRole(...MANAGE_ROLES), async (req: Request, res:
     }
     // Ensure column exists
     await query(`ALTER TABLE shift_swap_requests ADD COLUMN IF NOT EXISTS target_agreed BOOLEAN DEFAULT NULL`).catch(() => {});
+
+    // Approving a swap hands the shift straight to target_staff_id without
+    // ever checking whether THEY already have a clashing shift that day — the
+    // same overlap/rest check every other rota-assignment path already runs.
+    // This is exactly how a manually-caught "shift clash" slipped through:
+    // the swap approval path was the one gap. Check before committing
+    // anything, same confirm-to-override pattern as shift create/update.
+    if (status === 'approved' && mine[0].target_staff_id && !req.body.confirmConflicts) {
+      const shiftRow = await query<any>(
+        `SELECT ss.home_id, ss.shift_date::text as shift_date, ss.start_time::text as start_time, ss.end_time::text as end_time
+         FROM shift_swap_requests sw JOIN staff_shifts ss ON ss.id = sw.shift_id WHERE sw.id = $1`,
+        [req.params.id]
+      );
+      if (shiftRow[0]) {
+        const pre = (await findStaffShiftConflicts(
+          shiftRow[0].home_id, mine[0].target_staff_id, shiftRow[0].shift_date, shiftRow[0].start_time, shiftRow[0].end_time
+        )).map(conflictMessage);
+        if (pre.length) {
+          return res.status(409).json({ success: false, warnings: pre, requiresConfirm: true } as ApiResponse);
+        }
+      }
+    }
+
     const rows = await query(
       `UPDATE shift_swap_requests SET status=$1, response_notes=$2, updated_at=NOW() WHERE id=$3 RETURNING *`,
       [status, responseNotes || null, req.params.id]
