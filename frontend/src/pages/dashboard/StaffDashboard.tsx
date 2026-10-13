@@ -157,7 +157,29 @@ export default function StaffDashboard() {
   const pendingTasks = myTasks.filter(t => t.status === 'pending')
   const completedTasks = myTasks.filter(t => t.status === 'completed')
   const todayStr0 = format(new Date(), 'yyyy-MM-dd')
-  const myTodayShift = myShifts.find((s: any) => String(s.shift_date).substring(0, 10) === todayStr0)
+  // A staff member can have more than one shift on the same date (e.g. a
+  // short day shift, then a night shift) — picking "whichever comes first"
+  // always showed the day shift, even hours after it ended and the night
+  // shift was the one actually relevant (and the one they needed to clock
+  // into). Pick whichever shift is in progress right now, else the next
+  // one still to come today, else fall back to the last one of the day.
+  const now = new Date()
+  const shiftWindow = (s: any) => {
+    const [sh, sm] = String(s.start_time || '00:00').split(':').map(Number)
+    const [eh, em] = String(s.end_time || '00:00').split(':').map(Number)
+    const start = new Date(`${todayStr0}T00:00:00`); start.setHours(sh || 0, sm || 0, 0, 0)
+    const end = new Date(`${todayStr0}T00:00:00`); end.setHours(eh || 0, em || 0, 0, 0)
+    if (end <= start) end.setDate(end.getDate() + 1) // overnight shift crossing midnight
+    return { start, end }
+  }
+  const todaysShiftsWithWindows = myShifts
+    .filter((s: any) => String(s.shift_date).substring(0, 10) === todayStr0)
+    .map((s: any) => ({ s, ...shiftWindow(s) }))
+  const myTodayShift = (
+    todaysShiftsWithWindows.find(w => now >= w.start && now <= w.end)
+    || todaysShiftsWithWindows.filter(w => w.start > now).sort((a, b) => a.start.getTime() - b.start.getTime())[0]
+    || todaysShiftsWithWindows.sort((a, b) => b.start.getTime() - a.start.getTime())[0]
+  )?.s
   const myUpcomingShifts = myShifts
     .filter((s: any) => String(s.shift_date).substring(0, 10) !== todayStr0)
     .sort((a: any, b: any) => String(a.shift_date).localeCompare(String(b.shift_date)))

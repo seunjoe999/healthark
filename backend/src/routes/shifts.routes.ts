@@ -353,10 +353,25 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       su.first_name || ' ' || su.last_name as su_name,
       (SELECT string_agg(su2.first_name || ' ' || su2.last_name, ', ' ORDER BY su2.first_name)
        FROM service_users su2 WHERE su2.id = ANY(COALESCE(sh.su_ids, ARRAY[sh.su_id]))) as su_names,
+      -- Scoped to THIS shift's own time window (with a generous early/late
+      -- buffer), not just "same calendar date" — a staff member working two
+      -- shifts on the same date (e.g. a short day shift, then a night shift)
+      -- used to have both shifts show the SAME clock-in/out time, because
+      -- matching only on the date pulled in whichever shift's events came
+      -- first. That made a second shift look like it was already clocked
+      -- into before the staff member had even started it.
       (SELECT MIN(ce.event_time) FROM staff_clock_events ce
-       WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in' AND ce.event_time::date = sh.shift_date) as clock_in_time,
+       WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_in'
+         AND ce.event_time BETWEEN (sh.shift_date + sh.start_time - interval '2 hours')
+                                AND (sh.shift_date + sh.end_time
+                                     + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
+                                     + interval '4 hours')) as clock_in_time,
       (SELECT MAX(ce.event_time) FROM staff_clock_events ce
-       WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_out' AND ce.event_time::date = sh.shift_date) as clock_out_time
+       WHERE ce.staff_id = sh.staff_id AND ce.event_type = 'clock_out'
+         AND ce.event_time BETWEEN (sh.shift_date + sh.start_time - interval '2 hours')
+                                AND (sh.shift_date + sh.end_time
+                                     + CASE WHEN sh.end_time <= sh.start_time THEN interval '1 day' ELSE interval '0' END
+                                     + interval '4 hours')) as clock_out_time
       FROM staff_shifts sh
       LEFT JOIN staff s ON s.id = sh.staff_id
       LEFT JOIN service_users su ON su.id = sh.su_id
