@@ -1480,10 +1480,16 @@ export default function Incidents() {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                      <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
-                        onClick={() => openEdit(inc)}>
-                        Edit / Review
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
+                          onClick={() => openEdit(inc)}>
+                          Edit / Review
+                        </Button>
+                        {/* Printing this one incident only — the dashboard Print button
+                            above prints every incident matching the current filters, which
+                            isn't what a manager wants when they've opened a specific record. */}
+                        <PrintButton onClick={() => openLetterheadPrint(`Incident Report — ${inc.resident_name || 'Unknown resident'}`, buildIncidentPrintPage(inc))} />
+                      </div>
                       {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
                         <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
                           onClick={() => deleteIncident(inc)}>

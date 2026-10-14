@@ -101,6 +101,7 @@ export default function MAR() {
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
   const [medications, setMedications] = useState<any[]>([])
+  const [discontinuedMeds, setDiscontinuedMeds] = useState<any[]>([])
   const [stockData, setStockData] = useState<any[]>([])
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -148,9 +149,10 @@ export default function MAR() {
     if (!su) return
     setLoading(true)
     try {
-      const [chartRes, medRes, stockRes, marReviewRes, medAuditRes, marChartAuditRes] = await Promise.all([
+      const [chartRes, medRes, discMedRes, stockRes, marReviewRes, medAuditRes, marChartAuditRes] = await Promise.all([
         api.get(`/mar/chart-report/${su.id}`, { params: { startDate, endDate } }),
         api.get(`/mar/medications/${su.id}`),
+        api.get(`/mar/medications/${su.id}/discontinued`),
         api.get(`/mar/stock/${su.id}`),
         api.get('/assessments', { params: { category: 'service_user', templateKey: 'mar_review', subjectId: su.id } }),
         api.get('/assessments', { params: { category: 'service_user', templateKey: 'medication_audit', subjectId: su.id } }),
@@ -158,6 +160,7 @@ export default function MAR() {
       ])
       setChartData(chartRes.data.data || null)
       setMedications(medRes.data.data || [])
+      setDiscontinuedMeds(discMedRes.data.data || [])
       setStockData(stockRes.data.data || [])
       setMarReviews(marReviewRes.data.data || [])
       setMedicationAudits(medAuditRes.data.data || [])
@@ -192,11 +195,14 @@ export default function MAR() {
   // Matches the management-role set used elsewhere in the app (e.g. task creation, quality gates) —
   // this used to be a narrower 4-role list that also silently blocked Registered/Service Managers
   // and Directors from ever reaching the MAR Review tab.
-  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'team_leader')
+  // recruitment_admin ("Administrator" / office staff) added so medication can be
+  // discontinued without the group_admin owner physically present — same reasoning
+  // as team_leader below: full privileged MAR view, but not Add Medication.
+  const isPrivilegedMar = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'team_leader', 'recruitment_admin')
   // Team leaders keep the full privileged MAR view (Review / Medication Audit /
   // Stock Count / GP-Pharmacy tabs) but should only administer medications that
   // are already set up, not add new ones to a resident's chart themselves.
-  const canAddMedication = isPrivilegedMar && !isRole('team_leader')
+  const canAddMedication = isPrivilegedMar && !isRole('team_leader', 'recruitment_admin')
   if (!isPrivilegedMar) {
     // A staff member granted MAR Review / Medication Audit / Mar Chart Audit
     // access (Settings → Access Rights) should land on an actual review/audit
@@ -443,8 +449,7 @@ export default function MAR() {
                         <Button size="sm" variant="ghost" onClick={async () => {
                           if (!confirm('Discontinue this medication?')) return
                           await api.delete(`/mar/medications/${med.id}`)
-                          const res = await api.get(`/mar/medications/${selectedSu.id}`)
-                          setMedications(res.data.data || [])
+                          fetchAll(selectedSu)
                           toast.success('Medication discontinued')
                         }}>Discontinue</Button>
                         <Button size="sm" variant="ghost" className="text-rose-500 hover:text-rose-600" onClick={async () => {
@@ -460,6 +465,31 @@ export default function MAR() {
                     </div>
                   </div>
                 ))}
+                {discontinuedMeds.length > 0 && (
+                  <div className="pt-4 mt-4 border-t border-slate-200 dark:border-white/10">
+                    <h3 className={`text-sm font-semibold mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Discontinued Medications</h3>
+                    <div className="space-y-2">
+                      {discontinuedMeds.map((med: any) => (
+                        <div key={med.id} className={`rounded-xl border p-3 opacity-70 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Pill className="w-4 h-4 text-slate-400 shrink-0" />
+                            <h4 className={`font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{med.medication_name}</h4>
+                          </div>
+                          <p className="text-xs text-slate-500">{med.dose} · {(med.frequency || '').replace(/_/g, ' ')} · {med.route}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {med.start_date && `Started ${format(new Date(med.start_date), 'd MMM yyyy')}`}
+                            {med.end_date && ` · Ended ${format(new Date(med.end_date), 'd MMM yyyy')}`}
+                          </p>
+                          {med.discontinued_at && (
+                            <p className="text-xs text-slate-400">
+                              Discontinued {format(new Date(med.discontinued_at), 'd MMM yyyy, HH:mm')}{med.discontinued_by_name && ` by ${med.discontinued_by_name}`}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : tab === 'gp_pharmacy' ? (
               <GPPharmacyTab su={su} medications={medications} />
@@ -1130,6 +1160,12 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                     : dayRecs.find((r: any) => r.scheduled_time === slot) || (slots.length === 1 && dayRecs.length === 1 && !dayRecs[0].scheduled_time ? dayRecs[0] : undefined)
                   const isToday = d === today
                   const isFuture = d > today
+                  // A medication discontinued (End Date set, or Discontinue clicked —
+                  // which also stamps end_date) must stop being schedulable from that
+                  // date on. Only gates empty cells going forward; a dose already
+                  // recorded before/on the end date still displays normally so the
+                  // chart's history for the period it was actually active isn't lost.
+                  const medEnded = !!med.end_date && d > String(med.end_date).slice(0, 10)
 
                   let bg = '#fff'
                   let textColor = '#1e293b'
@@ -1138,7 +1174,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
 
                   const currentHM = format(new Date(), 'HH:mm')
                   const isPastSlot = slot !== 'PRN' && (d < today || (isToday && slot < currentHM))
-                  const isMissed = !rec && isPastSlot
+                  const isMissed = !rec && isPastSlot && !medEnded
 
                   if (rec) {
                     const code = rec.mar_code
@@ -1146,6 +1182,8 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                     else if (rec.refused) { bg = '#fee2e2'; textColor = '#991b1b'; display = code || 'R' }
                     else if (rec.omitted) { bg = '#fef9c3'; textColor = '#78350f'; display = code || 'O' }
                     else { bg = '#f3f4f6'; display = code || '—' }
+                  } else if (medEnded) {
+                    bg = '#f1f5f9'; textColor = '#cbd5e1'; display = ''
                   } else if (isMissed) {
                     bg = '#fecaca'; textColor = '#991b1b'; display = 'M'
                   } else if (isToday && !isFuture) {
@@ -1160,7 +1198,8 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                     // empty 12:00/16:00/20:00 slot on a day where only the 8am dose had been
                     // given still showed that 8am record and blocked logging the later dose —
                     // exactly the "clicking 12:00 takes me back to 8am" bug reported.
-                    <td key={d} onClick={() => onCellClick(med, d, rec ? [rec] : [], slot)}
+                    <td key={d} onClick={() => { if (medEnded && !rec) return; onCellClick(med, d, rec ? [rec] : [], slot) }}
+                      title={medEnded && !rec ? 'Discontinued — no longer due' : undefined}
                       style={{
                         border: `1px solid ${isToday ? '#fbbf24' : '#e2e8f0'}`,
                         textAlign: 'center',
@@ -1171,7 +1210,7 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                         width: 30,
                         background: isToday && !rec ? '#fffbeb' : bg,
                         color: textColor,
-                        cursor: 'pointer',
+                        cursor: medEnded && !rec ? 'default' : 'pointer',
                         fontWeight: 700,
                         lineHeight: 1.1,
                         transition: 'background 0.1s',

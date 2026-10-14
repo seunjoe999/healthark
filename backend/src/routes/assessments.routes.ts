@@ -1743,7 +1743,13 @@ const TEMPLATES: Template[] = [
 // ── Helper: calculate score ───────────────────────────────────────
 function calcScore(template: Template, answers: Record<string, any>) {
   const allQs = template.sections.flatMap(s => s.questions);
-  const scoredQs = allQs.filter(q => q.scored && q.type === 'yes_no');
+  // "N/A" is a real third option on every yes/no question (frontend QuestionField
+  // renders yes/no/n/a) but was being scored as an automatic fail — it landed in
+  // maxScore same as any other question, while contributing nothing to totalScore,
+  // so a resident most questions didn't apply to (e.g. no controlled drugs, so the
+  // CD witness question is N/A) got marked down for it. An inapplicable question
+  // must drop out of the denominator entirely, not count against the score.
+  const scoredQs = allQs.filter(q => q.scored && q.type === 'yes_no' && answers[q.id] !== 'n/a');
   const maxScore = scoredQs.length;
   const totalScore = scoredQs.reduce((sum, q) => {
     const ans = answers[q.id];
@@ -1775,13 +1781,14 @@ function calcScore(template: Template, answers: Record<string, any>) {
   return { totalScore, maxScore, scorePct, riskLevel, burnoutTotal };
 }
 
-// Scores are stored at save time, so audits saved before a question was
-// marked reverse-scored ("Are there any gaps…?" — No is the good answer)
-// kept their old, wrong rating. Re-score every saved assessment whose
-// template has such a question; only rows whose result actually changes are written.
+// Scores are stored at save time, so audits saved before a question was marked
+// reverse-scored ("Are there any gaps…?" — No is the good answer), or before N/A
+// was excluded from the denominator (see calcScore above), kept their old, wrong
+// rating. Re-score every saved assessment whose template has a scored yes/no
+// question at all; only rows whose result actually changes are written.
 const rescoreReverseScored = async () => {
   const keys = Array.from(new Set(TEMPLATES
-    .filter(t => !t.burnoutScoring && t.sections.some(s => s.questions.some(q => q.reverseScored)))
+    .filter(t => !t.burnoutScoring && t.sections.some(s => s.questions.some(q => q.scored && q.type === 'yes_no')))
     .map(t => t.key)));
   if (!keys.length) return;
   const rows = await query<any>(

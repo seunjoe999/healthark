@@ -16,6 +16,12 @@ const router = Router();
 
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
+async function ensureDiscontinuedColumns() {
+  await query(`ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS discontinued_at TIMESTAMPTZ`, []);
+  await query(`ALTER TABLE su_medications ADD COLUMN IF NOT EXISTS discontinued_by UUID`, []);
+}
+router.use(async (_req, _res, next) => { try { await ensureDiscontinuedColumns(); } catch (_) {} next(); });
+
 router.use(authenticate);
 
 function fromToken(req: Request, field: string): string {
@@ -82,6 +88,28 @@ router.post('/medications', requireRole('home_manager', 'group_admin', 'deputy_m
   }
 );
 
+// GET /api/mar/medications/:suId/discontinued — read-only audit list of medications
+// discontinued for this resident (via the Discontinue button or a past End Date),
+// so stopping a medication doesn't erase all record of it ever having existed —
+// it just needs to come off the active chart.
+router.get('/medications/:suId/discontinued', param('suId').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await assertResidentAccess(req, req.params.suId);
+      const rows = await query(
+        `SELECT m.*, m.notes AS instructions, m.prescriber AS prescribed_by,
+                s.first_name || ' ' || s.last_name AS discontinued_by_name
+         FROM su_medications m
+         LEFT JOIN staff s ON s.id = m.discontinued_by
+         WHERE m.su_id = $1 AND m.is_active = false
+         ORDER BY m.discontinued_at DESC NULLS LAST, m.medication_name`,
+        [req.params.suId]
+      );
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // PATCH /api/mar/medications/:id — update medication
 router.patch('/medications/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -138,10 +166,23 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
             ? (Array.isArray(timeSlots) && timeSlots.length ? timeSlots.map((t: string) => String(t).slice(0, 5)).filter(Boolean) : null)
             : undefined,
         },
-      ].filter(u => u.val !== undefined);
-      if (!updates.length) { res.status(400).json({ success: false, error: 'No fields to update' }); return; }
-      const setClauses = updates.map((u, i) => `${u.field}=$${i + 1}`).join(', ');
-      const vals = updates.map(u => u.val);
+      ];
+      // Adding an End Date in the past (or today) must be enough on its own to stop
+      // this medication from being schedulable — the owner reported that setting an
+      // End Date here left it still showing as active on the MAR chart, because only
+      // the separate "Discontinue" button ever touched is_active. Clearing the End
+      // Date, or moving it into the future, reactivates it the same way.
+      if (endDate !== undefined) {
+        const cleanEnd = nd(endDate);
+        const endedNow = !!cleanEnd && cleanEnd <= ukDateStr();
+        updates.push({ field: 'is_active', val: !endedNow });
+        updates.push({ field: 'discontinued_at', val: endedNow ? new Date() : null });
+        updates.push({ field: 'discontinued_by', val: endedNow ? (staffId || null) : null });
+      }
+      const filteredUpdates = updates.filter(u => u.val !== undefined);
+      if (!filteredUpdates.length) { res.status(400).json({ success: false, error: 'No fields to update' }); return; }
+      const setClauses = filteredUpdates.map((u, i) => `${u.field}=$${i + 1}`).join(', ');
+      const vals = filteredUpdates.map(u => u.val);
       const rows = await query(`UPDATE su_medications SET ${setClauses} WHERE id=$${vals.length + 1} RETURNING *`, [...vals, req.params.id]);
       res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
@@ -151,11 +192,17 @@ router.patch('/medications/:id', param('id').isUUID(), validateRequest,
 // DELETE /api/mar/medications/:id — discontinue. Had no role check at all, so
 // a team leader (explicitly barred from discontinuing meds) could call this
 // directly even with the UI button hidden.
-router.delete('/medications/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+// recruitment_admin ("Administrator" / office staff) added per owner request — this
+// task needs to be doable without her physically present.
+router.delete('/medications/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'recruitment_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await query('UPDATE su_medications SET is_active = false WHERE id = $1', [req.params.id]);
+      const staffId = fromToken(req, 'staffId');
+      await query(
+        'UPDATE su_medications SET is_active = false, discontinued_at = NOW(), discontinued_by = $2 WHERE id = $1',
+        [req.params.id, staffId || null]
+      );
       res.json({ success: true, message: 'Medication discontinued' } as ApiResponse);
     } catch (err) { next(err); }
   }
