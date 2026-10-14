@@ -54,6 +54,7 @@ function normalise(su: any) {
     emergencyRating: su.emergencyRating || su.emergency_rating || 'low',
     nhsNumber: su.nhsNumber || su.nhs_number || '',
     niNumber: su.niNumber || su.ni_number || '',
+    keySafeCode: su.keySafeCode || su.key_safe_code || '',
     dnar: su.dnar, dnarFormUrl: su.dnarFormUrl || su.dnar_form_url || '',
     nilByMouth: su.nilByMouth || su.nil_by_mouth || false,
     minFluidMl: su.minFluidMl || su.min_fluid_ml || 1500,
@@ -272,6 +273,7 @@ export default function ServiceUserProfile() {
               <Field label="Local authority" value={su.localAuthority} />
               <Field label="NHS number" value={su.nhsNumber} />
               <Field label="NI number" value={su.niNumber} />
+              <Field label="Key safe code" value={su.keySafeCode} />
             </dl>
           </Card>
           <Card>

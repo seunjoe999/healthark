@@ -302,9 +302,11 @@ router.get('/care-plan-reviews', async (req: Request, res: Response, next: NextF
 // ── Management reports ────────────────────────────────────────────
 // Each returns flat rows with plain-English column names; the Reports page
 // renders them as-is, so the SELECT column order is the on-screen order.
-// recruitment_admin ("Administrator" / office staff) added — they run reports
-// as part of their normal work and were getting a flat 403 on every one.
-const REPORT_MGMT_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'recruitment_admin'];
+// Kept in sync with MANAGEMENT_ONLY in AppLayout.tsx, which is who actually sees the
+// Reports nav link at all (Quality Assurance is deliberately hidden from team_leader/
+// senior_carer/supervisor/care_staff per the owner's explicit request) — 'auditor' was
+// visible in the nav but still 403ing on every report because it was missing here.
+const REPORT_MGMT_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'recruitment_admin', 'auditor'];
 function reportRange(req: Request): { homeId: string; fromDate: string; toDate: string; suId: string | null } {
   const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
   const { from, to, suId } = req.query as Record<string, string>;

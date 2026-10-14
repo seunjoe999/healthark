@@ -198,8 +198,10 @@ router.get('/:id', param('id').isUUID(), validateRequest,
       );
       if (!rows.length) throw new AppError('Service user not found', 404);
       const su = rows[0] as Record<string, unknown>;
-      const role = getRole(req);
-      if (role === 'care_staff') delete su.key_safe_code;
+      // Key safe code deliberately visible to every role including care_staff — it's the
+      // resident's house access code, and the owner's explicit point was that care workers
+      // arriving on shift need it readily visible, not hidden from exactly the people who
+      // need to physically get into the property.
       res.json({ success: true, data: su } as ApiResponse);
     } catch (err) { next(err); }
   }

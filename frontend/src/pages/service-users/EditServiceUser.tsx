@@ -40,7 +40,7 @@ function normalise(su: any) {
     status: su.status || 'live',
     emergencyRating: su.emergency_rating || su.emergencyRating || 'low',
     roomNumber: su.room_number || '',
-    carePlanLiveDate: su.care_plan_live_date?.split?.('T')[0] || '',
+    keySafeCode: su.keySafeCode || su.key_safe_code || '',
     nhsNumber: su.nhs_number || su.nhsNumber || '',
     niNumber: su.ni_number || su.niNumber || '',
     banding: su.banding || '',
@@ -259,7 +259,7 @@ export default function EditServiceUser() {
             <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)} options={STATUSES} />
             <Select label="Emergency rating" value={form.emergencyRating} onChange={e => set('emergencyRating', e.target.value)} options={EMERGENCY} />
             <Input label="Room number" value={form.roomNumber} onChange={e => set('roomNumber', e.target.value)} placeholder="e.g. Room 4" />
-            <Input label="Care plan last went live" type="date" value={form.carePlanLiveDate} onChange={e => set('carePlanLiveDate', e.target.value)} />
+            <Input label="Key safe code" value={form.keySafeCode} onChange={e => set('keySafeCode', e.target.value)} placeholder="e.g. 4-digit door code" />
             <Input label="Phone number" value={form.phone} onChange={e => set('phone', e.target.value)} />
             <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             <Input label="Address line 1" value={form.address1} onChange={e => set('address1', e.target.value)} className="md:col-span-2" />

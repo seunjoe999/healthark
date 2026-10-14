@@ -41,6 +41,23 @@ export default function StaffDashboard() {
   const [showTaskPopup, setShowTaskPopup] = useState(false)
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInUrl, setClockInUrl] = useState<string | null>(null)
+  const [clockingOut, setClockingOut] = useState(false)
+  // Clocking out never needs a QR code or location — the dedicated clock-in
+  // page only existed as a route to scan into, so a staff member whose home
+  // has no QR provisioned yet (clockInUrl stayed null) was sent to the
+  // Clock In Analytics report instead, which has no clock-out control at
+  // all — once clocked in, their "Clock out" tile silently did nothing.
+  // This calls the same clock-out endpoint directly, with no QR dependency.
+  const clockOutNow = async () => {
+    if (!user?.homeId) { toast.error('No home is set on your profile — ask a manager to set one before you can clock out'); return }
+    setClockingOut(true)
+    try {
+      await api.post('/clockin/event', { homeId: user.homeId, eventType: 'clock_out' })
+      setClockedIn(false)
+      toast.success('Clocked out')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to clock out') }
+    finally { setClockingOut(false) }
+  }
   const [medDueToday, setMedDueToday] = useState<{ total: number; pending: number }>({ total: 0, pending: 0 })
   const [myMeds, setMyMeds] = useState<any[]>([])
 
@@ -304,19 +321,36 @@ export default function StaffDashboard() {
           { label: 'Medication Administration Record', to: '/mar', icon: <Pill className="w-5 h-5" />, color: '#3b82f6', desc: medDueToday.total > 0 ? `${medDueToday.pending}/${medDueToday.total} due today` : 'Log medications' },
           { label: 'Request leave', to: '/holidays', icon: <Calendar className="w-5 h-5" />, color: '#10b981', desc: `${pendingLeave.length} pending` },
           { label: 'My training', to: '/training', icon: <BookOpen className="w-5 h-5" />, color: '#f59e0b', desc: 'Complete modules' },
-          { label: 'Clock in/out', to: clockInUrl || '/clockin-analytics', icon: <Clock className="w-5 h-5" />, color: '#6366f1', desc: clockedIn ? 'Clock out' : 'Clock in' },
+          { label: 'Clock in/out', to: clockInUrl || '/clockin-analytics', icon: <Clock className="w-5 h-5" />, color: '#6366f1', desc: clockedIn ? 'Clock out' : 'Clock in', isClockTile: true },
           { label: 'Messages', to: '/messages', icon: <MessageSquare className="w-5 h-5" />, color: '#ec4899', desc: 'Team messages' },
-        ].map(qa => (
-          <Link key={qa.to} to={qa.to}
-            className="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-start gap-3 hover:shadow-card-hover hover:border-slate-200 transition-all">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: `${qa.color}15`, color: qa.color }}>{qa.icon}</div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-800">{qa.label}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{qa.desc}</p>
-            </div>
-          </Link>
-        ))}
+        ].map(qa => {
+          const tileInner = (
+            <>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `${qa.color}15`, color: qa.color }}>{qa.icon}</div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800">{qa.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{clockingOut ? 'Clocking out…' : qa.desc}</p>
+              </div>
+            </>
+          )
+          // Clocked-in state performs the clock-out directly rather than linking
+          // anywhere — see clockOutNow above for why.
+          if (qa.isClockTile && clockedIn) {
+            return (
+              <button key={qa.to} type="button" onClick={clockOutNow} disabled={clockingOut}
+                className="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-start gap-3 hover:shadow-card-hover hover:border-slate-200 transition-all text-left disabled:opacity-60">
+                {tileInner}
+              </button>
+            )
+          }
+          return (
+            <Link key={qa.to} to={qa.to}
+              className="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-start gap-3 hover:shadow-card-hover hover:border-slate-200 transition-all">
+              {tileInner}
+            </Link>
+          )
+        })}
       </div>
 
       {/* Medication due today — a dedicated list, not just a count buried in the
