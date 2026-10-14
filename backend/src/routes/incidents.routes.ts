@@ -8,6 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
 import { ukDateStr } from '../utils/ukTime';
+import { isWithinAmendWindow } from '../utils/clockStatus';
 import { sendPushToStaffMany } from '../services/push.service';
 async function callGroq(prompt: string, maxTokens = 1200): Promise<string> {
   const key = process.env.GROQ_API_KEY || '';
@@ -307,14 +308,13 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     );
     if (!ownerRows.length) throw new AppError('Incident not found', 404);
     if (ownerRows[0].home_id !== homeId) throw new AppError('Not found', 404);
-    if (role === 'care_staff') {
-      const lastEvent = await query<any>(
-        `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
-        [staffId]
-      );
-      if (lastEvent[0]?.event_type !== 'clock_in') {
-        throw new AppError('You can only edit an incident record while clocked in to your shift.', 403);
-      }
+    // Was gated on "still clocked in right now" — the moment a staff member's shift
+    // ended, they permanently lost the ability to fix an incident report they wrote
+    // earlier that day, with no grace period at all. Aligned with the same shared
+    // 24-hour amend window every other record type (MAR, daily records) already
+    // uses: still clocked in, or within 24 hours of clocking out.
+    if (role === 'care_staff' && !(await isWithinAmendWindow(staffId))) {
+      throw new AppError('The 24-hour window to amend this incident has passed.', 403);
     }
     const { description, emotion, immediateAction } = req.body;
     const sets: string[] = [];

@@ -1165,7 +1165,7 @@ export default function Incidents() {
       setIncidents(prev => prev.map(i => i.id === editInc.id ? { ...i, description: editForm.description, immediate_action: editForm.immediateAction, emotion: editForm.emotion, updated_at: new Date().toISOString() } : i))
       toast.success('Incident updated')
       setEditOpen(false)
-    } catch { toast.error('Failed to save') }
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
     finally { setEditSaving(false) }
   }
 
