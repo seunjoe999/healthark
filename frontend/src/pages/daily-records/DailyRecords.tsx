@@ -27,7 +27,7 @@ import { ClipboardCheck } from 'lucide-react'
 // Who can review staff documentation — matches REVIEW_ROLES in
 // backend/src/routes/dailyRecords.routes.ts
 const REVIEW_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
-  'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor']
+  'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor', 'recruitment_admin']
 
 // Owner reviewed this live and asked to cut it down to just these two — the
 // other tabs (Social Activities, Bath Chart, Bowel Chart, Observations,

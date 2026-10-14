@@ -560,7 +560,7 @@ router.get('/:id/detail', param('id').isUUID(), validateRequest,
 // record, adds their own notes, and signs off on it (mirrors the legacy
 // RoundSys "daily note review" workflow the owner asked us to match).
 const REVIEW_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
-  'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor'];
+  'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor', 'recruitment_admin'];
 
 // POST /api/daily-records/:id/review
 router.post('/:id/review', param('id').isUUID(), validateRequest,

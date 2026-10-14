@@ -71,6 +71,10 @@ const navSections = [
       { label: 'Incidents',                         to: '/incidents',           icon: AlertTriangle, roles: [], featureKey: 'incidents' },
       { label: 'Residents Health Check',             to: '/diary',               icon: BookOpen,      roles: [], featureKey: 'diary' },
       { label: 'Safeguarding',                      to: '/safeguarding',        icon: ShieldCheck,   roles: [], featureKey: 'safeguarding' },
+      // Moved here from Quality Assurance at the owner's request, to sit directly
+      // under Safeguarding — they're reviewed together. Still management-only
+      // (care staff and team leaders must not see CQC Alerts).
+      { label: 'CQC Alerts',                        to: '/cqc-notifications',   icon: AlertCircle,   roles: MANAGEMENT_ONLY, featureKey: 'cqc_notifications' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
       { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
       { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
@@ -123,7 +127,6 @@ const navSections = [
       { label: 'Audits',                   to: '/audits',            icon: Activity,    roles: MANAGEMENT_ONLY, featureKey: 'audits' },
       { label: 'Complaints & Compliments', to: '/complaints',        icon: ThumbsUp,    roles: MANAGEMENT_ONLY, featureKey: 'complaints' },
       { label: 'Compliance',               to: '/compliance',        icon: ShieldCheck, roles: MANAGEMENT_ONLY, featureKey: 'compliance' },
-      { label: 'CQC Alerts',              to: '/cqc-notifications', icon: AlertCircle, roles: MANAGEMENT_ONLY, featureKey: 'cqc_notifications' },
       { label: 'Reports',                  to: '/reports',           icon: BarChart2,   roles: MANAGEMENT_ONLY, featureKey: 'reports' },
     ]
   },

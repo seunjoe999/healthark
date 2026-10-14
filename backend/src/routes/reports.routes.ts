@@ -126,7 +126,7 @@ router.get('/staff-attendance', async (req: Request, res: Response, next: NextFu
 });
 
 // GET /api/reports/training-compliance
-router.get('/training-compliance', requireRole('home_manager', 'group_admin', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/training-compliance', requireRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'recruitment_admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const rows = await query(
@@ -302,7 +302,9 @@ router.get('/care-plan-reviews', async (req: Request, res: Response, next: NextF
 // ── Management reports ────────────────────────────────────────────
 // Each returns flat rows with plain-English column names; the Reports page
 // renders them as-is, so the SELECT column order is the on-screen order.
-const REPORT_MGMT_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+// recruitment_admin ("Administrator" / office staff) added — they run reports
+// as part of their normal work and were getting a flat 403 on every one.
+const REPORT_MGMT_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'recruitment_admin'];
 function reportRange(req: Request): { homeId: string; fromDate: string; toDate: string; suId: string | null } {
   const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
   const { from, to, suId } = req.query as Record<string, string>;
