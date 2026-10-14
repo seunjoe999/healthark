@@ -11,6 +11,7 @@ import { printLetterheadTable } from '../../utils/letterheadPrint'
 
 const LEAVE_TYPES = [
   { value: 'annual', label: 'Annual leave' },
+  { value: 'bank_holiday', label: 'Bank holiday' },
   { value: 'sick', label: 'Sick leave' },
   { value: 'maternity', label: 'Maternity' },
   { value: 'paternity', label: 'Paternity' },
@@ -121,7 +122,7 @@ export default function Holidays() {
     if (!selectedHome) return
     setLoadingAll(true)
     try {
-      const staffId = !isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined
+      const staffId = !isRole('home_manager','group_admin','senior_carer','admin','deputy_manager','registered_manager','service_manager','director') ? user?.id : undefined
       const res = await api.get('/staff-hr/leave/all', {
         params: { homeId: selectedHome, ...(staffId ? { staffId } : {}), orderBy: 'applied' }
       })
@@ -347,7 +348,7 @@ export default function Holidays() {
                           {l.reason && <p className="text-xs text-slate-400 italic mt-1 truncate">{l.reason}</p>}
                           {l.status === 'declined' && l.decline_reason && <p className="text-xs text-rose-500 italic mt-1 truncate">Declined: {l.decline_reason}</p>}
                           <p className="text-xs text-slate-300 mt-1">Applied {l.created_at ? format(parseISO(l.created_at), 'd MMM yyyy, HH:mm') : '—'}</p>
-                          {isRole('home_manager', 'group_admin', 'senior_carer') && l.leave_hours_total != null && (
+                          {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && l.leave_hours_total != null && (
                             <p className="text-xs text-slate-500 mt-1">
                               Balance: <strong>{l.leave_hours_remaining ?? l.leave_hours_total}h</strong> / {l.leave_hours_total}h remaining
                               {' · '}{allLeaves.filter(x => x.staff_id === l.staff_id && x.status === 'approved').length} approved to date
@@ -364,7 +365,7 @@ export default function Holidays() {
                                 <Check className="w-3.5 h-3.5" /> Approve
                               </button>
                             )}
-                            {isRole('home_manager', 'group_admin', 'senior_carer') && (
+                            {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                               <button onClick={() => { openDecline(l) }}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                                 <X className="w-3.5 h-3.5" /> Decline
@@ -372,7 +373,7 @@ export default function Holidays() {
                             )}
                           </>
                         )}
-                        {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                        {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                           <button onClick={() => openCancel(l)}
                             className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                             <X className="w-3.5 h-3.5" /> Cancel leave
@@ -381,7 +382,7 @@ export default function Holidays() {
                         {l.status !== 'pending' && (
                           <span className={`badge ${badge}`}>{status}</span>
                         )}
-                        {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                        {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                           <button onClick={() => deleteLeave(l.id)} title="Delete this leave request"
                             className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
@@ -478,7 +479,7 @@ export default function Holidays() {
                   {l.total_hours && <p className="text-xs text-slate-400">{l.total_hours} hours</p>}
                   {l.notes && <p className="text-xs text-slate-400 italic mt-0.5">{l.notes}</p>}
                   {l.status === 'declined' && l.decline_reason && <p className="text-xs text-rose-500 italic mt-0.5">Declined: {l.decline_reason}</p>}
-                  {isRole('home_manager', 'group_admin', 'senior_carer') && l.leave_hours_total != null && (
+                  {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && l.leave_hours_total != null && (
                     <p className="text-xs text-slate-500 mt-1">
                       Balance: <strong>{l.leave_hours_remaining ?? l.leave_hours_total}h</strong> / {l.leave_hours_total}h remaining
                     </p>
@@ -497,7 +498,7 @@ export default function Holidays() {
                         <Check className="w-3.5 h-3.5" /> Approve
                       </button>
                     )}
-                    {isRole('home_manager', 'group_admin', 'senior_carer') && (
+                    {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                       <button onClick={() => { openDecline(l) }}
                         className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                         <X className="w-3.5 h-3.5" /> Decline
@@ -505,13 +506,13 @@ export default function Holidays() {
                     )}
                   </>
                 )}
-                {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                {l.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                   <button onClick={() => openCancel(l)}
                     className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 transition-colors">
                     <X className="w-3.5 h-3.5" /> Cancel leave
                   </button>
                 )}
-                {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+                {l.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                   <button onClick={() => deleteLeave(l.id)} title="Delete this leave request"
                     className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
@@ -546,14 +547,14 @@ export default function Holidays() {
               <div><p className="text-xs text-slate-400 mb-1">Decline reason</p><p className="text-sm text-rose-700 bg-rose-50 rounded-lg p-3">{preview.decline_reason}</p></div>
             )}
 
-            {isRole('home_manager', 'group_admin', 'senior_carer') && preview.leave_hours_total != null && (
+            {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && preview.leave_hours_total != null && (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p className="text-xs text-slate-400 mb-1">Annual leave balance</p>
                 <p className="text-sm font-semibold text-slate-800">{preview.leave_hours_remaining ?? preview.leave_hours_total}h remaining of {preview.leave_hours_total}h</p>
               </div>
             )}
 
-            {isRole('home_manager', 'group_admin', 'senior_carer') && (() => {
+            {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (() => {
               const approvedForStaff = allLeaves
                 .filter(x => x.staff_id === preview.staff_id && x.status === 'approved' && x.id !== preview.id)
                 .sort((a, b) => (a.start_date ? new Date(a.start_date).getTime() : 0) - (b.start_date ? new Date(b.start_date).getTime() : 0))
@@ -581,7 +582,7 @@ export default function Holidays() {
                     Approve
                   </button>
                 )}
-                {isRole('home_manager', 'group_admin', 'senior_carer') && (
+                {isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
                   <button onClick={() => { openDecline(preview) }}
                     className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-rose-50 hover:text-rose-600">
                     Decline
@@ -589,13 +590,13 @@ export default function Holidays() {
                 )}
               </div>
             )}
-            {preview.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+            {preview.status === 'approved' && isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
               <button onClick={() => openCancel(preview)}
                 className="w-full py-2 flex items-center justify-center gap-1.5 text-rose-500 rounded-xl text-sm font-semibold hover:bg-rose-50 transition-colors">
                 <X className="w-3.5 h-3.5" /> Cancel this leave
               </button>
             )}
-            {preview.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer') && (
+            {preview.status !== 'approved' && isRole('home_manager', 'group_admin', 'senior_carer', 'admin', 'deputy_manager', 'registered_manager', 'service_manager', 'director') && (
               <button onClick={() => deleteLeave(preview.id)}
                 className="w-full py-2 flex items-center justify-center gap-1.5 text-rose-500 rounded-xl text-sm font-semibold hover:bg-rose-50 transition-colors">
                 <Trash2 className="w-3.5 h-3.5" /> Delete this request
@@ -628,8 +629,8 @@ export default function Holidays() {
       </Modal>
 
       <AddLeaveRequestModal open={addOpen} onClose={() => setAddOpen(false)}
-        staffList={isRole('home_manager','group_admin','senior_carer') ? staffList : []}
-        defaultStaffId={!isRole('home_manager','group_admin','senior_carer') ? user?.id : undefined}
+        staffList={isRole('home_manager','group_admin','senior_carer','admin','deputy_manager','registered_manager','service_manager','director') ? staffList : []}
+        defaultStaffId={!isRole('home_manager','group_admin','senior_carer','admin','deputy_manager','registered_manager','service_manager','director') ? user?.id : undefined}
         homeId={selectedHome}
         onSaved={async () => { setAddOpen(false); await load(); toast.success('Leave request submitted') }} />
     </div>

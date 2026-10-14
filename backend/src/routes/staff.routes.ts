@@ -26,23 +26,17 @@ function randomUnambiguousPassword(length = 10): string {
   return out + '!';
 }
 
-// Prorated annual leave — legal requirement (WTR 1998). Full-time = 37.5 contracted
-// hours/week = 210 leave hours/year; 36 hours/week = 201.75 hours/year. Other
-// contracted-hours values scale linearly off the 37.5h/210h ratio. If the staff
-// member's start date falls after the leave-year start (assumed Jan 1), their
-// entitlement is prorated by the fraction of the leave year actually worked.
-export function computeProratedLeave(contractedHours: any, startDate: string | null): { total: number } {
-  const hours = parseFloat(contractedHours);
-  let baseAnnual: number;
-  if (!hours || isNaN(hours)) {
-    baseAnnual = 210; // default full-time entitlement when not specified
-  } else if (hours === 37.5) {
-    baseAnnual = 210;
-  } else if (hours === 36) {
-    baseAnnual = 201.75;
-  } else {
-    baseAnnual = (hours / 37.5) * 210;
-  }
+// Prorated annual leave — legal requirement (WTR 1998). Base annual entitlement
+// is role-based (owner's explicit, repeatedly-confirmed figures): Care Staff =
+// 201.6 hours/year, every other role = 210 hours/year. This used to be derived
+// from contracted_hours instead (37.5h/week -> 210, 36h/week -> 201.75), which
+// is the exact wrong-decimal figure (.75 instead of .60) the owner kept finding
+// reapplied to care staff overnight — this function, not just its callers, was
+// the source of that number. If the staff member's start date falls after the
+// leave-year start (assumed Jan 1), their entitlement is prorated by the
+// fraction of the leave year actually worked.
+export function computeProratedLeave(role: string | null | undefined, startDate: string | null): { total: number } {
+  const baseAnnual = role === 'care_staff' ? 201.6 : 210;
 
   if (!startDate) return { total: Math.round(baseAnnual * 100) / 100 };
 
@@ -418,7 +412,7 @@ router.post(
       const rawPassword = password || randomUnambiguousPassword();
       const passwordHash = await authService.hashPassword(rawPassword);
 
-      const { total: proratedLeaveHours } = computeProratedLeave(contractedHours, nd(startDate));
+      const { total: proratedLeaveHours } = computeProratedLeave(role || 'care_staff', nd(startDate));
       const currentLeaveYear = new Date().getFullYear();
 
       const rows = await query(
@@ -552,11 +546,12 @@ router.put(
       const manuallySetRow = await query<any>('SELECT leave_hours_manually_set FROM staff WHERE id = $1', [targetId]);
       const alreadyManuallySet = !!manuallySetRow[0]?.leave_hours_manually_set;
       if (canManage && !alreadyManuallySet && (contractedHours !== undefined || startDate !== undefined) && leaveHoursTotal === undefined && leaveHoursRemaining === undefined) {
-        const existing = await query<any>('SELECT contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
+        const existing = await query<any>('SELECT role, contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff WHERE id = $1', [targetId]);
         const cur = existing[0] || {};
         const effContractedHours = contractedHours !== undefined ? contractedHours : cur.contracted_hours;
         const effStartDate = startDate !== undefined ? nd(startDate) : cur.start_date;
-        const { total: newTotal } = computeProratedLeave(effContractedHours, effStartDate);
+        const effRole = newRoleInput || cur.role;
+        const { total: newTotal } = computeProratedLeave(effRole, effStartDate);
         const currentLeaveYear = new Date().getFullYear();
         const curLeaveYear = cur.leave_year === null || cur.leave_year === undefined ? null : Number(cur.leave_year);
         const isRollover = curLeaveYear === null || curLeaveYear !== currentLeaveYear;
@@ -957,6 +952,8 @@ const DEFAULT_PERMS: Record<string, Record<string, boolean>> = {
   service_manager:     { edit_service_users: true,  edit_care_plans: true,  view_sensitive_info: true,  edit_staff: true,  manage_rota: true,  approve_leave: true,  manage_tasks: true,  view_reports: true,  access_all_residents: true  },
   supervisor:          { edit_service_users: false, edit_care_plans: false, view_sensitive_info: true,  edit_staff: false, manage_rota: true,  approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
   recruitment_admin:   { edit_service_users: false, edit_care_plans: false, view_sensitive_info: false, edit_staff: true,  manage_rota: false, approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
+  senior_carer:        { edit_service_users: false, edit_care_plans: false, view_sensitive_info: true,  edit_staff: false, manage_rota: true,  approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: false },
+  auditor:             { edit_service_users: false, edit_care_plans: false, view_sensitive_info: true,  edit_staff: false, manage_rota: false, approve_leave: false, manage_tasks: false, view_reports: true,  access_all_residents: true  },
 };
 
 export default router;

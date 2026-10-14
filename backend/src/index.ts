@@ -2064,6 +2064,14 @@ async function ensureColumns() {
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_remaining NUMERIC(6,2) NOT NULL DEFAULT 210`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS contracted_hours NUMERIC(5,2)`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_year INTEGER`,
+    `ALTER TABLE staff ADD COLUMN IF NOT EXISTS leave_hours_manually_set BOOLEAN DEFAULT FALSE`,
+    // One-time correction for the staff the owner had manually fixed to 201.60 only for
+    // the (now-fixed) startup recompute job below to silently revert them to the old
+    // 201.75 figure on the next deploy. Only touches rows that are both flagged as
+    // manually-set AND still sitting at the old wrong total — anyone not affected by
+    // the bug is untouched, and this becomes a no-op after the first run post-deploy.
+    `UPDATE staff SET leave_hours_total = 201.6, leave_hours_remaining = GREATEST(0, leave_hours_remaining - 0.15)
+       WHERE role = 'care_staff' AND leave_hours_manually_set = true AND leave_hours_total = 201.75`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS login_pin_hash TEXT`,
     `ALTER TABLE staff ADD COLUMN IF NOT EXISTS last_password_login TIMESTAMPTZ`,
     // Contracted hours are 40 for everyone (owner directive, 9 Oct 2026). Applied ONCE, so hours a manager edits afterwards are kept; new staff default to 40.
@@ -3295,10 +3303,18 @@ async function ensureColumns() {
   try {
     const currentYear = new Date().getFullYear();
     const staffResult = await pool.query(
-      `SELECT id, contracted_hours, start_date, leave_hours_total, leave_hours_remaining, leave_year FROM staff`
+      `SELECT id, role, start_date, leave_hours_total, leave_hours_remaining, leave_year, leave_hours_manually_set FROM staff`
     );
     for (const row of staffResult.rows) {
-      const { total: newTotal } = computeProratedLeave(row.contracted_hours, row.start_date || null);
+      // This runs on every boot — i.e. every deploy — and had no idea a manager
+      // had ever manually corrected someone's entitlement, so it silently
+      // reapplied the auto-calculated figure over the top on the very next
+      // restart. This is why entitlements the owner fixed one evening were back
+      // to the wrong value the next morning: a deploy happened overnight. Once
+      // leave_hours_manually_set is true for a staff member, this job leaves
+      // them alone entirely, same as the PUT /:id recompute guard below.
+      if (row.leave_hours_manually_set) continue;
+      const { total: newTotal } = computeProratedLeave(row.role, row.start_date || null);
       const rowLeaveYear = row.leave_year === null || row.leave_year === undefined ? null : Number(row.leave_year);
       const isRollover = rowLeaveYear === null || rowLeaveYear !== currentYear;
       if (isRollover) {
