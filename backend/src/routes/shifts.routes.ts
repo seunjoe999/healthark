@@ -23,6 +23,14 @@ router.use(async (_req, _res, next) => {
 });
 
 function fromToken(req: Request, field: string): string {
+  // authenticate() already keeps req.staff.role in sync with the DB on every
+  // request (see middleware/auth.ts) — a raw jwt.decode() of the bearer token
+  // ignores that and reads whatever role was baked into the token at login,
+  // so a staff member promoted to admin kept being treated as their old role
+  // by this file (rota visibility, financial fields, manage rights) until
+  // they fully logged out and back in. req.staff must win when present.
+  const staffVal = (req.staff as any)?.[field];
+  if (staffVal) return staffVal;
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return d?.[field] || ''; }
   return '';

@@ -15,6 +15,12 @@ const router = Router();
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
 function fromToken(req: Request, field: string): string {
+  // req.staff is kept in sync with the DB on every request by authenticate()
+  // (middleware/auth.ts) — decoding the raw bearer token instead reads
+  // whatever role/home was baked in at login, so a just-promoted account was
+  // still treated as its old role here until a full re-login.
+  const staffVal = (req.staff as any)?.[field];
+  if (staffVal) return staffVal;
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return d?.[field] || ''; }
   return '';

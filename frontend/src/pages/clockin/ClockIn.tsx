@@ -168,6 +168,16 @@ export default function ClockIn() {
 
               <p className="text-slate-500 text-xs text-center mb-4">Signed in as <span className="text-white font-medium">{user?.firstName} {user?.lastName}</span></p>
 
+              {eventType === 'clock_out' && (
+                <div className="mb-4">
+                  <label className="text-slate-400 text-xs mb-1.5 block">Reason for clocking out (optional)</label>
+                  <textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)} rows={2}
+                    placeholder="e.g. Leaving early, shift ended, handed over to night staff..."
+                    className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm outline-none focus:border-amber-400/60" />
+                  <p className="text-slate-500 text-xs mt-1">If anything is outstanding, your manager will see it along with this reason.</p>
+                </div>
+              )}
+
               <button onClick={doClockIn}
                 className="w-full py-3.5 rounded-xl font-bold text-slate-900 text-base flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>

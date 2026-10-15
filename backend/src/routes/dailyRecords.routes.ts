@@ -10,7 +10,9 @@ import { assertResidentAccess } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr } from '../utils/ukTime';
 import { getStockCountStatus } from '../utils/medicationDue';
+import { getMyPendingTasksToday } from '../utils/taskDue';
 import { logger } from '../config/logger';
+import { sendPushToStaff } from '../services/push.service';
 
 const router = Router();
 
@@ -33,6 +35,11 @@ function getStaffId(req: Request): string {
   return req.staff?.staffId || '';
 }
 function getRole(req: Request): string {
+  // req.staff.role is kept in sync with the DB on every request by
+  // authenticate() (middleware/auth.ts) — decoding the raw bearer token
+  // instead reads whatever role was baked in at login, so a just-promoted
+  // account was still treated as its old role here until a full re-login.
+  if (req.staff?.role) return req.staff.role;
   const token = req.headers.authorization?.substring(7);
   if (token) { const d = jwt.decode(token) as any; return d?.role || ''; }
   return '';
@@ -522,6 +529,37 @@ router.post('/', [
           );
         }
       } catch (stockTaskErr) { logger.error('Failed to auto-complete medication stock task', stockTaskErr); }
+
+      // Owner instruction: once a staff member has finished every task for
+      // their day — including the medication stock count just auto-completed
+      // above — the system should clock them out itself. Only when they are
+      // actually clocked in right now, and only on the transition to zero
+      // pending tasks, so this never fires for someone with no tasks at all.
+      try {
+        const role = getRole(req);
+        const lastEventRows = await query<any>(
+          `SELECT id, event_type, home_id, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+          [staffId]
+        );
+        const last = lastEventRows[0];
+        if (last?.event_type === 'clock_in') {
+          const stillPending = await getMyPendingTasksToday(result.home_id, staffId, role, last.shift_id || undefined);
+          if (stillPending.length === 0) {
+            await query(
+              `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed, shift_id)
+               VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE, $3)`,
+              [staffId, last.home_id || result.home_id, last.shift_id || null]
+            );
+            const body = 'All your tasks for today are complete, so the system has clocked you out automatically.';
+            await query(
+              `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+               VALUES ($1,$2,$3,$4,'clockin','/clock-in')`,
+              [staffId, last.home_id || result.home_id, 'Clocked out automatically', body]
+            ).catch(() => {});
+            sendPushToStaff(staffId, { title: 'Clocked out automatically', body, url: '/clock-in' }).catch(() => {});
+          }
+        }
+      } catch (autoErr) { logger.error('Auto clock-out check failed', autoErr); }
     }
 
     res.status(201).json({ success: true, data: result } as ApiResponse);

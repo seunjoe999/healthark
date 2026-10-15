@@ -10,7 +10,8 @@ import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr } from '../utils/ukTime';
 import { generateTasksForHome } from '../utils/taskGeneration';
-import { sendPushToStaffMany } from '../services/push.service';
+import { sendPushToStaffMany, sendPushToStaff } from '../services/push.service';
+import { getMyPendingTasksToday } from '../utils/taskDue';
 
 const router = Router();
 
@@ -254,10 +255,44 @@ router.put('/:id/complete', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
       await query(
         `UPDATE tasks SET status='completed', completed_by=$1, completed_at=NOW(), completion_notes=$2 WHERE id=$3`,
         [staffId, req.body.notes || null, req.params.id]
       );
+
+      // Owner instruction: once a staff member has finished every task for
+      // their day, the system should clock them out itself rather than
+      // leaving them to remember to do it. Only fires on the transition to
+      // zero pending tasks (this completion was the LAST one) while they are
+      // actually clocked in right now — never for someone with no tasks at
+      // all, and never a second time for an already-clocked-out account.
+      try {
+        const homeId = fromToken(req, 'homeId');
+        const lastEventRows = await query<any>(
+          `SELECT id, event_type, home_id, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+          [staffId]
+        );
+        const last = lastEventRows[0];
+        if (last?.event_type === 'clock_in') {
+          const stillPending = await getMyPendingTasksToday(homeId, staffId, role, last.shift_id || undefined);
+          if (stillPending.length === 0) {
+            const clocked = await query<any>(
+              `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed, shift_id)
+               VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE, $3) RETURNING id`,
+              [staffId, last.home_id || homeId, last.shift_id || null]
+            );
+            const body = 'All your tasks for today are complete, so the system has clocked you out automatically.';
+            await query(
+              `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+               VALUES ($1,$2,$3,$4,'clockin','/clock-in')`,
+              [staffId, last.home_id || homeId, 'Clocked out automatically', body]
+            ).catch(() => {});
+            sendPushToStaff(staffId, { title: 'Clocked out automatically', body, url: '/clock-in' }).catch(() => {});
+          }
+        }
+      } catch (autoErr) { /* auto clock-out is a convenience, never block task completion on it */ }
+
       res.json({ success: true, message: 'Task completed' } as ApiResponse);
     } catch (err) { next(err); }
   }
