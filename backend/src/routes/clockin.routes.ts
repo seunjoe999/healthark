@@ -257,7 +257,14 @@ router.post('/event', authenticate,
       }
 
       const outcome = evaluateGeofence({ eventType, staffLat, staffLng, gpsAccuracy, checkPoints });
-      if (!outcome.geofencePassed) {
+      // Owner instruction (repeated, explicit): nothing may stop a clock-out,
+      // full stop. Weak GPS or being outside the geofence used to 403 a
+      // clock-out exactly like a clock-in — someone leaving early, stepping
+      // outside for signal, or clocking out from home after forgetting
+      // earlier could be blocked here with no way through. Clock-out now
+      // always proceeds; the distance/GPS outcome is still recorded on the
+      // event for managers to see, it just never blocks.
+      if (!outcome.geofencePassed && eventType !== 'clock_out') {
         const placeLabel = usingResidentCheckpoints ? "today's assigned resident" : 'the care home';
         const messages: Record<string, string> = {
           weak_gps: `GPS signal too weak (±${gpsAccuracy ? Math.round(gpsAccuracy) : '?'}m accuracy). Please use a mobile device or move outdoors.`,
@@ -273,7 +280,7 @@ router.post('/event', authenticate,
           geofencePassed: false,
         });
       }
-      const geofencePassed = true;
+      const geofencePassed = eventType === 'clock_out' ? outcome.geofencePassed : true;
       const closestDistance = outcome.distanceMetres;
 
       // Previously blocked home_manager/group_admin from clocking in at all — but
@@ -332,17 +339,26 @@ router.post('/event', authenticate,
                   staffName: staffRows[0] ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : '' },
         });
       }
+      // Set below when a clock-out is let through with no matching open
+      // clock-in on record — flagged to managers via the same override-alert
+      // path as outstanding medication/tasks, rather than refused outright.
+      let noMatchingClockIn = false;
       if (eventType === 'clock_out' && !isClockedIn) {
         // Already clocked out recently: say so plainly instead of the confusing
-        // "you need to clock in" — there is nothing left for them to do.
+        // "you need to clock in" — there is nothing left for them to do. This
+        // is purely informational (nothing is actually outstanding to action),
+        // not a barrier, so it's fine to still return here.
         const last = lastEventRows[0];
         if (last?.event_type === 'clock_out' && (Date.now() - new Date(last.event_time).getTime()) < 14 * 3600 * 1000) {
           const at = new Date(last.event_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
           return res.status(400).json({ success: false, reason: 'already_clocked_out',
             error: `You are already clocked out — your clock-out was recorded at ${at}. There is nothing more you need to do.` });
         }
-        return res.status(400).json({ success: false, reason: 'no_clock_in',
-          error: 'There is no clock-in recorded for you on this shift, so there is nothing to clock out of. Tell your manager so your hours can be added by hand.' });
+        // Owner instruction: clock-out must never be refused, even when there
+        // is no open clock-in to close (forgot to clock in, or it was never
+        // recorded). Record it anyway and flag it for a manager to reconcile
+        // by hand, rather than leaving the staff member with no way through.
+        noMatchingClockIn = true;
       }
       if (eventType !== 'clock_out' && isClockedIn) {
         const openedAt = new Date(lastEventRows[0].event_time);
@@ -535,15 +551,20 @@ router.post('/event', authenticate,
         if (pendingTasks.length > 0) {
           overridden.push(`${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} not completed (${pendingTasks.slice(0, 3).map(t => t.title).join(', ')}${pendingTasks.length > 3 ? ', …' : ''})`);
         }
+        if (noMatchingClockIn) {
+          overridden.push('No matching clock-in was found on record for this clock-out');
+        }
       }
 
       const punctuality = 'on_time';
 
       // A clock-out records the same shift_id as the clock-in it's closing
       // (so the pair stays matched); a clock-in records whichever shift
-      // "now" belongs to.
+      // "now" belongs to. When there's no open clock-in to match (see
+      // noMatchingClockIn above), fall back to whichever shift "now" belongs
+      // to, same as a clock-in would, so the record still links to a shift.
       const eventShiftId: string | null = eventType === 'clock_out'
-        ? (lastEventRows[0]?.shift_id || null)
+        ? (lastEventRows[0]?.shift_id || targetShift?.id || null)
         : (targetShift?.id || null);
 
       const rows = await query(

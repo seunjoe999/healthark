@@ -230,8 +230,32 @@ const navSections = [
   }
 ]
 
-// Flat list of all nav items used for mobile header title lookup
-const allNavItems = navSections.flatMap(s => s.items) as any[]
+// Flat list of all nav items used for mobile header title lookup, and by
+// isFeatureAllowed below to gate direct navigation / dashboard shortcuts —
+// not just the sidebar — against the same Access Rights settings.
+export const allNavItems = navSections.flatMap(s => s.items) as any[]
+
+// Single source of truth for "can this user see/use this feature", shared
+// between the sidebar filter below and anywhere else that needs to honour
+// Access Rights (the route guard in App.tsx, dashboard shortcut tiles).
+// An explicit Access Rights setting always wins over the built-in role
+// defaults, in BOTH directions: `false` hides/blocks it, `true` allows it
+// even for a role the hard-coded list would otherwise have excluded.
+// group_admin is never restricted by a feature flag. `isRole` is the same
+// predicate useAuth() already exposes.
+export function isFeatureAllowed(
+  item: { roles: string[]; featureKey?: string },
+  featureFlags: Record<string, boolean> | undefined,
+  isRole: (...roles: string[]) => boolean
+): boolean {
+  const flag = item.featureKey ? featureFlags?.[item.featureKey] : undefined
+  if (!isRole('group_admin')) {
+    if (flag === false) return false
+    if (flag === true) return true
+  }
+  if (item.roles.length > 0 && !item.roles.some(r => isRole(r))) return false
+  return true
+}
 
 interface SidebarProps {
   user: { id?: string; firstName?: string; lastName?: string; role?: string; featureFlags?: Record<string, boolean>; photoUrl?: string | null } | null
@@ -312,20 +336,7 @@ function Sidebar({ user, logout, isRole, onNavClick, theme, toggleTheme }: Sideb
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-4 pb-4">
         {navSections.map((section, si) => {
-          const visible = section.items.filter(item => {
-            // An explicit Access Rights setting always wins over the built-in role
-            // defaults, in BOTH directions: `false` hides the page, `true` shows it
-            // even to a role the hard-coded list would have excluded. Previously only
-            // `false` was honoured, so switching a page ON for a role in Access Rights
-            // (e.g. Teams or Reports for a senior carer) changed nothing in the menu.
-            const flag = (item as any).featureKey ? user?.featureFlags?.[(item as any).featureKey] : undefined
-            if (!isRole('group_admin')) {
-              if (flag === false) return false
-              if (flag === true) return true
-            }
-            if (item.roles.length > 0 && !item.roles.some(r => isRole(r))) return false
-            return true
-          })
+          const visible = section.items.filter(item => isFeatureAllowed(item as any, user?.featureFlags, isRole))
           if (!visible.length) return null
           const isCollapsible = COLLAPSIBLE_SECTIONS.has(section.label)
           const isOpen = !collapsed.has(section.label)

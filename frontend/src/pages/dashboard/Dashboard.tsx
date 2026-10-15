@@ -324,47 +324,48 @@ export default function Dashboard() {
     to: string | null
     urgent: boolean
     isBirthday?: boolean
+    featureKey?: string
   }
-  const kpiCards: KpiCard[] = [
+  const allKpiCards: KpiCard[] = [
     {
       icon: Users, label: 'Active Residents', value: stats.suLive ?? 0,
-      color: '#4ade80', to: '/service-users', urgent: false,
+      color: '#4ade80', to: '/service-users', urgent: false, featureKey: 'service_users',
     },
     {
       icon: UserCheck, label: 'Staff on Duty',
       value: stats.staffActive ?? stats.staffOnDuty ?? 0,
-      color: '#22d3ee', to: '/staff', urgent: false,
+      color: '#22d3ee', to: '/staff', urgent: false, featureKey: 'staff',
     },
     {
       icon: Pill,
       label: 'MAR Adherence',
       value: marPct !== null ? `${marPct}%` : '—',
       color: marPct !== null && marPct < 80 ? '#f87171' : '#a3e635',
-      to: '/mar', urgent: marPct !== null && marPct < 80,
+      to: '/mar', urgent: marPct !== null && marPct < 80, featureKey: 'mar',
     },
     {
       icon: AlertTriangle, label: 'Open Incidents',
       value: newStats.openIncidents,
       color: newStats.openIncidents > 0 ? '#f87171' : '#4ade80',
-      to: '/incidents', urgent: newStats.openIncidents > 0,
+      to: '/incidents', urgent: newStats.openIncidents > 0, featureKey: 'incidents',
     },
     {
       icon: Calendar, label: 'Unassigned Shifts',
       value: extraStats.unassignedShifts,
       color: '#b08af5', to: '/rota',
-      urgent: extraStats.unassignedShifts > 0,
+      urgent: extraStats.unassignedShifts > 0, featureKey: 'rota',
     },
     {
       icon: Clock, label: 'Late Clock-ins Today',
       value: extraStats.lateClockIns,
       color: extraStats.lateClockIns > 0 ? '#fbbf24' : '#4ade80',
-      to: '/clockin-analytics', urgent: extraStats.lateClockIns > 0,
+      to: '/clockin-analytics', urgent: extraStats.lateClockIns > 0, featureKey: 'clockin_analytics',
     },
     {
       icon: CheckSquare, label: 'Overdue Tasks',
       value: tasksOverdue,
       color: tasksOverdue > 0 ? '#fb923c' : '#4ade80',
-      to: '/tasks', urgent: tasksOverdue > 0,
+      to: '/tasks', urgent: tasksOverdue > 0, featureKey: 'tasks',
     },
     {
       icon: Cake, label: 'Birthdays This Week',
@@ -373,6 +374,10 @@ export default function Dashboard() {
       isBirthday: true,
     },
   ]
+  // Access Rights controls whether a role sees these sections at all — a
+  // shortcut tile pointing at a page the sidebar has already hidden for this
+  // role must not keep showing on the dashboard as a back door into it.
+  const kpiCards = allKpiCards.filter(c => !c.featureKey || user?.featureFlags?.[c.featureKey] !== false)
 
   return (
     <div className="p-4 lg:p-10 max-w-7xl mx-auto">

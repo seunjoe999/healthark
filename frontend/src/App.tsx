@@ -1,10 +1,10 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationsProvider } from './context/NotificationsContext'
 import { ThemeProvider } from './context/ThemeContext'
-import AppLayout from './components/layout/AppLayout'
+import AppLayout, { allNavItems, isFeatureAllowed } from './components/layout/AppLayout'
 import InstallPrompt from './components/pwa/InstallPrompt'
 import Login from './pages/auth/Login'
 import LandingPage from './pages/public/LandingPage'
@@ -121,9 +121,35 @@ const CatheterCare = React.lazy(() => import('./pages/clinical/CatheterCare'))
 const EndOfLife = React.lazy(() => import('./pages/clinical/EndOfLife'))
 const GPReferral = React.lazy(() => import('./pages/clinical/GPReferral'))
 
+// Same nav-item list the sidebar uses to decide what to show, reused here to
+// gate direct navigation (typed URL, bookmark, browser back/forward) against
+// the same Access Rights settings — previously Access Rights only hid a page
+// from the menu; anyone who still had the link could open it directly and
+// nothing on the page itself stopped them. Sorted longest-path-first so a
+// more specific nav entry (e.g. /assessments/barthel) is matched before a
+// shorter, unrelated one that happens to share a prefix (e.g. /assessments).
+const navItemsByPathLength = [...allNavItems]
+  .map(item => ({ ...item, pathOnly: String(item.to).split('?')[0] }))
+  .sort((a, b) => b.pathOnly.length - a.pathOnly.length)
+
+function findNavItemForPath(pathname: string) {
+  return navItemsByPathLength.find(
+    item => pathname === item.pathOnly || pathname.startsWith(item.pathOnly + '/')
+  )
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, isRole } = useAuth()
+  const location = useLocation()
   if (!user) return <Navigate to="/login" replace />
+  // Only a route whose pathname lines up with a known nav entry is checked —
+  // a page with no matching entry (e.g. a Settings sub-page already gated by
+  // its own role check) is left exactly as before. group_admin is never
+  // blocked, matching the sidebar's own behaviour.
+  const navItem = findNavItemForPath(location.pathname)
+  if (navItem && !isFeatureAllowed(navItem, user.featureFlags, isRole)) {
+    return <Navigate to="/dashboard" replace />
+  }
   return <AppLayout>{children}</AppLayout>
 }
 
