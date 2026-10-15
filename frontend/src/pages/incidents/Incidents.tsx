@@ -1490,7 +1490,7 @@ export default function Incidents() {
                             isn't what a manager wants when they've opened a specific record. */}
                         <PrintButton onClick={() => openLetterheadPrint(`Incident Report — ${inc.resident_name || 'Unknown resident'}`, buildIncidentPrintPage(inc))} />
                       </div>
-                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                         <Button size="sm" variant="danger" icon={<Trash2 className="w-3.5 h-3.5" />}
                           onClick={() => deleteIncident(inc)}>
                           Delete

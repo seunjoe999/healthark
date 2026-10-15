@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 router.use(authenticate);
-router.use(requireRole('home_manager', 'group_admin', 'admin', 'deputy_manager'));
+router.use(requireRole('home_manager', 'group_admin', 'admin', 'recruitment_admin', 'deputy_manager'));
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);

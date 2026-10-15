@@ -331,7 +331,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // POST /api/incidents/:id/review-note — append a timestamped review note (managers/team leaders)
-router.post('/:id/review-note', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/review-note', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'team_leader', 'senior_carer'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const staffId = fromToken(req, 'staffId');
     const { note } = req.body;

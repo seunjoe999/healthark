@@ -129,7 +129,7 @@ router.get('/contacts', async (req: Request, res: Response, next: NextFunction) 
 });
 
 router.post('/contacts',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   [body('name').notEmpty().withMessage('Name is required')], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -147,7 +147,7 @@ router.post('/contacts',
 );
 
 router.delete('/contacts/:id',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

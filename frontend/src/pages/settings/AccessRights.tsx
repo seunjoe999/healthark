@@ -127,7 +127,7 @@ export default function AccessRights() {
   const isEnabled = (role: string, key: string) => flags[role]?.[key] !== false
 
   const toggle = async (role: string, key: string) => {
-    if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) return
+    if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')) return
     const current = isEnabled(role, key)
     const nextFlags = { ...(flags[role] || {}) }
     // Both directions are stored explicitly: false revokes, true grants. Omitting the
@@ -149,7 +149,7 @@ export default function AccessRights() {
   }
 
   const grantAll = async (role: string) => {
-    if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) return
+    if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')) return
     setSaving(`${role}-all`)
     try {
       const allOn: Record<string, boolean> = {}
@@ -163,7 +163,7 @@ export default function AccessRights() {
   }
 
   const revokeAll = async (role: string) => {
-    if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) return
+    if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')) return
     const roleLabel = ROLES.find(r => r.value === role)?.label || role
     if (!window.confirm(`Remove ALL access for ${roleLabel}? Every staff member with this role will immediately lose access to every section of the app (except group_admin, who always keeps full access). This takes effect the next time they load the app.`)) return
     setSaving(`${role}-all`)
@@ -178,7 +178,7 @@ export default function AccessRights() {
     } finally { setSaving(null) }
   }
 
-  if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')) {
+  if (!isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')) {
     return (
       <div className="p-8 text-center text-slate-500">
         <Key className="w-10 h-10 mx-auto mb-3 text-slate-300" />
@@ -187,7 +187,7 @@ export default function AccessRights() {
     )
   }
 
-  const canEdit = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canEdit = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')
 
   return (
     <div className="p-6 space-y-6 max-w-full">

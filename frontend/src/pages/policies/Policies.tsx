@@ -109,14 +109,14 @@ export default function Policies() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">{policies.length} polic{policies.length !== 1 ? 'ies' : 'y'} on file</p>
         </div>
-        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add policy</Button>
         )}
       </div>
 
       {loading ? <Spinner /> : policies.length === 0 ? (
         <EmptyState title="No policies added yet" description="Add your organisation's policies and procedures"
-          action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add policy</Button> : undefined} />
+          action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add policy</Button> : undefined} />
       ) : (
         <div className="space-y-3">
           {policies.map((p: any) => (
@@ -151,7 +151,7 @@ export default function Policies() {
                   {p.requires_sign && !p.signed_by_me && (
                     <Button size="sm" icon={<PenLine className="w-3.5 h-3.5" />} onClick={() => openSignModal(p)}>Sign off</Button>
                   )}
-                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                     <button onClick={() => deletePolicy(p.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -196,7 +196,7 @@ export default function Policies() {
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Users className="w-3.5 h-3.5" /> Sign-offs
                   </p>
-                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && viewPolicy?.requires_sign && (
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && viewPolicy?.requires_sign && (
                     <button
                       onClick={() => { setSendSignoffOpen(true); api.get('/staff').then(r => setAllStaff(r.data.data || [])) }}
                       className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
@@ -235,7 +235,7 @@ export default function Policies() {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <Paperclip className="w-3.5 h-3.5" /> Attachments
                 </p>
-                {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                   <>
                     <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.zip" onChange={uploadFile} />
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
@@ -272,7 +272,7 @@ export default function Policies() {
                   <Button size="sm" variant="outline" icon={<ExternalLink className="w-3.5 h-3.5" />}>Open document</Button>
                 </a>
               )}
-              {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+              {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                 <button onClick={() => deletePolicy(viewPolicy.id)}
                   className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors flex items-center gap-1.5">
                   <Trash2 className="w-3.5 h-3.5" /> Delete policy

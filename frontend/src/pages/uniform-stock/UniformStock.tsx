@@ -17,7 +17,7 @@ const BLANK = {
 
 export default function UniformStock() {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')
   const [entries, setEntries] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')

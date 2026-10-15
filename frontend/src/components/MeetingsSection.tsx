@@ -44,7 +44,7 @@ function createUrl(meetingType: MeetingType) {
 
 export default function MeetingsSection({ meetingType, parentId, homeId, label }: MeetingsSectionProps) {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager', 'senior_carer')
   const [meetings, setMeetings] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)

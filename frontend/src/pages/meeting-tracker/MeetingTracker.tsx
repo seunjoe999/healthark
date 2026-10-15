@@ -35,7 +35,7 @@ const BLANK = {
 
 export default function MeetingTracker() {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
   const [entries, setEntries] = useState<any[]>([])
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')

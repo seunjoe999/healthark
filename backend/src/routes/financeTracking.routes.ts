@@ -69,7 +69,7 @@ router.post('/',
 );
 
 // DELETE /api/finance-tracking/:id
-router.delete('/:id', requireRole('home_manager', 'group_admin', 'admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'admin', 'recruitment_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM finance_tracking WHERE id = $1', [req.params.id]);

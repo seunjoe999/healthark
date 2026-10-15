@@ -422,7 +422,7 @@ router.post('/:id/sensitive-dates', param('id').isUUID(),
 );
 
 router.delete('/:id/sensitive-dates/:dateId',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   [param('id').isUUID(), param('dateId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -512,7 +512,7 @@ router.put('/:id/contacts/:contactId',
 // for this to be management-only, same as the equivalent document-delete
 // restriction, so care staff and team leaders can't remove contact records.
 router.delete('/:id/contacts/:contactId',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   [param('id').isUUID(), param('contactId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -182,7 +182,7 @@ export default function RiskManagement() {
   // Frontline staff (including senior_carer/team_leader) are read-only here —
   // backend enforces the same, this just keeps the UI from offering a
   // control that would 403.
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
   // Owner was explicit (repeatedly, across two videos) that team leaders need the
   // same Edit + "send to staff" access on risk assessments that they already have
   // on Care Plans — reviewing/auditing a risk assessment and routing it to their

@@ -717,7 +717,7 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
 // entirely; this is a deliberate escape hatch, not a fix for the underlying
 // task-completion bug, which is handled separately.
 router.post('/force-clockout/:staffId', authenticate,
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

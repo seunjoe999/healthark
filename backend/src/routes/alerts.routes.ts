@@ -119,7 +119,7 @@ router.put('/settings', requireRole(...ALERT_SETTINGS_ROLES),
 // POST /api/alerts/bulk — resolve or delete many alerts at once. Clearing a
 // backlog one alert at a time was the only option before.
 router.post('/bulk',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   [body('ids').isArray({ min: 1, max: 500 }), body('ids.*').isUUID(), body('action').isIn(['resolve', 'delete'])],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

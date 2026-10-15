@@ -62,7 +62,7 @@ export default function Timesheets() {
     return mins > 0 ? (mins / 60).toFixed(2) : ''
   }
 
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')
 
   async function load() {
     setLoading(true)

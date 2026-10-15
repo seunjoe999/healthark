@@ -179,7 +179,7 @@ router.get('/staff-sensitive-notes/:staffId', param('staffId').isUUID(), validat
 );
 
 router.post('/staff-sensitive-notes',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   [body('staffId').isUUID(), body('note').notEmpty()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -195,7 +195,7 @@ router.post('/staff-sensitive-notes',
 );
 
 router.delete('/staff-sensitive-notes/:id',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

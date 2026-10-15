@@ -73,7 +73,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // deleting them. Replaces the full hidden set for this resident each save, so
 // un-checking a plan in the modal un-hides it. Registered before /:id.
 router.post('/hide-bulk',
-  requireRole('group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'),
+  requireRole('group_admin', 'home_manager', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
   [body('suId').isUUID(), body('hiddenIds').isArray()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

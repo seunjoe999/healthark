@@ -569,7 +569,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // which is meaningless noise, not a personal to-do reminder. Frontline
   // staff get the properly staff/role/team-scoped count; management has
   // Reports/Audit Trail for oversight instead of a popup.
-  useTaskReminders(!!user && !isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'))
+  useTaskReminders(!!user && !isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'))
   usePushNotifications(!!user)
 
   // Managers/admins don't clock in via QR, so they aren't gated on shift status.

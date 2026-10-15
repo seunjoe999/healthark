@@ -64,7 +64,7 @@ router.post('/', [
 );
 
 // DELETE /api/uniform-stock/:id
-router.delete('/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM uniform_log WHERE id = $1', [req.params.id]);

@@ -1540,7 +1540,7 @@ export default function CarePlans() {
   const { user, isRole } = useAuth()
   // Support plans are a clinical/management document — frontline staff can
   // read them but only managers may add or edit (backend enforces the same).
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
   // A non-manager (e.g. team leader) can be individually granted edit access
   // in Settings > Access Rights (staff_home_access.can_edit_care_plans) — the
   // backend (PUT /care-plans/:id) already honours this, but the Edit button
@@ -1704,7 +1704,7 @@ export default function CarePlans() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">View and manage individual support plans</p>
         </div>
-        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+        {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
           <Button size="sm" variant="secondary" icon={<Users className="w-4 h-4" />} onClick={openAdminReads}>
             Who read plans
           </Button>
@@ -1843,7 +1843,7 @@ export default function CarePlans() {
           plan={viewPlan}
           su={selectedSu}
           reads={planReads[viewPlan.id] || []}
-          canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')}
+          canDelete={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')}
           canEdit={canEditPlan}
           canManage={canManage}
           homeId={selectedHome}

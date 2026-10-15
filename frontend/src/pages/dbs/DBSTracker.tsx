@@ -239,7 +239,7 @@ export default function DBSTracker() {
         </div>
         <div className="flex items-center gap-2">
           <PrintButton onClick={printCompliance} />
-          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
             <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAdd(true)}>
               Add Document
             </Button>

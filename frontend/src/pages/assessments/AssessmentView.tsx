@@ -236,7 +236,7 @@ export default function AssessmentView() {
         </button>
         <div className="flex items-center gap-2">
           <PrintButton label="Print report" onClick={handlePrint} />
-          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
             <button onClick={deleteAssessment}
               className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
               <Trash2 className="w-4 h-4" /> Delete audit

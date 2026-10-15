@@ -171,7 +171,7 @@ router.patch('/:id/reject', requireRole('home_manager', 'group_admin'),
 );
 
 // Add a manual timesheet entry (e.g. staff forgot to clock in/out) — recomputes totals.
-router.post('/:id/entries', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+router.post('/:id/entries', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   [param('id').isUUID(), body('workDate').isDate(), body('hoursWorked').isFloat({ min: 0, max: 24 })],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -206,7 +206,7 @@ router.post('/:id/entries', requireRole('home_manager', 'group_admin', 'deputy_m
 );
 
 // Delete a manual timesheet entry (auto-derived clock-in entries can't be deleted here — regenerate instead)
-router.delete('/:id/entries/:entryId', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+router.delete('/:id/entries/:entryId', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   [param('id').isUUID(), param('entryId').isUUID()], validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

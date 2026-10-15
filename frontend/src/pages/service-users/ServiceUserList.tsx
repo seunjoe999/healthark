@@ -61,12 +61,12 @@ export default function ServiceUserList() {
           <p className="text-slate-400 text-sm mt-0.5">{filtered.length} resident{filtered.length !== 1 ? 's' : ''} {statusFilter ? `· ${statusFilter}` : ''}</p>
         </div>
         <div className="flex gap-2">
-          {isRole('group_admin', 'admin') && (
+          {isRole('group_admin', 'admin', 'recruitment_admin') && (
             <Link to="/settings/resident-assignments">
               <Button variant="outline" icon={<Users className="w-4 h-4" />}>Assign staff to residents</Button>
             </Link>
           )}
-          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
             <Link to="/service-users/new">
               <Button icon={<UserPlus className="w-4 h-4" />}>Add resident</Button>
             </Link>
@@ -99,7 +99,7 @@ export default function ServiceUserList() {
 
       {loading ? <Spinner /> : filtered.length === 0 ? (
         <EmptyState title="No residents found" description="Try adjusting your search or filter"
-          action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Link to="/service-users/new"><Button icon={<UserPlus className="w-4 h-4" />}>Add first resident</Button></Link> : undefined} />
+          action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') ? <Link to="/service-users/new"><Button icon={<UserPlus className="w-4 h-4" />}>Add first resident</Button></Link> : undefined} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map(su => {

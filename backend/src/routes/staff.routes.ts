@@ -211,7 +211,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // ── Named sub-routes MUST come before /:id ───────────────────────
 
 // GET /api/staff/role-permissions?homeId=xxx
-router.get('/role-permissions', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+router.get('/role-permissions', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
@@ -257,7 +257,7 @@ router.put('/role-permissions', requireRole('home_manager', 'group_admin'),
 );
 
 // GET /api/staff/role-access-rights?homeId=xxx
-router.get('/role-access-rights', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+router.get('/role-access-rights', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
@@ -276,7 +276,7 @@ router.get('/role-access-rights', requireRole('home_manager', 'group_admin', 'de
 );
 
 // PUT /api/staff/role-access-rights
-router.put('/role-access-rights', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+router.put('/role-access-rights', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
@@ -319,7 +319,7 @@ router.put('/me/personal-email', async (req: Request, res: Response, next: NextF
 // stay registered before GET /:id below, or Express would try to match
 // "deleted" against that route's UUID param first and 400 before this
 // handler is ever reached.
-router.get('/deleted', requireRole('group_admin', 'admin'),
+router.get('/deleted', requireRole('group_admin', 'admin', 'recruitment_admin'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.headers.authorization?.substring(7);
@@ -884,7 +884,7 @@ router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{
 
 
 // DELETE /api/staff/:id — permanently delete (group_admin/admin only) or terminate (home_manager)
-router.delete('/:id', requireRole('group_admin', 'admin'),
+router.delete('/:id', requireRole('group_admin', 'admin', 'recruitment_admin'),
   param('id').matches(laxUuid), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -913,7 +913,7 @@ router.delete('/:id', requireRole('group_admin', 'admin'),
 );
 
 // POST /api/staff/:id/restore — undo a soft delete
-router.post('/:id/restore', requireRole('group_admin', 'admin'),
+router.post('/:id/restore', requireRole('group_admin', 'admin', 'recruitment_admin'),
   param('id').matches(laxUuid), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

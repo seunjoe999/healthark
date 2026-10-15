@@ -181,7 +181,7 @@ export default function PerformanceMatrix() {
   const [view, setView] = useState<'matrix' | 'history' | 'shift_matrix'>('matrix')
   const [selectedStaff, setSelectedStaff] = useState('')
 
-  const canAssess = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canAssess = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')
   const isGroupAdmin = isRole('group_admin')
   const [autoGenerating, setAutoGenerating] = useState(false)
   const [autoGenResult, setAutoGenResult] = useState<any>(null)

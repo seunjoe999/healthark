@@ -369,15 +369,15 @@ const DAY_MIN_WIDTH = 170
 
 export default function Rota() {
   const { user, isRole } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin')
+  const canManage = isRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin', 'recruitment_admin')
   // Financial fields (wage/charge rates, funder billing) are only for management/admin roles —
   // must match the backend's FINANCIAL_ROLES gate in shifts.routes.ts.
-  const canSeeFinancials = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canSeeFinancials = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')
   // Matches shifts.routes.ts PRIVILEGED_ROLES exactly — everyone else's /shifts
   // data is already scoped server-side to their own days + service, so the
   // Service User picker here must match that scoping too (care_staff reported
   // being able to browse every resident/service at the home from this list).
-  const seesWholeRota = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
+  const seesWholeRota = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'team_leader',
     'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor', 'senior_carer')
 
   const [view, setView]           = useState<'week' | 'day'>('week')

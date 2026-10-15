@@ -171,7 +171,7 @@ router.put('/:id',
 
 // DELETE /api/contractors/:id
 router.delete('/:id',
-  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'),
+  requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

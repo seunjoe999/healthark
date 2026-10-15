@@ -357,7 +357,7 @@ export default function MedicineRisk() {
   const homeId = user?.homeId || ''
   // Medication risk assessments are a clinical/management document —
   // frontline staff can read but only managers may add or edit.
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
 
   const [latest, setLatest] = useState<any[]>([])
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
@@ -896,7 +896,7 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
 }) {
   const { theme } = useTheme()
   const { isRole, user } = useAuth()
-  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const canManage = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
   // Team leaders may edit and notify their team, matching Care Plans / Other Risk
   // Assessment — not create new assessments, which stays management-only.
   const canEditRisk = canManage || isRole('team_leader')

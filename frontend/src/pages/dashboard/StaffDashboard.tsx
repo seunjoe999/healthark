@@ -82,7 +82,7 @@ export default function StaffDashboard() {
   // on the staff dashboard (care_staff, team_leader, senior_carer, nurse, etc.)
   // still gets reminded — this was previously allowlisted to just care_staff/
   // team_leader, which accidentally silenced reminders for every other staff role.
-  const wantsTaskReminders = !isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager')
+  const wantsTaskReminders = !isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
 
   useEffect(() => {
     if (user?.id && wantsTaskReminders) setShowTaskPopup(shouldShowTaskPopup(user.id))

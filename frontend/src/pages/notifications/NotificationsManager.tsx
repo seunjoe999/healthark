@@ -225,7 +225,7 @@ export default function NotificationsManager() {
                       <p className="text-xs text-slate-600 mt-1">{format(new Date(n.created_at), 'd MMM, HH:mm')}</p>
                     </div>
                     {!n.is_read && <div className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0 mt-1.5" />}
-                    {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                    {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                       <button onClick={() => deleteNotif(n.id)} className="p-1 rounded-lg text-slate-600 hover:text-rose-400 transition-colors flex-shrink-0">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

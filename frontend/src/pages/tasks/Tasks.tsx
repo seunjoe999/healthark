@@ -222,7 +222,7 @@ function TaskCard({ task, today, isRole, teams, priorityColor, onComplete, onEdi
           <Pencil className="w-4 h-4" />
         </button>
       )}
-      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
         <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0">
           <Trash2 className="w-4 h-4" />
         </button>
@@ -484,7 +484,7 @@ export default function Tasks() {
             </Button>
           )}
           {pageTab === 'tasks' && isRole(...TASK_CREATOR_ROLES) && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)}>Add task</Button>}
-          {pageTab === 'templates' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
+          {pageTab === 'templates' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add template</Button>}
         </div>
       </div>
 
@@ -568,7 +568,7 @@ export default function Tasks() {
                 </button>
               ))}
             </div>
-            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+            {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
               <Button size="sm" variant="outline" icon={<Zap className="w-3.5 h-3.5" />} loading={generatingDaily} onClick={generateDaily}>
                 Generate today's tasks
               </Button>
@@ -642,7 +642,7 @@ export default function Tasks() {
         <>
           {templates.length === 0 ? (
             <EmptyState title="No templates" description="Templates let you auto-generate recurring tasks each day"
-              action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add first template</Button> : undefined} />
+              action={isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setAddTemplateOpen(true)}>Add first template</Button> : undefined} />
           ) : (
             <>
               {/* Jump straight to one resident's templates instead of scrolling the
@@ -679,7 +679,7 @@ export default function Tasks() {
                       }</span>
                     </div>
                   </div>
-                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                  {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                     <div className="flex gap-1 flex-shrink-0">
                       <button onClick={() => setEditTemplateOpen(tmpl)} className="p-1.5 rounded-lg text-slate-300 hover:text-purple-500 hover:bg-purple-50 transition-colors">
                         <Pencil className="w-4 h-4" />

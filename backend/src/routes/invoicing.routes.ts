@@ -22,7 +22,7 @@ router.use(authenticate);
 // Was gated to 'admin', 'super_admin' — 'super_admin' isn't a real StaffRole
 // value, so this silently locked out the owner's own account (role
 // group_admin), who could never actually reach the page despite owning it.
-router.use(requireRole('admin', 'group_admin'));
+router.use(requireRole('admin', 'recruitment_admin', 'group_admin'));
 
 // GET /api/invoicing?homeId=xxx&status=pending
 router.get('/', validateRequest,

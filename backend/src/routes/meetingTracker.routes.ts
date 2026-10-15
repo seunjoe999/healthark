@@ -73,7 +73,7 @@ router.patch('/:id', requireRole(...MANAGE_ROLES), param('id').isUUID(), validat
 );
 
 // DELETE /api/meeting-tracker/:id
-router.delete('/:id', requireRole('home_manager', 'group_admin', 'admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'admin', 'recruitment_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM meeting_tracker WHERE id = $1', [req.params.id]);

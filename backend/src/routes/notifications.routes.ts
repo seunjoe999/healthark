@@ -65,7 +65,7 @@ router.put('/:id/read', param('id').isUUID(), validateRequest,
 );
 
 // POST /api/notifications/send — send to a specific staff member
-router.post('/send', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'senior_carer', 'team_leader'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/send', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'senior_carer', 'team_leader'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const { recipientId, title, body: msgBody, type, link } = req.body;
@@ -133,7 +133,7 @@ router.put('/:id/restore', param('id').isUUID(), validateRequest,
 );
 
 // POST /api/notifications/broadcast — send to all home staff
-router.post('/broadcast', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/broadcast', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = req.body.homeId || fromToken(req, 'homeId');
     const { title, body: msgBody, type, link } = req.body;

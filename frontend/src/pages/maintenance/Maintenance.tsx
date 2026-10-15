@@ -147,8 +147,8 @@ export default function Maintenance() {
   const [contactForm, setContactForm] = useState({ name: '', role: '', company: '', email: '', phone: '', notes: '' })
   const [savingContact, setSavingContact] = useState(false)
 
-  const canManage = isRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin')
-  const canManageContacts = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin')
+  const canManage = isRole('home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin', 'recruitment_admin')
+  const canManageContacts = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin')
 
   useEffect(() => {
     if (isRole('group_admin')) {

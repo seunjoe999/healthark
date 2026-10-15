@@ -236,7 +236,7 @@ export default function ServiceUserProfile() {
                 <Link to={`/reports/handover?suId=${su.id}`}>
                   <Button variant="outline" size="sm" icon={<FileText className="w-3.5 h-3.5" />}>Handover</Button>
                 </Link>
-                {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin') && (
+                {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                   <Link to={`/service-users/${su.id}/edit`}>
                     <Button variant="outline" size="sm" icon={<Edit className="w-3.5 h-3.5" />}>Edit profile</Button>
                   </Link>
@@ -401,7 +401,7 @@ export default function ServiceUserProfile() {
                           contact entries (couldn't undo an accidental double-add), and for
                           it to stay management-only -- not visible to care staff or team
                           leaders. */}
-                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager') && (
+                      {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager') && (
                         <button onClick={() => deleteContact(c.id)}
                           className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors text-slate-400 hover:text-rose-600"
                           title="Delete contact">
