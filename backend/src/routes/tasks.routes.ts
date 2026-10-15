@@ -30,7 +30,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = (req.query.date as string) || ukDateStr();
     const role = fromToken(req, 'role');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = fromToken(req, 'staffId');
     // Role-restriction (assigned_role) and team-restriction (visible_team_ids)
     // are alternative, independent ways to scope a task ("Or restrict by role

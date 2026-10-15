@@ -360,7 +360,7 @@ router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
       if (!rows.length) throw new AppError('Staff not found', 404);
       const staff = rows[0] as Record<string, unknown>;
 
-      const isPrivileged = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       // A staff member's personal profile (DOB, address, NI number, emergency
       // contacts, etc.) is confidential — only managers or the person
       // themselves may view it, matching the same rule applied to their
@@ -863,7 +863,7 @@ router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{
       const decoded = token ? jwt.decode(token) as any : {};
       const role = req.staff?.role || decoded?.role || '';
       const myStaffId = req.staff?.staffId || decoded?.staffId || '';
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.id !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }

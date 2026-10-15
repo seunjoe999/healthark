@@ -100,7 +100,7 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
-const LEAVE_MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer'];
+const LEAVE_MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager', 'senior_carer'];
 function requireLeaveManager(req: Request) {
   if (!LEAVE_MANAGER_ROLES.includes(fromToken(req, 'role'))) {
     throw new AppError('Not authorised to manage leave requests', 403);
@@ -124,7 +124,7 @@ router.get('/leave', async (req: Request, res: Response, next: NextFunction) => 
     const queryStaffId = req.query.staffId as string;
     const tokenStaffId = fromToken(req, 'staffId');
     const role = fromToken(req, 'role');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     let rows;
     if (queryStaffId) {
       // Fetch leave for a specific staff member (manager viewing someone's profile).
@@ -221,7 +221,7 @@ router.get('/training/:staffId', param('staffId').matches(/^[0-9a-f]{8}-[0-9a-f]
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }
@@ -257,7 +257,7 @@ router.get('/absences/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }
@@ -312,7 +312,7 @@ router.get('/onboarding/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }
@@ -364,7 +364,7 @@ router.get('/assessments/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }

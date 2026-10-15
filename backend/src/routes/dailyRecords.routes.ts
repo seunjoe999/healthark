@@ -822,7 +822,7 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = getRole(req);
-      if (!['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'].includes(role)) {
+      if (!['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'team_leader', 'senior_carer'].includes(role)) {
         throw new AppError('Only managers and team leaders can delete records', 403);
       }
       await query('DELETE FROM daily_records WHERE id=$1', [req.params.id]);

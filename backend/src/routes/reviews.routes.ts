@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const dueSoon = parseInt(req.query.dueSoon as string) || 0;
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     let assignedSuIds: string[] | null = null;
     if (!isPrivileged) {
       const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [myStaffId]);
@@ -114,7 +114,7 @@ router.get('/cautions/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }
@@ -163,7 +163,7 @@ router.get('/staff-sensitive-notes/:staffId', param('staffId').isUUID(), validat
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }
@@ -211,7 +211,7 @@ router.get('/supervisions/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }

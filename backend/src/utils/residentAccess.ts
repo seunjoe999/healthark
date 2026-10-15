@@ -4,7 +4,7 @@ import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ukDateStr } from './ukTime';
 
-const RESTRICTED_ROLES = ['care_staff', 'team_leader', 'senior_carer', 'supervisor', 'recruitment_admin'];
+const RESTRICTED_ROLES = ['care_staff', 'team_leader', 'senior_carer', 'supervisor'];
 
 function fromToken(req: Request, field: string): string {
   const token = req.headers.authorization?.substring(7);
