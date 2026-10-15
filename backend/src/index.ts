@@ -1591,6 +1591,7 @@ async function ensureColumns() {
     `ALTER TABLE safeguarding_concerns ADD COLUMN IF NOT EXISTS reported_at TIMESTAMPTZ`,
     `ALTER TABLE safeguarding_concerns ADD COLUMN IF NOT EXISTS manager_ack_by UUID`,
     `ALTER TABLE safeguarding_concerns ADD COLUMN IF NOT EXISTS manager_ack_at TIMESTAMPTZ`,
+    `ALTER TABLE safeguarding_concerns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
     `ALTER TABLE assessments ADD COLUMN IF NOT EXISTS staff_id UUID REFERENCES staff(id)`,
     `ALTER TABLE assessments ADD COLUMN IF NOT EXISTS conducted_by UUID REFERENCES staff(id)`,
     `ALTER TABLE assessments ADD COLUMN IF NOT EXISTS home_id UUID REFERENCES homes(id)`,

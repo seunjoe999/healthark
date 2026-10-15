@@ -4,10 +4,56 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { ukDateStr } from '../../utils/ukDate'
 import { format } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Plus, AlertTriangle, CheckCircle, Shield, Trash2, Bell } from 'lucide-react'
+import { Spinner, EmptyState, Button, Modal, Input, Select, PrintButton } from '../../components/ui'
+import { Plus, AlertTriangle, CheckCircle, Shield, Trash2, Bell, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { draftKey, useDraftAutosave, restoreDraftOnOpen, clearDraft } from '../../hooks/useDraftAutosave'
+import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, nl, type PrintSection } from '../../utils/letterheadPrint'
+
+function buildSafeguardingPrintPage(c: any): string {
+  const sections: PrintSection[] = []
+  sections.push({
+    title: 'Incident Details',
+    inner: `
+      <table class="fields">
+        <tr><th>Date</th><td>${fmtDate(c.incident_date)}</td></tr>
+        ${c.incident_time ? `<tr><th>Time</th><td>${esc(c.incident_time)}</td></tr>` : ''}
+        ${c.su_location ? `<tr><th>Where was the service user</th><td>${esc(c.su_location)}</td></tr>` : ''}
+        ${c.incident_location ? `<tr><th>Where it happened</th><td>${esc(c.incident_location)}</td></tr>` : ''}
+        <tr><th>Recorded By</th><td>${esc(c.created_by_name)}</td></tr>
+      </table>
+    `,
+  })
+  sections.push({ title: 'Incident Overview', inner: `<p class="body-text">${nl(c.overview)}</p>` })
+  if (c.witnesses) sections.push({ title: 'Witnesses', inner: `<p class="body-text">${nl(c.witnesses)}</p>` })
+  sections.push({
+    title: 'Medical Attention',
+    inner: `<table class="fields"><tr class="${c.medical_required ? 'on' : ''}"><th>Medical Attention Required</th><td>${c.medical_required ? `Yes${c.medical_details ? ` — ${esc(c.medical_details)}` : ''}` : 'No'}</td></tr></table>`,
+  })
+  sections.push({ title: 'Immediate Actions Taken', inner: `<p class="body-text">${nl(c.immediate_actions)}</p>` })
+  if (c.decisions_breached) sections.push({ title: 'Decisions / Rights Breached', inner: `<p class="body-text">${nl(c.decisions_breached)}</p>` })
+  if (c.lessons_learnt) sections.push({ title: 'Lessons Learnt', inner: `<p class="body-text">${nl(c.lessons_learnt)}</p>` })
+  sections.push({
+    title: 'Outside Agencies',
+    inner: `<table class="fields"><tr class="${c.outside_agency ? 'on' : ''}"><th>Outside Agency Contacted</th><td>${c.outside_agency ? `Yes${c.agency_details ? ` — ${esc(c.agency_details)}` : ''}` : 'No'}</td></tr></table>`,
+  })
+  if (c.management_recs) sections.push({ title: 'Management Recommendations', inner: `<p class="body-text">${nl(c.management_recs)}</p>` })
+  if (c.prevention_actions) sections.push({ title: 'Actions to Prevent Recurrence', inner: `<p class="body-text">${nl(c.prevention_actions)}</p>` })
+  sections.push({
+    title: 'Review Status',
+    inner: `<table class="fields"><tr class="${c.manager_ack ? 'on' : ''}"><th>Management Review</th><td>${c.manager_ack ? 'Acknowledged' : 'Pending review'}</td></tr></table>`,
+  })
+
+  return buildLetterheadPage({
+    docTitle: 'Safeguarding Concern',
+    docSubtitle: 'CQC compliance record',
+    docRefPrefix: 'SG',
+    docRefId: c.id,
+    residentName: c.su_name || 'Unknown resident',
+    extraIdCells: `<td class="lbl">Date</td><td class="val">${fmtDate(c.incident_date)}</td>`,
+    sections,
+  })
+}
 
 export default function Safeguarding() {
   const { user, isRole } = useAuth()
@@ -20,6 +66,8 @@ export default function Safeguarding() {
   const [sus, setSus] = useState<any[]>([])
   const [cqcOpen, setCqcOpen] = useState(false)
   const [cqcConcern, setCqcConcern] = useState<any>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editConcern, setEditConcern] = useState<any>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -49,6 +97,19 @@ export default function Safeguarding() {
       setSelected(null)
       toast.success('Safeguarding concern deleted')
     } catch { toast.error('Failed to delete') }
+  }
+
+  const saveEdit = async (form: typeof BLANK_SAFEGUARDING) => {
+    if (!editConcern) return
+    try {
+      const res = await api.put(`/safeguarding/${editConcern.id}`, form)
+      const updated = res.data.data
+      setConcerns(prev => prev.map(c => c.id === editConcern.id ? { ...c, ...updated } : c))
+      setSelected((prev: any) => prev?.id === editConcern.id ? { ...prev, ...updated } : prev)
+      setEditOpen(false)
+      setEditConcern(null)
+      toast.success('Safeguarding concern updated')
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
   }
 
   const acknowledge = async (id: string) => {
@@ -119,6 +180,16 @@ export default function Safeguarding() {
                   <Field label="Management recommendations" value={c.management_recs} />
                   <Field label="Prevention actions" value={c.prevention_actions} />
                   <div className="flex gap-2 flex-wrap">
+                    <PrintButton label="Download" onClick={() => {
+                      const ok = openLetterheadPrint(`Safeguarding Concern — ${c.su_name || 'Unknown resident'}`, buildSafeguardingPrintPage(c))
+                      if (!ok) toast.error('Pop-up blocked — please allow pop-ups for this site and try again')
+                    }} />
+                    {(isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') || c.created_by === user?.id) && (
+                      <Button size="sm" variant="secondary" icon={<Pencil className="w-4 h-4" />}
+                        onClick={() => { setEditConcern(c); setEditOpen(true) }}>
+                        Edit
+                      </Button>
+                    )}
                     {!c.manager_ack && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
                       <Button size="sm" icon={<CheckCircle className="w-4 h-4" />} onClick={() => acknowledge(c.id)}>
                         Acknowledge this concern
@@ -154,6 +225,10 @@ export default function Safeguarding() {
       <CqcNotifyModal open={cqcOpen} onClose={() => { setCqcOpen(false); setCqcConcern(null) }}
         concern={cqcConcern} homeId={selectedHome}
         onSaved={() => { setCqcOpen(false); setCqcConcern(null); toast.success('CQC notified — notification logged') }} />
+
+      <EditConcernModal open={editOpen} concern={editConcern}
+        onClose={() => { setEditOpen(false); setEditConcern(null) }}
+        onSave={saveEdit} />
     </div>
   )
 }
@@ -224,6 +299,67 @@ function AddConcernModal({ open, onClose, sus, homeId, onSaved }: { open: boolea
         <div className="flex gap-3 justify-end pt-2 sticky bottom-0 bg-white">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="danger" loading={loading}>Submit safeguarding concern</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function EditConcernModal({ open, concern, onClose, onSave }: {
+  open: boolean; concern: any; onClose: () => void; onSave: (form: typeof BLANK_SAFEGUARDING) => Promise<void>
+}) {
+  const [form, setForm] = useState({ ...BLANK_SAFEGUARDING })
+  const [saving, setSaving] = useState(false)
+  const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (open && concern) {
+      setForm({
+        suId: concern.su_id || '', incidentDate: concern.incident_date?.slice(0, 10) || ukDateStr(),
+        incidentTime: concern.incident_time || '', suLocation: concern.su_location || '',
+        incidentLocation: concern.incident_location || '', overview: concern.overview || '',
+        witnesses: concern.witnesses || '', medicalRequired: !!concern.medical_required,
+        medicalDetails: concern.medical_details || '', injuryDetails: concern.injury_details || '',
+        immediateActions: concern.immediate_actions || '', decisionsBReached: concern.decisions_breached || '',
+        lessonsLearnt: concern.lessons_learnt || '', outsideAgency: !!concern.outside_agency,
+        agencyDetails: concern.agency_details || '', managementRecs: concern.management_recs || '',
+        preventionActions: concern.prevention_actions || '',
+      })
+    }
+  }, [open, concern])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try { await onSave(form) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit safeguarding concern" size="xl">
+      <form onSubmit={submit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Date of incident *" type="date" required value={form.incidentDate} onChange={e => set('incidentDate', e.target.value)} />
+          <Input label="Time of incident" type="time" value={form.incidentTime} onChange={e => set('incidentTime', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Where was the service user" value={form.suLocation} onChange={e => set('suLocation', e.target.value)} placeholder="e.g. Their bedroom" />
+          <Input label="Where did it happen" value={form.incidentLocation} onChange={e => set('incidentLocation', e.target.value)} placeholder="e.g. Communal lounge" />
+        </div>
+        <div><label className="label">Incident overview *</label><textarea required className="input" rows={4} value={form.overview} onChange={e => set('overview', e.target.value)} /></div>
+        <Input label="Witnesses" value={form.witnesses} onChange={e => set('witnesses', e.target.value)} />
+        <div className="flex items-center gap-2"><input type="checkbox" checked={form.medicalRequired} onChange={e => set('medicalRequired', e.target.checked)} className="rounded" /><label className="text-sm">Medical attention was required</label></div>
+        {form.medicalRequired && <Input label="Medical details" value={form.medicalDetails} onChange={e => set('medicalDetails', e.target.value)} />}
+        <div><label className="label">Immediate actions taken *</label><textarea required className="input" rows={3} value={form.immediateActions} onChange={e => set('immediateActions', e.target.value)} /></div>
+        <div><label className="label">What decisions or rights were breached</label><textarea className="input" rows={3} value={form.decisionsBReached} onChange={e => set('decisionsBReached', e.target.value)} /></div>
+        <div><label className="label">Lessons learnt</label><textarea className="input" rows={2} value={form.lessonsLearnt} onChange={e => set('lessonsLearnt', e.target.value)} /></div>
+        <div className="flex items-center gap-2"><input type="checkbox" checked={form.outsideAgency} onChange={e => set('outsideAgency', e.target.checked)} className="rounded" /><label className="text-sm">Outside agency was contacted</label></div>
+        {form.outsideAgency && <Input label="Agency details" value={form.agencyDetails} onChange={e => set('agencyDetails', e.target.value)} />}
+        <div><label className="label">Management recommendations</label><textarea className="input" rows={3} value={form.managementRecs} onChange={e => set('managementRecs', e.target.value)} /></div>
+        <div><label className="label">Actions to prevent recurrence</label><textarea className="input" rows={3} value={form.preventionActions} onChange={e => set('preventionActions', e.target.value)} /></div>
+        <div className="flex gap-3 justify-end pt-2 sticky bottom-0 bg-white">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={saving}>Save changes</Button>
         </div>
       </form>
     </Modal>

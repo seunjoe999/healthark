@@ -15,11 +15,11 @@ function QuestionField({ q, value, onChange, detailValue, onDetailChange }: { q:
       <div>
         <div className="flex gap-2 flex-wrap">
           {['yes', 'no', 'n/a'].map(opt => (
-            <label key={opt} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer text-sm font-medium transition-all select-none
+            <button key={opt} type="button" role="radio" aria-checked={value === opt} onClick={() => onChange(opt)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer text-sm font-medium transition-all select-none
               ${value === opt ? 'bg-purple-600 text-white border-purple-600' : 'border-slate-200 text-slate-600 hover:border-purple-300'}`}>
-              <input type="radio" className="sr-only" checked={value === opt} onChange={() => onChange(opt)} />
               {opt.toUpperCase()}
-            </label>
+            </button>
           ))}
         </div>
         {q.detail && (
@@ -35,12 +35,12 @@ function QuestionField({ q, value, onChange, detailValue, onDetailChange }: { q:
     return (
       <div className="flex gap-2 flex-wrap">
         {[0, 1, 2, 3, 4].map(n => (
-          <label key={n} className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border cursor-pointer text-xs transition-all select-none
+          <button key={n} type="button" role="radio" aria-checked={value === n} onClick={() => onChange(n)}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border cursor-pointer text-xs transition-all select-none
             ${value === n ? 'bg-purple-600 text-white border-purple-600' : 'border-slate-200 text-slate-600 hover:border-purple-300'}`}>
-            <input type="radio" className="sr-only" checked={value === n} onChange={() => onChange(n)} />
             <span className="font-bold text-sm">{n}</span>
             <span>{labels[n]}</span>
-          </label>
+          </button>
         ))}
       </div>
     )
@@ -62,11 +62,11 @@ function QuestionField({ q, value, onChange, detailValue, onDetailChange }: { q:
     return (
       <div className="flex flex-wrap gap-2">
         {(q.options || []).map((o: string) => (
-          <label key={o} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all select-none
+          <button key={o} type="button" role="checkbox" aria-checked={selected.includes(o)} onClick={() => toggle(o)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all select-none
             ${selected.includes(o) ? 'bg-purple-600 text-white border-purple-600' : 'border-slate-200 text-slate-600 hover:border-purple-300'}`}>
-            <input type="checkbox" className="sr-only" checked={selected.includes(o)} onChange={() => toggle(o)} />
             {o}
-          </label>
+          </button>
         ))}
       </div>
     )

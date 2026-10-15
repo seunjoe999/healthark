@@ -88,7 +88,49 @@ router.post('/',
   }
 );
 
-router.delete('/:id', requireRole('home_manager', 'group_admin'),
+router.put('/:id', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const staffId = fromToken(req, 'staffId');
+      const role = fromToken(req, 'role');
+      const homeId = (req.body.homeId as string) || fromToken(req, 'homeId');
+      const rows = await query<any>(
+        'SELECT created_by, home_id FROM safeguarding_concerns WHERE id = $1',
+        [req.params.id]
+      );
+      if (!rows.length) throw new AppError('Safeguarding concern not found', 404);
+      if (rows[0].home_id !== homeId) throw new AppError('Safeguarding concern not found', 404);
+      const canManage = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'super_admin'].includes(role);
+      if (!canManage && rows[0].created_by !== staffId) {
+        throw new AppError('You do not have permission to edit this record', 403);
+      }
+
+      const colMap: Record<string, string> = {
+        suLocation: 'su_location', incidentLocation: 'incident_location', incidentDate: 'incident_date',
+        incidentTime: 'incident_time', overview: 'overview', witnesses: 'witnesses',
+        medicalRequired: 'medical_required', medicalDetails: 'medical_details', injuryDetails: 'injury_details',
+        immediateActions: 'immediate_actions', decisionsBReached: 'decisions_breached', lessonsLearnt: 'lessons_learnt',
+        outsideAgency: 'outside_agency', agencyDetails: 'agency_details', managementRecs: 'management_recs',
+        preventionActions: 'prevention_actions', reportedTo: 'reported_to',
+      };
+      const sets: string[] = [];
+      const params: any[] = [];
+      for (const [key, col] of Object.entries(colMap)) {
+        if (req.body[key] !== undefined) { params.push(req.body[key]); sets.push(`${col} = $${params.length}`); }
+      }
+      if (!sets.length) { res.json({ success: true } as ApiResponse); return; }
+      sets.push('updated_at = NOW()');
+      params.push(req.params.id);
+      const updated = await query<any>(
+        `UPDATE safeguarding_concerns SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
+        params
+      );
+      res.json({ success: true, data: updated[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -98,7 +140,7 @@ router.delete('/:id', requireRole('home_manager', 'group_admin'),
   }
 );
 
-router.put('/:id/acknowledge', requireRole('home_manager', 'group_admin'),
+router.put('/:id/acknowledge', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin'),
   param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
