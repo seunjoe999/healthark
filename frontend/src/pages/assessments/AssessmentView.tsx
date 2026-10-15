@@ -4,8 +4,8 @@ import { assessmentsApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
-import { Spinner, Button, PrintButton } from '../../components/ui'
-import { ChevronLeft, Trash2, Paperclip, Upload, X, Download } from 'lucide-react'
+import { Spinner, Button, PrintButton, Modal, Textarea } from '../../components/ui'
+import { ChevronLeft, Trash2, Paperclip, Upload, X, Download, Pencil, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 import SignaturePad from '../../components/SignaturePad'
@@ -87,8 +87,10 @@ function AssessmentAttachments({ assessmentId, initial }: { assessmentId: string
 
 function RiskBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
+    excellent: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     good: 'bg-green-50 text-green-700 border-green-200',
     low: 'bg-green-50 text-green-700 border-green-200',
+    adequate: 'bg-amber-50 text-amber-700 border-amber-200',
     requires_improvement: 'bg-orange-50 text-orange-700 border-orange-200',
     medium: 'bg-orange-50 text-orange-700 border-orange-200',
     inadequate: 'bg-red-50 text-red-700 border-red-200',
@@ -177,6 +179,45 @@ function buildAssessmentPrintBody(assessment: any, template: any): string {
   })
 }
 
+function NotifySignatureModal({ open, onClose, assessment, templateName }: { open: boolean; onClose: () => void; assessment: any; templateName: string }) {
+  const [note, setNote] = useState('')
+  const [sending, setSending] = useState(false)
+
+  const send = async () => {
+    setSending(true)
+    try {
+      await api.post('/notifications/send', {
+        recipientId: assessment.subject_id,
+        homeId: assessment.home_id,
+        title: `${templateName} — please review and sign`,
+        body: note.trim() || `Your ${templateName} has been completed. Please review it and add your signature.`,
+        type: 'info',
+        link: `/assessments/${assessment.id}`,
+      })
+      toast.success('Staff member notified')
+      onClose()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to send') }
+    finally { setSending(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Send for signature">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-500">
+          Notifies <strong>{assessment.subject_name}</strong> to review this {templateName} and add their signature.
+          They'll see it under their own Staff Assessments once signed.
+        </p>
+        <Textarea label="Message (optional)" value={note} onChange={e => setNote(e.target.value)} rows={3}
+          placeholder="Add a note for them to see..." />
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={send} loading={sending} icon={<Send className="w-4 h-4" />}>Send</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function AssessmentView() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -184,6 +225,7 @@ export default function AssessmentView() {
   const [assessment, setAssessment] = useState<any>(null)
   const [template, setTemplate] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [notifyOpen, setNotifyOpen] = useState(false)
 
   const saveSignature = async (field: 'assessorSignature' | 'staffSignature', dataUrl: string) => {
     try {
@@ -236,6 +278,18 @@ export default function AssessmentView() {
         </button>
         <div className="flex items-center gap-2">
           <PrintButton label="Print report" onClick={handlePrint} />
+          {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
+            <button onClick={() => navigate(`/assessments/new?template=${assessment.template_key}&category=${assessment.category}&subjectId=${assessment.subject_id}&homeId=${assessment.home_id}&editId=${assessment.id}`)}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">
+              <Pencil className="w-4 h-4" /> Edit
+            </button>
+          )}
+          {assessment.category === 'staff' && isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
+            <button onClick={() => setNotifyOpen(true)}
+              className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors">
+              <Send className="w-4 h-4" /> Send for signature
+            </button>
+          )}
           {isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin') && (
             <button onClick={deleteAssessment}
               className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
@@ -358,6 +412,8 @@ export default function AssessmentView() {
       </div>
 
       <AssessmentAttachments assessmentId={assessment.id} initial={assessment.attachments || []} />
+
+      <NotifySignatureModal open={notifyOpen} onClose={() => setNotifyOpen(false)} assessment={assessment} templateName={template.name} />
     </div>
   )
 }

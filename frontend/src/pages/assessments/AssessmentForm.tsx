@@ -86,6 +86,7 @@ export default function AssessmentForm() {
   const category = searchParams.get('category') || 'service_user'
   const subjectId = searchParams.get('subjectId') || ''
   const homeId = searchParams.get('homeId') || ''
+  const editId = searchParams.get('editId') || ''
 
   const [template, setTemplate] = useState<any>(null)
   const [subjectName, setSubjectName] = useState('')
@@ -112,11 +113,23 @@ export default function AssessmentForm() {
         setTemplate(tRes.data.data)
         const s = sRes.data.data
         setSubjectName(`${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim())
+
+        if (editId) {
+          const aRes = await assessmentsApi.get(editId)
+          const a = aRes.data.data
+          setAnswers(a.answers || {})
+          setActionsIdentified(a.actions_identified || '')
+          setAssessmentDate(a.assessment_date ? String(a.assessment_date).slice(0, 10) : ukDateStr())
+          setNextReviewDate(a.next_review_date ? String(a.next_review_date).slice(0, 10) : '')
+          setNotes(a.notes || '')
+          setAssessorSignature(a.assessor_signature || '')
+          setStaffSignature(a.staff_signature || '')
+        }
       } catch { toast.error('Failed to load assessment') }
       finally { setLoading(false) }
     }
     if (templateKey && subjectId) load()
-  }, [templateKey, subjectId, category])
+  }, [templateKey, subjectId, category, editId])
 
   const setAnswer = (qId: string, value: any) =>
     setAnswers(prev => ({ ...prev, [qId]: value }))
@@ -125,7 +138,7 @@ export default function AssessmentForm() {
     setSaving(true)
     try {
       const auditorName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
-      const res = await assessmentsApi.create({
+      const payload = {
         homeId,
         templateKey,
         category,
@@ -139,9 +152,10 @@ export default function AssessmentForm() {
         assessmentDate: assessmentDate || ukDateStr(),
         assessorSignature: assessorSignature || null,
         staffSignature: staffSignature || null,
-      })
+      }
+      const res = editId ? await assessmentsApi.update(editId, payload) : await assessmentsApi.create(payload)
       setResult(res.data.data)
-      toast.success('Assessment saved')
+      toast.success(editId ? 'Assessment updated' : 'Assessment saved')
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
     finally { setSaving(false) }
   }
@@ -151,7 +165,8 @@ export default function AssessmentForm() {
 
   if (result) {
     const riskColor = {
-      good: 'text-green-600', low: 'text-green-600',
+      excellent: 'text-emerald-600', good: 'text-green-600', low: 'text-green-600',
+      adequate: 'text-amber-600',
       requires_improvement: 'text-orange-500', medium: 'text-orange-500',
       inadequate: 'text-red-600', high: 'text-red-600',
     }[result.risk_level as string] || 'text-slate-700'

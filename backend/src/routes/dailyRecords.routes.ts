@@ -121,12 +121,24 @@ router.post('/', [
     };
     const normalizedType = typeAliases[recordType] || recordType;
 
+    // record_date otherwise defaults to the DB column's CURRENT_DATE, which is the
+    // VPS's UTC date, not the UK's — during BST, anything logged in the roughly
+    // hour-long gap after UK midnight (still "today" in the UK, still "yesterday"
+    // in UTC) got stamped with the wrong calendar day. It also ignored a staff-
+    // chosen backdated recordedAt entirely, always dating the record by when it
+    // was SAVED rather than when it happened. Management Review filtering a
+    // resident's day then missed every record actually logged for that day and
+    // only turned up the handful whose UTC date happened to land there by
+    // accident — almost always the late-night ones. Set explicitly from the UK
+    // calendar date of whichever instant (recordedAt, or now) the record is for.
+    const effectiveRecordDate = ukDateStr(effectiveRecordedAt ? new Date(effectiveRecordedAt) : new Date());
+
     const result = await transaction(async (client) => {
       // Create parent record (keep original type string for display)
       const drRows = await client.query(
-        `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, shift, notes, recorded_at)
-         VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7, now())) RETURNING *`,
-        [suId, homeId, staffId, recordType, shift || null, notes || null, effectiveRecordedAt]
+        `INSERT INTO daily_records (su_id, home_id, staff_id, record_type, shift, notes, recorded_at, record_date)
+         VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7, now()), $8) RETURNING *`,
+        [suId, homeId, staffId, recordType, shift || null, notes || null, effectiveRecordedAt, effectiveRecordDate]
       );
       const dr = drRows.rows[0];
 

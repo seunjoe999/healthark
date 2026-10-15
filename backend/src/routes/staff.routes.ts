@@ -140,7 +140,18 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
           params
         );
       }
-    } else if (role === 'home_manager') {
+    } else if (role === 'home_manager' ||
+      // Every other admin-tier role (deputy_manager, admin, recruitment_admin,
+      // director, registered_manager, service_manager) had no branch of its
+      // own and fell through to the generic "care_staff colleagues" bucket
+      // below — minimal fields (no email/status), AND limited to home_id =
+      // their own token's home, which for an org-level or multi-home admin-
+      // tier account often didn't match the home actually selected on screen.
+      // That's the real shape of "admin can only see herself" — not that the
+      // query returned just her, but that it silently returned nobody at her
+      // actual home and the screen fell back to showing just the logged-in
+      // user's own row.
+      ['deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role)) {
       rows = await query(
         `SELECT id, first_name, last_name, preferred_name, email, role, status,
                 home_id, photo_url, start_date, is_active, contracted_hours

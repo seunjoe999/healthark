@@ -146,7 +146,13 @@ export default function DailyRecords() {
   }
 
   const changeDate = async (d: Date) => {
-    if (d > new Date()) return // can't go to future
+    // Compared by calendar day, not the exact instant — viewDate carries whatever
+    // time-of-day the page happened to load at, and subDays/adding 86400000ms
+    // preserves that time-of-day on every step. Comparing full timestamps meant
+    // stepping forward from an earlier day could land on "today" at a time-of-day
+    // later than the live clock and get silently blocked as "the future",
+    // leaving the Next arrow looking broken with no visible change or error.
+    if (format(d, 'yyyy-MM-dd') > format(new Date(), 'yyyy-MM-dd')) return
     setViewDate(d)
     if (selectedSu) await loadRecords(selectedSu.id, d)
   }

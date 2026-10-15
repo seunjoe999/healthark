@@ -511,15 +511,11 @@ router.post('/event', authenticate,
           logger.error('Clock-out medication check failed — allowing clock-out rather than blocking on an internal error', medCheckErr);
           overdue = [];
         }
-        if (overdue.length > 0 && overrideReason) {
+        // Owner decision (repeated real-world lockouts across multiple homes): clock-out
+        // must never be blocked, full stop. Outstanding medication still generates a
+        // manager alert below — it's just no longer a wall staff can get stuck behind.
+        if (overdue.length > 0) {
           overridden.push(`${overdue.length} medication${overdue.length > 1 ? 's' : ''} still due (${Array.from(new Set(overdue.map(t => t.suName))).join(', ')})`);
-        } else if (overdue.length > 0) {
-          const residents = Array.from(new Set(overdue.map(t => t.suName)));
-          return res.status(403).json({
-            success: false,
-            reason: 'medication_incomplete',
-            error: `${overdue.length} medication${overdue.length > 1 ? 's are' : ' is'} still due (${residents.join(', ')}). Complete the Medication task before clocking out.`,
-          });
         }
 
         // Medication Count used to also gate clock-out here, but the owner asked
@@ -536,15 +532,8 @@ router.post('/event', authenticate,
         // (see getMyPendingTasksToday), so this never blocks someone over a
         // task they were never shown.
         const pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole, closingShiftId || undefined);
-        if (pendingTasks.length > 0 && overrideReason) {
+        if (pendingTasks.length > 0) {
           overridden.push(`${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} not completed (${pendingTasks.slice(0, 3).map(t => t.title).join(', ')}${pendingTasks.length > 3 ? ', …' : ''})`);
-        } else if (pendingTasks.length > 0) {
-          const titles = pendingTasks.slice(0, 3).map(t => t.title).join(', ');
-          return res.status(403).json({
-            success: false,
-            reason: 'tasks_incomplete',
-            error: `${pendingTasks.length} task${pendingTasks.length > 1 ? 's are' : ' is'} still not completed (${titles}${pendingTasks.length > 3 ? ', …' : ''}). Complete them before clocking out.`,
-          });
         }
       }
 
@@ -572,7 +561,7 @@ router.post('/event', authenticate,
             homeId, alertType: 'clock_out_with_reason', severity: 'warning', staffId,
             recordId: (rows[0] as any).id, recordType: 'clock_event',
             title: `${who} clocked out with work outstanding`,
-            description: `Outstanding: ${overridden.join('; ')}. Their reason: "${overrideReason}"`.slice(0, 1800),
+            description: `Outstanding: ${overridden.join('; ')}.${overrideReason ? ` Their reason: "${overrideReason}"` : ''}`.slice(0, 1800),
           });
         } catch (ovErr) { logger.warn('Could not record clock-out override: ' + (ovErr as any)?.message); }
       }

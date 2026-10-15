@@ -52,7 +52,7 @@ const initTable = async () => {
   // "inadequate" because 0 of 0 points read as 0%. Clear those — an unscored
   // form has no rating at all. Burnout ratings are low/medium/high, untouched.
   await query(`UPDATE assessments SET risk_level = NULL
-               WHERE COALESCE(max_score, 0) = 0 AND risk_level IN ('inadequate', 'requires_improvement', 'good')`);
+               WHERE COALESCE(max_score, 0) = 0 AND risk_level IN ('inadequate', 'requires_improvement', 'good', 'excellent', 'adequate')`);
 };
 initTable().catch(() => {});
 
@@ -1773,8 +1773,13 @@ function calcScore(template: Template, answers: Record<string, any>) {
   } else if (maxScore > 0) {
     // Only rate a form that actually has scored questions — an unscored one
     // (free-text / dropdown only, e.g. MAR Review) gets no rating at all.
-    if (scorePct >= 90) riskLevel = 'good';
-    else if (scorePct >= 70) riskLevel = 'requires_improvement';
+    // Owner-specified rubric for every scored assessment: 100% = Excellent,
+    // 80-99% = Good, 50-79% = Adequate, under 50% = Inadequate. Replaces the
+    // old 3-tier scale, which rated an 89% ("only one 'No'") as "Requires
+    // Improvement" — a score that high should never read as a problem.
+    if (scorePct >= 100) riskLevel = 'excellent';
+    else if (scorePct >= 80) riskLevel = 'good';
+    else if (scorePct >= 50) riskLevel = 'adequate';
     else riskLevel = 'inadequate';
   }
 

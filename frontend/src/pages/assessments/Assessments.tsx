@@ -10,8 +10,10 @@ import { openLetterheadPrint, buildLetterheadPage, esc } from '../../utils/lette
 
 function RiskBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
+    excellent: 'bg-emerald-100 text-emerald-700',
     good: 'bg-green-100 text-green-700',
     low: 'bg-green-100 text-green-700',
+    adequate: 'bg-amber-100 text-amber-700',
     requires_improvement: 'bg-orange-100 text-orange-700',
     medium: 'bg-orange-100 text-orange-700',
     inadequate: 'bg-red-100 text-red-700',
