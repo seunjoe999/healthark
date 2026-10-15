@@ -48,15 +48,27 @@ export default function StaffDashboard() {
   // Clock In Analytics report instead, which has no clock-out control at
   // all — once clocked in, their "Clock out" tile silently did nothing.
   // This calls the same clock-out endpoint directly, with no QR dependency.
-  const clockOutNow = async () => {
+  const clockOutNow = async (overrideReason?: string) => {
     if (!user?.homeId) { toast.error('No home is set on your profile — ask a manager to set one before you can clock out'); return }
     setClockingOut(true)
     try {
-      await api.post('/clockin/event', { homeId: user.homeId, eventType: 'clock_out' })
+      await api.post('/clockin/event', { homeId: user.homeId, eventType: 'clock_out', overrideReason })
       setClockedIn(false)
       toast.success('Clocked out')
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to clock out') }
-    finally { setClockingOut(false) }
+    } catch (err: any) {
+      const reason = err?.response?.data?.reason
+      // Outstanding medication/tasks don't have to trap someone at clock-out — the
+      // backend already supports clocking out anyway with a reason (recorded and
+      // alerted to managers), but this quick dashboard tile had no way to collect
+      // one, so it just dead-ended on the error with no path forward.
+      if ((reason === 'medication_incomplete' || reason === 'tasks_incomplete') && !overrideReason) {
+        const why = window.prompt(`${err?.response?.data?.error || 'Something is still outstanding.'}\n\nYou can still clock out — enter a reason (at least 5 characters):`)
+        if (why && why.trim().length >= 5) { setClockingOut(false); await clockOutNow(why.trim()); return }
+        if (why !== null) toast.error('Reason must be at least 5 characters')
+      } else {
+        toast.error(err?.response?.data?.error || 'Failed to clock out')
+      }
+    } finally { setClockingOut(false) }
   }
   const [medDueToday, setMedDueToday] = useState<{ total: number; pending: number }>({ total: 0, pending: 0 })
   const [myMeds, setMyMeds] = useState<any[]>([])

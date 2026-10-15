@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import { assertResidentAccess } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr } from '../utils/ukTime';
+import { getStockCountStatus } from '../utils/medicationDue';
 import { logger } from '../config/logger';
 
 const router = Router();
@@ -489,6 +490,27 @@ router.post('/', [
 
       return dr;
     });
+
+    // The daily "Check medication stock" task (auto-created per home — see
+    // index.ts) and this Medication Count record were two entirely separate
+    // systems: filing the count never told the task it was done, so it kept
+    // blocking clock-out ("1 task is still not completed") even for staff who
+    // had genuinely completed the count. Once every resident with a scheduled
+    // medication has a count filed today, close out today's task too.
+    if (result.record_type === 'medication_stock_count') {
+      try {
+        const status = await getStockCountStatus(result.home_id);
+        if (status.done) {
+          await query(
+            `UPDATE tasks SET status = 'completed', completed_by = $1, completed_at = NOW(),
+               completion_notes = 'Auto-completed — medication stock count filed for all residents'
+             WHERE home_id = $2 AND task_date = $3 AND category = 'medication'
+               AND title = 'Check medication stock' AND status = 'pending'`,
+            [staffId, result.home_id, ukDateStr()]
+          );
+        }
+      } catch (stockTaskErr) { logger.error('Failed to auto-complete medication stock task', stockTaskErr); }
+    }
 
     res.status(201).json({ success: true, data: result } as ApiResponse);
   } catch (err) { next(err); }
