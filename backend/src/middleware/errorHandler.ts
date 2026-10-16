@@ -116,9 +116,24 @@ export function errorHandler(
     return;
   }
 
-  // Default 500 — only expose error detail in development; hide internals in production
+  // Default 500 — only expose error detail in development; hide internals in production.
+  // The person who hit this only ever sees the generic message below, but that
+  // generic text is also ALL the /api issue logger in index.ts ever records for
+  // this case (it logs whatever was actually sent to the client) — so a genuine
+  // crash left no trace of its real cause anywhere an admin could see, only in
+  // the container's own process logs, which nobody here can reach day to day.
+  // Record the real message (and, for a database error, its code) directly —
+  // admin-only, on System Health, never sent to the client — so a crash is
+  // diagnosable from the one report page the owner actually has.
   const isProd = process.env.NODE_ENV === 'production';
-  recordError(req, 500, err.message);
+  try {
+    const detail = pgCode ? `${err.message} [${pgCode}]` : (err.message || 'Unknown error');
+    query(
+      'INSERT INTO error_log (method, path, status_code, message, staff_id) VALUES ($1,$2,$3,$4,$5)',
+      [req.method, String(req.originalUrl || req.path).split('?')[0].slice(0, 300), 500,
+       `Server error — ${detail}`.slice(0, 1000), req.staff?.staffId || null]
+    ).catch(() => {});
+  } catch { /* logging must never break a response */ }
   res.status(500).json({
     success: false,
     error: isProd ? 'Internal server error' : (err.message || 'Internal server error'),
