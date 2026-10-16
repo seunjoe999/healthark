@@ -30,14 +30,22 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId || !UUID_RE.test(homeId)) { res.json({ success: true, data: [] } as ApiResponse); return; }
-    const { from, to, audience } = req.query as Record<string, string>;
+    const { from, to, audience, suId } = req.query as Record<string, string>;
+    // The outcome (RoundSys calls it that) is filed separately in meeting_notes
+    // after the appointment happens — joined in here so the filterable list
+    // underneath the calendar can show what came of an appointment directly,
+    // without opening each one in turn to find out.
     let sql = `SELECT ce.*, s.first_name || ' ' || s.last_name as created_by_name,
       su.first_name || ' ' || su.last_name as su_name,
-      a.first_name || ' ' || a.last_name as assigned_staff_name
+      a.first_name || ' ' || a.last_name as assigned_staff_name,
+      mn.outcome as outcome, mn.summary as mn_summary, mn.notes as mn_notes,
+      mn.updated_at as notes_updated_at,
+      EXISTS(SELECT 1 FROM meeting_signoffs ms WHERE ms.event_id = ce.id) as signed_off
       FROM calendar_events ce
       LEFT JOIN staff s ON s.id = ce.created_by
       LEFT JOIN service_users su ON su.id = ce.su_id
       LEFT JOIN staff a ON a.id = ce.assigned_staff_id
+      LEFT JOIN meeting_notes mn ON mn.event_id = ce.id
       WHERE ce.home_id = $1`;
     const params: unknown[] = [homeId];
     let idx = 2;
@@ -49,7 +57,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // never mixed into the resident one.
     if (audience === 'resident') sql += ` AND ce.su_id IS NOT NULL`;
     else if (audience === 'staff') sql += ` AND ce.su_id IS NULL`;
-    sql += ' ORDER BY ce.event_date, ce.start_time';
+    if (suId && UUID_RE.test(suId)) { sql += ` AND ce.su_id = $${idx++}`; params.push(suId); }
+    sql += ' ORDER BY ce.event_date DESC, ce.start_time DESC';
     let rows = await query<any>(sql, params);
 
     // A staff-only event booked for one specific staff member or one or more

@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { ukDateStr } from '../../utils/ukDate'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isPast } from 'date-fns'
 import { Spinner, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Clock, CheckCircle2, BookOpen } from 'lucide-react'
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, FileText, Check, Clock, CheckCircle2, BookOpen, Search, ListFilter, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
@@ -69,6 +69,22 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [sideTab, setSideTab] = useState<'upcoming' | 'done'>('upcoming')
 
+  // Searchable list underneath the calendar (RoundSys-style) — the grid above
+  // only ever shows the month on screen, so finding "what happened at Mrs
+  // Smith's last review" meant guessing the date and clicking into it. This
+  // list is its own query, independent of which month the grid is showing,
+  // filtered by date range, type and resident so a specific appointment can
+  // be found directly instead of hunting through the calendar day by day.
+  const todayStrForList = ukDateStr()
+  const [listFrom, setListFrom] = useState(format(addMonths(new Date(), -3), 'yyyy-MM-dd'))
+  const [listTo, setListTo] = useState(format(addMonths(new Date(), 1), 'yyyy-MM-dd'))
+  const [listType, setListType] = useState('')
+  const [listSuId, setListSuId] = useState('')
+  const [listSearch, setListSearch] = useState('')
+  const [listEvents, setListEvents] = useState<any[]>([])
+  const [listLoading, setListLoading] = useState(true)
+  const [allSus, setAllSus] = useState<any[]>([])
+
   useEffect(() => {
     homesApi.list().then(res => {
       const h = res.data.data || []
@@ -78,6 +94,30 @@ export default function CalendarPage() {
   }, [user])
 
   useEffect(() => { if (selectedHome) load() }, [selectedHome, currentMonth])
+
+  useEffect(() => { if (selectedHome) suApi.list(selectedHome).then(res => setAllSus(res.data.data || [])).catch(() => {}) }, [selectedHome])
+
+  const loadList = async () => {
+    if (!selectedHome) return
+    setListLoading(true)
+    try {
+      const params: Record<string, string> = { homeId: selectedHome, audience: 'resident' }
+      if (listFrom) params.from = listFrom
+      if (listTo) params.to = listTo
+      const res = await api.get('/calendar', { params })
+      setListEvents(res.data.data || [])
+    } catch (e) { console.error(e) }
+    finally { setListLoading(false) }
+  }
+  useEffect(() => { loadList() }, [selectedHome, listFrom, listTo])
+
+  const getSuName = (su: any) => `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
+  const filteredList = listEvents
+    .filter(e => !listType || e.event_type === listType)
+    .filter(e => !listSuId || e.su_id === listSuId)
+    .filter(e => !listSearch.trim() || `${e.title} ${e.description || ''} ${e.su_name || ''}`.toLowerCase().includes(listSearch.trim().toLowerCase()))
+    .sort((a, b) => new Date(b.start_time || b.event_date).getTime() - new Date(a.start_time || a.event_date).getTime())
+  const listFiltersActive = !!(listType || listSuId || listSearch.trim())
 
   const load = async () => {
     setLoading(true)
@@ -209,13 +249,99 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {/* All appointments & events — a searchable list independent of the grid
+          above, so finding what happened at a past appointment (or what's
+          coming up) doesn't mean guessing a date and clicking into it. */}
+      <div className="mt-6 bg-white rounded-2xl border border-slate-100 shadow-card">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+          <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+            <ListFilter className="w-4 h-4 text-purple-600" /> All appointments &amp; events
+          </h3>
+          <p className="text-xs text-slate-400">{filteredList.length} of {listEvents.length} in range</p>
+        </div>
+        <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-end gap-3 bg-slate-50/60">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">From</label>
+            <input type="date" className="input text-sm py-1.5" value={listFrom} onChange={e => setListFrom(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">To</label>
+            <input type="date" className="input text-sm py-1.5" value={listTo} onChange={e => setListTo(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Type</label>
+            <select className="input text-sm py-1.5" value={listType} onChange={e => setListType(e.target.value)}>
+              <option value="">All types</option>
+              {APPOINTMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Service user</label>
+            <select className="input text-sm py-1.5 max-w-[200px]" value={listSuId} onChange={e => setListSuId(e.target.value)}>
+              <option value="">All service users</option>
+              {allSus.map(su => <option key={su.id} value={su.id}>{getSuName(su)}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[160px]">
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Search</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input className="input text-sm py-1.5 pl-8" placeholder="Title, notes, service user..." value={listSearch} onChange={e => setListSearch(e.target.value)} />
+            </div>
+          </div>
+          {listFiltersActive && (
+            <button onClick={() => { setListType(''); setListSuId(''); setListSearch('') }}
+              className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100">
+              <X className="w-3.5 h-3.5" /> Clear filters
+            </button>
+          )}
+        </div>
+        <div className="max-h-[480px] overflow-y-auto divide-y divide-slate-50">
+          {listLoading ? (
+            <div className="py-10 text-center"><Spinner /></div>
+          ) : filteredList.length === 0 ? (
+            <div className="py-10 text-center text-sm text-slate-400">
+              {listEvents.length === 0 ? 'No appointments or events in this date range.' : 'Nothing matches these filters.'}
+            </div>
+          ) : filteredList.map((e: any) => {
+            const isPastEvent = String(e.event_date).slice(0, 10) < todayStrForList
+            const outcomeText = e.outcome || e.mn_summary || e.mn_notes
+            return (
+              <button key={e.id} onClick={() => setSelectedEvent(e)}
+                className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3">
+                <div className="w-16 flex-shrink-0 text-center">
+                  <p className="text-xs font-bold text-slate-700">{format(new Date(e.event_date), 'd MMM')}</p>
+                  <p className="text-[10px] text-slate-400">{format(new Date(e.event_date), 'yyyy')}</p>
+                </div>
+                <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${TYPE_COLORS[e.event_type] || 'bg-slate-500'}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{e.title}</p>
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{(e.event_type || '').replace('_', ' ')}</span>
+                    {isPastEvent && (outcomeText
+                      ? <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" /> Outcome recorded</span>
+                      : <span className="text-[10px] font-bold text-amber-600">No outcome recorded yet</span>)}
+                  </div>
+                  {e.su_name && <p className="text-xs text-purple-700 font-medium">{e.su_name}</p>}
+                  {outcomeText && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{outcomeText}</p>}
+                  {!outcomeText && e.description && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{e.description}</p>}
+                </div>
+                {e.start_time && !isNaN(new Date(e.start_time).getTime()) && (
+                  <p className="text-xs text-slate-400 flex-shrink-0">{format(new Date(e.start_time), 'HH:mm')}</p>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <AddEventModal open={addOpen} onClose={() => setAddOpen(false)} homeId={selectedHome} defaultDate={selectedDay} canManageCalendar={canManageCalendar}
-        onSaved={async () => { setAddOpen(false); await load(); toast.success('Event added') }} />
+        onSaved={async () => { setAddOpen(false); await load(); await loadList(); toast.success('Event added') }} />
 
       {selectedEvent && (
         <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)}
-          onDeleted={() => { if (!confirm('Delete this event?')) return; const id = selectedEvent.id; setSelectedEvent(null); deleteEvent(id) }}
-          onSaved={async () => { setSelectedEvent(null); await load(); toast.success('Notes saved') }} />
+          onDeleted={() => { if (!confirm('Delete this event?')) return; const id = selectedEvent.id; setSelectedEvent(null); deleteEvent(id); loadList() }}
+          onSaved={async () => { setSelectedEvent(null); await load(); await loadList(); toast.success('Notes saved') }} />
       )}
     </div>
   )
