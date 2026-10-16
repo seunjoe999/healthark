@@ -124,6 +124,45 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/tasks/search — a filterable history of tasks across any date range,
+// not just today (RoundSys calls this view "Daily Tasks" and filters it by
+// date range/status/resident/staff). Management only: the per-day list above
+// (with its rota-based resident scoping) is what care staff use shift to
+// shift; this is the "find what happened with a particular resident last
+// month" tool, which only needs to exist for whoever plans/reviews the work.
+router.get('/search', requireRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
+      const { from, to, status, staffId, suId } = req.query as Record<string, string>;
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const params: unknown[] = [homeId];
+      let sql = `SELECT t.*, su.first_name || ' ' || su.last_name as su_name, su.photo_url as su_photo,
+              s.first_name || ' ' || s.last_name as completed_by_name,
+              a.first_name || ' ' || a.last_name as assigned_staff_name,
+              c.first_name || ' ' || c.last_name as created_by_name
+       FROM tasks t
+       LEFT JOIN service_users su ON su.id = t.su_id
+       LEFT JOIN staff s ON s.id = t.completed_by
+       LEFT JOIN staff a ON a.id = t.assigned_staff_id
+       LEFT JOIN staff c ON c.id = t.created_by
+       WHERE t.home_id = $1`;
+      let idx = 2;
+      if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) { sql += ` AND t.task_date >= $${idx++}`; params.push(from); }
+      if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) { sql += ` AND t.task_date <= $${idx++}`; params.push(to); }
+      if (status === 'pending' || status === 'completed') { sql += ` AND t.status = $${idx++}`; params.push(status); }
+      if (suId && UUID_RE.test(suId)) { sql += ` AND t.su_id = $${idx++}`; params.push(suId); }
+      if (staffId && UUID_RE.test(staffId)) {
+        sql += ` AND (t.created_by = $${idx} OR t.assigned_staff_id = $${idx} OR t.completed_by = $${idx})`;
+        params.push(staffId); idx++;
+      }
+      sql += ` ORDER BY t.task_date DESC, t.due_time DESC NULLS LAST LIMIT 500`;
+      const rows = await query<any>(sql, params);
+      res.json({ success: true, data: rows } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // GET /api/tasks/templates — list task templates (set up by admin)
 router.get('/templates', async (req: Request, res: Response, next: NextFunction) => {
   try {

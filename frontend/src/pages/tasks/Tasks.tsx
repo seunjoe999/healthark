@@ -5,7 +5,7 @@ import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format, addDays, parseISO } from 'date-fns'
 import { Spinner, EmptyState, Button, Modal, Input, Select, Card, PrintButton } from '../../components/ui'
-import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { CheckSquare, Plus, Check, Clock, AlertTriangle, Trash2, Zap, LayoutTemplate, Pencil, Image as ImageIcon, Pill, Send, CalendarClock, ClipboardList, RotateCcw, Sparkles, Users, HeartHandshake, Stethoscope, Wrench, ChevronDown, ChevronLeft, ChevronRight, X, Search as SearchIcon } from 'lucide-react'
 
 // One icon per task category so the list is scannable at a glance, instead of
 // every task (medication, housekeeping, comfort check, ...) showing the same
@@ -248,7 +248,40 @@ export default function Tasks() {
   // Defaults to "all" so a task you just completed stays visible (marked
   // done) instead of vanishing the instant it leaves the pending filter.
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
-  const [pageTab, setPageTab] = useState<'tasks' | 'templates'>('tasks')
+  const [pageTab, setPageTab] = useState<'tasks' | 'templates' | 'search'>('tasks')
+  // "Search" tab (RoundSys-style): find any task across any date range, not
+  // just today — filterable by date range, status, resident and staff, same
+  // idea as the list added under the Calendar. Management-only, matching the
+  // backend route: the day-by-day list above is what care staff complete
+  // shift to shift, scoped to their own rota; this is the "what happened
+  // with this resident last month" tool for whoever plans/reviews the work.
+  const [searchFrom, setSearchFrom] = useState(format(addDays(new Date(), -30), 'yyyy-MM-dd'))
+  const [searchTo, setSearchTo] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [searchStatus, setSearchStatus] = useState('')
+  const [searchSuId, setSearchSuId] = useState('')
+  const [searchStaffId, setSearchStaffId] = useState('')
+  const [searchQ, setSearchQ] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const canSearchTasks = isRole('home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager')
+  const runTaskSearch = async () => {
+    if (!selectedHome) return
+    setSearchLoading(true)
+    try {
+      const params: Record<string, string> = { homeId: selectedHome }
+      if (searchFrom) params.from = searchFrom
+      if (searchTo) params.to = searchTo
+      if (searchStatus) params.status = searchStatus
+      if (searchSuId) params.suId = searchSuId
+      if (searchStaffId) params.staffId = searchStaffId
+      const res = await api.get('/tasks/search', { params })
+      setSearchResults(res.data.data || [])
+    } catch { toast.error('Could not search tasks') }
+    finally { setSearchLoading(false) }
+  }
+  useEffect(() => { if (pageTab === 'search' && canSearchTasks) runTaskSearch() }, [pageTab, selectedHome, searchFrom, searchTo, searchStatus, searchSuId, searchStaffId])
+  const filteredSearchResults = searchResults.filter(t =>
+    !searchQ.trim() || `${t.title} ${t.description || ''} ${t.su_name || ''}`.toLowerCase().includes(searchQ.trim().toLowerCase()))
   const [sus, setSus] = useState<any[]>([])
   const [generatingDaily, setGeneratingDaily] = useState(false)
   const [completingTask, setCompletingTask] = useState<any>(null)
@@ -498,6 +531,12 @@ export default function Tasks() {
           className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'templates' ? 'bg-purple-600 text-white shadow-sm' : 'bg-white text-slate-500 hover:text-slate-700 shadow-sm'}`}>
           <LayoutTemplate className="w-3.5 h-3.5" /> Templates
         </button>
+        {canSearchTasks && (
+          <button onClick={() => setPageTab('search')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${pageTab === 'search' ? 'bg-purple-600 text-white shadow-sm' : 'bg-white text-slate-500 hover:text-slate-700 shadow-sm'}`}>
+            <SearchIcon className="w-3.5 h-3.5" /> Search
+          </button>
+        )}
       </div>
 
       {pageTab === 'tasks' && (
@@ -697,6 +736,97 @@ export default function Tasks() {
             </>
           )}
         </>
+      )}
+
+      {pageTab === 'search' && canSearchTasks && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-card">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+              <SearchIcon className="w-4 h-4 text-purple-600" /> Search tasks
+            </h3>
+            <p className="text-xs text-slate-400">{filteredSearchResults.length} of {searchResults.length} in range</p>
+          </div>
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-end gap-3 bg-slate-50/60">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">From</label>
+              <input type="date" className="input text-sm py-1.5" value={searchFrom} onChange={e => setSearchFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">To</label>
+              <input type="date" className="input text-sm py-1.5" value={searchTo} onChange={e => setSearchTo(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Status</label>
+              <select className="input text-sm py-1.5" value={searchStatus} onChange={e => setSearchStatus(e.target.value)}>
+                <option value="">All</option>
+                <option value="pending">Pending / not done</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Service user</label>
+              <select className="input text-sm py-1.5 max-w-[200px]" value={searchSuId} onChange={e => setSearchSuId(e.target.value)}>
+                <option value="">All service users</option>
+                {sus.map((s: any) => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Staff</label>
+              <select className="input text-sm py-1.5 max-w-[180px]" value={searchStaffId} onChange={e => setSearchStaffId(e.target.value)}>
+                <option value="">Any staff</option>
+                {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.first_name || s.firstName} {s.last_name || s.lastName}</option>)}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Search</label>
+              <div className="relative">
+                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input className="input text-sm py-1.5 pl-8" placeholder="Title, notes, service user..." value={searchQ} onChange={e => setSearchQ(e.target.value)} />
+              </div>
+            </div>
+            {(searchStatus || searchSuId || searchStaffId || searchQ.trim()) && (
+              <button onClick={() => { setSearchStatus(''); setSearchSuId(''); setSearchStaffId(''); setSearchQ('') }}
+                className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100">
+                <X className="w-3.5 h-3.5" /> Clear filters
+              </button>
+            )}
+          </div>
+          <div className="max-h-[560px] overflow-y-auto divide-y divide-slate-50">
+            {searchLoading ? (
+              <div className="py-10 text-center"><Spinner /></div>
+            ) : filteredSearchResults.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-400">
+                {searchResults.length === 0 ? 'No tasks in this date range.' : 'Nothing matches these filters.'}
+              </div>
+            ) : filteredSearchResults.map((t: any) => {
+              const dateStr = t.task_date instanceof Date ? t.task_date.toISOString().slice(0, 10) : String(t.task_date).slice(0, 10)
+              return (
+                <button key={t.id} onClick={() => setEditTaskOpen(t)}
+                  className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3">
+                  <div className="w-16 flex-shrink-0 text-center">
+                    <p className="text-xs font-bold text-slate-700">{format(parseISO(dateStr), 'd MMM')}</p>
+                    <p className="text-[10px] text-slate-400">{format(parseISO(dateStr), 'yyyy')}</p>
+                  </div>
+                  <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${t.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={`text-sm font-semibold truncate ${t.status === 'completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{t.title}</p>
+                      <span className={`text-[10px] font-bold uppercase tracking-wide ${t.status === 'completed' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {t.status === 'completed' ? 'Completed' : 'Pending'}
+                      </span>
+                    </div>
+                    {t.su_name && <p className="text-xs text-purple-700 font-medium">{t.su_name}</p>}
+                    {t.status === 'completed' && t.completed_by_name && (
+                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">By {t.completed_by_name}{t.completion_notes ? ` — ${t.completion_notes}` : ''}</p>
+                    )}
+                    {t.status !== 'completed' && t.description && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{t.description}</p>}
+                  </div>
+                  {t.due_time && <p className="text-xs text-slate-400 flex-shrink-0">{String(t.due_time).slice(0, 5)}</p>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       <AddTaskModal open={addOpen} onClose={() => setAddOpen(false)} sus={sus} homeId={selectedHome} staffList={staffList} teams={teams}
