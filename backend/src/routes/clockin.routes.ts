@@ -303,10 +303,23 @@ router.post('/event', authenticate,
       const staffRole = staffRows[0]?.role;
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
-      const lastEventRows = await query<any>(
-        `SELECT id, event_type, event_time, home_id, auto_closed, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
-        [staffId]
-      );
+      // shift_id may not exist yet on a database whose boot migrations haven't
+      // run (fresh deploy ordering) — read it when present, NULL when absent,
+      // so this lookup (which every clock request runs) can never 500 for
+      // want of an optional column.
+      let lastEventRows: any[];
+      try {
+        lastEventRows = await query<any>(
+          `SELECT id, event_type, event_time, home_id, auto_closed, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+          [staffId]
+        );
+      } catch (colErr) {
+        logger.error('Clock last-event lookup without shift_id (column not yet migrated) — continuing without shift scoping', colErr);
+        lastEventRows = await query<any>(
+          `SELECT id, event_type, event_time, home_id, auto_closed, NULL::uuid AS shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+          [staffId]
+        );
+      }
       let isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
 
       // A session left open from an EARLIER day — app crashed, phone died, nobody
@@ -370,6 +383,23 @@ router.post('/event', authenticate,
         // by hand, rather than leaving the staff member with no way through.
         noMatchingClockIn = true;
       }
+      // INSERTs that mention shift_id would 500 outright on a database where
+      // the migration hasn't landed yet — write with the column when it's
+      // there, without it when it isn't. The column's presence is checked
+      // once per request (cheap information_schema lookup, shared by every
+      // INSERT below); a clock event must never fail to store because of a
+      // missing optional column, whether the request is a clock-in or a
+      // clock-out.
+      let hasShiftIdCol = true;
+      try {
+        const clockCols = await query<any>(
+          `SELECT 1 FROM information_schema.columns WHERE table_name = 'staff_clock_events' AND column_name = 'shift_id' LIMIT 1`
+        );
+        hasShiftIdCol = clockCols.length > 0;
+      } catch (colErr) {
+        logger.error('Clock shift_id column check failed — proceeding as if the column is present', colErr);
+        hasShiftIdCol = true;
+      }
       if (eventType !== 'clock_out' && isClockedIn) {
         const openedAt = new Date(lastEventRows[0].event_time);
         const hoursOpen = (Date.now() - openedAt.getTime()) / 3600000;
@@ -394,11 +424,15 @@ router.post('/event', authenticate,
           // Forgot to clock out of the SAME shift (or shift_id isn't known
           // for this older session) and it's been a while — close it
           // (marked automatic) and let this clock-in through rather than
-          // trapping them.
+          // trapping them. Same missing-column tolerance as the last-event
+          // lookup and the main INSERT below.
           await query(
-            `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed, shift_id)
-             VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE, $3)`,
-            [staffId, lastEventRows[0].home_id || homeId, openShiftId]);
+            hasShiftIdCol
+              ? `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed, shift_id)
+                 VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE, $3)`
+              : `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality, auto_closed)
+                 VALUES ($1, $2, 'clock_out', NOW(), true, 'on_time', TRUE)`,
+            hasShiftIdCol ? [staffId, lastEventRows[0].home_id || homeId, openShiftId] : [staffId, lastEventRows[0].home_id || homeId]);
           isClockedIn = false;
         } else {
           // A second tap shortly after a successful clock-in: tell them it worked.
@@ -574,7 +608,8 @@ router.post('/event', authenticate,
         }
       }
 
-      const punctuality = 'on_time';
+      // The column's presence was already checked once per request above
+      // (hasShiftIdCol) — reuse it here rather than checking again.
 
       // A clock-out records the same shift_id as the clock-in it's closing
       // (so the pair stays matched); a clock-in records whichever shift
@@ -585,12 +620,20 @@ router.post('/event', authenticate,
         ? (lastEventRows[0]?.shift_id || targetShift?.id || null)
         : (targetShift?.id || null);
 
-      const rows = await query(
-        `INSERT INTO staff_clock_events
-           (staff_id, home_id, event_type, event_time, geofence_passed, distance_metres, punctuality, shift_id)
-         VALUES ($1,$2,$3,NOW(),$4,$5,$6,$7) RETURNING *`,
-        [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality, eventShiftId]
-      );
+      const punctuality = 'on_time';
+      const rows = hasShiftIdCol
+        ? await query(
+            `INSERT INTO staff_clock_events
+               (staff_id, home_id, event_type, event_time, geofence_passed, distance_metres, punctuality, shift_id)
+             VALUES ($1,$2,$3,NOW(),$4,$5,$6,$7) RETURNING *`,
+            [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality, eventShiftId]
+          )
+        : await query(
+            `INSERT INTO staff_clock_events
+               (staff_id, home_id, event_type, event_time, geofence_passed, distance_metres, punctuality)
+             VALUES ($1,$2,$3,NOW(),$4,$5,$6) RETURNING *`,
+            [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality]
+          );
       // Recording the reason + alerting managers is bookkeeping AFTER the
       // clock-out is already safely stored — it must never fail the request
       // itself. Under pool pressure the INSERT above may have waited out most
@@ -604,8 +647,15 @@ router.post('/event', authenticate,
         const who = staffRows[0] ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'A staff member';
         const reasonText = overrideReason;
         const overriddenText = overridden.join(' | ').slice(0, 1500);
-        query('UPDATE staff_clock_events SET override_reason = $1, override_of = $2 WHERE id = $3',
-          [reasonText, overriddenText, eventId])
+        // override_reason/override_of are boot-migrated columns like shift_id —
+        // same tolerance: record them when present, skip silently when not,
+        // so this bookkeeping can never fail a clock-out that already stored.
+        query(`SELECT 1 FROM information_schema.columns WHERE table_name = 'staff_clock_events' AND column_name = 'override_reason' LIMIT 1`)
+          .then((cols: any[]) => {
+            if (!cols.length) return;
+            return query('UPDATE staff_clock_events SET override_reason = $1, override_of = $2 WHERE id = $3',
+              [reasonText, overriddenText, eventId]);
+          })
           .then(() => createAlert({
             homeId, alertType: 'clock_out_with_reason', severity: 'warning', staffId,
             recordId: eventId, recordType: 'clock_event',

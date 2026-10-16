@@ -8,10 +8,10 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { RESTRICTED_ROLES, getAssignedSuIds } from '../utils/residentAccess';
 import { isWithinAmendWindow } from '../utils/clockStatus';
-import { ukDateStr } from '../utils/ukTime';
+import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 import { generateTasksForHome } from '../utils/taskGeneration';
 import { sendPushToStaffMany, sendPushToStaff } from '../services/push.service';
-import { getMyPendingTasksToday } from '../utils/taskDue';
+import { getMyPendingTasksToday, pickCurrentShiftIndex } from '../utils/taskDue';
 
 const router = Router();
 
@@ -25,7 +25,11 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
-// GET /api/tasks — list tasks for today
+// GET /api/tasks — list tasks for today.
+// shift=current (optional) narrows the list to the staff member's CURRENT
+// shift (day or night) — RoundSys-style, each shift sees its own tasks, not
+// the whole day's. Without it, the full day's list is returned as before
+// (managers planning the day, and the clock-out gate, use the full view).
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
@@ -33,6 +37,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = fromToken(req, 'role');
     const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = fromToken(req, 'staffId');
+    const currentShiftOnly = (req.query.shift as string) === 'current' && date === ukDateStr();
     // Role-restriction (assigned_role) and team-restriction (visible_team_ids)
     // are alternative, independent ways to scope a task ("Or restrict by role
     // instead" in the UI) — a task should be visible if EITHER one includes
@@ -118,6 +123,44 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       // than showing an empty resident-task list outright.
       const suIds = rotaSuIds.length > 0 ? rotaSuIds : await getAssignedSuIds(staffId);
       rows = rows.filter(t => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || suIds.includes(t.su_id));
+    }
+
+    // Per-shift view (?shift=current, today only): keep only tasks whose
+    // due_time falls inside the staff member's CURRENT shift window — the
+    // same windows getMyPendingTasksToday uses for the clock-out gate, via
+    // the same helper, so the task list and the gate agree exactly on what
+    // "my shift's tasks" means. Tasks with no due_time stay (can't be
+    // matched to a shift). Applied AFTER the visibility filters above, so it
+    // only ever narrows what this staff member may already see — and only
+    // for non-privileged staff viewing today's own list; managers keep the
+    // full day for planning. Falls back to the full list when the current
+    // shift can't be determined.
+    if (currentShiftOnly && !isPrivileged && staffId) {
+      try {
+        const myShifts = await query<any>(
+          `SELECT start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+          [staffId, homeId, date]
+        );
+        if (myShifts.length) {
+          const idx = pickCurrentShiftIndex(myShifts, ukTimeHHMM());
+          const cur = myShifts[idx];
+          if (cur) {
+            const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(':').map(Number); return h * 60 + m; };
+            const start = toMin(String(cur.start_time).slice(0, 5));
+            let end = toMin(String(cur.end_time).slice(0, 5));
+            if (end <= start) end += 1440;
+            rows = rows.filter((t: any) => {
+              if (!t.due_time) return true;
+              const raw = toMin(String(t.due_time).slice(0, 5));
+              if (Number.isNaN(raw)) return true;
+              const candidates = raw < start ? [raw + 1440, raw] : [raw, raw + 1440];
+              return candidates.some(d => d >= start && d <= end);
+            });
+          }
+        }
+      } catch (shiftErr) {
+        // Shift-window lookup failed — fail open with the full day's list.
+      }
     }
 
     res.json({ success: true, data: rows } as ApiResponse);

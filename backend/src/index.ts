@@ -3118,6 +3118,12 @@ async function ensureColumns() {
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS auto_closed BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_reason TEXT`,
     `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS override_of TEXT`,
+    // Each clock event records which rota shift it belongs to (read + written
+    // by clockin.routes.ts and shifts.routes.ts). Belongs here with the other
+    // clock-event columns — not only as a per-request ALTER in those routers —
+    // so the column is guaranteed present at boot on a fresh database before
+    // any clock request runs.
+    `ALTER TABLE staff_clock_events ADD COLUMN IF NOT EXISTS shift_id UUID`,
     `DELETE FROM error_log WHERE created_at < NOW() - interval '60 days'`,
     // Allocation history. The database itself records every change to who is
     // on a shift (a trigger, so it catches ANY change whatever caused it), and

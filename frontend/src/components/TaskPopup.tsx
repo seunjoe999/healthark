@@ -50,8 +50,10 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
     try {
       const today = await getServerTodayStr()
       const [taskRes, medRes, reviewRes] = await Promise.allSettled([
-        api.get('/tasks', { params: { date: today } }),
-        user?.homeId ? api.get('/mar/due-today', { params: { homeId: user.homeId } }) : Promise.resolve(null),
+        // Current shift's tasks only (day or night) — same per-shift view as
+        // the dashboard and task list, not the whole day's at once.
+        api.get('/tasks', { params: { date: today, shift: 'current' } }),
+        user?.homeId ? api.get('/mar/due-today', { params: { homeId: user.homeId, shift: 'current' } }) : Promise.resolve(null),
         user?.homeId ? api.get('/service-users/health-reviews-due', { params: { homeId: user.homeId } }) : Promise.resolve(null),
       ])
       const pending: Task[] = taskRes.status === 'fulfilled'

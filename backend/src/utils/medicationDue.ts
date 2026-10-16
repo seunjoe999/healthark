@@ -1,6 +1,7 @@
 import { query } from '../config/database';
-import { ukDateStr, ukDayOfWeek } from './ukTime';
+import { ukDateStr, ukDayOfWeek, ukTimeHHMM } from './ukTime';
 import { getAssignedSuIds } from './residentAccess';
+import { pickCurrentShiftIndex } from './taskDue';
 
 const FREQ_TIMES: Record<string, string[]> = {
   once_daily: ['08:00'],
@@ -46,7 +47,15 @@ export interface DueMedicationTask {
 // Medication due-today as a per-staff task list — shared by the /mar/due-today endpoint
 // (what staff see on their task list) and the clock-out compulsory-completion check
 // (what blocks clocking out), so the two can never silently disagree about what's due.
-export async function getDueTodayTasks(homeId: string, staffId: string, role: string, shiftSuIds?: string[]): Promise<DueMedicationTask[]> {
+//
+// currentShiftStaffId (optional) narrows doses to the staff member's CURRENT shift
+// window (day or night) — RoundSys-style, each shift sees its own medication.
+// Their rota shifts for today are read here (same UK-date logic as the task
+// gate), the current one picked with the same in-progress/next/last rule, and
+// doses kept only when their scheduled time falls inside that window
+// (overnight shifts normalised, post-midnight doses tried both as-is and +24h).
+// Without it, the full day's doses are returned as before.
+export async function getDueTodayTasks(homeId: string, staffId: string, role: string, shiftSuIds?: string[], currentShiftStaffId?: string): Promise<DueMedicationTask[]> {
   const isPrivileged = PRIVILEGED_MAR_ROLES.includes(role);
   const today = ukDateStr();
 
@@ -149,6 +158,39 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
     }
   }
   tasks.sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
+  // Per-shift view (see header comment): keep only doses whose scheduled time
+  // falls inside the staff member's CURRENT shift window. A dose with no
+  // parseable time can't be matched to a shift, so it's kept rather than
+  // silently dropped. Falls back to the full day's list when the current
+  // shift can't be determined (no rota rows, unparseable times).
+  if (currentShiftStaffId) {
+    try {
+      const shiftRows = await query<any>(
+        `SELECT start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+        [currentShiftStaffId, homeId, today]
+      );
+      if (shiftRows.length) {
+        const idx = pickCurrentShiftIndex(shiftRows, ukTimeHHMM());
+        const cur = shiftRows[idx];
+        if (cur) {
+          const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(':').map(Number); return h * 60 + m; };
+          const start = toMin(String(cur.start_time).slice(0, 5));
+          let end = toMin(String(cur.end_time).slice(0, 5));
+          if (end <= start) end += 1440;
+          const inWindow = (sched?: string | null) => {
+            if (!sched) return true;
+            const raw = toMin(sched.slice(0, 5));
+            if (Number.isNaN(raw)) return true;
+            const candidates = raw < start ? [raw + 1440, raw] : [raw, raw + 1440];
+            return candidates.some(d => d >= start && d <= end);
+          };
+          return tasks.filter(t => inWindow(t.scheduledTime));
+        }
+      }
+    } catch (shiftErr) {
+      // Shift lookup failed — fail open with the full day's list, same as before.
+    }
+  }
   return tasks;
 }
 

@@ -1,15 +1,54 @@
 import { query } from '../config/database';
 import { RESTRICTED_ROLES, getAssignedSuIds } from './residentAccess';
-import { ukDateStr } from './ukTime';
+import { ukDateStr, ukTimeHHMM } from './ukTime';
 
 export interface DueGeneralTask { id: string; title: string; dueTime: string | null }
+
+// Which of a staff member's shifts today "now" belongs to — shared with the
+// clock-in flow (clockin.routes.ts) and the staff dashboard, which both use
+// the same rule: whichever shift is actually in progress, else the next one
+// still to come today, else the last one of the day. Centralised here so the
+// task list, the overdue pop-up and the clock-out gate can never disagree
+// about which shift (day or night) is the current one.
+function toMins(t?: string | null): number | null {
+  if (!t) return null;
+  const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+export function pickCurrentShiftIndex(shifts: { start_time?: string | null; end_time?: string | null }[], nowHHMM: string): number {
+  const wins = shifts.map((s, i) => {
+    const st = toMins(s.start_time);
+    let en = toMins(s.end_time);
+    if (st == null || en == null) return null;
+    if (en <= st) en += 1440; // overnight shift
+    return { i, st, en };
+  }).filter((w): w is { i: number; st: number; en: number } => w !== null);
+  if (!wins.length) return 0;
+  const now = toMins(nowHHMM) ?? 0;
+  const inProg = wins.find(w => now >= w.st && now <= w.en);
+  if (inProg) return inProg.i;
+  const upcoming = wins.filter(w => w.st > now).sort((a, b) => a.st - b.st)[0];
+  if (upcoming) return upcoming.i;
+  return wins.sort((a, b) => b.st - a.st)[0].i;
+}
 
 // Pending (non-medication) tasks visible to this staff member for today — used by the
 // clock-out compulsory-completion gate. Mirrors the same visibility rules GET /api/tasks
 // uses (creator / direct assignment / role match / team match / general "all staff"
 // tasks with no restriction), so a task that wouldn't even show on a staff member's own
 // list can never block them from clocking out over it.
-export async function getMyPendingTasksToday(homeId: string, staffId: string, role: string, onlyShiftId?: string): Promise<DueGeneralTask[]> {
+//
+// currentShiftOnly narrows the result to the staff member's CURRENT shift (day or
+// night) instead of the whole day — the RoundSys-style behaviour where each shift
+// sees its own tasks. Only tasks whose due_time falls inside the current shift's
+// own start-to-end window (or that carry no due_time at all) are returned; the
+// night shift's tasks never appear while the day shift is on, and vice versa.
+// Overnight shifts (end <= start) are normalised by treating the end as the
+// following day, and a task due after UK midnight (e.g. 00:30) is tried both
+// as-is and +24h to see which lands inside the window.
+export async function getMyPendingTasksToday(homeId: string, staffId: string, role: string, onlyShiftId?: string, currentShiftOnly = false): Promise<DueGeneralTask[]> {
   // UK date, not the server's own UTC clock — during BST the server's UTC date is
   // still "yesterday" for up to an hour after UK midnight, so this used to check
   // yesterday's task list (and yesterday's rota shift, below) against a staff
@@ -92,6 +131,12 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   // A task with no due_time can't be matched to a shift, so it's left in
   // (same as before) rather than silently exempting it.
   //
+  // currentShiftOnly (RoundSys-style per-shift task view) narrows the window
+  // to the CURRENT shift alone: a day shift ending at 20:00 never sees or
+  // blocks on the night shift's tasks, and the night shift never sees the
+  // day's. Falls back to all of today's shifts only when the current one
+  // can't be determined (no shift rows, or unparseable times).
+  //
   // When there's NO shift row at all for today, the window can't be verified —
   // failing open here (excluding every due-timed task rather than keeping them
   // all in, which is what happened before) matches the same fail-open principle
@@ -107,12 +152,26 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
         if (end <= start) end += 1440; // overnight shift
         return { start, end };
       });
+      let activeWindows = windows;
+      if (currentShiftOnly) {
+        const idx = pickCurrentShiftIndex(shiftRows, ukTimeHHMM());
+        if (shiftRows[idx]) {
+          const s = shiftRows[idx];
+          const start = toMin(String(s.start_time).slice(0, 5));
+          let end = toMin(String(s.end_time).slice(0, 5));
+          if (end <= start) end += 1440;
+          activeWindows = [{ start, end }];
+        }
+      }
       visible = visible.filter((t: any) => {
         if (!t.due_time) return true;
         const raw = toMin(String(t.due_time).slice(0, 5));
-        return windows.some(w => {
-          const due = raw < w.start ? raw + 1440 : raw;
-          return due >= w.start && due <= w.end;
+        return activeWindows.some(w => {
+          // A due time after UK midnight (e.g. 00:30 on an overnight shift)
+          // means the next calendar day from the shift's point of view — try
+          // it both as-is and +24h to see which lands inside the window.
+          const candidates = raw < w.start ? [raw + 1440, raw] : [raw, raw + 1440];
+          return candidates.some(due => due >= w.start && due <= w.end);
         });
       });
     } else {

@@ -253,13 +253,17 @@ function getTimeSlots(frequency: string, applyTime?: string | null): string[] {
 
 // GET /api/mar/due-today?homeId=<uuid> — medication due today as a staff task list
 // Non-privileged staff only see medications for residents assigned to them.
+// shift=current (optional) narrows doses to the staff member's CURRENT shift
+// window (day or night) — RoundSys-style, each shift sees its own medication,
+// not the whole day's. Without it, the full day's list is returned as before.
 router.get('/due-today', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     if (!homeId) { res.status(400).json({ success: false, error: 'homeId query parameter is required' }); return; }
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const tasks = await getDueTodayTasks(homeId, myStaffId, role);
+    const currentOnly = (req.query.shift as string) === 'current';
+    const tasks = await getDueTodayTasks(homeId, myStaffId, role, undefined, currentOnly ? myStaffId : undefined);
     res.json({ success: true, data: tasks } as ApiResponse);
   } catch (err) { next(err); }
 });

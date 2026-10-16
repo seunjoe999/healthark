@@ -14,7 +14,10 @@ export function useTaskReminders(enabled: boolean) {
 
     const checkDueTasks = async () => {
       try {
-        const res = await api.get('/tasks')
+        // Current shift's tasks only (day or night) — the reminder should nag
+        // about what's due on THIS shift, not the whole day including the
+        // next shift's work.
+        const res = await api.get('/tasks', { params: { shift: 'current' } })
         const tasks: any[] = res.data?.data || []
         const pending = tasks.filter(t => t.status !== 'completed' && t.status !== 'done')
         if (pending.length > 0 && !cancelled) {

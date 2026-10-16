@@ -108,7 +108,7 @@ export default function StaffDashboard() {
     if (!user?.homeId) return
     const refreshMeds = async () => {
       try {
-        const res = await api.get('/mar/due-today', { params: { homeId: user.homeId } })
+        const res = await api.get('/mar/due-today', { params: { homeId: user.homeId, shift: 'current' } })
         const medTasks = res.data?.data || []
         setMyMeds(medTasks)
         setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
@@ -156,14 +156,17 @@ export default function StaffDashboard() {
           // shifts on the dashboard and can't miss a reassignment or a shift
           // further out that they never scrolled to in the full Rota view.
           api.get('/shifts', { params: { homeId: user.homeId, from: todayStr, to: weekAheadStr } }),
-          api.get('/tasks', { params: { homeId: user.homeId, date: todayStr } }),
+          // Current shift's tasks only (day or night) — RoundSys-style, each
+          // shift sees its own list rather than the whole day's at once.
+          api.get('/tasks', { params: { homeId: user.homeId, date: todayStr, shift: 'current' } }),
           api.get('/staff-hr/leave', { params: { staffId: user.id } }),
           api.get('/notifications'),
           staffApi.get(user.id),
           suApi.list(user.homeId || '', { status: 'live' }),
           api.get('/clockin/status'),
           user.homeId ? api.get(`/clockin/home-qr/${user.homeId}`) : Promise.resolve(null),
-          api.get('/mar/due-today', { params: { homeId: user.homeId } }),
+          // Same per-shift scoping for the medication list below.
+          api.get('/mar/due-today', { params: { homeId: user.homeId, shift: 'current' } }),
         ])
         const v = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null
         const profileData = v(profileR)?.data.data

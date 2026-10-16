@@ -326,7 +326,7 @@ export default function Tasks() {
     load()
     loadTemplates()
     loadTodaysAppointments()
-  }, [selectedHome, today, viewDate])
+  }, [selectedHome, today, viewDate, isCareShiftView])
 
   const loadTodaysAppointments = async () => {
     try {
@@ -346,10 +346,17 @@ export default function Tasks() {
     setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('complete'); return p }, { replace: true })
   }, [tasks, searchParams])
 
+  // Care staff work shift to shift (day, then night) — each shift sees its own
+  // tasks, RoundSys-style, rather than the whole day's list at once. Managers
+  // (who plan the whole day) always get the full-day view. Browsing another
+  // date also shows the full day, since "current shift" is meaningless there.
+  const isCareShiftView = !isRole(...TASK_CREATOR_ROLES) && viewDate === today
   const load = async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const res = await api.get('/tasks', { params: { homeId: selectedHome, date: viewDate } })
+      const params: Record<string, string> = { homeId: selectedHome, date: viewDate }
+      if (isCareShiftView) params.shift = 'current'
+      const res = await api.get('/tasks', { params })
       setTasks(res.data.data || [])
     } catch (e) { console.error(e) }
     finally { if (!silent) setLoading(false) }
