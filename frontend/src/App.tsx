@@ -132,8 +132,16 @@ const navItemsByPathLength = [...allNavItems]
   .map(item => ({ ...item, pathOnly: String(item.to).split('?')[0] }))
   .sort((a, b) => b.pathOnly.length - a.pathOnly.length)
 
-function findNavItemForPath(pathname: string) {
-  return navItemsByPathLength.find(
+// A path can appear in more than one sidebar group with a different roles
+// list each time (e.g. "Tasks" is listed once under Dashboard for care
+// staff, and again under Operations for management) — this now returns every
+// entry for the path, longest-path-first, instead of just the first one
+// found. Picking only the first was the bug: whichever entry happened to
+// come first in the source array decided access for EVERYONE, so a path
+// whose first-listed entry was staff-only silently redirected management
+// away from a page they were meant to see at a different nav entry.
+function findNavItemsForPath(pathname: string) {
+  return navItemsByPathLength.filter(
     item => pathname === item.pathOnly || pathname.startsWith(item.pathOnly + '/')
   )
 }
@@ -145,9 +153,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Only a route whose pathname lines up with a known nav entry is checked —
   // a page with no matching entry (e.g. a Settings sub-page already gated by
   // its own role check) is left exactly as before. group_admin is never
-  // blocked, matching the sidebar's own behaviour.
-  const navItem = findNavItemForPath(location.pathname)
-  if (navItem && !isFeatureAllowed(navItem, user.featureFlags, isRole)) {
+  // blocked, matching the sidebar's own behaviour. When several entries share
+  // a path, the page is reachable if ANY of them would let this user in.
+  const navItems = findNavItemsForPath(location.pathname)
+  const allowedByAny = navItems.length === 0 || navItems.some(item => isFeatureAllowed(item, user.featureFlags, isRole))
+  if (!allowedByAny) {
     return <Navigate to="/dashboard" replace />
   }
   return <AppLayout>{children}</AppLayout>
