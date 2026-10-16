@@ -8,12 +8,16 @@ if (process.env.DATABASE_URL) {
   config = {
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    // Was 5 — a limit set for a free hosted database the app no longer runs
-    // on. With dozens of staff signed in plus the scheduled jobs, five
-    // connections fill up at busy times and every other request waits (then
-    // fails after 10 seconds), which shows up as pages hanging or "server
-    // error" until things quieten down. Override with DB_POOL_MAX if needed.
-    max: parseInt(process.env.DB_POOL_MAX || '15', 10),
+    // Was 5, then 15 — each a limit set for a smaller hosted database the app
+    // no longer runs on. 15 was still too few: each staff member's dashboard
+    // alone fires ~9 queries in parallel on load, so a handful of people
+    // opening the app in the same few seconds is enough to fill it, and every
+    // other request in the home then waits up to connectionTimeoutMillis
+    // before failing outright — recorded as "Server error — timeout exceeded
+    // when trying to connect", seen spread across almost every page (not just
+    // one broken route) during busy minutes. Override with DB_POOL_MAX if
+    // this VPS's Postgres needs a different ceiling.
+    max: parseInt(process.env.DB_POOL_MAX || '30', 10),
     min: 1,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
