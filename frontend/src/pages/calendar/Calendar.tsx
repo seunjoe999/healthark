@@ -239,7 +239,12 @@ export default function CalendarPage() {
                     {sideTab === 'done' ? <CheckCircle2 className="w-3.5 h-3.5 opacity-60" /> : <FileText className="w-3.5 h-3.5 opacity-60" />}
                   </div>
                   {!selectedDay && <p className="text-xs opacity-60 mb-0.5">{format(new Date(e.event_date), 'd MMM yyyy')}</p>}
-                  {e.start_time && <p className="text-xs opacity-70">{e.start_time}{e.end_time ? ` — ${e.end_time}` : ''}</p>}
+                  {e.start_time && !isNaN(new Date(e.start_time).getTime()) && (
+                    <p className="text-xs opacity-70">
+                      {format(new Date(e.start_time), 'HH:mm')}
+                      {e.end_time && !isNaN(new Date(e.end_time).getTime()) ? ` — ${format(new Date(e.end_time), 'HH:mm')}` : ''}
+                    </p>
+                  )}
                   {e.description && <p className="text-xs opacity-60 mt-1 line-clamp-2">{e.description}</p>}
                   <p className="text-xs font-semibold mt-2 opacity-70 capitalize">{(e.event_type || '').replace('_', ' ')} · Click to view details</p>
                 </div>
@@ -406,7 +411,19 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
         <div className={`flex items-center gap-3 p-3 rounded-xl ${typeStyle[event.event_type] || typeStyle.other}`}>
           <div>
             <p className="text-sm font-semibold capitalize">{(event.event_type || '').replace('_', ' ')}</p>
-            <p className="text-xs opacity-70">{event.event_date ? format(new Date(event.event_date), 'd MMMM yyyy') : ''}{event.start_time ? ` · ${event.start_time}` : ''}{event.end_time ? `–${event.end_time}` : ''}</p>
+            {(() => {
+              // start_time/end_time are stored as full timestamps, not bare "HH:mm" —
+              // printing them raw showed the whole ISO string (e.g. "2026-10-01T22:10:00.000Z")
+              // instead of just the time.
+              const fmtT = (v: string) => { const d = new Date(v); return isNaN(d.getTime()) ? '' : format(d, 'HH:mm') }
+              const st = event.start_time ? fmtT(event.start_time) : ''
+              const et = event.end_time ? fmtT(event.end_time) : ''
+              return (
+                <p className="text-xs opacity-70">
+                  {event.event_date ? format(new Date(event.event_date), 'd MMMM yyyy') : ''}{st ? ` · ${st}` : ''}{et ? `–${et}` : ''}
+                </p>
+              )
+            })()}
             {event.location && <p className="text-xs opacity-70">📍 {event.location}</p>}
           </div>
         </div>
