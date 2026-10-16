@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import api from '../api'
 import { staffApi } from '../api'
 import { useAuth } from '../context/AuthContext'
@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ukDateStr } from '../utils/ukDate'
 import { Spinner, Button, Modal, EmptyState } from './ui'
 import { SpeechTextarea } from './ui/SpeechButton'
-import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send, Pencil, Trash2 } from 'lucide-react'
+import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send, Pencil, Trash2, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type MeetingType = 'resident' | 'staff' | 'management' | 'team' | 'team_briefing'
@@ -55,6 +55,39 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
   const [sendItem, setSendItem] = useState<any>(null)
   const [editItem, setEditItem] = useState<any>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Team-meeting list filter — the list keeps building up, so managers can
+  // narrow it by team, date range and free text. Client-side (the whole home's
+  // list is already fetched by `load`): no backend change needed. Only shown
+  // for team_briefing; every other meeting list keeps its existing behaviour.
+  const isBriefing = meetingType === 'team_briefing'
+  const [filterTeam, setFilterTeam] = useState('')
+  const [filterFrom, setFilterFrom] = useState('')
+  const [filterTo, setFilterTo] = useState('')
+  const [filterText, setFilterText] = useState('')
+  const [filterTeams, setFilterTeams] = useState<any[]>([])
+  useEffect(() => {
+    if (!isBriefing || !homeId) return
+    api.get('/teams', { params: { homeId } }).then(res => setFilterTeams(res.data.data || [])).catch(() => {})
+  }, [isBriefing, homeId])
+  const shownMeetings = useMemo(() => {
+    if (!isBriefing) return meetings
+    const q = filterText.trim().toLowerCase()
+    return meetings.filter((m: any) => {
+      if (filterTeam && String(m.team_id || '') !== filterTeam) return false
+      const d = String(m.meeting_date || '').slice(0, 10)
+      if (filterFrom && d && d < filterFrom) return false
+      if (filterTo && d && d > filterTo) return false
+      if (q) {
+        const hay = [m.notes, m.action_plan, m.conducted_by, m.attendees, m.service_location, m.team_name]
+          .filter(Boolean).join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [isBriefing, meetings, filterTeam, filterFrom, filterTo, filterText])
+  const clearFilters = () => { setFilterTeam(''); setFilterFrom(''); setFilterTo(''); setFilterText('') }
+  const filtersActive = isBriefing && (!!filterTeam || !!filterFrom || !!filterTo || !!filterText.trim())
 
   const canLoad = (meetingType === 'management' || meetingType === 'team_briefing') ? !!homeId : !!parentId
 
@@ -119,7 +152,47 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
           action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>New {label}</Button>} />
       ) : (
         <div className="space-y-3">
-          {meetings.map((m: any) => {
+          {isBriefing && (
+            <div className="card p-4">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Search</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input className="input pl-9 w-full" placeholder="Search notes, actions, people..."
+                      value={filterText} onChange={e => setFilterText(e.target.value)} />
+                  </div>
+                </div>
+                <div className="min-w-[160px]">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Team</label>
+                  <select className="input w-full" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
+                    <option value="">All teams</option>
+                    {filterTeams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">From</label>
+                  <input type="date" className="input" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">To</label>
+                  <input type="date" className="input" value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+                </div>
+                {filtersActive && (
+                  <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>Clear</Button>
+                )}
+              </div>
+              {filtersActive && (
+                <p className="text-xs text-slate-400 mt-2">Showing {shownMeetings.length} of {meetings.length} meetings</p>
+              )}
+            </div>
+          )}
+          {isBriefing && shownMeetings.length === 0 ? (
+            <EmptyState title="No meetings match" description="Try widening the date range or clearing the filters."
+              action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>} />
+          ) : (
+          <>
+          {shownMeetings.map((m: any) => {
             const expanded = expandedId === m.id
             return (
               <div key={m.id} className="card overflow-hidden">
@@ -197,6 +270,8 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
               </div>
             )
           })}
+          </>
+          )}
         </div>
       )}
 

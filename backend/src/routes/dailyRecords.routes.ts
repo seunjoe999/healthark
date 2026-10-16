@@ -397,7 +397,7 @@ router.post('/', [
                   injuredBodyPart, medicalNeeded, medicalAttentionRequired, medicalDetails, witnesses,
                   immediateAction, immediateActions, reportedTo, agenciesContacted, lessonsLearned,
                   preventionMeasures, reportedToManagement, safeguardingRef,
-                  cqcNotified, cqcNotNotifiedReason, familyNotified, familyNotNotifiedReason,
+                  socialWorkerNotified, socialWorkerNotNotifiedReason, familyNotified, familyNotNotifiedReason,
                   bodyMapData } = req.body;
           // incident_time is TIMESTAMPTZ — the form's time field arrives as a
           // bare "HH:MM", which Postgres cannot cast to a timestamp, so every
@@ -415,7 +415,7 @@ router.post('/', [
           await client.query(
             `INSERT INTO records_incidents (daily_record_id, incident_type, location, incident_time, description,
               injuries, injury_details, medical_needed, medical_details, witnesses, immediate_action,
-              cqc_notified, cqc_not_notified_reason, family_notified, family_not_notified_reason, body_map_data)
+              social_worker_notified, social_worker_not_notified_reason, family_notified, family_not_notified_reason, body_map_data)
              VALUES ($1,$2,$3,COALESCE($4::timestamptz, NOW()),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,COALESCE($16::jsonb, 'null'::jsonb))`,
             // reported_to and safeguarding_ref are deliberately NOT in this INSERT.
             // safeguarding_ref is BOOLEAN NOT NULL and the form never sends it, so
@@ -434,7 +434,10 @@ router.post('/', [
              // immediate_action is NOT NULL — an empty form field used to pass
              // null straight in and 500 the whole submission.
              immediateAction || immediateActions || '',
-             cqcNotified || false, cqcNotNotifiedReason || null,
+             // The form no longer asks about CQC notification (staff don't file those),
+             // so the cqc_* columns keep their defaults on new rows; historic rows
+             // keep whatever they already had.
+             socialWorkerNotified || false, socialWorkerNotNotifiedReason || null,
              familyNotified || false, familyNotNotifiedReason || null,
              bodyMapData ? JSON.stringify(bodyMapData) : null]
           );

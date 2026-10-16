@@ -2802,6 +2802,11 @@ async function ensureColumns() {
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS family_notified            BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS cqc_not_notified_reason    TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS family_not_notified_reason TEXT`,
+    // Staff don't file CQC notifications (management does that separately), so the
+    // incident form no longer asks the CQC question — it asks about the social
+    // worker instead. The cqc_* columns above stay untouched for historic records.
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS social_worker_notified BOOLEAN NOT NULL DEFAULT FALSE`,
+    `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS social_worker_not_notified_reason TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS reported_to                TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS safeguarding_ref           TEXT`,
     `ALTER TABLE records_incidents ADD COLUMN IF NOT EXISTS emotion        TEXT`,

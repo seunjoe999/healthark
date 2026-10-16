@@ -60,8 +60,8 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
     preventionMeasures: '',
     reportedToManagement: false,
     managementNotes: '',
-    cqcNotified: false,
-    cqcNotNotifiedReason: '',
+    socialWorkerNotified: false,
+    socialWorkerNotNotifiedReason: '',
     familyNotified: false,
     familyNotNotifiedReason: '',
   })
@@ -119,8 +119,8 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
         preventionMeasures: form.preventionMeasures,
         reportedToManagement: form.reportedToManagement,
         managementNotes: form.managementNotes,
-        cqcNotified: form.cqcNotified,
-        cqcNotNotifiedReason: form.cqcNotNotifiedReason,
+        socialWorkerNotified: form.socialWorkerNotified,
+        socialWorkerNotNotifiedReason: form.socialWorkerNotNotifiedReason,
         familyNotified: form.familyNotified,
         familyNotNotifiedReason: form.familyNotNotifiedReason,
       })
@@ -217,12 +217,12 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
 
       <div className="space-y-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
         <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Notification of Incident</p>
-        <Toggle label="CQC notified" checked={form.cqcNotified}
-          onChange={v => set('cqcNotified', v)}
-          description="Was the Care Quality Commission notified of this incident?" />
-        {!form.cqcNotified && (
-          <SpeechTextarea label="Reason CQC was not notified" rows={2} value={form.cqcNotNotifiedReason} onChange={v => set('cqcNotNotifiedReason', v)}
-            placeholder="State why CQC notification was not required or not made..." />
+        <Toggle label="Social worker notified" checked={form.socialWorkerNotified}
+          onChange={v => set('socialWorkerNotified', v)}
+          description="Was the service user's social worker informed?" />
+        {!form.socialWorkerNotified && (
+          <SpeechTextarea label="Reason social worker was not notified" rows={2} value={form.socialWorkerNotNotifiedReason} onChange={v => set('socialWorkerNotNotifiedReason', v)}
+            placeholder="State why social worker notification was not made..." />
         )}
         <Toggle label="Family / next of kin notified" checked={form.familyNotified}
           onChange={v => set('familyNotified', v)}
