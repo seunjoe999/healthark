@@ -57,10 +57,22 @@ export default function StaffDashboard() {
       toast.success('Clocked out')
     } catch (err: any) {
       const reason = err?.response?.data?.reason
-      // Outstanding medication/tasks don't have to trap someone at clock-out — the
-      // backend already supports clocking out anyway with a reason (recorded and
-      // alerted to managers), but this quick dashboard tile had no way to collect
-      // one, so it just dead-ended on the error with no path forward.
+      // The clock-out may have gone through on the server even though this
+      // request reported failure — e.g. it timed out after the record was
+      // already stored, or a retry landed on "already clocked out". Before
+      // telling staff it failed, ask the server what their actual state is:
+      // if they are no longer clocked in, the job is done and the tile must
+      // flip to match, rather than staying stuck on "Clock out" (which reads
+      // as "keeps saying failed to clock out" on every retry). Only when they
+      // are still clocked in is this a genuine failure worth reporting.
+      try {
+        const st = await api.get('/clockin/status')
+        if (st?.data?.data?.clockedIn === false) {
+          setClockedIn(false)
+          toast.success('Clocked out')
+          return
+        }
+      } catch { /* status check failed too — report the original error below */ }
       if ((reason === 'medication_incomplete' || reason === 'tasks_incomplete') && !overrideReason) {
         const why = window.prompt(`${err?.response?.data?.error || 'Something is still outstanding.'}\n\nYou can still clock out — enter a reason (at least 5 characters):`)
         if (why && why.trim().length >= 5) { setClockingOut(false); await clockOutNow(why.trim()); return }

@@ -205,20 +205,26 @@ router.post('/event', authenticate,
       // still-open clock-in before this one can start.
       const nowMins = hhmmToMins(ukTimeHHMM())!;
       const targetShift = pickShiftForNow(rotaShifts, nowMins);
-      for (const sh of rotaShifts) {
-        if (sh.su_id) await addServiceUserCheckPoint(sh.su_id);
-        if (Array.isArray(sh.su_ids)) for (const id of sh.su_ids) await addServiceUserCheckPoint(id);
+      // Clock-out is never location-checked (evaluateGeofence passes it
+      // unconditionally further down), so working out where the staff member
+      // should be can never change a clock-out's outcome — it only costs DB
+      // pool waits that, at busy shift changes, are what time clock-outs out.
+      // Skipped entirely for clock-out.
+      const resolvingCheckpoints = eventType !== 'clock_out';
+      if (resolvingCheckpoints) {
+        for (const sh of rotaShifts) {
+          if (sh.su_id) await addServiceUserCheckPoint(sh.su_id);
+          if (Array.isArray(sh.su_ids)) for (const id of sh.su_ids) await addServiceUserCheckPoint(id);
+        }
+        if (suId) await addServiceUserCheckPoint(suId);
       }
-      if (suId) await addServiceUserCheckPoint(suId);
 
-      // Every postcode configured for this home — fetched once, used both to match
-      // today's service-shift label(s) below and as the office-area fallback further
-      // down, so a location set specifically for "KENNEDY SERVICE" only ever applies
-      // to staff actually rostered on a Kennedy Service shift today, not to everyone.
-      const allPostcodes = await query<any>(
+      // Only needed to build clock-IN checkpoints — skipped for clock-out
+      // (see resolvingCheckpoints above), which never distance-checks.
+      const allPostcodes = resolvingCheckpoints ? await query<any>(
         'SELECT postcode, label, latitude, longitude, radius FROM home_postcodes WHERE home_id = $1',
         [homeId]
-      );
+      ) : [];
 
       // A rota shift built around a Service (e.g. "KENNEDY SERVICE", a specific
       // house) rather than a named resident has no resident lat/lng to check
@@ -227,7 +233,11 @@ router.post('/event', authenticate,
       // fell back to the office address, blocking staff who are legitimately at a
       // service-user's house miles away. Match today's shift label(s) against any
       // postcode a manager has set for that exact service via Manage Services.
-      const todaysLabels = new Set(rotaShifts.map((sh: any) => normalizeLabel(sh.label)).filter(Boolean));
+      // Clock-in only — clock-out skips checkpoint resolution entirely (above),
+      // so the label matching that feeds it is skipped too.
+      const todaysLabels = resolvingCheckpoints
+        ? new Set(rotaShifts.map((sh: any) => normalizeLabel(sh.label)).filter(Boolean))
+        : new Set<string>();
       for (const pc of allPostcodes) {
         if (todaysLabels.has(normalizeLabel(pc.label)) && pc.latitude && pc.longitude) {
           checkPoints.push({ lat: parseFloat(pc.latitude), lng: parseFloat(pc.longitude), label: pc.label || pc.postcode, radius: pc.radius || 200 });
@@ -236,7 +246,7 @@ router.post('/event', authenticate,
 
       const usingResidentCheckpoints = checkPoints.length > 0;
 
-      if (checkPoints.length === 0) {
+      if (checkPoints.length === 0 && resolvingCheckpoints) {
         // No resident, and no service-label match, tied to today's rota shift (or
         // no shift found yet) — check against the office/home address + every
         // configured postcode instead, as a last resort.
@@ -447,6 +457,9 @@ router.post('/event', authenticate,
         // check to just those residents (see getDueTodayTasks), so a morning shift
         // worker isn't blocked over an evening dose for a resident on their general
         // caseload (or on a later shift) they weren't rostered with on this shift.
+        // Derived from the rotaShifts rows already fetched above (not from
+        // checkPoints, which clock-out skips resolving) — same data, no extra
+        // queries.
         const todayShiftSuIds = Array.from(new Set(
           shiftsForClose.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
         ));
@@ -541,13 +554,18 @@ router.post('/event', authenticate,
         // feature itself isn't functioning as intended ("it's not even doing
         // the function at the moment"). Clock-out is no longer blocked on it.
 
-        // General (non-medication) tasks due today that are still pending also
-        // block clock-out — same principle as medication: a task not silently
-        // becoming nobody's problem just because the shift ended. Only tasks
-        // this staff member would actually see on their own task list count
-        // (see getMyPendingTasksToday), so this never blocks someone over a
-        // task they were never shown.
-        const pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole, closingShiftId || undefined);
+        // The medication check above already fails open (a lookup error there
+        // lets the clock-out through rather than 500ing). The general-tasks
+        // check below is the same class of non-essential read on the critical
+        // clock-out path — one slow/failed query here 500s a clock-out that
+        // should always succeed, so it gets the identical treatment.
+        let pendingTasks: { id: string; title: string; dueTime: string | null }[] = [];
+        try {
+          pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole, closingShiftId || undefined);
+        } catch (taskCheckErr) {
+          logger.error('Clock-out task check failed — allowing clock-out rather than blocking on an internal error', taskCheckErr);
+          pendingTasks = [];
+        }
         if (pendingTasks.length > 0) {
           overridden.push(`${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} not completed (${pendingTasks.slice(0, 3).map(t => t.title).join(', ')}${pendingTasks.length > 3 ? ', …' : ''})`);
         }
@@ -573,18 +591,28 @@ router.post('/event', authenticate,
          VALUES ($1,$2,$3,NOW(),$4,$5,$6,$7) RETURNING *`,
         [staffId, homeId, eventType || 'clock_in', geofencePassed, closestDistance, punctuality, eventShiftId]
       );
+      // Recording the reason + alerting managers is bookkeeping AFTER the
+      // clock-out is already safely stored — it must never fail the request
+      // itself. Under pool pressure the INSERT above may have waited out most
+      // of the phone's patience already, so even a slow UPDATE/INSERT here
+      // can push the response past the 15s client timeout and surface as
+      // "Failed to clock out" for a clock-out that actually succeeded. Fired
+      // without awaiting (errors logged by createAlert internally, same as
+      // before) so the response goes out the moment the clock-out is stored.
       if (overridden.length) {
-        try {
-          await query('UPDATE staff_clock_events SET override_reason = $1, override_of = $2 WHERE id = $3',
-            [overrideReason, overridden.join(' | ').slice(0, 1500), (rows[0] as any).id]);
-          const who = staffRows[0] ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'A staff member';
-          await createAlert({
+        const eventId = (rows[0] as any).id;
+        const who = staffRows[0] ? `${staffRows[0].first_name} ${staffRows[0].last_name}` : 'A staff member';
+        const reasonText = overrideReason;
+        const overriddenText = overridden.join(' | ').slice(0, 1500);
+        query('UPDATE staff_clock_events SET override_reason = $1, override_of = $2 WHERE id = $3',
+          [reasonText, overriddenText, eventId])
+          .then(() => createAlert({
             homeId, alertType: 'clock_out_with_reason', severity: 'warning', staffId,
-            recordId: (rows[0] as any).id, recordType: 'clock_event',
+            recordId: eventId, recordType: 'clock_event',
             title: `${who} clocked out with work outstanding`,
-            description: `Outstanding: ${overridden.join('; ')}.${overrideReason ? ` Their reason: "${overrideReason}"` : ''}`.slice(0, 1800),
-          });
-        } catch (ovErr) { logger.warn('Could not record clock-out override: ' + (ovErr as any)?.message); }
+            description: `Outstanding: ${overridden.join('; ')}.${reasonText ? ` Their reason: "${reasonText}"` : ''}`.slice(0, 1800),
+          }))
+          .catch((ovErr: any) => { logger.warn('Could not record clock-out override: ' + ovErr?.message); });
       }
 
       res.status(201).json({
