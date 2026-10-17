@@ -196,10 +196,50 @@ router.post('/event', authenticate,
       // UK date, not the server's own UTC clock — see getMyPendingTasksToday for
       // why this class of bug matters most right around UK midnight during BST.
       const todayStr = ukDateStr();
-      const rotaShifts = await query<any>(
+      // These four reads are independent of each other, so they are fired
+      // together, not one after another. At busy changeovers each one can
+      // wait seconds for a database connection, and awaited one-by-one those
+      // waits stack past the phone's 15-second timeout even when nothing is
+      // actually broken — the phone gives up while the server is still
+      // working, which surfaces as "Failed to clock out". Batched, the set
+      // costs roughly one wait instead of four. Behaviour on failure is
+      // unchanged: a failed rota lookup still fails the request, and the two
+      // optional-column reads keep their own fallbacks (see below).
+      const rotaShiftsP = query<any>(
         `SELECT id, su_id, su_ids, label, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
         [staffId, homeId, todayStr]
       );
+      const staffRowsP = query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
+      // shift_id may not exist yet on a database whose boot migrations haven't
+      // run (fresh deploy ordering) — read it when present, NULL when absent,
+      // so this lookup (which every clock request runs) can never 500 for
+      // want of an optional column.
+      const lastEventP: Promise<any[]> = (async () => {
+        try {
+          return await query<any>(
+            `SELECT id, event_type, event_time, home_id, auto_closed, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+            [staffId]
+          );
+        } catch (colErr) {
+          logger.error('Clock last-event lookup without shift_id (column not yet migrated) — continuing without shift scoping', colErr);
+          return await query<any>(
+            `SELECT id, event_type, event_time, home_id, auto_closed, NULL::uuid AS shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+            [staffId]
+          );
+        }
+      })();
+      const shiftColP: Promise<boolean> = (async () => {
+        try {
+          const clockCols = await query<any>(
+            `SELECT 1 FROM information_schema.columns WHERE table_name = 'staff_clock_events' AND column_name = 'shift_id' LIMIT 1`
+          );
+          return clockCols.length > 0;
+        } catch (colErr) {
+          logger.error('Clock shift_id column check failed — proceeding as if the column is present', colErr);
+          return true;
+        }
+      })();
+      const [rotaShifts, staffRows, lastEventRows, hasShiftIdCol] = await Promise.all([rotaShiftsP, staffRowsP, lastEventP, shiftColP]);
       // Which shift "now" actually belongs to — used below to tie this clock
       // event to a specific shift, and to require closing a DIFFERENT shift's
       // still-open clock-in before this one can start.
@@ -299,27 +339,12 @@ router.post('/event', authenticate,
       // time tracking. They pass through the same geofence check as everyone
       // else (falls back to the office/home address when no resident is
       // assigned to their shift), so this doesn't skip the location check.
-      const staffRows = await query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
+      // (The actual staff lookup is batched with the rota lookup above.)
       const staffRole = staffRows[0]?.role;
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
-      // shift_id may not exist yet on a database whose boot migrations haven't
-      // run (fresh deploy ordering) — read it when present, NULL when absent,
-      // so this lookup (which every clock request runs) can never 500 for
-      // want of an optional column.
-      let lastEventRows: any[];
-      try {
-        lastEventRows = await query<any>(
-          `SELECT id, event_type, event_time, home_id, auto_closed, shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
-          [staffId]
-        );
-      } catch (colErr) {
-        logger.error('Clock last-event lookup without shift_id (column not yet migrated) — continuing without shift scoping', colErr);
-        lastEventRows = await query<any>(
-          `SELECT id, event_type, event_time, home_id, auto_closed, NULL::uuid AS shift_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
-          [staffId]
-        );
-      }
+      // (The last-event and shift_id-column lookups are batched above; their
+      // missing-column fallbacks live up there too.)
       let isClockedIn = lastEventRows[0]?.event_type === 'clock_in';
 
       // A session left open from an EARLIER day — app crashed, phone died, nobody
@@ -385,21 +410,10 @@ router.post('/event', authenticate,
       }
       // INSERTs that mention shift_id would 500 outright on a database where
       // the migration hasn't landed yet — write with the column when it's
-      // there, without it when it isn't. The column's presence is checked
-      // once per request (cheap information_schema lookup, shared by every
-      // INSERT below); a clock event must never fail to store because of a
-      // missing optional column, whether the request is a clock-in or a
-      // clock-out.
-      let hasShiftIdCol = true;
-      try {
-        const clockCols = await query<any>(
-          `SELECT 1 FROM information_schema.columns WHERE table_name = 'staff_clock_events' AND column_name = 'shift_id' LIMIT 1`
-        );
-        hasShiftIdCol = clockCols.length > 0;
-      } catch (colErr) {
-        logger.error('Clock shift_id column check failed — proceeding as if the column is present', colErr);
-        hasShiftIdCol = true;
-      }
+      // there, without it when it isn't. hasShiftIdCol was checked once in
+      // the batch above and is shared by every INSERT here; a clock event
+      // must never fail to store because of a missing optional column,
+      // whether the request is a clock-in or a clock-out.
       if (eventType !== 'clock_out' && isClockedIn) {
         const openedAt = new Date(lastEventRows[0].event_time);
         const hoursOpen = (Date.now() - openedAt.getTime()) / 3600000;
@@ -533,47 +547,64 @@ router.post('/event', authenticate,
         // hours (e.g. a 20:00 medication for someone on their broader caseload, well
         // after their real shift ended) still trapped them. Treated the same as the
         // internal-error case: with no rota record to scope against, don't block.
-        let overdue: any[] = [];
-        try {
-          if (shiftsForClose.length === 0) throw new Error('no rota shift on record for today — nothing reliable to scope the check against');
-          const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
-          overdue = dueTasks.filter(t => {
-            if (t.status !== 'pending') return false;
-            const raw = hhmmToMins(t.scheduledTime);
-            if (raw == null) return false;
-            // A dose whose time hasn't arrived yet ("Not due yet" on the MAR) can never
-            // block clock-out, whatever the shift window arithmetic below works out —
-            // e.g. a 21:00 ointment stopped a 20:05 clock-out. Only for a shift that
-            // doesn't cross midnight, where "later than now" is unambiguous.
-            if (raw > nowMins && (shiftEndMins == null || shiftEndMins <= 1440)) return false;
-            // shiftStartMins/shiftEndMins was computed above but never actually used to
-            // exclude anything below it — only the upper cutoff was checked. That let a
-            // dose due BEFORE this shift even started (a resident's earlier dose that a
-            // different, earlier-shift colleague missed, or that belongs to whoever
-            // covers that specific time window) still block THIS staff member's
-            // clock-out, even though it was never really their responsibility. A dose
-            // only counts against this shift if its scheduled time actually falls
-            // within this shift's own start-to-end window, not merely before its end.
-            // For an overnight shift (end < start, already normalised to end > 1440
-            // above), a small raw time like 00:30 means "the next calendar day" from
-            // the shift's own point of view, so it's tried both as-is and shifted by
-            // +1440 to see which one actually lands inside the shift's window.
-            const candidates = [raw, raw + 1440];
-            const schedMins = candidates.find(c => shiftStartMins == null || (c >= shiftStartMins && c <= (shiftEndMins ?? Infinity))) ?? raw;
-            if (shiftStartMins != null && schedMins < shiftStartMins) return false;
-            // The shift window is [start, END) — a dose scheduled exactly AT
-            // the shift's end time belongs to whoever comes on next, not to
-            // the shift that's ending. A day worker finishing at 20:00 was
-            // being blocked by the resident's 20:00 dose, which is the night
-            // staff's to give — "the 8pm meds which is for the night staff"
-            // trapped them at clock-out every day.
-            if (shiftEndMins != null && schedMins >= shiftEndMins) return false;
-            return schedMins <= cutoffMins;
-          });
-        } catch (medCheckErr) {
-          logger.error('Clock-out medication check failed — allowing clock-out rather than blocking on an internal error', medCheckErr);
-          overdue = [];
-        }
+        // The medication and general-tasks checks are independent of each other,
+        // so they run together, not one after the other — same stacked-wait
+        // reason as the batched reads at the top of this handler. Each still
+        // fails open on its own (a lookup error lets the clock-out through
+        // rather than 500ing it), so one slow or failing check can neither
+        // block nor sink the other — or the clock-out itself.
+        const [overdue, pendingTasks] = await Promise.all([
+          (async () => {
+            try {
+              if (shiftsForClose.length === 0) throw new Error('no rota shift on record for today — nothing reliable to scope the check against');
+              const dueTasks = await getDueTodayTasks(homeId, staffId, staffRole, todayShiftSuIds.length ? todayShiftSuIds : undefined);
+              return dueTasks.filter(t => {
+                if (t.status !== 'pending') return false;
+                const raw = hhmmToMins(t.scheduledTime);
+                if (raw == null) return false;
+                // A dose whose time hasn't arrived yet ("Not due yet" on the MAR) can never
+                // block clock-out, whatever the shift window arithmetic below works out —
+                // e.g. a 21:00 ointment stopped a 20:05 clock-out. Only for a shift that
+                // doesn't cross midnight, where "later than now" is unambiguous.
+                if (raw > nowMins && (shiftEndMins == null || shiftEndMins <= 1440)) return false;
+                // shiftStartMins/shiftEndMins was computed above but never actually used to
+                // exclude anything below it — only the upper cutoff was checked. That let a
+                // dose due BEFORE this shift even started (a resident's earlier dose that a
+                // different, earlier-shift colleague missed, or that belongs to whoever
+                // covers that specific time window) still block THIS staff member's
+                // clock-out, even though it was never really their responsibility. A dose
+                // only counts against this shift if its scheduled time actually falls
+                // within this shift's own start-to-end window, not merely before its end.
+                // For an overnight shift (end < start, already normalised to end > 1440
+                // above), a small raw time like 00:30 means "the next calendar day" from
+                // the shift's own point of view, so it's tried both as-is and shifted by
+                // +1440 to see which one actually lands inside the shift's window.
+                const candidates = [raw, raw + 1440];
+                const schedMins = candidates.find(c => shiftStartMins == null || (c >= shiftStartMins && c <= (shiftEndMins ?? Infinity))) ?? raw;
+                if (shiftStartMins != null && schedMins < shiftStartMins) return false;
+                // The shift window is [start, END) — a dose scheduled exactly AT
+                // the shift's end time belongs to whoever comes on next, not to
+                // the shift that's ending. A day worker finishing at 20:00 was
+                // being blocked by the resident's 20:00 dose, which is the night
+                // staff's to give — "the 8pm meds which is for the night staff"
+                // trapped them at clock-out every day.
+                if (shiftEndMins != null && schedMins >= shiftEndMins) return false;
+                return schedMins <= cutoffMins;
+              });
+            } catch (medCheckErr) {
+              logger.error('Clock-out medication check failed — allowing clock-out rather than blocking on an internal error', medCheckErr);
+              return [];
+            }
+          })(),
+          (async (): Promise<{ id: string; title: string; dueTime: string | null }[]> => {
+            try {
+              return await getMyPendingTasksToday(homeId, staffId, staffRole, closingShiftId || undefined);
+            } catch (taskCheckErr) {
+              logger.error('Clock-out task check failed — allowing clock-out rather than blocking on an internal error', taskCheckErr);
+              return [];
+            }
+          })(),
+        ]);
         // Owner decision (repeated real-world lockouts across multiple homes): clock-out
         // must never be blocked, full stop. Outstanding medication still generates a
         // manager alert below — it's just no longer a wall staff can get stuck behind.
@@ -588,18 +619,6 @@ router.post('/event', authenticate,
         // feature itself isn't functioning as intended ("it's not even doing
         // the function at the moment"). Clock-out is no longer blocked on it.
 
-        // The medication check above already fails open (a lookup error there
-        // lets the clock-out through rather than 500ing). The general-tasks
-        // check below is the same class of non-essential read on the critical
-        // clock-out path — one slow/failed query here 500s a clock-out that
-        // should always succeed, so it gets the identical treatment.
-        let pendingTasks: { id: string; title: string; dueTime: string | null }[] = [];
-        try {
-          pendingTasks = await getMyPendingTasksToday(homeId, staffId, staffRole, closingShiftId || undefined);
-        } catch (taskCheckErr) {
-          logger.error('Clock-out task check failed — allowing clock-out rather than blocking on an internal error', taskCheckErr);
-          pendingTasks = [];
-        }
         if (pendingTasks.length > 0) {
           overridden.push(`${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} not completed (${pendingTasks.slice(0, 3).map(t => t.title).join(', ')}${pendingTasks.length > 3 ? ', …' : ''})`);
         }
@@ -608,8 +627,8 @@ router.post('/event', authenticate,
         }
       }
 
-      // The column's presence was already checked once per request above
-      // (hasShiftIdCol) — reuse it here rather than checking again.
+      // The column's presence was already checked once in the batch above
+      // (hasShiftIdCol) — reused here rather than checking again.
 
       // A clock-out records the same shift_id as the clock-in it's closing
       // (so the pair stays matched); a clock-in records whichever shift

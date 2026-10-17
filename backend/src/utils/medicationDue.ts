@@ -59,9 +59,32 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   const isPrivileged = PRIVILEGED_MAR_ROLES.includes(role);
   const today = ukDateStr();
 
+  // The two reads below are independent — fired together. Each one waited out
+  // separately stacks waits past the phone's timeout on the clock-out path
+  // (see clockin.routes.ts), where this function runs on every clock-out.
+  // getAssignedSuIds itself runs its two queries one after the other; the
+  // rota part is kicked off here alongside the assignments part and merged
+  // inside.
+  const assignmentsP = query<{ su_id: string }>(
+    'SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1',
+    [staffId]
+  );
+  const rotaResidentsP = query<any>(
+    `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND shift_date = $2`,
+    [staffId, today]
+  );
+  const [assignmentRows, rotaResidentRows] = isPrivileged
+    ? [[], []]
+    : await Promise.all([assignmentsP, rotaResidentsP]);
+
   let assignedSuIds: string[] | null = null;
   if (!isPrivileged) {
-    assignedSuIds = await getAssignedSuIds(staffId);
+    const ids = new Set<string>((assignmentRows as any[]).map((r: any) => r.su_id));
+    for (const sh of rotaResidentRows as any[]) {
+      if (sh.su_id) ids.add(sh.su_id);
+      if (Array.isArray(sh.su_ids)) sh.su_ids.forEach((id: string) => id && ids.add(id));
+    }
+    assignedSuIds = Array.from(ids);
     if (assignedSuIds.length === 0) return [];
   }
   // Narrow further to residents actually on THIS staff member's rota shift today, when
@@ -88,21 +111,24 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   }
   sql += ` AND (m.end_date IS NULL OR m.end_date >= $${params.length + 1})`;
   params.push(today);
-  const meds = await query<any>(sql, params);
-
-  // Ordered oldest-first so the Map below keeps the LATEST entry per slot —
-  // e.g. an "Attempted" (completed=false) logged at 08:05 followed by a
-  // successful "Given" at 08:20 for the same dose must resolve to "given",
-  // not get stuck on the earlier attempt.
-  // scheduled_time is a TIME column and comes back as "HH:MM:SS" — trim to "HH:MM"
-  // so it matches the slot keys from getTimeSlots() below, or a logged record can
-  // never be matched back to its slot and the task looks permanently unresolved.
-  const recordRows = await query<any>(
-    `SELECT id, medication_id, LEFT(scheduled_time::text, 5) as scheduled_time,
-            given, refused, mar_code, completed, given_by, notes, outcome_note, outcome_note_at
-     FROM mar_records WHERE home_id = $1 AND record_date = $2 ORDER BY created_at ASC`,
-    [homeId, today]
-  );
+  // The medication list and today's MAR records are independent reads — fired
+  // together for the same stacked-wait reason as above.
+  const [meds, recordRows] = await Promise.all([
+    query<any>(sql, params),
+    // Ordered oldest-first so the Map below keeps the LATEST entry per slot —
+    // e.g. an "Attempted" (completed=false) logged at 08:05 followed by a
+    // successful "Given" at 08:20 for the same dose must resolve to "given",
+    // not get stuck on the earlier attempt.
+    // scheduled_time is a TIME column and comes back as "HH:MM:SS" — trim to "HH:MM"
+    // so it matches the slot keys from getTimeSlots() below, or a logged record can
+    // never be matched back to its slot and the task looks permanently unresolved.
+    query<any>(
+      `SELECT id, medication_id, LEFT(scheduled_time::text, 5) as scheduled_time,
+              given, refused, mar_code, completed, given_by, notes, outcome_note, outcome_note_at
+       FROM mar_records WHERE home_id = $1 AND record_date = $2 ORDER BY created_at ASC`,
+      [homeId, today]
+    ),
+  ]);
   const recordMap = new Map<string, any>();
   for (const r of recordRows as any[]) recordMap.set(`${r.medication_id}|${r.scheduled_time}`, r);
 

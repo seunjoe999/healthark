@@ -56,16 +56,32 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   // tasks or matching against the wrong shift window entirely — this gate blocks
   // clock-out, so getting the date wrong here directly produces a stuck clock-in.
   const todayStr = ukDateStr();
-  const rows = await query<any>(
-    `SELECT id, title, due_time, category, created_by, assigned_staff_id, assigned_role, visible_team_ids, su_id
-     FROM tasks WHERE home_id = $1 AND task_date = $2 AND status = 'pending'`,
-    [homeId, todayStr]
-  );
+  // The three reads below are independent of each other — fire them together.
+  // Each one waited out separately for a database connection stacks waits
+  // past the phone's timeout on the clock-out path (see clockin.routes.ts),
+  // where this function runs on every single clock-out.
+  const [rows, staffTeamRows, shiftRows] = await Promise.all([
+    query<any>(
+      `SELECT id, title, due_time, category, created_by, assigned_staff_id, assigned_role, visible_team_ids, su_id
+       FROM tasks WHERE home_id = $1 AND task_date = $2 AND status = 'pending'`,
+      [homeId, todayStr]
+    ),
+    staffId
+      ? query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId])
+      : Promise.resolve([] as any[]),
+    staffId
+      ? query<any>(
+          onlyShiftId
+            ? `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3 AND id = $4`
+            : `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+          onlyShiftId ? [staffId, homeId, todayStr, onlyShiftId] : [staffId, homeId, todayStr]
+        )
+      : Promise.resolve([] as any[]),
+  ]);
 
   let myTeamId: string | null = null;
   if (staffId) {
-    const staffRows = await query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId]);
-    myTeamId = staffRows[0]?.team_id || null;
+    myTeamId = staffTeamRows[0]?.team_id || null;
   }
 
   // 30-minute post-PRN observation tasks (created by mar.routes) show on the
@@ -86,8 +102,9 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
     return false;
   });
 
-  // staff_shifts for today, fetched once and reused below for both resident scope
-  // and the time-window check — same rota-derived approach GET /api/tasks uses
+  // staff_shifts for today — fetched in the batch above and reused below for
+  // both resident scope and the time-window check — same rota-derived approach
+  // GET /api/tasks uses
   // (see tasks.routes.ts) instead of the static staff_service_user_assignments
   // caseload, so a carer only sees/is blocked by tasks for whoever they're
   // actually rostered with today, not their whole long-term assignment list.
@@ -95,14 +112,6 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   // onlyShiftId narrows this to ONE specific shift (the one actually being
   // clocked out of) — without it, a staff member with two shifts today had
   // tasks due during shift 2 block them from clocking out of shift 1.
-  const shiftRows = staffId
-    ? await query<any>(
-        onlyShiftId
-          ? `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3 AND id = $4`
-          : `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-        onlyShiftId ? [staffId, homeId, todayStr, onlyShiftId] : [staffId, homeId, todayStr]
-      )
-    : [];
 
   if (RESTRICTED_ROLES.includes(role) && staffId) {
     const rotaSuIds = Array.from(new Set(
