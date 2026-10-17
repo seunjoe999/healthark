@@ -116,6 +116,60 @@ function Sparkline({ data }: { data: Record<string, number> }) {
 }
 
 /* ── Main Dashboard ──────────────────────────────────────────────────────────*/
+function ManagerClockOutBanner({ homeId, onClockedOut }: { homeId: string; onClockedOut: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const clockOut = async () => {
+    if (!homeId || busy) return
+    setBusy(true)
+    try {
+      let lastErr: any = null
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await api.post('/clockin/event', { homeId, eventType: 'clock_out' })
+          lastErr = null
+          break
+        } catch (err: any) {
+          lastErr = err
+          if (err?.response?.data?.error) break
+          if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt))
+        }
+      }
+      if (!lastErr) {
+        onClockedOut()
+        toast.success('Clocked out')
+        return
+      }
+      // Same reconcile as the staff tile: the record may have stored despite
+      // the failed response — only report failure if still clocked in.
+      try {
+        const st = await api.get('/clockin/status')
+        if (st?.data?.data?.clockedIn === false) {
+          onClockedOut()
+          toast.success('Clocked out')
+          return
+        }
+      } catch { /* fall through to the error below */ }
+      toast.error(lastErr?.response?.data?.error || 'Could not clock out — check your signal and try again. If it keeps happening, tell your manager the time you finished.')
+    } finally { setBusy(false) }
+  }
+  return (
+    <div className="flex items-center gap-3 rounded-2xl px-4 py-3 mb-4 text-white"
+      style={{ background: 'linear-gradient(135deg, #7c2d12, #9a3412)' }}>
+      <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+        <Clock className="w-4 h-4" />
+      </div>
+      <div className="flex-1">
+        <p className="font-semibold text-sm">You are clocked in</p>
+        <p className="text-white/80 text-xs">Tap to clock out now — it goes through immediately.</p>
+      </div>
+      <button onClick={clockOut} disabled={busy}
+        className="px-4 py-2 rounded-xl text-sm font-bold text-slate-900 bg-white/90 hover:bg-white disabled:opacity-60 flex-shrink-0">
+        {busy ? 'Clocking out…' : 'Clock out'}
+      </button>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { user, isRole } = useAuth()
   // Dashboard boxes always stay dark navy — kept fixed regardless of the
@@ -412,6 +466,16 @@ export default function Dashboard() {
           </div>
           <ArrowRight className="w-4 h-4 flex-shrink-0" />
         </Link>
+      )}
+
+      {/* Clocked in — office staff included. Managers clock in through the same
+          banner above, but until now nothing on this dashboard let them back
+          OUT: the only clock-out lived on the staff dashboard tile and the QR
+          page, so anyone clocked in here (office/management) had no button to
+          end it and looked stuck. Same automatic server clock-out as the staff
+          tile, with the same self-retry. */}
+      {!loading && clockedIn && (
+        <ManagerClockOutBanner homeId={selectedHome} onClockedOut={() => setClockedIn(false)} />
       )}
 
       {!loading && healthReviewsDue.length > 0 && (

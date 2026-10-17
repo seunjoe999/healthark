@@ -48,23 +48,47 @@ export default function StaffDashboard() {
   // Clock In Analytics report instead, which has no clock-out control at
   // all — once clocked in, their "Clock out" tile silently did nothing.
   // This calls the same clock-out endpoint directly, with no QR dependency.
+  //
+  // The server treats clock-out as automatic: one INSERT, then success, no
+  // matter the crowd size or what is outstanding. But no network call is
+  // literally unfailable — the phone can still lose signal mid-tap. So the
+  // tile retries by itself (up to 3 attempts with a short pause), and only
+  // after every attempt AND a status re-check still shows them clocked in
+  // does it admit failure — and even then with the real reason when the
+  // server gave one, never the empty "Failed to clock out".
   const clockOutNow = async (overrideReason?: string) => {
     if (!user?.homeId) { toast.error('No home is set on your profile — ask a manager to set one before you can clock out'); return }
     setClockingOut(true)
     try {
-      await api.post('/clockin/event', { homeId: user.homeId, eventType: 'clock_out', overrideReason })
-      setClockedIn(false)
-      toast.success('Clocked out')
-    } catch (err: any) {
+      let lastErr: any = null
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await api.post('/clockin/event', { homeId: user.homeId, eventType: 'clock_out', overrideReason })
+          lastErr = null
+          break
+        } catch (err: any) {
+          lastErr = err
+          // A real refusal from the server (a message attached) is an answer,
+          // not a lost request — retrying won't change it, so stop at once.
+          if (err?.response?.data?.error) break
+          if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt))
+        }
+      }
+      if (!lastErr) {
+        setClockedIn(false)
+        toast.success('Clocked out')
+        return
+      }
+      const err = lastErr
       const reason = err?.response?.data?.reason
       // The clock-out may have gone through on the server even though this
       // request reported failure — e.g. it timed out after the record was
-      // already stored, or a retry landed on "already clocked out". Before
-      // telling staff it failed, ask the server what their actual state is:
-      // if they are no longer clocked in, the job is done and the tile must
-      // flip to match, rather than staying stuck on "Clock out" (which reads
-      // as "keeps saying failed to clock out" on every retry). Only when they
-      // are still clocked in is this a genuine failure worth reporting.
+      // already stored. Before telling staff it failed, ask the server what
+      // their actual state is: if they are no longer clocked in, the job is
+      // done and the tile must flip to match, rather than staying stuck on
+      // "Clock out" (which reads as "keeps saying failed to clock out" on
+      // every retry). Only when they are still clocked in is this a genuine
+      // failure worth reporting.
       try {
         const st = await api.get('/clockin/status')
         if (st?.data?.data?.clockedIn === false) {
@@ -78,7 +102,7 @@ export default function StaffDashboard() {
         if (why && why.trim().length >= 5) { setClockingOut(false); await clockOutNow(why.trim()); return }
         if (why !== null) toast.error('Reason must be at least 5 characters')
       } else {
-        toast.error(err?.response?.data?.error || 'Failed to clock out')
+        toast.error(err?.response?.data?.error || 'Could not clock out — check your signal and try again. If it keeps happening, tell your manager the time you finished.')
       }
     } finally { setClockingOut(false) }
   }

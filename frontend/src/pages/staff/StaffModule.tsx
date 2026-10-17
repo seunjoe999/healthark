@@ -29,7 +29,7 @@ const STAFF_DOC_TYPES = [
   { value: 'other', label: 'Other document' },
 ]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings'
+type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings' | 'comms'
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
 
@@ -179,6 +179,10 @@ export default function StaffModule() {
     ...(hideForOwnCareStaffView ? [] : [{ key: 'sensitive' as StaffTab, label: `Sensitive Info (${sensitiveNotes.length})` }]),
     { key: 'meetings', label: 'Staff Meeting' },
     ...(selected?.team_id ? [{ key: 'team_meetings' as StaffTab, label: 'Team Meeting' }] : []),
+    // Every message sent to / received from this staff member, in one place —
+    // so anything a manager sends them is visible on their profile too, not
+    // just buried in the inbox. Managers only (care staff see their own inbox).
+    ...(isManager ? [{ key: 'comms' as StaffTab, label: 'Comms' }] : []),
     // Per-staff overrides (e.g. can_edit_care_plans for a non-manager role like
     // Team Leader) — owner-only, since this grants access beyond the role's
     // normal defaults.
@@ -834,6 +838,10 @@ export default function StaffModule() {
               <MeetingsSection meetingType="team" parentId={selected.team_id} label="Team Meeting" />
             )}
 
+            {tab === 'comms' && selected && (
+              <StaffComms staffId={selected.id} staffName={getName(selected)} />
+            )}
+
             {tab === 'clock' && (
               <div>
                 <h3 className="font-semibold text-slate-900 mb-4">Clock in / out history</h3>
@@ -877,6 +885,91 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
     <div>
       <dt className="text-xs text-slate-500 font-medium">{label}</dt>
       <dd className="text-sm text-slate-900 mt-0.5 capitalize">{value || '—'}</dd>
+    </div>
+  )
+}
+
+// Every message to / from one staff member — the same conversation view as
+// the inbox, pre-filtered to this person, so a manager sees the full history
+// of what was sent to them right on their profile.
+function StaffComms({ staffId, staffName }: { staffId: string; staffName: string }) {
+  const [msgs, setMsgs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [sending, setSending] = useState(false)
+  const [text, setText] = useState('')
+  const bottomRef = React.useRef<HTMLDivElement>(null)
+
+  const load = async (q?: string) => {
+    setLoading(true)
+    try {
+      // Both directions in one call: the conversation endpoint returns the
+      // whole back-and-forth with this person, oldest first.
+      const res = await api.get('/messages', { params: { type: 'conversation', with: staffId, limit: 500, ...(q ? { search: q } : {}) } })
+      setMsgs(res.data.data || [])
+    } catch { toast.error('Could not load messages') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { load() }, [staffId])
+  useEffect(() => {
+    const t = setTimeout(() => load(search.trim() || undefined), 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs])
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!text.trim() || sending) return
+    setSending(true)
+    try {
+      await api.post('/messages', { recipientId: staffId, message: text.trim() })
+      setText('')
+      const q = search.trim() || undefined
+      const res = await api.get('/messages', { params: { type: 'conversation', with: staffId, limit: 500, ...(q ? { search: q } : {}) } })
+      setMsgs(res.data.data || [])
+      toast.success(`Message sent to ${staffName || 'staff member'}`)
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to send') }
+    finally { setSending(false) }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search this conversation…"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400" />
+        </div>
+      </div>
+      {loading ? <Spinner /> : msgs.length === 0 ? (
+        <EmptyState title={search.trim() ? 'No messages match' : 'No messages yet'} description={search.trim() ? 'Try a different search' : `Nothing sent to or from ${staffName || 'this staff member'} yet — write the first message below`} />
+      ) : (
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1 mb-4">
+          {msgs.map((m: any) => {
+            const mine = m.sender_id !== staffId
+            return (
+              <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 ${mine ? 'bg-purple-600 text-white' : 'bg-white border border-slate-200 text-slate-800'}`}
+                  style={mine ? {} : { borderBottomLeftRadius: 6 }}>
+                  {m.subject && <p className={`text-xs font-bold mb-0.5 ${mine ? 'text-purple-200' : 'text-purple-700'}`}>{m.subject}</p>}
+                  <p className="text-sm whitespace-pre-line leading-relaxed">{m.message || m.body}</p>
+                  <p className={`text-[10px] mt-1 ${mine ? 'text-purple-200 text-right' : 'text-slate-400'}`}>
+                    {m.created_at ? format(new Date(m.created_at), 'd MMM, HH:mm') : ''}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={bottomRef} />
+        </div>
+      )}
+      <form onSubmit={send} className="flex items-center gap-2">
+        <input value={text} onChange={e => setText(e.target.value)} placeholder={`Message ${staffName || 'them'}…`}
+          className="flex-1 px-4 py-2.5 rounded-full text-sm border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400" />
+        <Button type="submit" loading={sending} disabled={!text.trim()}>Send</Button>
+      </form>
     </div>
   )
 }

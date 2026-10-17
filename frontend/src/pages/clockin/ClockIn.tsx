@@ -43,7 +43,14 @@ export default function ClockIn() {
     // Clocking OUT is never location-checked, so it must not depend on getting
     // a GPS fix. If the phone has no location (permission off, indoors, timed
     // out) the clock-out is sent anyway. Clocking IN still needs a location.
-    const submit = async (pos: GeolocationPosition) => {
+    //
+    // The server treats clock-out as automatic (one write, then success, no
+    // matter the crowd or what is outstanding), but no network call is
+    // literally unfailable — the phone can still lose signal mid-tap. So a
+    // clock-out retries by itself (up to 3 attempts) and only reports failure
+    // after every attempt has failed — and even then with the server's real
+    // reason when it gave one, never an empty failure.
+    const submit = async (pos: GeolocationPosition, attempt = 1): Promise<void> => {
         try {
           const authToken = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
           const res = await fetch('/api/clockin/event', {
@@ -67,12 +74,27 @@ export default function ClockIn() {
             setResult(data)
             setState('too_far')
           } else {
-            setError(data.error || 'Clock-in failed')
+            // A clock-out the server refused WITH a reason is an answer, not a
+            // lost request — but one lost to signal (no usable response) is
+            // worth retrying before telling staff it failed.
+            if (eventType === 'clock_out' && !data.error && attempt < 3) {
+              await new Promise(r => setTimeout(r, 1500 * attempt))
+              return submit(pos, attempt + 1)
+            }
+            setError(data.error || (eventType === 'clock_out'
+              ? 'Could not clock out — check your signal and try again. If it keeps happening, tell your manager the time you finished.'
+              : 'Clock-in failed'))
             setErrorReason(data.reason || '')
             setState('error')
           }
         } catch {
-          setError('Network error. Please try again.')
+          if (eventType === 'clock_out' && attempt < 3) {
+            await new Promise(r => setTimeout(r, 1500 * attempt))
+            return submit(pos, attempt + 1)
+          }
+          setError(eventType === 'clock_out'
+            ? 'Could not clock out — check your signal and try again. If it keeps happening, tell your manager the time you finished.'
+            : 'Network error. Please try again.')
           setState('error')
         }
     }
