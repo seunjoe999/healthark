@@ -135,6 +135,17 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     // for non-privileged staff viewing today's own list; managers keep the
     // full day for planning. Falls back to the full list when the current
     // shift can't be determined.
+    //
+    // A task due during a shift the viewer is NOT on must never vanish for
+    // everyone: the pop-up and dashboard only ever fetch this narrowed view,
+    // so a task whose time falls outside every one of today's windows (a
+    // typo'd time, or a window the rota doesn't cover) would be invisible
+    // everywhere with no path to complete it — and an uncompletable pending
+    // task is exactly what used to trap clock-out. Anything filtered out here
+    // is therefore returned in a separate `otherShift` bucket (same shape, no
+    // extra query) so the UI can show it under its own heading instead of
+    // hiding it. Managers still get the un-narrowed full list as before.
+    let otherShift: any[] = [];
     if (currentShiftOnly && !isPrivileged && staffId) {
       try {
         const myShifts = await query<any>(
@@ -149,13 +160,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
             const start = toMin(String(cur.start_time).slice(0, 5));
             let end = toMin(String(cur.end_time).slice(0, 5));
             if (end <= start) end += 1440;
-            rows = rows.filter((t: any) => {
+            const inWindow = (t: any) => {
               if (!t.due_time) return true;
               const raw = toMin(String(t.due_time).slice(0, 5));
               if (Number.isNaN(raw)) return true;
               const candidates = raw < start ? [raw + 1440, raw] : [raw, raw + 1440];
               return candidates.some(d => d >= start && d <= end);
-            });
+            };
+            otherShift = rows.filter((t: any) => !inWindow(t));
+            rows = rows.filter(inWindow);
           }
         }
       } catch (shiftErr) {
@@ -163,7 +176,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       }
     }
 
-    res.json({ success: true, data: rows } as ApiResponse);
+    res.json({ success: true, data: rows, ...(otherShift.length ? { otherShift } : {}) } as ApiResponse);
   } catch (err) { next(err); }
 });
 

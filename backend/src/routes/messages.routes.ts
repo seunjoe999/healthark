@@ -75,6 +75,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         SELECT
           CASE WHEN m.sender_id = $1 THEN m.recipient_id ELSE m.sender_id END AS other_id,
           COALESCE(o.first_name || ' ' || o.last_name, 'Deleted User') AS other_name,
+          o.photo_url AS other_photo,
           MAX(m.created_at) AS last_at,
           COUNT(*) AS total,
           COUNT(*) FILTER (WHERE m.recipient_id = $1 AND (m.is_read IS NOT TRUE)) AS unread,
@@ -85,7 +86,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         LEFT JOIN staff o ON o.id = CASE WHEN m.sender_id = $1 THEN m.recipient_id ELSE m.sender_id END
         WHERE (m.sender_id = $1 AND m.deleted_by_sender_at IS NULL)
            OR (m.recipient_id = $1 AND m.deleted_by_recipient_at IS NULL)
-        GROUP BY 1, 2
+        GROUP BY 1, 2, 3
         ORDER BY last_at DESC
         LIMIT 200`, [staffId]);
       // A thread whose every message this viewer deleted on their own side has

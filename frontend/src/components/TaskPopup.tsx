@@ -31,33 +31,58 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [otherShiftTasks, setOtherShiftTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(false)
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [hasLoaded, setHasLoaded] = useState(false)
   const [showFreqSettings, setShowFreqSettings] = useState(false)
   const [freq, setFreq] = useState(() => user?.id ? getReminderFrequency(user.id) : 'every_visit')
   const [previewMed, setPreviewMed] = useState<any>(null)
+  const [loadError, setLoadError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      // Re-opening after close must fetch fresh — tasks completed elsewhere
+      // while it was closed would otherwise never appear, and a previous
+      // failure would stick forever with no retry path except reload.
+      setHasLoaded(false)
+      setLoadError('')
+    }
+  }, [open])
 
   useEffect(() => {
     if (open && !hasLoaded) {
       loadTasks()
       if (user?.id) markTaskPopupShown(user.id)
     }
-  }, [open])
+  }, [open, hasLoaded])
 
   const loadTasks = async () => {
     setLoading(true)
+    setLoadError('')
     try {
       const today = await getServerTodayStr()
       const [taskRes, medRes, reviewRes] = await Promise.allSettled([
         // Current shift's tasks only (day or night) — same per-shift view as
-        // the dashboard and task list, not the whole day's at once.
+        // the dashboard and task list, not the whole day's at once. Anything
+        // due outside this shift comes back in the `otherShift` bucket so it
+        // is shown under its own heading, never hidden.
         api.get('/tasks', { params: { date: today, shift: 'current' } }),
         user?.homeId ? api.get('/mar/due-today', { params: { homeId: user.homeId, shift: 'current' } }) : Promise.resolve(null),
         user?.homeId ? api.get('/service-users/health-reviews-due', { params: { homeId: user.homeId } }) : Promise.resolve(null),
       ])
+      if (taskRes.status === 'rejected' && medRes.status === 'rejected' && reviewRes.status === 'rejected') {
+        // Everything failed (no signal, server restarting mid-deploy) — say so
+        // with a retry button instead of the misleading "All tasks completed".
+        setLoadError('Could not load your tasks — check your signal and try again.')
+        setHasLoaded(true)
+        return
+      }
       const pending: Task[] = taskRes.status === 'fulfilled'
         ? (taskRes.value.data.data || []).filter((t: any) => t.status === 'pending').map((t: any) => ({ ...t, kind: 'task' }))
+        : []
+      const otherShift: Task[] = taskRes.status === 'fulfilled'
+        ? ((taskRes.value.data.otherShift || []).filter((t: any) => t.status === 'pending').map((t: any) => ({ ...t, kind: 'task' })))
         : []
       const medsRaw = medRes.status === 'fulfilled' && medRes.value ? (medRes.value.data.data || []) : []
       const meds: Task[] = medsRaw
@@ -83,11 +108,13 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
       } as any))
       const merged = [...pending, ...meds, ...reviews]
       setTasks(merged)
+      setOtherShiftTasks(otherShift)
       setHasLoaded(true)
-      if (merged.length === 0) onClose()
+      if (merged.length === 0 && otherShift.length === 0) onClose()
     } catch (err) {
       console.error('Failed to load tasks', err)
-      onClose()
+      setLoadError('Could not load your tasks — check your signal and try again.')
+      setHasLoaded(true)
     } finally {
       setLoading(false)
     }
@@ -97,6 +124,7 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
     try {
       await api.put(`/tasks/${taskId}/complete`, { notes: '' })
       setCompleted(prev => new Set([...prev, taskId]))
+      setOtherShiftTasks(prev => prev.filter(t => t.id !== taskId))
       toast.success('Task completed!')
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to complete task')
@@ -107,6 +135,7 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
   const overdueTasks = incompleteTasks.filter(t => isTimePastDue(t.due_time))
   const upcomingTasks = incompleteTasks.filter(t => !isTimePastDue(t.due_time))
   const pendingCount = incompleteTasks.length
+  const visibleOtherShift = otherShiftTasks.filter(t => !completed.has(t.id))
 
   const openTask = (task: Task) => {
     if (task.kind === 'medication') { setPreviewMed(task.medDetail); return }
@@ -165,7 +194,12 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
       <div className="space-y-3 max-h-72 overflow-y-auto">
         {loading ? (
           <p className="text-center text-slate-500 py-8">Loading tasks...</p>
-        ) : incompleteTasks.length === 0 ? (
+        ) : loadError ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-600 mb-3">{loadError}</p>
+            <Button variant="outline" onClick={() => { setHasLoaded(false); loadTasks() }}>Try again</Button>
+          </div>
+        ) : incompleteTasks.length === 0 && visibleOtherShift.length === 0 ? (
           <p className="text-center text-slate-500 py-8">All tasks completed for today!</p>
         ) : (
           <>
@@ -179,6 +213,15 @@ export default function TaskPopup({ open, onClose }: TaskPopupProps) {
               <div>
                 {overdueTasks.length > 0 && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 mt-3">Later today</p>}
                 <div className="space-y-2">{upcomingTasks.map(t => renderItem(t, false))}</div>
+              </div>
+            )}
+            {/* Tasks due outside this shift (e.g. night-shift tasks while day
+                shift is on): shown, not hidden — with their due time, so they
+                can still be seen and completed rather than silently missing. */}
+            {visibleOtherShift.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 mt-3">Other shifts ({visibleOtherShift.length})</p>
+                <div className="space-y-2">{visibleOtherShift.map(t => renderItem(t, false))}</div>
               </div>
             )}
           </>

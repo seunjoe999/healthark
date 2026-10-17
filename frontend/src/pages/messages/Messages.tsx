@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { staffApi } from '../../api'
-import api from '../../api'
+import api, { resolveUploadUrl } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { format } from 'date-fns'
 import { Spinner, Button, Modal } from '../../components/ui'
@@ -15,12 +15,32 @@ import toast from 'react-hot-toast'
 interface Thread {
   other_id: string
   other_name: string
+  other_photo?: string | null
   last_at: string
   total: string | number
   unread: string | number
   last_subject: string | null
   last_snippet: string | null
   last_sender_id: string | null
+}
+
+// Profile picture (or initials fallback) — shared by the conversation list
+// and the open-chat header. Falls back to initials when no photo uploaded.
+function Avatar({ name, photoUrl, size }: { name?: string | null; photoUrl?: string | null; size: 'md' | 'sm' }) {
+  const src = resolveUploadUrl(photoUrl || '')
+  const cls = size === 'md' ? 'w-10 h-10 text-sm' : 'w-9 h-9 text-xs'
+  const initials = (name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+  const [broken, setBroken] = useState(false)
+  if (src && !broken) {
+    return <img src={src} alt={name || ''} onError={() => setBroken(true)}
+      className={`${cls} rounded-full flex-shrink-0 object-cover`} style={{ background: '#222' }} />
+  }
+  return (
+    <div className={`${cls} rounded-full flex-shrink-0 flex items-center justify-center font-bold text-slate-900`}
+      style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+      {initials}
+    </div>
+  )
 }
 
 export default function Messages() {
@@ -226,10 +246,7 @@ export default function Messages() {
                 className="w-full text-left px-4 py-3 transition-colors"
                 style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: activeThread?.other_id === t.other_id ? 'rgba(232,177,48,0.08)' : 'transparent' }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-slate-900"
-                    style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
-                    {(t.other_name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                  </div>
+                  <Avatar name={t.other_name} photoUrl={(t as any).other_photo} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className={`text-sm truncate ${unread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>{t.other_name}</p>
@@ -293,10 +310,7 @@ export default function Messages() {
               <button onClick={() => setActiveThread(null)} className="lg:hidden text-amber-400 flex-shrink-0">
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-slate-900"
-                style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
-                {(activeThread.other_name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-              </div>
+              <Avatar name={activeThread.other_name} photoUrl={(activeThread as any).other_photo} size="sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate">{activeThread.other_name}</p>
                 <p className="text-[11px] text-slate-500">{parseInt(String(activeThread.total || '0'), 10) || history.length} messages</p>

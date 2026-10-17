@@ -40,14 +40,41 @@ const AREA_SQL = `CASE
 
 // POST /api/system/resolve — mark an issue as dealt with. Every entry with that
 // exact message leaves the list; if it happens again it comes back as new.
+// kind must be 'old' (anything last seen 7+ days ago — history, not today) or
+// 'refused' (the system stopping someone on purpose with an explanation), for
+// bulk clear-outs. Genuine faults (a real 500/breakage, or a phone-screen
+// crash) are deliberately NOT clearable by hand — clearing those would hide a
+// live breakage behind a tidy screen, so they can only leave the list by being
+// fixed for real (or ageing out of the 7-day window on their own).
 router.post('/resolve', requireRole('group_admin', 'home_manager'), async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const kind = String(req.body?.kind || '');
+    if (kind === 'old' || kind === 'refused') {
+      const cond = kind === 'old'
+        ? `resolved_at IS NULL AND created_at < NOW() - interval '7 days'`
+        : `resolved_at IS NULL AND NOT (status_code >= 500 OR source = 'browser')`;
+      const rows = await query<any>(
+        `UPDATE error_log SET resolved_at = NOW() WHERE ${cond} RETURNING id`, []);
+      res.json({ success: true, data: { resolved: rows.length } } as ApiResponse);
+      return;
+    }
     const messages: string[] = (Array.isArray(req.body?.messages) ? req.body.messages : [req.body?.message])
       .filter((m: any) => typeof m === 'string' && m.length > 0).slice(0, 100);
     if (!messages.length) return res.status(400).json({ success: false, error: 'Nothing to mark as fixed' } as ApiResponse);
+    // Same guard per message: a genuine recent fault can't be cleared by hand.
+    // (Recent refusals — rules working as designed — clear normally.)
     const rows = await query<any>(
-      'UPDATE error_log SET resolved_at = NOW() WHERE resolved_at IS NULL AND message = ANY($1::text[]) RETURNING id', [messages]);
-    res.json({ success: true, data: { resolved: rows.length } } as ApiResponse);
+      `UPDATE error_log SET resolved_at = NOW()
+       WHERE resolved_at IS NULL AND message = ANY($1::text[])
+         AND NOT (status_code >= 500 OR source = 'browser')
+       RETURNING id`, [messages]);
+    // Rows the guard refused to clear (genuine faults among the asked
+    // messages) stay on the list — report how many actually cleared.
+    const refusedRows = await query<any>(
+      `SELECT DISTINCT message FROM error_log
+       WHERE resolved_at IS NULL AND message = ANY($1::text[])
+         AND (status_code >= 500 OR source = 'browser')`, [messages]);
+    res.json({ success: true, data: { resolved: rows.length, stillOpen: refusedRows.map((r: any) => r.message) } } as ApiResponse);
   } catch (err) { next(err); }
 });
 

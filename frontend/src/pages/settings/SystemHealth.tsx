@@ -42,8 +42,33 @@ export default function SystemHealth() {
 
   const markFixed = async (messages: string[]) => {
     if (!messages.length) return
-    try { await api.post('/system/resolve', { messages }); await load() }
+    try {
+      const res = await api.post('/system/resolve', { messages })
+      // Genuine faults can't be cleared by hand (they'd hide a live breakage)
+      // — the server says which asked messages stayed open.
+      const stillOpen: string[] = res.data?.data?.stillOpen || []
+      if (stillOpen.length) {
+        alert(`Cleared what could be cleared. Still open (genuine fault${stillOpen.length !== 1 ? 's' : ''} — fix the cause, not the entry):\n\n${stillOpen.join('\n')}`)
+      }
+      await load()
+    }
     catch (err: any) { setFailed(err?.response?.data?.error || 'Could not mark as fixed') }
+  }
+  const clearOld = async () => {
+    if (!window.confirm('Clear everything older than 7 days? Genuine faults stay until fixed for real. Anything that happens again comes back.')) return
+    try {
+      const res = await api.post('/system/resolve', { kind: 'old' })
+      alert(`Cleared ${res.data?.data?.resolved ?? 0} old entr${res.data?.data?.resolved === 1 ? 'y' : 'ies'}.`)
+      await load()
+    } catch (err: any) { setFailed(err?.response?.data?.error || 'Could not clear old issues') }
+  }
+  const clearRefused = async () => {
+    if (!window.confirm('Clear all "Refused" entries (rules working as designed)? Genuine faults stay. Anything that happens again comes back.')) return
+    try {
+      const res = await api.post('/system/resolve', { kind: 'refused' })
+      alert(`Cleared ${res.data?.data?.resolved ?? 0} refusal entr${res.data?.data?.resolved === 1 ? 'y' : 'ies'}.`)
+      await load()
+    } catch (err: any) { setFailed(err?.response?.data?.error || 'Could not clear refusals') }
   }
   const match = (r: any) => (!area || r.area === area) && (!kind || r.kind === kind)
   const copyIssues = () => {
@@ -105,6 +130,8 @@ export default function SystemHealth() {
                 </select>
                 <button onClick={() => { const list = (data?.topIssues || []).filter(match).map((t: any) => t.message); if (list.length && window.confirm(`Mark all ${list.length} issues shown as fixed? Any that happen again will come back.`)) markFixed(list) }}
                   className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500">Mark all as fixed</button>
+                <button onClick={clearOld} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">Clear older than 7 days</button>
+                <button onClick={clearRefused} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">Clear refusals</button>
                 <button onClick={copyIssues} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">Copy for developer</button>
               </div>
             </div>
