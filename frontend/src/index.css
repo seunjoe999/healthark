@@ -33,6 +33,14 @@
     touch-action: manipulation;
   }
 
+  /* Guarantee dark high-contrast text inside any white card/table container even
+     when body defaults to cream-white (#f5f0e8) in dark mode. :where() keeps
+     specificity at (0,0,0) so explicit utility classes (text-white, text-sky-600,
+     text-rose-700, etc.) always override cleanly. */
+  :where(.bg-white) {
+    color: #0f172a;
+  }
+
   input, select, textarea, button { font-family: inherit; }
 
   /* Force dark background on all native selects not using .input class.

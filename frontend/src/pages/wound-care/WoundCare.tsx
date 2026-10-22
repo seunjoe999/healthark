@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Activity, Plus, ChevronRight, TrendingDown, TrendingUp, Minus, AlertCircle, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
+import { UniformFilterBar } from '../../components/ui/FilterBar'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -428,7 +429,10 @@ export default function WoundCare() {
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSU, setSelectedSU] = useState('')
-  const [statusFilter, setStatusFilter] = useState('active')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedWound, setSelectedWound] = useState<{ latest: any; history: any[] } | null>(null)
@@ -439,7 +443,15 @@ export default function WoundCare() {
     setLoading(true)
     try {
       const [assessRes, suRes] = await Promise.all([
-        api.get('/wound-care', { params: { homeId: user?.homeId, suId: selectedSU || undefined, status: statusFilter || undefined } }),
+        api.get('/wound-care', {
+          params: {
+            homeId: user?.homeId,
+            suId: selectedSU || undefined,
+            status: statusFilter || undefined,
+            from: dateFrom || undefined,
+            to: dateTo || undefined,
+          },
+        }),
         api.get('/service-users', { params: { homeId: user?.homeId } }),
       ])
       setAssessments(assessRes.data.data || [])
@@ -448,9 +460,21 @@ export default function WoundCare() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [selectedSU, statusFilter])
+  useEffect(() => { load() }, [selectedSU, statusFilter, dateFrom, dateTo])
 
-  const wounds = groupIntoWounds(assessments)
+  const filteredAssessments = useMemo(() => {
+    if (!search.trim()) return assessments
+    const q = search.toLowerCase()
+    return assessments.filter((a: any) =>
+      String(a.su_name || '').toLowerCase().includes(q) ||
+      String(a.wound_location || '').toLowerCase().includes(q) ||
+      String(a.wound_type || '').toLowerCase().includes(q) ||
+      String(a.dressing_used || '').toLowerCase().includes(q) ||
+      String(a.notes || '').toLowerCase().includes(q)
+    )
+  }, [assessments, search])
+
+  const wounds = groupIntoWounds(filteredAssessments)
 
   function openFollowUp(location: string, suId: string) {
     setPrefillLocation(location)
@@ -484,16 +508,45 @@ export default function WoundCare() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-5 flex-wrap">
-        <select className="input w-52" value={selectedSU} onChange={e => setSelectedSU(e.target.value)}>
-          <option value="">All residents</option>
-          {serviceUsers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-        </select>
-        <select className="input w-40" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          {statusFilterOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
+      {/* Uniform Filter Bar */}
+      <UniformFilterBar
+        className="mb-5"
+        personLabel="Service User"
+        personAllLabel="All Service Users"
+        personValue={selectedSU}
+        onPersonChange={setSelectedSU}
+        personOptions={suOptions}
+        searchPlaceholder="Search resident, wound location, dressing, notes..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        dateFrom={dateFrom}
+        onDateFromChange={setDateFrom}
+        dateTo={dateTo}
+        onDateToChange={setDateTo}
+        extraSelects={[
+          {
+            id: 'status',
+            label: 'Status',
+            allLabel: 'All Statuses',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: [
+              { value: 'active', label: 'Active' },
+              { value: 'healed', label: 'Healed' },
+              { value: 'closed', label: 'Closed' },
+            ],
+          },
+        ]}
+        onClear={() => {
+          setSelectedSU('')
+          setSearch('')
+          setDateFrom('')
+          setDateTo('')
+          setStatusFilter('')
+        }}
+        shownCount={wounds.length}
+        totalCount={groupIntoWounds(assessments).length}
+      />
 
       {/* Wound cards */}
       {loading ? <Spinner /> : wounds.length === 0 ? (

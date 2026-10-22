@@ -456,4 +456,261 @@ router.patch('/gp-referrals/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed' }) }
 })
 
+function clinicalHomeId(req: any): string {
+  const fromQuery = (req.query?.homeId as string) || (req.body?.homeId as string)
+  if (fromQuery) return fromQuery
+  if (req.staff?.homeId) return req.staff.homeId
+  const token = req.headers?.authorization?.substring(7)
+  if (token) {
+    const decoded = jwt.decode(token) as any
+    if (decoded?.homeId) return decoded.homeId
+  }
+  return ''
+}
+
+// ─── HOME-WIDE CLINICAL DASHBOARD ENDPOINTS & UPDATES ────────────────────────
+
+router.get('/oral-hygiene', async (req, res) => {
+  try {
+    const homeId = clinicalHomeId(req)
+    const { suId, from, to, session, search } = req.query as Record<string, string>
+    let sql = `
+      SELECT o.*,
+             COALESCE(su.first_name || ' ' || su.last_name, 'Unknown Resident') AS su_name,
+             s.first_name || ' ' || s.last_name AS staff_name
+      FROM oral_hygiene_records o
+      LEFT JOIN service_users su ON su.id = o.su_id
+      LEFT JOIN staff s ON s.id = o.staff_id
+      WHERE o.home_id = $1
+    `
+    const params: any[] = [homeId]
+    if (suId) { params.push(suId); sql += ` AND o.su_id = $${params.length}` }
+    if (from) { params.push(from); sql += ` AND DATE(o.recorded_at) >= $${params.length}::date` }
+    if (to) { params.push(to); sql += ` AND DATE(o.recorded_at) <= $${params.length}::date` }
+    if (session) { params.push(session); sql += ` AND o.session = $${params.length}` }
+    if (search) {
+      params.push(`%${search.trim()}%`)
+      const p = `$${params.length}`
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE ${p}
+        OR COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE ${p}
+        OR COALESCE(o.assistance, '') ILIKE ${p}
+        OR COALESCE(o.notes, '') ILIKE ${p}
+        OR COALESCE(o.upper_denture, '') ILIKE ${p}
+        OR COALESCE(o.lower_denture, '') ILIKE ${p}
+        OR CAST(o.mouth_conditions AS TEXT) ILIKE ${p}
+      )`
+    }
+    sql += ' ORDER BY o.recorded_at DESC LIMIT 300'
+    const rows = await query<any>(sql, params)
+    res.json({ success: true, data: rows })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load oral hygiene records' })
+  }
+})
+
+router.put('/oral-hygiene/:id', async (req, res) => {
+  const {
+    session, mouthConditions, upperDenture, lowerDenture,
+    products, assistance, refused, notes
+  } = req.body
+  try {
+    const rows = await query<any>(`
+      UPDATE oral_hygiene_records
+      SET session = COALESCE($1, session),
+          mouth_conditions = $2,
+          upper_denture = $3,
+          lower_denture = $4,
+          products = $5,
+          assistance = $6,
+          refused = $7,
+          notes = $8
+      WHERE id = $9
+      RETURNING *
+    `, [
+      session || 'Morning',
+      JSON.stringify(mouthConditions || []),
+      upperDenture || '',
+      lowerDenture || '',
+      JSON.stringify(products || []),
+      assistance || '',
+      Boolean(refused),
+      notes || '',
+      req.params.id
+    ])
+    if (!rows.length) return res.status(404).json({ error: 'Oral hygiene record not found' })
+    res.json({ success: true, data: rows[0] })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update oral hygiene record' })
+  }
+})
+
+router.get('/abbey-pain', async (req, res) => {
+  try {
+    const homeId = clinicalHomeId(req)
+    const { suId, from, to, search } = req.query as Record<string, string>
+    let sql = `
+      SELECT a.*,
+             COALESCE(su.first_name || ' ' || su.last_name, 'Unknown Resident') AS su_name,
+             s.first_name || ' ' || s.last_name AS assessed_by_name
+      FROM abbey_pain_assessments a
+      LEFT JOIN service_users su ON su.id = a.su_id
+      LEFT JOIN staff s ON s.id = a.assessed_by
+      WHERE a.home_id = $1
+    `
+    const params: any[] = [homeId]
+    if (suId) { params.push(suId); sql += ` AND a.su_id = $${params.length}` }
+    if (from) { params.push(from); sql += ` AND DATE(a.assessed_at) >= $${params.length}::date` }
+    if (to) { params.push(to); sql += ` AND DATE(a.assessed_at) <= $${params.length}::date` }
+    if (search) {
+      params.push(`%${search.trim()}%`)
+      const p = `$${params.length}`
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE ${p}
+        OR COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE ${p}
+        OR COALESCE(a.interpretation, '') ILIKE ${p}
+        OR COALESCE(a.pain_type, '') ILIKE ${p}
+        OR COALESCE(a.notes, '') ILIKE ${p}
+      )`
+    }
+    sql += ' ORDER BY a.assessed_at DESC LIMIT 300'
+    const rows = await query<any>(sql, params)
+    res.json({ success: true, data: rows })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load Abbey Pain Scale assessments' })
+  }
+})
+
+router.put('/abbey-pain/:id', async (req, res) => {
+  const {
+    vocalisation, facialExpression, bodyLanguage,
+    behaviouralChange, physiologicalChange, physicalChange,
+    totalScore, interpretation, painType, notes
+  } = req.body
+  try {
+    const v0 = Number(vocalisation ?? 0)
+    const v1 = Number(facialExpression ?? 0)
+    const v2 = Number(bodyLanguage ?? 0)
+    const v3 = Number(behaviouralChange ?? 0)
+    const v4 = Number(physiologicalChange ?? 0)
+    const v5 = Number(physicalChange ?? 0)
+    const computedTotal = totalScore !== undefined ? Number(totalScore) : (v0 + v1 + v2 + v3 + v4 + v5)
+    const computedInterp = interpretation || (
+      computedTotal <= 2 ? 'No pain'
+      : computedTotal <= 7 ? 'Mild pain'
+      : computedTotal <= 13 ? 'Moderate pain'
+      : 'Severe pain'
+    )
+    const rows = await query<any>(`
+      UPDATE abbey_pain_assessments
+      SET vocalisation = $1,
+          facial_expression = $2,
+          body_language = $3,
+          behavioural_change = $4,
+          physiological_change = $5,
+          physical_change = $6,
+          total_score = $7,
+          interpretation = $8,
+          pain_type = $9,
+          notes = $10
+      WHERE id = $11
+      RETURNING *
+    `, [v0, v1, v2, v3, v4, v5, computedTotal, computedInterp, painType || '', notes || '', req.params.id])
+    if (!rows.length) return res.status(404).json({ error: 'Abbey Pain Scale assessment not found' })
+    res.json({ success: true, data: rows[0] })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update Abbey Pain Scale assessment' })
+  }
+})
+
+const listPainAssessmentsHandler = async (req: any, res: any) => {
+  try {
+    const homeId = clinicalHomeId(req)
+    const { suId, from, to, search } = req.query as Record<string, string>
+    let sql = `
+      SELECT p.*,
+             COALESCE(su.first_name || ' ' || su.last_name, 'Unknown Resident') AS su_name,
+             s.first_name || ' ' || s.last_name AS assessed_by_name
+      FROM pain_assessments p
+      LEFT JOIN service_users su ON su.id = p.su_id
+      LEFT JOIN staff s ON s.id = p.assessed_by
+      WHERE p.home_id = $1
+    `
+    const params: any[] = [homeId]
+    if (suId) { params.push(suId); sql += ` AND p.su_id = $${params.length}` }
+    if (from) { params.push(from); sql += ` AND COALESCE(p.assessed_date, DATE(p.assessed_at)) >= $${params.length}::date` }
+    if (to) { params.push(to); sql += ` AND COALESCE(p.assessed_date, DATE(p.assessed_at)) <= $${params.length}::date` }
+    if (search) {
+      params.push(`%${search.trim()}%`)
+      const p = `$${params.length}`
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE ${p}
+        OR COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE ${p}
+        OR COALESCE(p.pain_intensity, '') ILIKE ${p}
+        OR COALESCE(p.pain_description, '') ILIKE ${p}
+        OR COALESCE(p.outcome, '') ILIKE ${p}
+        OR COALESCE(p.notes, '') ILIKE ${p}
+      )`
+    }
+    sql += ' ORDER BY COALESCE(p.assessed_date, DATE(p.assessed_at)) DESC, p.assessed_at DESC LIMIT 300'
+    const rows = await query<any>(sql, params)
+    res.json({ success: true, data: rows })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load pain assessments' })
+  }
+}
+
+router.get('/pain-assessments', listPainAssessmentsHandler)
+router.get('/pain-assessment', listPainAssessmentsHandler)
+
+router.put('/pain-assessment/:id', async (req, res) => {
+  const {
+    assessedDate, painIntensity, painDescription, durationTriggers,
+    dailyLifeImpact, painReliefGiven, lastAdminTimeChecked, painPattern,
+    worseBetter, interventionType, outcome, furtherActionRequired,
+    furtherActionPlan, notes
+  } = req.body
+  try {
+    const rows = await query<any>(`
+      UPDATE pain_assessments
+      SET assessed_date = COALESCE($1, assessed_date),
+          pain_intensity = $2,
+          pain_description = $3,
+          duration_triggers = $4,
+          daily_life_impact = $5,
+          pain_relief_given = $6,
+          last_admin_time_checked = $7,
+          pain_pattern = $8,
+          worse_better = $9,
+          intervention_type = $10,
+          outcome = $11,
+          further_action_required = $12,
+          further_action_plan = $13,
+          notes = $14
+      WHERE id = $15
+      RETURNING *
+    `, [
+      assessedDate || null,
+      painIntensity || '',
+      painDescription || '',
+      durationTriggers || '',
+      JSON.stringify(dailyLifeImpact || []),
+      painReliefGiven || '',
+      lastAdminTimeChecked || '',
+      painPattern || '',
+      worseBetter || '',
+      interventionType || '',
+      outcome || '',
+      furtherActionRequired || '',
+      furtherActionPlan || '',
+      notes || '',
+      req.params.id
+    ])
+    if (!rows.length) return res.status(404).json({ error: 'Pain assessment not found' })
+    res.json({ success: true, data: rows[0] })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update pain assessment' })
+  }
+})
+
 export default router

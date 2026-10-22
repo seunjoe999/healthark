@@ -6,6 +6,7 @@ import { format, differenceInDays, parseISO } from 'date-fns'
 import {
   Spinner, EmptyState, Button, Modal, Select, Textarea
 } from '../../components/ui'
+import { UniformFilterBar } from '../../components/ui/FilterBar'
 import {
   Building2, Plus, Hospital, Calendar, Clock, AlertTriangle,
   CheckCircle, ChevronDown, ChevronUp, Search, X
@@ -313,9 +314,13 @@ export default function HospitalAdmissions() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [homes, setHomes] = useState<any[]>([])
+  const [residents, setResidents] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
+  const [selectedSu, setSelectedSu] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [showNew, setShowNew] = useState(false)
   const [showDischarge, setShowDischarge] = useState<Admission | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -333,12 +338,20 @@ export default function HospitalAdmissions() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!effectiveHomeId) return
+    suApi.list(effectiveHomeId).then(r => setResidents(r.data.data || [])).catch(() => {})
+  }, [effectiveHomeId])
+
   async function load() {
     if (!effectiveHomeId) return
     setLoading(true)
     try {
       const params: any = { homeId: effectiveHomeId }
+      if (selectedSu) params.suId = selectedSu
       if (filterStatus) params.status = filterStatus
+      if (dateFrom) params.from = dateFrom
+      if (dateTo) params.to = dateTo
 
       const [dataRes, statsRes] = await Promise.all([
         api.get('/hospital-admissions', { params }),
@@ -353,23 +366,28 @@ export default function HospitalAdmissions() {
     }
   }
 
-  useEffect(() => { load() }, [effectiveHomeId, filterStatus])
+  useEffect(() => { load() }, [effectiveHomeId, selectedSu, filterStatus, dateFrom, dateTo])
+
+  const searchedAdmissions = useMemo(() => {
+    if (!search.trim()) return admissions
+    const s = search.toLowerCase()
+    return admissions.filter(a =>
+      String(a.resident_name || '').toLowerCase().includes(s) ||
+      String(a.hospital_name || '').toLowerCase().includes(s) ||
+      String((a as any).ward || '').toLowerCase().includes(s) ||
+      String(a.admission_reason || '').toLowerCase().includes(s)
+    )
+  }, [admissions, search])
 
   const currentAdmissions = useMemo(() =>
-    admissions.filter(a => a.status === 'admitted'), [admissions])
+    searchedAdmissions.filter(a => a.status === 'admitted'), [searchedAdmissions])
 
-  const filteredHistory = useMemo(() => {
-    let list = admissions
-    if (tab === 'history') list = admissions // all records in history
-    if (search) {
-      const s = search.toLowerCase()
-      list = list.filter(a =>
-        a.resident_name?.toLowerCase().includes(s) ||
-        a.hospital_name.toLowerCase().includes(s)
-      )
-    }
-    return list
-  }, [admissions, tab, search])
+  const filteredHistory = searchedAdmissions
+
+  const suOptions = useMemo(
+    () => residents.map((r: any) => ({ value: r.id, label: `${r.first_name} ${r.last_name}` })),
+    [residents]
+  )
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -418,11 +436,50 @@ export default function HospitalAdmissions() {
         </div>
       )}
 
+      {/* Uniform Filter Bar across both Currently Admitted & All Admissions tabs */}
+      <UniformFilterBar
+        className="mb-5"
+        personLabel="Service User"
+        personAllLabel="All Service Users"
+        personValue={selectedSu}
+        onPersonChange={setSelectedSu}
+        personOptions={suOptions}
+        searchPlaceholder="Search resident, hospital, ward, reason..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        dateFrom={dateFrom}
+        onDateFromChange={setDateFrom}
+        dateTo={dateTo}
+        onDateToChange={setDateTo}
+        extraSelects={[
+          {
+            id: 'status',
+            label: 'Status',
+            allLabel: 'All Statuses',
+            value: filterStatus,
+            onChange: setFilterStatus,
+            options: [
+              { value: 'admitted', label: 'Currently Admitted' },
+              { value: 'discharged', label: 'Discharged' },
+            ],
+          },
+        ]}
+        onClear={() => {
+          setSelectedSu('')
+          setSearch('')
+          setDateFrom('')
+          setDateTo('')
+          setFilterStatus('')
+        }}
+        shownCount={tab === 'current' ? currentAdmissions.length : filteredHistory.length}
+        totalCount={admissions.length}
+      />
+
       {/* Tabs */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-6 w-fit">
         {[
           { id: 'current', label: `Currently Admitted (${currentAdmissions.length})` },
-          { id: 'history', label: 'All Admissions' },
+          { id: 'history', label: `All Admissions (${filteredHistory.length})` },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t.id ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white'}`}>
@@ -509,20 +566,6 @@ export default function HospitalAdmissions() {
           {/* History Table */}
           {tab === 'history' && (
             <>
-              <div className="flex flex-wrap gap-3 mb-4">
-                <div className="relative flex-1 min-w-48">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input className="input pl-9" placeholder="Search by resident or hospital..."
-                    value={search} onChange={e => setSearch(e.target.value)} />
-                </div>
-                <select className="input w-40" value={filterStatus}
-                  onChange={e => setFilterStatus(e.target.value)}>
-                  <option value="">All Statuses</option>
-                  <option value="admitted">Admitted</option>
-                  <option value="discharged">Discharged</option>
-                </select>
-              </div>
-
               {filteredHistory.length === 0 ? (
                 <EmptyState title="No admissions found" description="Try adjusting your filters" />
               ) : (

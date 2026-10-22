@@ -39,23 +39,36 @@ function tok(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
-// GET /api/weight-tracker?homeId=&suId=
+// GET /api/weight-tracker?homeId=&suId=&from=&to=&search=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     await ensureTable();
     const homeId = tok(req, 'homeId') || (req.query.homeId as string) || '';
-    const { suId } = req.query as Record<string, string>;
+    const { suId, from, to, search } = req.query as Record<string, string>;
 
     let sql = `
-      SELECT wr.*, s.first_name || ' ' || s.last_name AS recorded_by_name,
-             su.first_name || ' ' || su.last_name AS su_name
+      SELECT wr.*,
+             COALESCE(s.first_name || ' ' || s.last_name, 'Staff') AS recorded_by_name,
+             COALESCE(su.first_name || ' ' || su.last_name, 'Resident') AS su_name
       FROM weight_records wr
-      JOIN staff s ON s.id = wr.recorded_by
-      JOIN service_users su ON su.id = wr.su_id
+      LEFT JOIN staff s ON s.id = wr.recorded_by
+      LEFT JOIN service_users su ON su.id = wr.su_id
       WHERE wr.home_id = $1`;
     const params: unknown[] = [homeId];
-    if (suId) { sql += ' AND wr.su_id = $2'; params.push(suId); }
-    sql += ' ORDER BY wr.record_date DESC, wr.created_at DESC LIMIT 200';
+    if (suId) { params.push(suId); sql += ` AND wr.su_id = $${params.length}`; }
+    if (from) { params.push(from); sql += ` AND wr.record_date >= $${params.length}::date`; }
+    if (to) { params.push(to); sql += ` AND wr.record_date <= $${params.length}::date`; }
+    if (search) {
+      params.push(`%${search.trim()}%`);
+      const p = `$${params.length}`;
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE ${p}
+        OR COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE ${p}
+        OR COALESCE(wr.notes, '') ILIKE ${p}
+        OR CAST(wr.weight_kg AS TEXT) ILIKE ${p}
+      )`;
+    }
+    sql += ' ORDER BY wr.record_date DESC, wr.created_at DESC LIMIT 300';
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

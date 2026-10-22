@@ -65,6 +65,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     if (suId) { params.push(suId); sql += ` AND ha.su_id = $${params.length}`; }
     if (status) { params.push(status); sql += ` AND ha.status = $${params.length}`; }
+    if (req.query.from) { params.push(req.query.from); sql += ` AND ha.admission_date >= $${params.length}::date`; }
+    if (req.query.to) { params.push(req.query.to); sql += ` AND ha.admission_date <= $${params.length}::date`; }
+    if (req.query.search) {
+      params.push(`%${String(req.query.search).trim()}%`);
+      const p = `$${params.length}`;
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE ${p}
+        OR COALESCE(ha.hospital_name, '') ILIKE ${p}
+        OR COALESCE(ha.ward, '') ILIKE ${p}
+        OR COALESCE(ha.admission_reason, '') ILIKE ${p}
+        OR COALESCE(ha.outcome_notes, '') ILIKE ${p}
+      )`;
+    }
 
     sql += ' ORDER BY ha.admission_date DESC, ha.created_at DESC';
 

@@ -26,6 +26,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     const weekStart = req.query.weekStart as string;
+    const from = req.query.from as string;
+    const to = req.query.to as string;
+    const status = req.query.status as string;
+    const search = req.query.search as string;
 
     let sql = `
       SELECT t.*,
@@ -44,7 +48,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       params.push(staffId);
     }
     if (weekStart) { sql += ` AND t.week_start = $${params.length + 1}`; params.push(weekStart); }
-    sql += ' ORDER BY t.week_start DESC';
+    if (from) { sql += ` AND COALESCE(t.week_end, t.week_start) >= $${params.length + 1}::date`; params.push(from); }
+    if (to) { sql += ` AND t.week_start <= $${params.length + 1}::date`; params.push(to); }
+    if (status) { sql += ` AND t.status = $${params.length + 1}`; params.push(status); }
+    if (search) {
+      params.push(`%${search.trim()}%`);
+      const p = `$${params.length}`;
+      sql += ` AND (
+        COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE ${p}
+        OR COALESCE(s.email, '') ILIKE ${p}
+        OR COALESCE(s.role, '') ILIKE ${p}
+      )`;
+    }
+    sql += ' ORDER BY t.week_start DESC, s.first_name ASC LIMIT 500';
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

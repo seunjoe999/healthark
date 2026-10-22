@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Scale, Plus, Trash2, TrendingUp, Edit } from 'lucide-react'
+import { Scale, Plus, Trash2, TrendingUp, Edit, Eye } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
+import { UniformFilterBar } from '../../components/ui/FilterBar'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import clsx from 'clsx'
@@ -157,8 +158,12 @@ export default function WeightTracker() {
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
+  const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [form, setForm] = useState(defaultForm)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [detailRecord, setDetailRecord] = useState<WeightRecord | null>(null)
 
   const canEdit = (r: WeightRecord) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
@@ -176,16 +181,34 @@ export default function WeightTracker() {
   }, [homeId])
 
   async function load() {
-    if (!selectedSU) { setRecords([]); return; }
+    if (!homeId) return
     setLoading(true)
     try {
-      const r = await api.get('/weight-tracker', { params: { suId: selectedSU, homeId } })
+      const r = await api.get('/weight-tracker', {
+        params: {
+          homeId,
+          suId: selectedSU || undefined,
+          from: dateFrom || undefined,
+          to: dateTo || undefined,
+        },
+      })
       setRecords(r.data.data || [])
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [selectedSU])
+  useEffect(() => { load() }, [homeId, selectedSU, dateFrom, dateTo])
+
+  const filteredRecords = useMemo(() => {
+    if (!search.trim()) return records
+    const q = search.toLowerCase()
+    return records.filter(r =>
+      String(r.su_name || '').toLowerCase().includes(q) ||
+      String(r.recorded_by_name || '').toLowerCase().includes(q) ||
+      String(r.notes || '').toLowerCase().includes(q) ||
+      String(r.weight_kg || '').toLowerCase().includes(q)
+    )
+  }, [records, search])
 
   // Pre-fill height from last reading
   useEffect(() => {
@@ -220,14 +243,15 @@ export default function WeightTracker() {
       }
       setShowAdd(false)
       setEditingId(null)
+      setDetailRecord(null)
       setForm(f => ({ ...defaultForm, suId: f.suId }))
-      if (form.suId === selectedSU) load()
-      else setSelectedSU(form.suId)
+      await load()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save reading') }
     setSubmitting(false)
   }
 
   function openEdit(r: WeightRecord) {
+    setDetailRecord(r)
     setEditingId(r.id)
     setForm({
       suId: r.su_id,
@@ -249,47 +273,58 @@ export default function WeightTracker() {
   }
 
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
-  const latestRecord = records[0]
+  const latestRecord = filteredRecords[0]
 
   return (
-    <div className="p-6 max-w-5xl mx-auto" style={{ background: pageBg, minHeight: '100vh' }}>
+    <div className="p-6 max-w-6xl mx-auto" style={{ background: pageBg, minHeight: '100vh' }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
             <Scale className="w-6 h-6 text-blue-400" /> Weight / BMI Tracker
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Monitor resident weight and body mass index over time</p>
+          <p className="text-slate-400 text-sm mt-1">Monitor resident weight and body mass index over time — click any row to view or edit</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setForm(defaultForm); setShowAdd(true) }}>
+        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setDetailRecord(null); setForm({ ...defaultForm, suId: selectedSU }); setShowAdd(true) }}>
           Add Reading
         </Button>
       </div>
 
-      {/* Resident selector */}
-      <div className="mb-5">
-        <select
-          className="input w-72"
-          value={selectedSU}
-          onChange={e => setSelectedSU(e.target.value)}
-        >
-          <option value="">Select a resident...</option>
-          {serviceUsers.map((s: any) => (
-            <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-          ))}
-        </select>
-      </div>
+      {/* Uniform Filter Bar */}
+      <UniformFilterBar
+        className="mb-5"
+        personLabel="Service User"
+        personAllLabel="All Service Users"
+        personValue={selectedSU}
+        onPersonChange={setSelectedSU}
+        personOptions={suOptions}
+        searchPlaceholder="Search resident, weight (kg), staff, notes..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        dateFrom={dateFrom}
+        onDateFromChange={setDateFrom}
+        dateTo={dateTo}
+        onDateToChange={setDateTo}
+        onClear={() => {
+          setSelectedSU('')
+          setSearch('')
+          setDateFrom('')
+          setDateTo('')
+        }}
+        shownCount={filteredRecords.length}
+        totalCount={records.length}
+      />
 
-      {/* Latest reading summary */}
-      {latestRecord && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+      {/* Latest reading summary when a specific resident is selected */}
+      {selectedSU && latestRecord && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
             <div className="text-2xl font-bold text-blue-400">{parseFloat(latestRecord.weight_kg).toFixed(1)} kg</div>
             <div className="text-xs text-slate-400 mt-1">Latest Weight</div>
-            <div className="text-xs text-slate-600 mt-0.5">{format(parseISO(latestRecord.record_date), 'dd MMM yyyy')}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{format(parseISO(latestRecord.record_date), 'dd MMM yyyy')}</div>
           </div>
           <div className="rounded-xl p-4 text-center" style={{ background: tileBg, border: tileBorder }}>
-            <div className="text-2xl font-bold text-slate-300">
+            <div className="text-2xl font-bold text-slate-400">
               {latestRecord.height_cm ? `${parseFloat(latestRecord.height_cm).toFixed(1)} cm` : '—'}
             </div>
             <div className="text-xs text-slate-400 mt-1">Height</div>
@@ -316,74 +351,88 @@ export default function WeightTracker() {
         </div>
       )}
 
-      {!selectedSU ? (
-        <div className="rounded-xl p-10 text-center" style={{ background: tileBg, border: tileBorder }}>
-          <Scale className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">Select a resident above to view their weight history</p>
-        </div>
-      ) : loading ? <Spinner /> : (
+      {loading ? <Spinner /> : (
         <>
-          {/* Trend chart */}
-          {records.length >= 2 && (
+          {/* Trend chart when a specific resident has >= 2 readings */}
+          {selectedSU && filteredRecords.length >= 2 && (
             <div className="mb-6">
-              <WeightChart records={records} />
+              <WeightChart records={filteredRecords} />
             </div>
           )}
 
-          {/* History table */}
-          {records.length === 0 ? (
-            <EmptyState title="No weight records" description="Use 'Add Reading' to record a weight measurement" />
+          {/* Historical Weight Table — clickable & editable across all or filtered residents */}
+          {filteredRecords.length === 0 ? (
+            <EmptyState title="No weight records found" description="Adjust filters or click 'Add Reading' to record a measurement" />
           ) : (
-            <div className="rounded-xl overflow-hidden" style={{ background: tileBg, border: tileBorder }}>
+            <div className="rounded-xl overflow-x-auto" style={{ background: tileBg, border: tileBorder }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)' }}>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Service User</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Weight</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Height</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">BMI</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Recorded By</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Notes</th>
-                    <th className="p-3"></th>
+                    <th className="text-right p-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r, i) => {
+                  {filteredRecords.map((r, i) => {
                     const bmiNum = r.bmi ? parseFloat(r.bmi) : null
                     const info = bmiClass(bmiNum)
                     return (
                       <tr
                         key={r.id}
-                        style={{ borderBottom: i < records.length - 1 ? (theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(15,23,42,0.06)') : undefined }}
-                        className={theme === 'dark' ? 'hover:bg-white/[0.02] transition-colors' : 'hover:bg-slate-50 transition-colors'}
+                        onClick={() => openEdit(r)}
+                        style={{ borderBottom: i < filteredRecords.length - 1 ? (theme === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(15,23,42,0.06)') : undefined }}
+                        className={clsx(
+                          'cursor-pointer transition-colors',
+                          theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-amber-50/60'
+                        )}
                       >
-                        <td className={`p-3 font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                        <td className={`p-3 font-semibold whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                          {r.su_name || '—'}
+                        </td>
+                        <td className={`p-3 font-medium whitespace-nowrap ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                           {format(parseISO(r.record_date), 'dd MMM yyyy')}
                         </td>
-                        <td className="p-3 text-blue-500 font-semibold">{parseFloat(r.weight_kg).toFixed(1)} kg</td>
-                        <td className={`p-3 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.height_cm ? `${parseFloat(r.height_cm).toFixed(1)} cm` : '—'}</td>
-                        <td className="p-3">
+                        <td className="p-3 text-blue-500 font-bold whitespace-nowrap">{parseFloat(r.weight_kg).toFixed(1)} kg</td>
+                        <td className={`p-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{r.height_cm ? `${parseFloat(r.height_cm).toFixed(1)} cm` : '—'}</td>
+                        <td className="p-3 whitespace-nowrap">
                           {bmiNum ? (
                             <span className={clsx('px-2 py-0.5 rounded-full text-xs font-semibold border', info.className)}>
                               {info.label}
                             </span>
                           ) : <span className="text-slate-500">—</span>}
                         </td>
-                        <td className="p-3 text-slate-400 text-xs">{r.recorded_by_name}</td>
+                        <td className="p-3 text-slate-400 text-xs whitespace-nowrap">{r.recorded_by_name}</td>
                         <td className="p-3 text-slate-400 max-w-xs truncate text-xs">{r.notes || '—'}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-1">
-                            {canEdit(r) && (
+                        <td className="p-3 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          <div className="inline-flex items-center gap-1.5">
+                            {canEdit(r) ? (
                               <button
+                                type="button"
                                 onClick={() => openEdit(r)}
-                                className="text-slate-600 hover:text-blue-400 transition-colors p-1 rounded"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border border-blue-500/30 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors"
                               >
-                                <Edit className="w-4 h-4" />
+                                <Edit className="w-3.5 h-3.5" /> Edit
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openEdit(r)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-300 text-slate-500"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> View
                               </button>
                             )}
                             <button
+                              type="button"
                               onClick={() => handleDelete(r.id)}
-                              className="text-slate-600 hover:text-rose-400 transition-colors p-1 rounded"
+                              className="text-slate-500 hover:text-rose-500 transition-colors p-1 rounded"
+                              title="Delete weight reading"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

@@ -50,26 +50,39 @@ router.use(async (_req, _res, next) => {
   next();
 });
 
-// GET /api/wound-care?homeId=&suId=&status=
+// GET /api/wound-care?homeId=&suId=&status=&from=&to=&search=
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || tok(req, 'homeId');
-    const { suId, status } = req.query as Record<string, string>;
+    const { suId, status, from, to, search } = req.query as Record<string, string>;
     if (suId) await assertResidentAccess(req, suId);
 
     let sql = `
       SELECT wa.*,
-             su.first_name || ' ' || su.last_name AS su_name,
-             s.first_name || ' ' || s.last_name AS assessed_by_name
+             COALESCE(su.first_name || ' ' || su.last_name, 'Resident') AS su_name,
+             COALESCE(s.first_name || ' ' || s.last_name, 'Staff') AS assessed_by_name
       FROM wound_assessments wa
-      JOIN service_users su ON su.id = wa.su_id
-      JOIN staff s ON s.id = wa.assessed_by
+      LEFT JOIN service_users su ON su.id = wa.su_id
+      LEFT JOIN staff s ON s.id = wa.assessed_by
       WHERE wa.home_id = $1`;
     const params: unknown[] = [homeId];
     let idx = 2;
     if (suId)   { sql += ` AND wa.su_id = $${idx++}`;    params.push(suId); }
     if (status) { sql += ` AND wa.status = $${idx++}`;   params.push(status); }
-    sql += ' ORDER BY wa.assessment_date DESC, wa.created_at DESC LIMIT 200';
+    if (from)   { sql += ` AND wa.assessment_date >= $${idx++}::date`; params.push(from); }
+    if (to)     { sql += ` AND wa.assessment_date <= $${idx++}::date`; params.push(to); }
+    if (search) {
+      const p = `$${idx++}`;
+      params.push(`%${search.trim()}%`);
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE ${p}
+        OR COALESCE(wa.wound_location, '') ILIKE ${p}
+        OR COALESCE(wa.wound_type, '') ILIKE ${p}
+        OR COALESCE(wa.dressing_used, '') ILIKE ${p}
+        OR COALESCE(wa.notes, '') ILIKE ${p}
+      )`;
+    }
+    sql += ' ORDER BY wa.assessment_date DESC, wa.created_at DESC LIMIT 300';
 
     const rows = await query(sql, params);
     res.json({ success: true, data: rows } as ApiResponse);

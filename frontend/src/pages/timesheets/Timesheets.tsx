@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Clock, Plus, CheckCircle, Download, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
+import { UniformFilterBar } from '../../components/ui/FilterBar'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import api from '../../api'
@@ -34,6 +35,11 @@ export default function Timesheets() {
   const [staff, setStaff] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [weekStart, setWeekStart] = useState(getMonday(new Date()))
+  const [filterStaff, setFilterStaff] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [showGenerate, setShowGenerate] = useState(false)
   const [genStep, setGenStep] = useState<1 | 2>(1)
   const [showDetail, setShowDetail] = useState<any>(null)
@@ -67,19 +73,38 @@ export default function Timesheets() {
   async function load() {
     setLoading(true)
     try {
+      const useRange = Boolean(dateFrom || dateTo || filterStaff || filterStatus)
+      const tsParams: Record<string, any> = useRange
+        ? {
+            staffId: filterStaff || undefined,
+            from: dateFrom || undefined,
+            to: dateTo || undefined,
+            status: filterStatus || undefined,
+          }
+        : { weekStart }
       const [tsRes, staffRes, statsRes] = await Promise.all([
-        api.get('/timesheets', { params: { weekStart } }),
+        api.get('/timesheets', { params: tsParams }),
         canManage ? api.get('/staff') : Promise.resolve({ data: { data: [] } }),
         canManage ? api.get('/timesheets/stats/overview', { params: { weekStart } }) : Promise.resolve({ data: { data: null } }),
       ])
-      setTimesheets(tsRes.data.data)
+      setTimesheets(tsRes.data.data || [])
       setStaff(staffRes.data.data || staffRes.data || [])
       setStats(statsRes.data.data)
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [weekStart])
+  useEffect(() => { load() }, [weekStart, filterStaff, filterStatus, dateFrom, dateTo])
+
+  const filteredTimesheets = useMemo(() => {
+    if (!search.trim()) return timesheets
+    const q = search.toLowerCase()
+    return timesheets.filter((ts: any) =>
+      String(ts.staff_name || '').toLowerCase().includes(q) ||
+      String(ts.staff_role || '').toLowerCase().includes(q) ||
+      String(ts.status || '').toLowerCase().includes(q)
+    )
+  }, [timesheets, search])
 
   function prevWeek() {
     const d = new Date(weekStart)
@@ -220,6 +245,48 @@ export default function Timesheets() {
         </div>
       )}
 
+      {/* Uniform Filter Bar (Staff Member, Search, Period Date From / Date To, Status, Clear) */}
+      <UniformFilterBar
+        className="mb-4"
+        personLabel="Staff Name"
+        personAllLabel="All Staff Members"
+        personValue={filterStaff}
+        onPersonChange={canManage ? setFilterStaff : undefined}
+        personOptions={staffOptions}
+        searchPlaceholder="Search staff member, role, status..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        dateFromLabel="Period From"
+        dateFrom={dateFrom}
+        onDateFromChange={setDateFrom}
+        dateToLabel="Period To"
+        dateTo={dateTo}
+        onDateToChange={setDateTo}
+        extraSelects={[
+          {
+            id: 'status',
+            label: 'Status',
+            allLabel: 'All Statuses',
+            value: filterStatus,
+            onChange: setFilterStatus,
+            options: [
+              { value: 'pending', label: 'Pending Approval' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'rejected', label: 'Rejected' },
+            ],
+          },
+        ]}
+        onClear={() => {
+          setFilterStaff('')
+          setSearch('')
+          setDateFrom('')
+          setDateTo('')
+          setFilterStatus('')
+        }}
+        shownCount={filteredTimesheets.length}
+        totalCount={timesheets.length}
+      />
+
       {/* Week Navigator */}
       <div className="flex items-center justify-between mb-5 card px-4 py-3">
         <button onClick={prevWeek} className="p-1.5 rounded-lg hover:bg-white/8 text-slate-300 transition-colors">
@@ -227,22 +294,26 @@ export default function Timesheets() {
         </button>
         <div className="text-center">
           <div className="font-bold text-white">
-            {new Date(weekStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {weekEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {dateFrom || dateTo
+              ? `Filtered Period: ${dateFrom || 'Start'} – ${dateTo || 'Present'}`
+              : `${new Date(weekStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${weekEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
           </div>
-          <div className="text-xs text-slate-400">Week of {new Date(weekStart).toLocaleDateString('en-GB', { weekday: 'long' })}</div>
+          <div className="text-xs text-slate-400">
+            {dateFrom || dateTo ? 'Showing matching timesheets across selected period' : `Week of ${new Date(weekStart).toLocaleDateString('en-GB', { weekday: 'long' })}`}
+          </div>
         </div>
         <button onClick={nextWeek} className="p-1.5 rounded-lg hover:bg-white/8 text-slate-300 transition-colors">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
-      {loading ? <Spinner /> : timesheets.length === 0 ? (
-        <EmptyState title="No timesheets for this week"
-          description={canManage ? "Generate timesheets from staff clock-in data" : "No timesheet found for this week"}
+      {loading ? <Spinner /> : filteredTimesheets.length === 0 ? (
+        <EmptyState title="No matching timesheets"
+          description={canManage ? "Adjust your filters above or generate timesheets from staff clock-in data" : "No timesheet found for the selected period"}
           action={canManage ? <Button variant="gold" onClick={() => setShowGenerate(true)}>Generate Timesheets</Button> : undefined} />
       ) : (
         <div className="space-y-3">
-          {timesheets.map(ts => (
+          {filteredTimesheets.map(ts => (
             <div key={ts.id} className="card p-4 cursor-pointer hover:border-amber-500/30 transition-all" onClick={() => loadDetail(ts)}>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">

@@ -404,6 +404,8 @@ export default function Rota() {
   const [filterType,  setFilterType]  = useState('')
   // "Only show unassigned shifts" — lets a manager see just the gaps left to fill.
   const [filterUnfilled, setFilterUnfilled] = useState(false)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false)
   // Individual = each resident's own rota (no service label). Service = shared-service
   // rota entries created via "Create Rota for Service" (has a label). "All" shows both
   // mixed together, which is how the grid behaved before this switch existed.
@@ -936,111 +938,210 @@ export default function Rota() {
 
   const today = new Date()
   const todayShifts = getDayShifts(today)
+  const clashCount = findShiftClashes(shifts).length
+  const openShiftCount = shifts.filter(s => s.advertised_at && !s.staff_id && s.status !== 'cancelled').length
+  const activeFilterCount = [filterSu, filterStaff, filterLabel, filterType, filterUnfilled ? '1' : ''].filter(Boolean).length
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="flex flex-col w-full h-[calc(100dvh-116px)] md:h-full bg-white text-slate-900 overflow-hidden">
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 flex-wrap bg-white">
-        <div className="flex items-center gap-2">
-          {canManage && (
-            <>
-              <Button icon={<Plus className="w-4 h-4" />} onClick={() => setServiceRotaOpen(true)}
-                title="Staff is optional — creates an unfilled rota for a service that you can assign staff to later">
-                Create shift <span className="ml-1 font-normal opacity-70">(staff optional)</span>
-              </Button>
-              <Button variant="outline" icon={<Plus className="w-4 h-4" />} onClick={() => setStandbyOpen(true)}>
-                Create Standby Shift
-              </Button>
-              <Button variant="outline" icon={<Users className="w-4 h-4" />} onClick={() => setPatternAssignOpen(true)}
-                title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern — use this to fill in a rota someone already created">
-                Bulk Assign Staff to Shifts
-              </Button>
-              <Button variant="outline" icon={<UserMinus className="w-4 h-4" />} onClick={() => setUnassignOpen(true)}
-                title="Remove a staff member from their shifts between dates you choose — the shifts stay on the rota as unfilled, ready to reassign. To unassign particular shifts, highlight them and use Unassign selected.">
-                Unassign
-              </Button>
-              <Button variant="outline" icon={<Brain className="w-4 h-4" />} onClick={() => setCoverOpen(true)}>
-                Report Absence + Find Cover
-              </Button>
-            </>
-          )}
+      {/* ── Compact Single-Row Top Bar (Week/Day + Date Nav + Clashes + Actions) ── */}
+      <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 border-b border-slate-200 bg-white flex-nowrap overflow-visible z-30">
+        {/* Week / Day toggle — promoted straight into top bar */}
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs sm:text-sm flex-shrink-0">
+          {(['week', 'day'] as const).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-2.5 sm:px-3 py-1.5 font-semibold transition-colors ${view === v ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+              {v === 'week' ? 'Week' : 'Day'}
+            </button>
+          ))}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* Date navigation — right beside Week / Day on the top bar */}
+        <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1 py-0.5 flex-shrink-0">
+          <button onClick={() => nav(-1)} className="p-1 rounded-md hover:bg-white text-slate-600 transition-colors" aria-label="Previous period">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs sm:text-sm font-bold text-slate-800 px-1 sm:min-w-[155px] text-center whitespace-nowrap">{navLabel}</span>
+          <button onClick={() => nav(1)} className="p-1 rounded-md hover:bg-white text-slate-600 transition-colors" aria-label="Next period">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Clashes indicator — promoted directly into top horizontal bar */}
+        <button onClick={() => setClashesOpen(true)}
+          className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg border flex-shrink-0 transition-colors ${
+            clashCount > 0
+              ? 'bg-rose-600 border-rose-600 text-white hover:bg-rose-500 shadow-sm'
+              : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+          }`}
+          title="The same person on two shifts that overlap, in the period on screen">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="hidden xs:inline sm:inline">Clashes</span>
+          <span>{clashCount > 0 ? `(${clashCount})` : ''}</span>
+        </button>
+
+        {canManage && (
+          <button onClick={() => setAuditorOpen(true)}
+            className="hidden lg:flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex-shrink-0"
+            title="Tick off finished shifts as reviewed — checks who worked, when they clocked in and out">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Shift Auditor
+          </button>
+        )}
+
+        {/* Right-aligned compact action suite */}
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {homes.length > 1 && (
-            <select className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700"
+            <select className="hidden sm:block border border-slate-200 rounded-lg px-2 py-1.5 text-xs sm:text-sm text-slate-700 bg-white max-w-[160px]"
               value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
               {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           )}
 
-          {/* Week / Day toggle */}
-          <div className="flex rounded-lg border border-slate-200 overflow-hidden text-sm">
-            {(['week', 'day'] as const).map(v => (
-              <button key={v} onClick={() => setView(v)}
-                className={`px-3 py-1.5 font-medium transition-colors ${view === v ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
-                {v === 'week' ? 'Week' : 'Day'}
-              </button>
-            ))}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex items-center gap-1">
-            <button onClick={() => nav(-1)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-sm font-semibold text-slate-700 min-w-[190px] text-center">{navLabel}</span>
-            <button onClick={() => nav(1)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
           {canManage && (
-            <button onClick={() => setLeaveOpen(true)} title="Mark absence"
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-              <CalendarX className="w-4 h-4" />
-            </button>
+            <>
+              <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setServiceRotaOpen(true)}
+                title="Staff is optional — creates an unfilled rota for a service that you can assign staff to later">
+                <span className="sm:hidden">Shift</span>
+                <span className="hidden sm:inline">Create Shift</span>
+              </Button>
+              <button onClick={() => setStandbyOpen(true)}
+                className="hidden xl:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700">
+                <Plus className="w-3.5 h-3.5" /> Standby
+              </button>
+              <button onClick={() => setPatternAssignOpen(true)}
+                className="hidden xl:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700"
+                title="Assign an existing staff member to shifts that already exist on the rota, across a day-of-week pattern">
+                <Users className="w-3.5 h-3.5" /> Bulk Assign
+              </button>
+              <button onClick={() => setCoverOpen(true)}
+                className="hidden 2xl:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700">
+                <Brain className="w-3.5 h-3.5" /> Find Cover
+              </button>
+            </>
           )}
-          <button onClick={printRota} title="Print"
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-            <Printer className="w-4 h-4" />
+
+          {/* Mobile filter drawer toggle — keeps mobile calendar tall & uncluttered */}
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(v => !v)}
+            className={`md:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold ${
+              mobileFiltersOpen || activeFilterCount > 0
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
           </button>
+
+          {/* Compact Tools / More dropdown so zero controls wrap across rows */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setToolsMenuOpen(v => !v)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800"
+            >
+              <span>Tools</span>
+              {(openShiftCount + swapRequests.length) > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
+                  {openShiftCount + swapRequests.length}
+                </span>
+              )}
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+
+            {toolsMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setToolsMenuOpen(false)} />
+                <div className="absolute right-0 mt-1.5 w-60 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-xl py-1.5 z-50 text-xs font-semibold">
+                  {canManage && (
+                    <>
+                      <button onClick={() => { setToolsMenuOpen(false); setStandbyOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <Plus className="w-3.5 h-3.5 text-slate-500" /> Create Standby Shift
+                      </button>
+                      <button onClick={() => { setToolsMenuOpen(false); setPatternAssignOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5 text-slate-500" /> Bulk Assign Staff to Shifts
+                      </button>
+                      <button onClick={() => { setToolsMenuOpen(false); setUnassignOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <UserMinus className="w-3.5 h-3.5 text-slate-500" /> Unassign Shifts
+                      </button>
+                      <button onClick={() => { setToolsMenuOpen(false); setCoverOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <Brain className="w-3.5 h-3.5 text-slate-500" /> Report Absence + Find Cover
+                      </button>
+                      <button onClick={() => { setToolsMenuOpen(false); setAdjustPickerOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <Pencil className="w-3.5 h-3.5 text-slate-500" /> Adjust Shift
+                      </button>
+                      <button onClick={() => { setToolsMenuOpen(false); setAuditorOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Shift Auditor
+                      </button>
+                      {serviceLabels.length > 0 && (
+                        <button onClick={() => { setToolsMenuOpen(false); setManageServicesOpen(true) }}
+                          className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                          <Trash2 className="w-3.5 h-3.5 text-slate-500" /> Manage Services
+                        </button>
+                      )}
+                      <button onClick={() => { setToolsMenuOpen(false); setLeaveOpen(true) }}
+                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                        <CalendarX className="w-3.5 h-3.5 text-slate-500" /> Mark Staff Absence
+                      </button>
+                      <div className="my-1 border-t border-slate-100" />
+                    </>
+                  )}
+                  <button onClick={() => { setToolsMenuOpen(false); setOpenShiftsOpen(true) }}
+                    className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between">
+                    <span className="flex items-center gap-2"><Users className="w-3.5 h-3.5 text-slate-500" /> Open Shifts</span>
+                    {openShiftCount > 0 && <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{openShiftCount}</span>}
+                  </button>
+                  <button onClick={() => { setToolsMenuOpen(false); setSwapPanelOpen(v => !v) }}
+                    className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between">
+                    <span className="flex items-center gap-2"><ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" /> Swap Requests</span>
+                    {swapRequests.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{swapRequests.length}</span>}
+                  </button>
+                  <button onClick={() => { setToolsMenuOpen(false); printRota() }}
+                    className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2">
+                    <Printer className="w-3.5 h-3.5 text-slate-500" /> Print / Export Rota
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── Filters ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 flex-wrap bg-slate-50/80">
-        {/* Rota is service-only now (every new shift requires a Service + a
-            resident), so the old All/Individual/Service switch collapsed down
-            to a single always-on "Service" label — nothing left to switch
-            between. rotaMode stays 'all' under the hood so any older,
-            pre-redesign individual shifts remain visible rather than getting
-            silently hidden. */}
-        <span className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-800 text-white text-sm font-bold flex-shrink-0">
+      {/* ── Compact Single-Line Filters (always visible on md+, collapsible on mobile) ── */}
+      <div className={`${mobileFiltersOpen ? 'flex flex-wrap' : 'hidden'} md:flex md:flex-nowrap items-center gap-2 px-3 sm:px-4 py-1.5 border-b border-slate-200 bg-slate-50/90 md:overflow-x-auto`}>
+        {homes.length > 1 && (
+          <select className="sm:hidden border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-700 bg-white w-full"
+            value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+            {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        )}
+        <span className="px-2 py-0.5 rounded-md border border-slate-200 bg-slate-800 text-white text-xs font-bold flex-shrink-0">
           Service
         </span>
-        <Filter className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-        {/* Services (leftmost filter), then service users, then staff. */}
-        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
+        <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 bg-white flex-shrink-0 max-w-[160px]"
           value={filterLabel} onChange={e => { setFilterLabel(e.target.value); setFilterStaff('') }}>
           <option value="">All Services</option>
           {serviceLabels.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
-        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
+        <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 bg-white flex-shrink-0 max-w-[175px]"
           value={filterSu} onChange={e => setFilterSu(e.target.value)}>
           <option value="">All Service Users</option>
           {suList.map(su => <option key={su.id} value={su.id}>{getName(su)}</option>)}
         </select>
-        <StaffFilterCombobox staffList={staffList} value={filterStaff}
-          onChange={id => { setFilterStaff(id); setFilterLabel('') }} />
+        <div className="flex-shrink-0">
+          <StaffFilterCombobox staffList={staffList} value={filterStaff}
+            onChange={id => { setFilterStaff(id); setFilterLabel('') }} />
+        </div>
         {filterStaff && (() => {
           const selectedStaff = staffList.find((s: any) => s.id === filterStaff)
-          // Falls back to 40 to match the rest of the app (Staff Compliance,
-          // Documents Matrix) — contracted_hours now defaults to 40 for
-          // everyone (owner directive, 9 Oct 2026), so this stayed the one
-          // place still showing the old 36h fallback for anyone without a
-          // number explicitly on their record.
           const contractedHours = selectedStaff?.contracted_hours ?? 40
           const rotaHours = dayData.reduce((sum, d) => sum + d.dayShifts.reduce((s: number, sh: any) => {
             const start = timeToMins(sh.start_time?.substring(0, 5) || '00:00')
@@ -1049,78 +1150,39 @@ export default function Rota() {
             return s + (end - start) / 60
           }, 0), 0)
           return (
-            <span className="flex items-center gap-3 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 flex-shrink-0">
+            <span className="flex items-center gap-2 px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 flex-shrink-0">
               <span>Contracted: <span className="text-slate-900">{contractedHours}h</span></span>
               <span className="text-slate-300">|</span>
               <span>Rota: <span className={rotaHours > contractedHours ? 'text-amber-600' : 'text-slate-900'}>{rotaHours % 1 === 0 ? rotaHours : rotaHours.toFixed(1)}h</span></span>
             </span>
           )
         })()}
-        {canManage && serviceLabels.length > 0 && (
-          <button onClick={() => setManageServicesOpen(true)}
-            className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
-            title="View and delete services — e.g. remove accidental duplicates">
-            <Trash2 className="w-3 h-3" /> Manage Services
-          </button>
-        )}
-        {(() => {
-          const n = findShiftClashes(shifts).length
-          return (
-            <button onClick={() => setClashesOpen(true)}
-              className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg border ${n > 0 ? 'bg-rose-600 border-rose-600 text-white hover:bg-rose-500' : 'border-slate-200 text-slate-800 hover:bg-slate-50'}`}
-              title="The same person on two shifts that overlap, in the period on screen">
-              <AlertTriangle className="w-3 h-3" /> Clashes{n > 0 ? ` (${n})` : ''}
-            </button>
-          )
-        })()}
-        <button onClick={() => setOpenShiftsOpen(true)}
-          className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
-          title="Shifts that need cover — staff can offer to work them">
-          <Users className="w-3 h-3" /> Open shifts{shifts.filter(s => s.advertised_at && !s.staff_id && s.status !== 'cancelled').length > 0 ? ` (${shifts.filter(s => s.advertised_at && !s.staff_id && s.status !== 'cancelled').length})` : ''}
-        </button>
-        <button onClick={() => setSwapPanelOpen(v => !v)}
-          className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
-          title="View shift swap requests">
-          <ArrowLeftRight className="w-3 h-3" /> Swap Requests{swapRequests.length > 0 ? ` (${swapRequests.length})` : ''}
-        </button>
-        {canManage && (
-          <button onClick={() => setAuditorOpen(true)}
-            className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
-            title="Tick off finished shifts as reviewed — checks who worked, when they clocked in and out">
-            <CheckCircle className="w-3 h-3" /> Shift Auditor
-          </button>
-        )}
-        {canManage && (
-          <button onClick={() => setAdjustPickerOpen(true)}
-            className="flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-slate-900 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50"
-            title="Find a shift to change its start/finish time or reassign it, without hunting through the calendar">
-            <Pencil className="w-3 h-3" /> Adjust Shift
-          </button>
-        )}
-        <select className="border border-slate-200 rounded-lg px-2.5 py-1 text-sm text-slate-600 bg-white"
+        <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 bg-white flex-shrink-0"
           value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="">All Shift Types</option>
           {SHIFT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         <button onClick={() => setFilterUnfilled(v => !v)}
-          className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${filterUnfilled ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-200 text-slate-800 hover:bg-slate-50'}`}
+          className={`text-xs font-bold px-2.5 py-1 rounded-lg border flex-shrink-0 ${filterUnfilled ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'}`}
           title="Show only shifts with no staff assigned yet">
           Unfilled only
         </button>
         {(filterSu || filterStaff || filterLabel || filterType || filterUnfilled) && (
           <button onClick={() => { setFilterSu(''); setFilterStaff(''); setFilterLabel(''); setFilterType(''); setFilterUnfilled(false) }}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100">
+            className="flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 flex-shrink-0">
             <X className="w-3 h-3" /> Clear
           </button>
         )}
-        <span className="inline-flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0" title="Fit: the whole day on one screen, no scrolling up and down. Medium / Large: taller blocks.">
-          {([['fit', 'Fit day'], ['medium', 'Medium'], ['large', 'Large']] as const).map(([v, l]) => (
-            <button key={v} onClick={() => chooseRotaSize(v)}
-              className={`text-xs font-bold px-2 py-1 ${rotaSize === v ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{l}</button>
-          ))}
-        </span>
-        <div className="ml-auto text-xs font-bold text-slate-600">
-          {todayShifts.length} shift{todayShifts.length !== 1 ? 's' : ''} today
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          <span className="inline-flex rounded-lg border border-slate-200 overflow-hidden" title="Fit: the whole day on one screen, no scrolling up and down. Medium / Large: taller blocks.">
+            {([['fit', 'Fit'], ['medium', 'Med'], ['large', 'Large']] as const).map(([v, l]) => (
+              <button key={v} onClick={() => chooseRotaSize(v)}
+                className={`text-xs font-bold px-2 py-1 ${rotaSize === v ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{l}</button>
+            ))}
+          </span>
+          <span className="text-xs font-bold text-slate-600 whitespace-nowrap">
+            {todayShifts.length} today
+          </span>
         </div>
       </div>
 
@@ -2711,48 +2773,65 @@ function ShiftAuditorModal({ shifts, onClose, onReviewed }: {
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not update') }
     finally { setBusy(null) }
   }
+  const [auditSearch, setAuditSearch] = useState('')
+  const filteredRows = rows.filter(s => {
+    if (!auditSearch.trim()) return true
+    const q = auditSearch.toLowerCase()
+    return (
+      String(s.staff_name || '').toLowerCase().includes(q) ||
+      String(s.label || s.su_names || s.su_name || '').toLowerCase().includes(q) ||
+      String(s.shift_date || '').toLowerCase().includes(q)
+    )
+  })
   return (
-    <Modal open={true} onClose={onClose} title={`Shift Auditor (${rows.length})`} size="lg">
-      <div className="space-y-3">
+    <Modal open={true} onClose={onClose} title={`Shift Auditor (${filteredRows.length})`} size="lg">
+      <div className="space-y-3 bg-white text-slate-900 rounded-xl p-3 border border-slate-200">
         <div className="flex items-center gap-2 flex-wrap">
           {([['not_reviewed', 'Not reviewed'], ['reviewed', 'Reviewed'], ['all', 'All']] as const).map(([v, l]) => (
             <button key={v} onClick={() => setShow(v)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border ${show === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>{l}</button>
+              className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${show === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-800 border-slate-300 hover:bg-slate-100'}`}>{l}</button>
           ))}
-          <span className="text-xs text-slate-500 ml-auto">Finished shifts in the period shown on the rota</span>
-          <button onClick={printAudit} disabled={!rows.length}
-            className="px-3 py-1 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+          <input
+            type="text"
+            placeholder="Filter staff or resident..."
+            value={auditSearch}
+            onChange={e => setAuditSearch(e.target.value)}
+            className="border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-900 bg-white placeholder:text-slate-400 min-w-[160px]"
+          />
+          <span className="text-xs font-medium text-slate-600 ml-auto">Finished shifts in period</span>
+          <button onClick={printAudit} disabled={!filteredRows.length}
+            className="px-3 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40">
             Print / save as PDF
           </button>
         </div>
-        {rows.length === 0 ? (
-          <p className="text-sm text-slate-500 py-6 text-center">Nothing to show.</p>
+        {filteredRows.length === 0 ? (
+          <p className="text-sm font-medium text-slate-600 py-8 text-center">No finished shifts match the selected filter.</p>
         ) : (
-          <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[60vh] overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 sticky top-0">
-                <tr className="text-left text-slate-600">
-                  <th className="px-3 py-2 font-bold">Date</th>
-                  <th className="px-3 py-2 font-bold">Service / service user</th>
-                  <th className="px-3 py-2 font-bold">Staff</th>
-                  <th className="px-3 py-2 font-bold">Clocked in / out</th>
-                  <th className="px-3 py-2 font-bold text-center">Reviewed?</th>
+          <div className="bg-white text-slate-900 border border-slate-200 rounded-xl overflow-hidden max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-xs text-slate-900">
+              <thead className="bg-slate-100 sticky top-0 border-b border-slate-200">
+                <tr className="text-left text-slate-800">
+                  <th className="px-3 py-2.5 font-bold">Date &amp; Time</th>
+                  <th className="px-3 py-2.5 font-bold">Service / Service User</th>
+                  <th className="px-3 py-2.5 font-bold">Staff Member</th>
+                  <th className="px-3 py-2.5 font-bold">Clocked In / Out</th>
+                  <th className="px-3 py-2.5 font-bold text-center">Reviewed?</th>
                 </tr>
               </thead>
-              <tbody>
-                {rows.map(s => (
-                  <tr key={s.id} className="border-t border-slate-100">
-                    <td className="px-3 py-2 whitespace-nowrap">
+              <tbody className="divide-y divide-slate-200 bg-white text-slate-900">
+                {filteredRows.map(s => (
+                  <tr key={s.id} className="even:bg-slate-50/70 hover:bg-amber-50/60 transition-colors">
+                    <td className="px-3 py-2.5 whitespace-nowrap text-slate-900 font-semibold">
                       {format(parseISO(String(s.shift_date).substring(0, 10)), 'EEE d MMM')}<br />
-                      <span className="text-slate-500">{s.start_time?.substring(0, 5)} – {s.end_time?.substring(0, 5)}</span>
+                      <span className="text-slate-600 font-normal">{s.start_time?.substring(0, 5)} – {s.end_time?.substring(0, 5)}</span>
                     </td>
-                    <td className="px-3 py-2">{s.label || s.su_names || s.su_name || '—'}</td>
-                    <td className="px-3 py-2">{s.staff_name || '—'}</td>
-                    <td className={`px-3 py-2 whitespace-nowrap ${s.clock_in_time ? '' : 'text-rose-600 font-semibold'}`}>
+                    <td className="px-3 py-2.5 text-slate-900 font-medium">{s.label || s.su_names || s.su_name || '—'}</td>
+                    <td className="px-3 py-2.5 text-slate-900 font-medium">{s.staff_name || '—'}</td>
+                    <td className={`px-3 py-2.5 whitespace-nowrap font-semibold ${s.clock_in_time ? 'text-emerald-700' : 'text-rose-600'}`}>
                       {s.clock_in_time ? `${hhmm(s.clock_in_time)} / ${hhmm(s.clock_out_time)}` : 'Did not clock in'}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" className="w-4 h-4" checked={!!s.reviewed_at} disabled={busy === s.id} onChange={() => toggle(s)} />
+                    <td className="px-3 py-2.5 text-center">
+                      <input type="checkbox" className="w-4 h-4 accent-emerald-600 cursor-pointer" checked={!!s.reviewed_at} disabled={busy === s.id} onChange={() => toggle(s)} />
                     </td>
                   </tr>
                 ))}

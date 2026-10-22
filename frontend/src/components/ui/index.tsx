@@ -230,8 +230,8 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   if (!open) return null
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
   const cardStyle = theme === 'dark'
-    ? { background: '#111', border: '1px solid rgba(232,177,48,0.2)' }
-    : { background: '#ffffff', border: '1px solid rgba(15,23,42,0.1)' }
+    ? { background: '#111', border: '1px solid rgba(232,177,48,0.2)', color: '#f5f0e8' }
+    : { background: '#ffffff', border: '1px solid rgba(15,23,42,0.1)', color: '#0f172a' }
   const headerBorder = theme === 'dark' ? { borderBottom: '1px solid rgba(255,255,255,0.08)' } : { borderBottom: '1px solid rgba(15,23,42,0.08)' }
   return (
     // z-[60] — strictly above the mobile bottom nav bar's z-50 (AppLayout.tsx),
