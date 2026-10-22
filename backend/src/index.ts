@@ -397,6 +397,11 @@ if (fs.existsSync(frontendDist)) {
       else if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
     }
   }));
+  // Missing hashed chunks must return clean 404 with no-store (never SPA HTML or error_log noise)
+  app.use('/assets', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(404).type('text/plain').send('Asset not found');
+  });
   app.use('/logo.jpeg', express.static(path.join(frontendDist, 'logo.jpeg')));
   app.use('/pwa-192.png', express.static(path.join(frontendDist, 'pwa-192.png')));
   app.use('/pwa-512.png', express.static(path.join(frontendDist, 'pwa-512.png')));

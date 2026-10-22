@@ -563,12 +563,14 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
   const [loading, setLoading] = useState(false)
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
+  const type = record.record_type
+  const typeInfo = RECORD_TYPES.find(r => r.value === type)
+
   const save = async () => {
     setLoading(true)
     try {
       // Build the notes text from the form fields
       let notesText = form.notes || ''
-      const type = record.record_type
 
       if (type === 'fluid_intake' || type === 'food_drink') {
         if (form.amountMl) notesText = `${form.fluidType || 'Fluid'} — ${form.amountMl}ml${form.notes ? '. ' + form.notes : ''}`
@@ -600,9 +602,6 @@ function EditRecordModal({ record, onClose, onSaved }: { record: any; onClose: (
       toast.error(err?.response?.data?.error || 'Failed to update')
     } finally { setLoading(false) }
   }
-
-  const type = record.record_type
-  const typeInfo = RECORD_TYPES.find(r => r.value === type)
 
   return (
     <Modal open={true} onClose={onClose} title={`Edit — ${typeInfo?.label || type?.replace(/_/g, ' ')}`} size="md">

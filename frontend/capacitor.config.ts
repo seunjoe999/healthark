@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: 'CompCare Hub',
   webDir: 'dist',
   server: {
+    url: 'https://compcarehub.co.uk',
     androidScheme: 'https',
     cleartext: false,
   },

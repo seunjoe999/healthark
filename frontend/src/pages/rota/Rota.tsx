@@ -23,6 +23,11 @@ import toast from 'react-hot-toast'
 // always-visible checkbox as the only way to multi-select there.
 const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' },
+]
+
 // Default shift times by day of the week (owner directive, 9 Oct 2026): weekdays
 // 08:00–19:00, Saturday and Sunday 10:00–19:00. Suggested automatically in the
 // shift-creation forms as days are picked, and fully editable — typing a
@@ -470,59 +475,6 @@ export default function Rota() {
   }, [filterStaff, selectedHome, shifts])
   // Bulk changes to every highlighted shift: time slot, shift type, cancel, reinstate.
   const [bulkBusy, setBulkBusy] = useState(false)
-  const runBulkChange = async (kind: string) => {
-    const ids = Array.from(selectedShiftIds)
-    if (!ids.length || !kind) return
-    const isTime = (v: string | null) => !!v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim())
-    let build: (s: any) => Promise<any>
-    let label = ''
-    if (kind === 'time') {
-      const st = window.prompt(`New START time for ${ids.length} shift${ids.length !== 1 ? 's' : ''} (24-hour, e.g. 08:00)`)
-      if (st === null) return
-      const et = window.prompt('New END time (24-hour, e.g. 20:00)')
-      if (et === null) return
-      if (!isTime(st) || !isTime(et)) { toast.error('Enter times as HH:MM, e.g. 08:00'); return }
-      build = (s) => api.put(`/shifts/${s.id}`, { startTime: st.trim(), endTime: et.trim() })
-      label = `moved to ${st.trim()}–${et.trim()}`
-    } else if (kind.startsWith('type:')) {
-      const t = kind.slice(5)
-      build = (s) => api.put(`/shifts/${s.id}`, { shiftType: t })
-      label = `changed to ${SHIFT_TYPES.find(x => x.value === t)?.label || t}`
-    } else if (kind === 'cancel') {
-      const reason = window.prompt(`Why are these ${ids.length} shift${ids.length !== 1 ? 's' : ''} being cancelled?`)
-      if (reason === null) return
-      const billable = window.confirm('Are these cancelled shifts still BILLABLE to the funder?\n\nOK = Yes, still billable\nCancel = No, not billable')
-      build = (s) => api.put(`/shifts/${s.id}/status`, { status: 'cancelled', cancelReason: reason.trim() || undefined, cancelBillable: billable })
-      label = 'cancelled'
-    } else if (kind === 'advertise') {
-      setBulkBusy(true)
-      try {
-        const res = await api.post('/shifts/advertise', { ids })
-        const n = res.data?.data?.count ?? 0
-        if (n) toast.success(`${n} unfilled shift${n !== 1 ? 's' : ''} advertised to staff`)
-        else toast.error('None of the highlighted shifts are unfilled — only shifts with no staff can be advertised')
-        clearSelection(); loadAll()
-      } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not advertise') }
-      finally { setBulkBusy(false) }
-      return
-    } else if (kind === 'reinstate') {
-      build = (s) => s.status === 'cancelled'
-        ? api.put(`/shifts/${s.id}/status`, { status: s.staff_id ? 'filled' : 'unfilled' })
-        : Promise.resolve(null)
-      label = 'reinstated'
-    } else return
-    setBulkBusy(true)
-    try {
-      const targets = shifts.filter(s => selectedShiftIds.has(s.id))
-      const results = await Promise.allSettled(targets.map(build))
-      const failed = results.filter(r => r.status === 'rejected').length
-      const done = results.length - failed
-      if (done) toast.success(`${done} shift${done !== 1 ? 's' : ''} ${label}`)
-      if (failed) toast.error(`${failed} shift${failed !== 1 ? 's' : ''} could not be changed (e.g. the new time clashes with another shift for that staff member)`)
-      clearSelection()
-      loadAll()
-    } finally { setBulkBusy(false) }
-  }
   const [coverOpen,   setCoverOpen]   = useState(false)
   const [patternAssignOpen, setPatternAssignOpen] = useState(false)
   const [unassignOpen, setUnassignOpen] = useState(false)
@@ -646,11 +598,7 @@ export default function Rota() {
     })
   }
 
-  // Removes the recurring template plus every future occurrence generated
-  // from it (past shifts stay, for the record) — for an "ongoing"/recurring
-  // shift, deleting just today's occurrence via deleteShift() leaves every
-  // future day still scheduled.
-  const deleteShiftSeries = (shift: any) => deleteFutureShifts([shift.id])
+  const clearSelection = () => setSelectedShiftIds(new Set())
 
   // "This + all future" for one shift or for every highlighted shift. The server
   // counts first, so the confirmation says exactly how many shifts will go and
@@ -683,6 +631,12 @@ export default function Rota() {
     })
   }
 
+  // Removes the recurring template plus every future occurrence generated
+  // from it (past shifts stay, for the record) — for an "ongoing"/recurring
+  // shift, deleting just today's occurrence via deleteShift() leaves every
+  // future day still scheduled.
+  const deleteShiftSeries = (shift: any) => deleteFutureShifts([shift.id])
+
   // ── Bulk selection ───────────────────────────────────────────────────────
 
   const toggleShiftSelected = (id: string) => {
@@ -693,7 +647,59 @@ export default function Rota() {
     })
   }
 
-  const clearSelection = () => setSelectedShiftIds(new Set())
+  const runBulkChange = async (kind: string) => {
+    const ids = Array.from(selectedShiftIds)
+    if (!ids.length || !kind) return
+    const isTime = (v: string | null) => !!v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim())
+    let build: (s: any) => Promise<any>
+    let label = ''
+    if (kind === 'time') {
+      const st = window.prompt(`New START time for ${ids.length} shift${ids.length !== 1 ? 's' : ''} (24-hour, e.g. 08:00)`)
+      if (st === null) return
+      const et = window.prompt('New END time (24-hour, e.g. 20:00)')
+      if (et === null) return
+      if (!isTime(st) || !isTime(et)) { toast.error('Enter times as HH:MM, e.g. 08:00'); return }
+      build = (s) => api.put(`/shifts/${s.id}`, { startTime: st.trim(), endTime: et.trim() })
+      label = `moved to ${st.trim()}–${et.trim()}`
+    } else if (kind.startsWith('type:')) {
+      const t = kind.slice(5)
+      build = (s) => api.put(`/shifts/${s.id}`, { shiftType: t })
+      label = `changed to ${SHIFT_TYPES.find(x => x.value === t)?.label || t}`
+    } else if (kind === 'cancel') {
+      const reason = window.prompt(`Why are these ${ids.length} shift${ids.length !== 1 ? 's' : ''} being cancelled?`)
+      if (reason === null) return
+      const billable = window.confirm('Are these cancelled shifts still BILLABLE to the funder?\n\nOK = Yes, still billable\nCancel = No, not billable')
+      build = (s) => api.put(`/shifts/${s.id}/status`, { status: 'cancelled', cancelReason: reason.trim() || undefined, cancelBillable: billable })
+      label = 'cancelled'
+    } else if (kind === 'advertise') {
+      setBulkBusy(true)
+      try {
+        const res = await api.post('/shifts/advertise', { ids })
+        const n = res.data?.data?.count ?? 0
+        if (n) toast.success(`${n} unfilled shift${n !== 1 ? 's' : ''} advertised to staff`)
+        else toast.error('None of the highlighted shifts are unfilled — only shifts with no staff can be advertised')
+        clearSelection(); loadAll()
+      } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not advertise') }
+      finally { setBulkBusy(false) }
+      return
+    } else if (kind === 'reinstate') {
+      build = (s) => s.status === 'cancelled'
+        ? api.put(`/shifts/${s.id}/status`, { status: s.staff_id ? 'filled' : 'unfilled' })
+        : Promise.resolve(null)
+      label = 'reinstated'
+    } else return
+    setBulkBusy(true)
+    try {
+      const targets = shifts.filter(s => selectedShiftIds.has(s.id))
+      const results = await Promise.allSettled(targets.map(build))
+      const failed = results.filter(r => r.status === 'rejected').length
+      const done = results.length - failed
+      if (done) toast.success(`${done} shift${done !== 1 ? 's' : ''} ${label}`)
+      if (failed) toast.error(`${failed} shift${failed !== 1 ? 's' : ''} could not be changed (e.g. the new time clashes with another shift for that staff member)`)
+      clearSelection()
+      loadAll()
+    } finally { setBulkBusy(false) }
+  }
   // A highlight only lasts while its shift is on screen. Highlights used to
   // survive moving to another week, so a later bulk action also changed shifts
   // that were no longer visible.
@@ -3445,11 +3451,6 @@ function BulkAssignStaffModal({ open, onClose, staffList, count, onAssign, assig
 // a date range) — so a rota created with open/unfilled shifts can be staffed up by
 // pattern instead of clicking every single day, and different staff can cover
 // different days of the same rota rather than one person getting the whole week.
-
-const WEEKDAY_OPTIONS = [
-  { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' },
-]
 
 function PatternAssignModal({ open, onClose, staffList, shifts = [], suList, homeId, defaultDate, seed, onSaved, leaves = [] }: {
   open: boolean; onClose: () => void

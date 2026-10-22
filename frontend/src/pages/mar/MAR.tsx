@@ -22,6 +22,31 @@ const FREQ_TIMES: Record<string, string[]> = {
   other: ['—'],
 }
 
+const STAFF_MAR_TOOLS = [
+  { key: 'mar_review', label: 'MAR Review', flagKey: 'mar_review' },
+  { key: 'medication_audit', label: 'Medication Audit', flagKey: 'medication_audit' },
+  { key: 'mar_chart_audit', label: 'Mar Chart Audit', flagKey: 'mar_chart_audit' },
+]
+
+export const MAR_CODE_OPTIONS = [
+  { code: 'G',  label: 'Given',          desc: 'Administered',          color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.4)',  given: true,  refused: false },
+  { code: 'A',  label: 'Assisted',       desc: 'Prompted/assisted',     color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.4)',   given: true,  refused: false },
+  { code: 'S',  label: 'Self-med',       desc: 'Self-medicated',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.4)',  given: true,  refused: false },
+  { code: 'R',  label: 'Refused',        desc: 'Resident refused',      color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.4)',   given: false, refused: true  },
+  { code: 'MA', label: 'Not Available',  desc: 'Medication not available to administer', color: '#f97316', bg: 'rgba(249,115,22,0.12)',  border: 'rgba(249,115,22,0.4)',  given: false, refused: false },
+  { code: 'AT', label: 'Attempted',      desc: 'Attempt made',          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.4)',  given: false, refused: false },
+  { code: 'D',  label: 'Early',          desc: 'Dosed early',           color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.4)',  given: false, refused: false },
+  { code: 'L',  label: 'Late',           desc: 'Administered late',     color: '#6366f1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.4)',  given: false, refused: false },
+  { code: 'N',  label: 'Not available',  desc: 'Stock not available',   color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.4)', given: false, refused: false },
+  { code: 'O',  label: 'Omitted',        desc: 'Omitted/missed',        color: '#fb923c', bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.4)',  given: false, refused: false },
+  { code: 'NT', label: 'Not taken',      desc: 'Resident did not take', color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',   border: 'rgba(244,63,94,0.4)',  given: false, refused: false },
+  { code: 'NR', label: 'Not required',   desc: 'Not required today',    color: '#64748b', bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.4)', given: false, refused: false },
+  { code: 'F',  label: 'Fasted',         desc: 'Fasted/withheld',       color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.4)', given: false, refused: false },
+  { code: 'H',  label: 'Hold/Hospital',  desc: 'Medication on hold, or resident in hospital', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)',  border: 'rgba(14,165,233,0.4)',  given: false, refused: false },
+  { code: 'DC', label: 'Discontinued',   desc: 'Discontinued',          color: '#78716c', bg: 'rgba(120,113,108,0.12)', border: 'rgba(120,113,108,0.4)', given: false, refused: false },
+  { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
+]
+
 // Mirrors backend/src/utils/medicationDue.ts's getTimeSlots exactly — a medication
 // with no explicit time_slots but a staff-chosen apply_time (e.g. 19:00 instead of
 // the default 08:00) must resolve to the SAME offset time here as it does in the
@@ -667,14 +692,6 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }>
   refused: { label: 'Refused', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 }
 
-// A standalone review screen for staff granted MAR Review access (via Settings →
-// Access Rights → MAR Review) without giving them the full privileged MAR grid.
-const STAFF_MAR_TOOLS = [
-  { key: 'mar_review', label: 'MAR Review', flagKey: 'mar_review' },
-  { key: 'medication_audit', label: 'Medication Audit', flagKey: 'medication_audit' },
-  { key: 'mar_chart_audit', label: 'Mar Chart Audit', flagKey: 'mar_chart_audit' },
-]
-
 // Owns the tab-switch state so the parent MAR component (which conditionally
 // returns before its own render) doesn't need a hook for this.
 function StaffAssessmentReviewGated({ homes, selectedHome, setSelectedHome, sus, tools, initialKey }: {
@@ -806,18 +823,6 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
   const [obsTask, setObsTask] = useState<any>(null)
   const [obsText, setObsText] = useState('')
   const [obsSaving, setObsSaving] = useState(false)
-  const saveObservation = async () => {
-    if (!obsTask?.recordId) return
-    if (!obsText.trim()) { toast.error('Write the outcome note first'); return }
-    setObsSaving(true)
-    try {
-      await api.patch(`/mar/records/${obsTask.recordId}`, { outcomeNote: obsText.trim() })
-      toast.success('Outcome note saved')
-      setObsTask(null); setObsText('')
-      load()
-    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not save the outcome note') }
-    finally { setObsSaving(false) }
-  }
   const [filterSu, setFilterSu] = useState('')
   const serverNow = useServerNow()
   const today = ukDateStr(serverNow)
@@ -829,6 +834,19 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
       .then(res => setTasks(res.data.data || []))
       .catch(() => {})
       .finally(() => setLoading(false))
+  }
+
+  const saveObservation = async () => {
+    if (!obsTask?.recordId) return
+    if (!obsText.trim()) { toast.error('Write the outcome note first'); return }
+    setObsSaving(true)
+    try {
+      await api.patch(`/mar/records/${obsTask.recordId}`, { outcomeNote: obsText.trim() })
+      toast.success('Outcome note saved')
+      setObsTask(null); setObsText('')
+      load()
+    } catch (err: any) { toast.error(err?.response?.data?.error || 'Could not save the outcome note') }
+    finally { setObsSaving(false) }
   }
 
   useEffect(() => { load() }, [selectedHome])
@@ -1461,25 +1479,6 @@ function WitnessSignOffModal({ recordId, onClose }: { recordId: string; onClose:
 }
 
 /* ─── Log MAR Modal ────────────────────────────────────────────────────── */
-export const MAR_CODE_OPTIONS = [
-  { code: 'G',  label: 'Given',          desc: 'Administered',          color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.4)',  given: true,  refused: false },
-  { code: 'A',  label: 'Assisted',       desc: 'Prompted/assisted',     color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.4)',   given: true,  refused: false },
-  { code: 'S',  label: 'Self-med',       desc: 'Self-medicated',        color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.4)',  given: true,  refused: false },
-  { code: 'R',  label: 'Refused',        desc: 'Resident refused',      color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.4)',   given: false, refused: true  },
-  { code: 'MA', label: 'Not Available',  desc: 'Medication not available to administer', color: '#f97316', bg: 'rgba(249,115,22,0.12)',  border: 'rgba(249,115,22,0.4)',  given: false, refused: false },
-  { code: 'AT', label: 'Attempted',      desc: 'Attempt made',          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.4)',  given: false, refused: false },
-  { code: 'D',  label: 'Early',          desc: 'Dosed early',           color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.4)',  given: false, refused: false },
-  { code: 'L',  label: 'Late',           desc: 'Administered late',     color: '#6366f1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.4)',  given: false, refused: false },
-  { code: 'N',  label: 'Not available',  desc: 'Stock not available',   color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.4)', given: false, refused: false },
-  { code: 'O',  label: 'Omitted',        desc: 'Omitted/missed',        color: '#fb923c', bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.4)',  given: false, refused: false },
-  { code: 'NT', label: 'Not taken',      desc: 'Resident did not take', color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',   border: 'rgba(244,63,94,0.4)',  given: false, refused: false },
-  { code: 'NR', label: 'Not required',   desc: 'Not required today',    color: '#64748b', bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.4)', given: false, refused: false },
-  { code: 'F',  label: 'Fasted',         desc: 'Fasted/withheld',       color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.4)', given: false, refused: false },
-  { code: 'H',  label: 'Hold/Hospital',  desc: 'Medication on hold, or resident in hospital', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)',  border: 'rgba(14,165,233,0.4)',  given: false, refused: false },
-  { code: 'DC', label: 'Discontinued',   desc: 'Discontinued',          color: '#78716c', bg: 'rgba(120,113,108,0.12)', border: 'rgba(120,113,108,0.4)', given: false, refused: false },
-  { code: 'E',  label: 'Error',          desc: 'Medication error',      color: '#dc2626', bg: 'rgba(220,38,38,0.15)',   border: 'rgba(220,38,38,0.5)',  given: false, refused: false },
-]
-
 export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onClose, onSaved }: {
   med: any; date: string; slot: string; suId: string; homeId?: string; existingRecord?: any; onClose: () => void; onSaved: () => void
 }) {

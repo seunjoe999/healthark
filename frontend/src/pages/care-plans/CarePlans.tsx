@@ -11,6 +11,10 @@ import { handleTextareaPaste } from '../../utils/pasteFormat'
 import NotifyReadersSection from '../../components/NotifyReadersSection'
 import { SignatureImage } from '../../components/SignaturePad'
 
+const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'positive_behaviour', 'crisis', 'about_me',
+  'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life',
+  'physical_health', 'learning_disability', 'bowel_management'])
+
 async function uploadDoc(file: File): Promise<{ fileUrl: string; fileName: string }> {
   const fd = new FormData()
   fd.append('file', file)
@@ -1583,15 +1587,6 @@ export default function CarePlans() {
 
   // Deep link (?su=<id>) — e.g. the "Care plan" link on a task — opens that
   // person's care plans straight away instead of the resident list.
-  const [deepLinked, setDeepLinked] = useState(false)
-  useEffect(() => {
-    if (deepLinked || !sus.length) return
-    const wanted = new URLSearchParams(window.location.search).get('su')
-    if (!wanted) return
-    const match = sus.find((s: any) => s.id === wanted)
-    if (match) { setDeepLinked(true); selectSu(match) }
-  }, [sus])
-
   const selectSu = async (su: any) => {
     setSelectedSu(su)
     setViewPlan(null)
@@ -1602,6 +1597,15 @@ export default function CarePlans() {
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
+
+  const [deepLinked, setDeepLinked] = useState(false)
+  useEffect(() => {
+    if (deepLinked || !sus.length) return
+    const wanted = new URLSearchParams(window.location.search).get('su')
+    if (!wanted) return
+    const match = sus.find((s: any) => s.id === wanted)
+    if (match) { setDeepLinked(true); selectSu(match) }
+  }, [sus])
 
   const openPlan = async (plan: any) => {
     setViewPlan(plan)
@@ -2332,10 +2336,6 @@ const EMPTY_ADD_FORM = {
   regularMedications: '', prnMedications: '', otcMedications: '',
   prnProtocol: '', prnList: '', indicationForUse: '',
 }
-
-const TEMPLATED_TYPES = new Set(['oral_care', 'autism', 'adhd', 'monthly_progress', 'pbs', 'positive_behaviour', 'crisis', 'about_me',
-  'one_page_profile', 'house_rules', 'personal_evacuation', 'pain_assessment', 'oral_care_assessment', 'end_of_life',
-  'physical_health', 'learning_disability', 'bowel_management'])
 
 // Lets a manager hide support plans that don't apply to this resident (shown
 // their full list, checked = hidden) from the grid and Print All, without

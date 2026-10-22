@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import './styles/print.css'
-import { installChunkErrorReload, installPeriodicVersionCheck } from './utils/versionCheck'
+import { installChunkErrorReload, installPeriodicVersionCheck, isRecoverableBundleOrTdzError, purgeCachesAndReload } from './utils/versionCheck'
 // Imported first, before anything else runs, so its module-level
 // beforeinstallprompt listener is attached as early as physically possible —
 // see utils/installPrompt.ts for why this can't just live inside a component.
@@ -15,13 +15,24 @@ installPeriodicVersionCheck()
 class GlobalBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
-  componentDidCatch(error: any) { try { (window as any).__haReport?.(`Screen crashed: ${error?.message || String(error)}`) } catch { /* ignore */ } }
+  componentDidCatch(error: any) {
+    try { (window as any).__haReport?.(`Screen crashed: ${error?.message || String(error)}`) } catch { /* ignore */ }
+    if (isRecoverableBundleOrTdzError(error?.message || String(error))) {
+      void purgeCachesAndReload()
+    }
+  }
   render() {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 40, fontFamily: 'monospace', background: '#0d1526', color: '#fff', minHeight: '100vh' }}>
           <h2 style={{ color: '#e8b130' }}>Global Render Error</h2>
           <pre style={{ color: '#f87171', whiteSpace: 'pre-wrap' }}>{this.state.error?.stack || this.state.error?.toString()}</pre>
+          <button
+            onClick={() => { void purgeCachesAndReload(true) }}
+            style={{ marginTop: 16, padding: '8px 16px', background: '#e8b130', color: '#0d1526', fontWeight: 700, border: 'none', borderRadius: 8, cursor: 'pointer' }}
+          >
+            Reload Latest App
+          </button>
         </div>
       );
     }

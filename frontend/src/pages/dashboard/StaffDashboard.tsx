@@ -72,11 +72,11 @@ export default function StaffDashboard() {
           })
           lastErr = null
           break
-        } catch (err: any) {
-          lastErr = err
+        } catch (attemptErr: any) {
+          lastErr = attemptErr
           // A real refusal from the server (a message attached) is an answer,
           // not a lost request — retrying won't change it, so stop at once.
-          if (err?.response?.data?.error) break
+          if (attemptErr?.response?.data?.error) break
           if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt))
         }
       }
@@ -136,6 +136,7 @@ export default function StaffDashboard() {
   // kept holding only yesterday's completed tasks in `myTasks`, so the new day's
   // tasks generated at 00:00 never popped up after midnight.
   const activeDayRef = React.useRef<string>('')
+  const overdueNotifiedRef = React.useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!user?.homeId) return
     const refreshLiveWork = async () => {
@@ -186,7 +187,6 @@ export default function StaffDashboard() {
   // Medications must be included here (not just regular tasks) so a later dose
   // (e.g. an evening one after a morning dose already popped up) still triggers
   // a fresh pop-up instead of staying silent for the rest of the shift.
-  const overdueNotifiedRef = React.useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!wantsTaskReminders) return
     const checkOverdue = () => {

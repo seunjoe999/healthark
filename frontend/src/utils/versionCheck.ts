@@ -1,15 +1,46 @@
-// Detects when a new deploy has shipped while this tab is still running the
-// old build. The service worker (see main.tsx/public/sw.js) only refreshes
-// automatically on a *fresh* page load — an already-open tab keeps executing
-// the old JS in memory, so navigating to a lazy-loaded route can 404 fetching
-// a chunk file that no longer exists on the server after a deploy (seen in
-// production logs). This compares the currently-loaded build's main bundle
-// filename against what the server is serving right now, without needing any
-// backend changes — Vite content-hashes the bundle filename on every build.
+// Detects when a new deploy has shipped while this tab is still running an
+// older build, and provides full Service Worker + CacheStorage self-healing
+// so mobile PWAs never get trapped on stale bundles or deleted hashed chunks.
+
+const RECOVERY_GUARD_KEY = 'compcare_sw_recovery_ts'
 
 function getCurrentBundleSrc(): string | null {
   const el = document.querySelector('script[type="module"][src*="/assets/index-"]')
   return el?.getAttribute('src') || null
+}
+
+export async function purgeCachesAndReload(force = false): Promise<void> {
+  if (!force) {
+    try {
+      const last = Number(sessionStorage.getItem(RECOVERY_GUARD_KEY) || '0')
+      if (last && Date.now() - last < 30_000) return
+      sessionStorage.setItem(RECOVERY_GUARD_KEY, String(Date.now()))
+    } catch {
+      // sessionStorage unavailable in restricted mode
+    }
+  }
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister().catch(() => false)))
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map(k => caches.delete(k).catch(() => false)))
+    }
+  } catch {
+    // Proceed to fresh navigation regardless
+  }
+  const url = new URL(window.location.href)
+  url.searchParams.set('_v', String(Date.now()))
+  window.location.replace(url.toString())
+}
+
+export function isRecoverableBundleOrTdzError(message: unknown): boolean {
+  return (
+    typeof message === 'string' &&
+    /Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed|Cannot access .* before initialization|Unexpected token '<'/i.test(message)
+  )
 }
 
 export async function hasNewVersion(): Promise<boolean> {
@@ -26,75 +57,68 @@ export async function hasNewVersion(): Promise<boolean> {
   }
 }
 
-// Safe to call anytime — reloads unconditionally, so only call this where
-// losing in-progress work isn't a concern (e.g. right after login, or after
-// a chunk-load error where the navigation already failed).
 export async function reloadIfNewVersion(): Promise<void> {
-  if (await hasNewVersion()) window.location.reload()
+  if (await hasNewVersion()) {
+    await purgeCachesAndReload(true)
+  }
 }
 
-// A dynamic import() failing with "Failed to fetch dynamically imported
-// module" (or the browser-specific equivalents) almost always means the
-// chunk file was deleted by a newer deploy since this tab last loaded — the
-// only fix is a full reload, and it's always safe here because the
-// navigation the user just attempted already failed, so there's nothing
-// in-progress to lose.
 export function installChunkErrorReload(): void {
   let reloaded = false
-  const isChunkError = (message: unknown) =>
-    typeof message === 'string' &&
-    /Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed/i.test(message)
+  const recover = () => {
+    if (reloaded) return
+    reloaded = true
+    void purgeCachesAndReload()
+  }
 
   window.addEventListener('error', (e) => {
-    if (reloaded) return
-    if (isChunkError(e.message)) { reloaded = true; window.location.reload() }
+    if (isRecoverableBundleOrTdzError(e.message)) recover()
   })
   window.addEventListener('unhandledrejection', (e) => {
-    if (reloaded) return
     const message = e.reason?.message || String(e.reason || '')
-    if (isChunkError(message)) { reloaded = true; window.location.reload() }
+    if (isRecoverableBundleOrTdzError(message)) recover()
   })
 
-  // Resource-load errors (a <script>/<link> tag 404ing) don't produce a
-  // message the two listeners above can see and don't bubble, so they need
-  // their own capturing listener — otherwise a lazy-loaded route chunk that
-  // 404s silently leaves the page half-broken until the 30-minute periodic
-  // check or the user manually reloads (seen in production logs: a page
-  // stuck on a 404'd chunk for ~90 seconds before self-healing).
+  // Resource-load errors (<script>/<link> 404s on stale hashed chunks)
   window.addEventListener('error', (e) => {
-    if (reloaded) return
     const target = e.target as HTMLElement | null
     if (!target) return
     const src = (target as HTMLScriptElement).src || (target as HTMLLinkElement).href
     if ((target.tagName === 'SCRIPT' || target.tagName === 'LINK') && src?.includes('/assets/')) {
-      reloaded = true
-      window.location.reload()
+      recover()
     }
   }, true)
 }
 
-// Covers long-running sessions (installed PWA left open for hours/days
-// without a fresh login) that the login-time check and chunk-error fallback
-// don't reach. Polls every 30 minutes; only actually reloads while the tab
-// is backgrounded, so it never interrupts someone mid-task — by the time
-// they come back the page is already current.
 export function installPeriodicVersionCheck(): void {
-  const CHECK_INTERVAL_MS = 30 * 60 * 1000
+  const CHECK_INTERVAL_MS = 5 * 60 * 1000
   let pending = false
 
   const check = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration()
+        void reg?.update()
+      }
+    } catch { /* ignore */ }
     if (pending) return
     if (!(await hasNewVersion())) return
     if (document.visibilityState === 'hidden') {
-      window.location.reload()
+      void purgeCachesAndReload(true)
     } else {
       pending = true
     }
   }
 
+  // Also check shortly after startup and whenever a mobile PWA tab returns to foreground
+  setTimeout(check, 5_000)
   setInterval(check, CHECK_INTERVAL_MS)
 
   document.addEventListener('visibilitychange', () => {
-    if (pending && document.visibilityState === 'hidden') window.location.reload()
+    if (document.visibilityState === 'hidden' && pending) {
+      void purgeCachesAndReload(true)
+    } else if (document.visibilityState === 'visible') {
+      void check()
+    }
   })
 }

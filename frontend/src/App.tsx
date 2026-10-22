@@ -11,6 +11,7 @@ import LandingPage from './pages/public/LandingPage'
 const Careers = React.lazy(() => import('./pages/public/Careers'))
 import Setup from './pages/auth/Setup'
 import { useCapacitorSetup } from './hooks/useCapacitorSetup'
+import { purgeCachesAndReload } from './utils/versionCheck'
 
 const Dashboard = React.lazy(() => import('./pages/dashboard/Dashboard'))
 const ServiceUserList = React.lazy(() => import('./pages/service-users/ServiceUserList'))
@@ -316,6 +317,10 @@ class ErrorBoundary extends React.Component<{ children?: React.ReactNode }, { er
         body: JSON.stringify({ message: detail.slice(0, 1000), page: window.location.pathname + window.location.search }),
       }).catch(() => {})
     } catch { /* never fail inside error boundary */ }
+    // Auto-purge stale Service Worker & CacheStorage on TDZ / chunk-mismatch crashes
+    if (/Cannot access .* before initialization|Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed|Unexpected token '<'/i.test(e?.message || '')) {
+      void purgeCachesAndReload()
+    }
   }
   render() {
     if (this.state.error) return (
@@ -323,7 +328,7 @@ class ErrorBoundary extends React.Component<{ children?: React.ReactNode }, { er
         <h2 style={{ color: '#e8b130' }}>App Error</h2>
         <pre style={{ color: '#f87171', whiteSpace: 'pre-wrap' }}>{this.state.error}</pre>
         <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-          <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', background: '#e8b130', color: '#0d1526', fontWeight: 700, border: 'none', borderRadius: 8, cursor: 'pointer' }}>Reload</button>
+          <button onClick={() => { void purgeCachesAndReload(true) }} style={{ padding: '8px 16px', background: '#e8b130', color: '#0d1526', fontWeight: 700, border:"none", borderRadius: 8, cursor: 'pointer' }}>Reload</button>
           <button onClick={() => { window.location.href = '/dashboard' }} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, cursor: 'pointer' }}>Back to Dashboard</button>
         </div>
       </div>

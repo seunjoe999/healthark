@@ -341,7 +341,7 @@ describe('Batch-3 Production Fixes Verification (All 10 Client Feedback Items)',
     expect(bundleTdzIssues).toEqual([]);
 
     const sw = fs.readFileSync(path.join(repoRoot, 'frontend/public/sw.js'), 'utf8');
-    expect(sw).toContain("const CACHE = 'compcare-v17'");
+    expect(sw).toContain("const CACHE = 'compcare-v18'");
     const indexHtml = fs.readFileSync(path.join(repoRoot, 'frontend/index.html'), 'utf8');
     expect(indexHtml).toContain('purgeCompCareCachesAndReload');
     const serverIndex = fs.readFileSync(path.join(repoRoot, 'backend/src/index.ts'), 'utf8');

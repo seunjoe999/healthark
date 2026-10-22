@@ -62,13 +62,6 @@ export default function ResidentAssignments() {
 
   const hasAccess = NOT_CARE_STAFF.includes(user?.role || '')
     && (isRole('group_admin') || (user as any)?.featureFlags?.resident_assignments !== false)
-  if (!hasAccess) {
-    return (
-      <div className="p-8 text-center text-slate-400">
-        <p className="text-sm">You don't have access to Resident Assignments — ask your manager to grant it in Access Rights.</p>
-      </div>
-    )
-  }
 
   const [residents, setResidents] = useState<Resident[]>([])
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -81,7 +74,7 @@ export default function ResidentAssignments() {
   const [aiLoading, setAiLoading] = useState(false)
 
   useEffect(() => {
-    if (!homeId) return
+    if (!hasAccess || !homeId) return
     setLoading(true)
     Promise.all([
       api.get('/service-users', { params: { homeId } }),
@@ -96,7 +89,23 @@ export default function ResidentAssignments() {
       setAssignments(aRes.data.data || [])
     }).catch(() => toast.error('Failed to load assignments'))
       .finally(() => setLoading(false))
-  }, [homeId])
+  }, [hasAccess, homeId])
+
+  if (!hasAccess) {
+    return (
+      <div className="p-8 text-center text-slate-400">
+        <p className="text-sm">You don't have access to Resident Assignments — ask your manager to grant it in Access Rights.</p>
+      </div>
+    )
+  }
+
+  const assignedStaffForResident = (suId: string) =>
+    assignments.filter(a => a.su_id === suId)
+
+  const unassignedStaffForResident = (suId: string) => {
+    const assigned = new Set(assignments.filter(a => a.su_id === suId).map(a => a.staff_id))
+    return staff.filter(s => !assigned.has(s.id))
+  }
 
   const autoAssignAll = async () => {
     if (!residents.length || !staff.length) { toast.error('No residents or staff to assign'); return }
@@ -124,14 +133,6 @@ export default function ResidentAssignments() {
       toast.success(`Auto-assigned ${newAssignments.length} residents to staff`)
     } catch { toast.error('Auto-assign failed') }
     finally { setAiLoading(false) }
-  }
-
-  const assignedStaffForResident = (suId: string) =>
-    assignments.filter(a => a.su_id === suId)
-
-  const unassignedStaffForResident = (suId: string) => {
-    const assigned = new Set(assignments.filter(a => a.su_id === suId).map(a => a.staff_id))
-    return staff.filter(s => !assigned.has(s.id))
   }
 
   const assign = async (suId: string, staffId: string) => {
