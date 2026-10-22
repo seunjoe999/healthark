@@ -20,36 +20,40 @@ export default function ClockIn() {
   // clock out by saying why — it is recorded and sent to managers.
   const [overrideReason, setOverrideReason] = useState('')
   const [eventType, setEventType] = useState<'clock_in' | 'clock_out'>('clock_in')
+  const [activeClockInTime, setActiveClockInTime] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) return
     const endpoint = isHomeBased ? `/api/clockin/home/${token}` : `/api/clockin/qr/${token}`
-    fetch(endpoint)
-      .then(r => r.json())
-      .then(data => {
+    const authToken = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
+    const statusPromise = user && authToken
+      ? fetch('/api/clockin/status', { headers: { Authorization: `Bearer ${authToken}` } })
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      : Promise.resolve(null)
+
+    Promise.all([fetch(endpoint).then(r => r.json()), statusPromise])
+      .then(([data, statusData]) => {
         if (!data.success) { setError(data.error || 'Invalid QR code'); setState('error'); return }
         // Normalise home-based response to match SU-based shape
         const info = isHomeBased
           ? { ...data.data, name: data.data.homeName, hasLocation: data.data.hasPostcodes }
           : data.data
         setSuInfo(info)
+        if (statusData?.data?.clockedIn) {
+          setEventType('clock_out')
+          setActiveClockInTime(statusData.data.lastEventTime || null)
+        }
         setState(user ? 'confirming' : 'login_required')
       })
       .catch(() => { setError('Could not load. Check your connection.'); setState('error') })
   }, [token, user])
 
-  const doClockIn = () => {
+  const doClockIn = (forcedType?: 'clock_in' | 'clock_out') => {
+    const activeType = forcedType || eventType
+    if (forcedType) setEventType(forcedType)
     setState('locating')
-    // Clocking OUT is never location-checked, so it must not depend on getting
-    // a GPS fix. If the phone has no location (permission off, indoors, timed
-    // out) the clock-out is sent anyway. Clocking IN still needs a location.
-    //
-    // The server treats clock-out as automatic (one write, then success, no
-    // matter the crowd or what is outstanding), but no network call is
-    // literally unfailable — the phone can still lose signal mid-tap. So a
-    // clock-out retries by itself (up to 3 attempts) and only reports failure
-    // after every attempt has failed — and even then with the server's real
-    // reason when it gave one, never an empty failure.
+    // Clocking OUT is never location-checked, so it never waits on GPS at all.
     const submit = async (pos: GeolocationPosition, attempt = 1): Promise<void> => {
         try {
           const authToken = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
@@ -57,13 +61,13 @@ export default function ClockIn() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
             body: JSON.stringify({
-              homeId: suInfo.homeId,
-              suId: isHomeBased ? undefined : suInfo.suId,
+              homeId: suInfo?.homeId,
+              suId: isHomeBased ? undefined : suInfo?.suId,
               staffLat: pos.coords.latitude,
               staffLng: pos.coords.longitude,
               accuracy: pos.coords.accuracy,
-              eventType,
-              overrideReason: eventType === 'clock_out' && overrideReason.trim().length >= 5 ? overrideReason.trim() : undefined,
+              eventType: activeType,
+              overrideReason: activeType === 'clock_out' && overrideReason.trim().length >= 5 ? overrideReason.trim() : undefined,
             }),
           })
           const data = await res.json()
@@ -74,33 +78,33 @@ export default function ClockIn() {
             setResult(data)
             setState('too_far')
           } else {
-            // A clock-out the server refused WITH a reason is an answer, not a
-            // lost request — but one lost to signal (no usable response) is
-            // worth retrying before telling staff it failed.
-            if (eventType === 'clock_out' && !data.error && attempt < 3) {
+            if (activeType === 'clock_out' && !data.error && attempt < 3) {
               await new Promise(r => setTimeout(r, 1500 * attempt))
               return submit(pos, attempt + 1)
             }
-            setError(data.error || (eventType === 'clock_out'
+            setError(data.error || (activeType === 'clock_out'
               ? 'Could not clock out — check your signal and try again. If it keeps happening, tell your manager the time you finished.'
               : 'Clock-in failed'))
             setErrorReason(data.reason || '')
             setState('error')
           }
         } catch {
-          if (eventType === 'clock_out' && attempt < 3) {
+          if (activeType === 'clock_out' && attempt < 3) {
             await new Promise(r => setTimeout(r, 1500 * attempt))
             return submit(pos, attempt + 1)
           }
-          setError(eventType === 'clock_out'
+          setError(activeType === 'clock_out'
             ? 'Could not clock out — check your signal and try again. If it keeps happening, tell your manager the time you finished.'
             : 'Network error. Please try again.')
           setState('error')
         }
     }
     const sendWithoutLocation = () => submit({ coords: { latitude: undefined, longitude: undefined, accuracy: undefined } } as any)
+    if (activeType === 'clock_out') {
+      sendWithoutLocation()
+      return
+    }
     if (!navigator.geolocation) {
-      if (eventType === 'clock_out') { sendWithoutLocation(); return }
       setError('Your device does not support GPS location. Please enable location services.')
       setState('error')
       return
@@ -108,13 +112,12 @@ export default function ClockIn() {
     navigator.geolocation.getCurrentPosition(
       submit,
       (err) => {
-        if (eventType === 'clock_out') { sendWithoutLocation(); return }
         if (err.code === 1) setError('Location access denied. This is a device/browser setting, not a fault in the app — on iPhone: Settings → Safari (or Chrome) → Location → Ask/Allow. On Android: Chrome menu (⋮) → Settings → Site settings → Location → allow for this site, or check the phone\'s own Location toggle is on. Then reopen this page and try again.')
         else if (err.code === 2) setError('Could not determine your location. Make sure you are outdoors or near a window.')
         else setError('Location timed out. Please try again.')
         setState('error')
       },
-      { enableHighAccuracy: true, timeout: eventType === 'clock_out' ? 6000 : 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
   }
 
@@ -176,6 +179,12 @@ export default function ClockIn() {
                 </div>
               )}
 
+              {activeClockInTime && (
+                <div className="p-3 rounded-xl mb-4 text-xs text-emerald-300 text-center" style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)' }}>
+                  Currently clocked in since {new Date(activeClockInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} — ready to clock out
+                </div>
+              )}
+
               {/* Clock in / Clock out toggle */}
               <div className="flex gap-2 mb-5">
                 <button onClick={() => setEventType('clock_in')}
@@ -200,10 +209,10 @@ export default function ClockIn() {
                 </div>
               )}
 
-              <button onClick={doClockIn}
+              <button onClick={() => doClockIn()}
                 className="w-full py-3.5 rounded-xl font-bold text-slate-900 text-base flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
-                <MapPin className="w-5 h-5" />
+                {eventType === 'clock_in' ? <MapPin className="w-5 h-5" /> : <LogOut className="w-5 h-5" />}
                 {eventType === 'clock_in' ? 'Clock In Now' : 'Clock Out Now'}
               </button>
             </div>
@@ -212,10 +221,16 @@ export default function ClockIn() {
           {state === 'locating' && (
             <div className="text-center py-8">
               <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(212,150,26,0.15)', border: '2px solid rgba(212,150,26,0.3)' }}>
-                <MapPin className="w-8 h-8 text-gold-400 animate-pulse" />
+                {eventType === 'clock_out'
+                  ? <Loader2 className="w-8 h-8 text-gold-400 animate-spin" />
+                  : <MapPin className="w-8 h-8 text-gold-400 animate-pulse" />}
               </div>
-              <h2 className="text-white font-display text-xl mb-2">Getting your location...</h2>
-              <p className="text-slate-400 text-sm">Please allow location access when prompted</p>
+              <h2 className="text-white font-display text-xl mb-2">
+                {eventType === 'clock_out' ? 'Clocking you out...' : 'Getting your location...'}
+              </h2>
+              <p className="text-slate-400 text-sm">
+                {eventType === 'clock_out' ? 'Saving your clock-out record now' : 'Please allow location access when prompted'}
+              </p>
             </div>
           )}
 
@@ -295,6 +310,13 @@ export default function ClockIn() {
                   Go complete them now
                 </button>
               )}
+              {errorReason === 'already_clocked_in' && (
+                <button onClick={() => doClockIn('clock_out')}
+                  className="w-full py-3 rounded-xl font-semibold text-slate-900 mb-3 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #e8b130, #d4961a)' }}>
+                  <LogOut className="w-4 h-4" /> Clock Out Now Instead
+                </button>
+              )}
               {eventType === 'clock_out' && (errorReason === 'medication_incomplete' || errorReason === 'tasks_incomplete') && (
                 <div className="text-left mb-3 p-3 rounded-xl border border-white/15 bg-white/5">
                   <p className="text-white text-sm font-semibold mb-1">Can't finish it? Clock out with a reason</p>
@@ -302,7 +324,7 @@ export default function ClockIn() {
                   <textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)} rows={3}
                     placeholder="e.g. Night staff are giving the 8pm medication; handed over to Sarah."
                     className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm outline-none focus:border-amber-400/60" />
-                  <button onClick={() => { if (overrideReason.trim().length < 5) { setError('Please write a short reason (at least a few words) before clocking out.'); return } doClockIn() }}
+                  <button onClick={() => { if (overrideReason.trim().length < 5) { setError('Please write a short reason (at least a few words) before clocking out.'); return } doClockIn('clock_out') }}
                     className="w-full mt-2 py-2.5 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors">
                     Clock out anyway
                   </button>

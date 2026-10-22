@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -1495,7 +1495,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
             <label className="label">Facility / location</label>
             <input className="input" list="facility-locations" value={location} onChange={e => setLocation(e.target.value)}
               placeholder="e.g. Kitchen, Ground floor, KENNEDY SERVICE..." />
-            <FacilityLocationDatalist homeId={homeId} />
+            <FacilityLocationDatalist homeId={homeId || ''} />
             <p className="text-xs text-slate-400 mt-1">This audit covers the whole service/facility, not one resident — record which one below so it isn't logged as "General".</p>
           </div>
         ) : (
@@ -1526,7 +1526,7 @@ function StartAuditModal({ open, onClose, onGenerate, loading, templates, onTemp
                 <label className="label">Facility / location</label>
                 <input className="input" list="facility-locations" value={location} onChange={e => setLocation(e.target.value)}
                   placeholder="e.g. Kitchen, Ground floor, KENNEDY SERVICE..." />
-                <FacilityLocationDatalist homeId={homeId} />
+                <FacilityLocationDatalist homeId={homeId || ''} />
               </div>
             )}
           </div>

@@ -242,3 +242,26 @@ describe('Midnight & Overnight Shift Selection (pickCurrentShiftIndex)', () => {
     expect(prevDateStr('2027-01-01')).toBe('2026-12-31');
   });
 });
+
+describe('Clock-Out End-to-End Safety Guards', () => {
+  const repoRoot = path.resolve(__dirname, '../../..');
+
+  test('StaffDashboard clock-out handler never passes React SyntheticEvent into JSON payload', () => {
+    const src = fs.readFileSync(path.join(repoRoot, 'frontend/src/pages/dashboard/StaffDashboard.tsx'), 'utf8');
+    expect(src).not.toMatch(/onClick=\{clockOutNow\}/);
+    expect(src).toMatch(/typeof overrideReason === 'string'/);
+  });
+
+  test('QR ClockIn page skips browser geolocation prompt immediately for clock_out and auto-detects open session', () => {
+    const src = fs.readFileSync(path.join(repoRoot, 'frontend/src/pages/clockin/ClockIn.tsx'), 'utf8');
+    expect(src).toContain("if (activeType === 'clock_out') {\n      sendWithoutLocation()\n      return\n    }");
+    expect(src).toContain('/api/clockin/status');
+  });
+
+  test('Backend clock-out endpoint allows clock_out without client homeId and includes overnight shifts', () => {
+    const src = fs.readFileSync(path.join(repoRoot, 'backend/src/routes/clockin.routes.ts'), 'utf8');
+    expect(src).toContain("body('homeId').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isUUID()");
+    expect(src).toContain('openClockInHomeId');
+  });
+});
+

@@ -57,13 +57,19 @@ export default function StaffDashboard() {
   // does it admit failure — and even then with the real reason when the
   // server gave one, never the empty "Failed to clock out".
   const clockOutNow = async (overrideReason?: string) => {
-    if (!user?.homeId) { toast.error('No home is set on your profile — ask a manager to set one before you can clock out'); return }
+    const cleanReason = typeof overrideReason === 'string' && overrideReason.trim().length >= 5
+      ? overrideReason.trim()
+      : undefined
     setClockingOut(true)
     try {
       let lastErr: any = null
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          await api.post('/clockin/event', { homeId: user.homeId, eventType: 'clock_out', overrideReason })
+          await api.post('/clockin/event', {
+            ...(user?.homeId ? { homeId: user.homeId } : {}),
+            eventType: 'clock_out',
+            ...(cleanReason ? { overrideReason: cleanReason } : {}),
+          })
           lastErr = null
           break
         } catch (err: any) {
@@ -97,7 +103,7 @@ export default function StaffDashboard() {
           return
         }
       } catch { /* status check failed too — report the original error below */ }
-      if ((reason === 'medication_incomplete' || reason === 'tasks_incomplete') && !overrideReason) {
+      if ((reason === 'medication_incomplete' || reason === 'tasks_incomplete') && !cleanReason) {
         const why = window.prompt(`${err?.response?.data?.error || 'Something is still outstanding.'}\n\nYou can still clock out — enter a reason (at least 5 characters):`)
         if (why && why.trim().length >= 5) { setClockingOut(false); await clockOutNow(why.trim()); return }
         if (why !== null) toast.error('Reason must be at least 5 characters')
@@ -432,7 +438,7 @@ export default function StaffDashboard() {
           // anywhere — see clockOutNow above for why.
           if (qa.isClockTile && clockedIn) {
             return (
-              <button key={qa.to} type="button" onClick={clockOutNow} disabled={clockingOut}
+              <button key={qa.to} type="button" onClick={() => clockOutNow()} disabled={clockingOut}
                 className="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-start gap-3 hover:shadow-card-hover hover:border-slate-200 transition-all text-left disabled:opacity-60">
                 {tileInner}
               </button>

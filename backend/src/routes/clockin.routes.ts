@@ -144,76 +144,23 @@ router.get('/home/:token', async (req: Request, res: Response, next: NextFunctio
 
 // POST /api/clockin/event — staff clocks in/out with GPS, checked against home postcodes
 router.post('/event', authenticate,
-  // Location is required to clock IN. Clock-OUT is never location-checked, so
-  // it must not be refused just because the phone could not get a GPS fix —
-  // that left staff unable to clock out at all and stuck "clocked in".
-  [body('homeId').isUUID(),
+  // Location and client homeId are required to clock IN. Clock-OUT is never
+  // location-checked and resolves homeId automatically from the open session /
+  // staff profile if omitted (e.g. manager on "All Homes" or missing homeId).
+  [body('homeId').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isUUID(),
    body('staffLat').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isNumeric(),
    body('staffLng').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isNumeric()],
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const staffId = fromToken(req, 'staffId');
-      const { homeId, suId, eventType } = req.body;
+      const { homeId: rawHomeId, suId, eventType } = req.body;
       const staffLat = Number.isFinite(Number(req.body.staffLat)) ? Number(req.body.staffLat) : 0;
       const staffLng = Number.isFinite(Number(req.body.staffLng)) ? Number(req.body.staffLng) : 0;
       const gpsAccuracy = parseFloat(req.body.accuracy) || null;
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-      // Build list of valid check points. Which QR the staff member happened to
-      // scan does NOT decide where they must be — the rota does. If today's rota
-      // has them assigned to a specific resident (a supported-living/outreach
-      // placement, say), they must clock in at THAT resident's address, even if
-      // they scanned the general home QR because that's the only one they have.
-      // Only when the rota has no resident tied to today's shift do we fall back
-      // to the office/home address (and any extra postcodes configured in
-      // Clock-In Admin). The suId the client sends (from a resident-specific QR)
-      // is still honoured as an extra check point, never as the sole source of
-      // truth, so scanning the "right" QR is never required to pass — only to be
-      // physically in the right place.
-      const checkPoints: GeofenceCheckPoint[] = [];
-      const suIdsChecked = new Set<string>();
-
-      const addServiceUserCheckPoint = async (id: string) => {
-        if (!id || suIdsChecked.has(id)) return;
-        suIdsChecked.add(id);
-        const suRows = await query<any>(
-          'SELECT first_name, last_name, room_number, latitude, longitude, geofence_radius FROM service_users WHERE id = $1 AND home_id = $2',
-          [id, homeId]
-        );
-        const su = suRows[0];
-        if (su?.latitude && su?.longitude) {
-          const label = [`${su.first_name} ${su.last_name}`, su.room_number].filter(Boolean).join(', ');
-          checkPoints.push({ lat: parseFloat(su.latitude), lng: parseFloat(su.longitude), label, radius: su.geofence_radius || 200 });
-        }
-      };
-
-      // Same "trim + collapse whitespace + case-insensitive" normalization used
-      // when de-duplicating near-identical rota service labels ("KENNEDY ROAD"
-      // vs "KENNEDY  ROAD ") — a service's saved geofence postcode label has to
-      // survive that same messiness to actually match its shifts.
-      const normalizeLabel = (l?: string | null) => (l || '').trim().replace(/\s+/g, ' ').toUpperCase();
-
-      // UK date, not the server's own UTC clock — see getMyPendingTasksToday for
-      // why this class of bug matters most right around UK midnight during BST.
-      const todayStr = ukDateStr();
-      // These four reads are independent of each other, so they are fired
-      // together, not one after another. At busy changeovers each one can
-      // wait seconds for a database connection, and awaited one-by-one those
-      // waits stack past the phone's 15-second timeout even when nothing is
-      // actually broken — the phone gives up while the server is still
-      // working, which surfaces as "Failed to clock out". Batched, the set
-      // costs roughly one wait instead of four. Behaviour on failure is
-      // unchanged: a failed rota lookup still fails the request, and the two
-      // optional-column reads keep their own fallbacks (see below).
-      const rotaShiftsP = query<any>(
-        `SELECT id, su_id, su_ids, label, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-        [staffId, homeId, todayStr]
-      );
-      const staffRowsP = query<any>('SELECT first_name, last_name, role FROM staff WHERE id = $1', [staffId]);
-      // shift_id may not exist yet on a database whose boot migrations haven't
-      // run (fresh deploy ordering) — read it when present, NULL when absent,
-      // so this lookup (which every clock request runs) can never 500 for
-      // want of an optional column.
+      const staffRowsP = query<any>('SELECT first_name, last_name, role, home_id FROM staff WHERE id = $1', [staffId]);
       const lastEventP: Promise<any[]> = (async () => {
         try {
           return await query<any>(
@@ -239,12 +186,56 @@ router.post('/event', authenticate,
           return true;
         }
       })();
-      const [rotaShifts, staffRows, lastEventRows, hasShiftIdCol] = await Promise.all([rotaShiftsP, staffRowsP, lastEventP, shiftColP]);
+      const [staffRows, lastEventRows, hasShiftIdCol] = await Promise.all([staffRowsP, lastEventP, shiftColP]);
+      const openClockInHomeId = lastEventRows[0]?.event_type === 'clock_in' ? lastEventRows[0]?.home_id : null;
+      const homeId: string =
+        (eventType === 'clock_out' && openClockInHomeId ? openClockInHomeId : null)
+        || (typeof rawHomeId === 'string' && UUID_RE.test(rawHomeId) ? homeId_str(rawHomeId) : null)
+        || staffRows[0]?.home_id
+        || fromToken(req, 'homeId');
+      function homeId_str(v: string) { return v; }
+
+      const checkPoints: GeofenceCheckPoint[] = [];
+      const suIdsChecked = new Set<string>();
+
+      const addServiceUserCheckPoint = async (id: string) => {
+        if (!id || suIdsChecked.has(id)) return;
+        suIdsChecked.add(id);
+        const suRows = await query<any>(
+          'SELECT first_name, last_name, room_number, latitude, longitude, geofence_radius FROM service_users WHERE id = $1 AND home_id = $2',
+          [id, homeId]
+        );
+        const su = suRows[0];
+        if (su?.latitude && su?.longitude) {
+          const label = [`${su.first_name} ${su.last_name}`, su.room_number].filter(Boolean).join(', ');
+          checkPoints.push({ lat: parseFloat(su.latitude), lng: parseFloat(su.longitude), label, radius: su.geofence_radius || 200 });
+        }
+      };
+
+      const normalizeLabel = (l?: string | null) => (l || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
+      const todayStr = ukDateStr();
+      const yesterdayStr = new Date(new Date(`${todayStr}T12:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10);
+      const nowHHMM = ukTimeHHMM();
+      const closingShiftIdEarly: string | null = lastEventRows[0]?.shift_id || null;
+      const allCandidateShifts = homeId
+        ? await query<any>(
+            `SELECT id, su_id, su_ids, label, start_time, end_time, shift_date::text AS shift_date_str
+             FROM staff_shifts
+             WHERE staff_id = $1 AND home_id = $2 AND shift_date IN ($3, $4)
+             ORDER BY shift_date DESC`,
+            [staffId, homeId, todayStr, yesterdayStr]
+          )
+        : [];
+      const rotaShifts = allCandidateShifts.filter((s: any) => {
+        if (s.shift_date_str === todayStr) return true;
+        if (closingShiftIdEarly && s.id === closingShiftIdEarly) return true;
+        return eventType === 'clock_out'
+          ? !!(s.start_time && s.end_time && s.end_time <= s.start_time)
+          : !!(s.start_time && s.end_time && s.end_time <= s.start_time && s.end_time > nowHHMM);
+      });
       const staffRole = staffRows[0]?.role;
-      // Which shift "now" actually belongs to — used by clock-in below to tie
-      // the event to a specific shift, and by the fast clock-out path above to
-      // link the clock-out to a shift where possible.
-      const nowMins = hhmmToMins(ukTimeHHMM())!;
+      const nowMins = hhmmToMins(nowHHMM)!;
       const targetShift = pickShiftForNow(rotaShifts, nowMins);
 
       // ── CLOCK-OUT FAST PATH ──────────────────────────────────────────
@@ -762,22 +753,22 @@ router.post('/force-clockout/:staffId', authenticate,
   param('staffId').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const homeId = req.body.homeId || fromToken(req, 'homeId');
-      const staffRows = await query<any>('SELECT id FROM staff WHERE id = $1 AND home_id = $2', [req.params.staffId, homeId]);
+      const staffRows = await query<any>('SELECT id, home_id FROM staff WHERE id = $1', [req.params.staffId]);
       if (!staffRows.length) throw new AppError('Staff member not found', 404);
 
       const lastEvent = await query<any>(
-        `SELECT event_type FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
+        `SELECT event_type, home_id FROM staff_clock_events WHERE staff_id = $1 ORDER BY event_time DESC LIMIT 1`,
         [req.params.staffId]
       );
       if (lastEvent[0]?.event_type !== 'clock_in') {
         throw new AppError('This staff member is not currently clocked in', 400);
       }
 
+      const targetHomeId = lastEvent[0]?.home_id || req.body.homeId || staffRows[0]?.home_id || fromToken(req, 'homeId');
       await query(
         `INSERT INTO staff_clock_events (staff_id, home_id, event_type, event_time, geofence_passed, punctuality)
          VALUES ($1,$2,'clock_out',NOW(),true,'on_time')`,
-        [req.params.staffId, homeId]
+        [req.params.staffId, targetHomeId]
       );
       res.json({ success: true } as ApiResponse);
     } catch (err) { next(err); }

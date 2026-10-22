@@ -477,7 +477,7 @@ export default function RiskManagement() {
   const getName = (su: any) =>
     `${su.first_name || su.firstName || ''} ${su.last_name || su.lastName || ''}`.trim()
 
-  const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const setF = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }))
 
   // The stored assessment_name is derived from the fixed type dropdown (or the
   // custom name when "Custom / Other" is picked) rather than free text.
@@ -1009,7 +1009,7 @@ export default function RiskManagement() {
 }
 
 function PlanForm({ form, setF, sus, getName, saving, onSave, onCancel, isEdit }: {
-  form: any; setF: (k: string, v: string) => void; sus: any[]; getName: (s: any) => string;
+  form: any; setF: (k: string, v: any) => void; sus: any[]; getName: (s: any) => string;
   saving: boolean; onSave: () => void; onCancel: () => void; isEdit?: boolean
 }) {
   const derivedRiskLevel = form.riskRatingOption

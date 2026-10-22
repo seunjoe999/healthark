@@ -119,13 +119,13 @@ function Sparkline({ data }: { data: Record<string, number> }) {
 function ManagerClockOutBanner({ homeId, onClockedOut }: { homeId: string; onClockedOut: () => void }) {
   const [busy, setBusy] = useState(false)
   const clockOut = async () => {
-    if (!homeId || busy) return
+    if (busy) return
     setBusy(true)
     try {
       let lastErr: any = null
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          await api.post('/clockin/event', { homeId, eventType: 'clock_out' })
+          await api.post('/clockin/event', { ...(homeId ? { homeId } : {}), eventType: 'clock_out' })
           lastErr = null
           break
         } catch (err: any) {
@@ -475,7 +475,7 @@ export default function Dashboard() {
           end it and looked stuck. Same automatic server clock-out as the staff
           tile, with the same self-retry. */}
       {!loading && clockedIn && (
-        <ManagerClockOutBanner homeId={selectedHome} onClockedOut={() => setClockedIn(false)} />
+        <ManagerClockOutBanner homeId={selectedHome || user?.homeId || ''} onClockedOut={() => setClockedIn(false)} />
       )}
 
       {!loading && healthReviewsDue.length > 0 && (

@@ -2948,7 +2948,7 @@ function ShiftDetailModal({ shift, canManage, canSeeFinancials, onClose, onDelet
     if (!window.confirm(`Clock ${shift.staff_name || 'this staff member'} out now? Use this when they're stuck clocked in and can't clock out themselves.`)) return
     setForcingOut(true)
     try {
-      await api.post(`/clockin/force-clockout/${shift.staff_id}`)
+      await api.post(`/clockin/force-clockout/${shift.staff_id}`, { homeId: shift.home_id })
       toast.success(`${shift.staff_name || 'Staff member'} clocked out`)
       onLinked() // closes the modal and reloads shifts
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to clock out') }
