@@ -77,21 +77,31 @@ function lsSet(k: string, v: string) { try { localStorage.setItem(k, v) } catch 
 function lsDel(k: string) { try { localStorage.removeItem(k) } catch {} }
 // The day the password was last used on this device. Sessions from before this
 // rule existed have no record; they count as today so nobody is thrown out mid-task.
+const OVERNIGHT_SHIFT_GRACE_MS = 18 * 60 * 60 * 1000
 function signInDayIsOver(): boolean {
   const d = lsGet('ha_login_day')
   if (!d) { lsSet('ha_login_day', ukDay()); return false }
-  return d !== ukDay()
+  if (d === ukDay()) return false
+  // Overnight 20:00–08:00 staff sign in with their password the evening before
+  // and work past midnight — keep PIN unlock valid through their full shift window.
+  const loginAt = Number(lsGet('ha_login_at') || 0)
+  if (loginAt > 0 && Date.now() - loginAt < OVERNIGHT_SHIFT_GRACE_MS) return false
+  return true
 }
 function idleTooLong(role?: string | null): boolean {
   const t = Number(lsGet('ha_last_active') || 0)
   return t > 0 && Date.now() - t > idleLimit(role)
 }
 
-function saveSession(token: string, user: AuthUser) {
+function saveSession(token: string, user: AuthUser, refreshToken?: string) {
   ;(window as any).__HA_TOKEN__ = token
   ;(window as any).__HA_USER__ = user
   try { sessionStorage.setItem('ha_token', token); sessionStorage.setItem('ha_user', JSON.stringify(user)) } catch {}
-  try { localStorage.setItem('ha_token', token); localStorage.setItem('ha_user', JSON.stringify(user)) } catch {}
+  try {
+    localStorage.setItem('ha_token', token)
+    localStorage.setItem('ha_user', JSON.stringify(user))
+    if (refreshToken) localStorage.setItem('ha_refresh', refreshToken)
+  } catch {}
   setCookie('ha_token', token, 1)
   setCookie('ha_user', JSON.stringify(user), 1)
 }
@@ -99,7 +109,11 @@ function saveSession(token: string, user: AuthUser) {
 function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
-    return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()
+    if (typeof payload.exp === 'number' && payload.exp * 1000 >= Date.now()) return false
+    // Allow legacy 8h tokens issued within the active 24h shift window so the
+    // backend/interceptor can seamlessly upgrade them to a fresh 24h token.
+    if (typeof payload.iat === 'number' && (Date.now() - payload.iat * 1000) < 24 * 3600 * 1000) return false
+    return true
   } catch { return true }
 }
 
@@ -155,10 +169,10 @@ function clearSession() {
   ;(window as any).__HA_TOKEN__ = null
   ;(window as any).__HA_USER__ = null
   try { sessionStorage.removeItem('ha_token'); sessionStorage.removeItem('ha_user') } catch {}
-  try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user') } catch {}
+  try { localStorage.removeItem('ha_token'); localStorage.removeItem('ha_user'); localStorage.removeItem('ha_refresh') } catch {}
   deleteCookie('ha_token')
   deleteCookie('ha_user')
-  lsDel('ha_login_day'); lsDel('ha_last_active'); lsDel('ha_locked')
+  lsDel('ha_login_day'); lsDel('ha_login_at'); lsDel('ha_last_active'); lsDel('ha_locked')
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -280,26 +294,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, pin?: string) => {
     const res = await authApi.login(email, password, pin)
-    const { accessToken, staff } = res.data.data
+    const { accessToken, refreshToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
-    saveSession(accessToken, authUser)
+    saveSession(accessToken, authUser, refreshToken)
     lsSet('ha_login_day', ukDay())
+    lsSet('ha_login_at', String(Date.now()))
     setPinUnlock(false)
     setUser(authUser)
     checkForAppUpdate()
-    // A fresh login is always a safe moment to reload — there's nothing
-    // in-progress to lose — so it's the one place an update applies silently
-    // and automatically rather than just prompting.
     reloadIfNewVersion()
   }
 
   const loginWithPin = async (email: string, pin: string) => {
     const res = await authApi.pinLogin(email, pin)
-    const { accessToken, staff } = res.data.data
+    const { accessToken, refreshToken, staff } = res.data.data
     const authUser = parseUser(staff as Record<string, unknown>)
-    saveSession(accessToken, authUser)
-    // The server only accepts the PIN once the password has been used today.
+    saveSession(accessToken, authUser, refreshToken)
     lsSet('ha_login_day', ukDay())
+    lsSet('ha_login_at', String(Date.now()))
     setPinUnlock(false)
     setUser(authUser)
     checkForAppUpdate()
@@ -320,9 +332,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user?.email) { logout(); return }
     try {
       const res = await authApi.pinLogin(user.email, pin)
-      const { accessToken, staff } = res.data.data
+      const { accessToken, refreshToken, staff } = res.data.data
       const authUser = parseUser(staff as Record<string, unknown>)
-      saveSession(accessToken, authUser)
+      saveSession(accessToken, authUser, refreshToken)
       setUser(authUser)
       setPinUnlock(false)
       setPinUnlockError('')

@@ -175,7 +175,7 @@ export class AuthService {
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new AppError('JWT_SECRET not configured', 500);
     return jwt.sign(payload, secret, {
-      expiresIn: process.env.JWT_EXPIRES_IN as import('jsonwebtoken').SignOptions['expiresIn'] || '8h',
+      expiresIn: process.env.JWT_EXPIRES_IN as import('jsonwebtoken').SignOptions['expiresIn'] || '24h',
     });
   }
 

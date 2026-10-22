@@ -14,8 +14,10 @@ const router = Router();
 function nd(v: any): string | null { return v && String(v).trim() ? String(v).trim() : null; }
 
 
+const SHIFT_TOKEN_TTL_SECONDS = 24 * 3600;
+
 const signAccess = (payload: object) =>
-  jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: (process.env.JWT_EXPIRES_IN || '8h') as any });
+  jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any });
 const signRefresh = (payload: object) =>
   jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '30d') as any });
 
@@ -131,8 +133,12 @@ router.post('/pin-login',
       const { pin } = req.body;
       const rows = await query<any>(
         `SELECT id, email, login_pin_hash, role, status, is_active,
-                ((COALESCE(last_password_login, last_login) AT TIME ZONE 'Europe/London')::date
-                  = (NOW() AT TIME ZONE 'Europe/London')::date) AS password_today
+                (
+                  ((COALESCE(last_password_login, last_login) AT TIME ZONE 'Europe/London')::date
+                    = (NOW() AT TIME ZONE 'Europe/London')::date)
+                  OR (COALESCE(last_password_login, last_login) >= NOW() - INTERVAL '18 hours')
+                  OR ((SELECT event_type FROM staff_clock_events WHERE staff_id = staff.id ORDER BY event_time DESC LIMIT 1) = 'clock_in')
+                ) AS password_today
            FROM staff WHERE LOWER(email) = $1`,
         [email]
       );
@@ -446,6 +452,59 @@ router.post('/setup',
   }
 );
 
+// POST /api/auth/refresh — silently rotate an active session token (supports both refreshToken and active shift access token)
+router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const refreshCandidate = req.body?.refreshToken as string | undefined;
+    const authHeader = req.headers.authorization;
+    const bearerCandidate = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+
+    let staffId: string | undefined;
+    if (refreshCandidate && process.env.JWT_REFRESH_SECRET) {
+      try {
+        const dec = jwt.verify(refreshCandidate, process.env.JWT_REFRESH_SECRET) as any;
+        staffId = dec?.staffId;
+      } catch {}
+    }
+    if (!staffId && bearerCandidate && process.env.JWT_SECRET) {
+      try {
+        const dec = jwt.verify(bearerCandidate, process.env.JWT_SECRET, { ignoreExpiration: true }) as any;
+        const ageSec = Math.floor(Date.now() / 1000) - Number(dec?.iat || 0);
+        if (dec?.staffId && ageSec >= 0 && ageSec <= SHIFT_TOKEN_TTL_SECONDS) {
+          staffId = dec.staffId;
+        }
+      } catch {}
+    }
+    if (!staffId) {
+      res.status(401).json({ success: false, error: 'Session expired. Please sign in again.' } as ApiResponse);
+      return;
+    }
+
+    const rows = await query<any>(
+      'SELECT id, email, role, home_id, organisation_id, is_active, status FROM staff WHERE id = $1',
+      [staffId]
+    );
+    const s = rows[0];
+    if (!s || !s.is_active || s.status === 'terminated' || s.status === 'pending') {
+      res.status(401).json({ success: false, error: 'Session ended. Please sign in again.' } as ApiResponse);
+      return;
+    }
+
+    const payload = {
+      staffId: s.id,
+      organisationId: s.organisation_id ?? null,
+      homeId: s.home_id,
+      role: s.role,
+      email: s.email,
+    };
+    const accessToken = signAccess(payload);
+    const newRefresh = signRefresh(payload);
+    await query('UPDATE staff SET refresh_token = $1 WHERE id = $2', [newRefresh, s.id]).catch(() => {});
+
+    res.json({ success: true, data: { accessToken, refreshToken: newRefresh } } as ApiResponse);
+  } catch (err) { next(err); }
+});
+
 // POST /api/auth/logout
 router.post('/logout', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -515,15 +574,39 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
 
 // GET /api/auth/events?token=xxx — SSE stream; pushes 'access-refresh' when role rights change
 // EventSource cannot send Authorization headers, so token is passed as query param
-router.get('/events', (req: Request, res: Response) => {
+router.get('/events', async (req: Request, res: Response) => {
   const token = (req.query.token as string) || req.headers.authorization?.substring(7) || '';
   let homeId = '';
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
     homeId = decoded?.homeId || '';
-  } catch {
-    res.status(401).end();
-    return;
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!, { ignoreExpiration: true }) as any;
+        const ageSec = Math.floor(Date.now() / 1000) - Number(decoded?.iat || 0);
+        if (!decoded?.staffId || ageSec < 0 || ageSec > SHIFT_TOKEN_TTL_SECONDS) {
+          res.status(401).end();
+          return;
+        }
+        const rows = await query<any>(
+          'SELECT home_id, is_active, status FROM staff WHERE id = $1',
+          [decoded.staffId]
+        );
+        const s = rows[0];
+        if (!s || !s.is_active || s.status === 'terminated') {
+          res.status(401).end();
+          return;
+        }
+        homeId = decoded?.homeId || s.home_id || '';
+      } catch {
+        res.status(401).end();
+        return;
+      }
+    } else {
+      res.status(401).end();
+      return;
+    }
   }
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');

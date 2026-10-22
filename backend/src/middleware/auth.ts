@@ -13,6 +13,8 @@ declare global {
 }
 
 // ── Verify JWT and attach staff to request ──────────────────────
+const SHIFT_TOKEN_TTL_SECONDS = 24 * 3600;
+
 export async function authenticate(
   req: Request,
   res: Response,
@@ -29,7 +31,28 @@ export async function authenticate(
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new Error('JWT_SECRET not configured');
 
-    const payload = jwt.verify(token, secret) as JwtPayload;
+    let payload: JwtPayload;
+    let shouldRenewHeader = false;
+    try {
+      payload = jwt.verify(token, secret) as JwtPayload;
+    } catch (verifyErr) {
+      if (verifyErr instanceof jwt.TokenExpiredError) {
+        // Legacy pre-fix tokens carried an 8h exp, cutting off 12-hour care shifts
+        // at hour 8 (e.g. 04:00 on night shifts / 16:00 on day shifts). Honour
+        // cryptographically valid tokens within the full 24h shift window while
+        // issuing a fresh 24h token header so open devices upgrade transparently.
+        const ig = jwt.verify(token, secret, { ignoreExpiration: true }) as JwtPayload & { iat?: number; exp?: number };
+        const ageSec = Math.floor(Date.now() / 1000) - Number(ig?.iat || 0);
+        const origLifetimeSec = Number(ig?.exp || 0) - Number(ig?.iat || 0);
+        if (!ig?.staffId || origLifetimeSec < 3600 || ageSec < 0 || ageSec > SHIFT_TOKEN_TTL_SECONDS) {
+          throw verifyErr;
+        }
+        payload = ig;
+        shouldRenewHeader = true;
+      } else {
+        throw verifyErr;
+      }
+    }
 
     // Verify staff still active in database (not terminated/suspended since token issued)
     const rows = await query<{ is_active: boolean; status: string; organisation_id: string; role: string }>(
@@ -56,6 +79,14 @@ export async function authenticate(
     // immediately instead.
     if (rows[0].role && rows[0].role !== payload.role) {
       payload.role = rows[0].role as StaffRole;
+    }
+
+    if (shouldRenewHeader) {
+      const { iat: _iat, exp: _exp, ...cleanClaims } = payload as JwtPayload & { iat?: number; exp?: number };
+      const freshToken = jwt.sign(cleanClaims, secret, {
+        expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any,
+      });
+      res.setHeader('X-Renewed-Token', freshToken);
     }
 
     req.staff = payload;

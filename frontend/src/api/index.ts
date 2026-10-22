@@ -76,11 +76,75 @@ function isTransient(err: any): boolean {
   return [502, 503, 504].includes(err.response.status)
 }
 
-// NEVER redirect on 401 - let components handle their own auth errors
+function storeRenewedToken(accessToken: string, refreshToken?: string) {
+  ;(window as any).__HA_TOKEN__ = accessToken
+  try { sessionStorage.setItem('ha_token', accessToken) } catch {}
+  try { localStorage.setItem('ha_token', accessToken) } catch {}
+  if (refreshToken) {
+    try { localStorage.setItem('ha_refresh', refreshToken) } catch {}
+  }
+}
+
+let refreshInFlight: Promise<string | null> | null = null
+async function tryRefreshSession(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    try {
+      const rt = localStorage.getItem('ha_refresh') || undefined
+      const current = getToken() || undefined
+      if (!rt && !current) return null
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(current ? { Authorization: `Bearer ${current}` } : {}),
+        },
+        body: JSON.stringify({ refreshToken: rt }),
+      })
+      if (!res.ok) return null
+      const json = await res.json()
+      const nextToken = json?.data?.accessToken as string | undefined
+      if (!nextToken) return null
+      storeRenewedToken(nextToken, json?.data?.refreshToken)
+      return nextToken
+    } catch {
+      return null
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+  return refreshInFlight
+}
+
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    const renewed = res.headers?.['x-renewed-token']
+    if (typeof renewed === 'string' && renewed.length > 20) {
+      storeRenewedToken(renewed)
+    }
+    return res
+  },
   async (err) => {
     const config = err.config
+    const url = String(config?.url || '')
+    // Transparently renew mid-shift expired tokens; if truly unauthenticated, notify AuthContext cleanly
+    if (
+      err?.response?.status === 401 &&
+      config &&
+      !config.__retriedAuth &&
+      !url.includes('/auth/login') &&
+      !url.includes('/auth/pin-login') &&
+      !url.includes('/auth/refresh')
+    ) {
+      config.__retriedAuth = true
+      const fresh = await tryRefreshSession()
+      if (fresh) {
+        config.headers = config.headers || {}
+        config.headers.Authorization = `Bearer ${fresh}`
+        return api(config)
+      }
+      window.dispatchEvent(new Event('ha:unauthorized'))
+    }
     if (config && isTransient(err) && config.method !== 'post' && config.method !== 'put' && config.method !== 'patch' && config.method !== 'delete') {
       config.__retryCount = config.__retryCount || 0
       if (config.__retryCount < MAX_RETRIES) {
