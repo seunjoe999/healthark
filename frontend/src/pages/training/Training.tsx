@@ -421,24 +421,34 @@ export default function Training() {
             <h2 className="font-display text-lg text-slate-900 font-semibold flex items-center gap-2">
               <Award className="w-5 h-5 text-purple-500" /> External Training &amp; Courses
             </h2>
-            {/* Filter tabs */}
-            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+            {/* High-contrast solid filter tabs */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setCourseFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${courseFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                className="px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all shadow-sm"
+                style={{
+                  background: courseFilter === 'all' ? '#f59e0b' : '#fde047',
+                  color: '#0f172a',
+                  border: courseFilter === 'all' ? '2px solid #0f172a' : '1.5px solid #ca8a04',
+                }}>
                 All
               </button>
               <button
                 onClick={() => setCourseFilter('expiring')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${courseFilter === 'expiring' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                <AlertTriangle className="w-3 h-3" /> Expiring Soon
+                className="px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center gap-1"
+                style={{
+                  background: courseFilter === 'expiring' ? '#f59e0b' : '#fde047',
+                  color: '#0f172a',
+                  border: courseFilter === 'expiring' ? '2px solid #0f172a' : '1.5px solid #ca8a04',
+                }}>
+                <AlertTriangle className="w-3.5 h-3.5" /> Expiring Soon
                 {(() => {
                   const count = externalCourses.filter(c => {
                     if (!c.expiry_date) return false
                     const days = differenceInDays(new Date(c.expiry_date), new Date())
                     return days < 0 || days <= 30
                   }).length
-                  return count > 0 ? <span className="ml-1 bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 text-xs">{count}</span> : null
+                  return count > 0 ? <span className="ml-1 bg-rose-600 text-white rounded-full px-1.5 py-0.5 text-xs font-bold">{count}</span> : null
                 })()}
               </button>
             </div>

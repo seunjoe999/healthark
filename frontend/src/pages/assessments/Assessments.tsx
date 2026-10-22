@@ -39,6 +39,15 @@ function AuditHistoryCard({ a, templateName }: { a: any; templateName: string })
               <p className="font-semibold text-slate-900 text-sm">{a.subject_name}</p>
               <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">{templateName}</span>
               {a.risk_level && <RiskBadge level={a.risk_level} />}
+              {a.staff_signature ? (
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
+                  Signed Off ✓
+                </span>
+              ) : (
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-200 text-slate-900">
+                  Pending Staff Sign-Off
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-4 text-xs text-slate-400">
               <span>{format(new Date(a.assessment_date), 'd MMM yyyy')}</span>
@@ -134,7 +143,7 @@ export default function Assessments() {
 
   const openStart = (t: any) => {
     setSelectedTemplate(t)
-    setSubjectId('')
+    setSubjectId(searchParams.get('staffId') || '')
     setStartModal(true)
   }
 

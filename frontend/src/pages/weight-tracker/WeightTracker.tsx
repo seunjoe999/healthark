@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Scale, Plus, Trash2, TrendingUp, Edit, Eye } from 'lucide-react'
+import { Scale, Plus, Trash2, TrendingUp, Edit, Eye, Printer, Download } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import { UniformFilterBar } from '../../components/ui/FilterBar'
 import api from '../../api'
@@ -8,6 +8,7 @@ import clsx from 'clsx'
 import { format, parseISO } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useTheme } from '../../context/ThemeContext'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 
 interface WeightRecord {
   id: string
@@ -275,6 +276,60 @@ export default function WeightTracker() {
   const suOptions = serviceUsers.map((s: any) => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))
   const latestRecord = filteredRecords[0]
 
+  const handlePrint = () => {
+    const selectedResident = serviceUsers.find((s: any) => s.id === selectedSU)
+    const residentLabel = selectedResident ? `${selectedResident.first_name} ${selectedResident.last_name}` : 'All Service Users'
+    const rowsHtml = filteredRecords.map(r => `
+      <tr>
+        <th>${r.record_date ? fmtDate(r.record_date) : '—'}<br/><span style="font-weight:700;font-size:10px">${esc(r.su_name || '')}</span></th>
+        <td>
+          <strong>Weight:</strong> ${parseFloat(r.weight_kg).toFixed(1)} kg
+          ${r.height_cm ? ` · <strong>Height:</strong> ${parseFloat(r.height_cm).toFixed(1)} cm` : ''}
+          ${r.bmi ? ` · <strong>BMI:</strong> ${parseFloat(r.bmi).toFixed(1)}` : ''}
+          ${r.recorded_by_name ? `<br/><strong>Recorded By:</strong> ${esc(r.recorded_by_name)}` : ''}
+          ${r.notes ? `<br/><em>${esc(r.notes)}</em>` : ''}
+        </td>
+      </tr>
+    `).join('')
+    const body = buildLetterheadPage({
+      docTitle: 'Weight / BMI Tracker Report',
+      docSubtitle: 'Clinical weight and Body Mass Index monitoring history',
+      docRefPrefix: 'WGT',
+      docRefId: selectedSU || format(new Date(), 'yyyyMMdd'),
+      residentName: residentLabel,
+      sections: [
+        {
+          title: `Recorded Weight Entries (${filteredRecords.length})`,
+          inner: filteredRecords.length ? `<table class="fields">${rowsHtml}</table>` : '<p class="body-text muted">No weight records for the selected filters.</p>',
+        },
+      ],
+    })
+    openLetterheadPrint(`${residentLabel} — Weight / BMI Tracker`, body)
+  }
+
+  const handleDownloadCsv = () => {
+    const headers = ['Date', 'Service User', 'Weight (kg)', 'Height (cm)', 'BMI', 'Notes', 'Recorded By']
+    const rows = filteredRecords.map(r => [
+      r.record_date ? r.record_date.slice(0, 10) : '',
+      r.su_name || '',
+      r.weight_kg || '',
+      r.height_cm || '',
+      r.bmi || '',
+      r.notes || '',
+      r.recorded_by_name || '',
+    ])
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `weight-bmi-tracker-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto" style={{ background: pageBg, minHeight: '100vh' }}>
       {/* Header */}
@@ -285,9 +340,17 @@ export default function WeightTracker() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Monitor resident weight and body mass index over time — click any row to view or edit</p>
         </div>
-        <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setDetailRecord(null); setForm({ ...defaultForm, suId: selectedSU }); setShowAdd(true) }}>
-          Add Reading
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" icon={<Download className="w-4 h-4" />} onClick={handleDownloadCsv}>
+            Download CSV
+          </Button>
+          <Button variant="outline" icon={<Printer className="w-4 h-4" />} onClick={handlePrint}>
+            Print / PDF
+          </Button>
+          <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingId(null); setDetailRecord(null); setForm({ ...defaultForm, suId: selectedSU }); setShowAdd(true) }}>
+            Add Reading
+          </Button>
+        </div>
       </div>
 
       {/* Uniform Filter Bar */}

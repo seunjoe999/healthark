@@ -1,5 +1,5 @@
-const CACHE = 'compcare-v19';
-const DYNAMIC_CACHE = 'compcare-dynamic-v19';
+const CACHE = 'compcare-v20';
+const DYNAMIC_CACHE = 'compcare-dynamic-v20';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE = [

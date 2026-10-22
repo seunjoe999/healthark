@@ -355,11 +355,53 @@ router.post('/oral-hygiene', async (req, res) => {
 
 // ─── CATHETER CARE ───────────────────────────────────────────────────────────
 
+router.get('/catheter', async (req, res) => {
+  try {
+    const homeId = (req.query.homeId as string) || (req as any).staff?.homeId || ''
+    const suId = (req.query.suId as string) || ''
+    const from = (req.query.from as string) || ''
+    const to = (req.query.to as string) || ''
+    const search = ((req.query.search as string) || '').trim()
+
+    let sql = `
+      SELECT c.*,
+             su.first_name || ' ' || su.last_name AS su_name,
+             s.first_name || ' ' || s.last_name AS staff_name
+      FROM catheter_care_logs c
+      LEFT JOIN service_users su ON su.id = c.su_id
+      LEFT JOIN staff s ON s.id = c.staff_id
+      WHERE 1 = 1
+    `
+    const params: any[] = []
+    if (homeId) { params.push(homeId); sql += ` AND c.home_id = $${params.length}` }
+    if (suId) { params.push(suId); sql += ` AND c.su_id = $${params.length}` }
+    if (from) { params.push(from); sql += ` AND c.recorded_at::date >= $${params.length}::date` }
+    if (to) { params.push(to); sql += ` AND c.recorded_at::date <= $${params.length}::date` }
+    if (search) {
+      params.push(`%${search}%`)
+      sql += ` AND (
+        COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE $${params.length}
+        OR COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE $${params.length}
+        OR COALESCE(c.catheter_type, '') ILIKE $${params.length}
+        OR COALESCE(c.urine_colour, '') ILIKE $${params.length}
+        OR COALESCE(c.batch_no, '') ILIKE $${params.length}
+        OR COALESCE(c.notes, '') ILIKE $${params.length}
+      )`
+    }
+    sql += ' ORDER BY c.recorded_at DESC LIMIT 250'
+    const rows = await query<any>(sql, params)
+    res.json({ success: true, data: rows })
+  } catch (e) { res.status(500).json({ error: 'Failed' }) }
+})
+
 router.get('/catheter/:suId', async (req, res) => {
   try {
     const rows = await query<any>(`
-      SELECT c.*, s.first_name || ' ' || s.last_name AS staff_name
+      SELECT c.*,
+             su.first_name || ' ' || su.last_name AS su_name,
+             s.first_name || ' ' || s.last_name AS staff_name
       FROM catheter_care_logs c
+      LEFT JOIN service_users su ON su.id = c.su_id
       LEFT JOIN staff s ON s.id = c.staff_id
       WHERE c.su_id = $1
       ORDER BY c.recorded_at DESC LIMIT 100
@@ -371,11 +413,47 @@ router.get('/catheter/:suId', async (req, res) => {
 router.post('/catheter', async (req, res) => {
   const { suId, homeId, catheterType, cathSize, insertedDate, changeDate, batchNo, urineColour, urineAmountMl, complications, actions, notes, staffId } = req.body
   try {
-    await query(`
+    const rows = await query<any>(`
       INSERT INTO catheter_care_logs (su_id, home_id, catheter_type, cath_size, inserted_date, change_date, batch_no, urine_colour, urine_amount_ml, complications, actions, notes, staff_id)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      RETURNING *
     `, [suId, homeId, catheterType || null, cathSize || null, insertedDate || null, changeDate || null, batchNo || null, urineColour, urineAmountMl || null, JSON.stringify(complications || []), JSON.stringify(actions || []), notes, staffId])
-    res.json({ success: true })
+    res.json({ success: true, data: rows[0] })
+  } catch (e) { res.status(500).json({ error: 'Failed' }) }
+})
+
+router.put('/catheter/:id', async (req, res) => {
+  const { catheterType, cathSize, insertedDate, changeDate, batchNo, urineColour, urineAmountMl, complications, actions, notes } = req.body
+  try {
+    const rows = await query<any>(`
+      UPDATE catheter_care_logs
+      SET catheter_type = COALESCE($1, catheter_type),
+          cath_size = $2,
+          inserted_date = $3,
+          change_date = $4,
+          batch_no = $5,
+          urine_colour = COALESCE($6, urine_colour),
+          urine_amount_ml = $7,
+          complications = $8,
+          actions = $9,
+          notes = $10
+      WHERE id = $11
+      RETURNING *
+    `, [
+      catheterType || null,
+      cathSize || null,
+      insertedDate || null,
+      changeDate || null,
+      batchNo || null,
+      urineColour || null,
+      urineAmountMl !== '' && urineAmountMl !== undefined && urineAmountMl !== null ? urineAmountMl : null,
+      JSON.stringify(complications || []),
+      JSON.stringify(actions || []),
+      notes ?? null,
+      req.params.id,
+    ])
+    if (!rows.length) return res.status(404).json({ error: 'Record not found' })
+    res.json({ success: true, data: rows[0] })
   } catch (e) { res.status(500).json({ error: 'Failed' }) }
 })
 

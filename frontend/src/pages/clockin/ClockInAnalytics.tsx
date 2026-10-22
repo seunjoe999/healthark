@@ -86,6 +86,8 @@ export default function ClockInAnalytics() {
   const { user } = useAuth()
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
+  const [staffList, setStaffList] = useState<any[]>([])
+  const [staffFilter, setStaffFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
 
@@ -103,16 +105,31 @@ export default function ClockInAnalytics() {
     }).catch(console.error)
   }, [user])
 
+  // Load staff list for selected home
+  useEffect(() => {
+    if (!selectedHome) return
+    api.get('/staff', { params: { homeId: selectedHome } })
+      .then(res => setStaffList(res.data.data || []))
+      .catch(() => setStaffList([]))
+  }, [selectedHome])
+
   // Load analytics
   const loadAnalytics = () => {
     if (!selectedHome) return
     setLoading(true)
-    api.get('/clockin/analytics', { params: { homeId: selectedHome, startDate, endDate } })
+    api.get('/clockin/analytics', {
+      params: {
+        homeId: selectedHome,
+        startDate,
+        endDate,
+        staffId: staffFilter || undefined,
+      },
+    })
       .then(res => setData(res.data.data))
       .catch(() => toast.error('Failed to load analytics'))
       .finally(() => setLoading(false))
   }
-  useEffect(loadAnalytics, [selectedHome, startDate, endDate])
+  useEffect(loadAnalytics, [selectedHome, startDate, endDate, staffFilter])
 
   const [forcingOut, setForcingOut] = useState<string | null>(null)
   const forceClockOut = async (staffId: string, staffName: string) => {
@@ -212,16 +229,31 @@ export default function ClockInAnalytics() {
           {homeName && <p className="text-slate-500 text-sm mt-0.5">{homeName}</p>}
         </div>
 
-        {/* Selectors */}
-        <div className="flex flex-wrap gap-2 items-end">
+        {/* Selectors — Home, Staff Name dropdown, From, To */}
+        <div className="flex flex-wrap gap-2.5 items-end">
           {homes.length > 1 && (
             <div>
               <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1 block">Home</label>
-              <select className="input w-auto" value={selectedHome} onChange={e => setSelectedHome(e.target.value)}>
+              <select className="input w-auto" value={selectedHome} onChange={e => { setSelectedHome(e.target.value); setStaffFilter('') }}>
                 {homes.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
             </div>
           )}
+          <div>
+            <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1 block">Staff Name</label>
+            <select
+              className="input min-w-[200px]"
+              value={staffFilter}
+              onChange={e => setStaffFilter(e.target.value)}
+            >
+              <option value="">All Staff Members</option>
+              {staffList.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {`${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1 block">From</label>
             <input type="date" className="input" value={startDate} onChange={e => { if (e.target.value) setStartDate(e.target.value) }} />
@@ -232,13 +264,14 @@ export default function ClockInAnalytics() {
           </div>
           {/* Quick presets */}
           <button
-            className="text-xs text-indigo-600 hover:underline self-end pb-2"
+            className="text-xs text-indigo-600 hover:underline self-end pb-2 font-semibold"
             onClick={() => {
+              setStaffFilter('')
               setStartDate(format(getMonday(new Date()), 'yyyy-MM-dd'))
               setEndDate(format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'))
             }}
           >
-            This week
+            Reset / This week
           </button>
           {data && (
             <button

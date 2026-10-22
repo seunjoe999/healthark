@@ -250,6 +250,7 @@ export default function TrainingMatrix() {
   const [data, setData] = useState<MatrixData | null>(null)
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
+  const [staffSearch, setStaffSearch] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [customCourseMode, setCustomCourseMode] = useState(false)
   const [addForm, setAddForm] = useState({ staffId: '', courseName: '', completedDate: ukDateStr(), expiryDate: '' })
@@ -327,7 +328,10 @@ export default function TrainingMatrix() {
 
   // Derived stats
   const filteredStaff = data
-    ? data.staff.filter(s => !roleFilter || s.role === roleFilter)
+    ? data.staff.filter(s =>
+        (!roleFilter || s.role === roleFilter) &&
+        (!staffSearch.trim() || s.name.toLowerCase().includes(staffSearch.trim().toLowerCase()))
+      )
     : []
 
   const stats = React.useMemo(() => {
@@ -370,19 +374,22 @@ export default function TrainingMatrix() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}
+            className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm"
+            style={{ background: '#e8b130' }}
           >
-            <Grid3X3 className="w-5 h-5 text-violet-400" />
+            <Grid3X3 className="w-5 h-5" style={{ color: '#0f172a' }} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Mandatory Training Matrix</h1>
-            <p className="text-xs text-slate-400">Compliance overview for all mandatory training</p>
+            <h1 className={`text-2xl font-extrabold ${neutralText}`}>Mandatory Training Matrix</h1>
+            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+              Compliance overview for all mandatory training courses
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 print:hidden">
           <Button
             size="sm"
+            variant="gold"
             icon={<Plus className="w-4 h-4" />}
             onClick={() => setAddOpen(true)}
           >
@@ -399,85 +406,105 @@ export default function TrainingMatrix() {
         </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* High-contrast solid Stats bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Fully Compliant', value: stats.fullyCompliant, color: '#15803d', bg: 'rgba(74,222,128,0.08)', icon: <CheckCircle className="w-4 h-4 text-emerald-600" /> },
-          { label: 'Staff with Gaps', value: stats.withGaps, color: '#b91c1c', bg: 'rgba(239,68,68,0.08)', icon: <XCircle className="w-4 h-4 text-rose-600" /> },
-          { label: 'Items Expiring', value: stats.expiring, color: '#b45309', bg: 'rgba(251,191,36,0.08)', icon: <AlertTriangle className="w-4 h-4 text-amber-600" /> },
-        ].map(({ label, value, color, bg, icon }) => (
+          { label: 'Fully Compliant', value: stats.fullyCompliant, bg: '#16a34a', fg: '#ffffff', icon: <CheckCircle className="w-5 h-5 text-white" /> },
+          { label: 'Staff with Gaps', value: stats.withGaps, bg: '#dc2626', fg: '#ffffff', icon: <XCircle className="w-5 h-5 text-white" /> },
+          { label: 'Items Expiring Soon', value: stats.expiring, bg: '#ea580c', fg: '#ffffff', icon: <AlertTriangle className="w-5 h-5 text-white" /> },
+        ].map(({ label, value, bg, fg, icon }) => (
           <div
             key={label}
-            className="rounded-xl p-3 flex items-center gap-3"
-            style={{ background: bg, border: `1px solid rgba(255,255,255,0.06)` }}
+            className="rounded-xl p-3.5 flex items-center gap-3 shadow-sm"
+            style={{ background: bg, color: fg }}
           >
             {icon}
             <div>
-              <p className="text-xl font-bold" style={{ color }}>{value}</p>
-              <p className="text-xs text-slate-400">{label}</p>
+              <p className="text-2xl font-extrabold leading-none">{value}</p>
+              <p className="text-xs font-bold uppercase tracking-wide mt-1 opacity-95">{label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Legend + filter row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-        <div className="flex flex-wrap items-center gap-3">
+      {/* High-contrast Legend + Staff Search + Role Filter row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden">
+        <div className="flex flex-wrap items-center gap-2.5">
           {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-            <div key={key} className="flex items-center gap-1.5">
-              <div
-                className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold"
-                style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.text }}
-              >
-                {cfg.symbol}
-              </div>
-              <span className="text-xs text-slate-400">{cfg.label}</span>
+            <div
+              key={key}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold shadow-sm"
+              style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}`, color: cfg.text }}
+            >
+              <span>{cfg.symbol}</span>
+              <span>{cfg.label}</span>
             </div>
           ))}
         </div>
-        <div className="w-40">
-          <Select
-            value={roleFilter}
-            onChange={e => setRoleFilter(e.target.value)}
-            options={ROLE_OPTIONS}
-            placeholder="Filter by role"
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={staffSearch}
+            onChange={e => setStaffSearch(e.target.value)}
+            placeholder="Filter staff name..."
+            className="input h-[38px] text-sm w-48"
           />
+          <div className="w-44">
+            <Select
+              value={roleFilter}
+              onChange={e => setRoleFilter(e.target.value)}
+              options={ROLE_OPTIONS}
+              placeholder="Filter by role"
+            />
+          </div>
         </div>
       </div>
 
       {/* Print note */}
-      <p className="text-xs text-slate-500 print:hidden flex items-center gap-1">
-        <Printer className="w-3 h-3" />
-        Print this page for your compliance records.
+      <p className={`text-xs font-semibold print:hidden flex items-center gap-1.5 ${theme === 'dark' ? 'text-amber-300' : 'text-slate-700'}`}>
+        <Printer className="w-3.5 h-3.5" />
+        Print this matrix for CQC compliance inspections — click any status square for certificate expiry details.
       </p>
 
-      {/* Grid */}
+      {/* Grid — EVERY COURSE COLUMN HEADER BOLD, SOLID COLORED, HIGH-CONTRAST */}
       {filteredStaff.length === 0 ? (
-        <div className="rounded-xl p-8 text-center text-slate-400"
+        <div className="rounded-xl p-8 text-center font-semibold"
           style={{ background: tileBg, border: tileBorder }}>
           No staff found{roleFilter ? ' for this role' : ''}.
         </div>
       ) : (
         <div
           ref={tableRef}
-          className="rounded-xl overflow-hidden"
-          style={{ background: tileBg, border: tileBorder }}
+          className="rounded-xl overflow-hidden shadow-md"
+          style={{ background: tileBg, border: '2px solid #ca8a04' }}
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse min-w-[700px]">
+            <table className="w-full text-sm border-collapse min-w-[760px]">
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ background: '#e8b130', borderBottom: '2.5px solid #92400e' }}>
                   <th
-                    className={`text-left px-4 py-3 text-xs font-bold sticky left-0 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}
-                    style={{ background: tileBg, minWidth: 180, zIndex: 2, boxShadow: '2px 0 4px rgba(0,0,0,0.08)' }}
+                    className="text-left px-4 py-3.5 text-sm font-extrabold uppercase tracking-wide sticky left-0"
+                    style={{
+                      background: '#d97706',
+                      color: '#ffffff',
+                      minWidth: 195,
+                      zIndex: 3,
+                      borderRight: '2px solid #92400e',
+                      boxShadow: '2px 0 6px rgba(0,0,0,0.18)',
+                    }}
                   >
                     Staff Member
                   </th>
-                  {data.trainingTypes.map(t => (
+                  {data.trainingTypes.map((t, colIdx) => (
                     <th
                       key={t}
-                      className={`text-center px-2 py-3 text-xs font-bold ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}
-                      style={{ minWidth: 80 }}
+                      className="text-center px-3 py-3.5 text-xs sm:text-sm font-extrabold tracking-wide whitespace-nowrap"
+                      style={{
+                        minWidth: 105,
+                        background: colIdx % 2 === 0 ? '#fde047' : '#fbbf24',
+                        color: '#0f172a',
+                        borderRight: '1px solid #b45309',
+                      }}
                       title={t}
                     >
                       {ABBREV[t] ?? t}
@@ -493,7 +520,7 @@ export default function TrainingMatrix() {
                       key={s.id}
                       style={{
                         borderBottom: idx < filteredStaff.length - 1
-                          ? '1px solid rgba(255,255,255,0.04)'
+                          ? '1px solid rgba(148,163,184,0.2)'
                           : 'none',
                       }}
                     >

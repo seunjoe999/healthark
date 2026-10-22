@@ -1,15 +1,17 @@
-﻿import React, { useEffect, useState } from 'react'
-import { staffApi, homesApi } from '../../api'
+import React, { useEffect, useState } from 'react'
+import { staffApi, homesApi, assessmentsApi } from '../../api'
 import PhotoUpload from '../../components/ui/PhotoUpload'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api, { resolveUploadUrl } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { format, differenceInYears, parseISO } from 'date-fns'
-import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading } from '../../components/ui'
-import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit, Search } from 'lucide-react'
+import { Spinner, EmptyState, Button, Modal, Input, Select, Card, SectionHeading, Textarea } from '../../components/ui'
+import { Plus, User, Calendar, Award, Clock, AlertTriangle, CheckCircle, ChevronRight, Upload, FileText, Trash2, Eye, FileImage, Edit, Search, ClipboardCheck, Printer, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import MeetingsSection from '../../components/MeetingsSection'
+import SignaturePad from '../../components/SignaturePad'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
 
 const LEAVE_TYPES = [{ value: 'annual', label: 'Annual leave' }, { value: 'sick', label: 'Sick leave' }, { value: 'maternity', label: 'Maternity' }, { value: 'paternity', label: 'Paternity' }, { value: 'compassionate', label: 'Compassionate' }, { value: 'other', label: 'Other' }]
 
@@ -29,13 +31,14 @@ const STAFF_DOC_TYPES = [
   { value: 'other', label: 'Other document' },
 ]
 
-type StaffTab = 'profile' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings' | 'comms'
+type StaffTab = 'profile' | 'assessments' | 'training' | 'leave' | 'onboarding' | 'clock' | 'documents' | 'cautions' | 'supervisions' | 'sensitive' | 'meetings' | 'team_meetings' | 'comms'
 
 const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager']
 
 export default function StaffModule() {
   const { user, isRole } = useAuth()
   const { theme } = useTheme()
+  const [searchParams] = useSearchParams()
   const panelBg = theme === 'dark' ? '#111' : '#ffffff'
   const panelBorder = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
   const isManager = isRole(...MANAGER_ROLES)
@@ -44,7 +47,7 @@ export default function StaffModule() {
   const [selected, setSelected] = useState<any>(null)
   const [editLeaveFor, setEditLeaveFor] = useState<any>(null)
   const [deletedOpen, setDeletedOpen] = useState(false)
-  const [tab, setTab] = useState<StaffTab>('profile')
+  const [tab, setTab] = useState<StaffTab>((searchParams.get('tab') as StaffTab) || 'profile')
   const [loading, setLoading] = useState(true)
   const [homes, setHomes] = useState<any[]>([])
   const [selectedHome, setSelectedHome] = useState('')
@@ -56,6 +59,12 @@ export default function StaffModule() {
   const [uploadStaffDocOpen, setUploadStaffDocOpen] = useState(false)
   const [cautions, setCautions] = useState<any[]>([])
   const [supervisions, setSupervisions] = useState<any[]>([])
+  const [staffAssessments, setStaffAssessments] = useState<any[]>([])
+  const [assessmentTemplates, setAssessmentTemplates] = useState<any[]>([])
+  const [viewingAssessment, setViewingAssessment] = useState<any>(null)
+  const [viewingTemplate, setViewingTemplate] = useState<any>(null)
+  const [staffSignoffNotes, setStaffSignoffNotes] = useState('')
+  const [savingSignoff, setSavingSignoff] = useState(false)
   const [sensitiveNotes, setSensitiveNotes] = useState<any[]>([])
   const [addCautionOpen, setAddCautionOpen] = useState(false)
   const [addSensitiveOpen, setAddSensitiveOpen] = useState(false)
@@ -115,17 +124,11 @@ export default function StaffModule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHome])
 
-  const selectStaff = async (s: any) => {
+  const selectStaff = async (s: any, initialTab?: StaffTab) => {
     setSelected(s)
-    setTab('profile')
+    setTab(initialTab || ((searchParams.get('tab') as StaffTab) || 'profile'))
     try {
-      // The staff list endpoint only returns a handful of columns (name, role,
-      // photo, status) — DOB, phone, gender, nationality, emergency contact and
-      // the real leave_hours_total/remaining all live only on the single-record
-      // endpoint. Without this fetch the profile silently fell back to blanks
-      // and hardcoded leave defaults (224/210), which is why DOB never showed
-      // here despite saving fine, and why leave remaining didn't match total.
-      const [fullRes, trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, appraisalsRes, sensitiveRes] = await Promise.all([
+      const [fullRes, trainingRes, leaveRes, onboardingRes, clockRes, docsRes, cautionsRes, supervisionsRes, appraisalsRes, sensitiveRes, staffAssessRes, tmplRes] = await Promise.all([
         api.get(`/staff/${s.id}`),
         api.get(`/staff-hr/training/${s.id}`),
         api.get(`/staff-hr/leave?staffId=${s.id}`),
@@ -133,14 +136,11 @@ export default function StaffModule() {
         staffApi.clockHistory(s.id),
         api.get(`/documents/staff/${s.id}`),
         api.get(`/reviews/cautions/${s.id}`),
-        // Supervisions & Appraisals shown on the Staff Profile are read-only
-        // and pulled straight from the canonical Assessments feature
-        // (supervision.routes.ts / the `supervisions` + `appraisals` tables)
-        // rather than the separate `staff_supervisions` table, so a
-        // supervision logged under Staff Assessment shows up here too.
         api.get(`/supervision?staffId=${s.id}`),
         api.get(`/supervision/appraisal?staffId=${s.id}`),
         api.get(`/reviews/staff-sensitive-notes/${s.id}`),
+        assessmentsApi.list({ homeId: selectedHome || user?.homeId, category: 'staff', subjectId: s.id }),
+        api.get('/assessments/templates', { params: { category: 'staff' } }),
       ])
       if (fullRes.data.data) setSelected((p: any) => ({ ...p, ...fullRes.data.data }))
       setTraining(trainingRes.data.data || [])
@@ -154,21 +154,149 @@ export default function StaffModule() {
       const supRecords = (supervisionsRes.data.data || []).map((r: any) => ({ ...r, _kind: 'supervision' }))
       const aprRecords = (appraisalsRes.data.data || []).map((r: any) => ({ ...r, _kind: 'appraisal' }))
       setSupervisions([...supRecords, ...aprRecords])
+      setStaffAssessments(staffAssessRes.data.data || [])
+      setAssessmentTemplates(tmplRes.data.data || [])
       setSensitiveNotes(sensitiveRes.data.data || [])
     } catch (e) {
       console.error('selectStaff error:', e)
     }
   }
 
+  const getTemplateTitle = (key: string) => {
+    const t = assessmentTemplates.find((x: any) => x.key === key)
+    return t?.name || (key || '').replace(/_/g, ' ')
+  }
+
+  const openAssessmentSignOff = async (a: any) => {
+    try {
+      const [detailRes, tmplRes] = await Promise.all([
+        assessmentsApi.get(a.id),
+        api.get(`/assessments/templates/${a.template_key}`).catch(() => ({ data: { data: null } })),
+      ])
+      const fullA = detailRes.data.data || a
+      setViewingAssessment(fullA)
+      setViewingTemplate(tmplRes.data.data || null)
+      setStaffSignoffNotes(fullA.staff_signoff_notes || '')
+    } catch {
+      setViewingAssessment(a)
+      setViewingTemplate(null)
+      setStaffSignoffNotes(a.staff_signoff_notes || '')
+    }
+  }
+
+  const handleStaffSignatureSave = async (sigDataUrl: string) => {
+    if (!viewingAssessment) return
+    setSavingSignoff(true)
+    try {
+      const res = await api.put(`/assessments/${viewingAssessment.id}`, {
+        staffSignature: sigDataUrl,
+        staffSignoffNotes,
+      })
+      const updated = res.data.data || {
+        ...viewingAssessment,
+        staff_signature: sigDataUrl,
+        staff_signoff_notes: staffSignoffNotes,
+        staff_signed_at: new Date().toISOString(),
+      }
+      setViewingAssessment(updated)
+      setStaffAssessments(prev => prev.map(item => item.id === updated.id ? { ...item, ...updated } : item))
+      toast.success('Assessment signed off and saved to Staff Profile')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to save signature')
+    } finally {
+      setSavingSignoff(false)
+    }
+  }
+
+  const saveSignoffNotesOnly = async () => {
+    if (!viewingAssessment) return
+    setSavingSignoff(true)
+    try {
+      const res = await api.put(`/assessments/${viewingAssessment.id}`, {
+        staffSignoffNotes,
+      })
+      const updated = res.data.data || { ...viewingAssessment, staff_signoff_notes: staffSignoffNotes }
+      setViewingAssessment(updated)
+      setStaffAssessments(prev => prev.map(item => item.id === updated.id ? { ...item, ...updated } : item))
+      toast.success('Staff comments saved')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to save comments')
+    } finally {
+      setSavingSignoff(false)
+    }
+  }
+
+  const printSignedAssessment = (a: any, tmpl: any) => {
+    const sections: PrintSection[] = [
+      {
+        title: 'Assessment Summary',
+        inner: `<table class="fields">
+          <tr><th>Staff Member</th><td>${esc(a.subject_name || getName(selected))}</td></tr>
+          <tr><th>Assessment Type</th><td>${esc(tmpl?.name || getTemplateTitle(a.template_key))}</td></tr>
+          <tr><th>Date Completed</th><td>${a.assessment_date ? fmtDate(a.assessment_date) : '—'}</td></tr>
+          <tr><th>Conducted By</th><td>${esc(a.auditor_name || a.conducted_by_name || 'Management')}</td></tr>
+          ${a.max_score > 0 ? `<tr><th>Score</th><td>${Math.round(a.score_pct)}% (${a.total_score}/${a.max_score})</td></tr>` : ''}
+          <tr><th>Sign-Off Status</th><td>${a.staff_signature ? `Signed Off${a.staff_signed_at ? ` (${fmtDate(a.staff_signed_at)})` : ''}` : 'Pending Staff Sign-Off'}</td></tr>
+        </table>`,
+      },
+    ]
+    if (tmpl?.sections?.length) {
+      tmpl.sections.forEach((sec: any) => {
+        const qRows = (sec.questions || []).map((q: any, idx: number) => {
+          const ans = a.answers?.[q.id]
+          const display = ans === undefined || ans === null || ans === '' ? '—' : Array.isArray(ans) ? ans.join(', ') : String(ans)
+          return `<tr><th>${idx + 1}. ${esc(q.text)}</th><td>${esc(display)}</td></tr>`
+        }).join('')
+        sections.push({ title: sec.title, inner: `<table class="fields">${qRows}</table>` })
+      })
+    }
+    if (a.actions_identified || a.notes || a.staff_signoff_notes) {
+      sections.push({
+        title: 'Actions, Assessor Notes & Staff Sign-Off Comments',
+        inner: `
+          ${a.actions_identified ? `<p class="body-text"><strong>Actions Identified:</strong> ${esc(a.actions_identified)}</p>` : ''}
+          ${a.notes ? `<p class="body-text"><strong>Assessor Notes:</strong> ${esc(a.notes)}</p>` : ''}
+          ${a.staff_signoff_notes ? `<p class="body-text"><strong>Staff Reflection / Comments:</strong> ${esc(a.staff_signoff_notes)}</p>` : ''}
+        `,
+      })
+    }
+    const sigHtml = `
+      <div style="display:flex;gap:24px;margin-top:12px">
+        <div style="flex:1;border:1px solid #cbd5e1;padding:10px;border-radius:6px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#475569">Assessor / Manager Signature</div>
+          ${a.assessor_signature ? `<img src="${a.assessor_signature}" style="max-height:70px;margin-top:6px" />` : '<div style="margin-top:20px;color:#94a3b8">Not signed</div>'}
+        </div>
+        <div style="flex:1;border:1px solid #cbd5e1;padding:10px;border-radius:6px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#475569">Staff Member Electronic Sign-Off</div>
+          ${a.staff_signature ? `<img src="${a.staff_signature}" style="max-height:70px;margin-top:6px" />` : '<div style="margin-top:20px;color:#b45309">Pending staff signature</div>'}
+        </div>
+      </div>
+    `
+    sections.push({ title: 'Electronic Signatures', inner: sigHtml })
+    const body = buildLetterheadPage({
+      docTitle: tmpl?.name || getTemplateTitle(a.template_key),
+      docSubtitle: 'Staff Assessment & Electronic Sign-Off Record',
+      docRefPrefix: 'SA',
+      docRefId: String(a.id || '').slice(0, 8),
+      residentName: a.subject_name || getName(selected),
+      sections,
+    })
+    openLetterheadPrint(`${a.subject_name || getName(selected)} — Staff Assessment`, body)
+  }
+
+  const unsignedAssessmentsCount = staffAssessments.filter((a: any) => !a.staff_signature).length
+
   const getName = (s: any) => `${s.first_name || s.firstName || ''} ${s.last_name || s.lastName || ''}`.trim()
 
-  // Care staff viewing their own profile (the only profile they can ever
-  // view — see the non-manager filtering above) shouldn't see Training,
-  // Documents or Sensitive Info; Supervision & Appraisal stays visible to
-  // them. Managers still see every tab on any staff member's profile.
   const hideForOwnCareStaffView = !isManager
   const tabs: { key: StaffTab; label: string }[] = [
     { key: 'profile', label: 'Profile' },
+    {
+      key: 'assessments',
+      label: unsignedAssessmentsCount > 0
+        ? `Staff Assessment (${staffAssessments.length}) · ${unsignedAssessmentsCount} Pending`
+        : `Staff Assessment (${staffAssessments.length})`,
+    },
     ...(hideForOwnCareStaffView ? [] : [{ key: 'training' as StaffTab, label: `Training (${training.length})` }]),
     { key: 'leave', label: `Leave (${leave.length})` },
     { key: 'onboarding', label: 'Onboarding' },
@@ -179,13 +307,7 @@ export default function StaffModule() {
     ...(hideForOwnCareStaffView ? [] : [{ key: 'sensitive' as StaffTab, label: `Sensitive Info (${sensitiveNotes.length})` }]),
     { key: 'meetings', label: 'Staff Meeting' },
     ...(selected?.team_id ? [{ key: 'team_meetings' as StaffTab, label: 'Team Meeting' }] : []),
-    // Every message sent to / received from this staff member, in one place —
-    // so anything a manager sends them is visible on their profile too, not
-    // just buried in the inbox. Managers only (care staff see their own inbox).
     ...(isManager ? [{ key: 'comms' as StaffTab, label: 'Comms' }] : []),
-    // Per-staff overrides (e.g. can_edit_care_plans for a non-manager role like
-    // Team Leader) — owner-only, since this grants access beyond the role's
-    // normal defaults.
   ]
 
   return (
@@ -346,10 +468,27 @@ export default function StaffModule() {
             <EditLeaveModal staff={editLeaveFor} onClose={() => setEditLeaveFor(null)}
               onSaved={(updated) => { setSelected((p: any) => ({ ...p, ...updated })); setEditLeaveFor(null) }} />
 
+            {/* Action banner whenever completed Staff Assessments await employee sign-off */}
+            {unsignedAssessmentsCount > 0 && tab !== 'assessments' && (
+              <div
+                onClick={() => setTab('assessments')}
+                className="cursor-pointer mb-4 rounded-xl px-4 py-3 flex items-center justify-between gap-3 shadow-sm transition-transform hover:scale-[1.005]"
+                style={{ background: '#fde047', color: '#0f172a', border: '1.5px solid #ca8a04' }}
+              >
+                <div className="flex items-center gap-2.5 text-sm font-extrabold">
+                  <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+                  <span>
+                    {unsignedAssessmentsCount} completed Staff Assessment{unsignedAssessmentsCount !== 1 ? 's' : ''} awaiting staff electronic sign-off
+                  </span>
+                </div>
+                <span className="text-xs font-extrabold underline whitespace-nowrap">Review &amp; Sign Off →</span>
+              </div>
+            )}
+
             {/* Tabs */}
             <div className="bg-white/5 rounded-2xl border border-white/10 shadow-card mb-5">
               <div className="flex overflow-x-auto">
-                {tabs.map((t, i) => (
+                {tabs.map((t) => (
                   <button key={t.key} onClick={() => setTab(t.key)}
                     className={`flex-shrink-0 px-4 py-3.5 text-xs font-semibold whitespace-nowrap transition-all relative border-b-2 ${
                       tab === t.key
@@ -365,6 +504,289 @@ export default function StaffModule() {
                 ))}
               </div>
             </div>
+
+            {/* Staff Assessment Tab — Spot Checks, Competency Evaluations & Electronic Staff Sign-Off */}
+            {tab === 'assessments' && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                      <ClipboardCheck className="w-5 h-5 text-amber-500" />
+                      Staff Assessments ({staffAssessments.length})
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Spot checks, medication competencies, supervisions &amp; evaluations — click any assessment to read the full completed form and sign off electronically.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isManager && (
+                      <Link to={`/assessments?tab=staff&staffId=${selected.id}`}>
+                        <Button size="sm" variant="gold" icon={<Plus className="w-3.5 h-3.5" />}>
+                          New Staff Assessment
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {staffAssessments.length === 0 ? (
+                  <EmptyState
+                    title="No staff assessments recorded yet"
+                    description={isManager
+                      ? 'Conduct a Spot Check, Medication Competency or Staff Supervision — it will automatically appear here for staff review & electronic sign-off.'
+                      : 'Any Spot Checks, Competency Assessments or Supervisions completed with you will appear here for you to read and sign off.'}
+                    action={isManager ? (
+                      <Link to={`/assessments?tab=staff&staffId=${selected.id}`}>
+                        <Button variant="gold" icon={<Plus className="w-4 h-4" />}>Start Assessment</Button>
+                      </Link>
+                    ) : undefined}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {staffAssessments.map((a: any) => {
+                      const signed = Boolean(a.staff_signature)
+                      const score = a.max_score > 0 ? Math.round(Number(a.score_pct || 0)) : null
+                      return (
+                        <div
+                          key={a.id}
+                          onClick={() => openAssessmentSignOff(a)}
+                          className="cursor-pointer bg-white rounded-2xl border border-slate-200 hover:border-amber-400 shadow-sm p-5 transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-slate-900 text-base">
+                                  {getTemplateTitle(a.template_key)}
+                                </span>
+                                {signed ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold"
+                                    style={{ background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}
+                                  >
+                                    <CheckCircle className="w-3.5 h-3.5" /> Signed Off
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold"
+                                    style={{ background: '#fde047', color: '#0f172a', border: '1px solid #ca8a04' }}
+                                  >
+                                    Pending Staff Sign-Off
+                                  </span>
+                                )}
+                                {score !== null && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    Score: {score}%
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                <span>
+                                  Completed: <strong>{a.assessment_date ? format(new Date(a.assessment_date), 'dd MMM yyyy') : '—'}</strong>
+                                </span>
+                                {(a.auditor_name || a.conducted_by_name) && (
+                                  <span>Assessor: <strong>{a.auditor_name || a.conducted_by_name}</strong></span>
+                                )}
+                                {signed && a.staff_signed_at && (
+                                  <span className="text-emerald-700 font-semibold">
+                                    Signed by staff {format(new Date(a.staff_signed_at), 'dd MMM yyyy')}
+                                  </span>
+                                )}
+                              </div>
+                              {a.actions_identified && (
+                                <p className="text-xs text-slate-600 pt-1 line-clamp-2">
+                                  <strong>Actions / Feedback:</strong> {a.actions_identified}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                              {isManager && !signed && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  icon={<Send className="w-3.5 h-3.5" />}
+                                  onClick={async () => {
+                                    try {
+                                      await api.post('/notifications/send', {
+                                        recipientId: selected.id,
+                                        homeId: selectedHome || user?.homeId,
+                                        title: `${getTemplateTitle(a.template_key)} — please review & sign off`,
+                                        body: `Please open your Staff Profile → Staff Assessment to read and sign off your ${getTemplateTitle(a.template_key)}.`,
+                                        type: 'info',
+                                        link: '/staff?tab=assessments',
+                                      })
+                                      toast.success('Reminder sent to staff member')
+                                    } catch {
+                                      toast.error('Failed to send reminder')
+                                    }
+                                  }}
+                                >
+                                  Remind Staff
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant={signed ? 'outline' : 'gold'}
+                                icon={<Eye className="w-3.5 h-3.5" />}
+                                onClick={() => openAssessmentSignOff(a)}
+                              >
+                                {signed ? 'View Signed Assessment' : 'Read & Sign Off'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Full Assessment Reader + Electronic Signature Sign-Off Modal */}
+            <Modal
+              open={Boolean(viewingAssessment)}
+              onClose={() => { setViewingAssessment(null); setViewingTemplate(null) }}
+              title={viewingAssessment ? `${viewingTemplate?.name || getTemplateTitle(viewingAssessment.template_key)} — ${viewingAssessment.subject_name || getName(selected)}` : 'Staff Assessment'}
+              size="xl"
+            >
+              {viewingAssessment && (
+                <div className="space-y-5">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-400 uppercase font-bold block text-[10px]">Staff Member</span>
+                      <span className="font-bold text-slate-900 text-sm">{viewingAssessment.subject_name || getName(selected)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 uppercase font-bold block text-[10px]">Date Completed</span>
+                      <span className="font-semibold text-slate-700">
+                        {viewingAssessment.assessment_date ? format(new Date(viewingAssessment.assessment_date), 'dd MMM yyyy') : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 uppercase font-bold block text-[10px]">Conducted By</span>
+                      <span className="font-semibold text-slate-700">
+                        {viewingAssessment.auditor_name || viewingAssessment.conducted_by_name || 'Management'}
+                      </span>
+                    </div>
+                    {viewingAssessment.max_score > 0 && (
+                      <div>
+                        <span className="text-slate-400 uppercase font-bold block text-[10px]">Overall Score</span>
+                        <span className="font-extrabold text-indigo-700 text-sm">
+                          {Math.round(Number(viewingAssessment.score_pct || 0))}% ({viewingAssessment.total_score}/{viewingAssessment.max_score})
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        icon={<Printer className="w-3.5 h-3.5" />}
+                        onClick={() => printSignedAssessment(viewingAssessment, viewingTemplate)}
+                      >
+                        Print PDF
+                      </Button>
+                      <Link to={`/assessments/${viewingAssessment.id}`}>
+                        <Button size="sm" variant="outline">Full Page</Button>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* All completed sections & answers */}
+                  {viewingTemplate?.sections?.map((sec: any) => (
+                    <div key={sec.id} className="rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="px-4 py-2.5 font-bold text-xs uppercase tracking-wider bg-slate-100 text-slate-800">
+                        {sec.title}
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {(sec.questions || []).map((q: any, idx: number) => {
+                          const raw = viewingAssessment.answers?.[q.id]
+                          const note = viewingAssessment.answers?.[`${q.id}__notes`]
+                          const formatted = raw === undefined || raw === null || raw === ''
+                            ? '—'
+                            : Array.isArray(raw) ? raw.join(', ') : String(raw)
+                          return (
+                            <div key={q.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 text-sm">
+                              <span className="text-slate-700 font-medium">{idx + 1}. {q.text}</span>
+                              <div className="sm:text-right flex-shrink-0">
+                                <span className="font-bold text-slate-900 uppercase text-xs px-2.5 py-1 rounded bg-slate-100">
+                                  {formatted}
+                                </span>
+                                {note && <p className="text-xs text-slate-500 mt-1">{note}</p>}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  {(viewingAssessment.actions_identified || viewingAssessment.notes) && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 space-y-2 text-sm">
+                      {viewingAssessment.actions_identified && (
+                        <div>
+                          <p className="text-xs font-extrabold uppercase text-amber-800">Actions Identified</p>
+                          <p className="text-slate-800 whitespace-pre-line mt-0.5">{viewingAssessment.actions_identified}</p>
+                        </div>
+                      )}
+                      {viewingAssessment.notes && (
+                        <div>
+                          <p className="text-xs font-extrabold uppercase text-amber-800">Assessor Notes</p>
+                          <p className="text-slate-800 whitespace-pre-line mt-0.5">{viewingAssessment.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Staff Comments / Reflection */}
+                  <div className="space-y-2">
+                    <Textarea
+                      label="Staff Member Reflection / Comments (optional)"
+                      value={staffSignoffNotes}
+                      onChange={e => setStaffSignoffNotes(e.target.value)}
+                      rows={2}
+                      placeholder="Add your reflection, comments, or confirmation that you have read and understood this assessment..."
+                    />
+                    <div className="flex justify-end">
+                      <Button size="sm" variant="outline" loading={savingSignoff} onClick={saveSignoffNotesOnly}>
+                        Save Comments
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Dual Electronic Signatures — Assessor + Staff Member Sign-Off */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200">
+                    <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                      <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">
+                        Assessor / Manager Signature
+                      </p>
+                      {viewingAssessment.assessor_signature ? (
+                        <img
+                          src={viewingAssessment.assessor_signature}
+                          alt="Assessor signature"
+                          className="max-h-24 bg-white rounded-lg border border-slate-200 p-2"
+                        />
+                      ) : (
+                        <p className="text-xs text-slate-400 italic py-4">Recorded by {viewingAssessment.auditor_name || viewingAssessment.conducted_by_name || 'Management'}</p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border-2 border-amber-300 p-4 bg-amber-50/30">
+                      <SignaturePad
+                        label="Staff Member Electronic Sign-Off (draw & click Save Signature to sign off)"
+                        savedSignature={viewingAssessment.staff_signature || null}
+                        onSave={handleStaffSignatureSave}
+                      />
+                      {viewingAssessment.staff_signature && (
+                        <p className="text-xs font-bold text-emerald-700 mt-2 flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />
+                          Signed off electronically{viewingAssessment.staff_signed_at ? ` on ${format(new Date(viewingAssessment.staff_signed_at), 'dd MMM yyyy, HH:mm')}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Modal>
 
             {/* Tab content */}
             {tab === 'profile' && (

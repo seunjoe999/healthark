@@ -48,6 +48,8 @@ const initTable = async () => {
   // SignaturePad component.
   await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS assessor_signature TEXT`);
   await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS staff_signature TEXT`);
+  await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS staff_signed_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS staff_signoff_notes TEXT`);
   // Templates with no scored questions (e.g. MAR Review) used to be stamped
   // "inadequate" because 0 of 0 points read as 0%. Clear those — an unscored
   // form has no rating at all. Burnout ratings are low/medium/high, untouched.
@@ -1993,9 +1995,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const params: any[] = [homeId];
     if (category) { params.push(category); sql += ` AND a.category = $${params.length}`; }
     if (forcedOwnSubject !== null) {
-      params.push(forcedOwnSubject); sql += ` AND a.subject_id = $${params.length}`;
-    } else if (subjectId) { params.push(subjectId); sql += ` AND a.subject_id = $${params.length}`; }
-    else if (staffId) { params.push(staffId); sql += ` AND a.subject_id = $${params.length}`; }
+      params.push(forcedOwnSubject); sql += ` AND (a.subject_id = $${params.length} OR a.staff_id = $${params.length})`;
+    } else if (subjectId) { params.push(subjectId); sql += ` AND (a.subject_id = $${params.length} OR a.staff_id = $${params.length})`; }
+    else if (staffId) { params.push(staffId); sql += ` AND (a.subject_id = $${params.length} OR a.staff_id = $${params.length})`; }
     if (templateKey) { params.push(templateKey); sql += ` AND a.template_key = $${params.length}`; }
     sql += ' ORDER BY a.assessment_date DESC, a.created_at DESC LIMIT 100';
     const rows = await query(sql, params);
@@ -2022,7 +2024,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     if (!rows.length) return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
     const assessment = rows[0] as any;
     const isManager = ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '');
-    if (assessment.category === 'staff' && !isManager && assessment.subject_id !== req.staff?.staffId) {
+    if (assessment.category === 'staff' && !isManager && assessment.subject_id !== req.staff?.staffId && assessment.staff_id !== req.staff?.staffId) {
       return res.status(404).json({ success: false, error: 'Assessment not found' } as ApiResponse);
     }
     res.json({ success: true, data: assessment } as ApiResponse);
@@ -2046,21 +2048,39 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     }
 
     const { totalScore, maxScore, scorePct, riskLevel } = calcScore(template, answers || {});
+    const finalCategory = category || template.category;
+    const signedAt = staffSignature ? new Date().toISOString() : null;
 
-    const rows = await query(
-      `INSERT INTO assessments (home_id, template_key, category, subject_id, subject_name,
+    const rows = await query<any>(
+      `INSERT INTO assessments (home_id, template_key, category, subject_id, staff_id, subject_name,
         conducted_by, auditor_name, answers, total_score, max_score, score_pct, risk_level,
         actions_identified, actions_outcome, actions_completed_date, next_review_date, notes, assessment_date,
-        assessor_signature, staff_signature)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+        assessor_signature, staff_signature, staff_signed_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
        RETURNING *`,
-      [homeId, templateKey, category || template.category, subjectId || null, subjectName || null,
+      [homeId, templateKey, finalCategory, subjectId || null, finalCategory === 'staff' ? (subjectId || null) : null, subjectName || null,
        conductedBy || null, auditorName || null, JSON.stringify(answers || {}),
        totalScore, maxScore, scorePct, riskLevel,
        actionsIdentified || null, actionsOutcome || null, actionsCompletedDate || null,
        nextReviewDate || null, notes || null, assessmentDate || ukDateStr(),
-       assessorSignature || null, staffSignature || null]
+       assessorSignature || null, staffSignature || null, signedAt]
     );
+
+    // Automatically notify the assessed staff member so they see it immediately on their Staff Profile to review & sign off
+    if (finalCategory === 'staff' && subjectId && !staffSignature) {
+      query(
+        `INSERT INTO notifications (recipient_id, home_id, title, body, type, link)
+         VALUES ($1, $2, $3, $4, 'info', $5)`,
+        [
+          subjectId,
+          homeId,
+          `${template.name} completed — please review & sign off`,
+          `Your ${template.name} has been added to your Staff Profile under Staff Assessment. Open your profile to read and electronically sign off.`,
+          `/staff?tab=assessments`,
+        ]
+      ).catch(() => {});
+    }
+
     res.status(201).json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }
 });
@@ -2071,13 +2091,34 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     if (!UUID_RE.test(req.params.id)) {
       return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
     }
-    const { answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, auditorName, assessorSignature, staffSignature } = req.body;
+    const { answers, actionsIdentified, actionsOutcome, actionsCompletedDate, nextReviewDate, notes, auditorName, assessorSignature, staffSignature, staffSignoffNotes } = req.body;
     const existing = await query('SELECT * FROM assessments WHERE id = $1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ success: false, error: 'Not found' } as ApiResponse);
     const ex = existing[0] as any;
 
+    const isManager = ASSESSMENT_MANAGER_ROLES.includes(req.staff?.role || '');
+    const isAssessedStaff = ex.category === 'staff' && (ex.subject_id === req.staff?.staffId || ex.staff_id === req.staff?.staffId);
+    if (!isManager && !isAssessedStaff) {
+      return res.status(403).json({ success: false, error: 'Not authorised to update this assessment' } as ApiResponse);
+    }
+
     if (ex.template_key === 'mar_review' && !MAR_REVIEW_WRITE_ROLES.includes(req.staff?.role || '')) {
       return res.status(403).json({ success: false, error: 'Only managers can amend a MAR Review' } as ApiResponse);
+    }
+
+    // When a non-manager staff member signs off their own assessment, preserve manager answers/scores and update sign-off fields cleanly
+    if (!isManager && isAssessedStaff) {
+      const signedAt = staffSignature ? (ex.staff_signed_at || new Date().toISOString()) : ex.staff_signed_at;
+      const rows = await query(
+        `UPDATE assessments
+         SET staff_signature = COALESCE($1, staff_signature),
+             staff_signed_at = $2,
+             staff_signoff_notes = COALESCE($3, staff_signoff_notes),
+             updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+        [staffSignature ?? null, signedAt, staffSignoffNotes ?? null, req.params.id]
+      );
+      return res.json({ success: true, data: rows[0] } as ApiResponse);
     }
 
     const template = TEMPLATES.find(t => t.key === ex.template_key);
@@ -2085,15 +2126,20 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       ? calcScore(template, answers || ex.answers || {})
       : { totalScore: ex.total_score, maxScore: ex.max_score, scorePct: ex.score_pct, riskLevel: ex.risk_level };
 
+    const nextStaffSig = staffSignature ?? ex.staff_signature;
+    const nextSignedAt = staffSignature && !ex.staff_signed_at ? new Date().toISOString() : ex.staff_signed_at;
+
     const rows = await query(
       `UPDATE assessments SET answers=$1, total_score=$2, max_score=$3, score_pct=$4, risk_level=$5,
         actions_identified=$6, actions_outcome=$7, actions_completed_date=$8, next_review_date=$9,
-        notes=$10, auditor_name=$11, assessor_signature=$12, staff_signature=$13, updated_at=NOW() WHERE id=$14 RETURNING *`,
+        notes=$10, auditor_name=$11, assessor_signature=$12, staff_signature=$13,
+        staff_signed_at=$14, staff_signoff_notes=$15, updated_at=NOW() WHERE id=$16 RETURNING *`,
       [JSON.stringify(answers || ex.answers), totalScore, maxScore, scorePct, riskLevel,
        actionsIdentified ?? ex.actions_identified, actionsOutcome ?? ex.actions_outcome,
        actionsCompletedDate ?? ex.actions_completed_date, nextReviewDate ?? ex.next_review_date,
        notes ?? ex.notes, auditorName ?? ex.auditor_name,
-       assessorSignature ?? ex.assessor_signature, staffSignature ?? ex.staff_signature, req.params.id]
+       assessorSignature ?? ex.assessor_signature, nextStaffSig,
+       nextSignedAt, staffSignoffNotes ?? ex.staff_signoff_notes, req.params.id]
     );
     res.json({ success: true, data: rows[0] } as ApiResponse);
   } catch (err) { next(err); }

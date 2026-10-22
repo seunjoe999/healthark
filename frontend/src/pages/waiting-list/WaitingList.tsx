@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { List, Plus, Phone, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { List, Plus, Phone, Clock, CheckCircle, XCircle, RefreshCw, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../api';
@@ -32,25 +32,44 @@ interface Stats { total: number; waiting: number; high_priority: number; avg_wai
 const PRIORITIES = ['urgent', 'high', 'standard', 'low'];
 const STATUSES = ['enquiry', 'assessment_booked', 'assessment_complete', 'offer_made', 'accepted', 'declined', 'withdrawn'];
 const STATUS_LABELS: Record<string, string> = {
-  enquiry: 'Enquiry', assessment_booked: 'Assessment Booked', assessment_complete: 'Assessment Done',
-  offer_made: 'Offer Made', accepted: 'Accepted', declined: 'Declined', withdrawn: 'Withdrawn',
+  enquiry: 'Enquiry',
+  assessment_booked: 'Assessment Booked',
+  assessment_complete: 'Assessment Done',
+  offer_made: 'Offer Made',
+  accepted: 'Accepted',
+  declined: 'Declined',
+  withdrawn: 'Withdrawn',
+};
+
+// Solid, high-contrast permanent colors for every status tab — ZERO greyed-out tabs
+const STATUS_SOLID_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  all: { bg: '#e8b130', text: '#0f172a', border: '#b45309' },
+  enquiry: { bg: '#fde047', text: '#0f172a', border: '#ca8a04' },
+  assessment_booked: { bg: '#38bdf8', text: '#0f172a', border: '#0284c7' },
+  assessment_complete: { bg: '#a78bfa', text: '#0f172a', border: '#7c3aed' },
+  offer_made: { bg: '#fb923c', text: '#0f172a', border: '#ea580c' },
+  accepted: { bg: '#4ade80', text: '#0f172a', border: '#16a34a' },
+  declined: { bg: '#f87171', text: '#0f172a', border: '#dc2626' },
+  withdrawn: { bg: '#cbd5e1', text: '#0f172a', border: '#64748b' },
 };
 
 export default function WaitingList() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const tileBg = theme === 'dark' ? '#111111' : '#ffffff';
-  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,23,42,0.08)';
+  const tileBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.1)';
   const inputBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8fafc';
-  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(15,23,42,0.12)';
-  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9';
+  const inputBorder = theme === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(15,23,42,0.14)';
+  const btnGhostBg = theme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e2e8f0';
   const neutralText = theme === 'dark' ? 'text-white' : 'text-slate-900';
   const inputText = theme === 'dark' ? 'text-white' : 'text-slate-900';
+
   const [entries, setEntries] = useState<WaitingEntry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, waiting: 0, high_priority: 0, avg_wait_days: 0 });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     full_name: '', date_of_birth: '', contact_name: '', contact_phone: '', contact_email: '', care_needs: '', priority: 'standard', notes: '',
     address: '', assessment_date: '', assessment_conducted_by: '', outcome: '', next_action: '', final_outcome: '',
@@ -76,6 +95,17 @@ export default function WaitingList() {
   };
 
   useEffect(() => { fetchData(); }, [filterStatus]);
+
+  const visibleEntries = useMemo(() => {
+    if (!search.trim()) return entries;
+    const q = search.toLowerCase();
+    return entries.filter(e =>
+      String(e.full_name || '').toLowerCase().includes(q) ||
+      String(e.contact_name || '').toLowerCase().includes(q) ||
+      String(e.contact_phone || '').toLowerCase().includes(q) ||
+      String(e.care_needs || '').toLowerCase().includes(q)
+    );
+  }, [entries, search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,34 +144,52 @@ export default function WaitingList() {
     } catch { toast.error('Failed to update'); }
   };
 
-  // Map backend status values to display-friendly ones
-  const statusLabel = (s: string) => {
-    const map: Record<string, string> = { enquiry: 'waiting', assessment_booked: 'offered', accepted: 'admitted', declined: 'declined', withdrawn: 'withdrawn' };
-    return map[s] || s;
-  };
-
   const priorityBadge = (p: string) => {
-    const cls = p === 'urgent' ? 'bg-rose-500/20 text-rose-400' : p === 'high' ? 'bg-red-500/20 text-red-400' : p === 'standard' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400';
-    return <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${cls}`}>{p}</span>;
+    const styleMap: Record<string, { bg: string; color: string }> = {
+      urgent: { bg: '#ef4444', color: '#ffffff' },
+      high: { bg: '#fb923c', color: '#0f172a' },
+      standard: { bg: '#fde047', color: '#0f172a' },
+      low: { bg: '#4ade80', color: '#0f172a' },
+    };
+    const st = styleMap[p] || styleMap.standard;
+    return (
+      <span
+        className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold capitalize"
+        style={{ background: st.bg, color: st.color }}
+      >
+        {p}
+      </span>
+    );
   };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)' }}>
-            <List size={20} className="text-purple-400" />
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm" style={{ background: '#e8b130' }}>
+            <List size={20} style={{ color: '#0f172a' }} />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Waiting List</h1>
-            <p className="text-sm text-gray-400">Prospective residents & referrals</p>
+            <h1 className={`text-2xl font-extrabold ${neutralText}`}>Waiting List</h1>
+            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+              Prospective residents &amp; referrals
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchData} className="p-2 rounded-lg text-gray-400 hover:text-white" style={{ background: btnGhostBg }}>
+          <button
+            onClick={fetchData}
+            className="p-2.5 rounded-xl font-bold"
+            style={{ background: '#e8b130', color: '#0f172a' }}
+            title="Refresh list"
+          >
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: '#e8b130' }}>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-extrabold shadow-sm"
+            style={{ background: '#e8b130', color: '#0f172a' }}
+          >
             <Plus size={16} /> Add to List
           </button>
         </div>
@@ -150,38 +198,75 @@ export default function WaitingList() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: stats.total, color: neutralText },
-          { label: 'Waiting', value: stats.waiting, color: 'text-blue-400' },
-          { label: 'High Priority', value: stats.high_priority, color: 'text-red-400' },
-          { label: 'Avg Wait', value: `${Math.round(stats.avg_wait_days || 0)}d`, color: 'text-yellow-400' },
+          { label: 'Total Referrals', value: stats.total, color: neutralText },
+          { label: 'Waiting / Booked', value: stats.waiting, color: 'text-sky-500' },
+          { label: 'High Priority', value: stats.high_priority, color: 'text-rose-500' },
+          { label: 'Avg Wait', value: `${Math.round(stats.avg_wait_days || 0)}d`, color: 'text-amber-500' },
         ].map(s => (
           <div key={s.label} className="rounded-xl p-4" style={{ background: tileBg, border: tileBorder }}>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{s.label}</div>
+            <div className={`text-2xl font-extrabold ${s.color}`}>{s.value}</div>
+            <div className={`text-xs font-bold uppercase tracking-wide mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+              {s.label}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => setFilterStatus('')}
-          className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === '' ? 'text-white' : 'text-gray-400'}`}
-          style={{ background: filterStatus === '' ? '#e8b130' : btnGhostBg }}>All</button>
-        {STATUSES.map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === s ? 'text-white' : 'text-gray-400'}`}
-            style={{ background: filterStatus === s ? '#e8b130' : btnGhostBg }}>{STATUS_LABELS[s]}</button>
-        ))}
+      {/* Search input */}
+      <div className="relative max-w-md">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-500" />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search prospective resident, contact name, phone..."
+          className={`w-full pl-10 pr-3 py-2 rounded-xl ${inputText} text-sm font-medium`}
+          style={{ background: inputBg, border: inputBorder }}
+        />
+      </div>
+
+      {/* Permanent, high-contrast solid status tabs — ZERO greyed-out headings */}
+      <div className="flex flex-wrap gap-2.5">
+        <button
+          onClick={() => setFilterStatus('')}
+          className="px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide shadow-sm transition-all"
+          style={{
+            background: STATUS_SOLID_STYLES.all.bg,
+            color: STATUS_SOLID_STYLES.all.text,
+            border: filterStatus === '' ? '3px solid #0f172a' : `1.5px solid ${STATUS_SOLID_STYLES.all.border}`,
+            transform: filterStatus === '' ? 'scale(1.04)' : undefined,
+          }}
+        >
+          All
+        </button>
+        {STATUSES.map(s => {
+          const st = STATUS_SOLID_STYLES[s] || STATUS_SOLID_STYLES.all;
+          const isSelected = filterStatus === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className="px-4 py-2 rounded-xl text-sm font-extrabold tracking-wide shadow-sm transition-all"
+              style={{
+                background: st.bg,
+                color: st.text,
+                border: isSelected ? '3px solid #0f172a' : `1.5px solid ${st.border}`,
+                transform: isSelected ? 'scale(1.04)' : undefined,
+              }}
+            >
+              {STATUS_LABELS[s]}
+            </button>
+          );
+        })}
       </div>
 
       {/* Add form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-xl p-5 space-y-4" style={{ background: tileBg, border: tileBorder }}>
-          <h3 className={`${neutralText} font-medium`}>Add to Waiting List</h3>
+          <h3 className={`${neutralText} text-base font-extrabold`}>Add to Waiting List</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { label: 'Full Name', key: 'full_name', type: 'text', required: true },
+              { label: 'Full Name *', key: 'full_name', type: 'text', required: true },
               { label: 'Date of Birth', key: 'date_of_birth', type: 'date', required: false },
               { label: 'Contact Name', key: 'contact_name', type: 'text', required: false },
               { label: 'Contact Phone', key: 'contact_phone', type: 'tel', required: false },
@@ -191,21 +276,21 @@ export default function WaitingList() {
               { label: 'Who Conducted the Assessment', key: 'assessment_conducted_by', type: 'text', required: false },
             ].map(f => (
               <div key={f.key}>
-                <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
+                <label className={`text-xs font-bold mb-1 block ${neutralText}`}>{f.label}</label>
                 <input type={f.type} value={(form as any)[f.key]} required={f.required}
                   onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                   className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm`} style={{ background: inputBg, border: inputBorder }} />
               </div>
             ))}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Priority</label>
+              <label className={`text-xs font-bold mb-1 block ${neutralText}`}>Priority</label>
               <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}
-                className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm`} style={{ background: inputBg, border: inputBorder }}>
+                className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm capitalize font-semibold`} style={{ background: inputBg, border: inputBorder }}>
                 {PRIORITIES.map(p => <option key={p} value={p} className="capitalize">{p}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 mb-1 block">Care Needs Summary</label>
+              <label className={`text-xs font-bold mb-1 block ${neutralText}`}>Care Needs Summary</label>
               <textarea value={form.care_needs} onChange={e => setForm(p => ({ ...p, care_needs: e.target.value }))} rows={2}
                 className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
             </div>
@@ -215,70 +300,99 @@ export default function WaitingList() {
               { label: 'Final Outcome', key: 'final_outcome' },
             ].map(f => (
               <div key={f.key} className="md:col-span-2">
-                <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
+                <label className={`text-xs font-bold mb-1 block ${neutralText}`}>{f.label}</label>
                 <textarea value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} rows={2}
                   className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
               </div>
             ))}
+            <div className="md:col-span-2">
+              <label className={`text-xs font-bold mb-1 block ${neutralText}`}>Notes</label>
+              <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
+                className={`w-full px-3 py-2 rounded-lg ${inputText} text-sm resize-none`} style={{ background: inputBg, border: inputBorder }} />
+            </div>
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium text-white" style={{ background: '#e8b130' }}>Add</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-400" style={{ background: btnGhostBg }}>Cancel</button>
+              <button type="submit" className="px-5 py-2 rounded-lg text-sm font-extrabold" style={{ background: '#e8b130', color: '#0f172a' }}>Save Entry</button>
+              <button type="button" onClick={() => setShowForm(false)} className={`px-4 py-2 rounded-lg text-sm font-bold ${neutralText}`} style={{ background: btnGhostBg }}>Cancel</button>
             </div>
           </form>
         </motion.div>
       )}
 
-      {/* List */}
+      {/* Entries */}
       {loading ? (
-        <div className="text-center text-gray-400 py-12">Loading...</div>
-      ) : entries.length === 0 ? (
-        <div className="text-center text-gray-400 py-12">No entries found</div>
+        <div className={`text-center font-semibold py-12 ${neutralText}`}>Loading...</div>
+      ) : visibleEntries.length === 0 ? (
+        <div className={`text-center font-semibold py-12 ${neutralText}`}>No entries on waiting list</div>
       ) : (
         <div className="space-y-3">
-          {entries.map(e => (
-            <div key={e.id} className="p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`${neutralText} font-medium`}>{e.full_name}</span>
-                    {priorityBadge(e.priority)}
-                    <span className="text-xs text-gray-500">{STATUS_LABELS[e.status] || e.status}</span>
-                  </div>
-                  {e.date_of_birth && <div className="text-xs text-gray-400 mt-1">DOB: {format(new Date(String(e.date_of_birth).includes('T') ? e.date_of_birth : e.date_of_birth + 'T12:00:00'), 'dd MMM yyyy')}</div>}
-                  {e.address && <div className="text-xs text-gray-400 mt-0.5">{e.address}</div>}
-                  {e.care_needs && <div className="text-xs text-gray-500 mt-1">{e.care_needs}</div>}
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                    {e.contact_name && <span>{e.contact_name}</span>}
-                    {e.contact_phone && <span className="flex items-center gap-1"><Phone size={10} />{e.contact_phone}</span>}
-                    {e.enquiry_date && <span className="flex items-center gap-1"><Clock size={10} />{format(new Date(String(e.enquiry_date).includes('T') ? e.enquiry_date : e.enquiry_date + 'T12:00:00'), 'dd MMM yyyy')}</span>}
-                  </div>
-                  {(e.assessment_date || e.assessment_conducted_by) && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Assessment{e.assessment_date && ` — ${format(new Date(String(e.assessment_date).includes('T') ? e.assessment_date : e.assessment_date + 'T12:00:00'), 'dd MMM yyyy')}`}
-                      {e.assessment_conducted_by && ` by ${e.assessment_conducted_by}`}
+          {visibleEntries.map(entry => {
+            const st = STATUS_SOLID_STYLES[entry.status] || STATUS_SOLID_STYLES.all;
+            return (
+              <div key={entry.id} className="p-4 rounded-xl" style={{ background: tileBg, border: tileBorder }}>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`${neutralText} font-extrabold text-base`}>{entry.full_name}</span>
+                      {priorityBadge(entry.priority)}
+                      <span
+                        className="text-xs px-2.5 py-0.5 rounded-lg font-extrabold"
+                        style={{ background: st.bg, color: st.text }}
+                      >
+                        {STATUS_LABELS[entry.status] || entry.status}
+                      </span>
                     </div>
-                  )}
-                  {e.outcome && <div className="text-xs text-gray-500 mt-1"><span className="text-gray-400">Outcome:</span> {e.outcome}</div>}
-                  {e.next_action && <div className="text-xs text-gray-500 mt-1"><span className="text-gray-400">Next action:</span> {e.next_action}</div>}
-                  {e.final_outcome && <div className="text-xs text-gray-500 mt-1"><span className="text-gray-400">Final outcome:</span> {e.final_outcome}</div>}
-                </div>
-                <div className="flex gap-1">
-                  {e.status === 'enquiry' && (
-                    <>
-                      <button onClick={() => updateStatus(e.id, 'assessment_booked')} title="Book assessment"
-                        className="p-1.5 rounded-lg text-yellow-400 hover:bg-yellow-400/10"><CheckCircle size={14} /></button>
-                      <button onClick={() => updateStatus(e.id, 'withdrawn')} title="Mark as withdrawn"
-                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-400/10"><XCircle size={14} /></button>
-                    </>
-                  )}
-                  {e.status === 'assessment_complete' && (
-                    <button onClick={() => updateStatus(e.id, 'offer_made')} title="Make offer"
-                      className="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10"><CheckCircle size={14} /></button>
-                  )}
+                    {entry.care_needs && (
+                      <div className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {entry.care_needs}
+                      </div>
+                    )}
+                    <div className={`flex flex-wrap gap-3 mt-2 text-xs font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {entry.contact_name && <span>Contact: {entry.contact_name}</span>}
+                      {entry.contact_phone && (
+                        <a href={`tel:${entry.contact_phone}`} className="flex items-center gap-1 font-bold text-blue-500 hover:underline">
+                          <Phone size={11} />{entry.contact_phone}
+                        </a>
+                      )}
+                      {entry.enquiry_date && (
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} />Enquired {format(new Date(entry.enquiry_date), 'dd MMM yyyy')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    {entry.status === 'enquiry' && (
+                      <button
+                        onClick={() => updateStatus(entry.id, 'assessment_booked')}
+                        className="text-xs px-3 py-1.5 rounded-lg font-extrabold shadow-sm"
+                        style={{ background: '#38bdf8', color: '#0f172a' }}
+                      >
+                        Book Assessment
+                      </button>
+                    )}
+                    {entry.status === 'assessment_booked' && (
+                      <button
+                        onClick={() => updateStatus(entry.id, 'accepted')}
+                        className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-extrabold shadow-sm"
+                        style={{ background: '#4ade80', color: '#0f172a' }}
+                      >
+                        <CheckCircle size={12} /> Admit
+                      </button>
+                    )}
+                    {['enquiry', 'assessment_booked', 'offer_made'].includes(entry.status) && (
+                      <button
+                        onClick={() => updateStatus(entry.id, 'withdrawn')}
+                        className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-bold"
+                        style={{ background: '#fca5a5', color: '#0f172a' }}
+                      >
+                        <XCircle size={12} /> Withdraw
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

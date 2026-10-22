@@ -287,12 +287,53 @@ router.post('/',
   }
 );
 
+const HEALTH_CHECK_EDITABLE_FIELDS = new Set([
+  'annualHealthDate', 'annualHealthNotes', 'annualHealthNa', 'annualHealthDueDate',
+  'gpReviewDate', 'gpReviewNotes', 'gpReviewNa', 'gpReviewDueDate',
+  'mentalHealthDate', 'mentalHealthNotes', 'mentalHealthNa', 'mentalHealthDueDate',
+  'dentistDate', 'dentistNotes', 'dentistNa', 'dentistDueDate',
+  'opticianDate', 'opticianNotes', 'opticianNa', 'opticianDueDate',
+  'gpName', 'pharmacyName', 'heightCm', 'weightKg',
+]);
+
+// PUT /api/service-users/:id/health-checks — explicit endpoint for all authenticated staff to update Resident Health Checks
+router.put('/:id/health-checks', param('id').isUUID(), validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const healthFieldMap: Record<string, string> = {
+        annualHealthDate: 'annual_health_date', annualHealthNotes: 'annual_health_notes', annualHealthNa: 'annual_health_na', annualHealthDueDate: 'annual_health_due_date',
+        gpReviewDate: 'gp_review_date', gpReviewNotes: 'gp_review_notes', gpReviewNa: 'gp_review_na', gpReviewDueDate: 'gp_review_due_date',
+        mentalHealthDate: 'mental_health_date', mentalHealthNotes: 'mental_health_notes', mentalHealthNa: 'mental_health_na', mentalHealthDueDate: 'mental_health_due_date',
+        dentistDate: 'dentist_date', dentistNotes: 'dentist_notes', dentistNa: 'dentist_na', dentistDueDate: 'dentist_due_date',
+        opticianDate: 'optician_date', opticianNotes: 'optician_notes', opticianNa: 'optician_na', opticianDueDate: 'optician_due_date',
+      };
+      const sets: string[] = [];
+      const vals: any[] = [];
+      for (const [k, col] of Object.entries(healthFieldMap)) {
+        if (req.body[k] !== undefined) {
+          vals.push(req.body[k] === '' ? null : req.body[k]);
+          sets.push(`${col} = $${vals.length}`);
+        }
+      }
+      if (!sets.length) {
+        return res.json({ success: true } as ApiResponse);
+      }
+      vals.push(req.params.id);
+      const rows = await query(`UPDATE service_users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${vals.length} RETURNING *`, vals);
+      if (!rows.length) throw new AppError('Service user not found', 404);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 // PUT /api/service-users/:id
 router.put('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const roleCheck = getRole(req);
-      if (!MANAGER_ROLES.includes(roleCheck)) {
+      const bodyKeys = Object.keys(req.body || {});
+      const isHealthCheckOnlyUpdate = bodyKeys.length > 0 && bodyKeys.every((k) => HEALTH_CHECK_EDITABLE_FIELDS.has(k));
+      if (!MANAGER_ROLES.includes(roleCheck) && !isHealthCheckOnlyUpdate) {
         throw new AppError('Only managers can edit service user details', 403);
       }
       // dnarFormUrl is optional — removed hard block to allow saving other fields

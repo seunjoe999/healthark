@@ -27,14 +27,17 @@ export interface UniformFilterBarProps {
   searchValue: string
   onSearchChange: (value: string) => void
   /** Date range filter */
+  showDateRange?: boolean
   dateFromLabel?: string
-  dateFrom: string
-  onDateFromChange: (value: string) => void
+  dateFrom?: string
+  onDateFromChange?: (value: string) => void
   dateToLabel?: string
-  dateTo: string
-  onDateToChange: (value: string) => void
+  dateTo?: string
+  onDateToChange?: (value: string) => void
   /** Optional status / session / category dropdowns */
   extraSelects?: ExtraFilterField[]
+  /** Optional custom filter controls */
+  extraFilters?: React.ReactNode
   /** Clear callback */
   onClear: () => void
   /** Optional count summary */
@@ -52,13 +55,15 @@ export function UniformFilterBar({
   searchPlaceholder = 'Search name, notes, details...',
   searchValue,
   onSearchChange,
+  showDateRange = true,
   dateFromLabel = 'Date From',
-  dateFrom,
+  dateFrom = '',
   onDateFromChange,
   dateToLabel = 'Date To',
-  dateTo,
+  dateTo = '',
   onDateToChange,
   extraSelects = [],
+  extraFilters,
   onClear,
   shownCount,
   totalCount,
@@ -143,29 +148,33 @@ export function UniformFilterBar({
           </div>
         </div>
 
-        <div className={extraSelects.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}>
-          <label className="text-[11px] font-bold uppercase tracking-wide text-slate-600 mb-1 block">
-            {dateFromLabel}
-          </label>
-          <input
-            type="date"
-            className="input w-full text-sm text-slate-900 bg-white"
-            value={dateFrom}
-            onChange={e => onDateFromChange(e.target.value)}
-          />
-        </div>
+        {showDateRange && onDateFromChange && (
+          <div className={extraSelects.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}>
+            <label className="text-[11px] font-bold uppercase tracking-wide text-slate-600 mb-1 block">
+              {dateFromLabel}
+            </label>
+            <input
+              type="date"
+              className="input w-full text-sm text-slate-900 bg-white"
+              value={dateFrom}
+              onChange={e => onDateFromChange(e.target.value)}
+            />
+          </div>
+        )}
 
-        <div className={extraSelects.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}>
-          <label className="text-[11px] font-bold uppercase tracking-wide text-slate-600 mb-1 block">
-            {dateToLabel}
-          </label>
-          <input
-            type="date"
-            className="input w-full text-sm text-slate-900 bg-white"
-            value={dateTo}
-            onChange={e => onDateToChange(e.target.value)}
-          />
-        </div>
+        {showDateRange && onDateToChange && (
+          <div className={extraSelects.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}>
+            <label className="text-[11px] font-bold uppercase tracking-wide text-slate-600 mb-1 block">
+              {dateToLabel}
+            </label>
+            <input
+              type="date"
+              className="input w-full text-sm text-slate-900 bg-white"
+              value={dateTo}
+              onChange={e => onDateToChange(e.target.value)}
+            />
+          </div>
+        )}
 
         {extraSelects.map(sel => (
           <div key={sel.id} className="lg:col-span-2">
@@ -185,6 +194,12 @@ export function UniformFilterBar({
           </div>
         ))}
       </div>
+
+      {extraFilters && (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          {extraFilters}
+        </div>
+      )}
     </div>
   )
 }

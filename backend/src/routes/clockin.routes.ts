@@ -623,12 +623,17 @@ router.post('/event', authenticate,
   }
 );
 
-// GET /api/clockin/analytics — clock-in analytics for a home and date range
+// GET /api/clockin/analytics — clock-in analytics for a home and date range (+ optional staffId filter)
 router.get('/analytics', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const startDate = (req.query.startDate as string) || ukDateStr();
     const endDate = (req.query.endDate as string) || ukDateStr();
+    const staffId = (req.query.staffId as string) || '';
+
+    const baseParams: any[] = staffId ? [homeId, startDate, endDate, staffId] : [homeId, startDate, endDate];
+    const staffClausePlain = staffId ? ' AND staff_id = $4' : '';
+    const staffClauseCe = staffId ? ' AND ce.staff_id = $4' : '';
 
     // Total events + clock-ins + unique staff
     const summaryRows = await query<any>(
@@ -637,8 +642,8 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
          COUNT(*) FILTER (WHERE event_type = 'clock_in') as total_clock_ins,
          COUNT(DISTINCT staff_id) as unique_staff
        FROM staff_clock_events
-       WHERE home_id = $1 AND event_time::date BETWEEN $2 AND $3`,
-      [homeId, startDate, endDate]
+       WHERE home_id = $1 AND event_time::date BETWEEN $2 AND $3${staffClausePlain}`,
+      baseParams
     );
 
     // By staff — includes currently_clocked_in (their most recent event overall,
@@ -655,10 +660,10 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
          (SELECT ce2.event_type FROM staff_clock_events ce2 WHERE ce2.staff_id = ce.staff_id AND ce2.home_id = $1 ORDER BY ce2.event_time DESC LIMIT 1) = 'clock_in' as currently_clocked_in
        FROM staff_clock_events ce
        JOIN staff s ON s.id = ce.staff_id
-       WHERE ce.home_id = $1 AND ce.event_time::date BETWEEN $2 AND $3
+       WHERE ce.home_id = $1 AND ce.event_time::date BETWEEN $2 AND $3${staffClauseCe}
        GROUP BY ce.staff_id, s.first_name, s.last_name
        ORDER BY total_events DESC`,
-      [homeId, startDate, endDate]
+      baseParams
     );
 
     // By day
@@ -668,10 +673,10 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
          COUNT(*) FILTER (WHERE event_type='clock_in') as clock_ins,
          COUNT(*) FILTER (WHERE event_type='clock_out') as clock_outs
        FROM staff_clock_events
-       WHERE home_id = $1 AND event_time::date BETWEEN $2 AND $3
+       WHERE home_id = $1 AND event_time::date BETWEEN $2 AND $3${staffClausePlain}
        GROUP BY event_time::date
        ORDER BY date ASC`,
-      [homeId, startDate, endDate]
+      baseParams
     );
 
     // Late arrivals — clock_in after 08:00
@@ -685,17 +690,14 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
        JOIN staff s ON s.id = ce.staff_id
        WHERE ce.home_id = $1
          AND ce.event_type = 'clock_in'
-         AND ce.event_time::date BETWEEN $2 AND $3
+         AND ce.event_time::date BETWEEN $2 AND $3${staffClauseCe}
          AND EXTRACT(HOUR FROM ce.event_time) >= 8
          AND (EXTRACT(HOUR FROM ce.event_time) > 8 OR EXTRACT(MINUTE FROM ce.event_time) > 0)
        ORDER BY ce.event_time DESC`,
-      [homeId, startDate, endDate]
+      baseParams
     );
 
-    // Recent clock-outs, with their actual time — the "By staff" table only ever
-    // showed a clock-out COUNT plus a single "last event" timestamp, so a manager
-    // could see someone clocked out but not when, unlike clock-ins (which already
-    // had this exact list via lateRows above). Mirrors lateRows' shape.
+    // Recent clock-outs, with their actual time
     const clockOutRows = await query<any>(
       `SELECT ce.staff_id,
          s.first_name || ' ' || s.last_name as staff_name,
@@ -704,9 +706,9 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
        JOIN staff s ON s.id = ce.staff_id
        WHERE ce.home_id = $1
          AND ce.event_type = 'clock_out'
-         AND ce.event_time::date BETWEEN $2 AND $3
+         AND ce.event_time::date BETWEEN $2 AND $3${staffClauseCe}
        ORDER BY ce.event_time DESC`,
-      [homeId, startDate, endDate]
+      baseParams
     );
 
     // Staff in home who have NO clock events in range
@@ -715,13 +717,13 @@ router.get('/analytics', authenticate, async (req: Request, res: Response, next:
        FROM staff s
        WHERE s.home_id = $1
          AND s.status = 'active'
-         AND s.role NOT IN ('home_manager', 'group_admin')
+         AND s.role NOT IN ('home_manager', 'group_admin')${staffId ? ' AND s.id = $4' : ''}
          AND s.id NOT IN (
            SELECT DISTINCT staff_id
            FROM staff_clock_events
            WHERE home_id = $1 AND event_time::date BETWEEN $2 AND $3
          )`,
-      [homeId, startDate, endDate]
+      baseParams
     );
 
     const summary = summaryRows[0] || {};

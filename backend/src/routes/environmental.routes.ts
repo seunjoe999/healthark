@@ -68,7 +68,7 @@ router.use(async (_req, _res, next) => {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-    const { date, checkType, days } = req.query;
+    const { date, from, to, checkType, suId, result, search, days } = req.query;
 
     let sql = `
       SELECT
@@ -85,8 +85,23 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const params: any[] = [homeId];
 
     if (date) { params.push(date); sql += ` AND ec.check_date = $${params.length}`; }
+    if (from) { params.push(from); sql += ` AND ec.check_date >= $${params.length}::date`; }
+    if (to) { params.push(to); sql += ` AND ec.check_date <= $${params.length}::date`; }
     if (checkType) { params.push(checkType); sql += ` AND ec.check_type = $${params.length}`; }
-    if (days && !date) {
+    if (suId) { params.push(suId); sql += ` AND ec.su_id = $${params.length}`; }
+    if (result) { params.push(result); sql += ` AND ec.result = $${params.length}`; }
+    if (search) {
+      params.push(`%${String(search).trim()}%`);
+      sql += ` AND (
+        COALESCE(ec.location, '') ILIKE $${params.length}
+        OR COALESCE(ec.check_type, '') ILIKE $${params.length}
+        OR COALESCE(su.first_name || ' ' || su.last_name, '') ILIKE $${params.length}
+        OR COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE $${params.length}
+        OR COALESCE(ec.notes, '') ILIKE $${params.length}
+        OR COALESCE(ec.action_taken, '') ILIKE $${params.length}
+      )`;
+    }
+    if (days && days !== 'all' && !date && !from && !to) {
       params.push(Number(days));
       sql += ` AND ec.check_date >= CURRENT_DATE - ($${params.length} || ' days')::INTERVAL`;
     }

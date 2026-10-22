@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import api from '../../api'
-import { Spinner, EmptyState, Button, Input } from '../../components/ui'
-import { Calendar, User, AlertTriangle, Plus, ExternalLink } from 'lucide-react'
+import { Spinner, EmptyState, Button } from '../../components/ui'
+import { Calendar, AlertTriangle, Plus, ExternalLink, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
+import { UniformFilterBar } from '../../components/ui/FilterBar'
+import { openLetterheadPrint, buildLetterheadPage, fmtDate, esc } from '../../utils/letterheadPrint'
 
 export default function ResidentDiary() {
-  const { user, isRole } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [serviceUsers, setServiceUsers] = useState<any[]>([])
   const [selectedSU, setSelectedSU] = useState(searchParams.get('su') || '')
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [incidents, setIncidents] = useState<any[]>([])
@@ -29,7 +32,11 @@ export default function ResidentDiary() {
   useEffect(() => {
     api.get('/service-users', { params: { homeId: user?.homeId } })
       .then(res => {
-        setServiceUsers(res.data.data || [])
+        const list = res.data.data || []
+        setServiceUsers(list)
+        if (!selectedSU && list.length > 0) {
+          setSelectedSU(list[0].id)
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -80,9 +87,8 @@ export default function ResidentDiary() {
     if (!selectedSU) return
     setSaving(true)
     try {
-      await api.put(`/service-users/${selectedSU}`, form)
-      toast.success('Health reviews saved')
-      // Update local state
+      await api.put(`/service-users/${selectedSU}/health-checks`, form)
+      toast.success('Resident health check saved')
       setServiceUsers(prev => prev.map(s => s.id === selectedSU ? {
         ...s,
         annual_health_date: form.annualHealthDate, annual_health_notes: form.annualHealthNotes, annual_health_na: form.annualHealthNa, annual_health_due_date: form.annualHealthDueDate,
@@ -97,13 +103,40 @@ export default function ResidentDiary() {
     setSaving(false)
   }
 
+  const handlePrint = () => {
+    const su = serviceUsers.find(s => s.id === selectedSU)
+    const suName = su ? `${su.first_name} ${su.last_name}` : 'Resident'
+    const items = [
+      { label: 'Annual Health Check', date: form.annualHealthDate, due: form.annualHealthDueDate, notes: form.annualHealthNotes, na: form.annualHealthNa },
+      { label: 'GP Review', date: form.gpReviewDate, due: form.gpReviewDueDate, notes: form.gpReviewNotes, na: form.gpReviewNa },
+      { label: 'Mental Health Review', date: form.mentalHealthDate, due: form.mentalHealthDueDate, notes: form.mentalHealthNotes, na: form.mentalHealthNa },
+      { label: 'Dentist Review', date: form.dentistDate, due: form.dentistDueDate, notes: form.dentistNotes, na: form.dentistNa },
+      { label: 'Optician Review', date: form.opticianDate, due: form.opticianDueDate, notes: form.opticianNotes, na: form.opticianNa },
+    ]
+    const rowsHtml = items.map(it => `
+      <tr>
+        <th>${esc(it.label)}</th>
+        <td>${it.na ? '<em>Not Applicable (N/A)</em>' : `<strong>Last Review:</strong> ${it.date ? fmtDate(it.date) : '—'} · <strong>Next Due:</strong> ${it.due ? fmtDate(it.due) : '—'}${it.notes ? `<br/><em>${esc(it.notes)}</em>` : ''}`}</td>
+      </tr>
+    `).join('')
+    const body = buildLetterheadPage({
+      docTitle: 'Residents Health Check Record',
+      docSubtitle: 'Annual health, GP, mental health, dental and optical review summary',
+      docRefPrefix: 'RHC',
+      docRefId: selectedSU || format(new Date(), 'yyyyMMdd'),
+      residentName: suName,
+      sections: [{ title: 'Health Review Schedule', inner: `<table class="fields">${rowsHtml}</table>` }],
+    })
+    openLetterheadPrint(`${suName} — Health Check`, body)
+  }
+
   const renderSection = (title: string, dateKey: string, notesKey: string, naKey: string, dueDateKey: string) => {
     const isNa = (form as any)[naKey]
     const dueDate = (form as any)[dueDateKey]
     const isOverdue = dueDate && dueDate < format(new Date(), 'yyyy-MM-dd')
     return (
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h3 className="font-semibold text-slate-800 text-lg flex items-center gap-2">
             {title}
             {!isNa && isOverdue && (
@@ -129,7 +162,7 @@ export default function ResidentDiary() {
             </div>
             <div className="md:col-span-1">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Notes</label>
-              <input type="text" className="input w-full" placeholder="Add a little note..." value={(form as any)[notesKey]} onChange={e => set(notesKey, e.target.value)} />
+              <input type="text" className="input w-full" placeholder="Enter clinical review notes..." value={(form as any)[notesKey]} onChange={e => set(notesKey, e.target.value)} />
             </div>
           </div>
         )}
@@ -140,27 +173,40 @@ export default function ResidentDiary() {
 
   if (loading) return <div className="p-8"><Spinner /></div>
 
+  const filteredResidents = search.trim()
+    ? serviceUsers.filter(su => `${su.first_name} ${su.last_name}`.toLowerCase().includes(search.trim().toLowerCase()))
+    : serviceUsers
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold uppercase flex items-center gap-2" style={{ color: '#e8b130' }}>
             <Calendar className="w-6 h-6" style={{ color: '#e8b130' }} />
             RESIDENTS HEALTH CHECK
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Track annual health, GP, mental health, dentist, and optician reviews.</p>
+          <p className="text-slate-500 text-sm mt-1">Complete and update annual health, GP, mental health, dentist, and optician reviews.</p>
         </div>
+        {selectedSU && (
+          <Button variant="outline" icon={<Printer className="w-4 h-4" />} onClick={handlePrint}>
+            Print / PDF
+          </Button>
+        )}
       </div>
 
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex items-center gap-4">
-        <User className="w-5 h-5 text-slate-400" />
-        <select className="input flex-1 font-semibold text-slate-800" value={selectedSU} onChange={e => setSelectedSU(e.target.value)}>
-          <option value="" disabled>-- Select a resident --</option>
-          {serviceUsers.map(su => (
-            <option key={su.id} value={su.id}>{su.first_name} {su.last_name}</option>
-          ))}
-        </select>
-      </div>
+      <UniformFilterBar
+        className="mb-6"
+        personLabel="Resident"
+        personAllLabel="Select Resident"
+        personValue={selectedSU}
+        onPersonChange={setSelectedSU}
+        personOptions={filteredResidents.map(su => ({ value: su.id, label: `${su.first_name} ${su.last_name}` }))}
+        searchPlaceholder="Filter resident name..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        showDateRange={false}
+        onClear={() => setSearch('')}
+      />
 
       {selectedSU ? (
         <form onSubmit={save}>
@@ -175,7 +221,7 @@ export default function ResidentDiary() {
           </div>
         </form>
       ) : (
-        <EmptyState title="Select a resident" description="Choose a resident from the dropdown to manage their diary." />
+        <EmptyState title="Select a resident" description="Choose a resident from the dropdown above to complete their health check." />
       )}
 
       {selectedSU && (

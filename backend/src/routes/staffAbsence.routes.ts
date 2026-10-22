@@ -47,7 +47,7 @@ router.use(async (_req, _res, next) => {
   next();
 });
 
-// ── GET /api/staff-absence?homeId=&staffId=&year= ─────────────────
+// ── GET /api/staff-absence?homeId=&staffId=&year=&from=&to=&absenceType=&search= ──
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
@@ -56,6 +56,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const isPrivileged = PRIVILEGED_ROLES.includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string | undefined) : myStaffId;
     const year = req.query.year as string | undefined;
+    const from = req.query.from as string | undefined;
+    const to = req.query.to as string | undefined;
+    const absenceType = req.query.absenceType as string | undefined;
+    const search = ((req.query.search as string) || '').trim();
 
     let sql = `
       SELECT a.*,
@@ -64,7 +68,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
              s.photo_url,
              COALESCE(a.absence_end::date - a.absence_start::date + 1, (CURRENT_DATE - a.absence_start::date + 1)) AS days_so_far
       FROM staff_absences a
-      JOIN staff s ON s.id = a.staff_id
+      LEFT JOIN staff s ON s.id = a.staff_id
       WHERE a.home_id = $1`;
     const params: any[] = [homeId];
     let idx = 2;
@@ -73,6 +77,28 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (year) {
       sql += ` AND EXTRACT(YEAR FROM a.absence_start) = $${idx++}`;
       params.push(parseInt(year));
+    }
+    if (from) {
+      sql += ` AND COALESCE(a.absence_end::date, CURRENT_DATE) >= $${idx++}::date`;
+      params.push(from);
+    }
+    if (to) {
+      sql += ` AND a.absence_start::date <= $${idx++}::date`;
+      params.push(to);
+    }
+    if (absenceType) {
+      sql += ` AND a.absence_type = $${idx++}`;
+      params.push(absenceType);
+    }
+    if (search) {
+      sql += ` AND (
+        COALESCE(s.first_name || ' ' || s.last_name, '') ILIKE $${idx}
+        OR COALESCE(a.absence_type, '') ILIKE $${idx}
+        OR COALESCE(a.reason, '') ILIKE $${idx}
+        OR COALESCE(a.notes, '') ILIKE $${idx}
+      )`;
+      idx++;
+      params.push(`%${search}%`);
     }
     sql += ' ORDER BY a.absence_start DESC';
 

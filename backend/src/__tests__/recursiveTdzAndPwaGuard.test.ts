@@ -174,10 +174,10 @@ describe('Zero TDZ Hazards (Recursive AST + Compiled Rollup Chunks) & Mobile PWA
     expect(chunkViolations).toEqual([]);
   });
 
-  test('Service Worker compcare-v19 purges stale caches, auto-navigates open mobile window clients, and guards JS/CSS MIME types', () => {
+  test('Service Worker compcare-v20 purges stale caches, auto-navigates open mobile window clients, and guards JS/CSS MIME types', () => {
     const sw = fs.readFileSync(path.join(repoRoot, 'frontend/public/sw.js'), 'utf8');
-    expect(sw).toContain("const CACHE = 'compcare-v19'");
-    expect(sw).toContain("const DYNAMIC_CACHE = 'compcare-dynamic-v19'");
+    expect(sw).toContain("const CACHE = 'compcare-v20'");
+    expect(sw).toContain("const DYNAMIC_CACHE = 'compcare-dynamic-v20'");
     expect(sw).toContain('self.skipWaiting()');
     expect(sw).toContain('self.clients.claim()');
     expect(sw).toContain('client.navigate(client.url)');

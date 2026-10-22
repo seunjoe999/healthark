@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { downloadCsv } from '../../utils/exportTable';
 import { printLetterheadTable } from '../../utils/letterheadPrint';
+import { UniformFilterBar } from '../../components/ui/FilterBar';
 
 interface Absence {
   id: number;
@@ -62,34 +63,45 @@ export default function StaffAbsence() {
   const [form, setForm] = useState({ staff_id: '', start_date: '', end_date: '', reason: 'Illness', absence_type: 'Sickness', notes: '' });
   const [staffList, setStaffList] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
   const [staffFilter, setStaffFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [editing, setEditing] = useState<Absence | null>(null);
 
-  const fetchData = async (staffId = staffFilter) => {
+  const fetchData = async () => {
     try {
       const hParams: Record<string, string> = user?.homeId ? { homeId: user.homeId } : {};
-      if (staffId) hParams.staffId = staffId;
+      if (staffFilter) hParams.staffId = staffFilter;
+      if (dateFrom) hParams.from = dateFrom;
+      if (dateTo) hParams.to = dateTo;
+      if (typeFilter) hParams.absenceType = typeFilter;
+      if (searchFilter.trim()) hParams.search = searchFilter.trim();
       const [absRes, bfRes, statsRes, staffRes] = await Promise.all([
         api.get('/staff-absence', { params: hParams }),
         api.get('/staff-absence/bradford', { params: { homeId: hParams.homeId } }),
         api.get('/staff-absence/stats', { params: { homeId: hParams.homeId } }),
         api.get('/staff', { params: { status: 'active', ...(hParams.homeId ? { homeId: hParams.homeId } : {}) } }),
       ]);
-      setAbsences(absRes.data.data || []);
+      const loadedAbsences: Absence[] = absRes.data.data || [];
+      setAbsences(loadedAbsences);
       setBradford(bfRes.data.data || []);
       const sd = statsRes.data.data || {};
+      const avgDuration = loadedAbsences.length
+        ? loadedAbsences.reduce((sum, a) => sum + Number(a.days_so_far || 0), 0) / loadedAbsences.length
+        : 0;
       setStats({
-        total_absences: Number(sd.currently_absent ?? 0),
+        total_absences: loadedAbsences.length,
         active_absences: Number(sd.currently_absent ?? 0),
         total_days: Number(sd.days_lost_this_month ?? 0),
-        avg_days: 0,
+        avg_days: avgDuration,
       });
       setStaffList(staffRes.data.data || []);
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchData(); }, []);
-  useEffect(() => { fetchData(staffFilter); }, [staffFilter]);
+  useEffect(() => { fetchData(); }, [staffFilter, dateFrom, dateTo, typeFilter, searchFilter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,21 +192,59 @@ export default function StaffAbsence() {
         <div className="flex gap-2">
           {(['absences', 'bradford'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${tab === t ? 'text-white' : 'text-gray-400'}`}
-              style={{ background: tab === t ? '#e8b130' : btnGhostBg }}>
+              className="px-4 py-2 rounded-lg text-sm font-bold capitalize"
+              style={{
+                background: tab === t ? '#e8b130' : btnGhostBg,
+                color: tab === t ? '#0f172a' : undefined,
+              }}>
               {t === 'bradford' ? 'Bradford Factor' : 'Absences'}
             </button>
           ))}
         </div>
-        {tab === 'absences' && (
-          <StaffSearchFilter
-            staffList={staffList}
-            value={staffFilter}
-            onChange={setStaffFilter}
-            selectBg={selectBg} selectFg={selectFg} inputBorder={inputBorder} inputTextCls={inputTextCls} optionStyle={optionStyle}
-          />
-        )}
       </div>
+
+      {/* Uniform Filter Bar — Staff Name, Search, Date From, Date To, Absence Type */}
+      {tab === 'absences' && (
+        <UniformFilterBar
+          personLabel="Staff Name"
+          personAllLabel="All Staff Members"
+          personValue={staffFilter}
+          onPersonChange={setStaffFilter}
+          personOptions={staffList.map(s => ({ value: s.id, label: `${s.first_name} ${s.last_name}` }))}
+          searchPlaceholder="Search staff name, reason, notes..."
+          searchValue={searchFilter}
+          onSearchChange={setSearchFilter}
+          dateFrom={dateFrom}
+          onDateFromChange={setDateFrom}
+          dateTo={dateTo}
+          onDateToChange={setDateTo}
+          extraFilters={
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                Absence Type
+              </label>
+              <select
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+                className="input h-[38px] text-sm min-w-[150px]"
+              >
+                <option value="">All Types</option>
+                {ABSENCE_TYPES.map(t => (
+                  <option key={t} value={ABSENCE_TYPE_MAP[t]}>{t}</option>
+                ))}
+              </select>
+            </div>
+          }
+          onClear={() => {
+            setStaffFilter('');
+            setSearchFilter('');
+            setDateFrom('');
+            setDateTo('');
+            setTypeFilter('');
+          }}
+          shownCount={absences.length}
+        />
+      )}
 
       {/* Add form */}
       {showForm && (
