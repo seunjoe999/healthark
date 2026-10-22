@@ -240,6 +240,7 @@ router.post('/event', authenticate,
         }
       })();
       const [rotaShifts, staffRows, lastEventRows, hasShiftIdCol] = await Promise.all([rotaShiftsP, staffRowsP, lastEventP, shiftColP]);
+      const staffRole = staffRows[0]?.role;
       // Which shift "now" actually belongs to — used by clock-in below to tie
       // the event to a specific shift, and by the fast clock-out path above to
       // link the clock-out to a shift where possible.
@@ -478,7 +479,6 @@ router.post('/event', authenticate,
       // else (falls back to the office/home address when no resident is
       // assigned to their shift), so this doesn't skip the location check.
       // (The actual staff lookup is batched with the rota lookup above.)
-      const staffRole = staffRows[0]?.role;
 
       // A clock-out must follow an open clock-in, and you cannot clock in again while already clocked in.
       // (The last-event and shift_id-column lookups are batched above; their

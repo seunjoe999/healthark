@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { homesApi, suApi, staffApi } from '../../api'
 import api from '../../api'
@@ -295,12 +295,49 @@ export default function Tasks() {
   // the server is stamped with the server's date, so filtering "today" against
   // the device's own date can silently miss it if the two clocks disagree.
   const [today, setToday] = useState(format(new Date(), 'yyyy-MM-dd'))
-  useEffect(() => { getServerTodayStr().then(d => { setToday(d); setViewDate(d) }) }, [])
   // The date whose task list is actually being shown — separate from `today`
   // (the real current day, used for is-overdue comparisons and "Generate
   // today's tasks") so browsing to another day to find and edit a one-off
   // task doesn't change what "overdue" means for anything else on the page.
   const [viewDate, setViewDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+
+  // Care staff work shift to shift (day, then night) — each shift sees its own
+  // tasks, RoundSys-style, rather than the whole day's list at once. Managers
+  // (who plan the whole day) always get the full-day view. Browsing another
+  // date also shows the full day, since "current shift" is meaningless there.
+  // NOTE: Must be declared BEFORE any useEffect that lists `isCareShiftView` in
+  // its dependency array — otherwise minification places the `const` below the
+  // hook call and triggers a synchronous TDZ ReferenceError on mount.
+  const isCareShiftView = !isRole(...TASK_CREATOR_ROLES) && viewDate === today
+
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const params: Record<string, string> = { homeId: selectedHome, date: viewDate }
+      if (isCareShiftView) params.shift = 'current'
+      const res = await api.get('/tasks', { params })
+      setTasks(res.data.data || [])
+    } catch (e) { console.error(e) }
+    finally { if (!silent) setLoading(false) }
+  }
+
+  const loadTemplates = async () => {
+    try {
+      const res = await api.get('/tasks/templates', { params: { homeId: selectedHome } })
+      setTemplates(res.data.data || [])
+    } catch (e) { console.error(e) }
+  }
+
+  const loadTodaysAppointments = async () => {
+    try {
+      const res = await api.get('/calendar', { params: { homeId: selectedHome, from: today, to: today } })
+      setTodaysAppointments((res.data.data || []).filter((e: any) => ['appointment', 'review', 'inspection', 'training', 'meeting'].includes(e.event_type)))
+    } catch (e) { console.error(e) }
+  }
+
+  useEffect(() => {
+    getServerTodayStr().then(d => { setToday(d); setViewDate(d) })
+  }, [])
 
   useEffect(() => {
     if (!isRole(...TASK_CREATOR_ROLES)) {
@@ -321,19 +358,12 @@ export default function Tasks() {
     Promise.all([
       suApi.list(selectedHome, { status: 'live' }),
     ]).then(([suRes]) => setSus(suRes.data.data || []))
-    staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data || [])).catch(() => {})
+    staffApi.list({ homeId: selectedHome }).then(res => setStaffList(res.data.data|| [])).catch(() => {})
     api.get('/teams', { params: { homeId: selectedHome } }).then(res => setTeams(res.data.data || [])).catch(() => setTeams([]))
     load()
     loadTemplates()
     loadTodaysAppointments()
   }, [selectedHome, today, viewDate, isCareShiftView])
-
-  const loadTodaysAppointments = async () => {
-    try {
-      const res = await api.get('/calendar', { params: { homeId: selectedHome, from: today, to: today } })
-      setTodaysAppointments((res.data.data || []).filter((e: any) => ['appointment', 'review', 'inspection', 'training', 'meeting'].includes(e.event_type)))
-    } catch (e) { console.error(e) }
-  }
 
   // Deep-link from the task reminder pop-up ("...clicking the task takes you
   // to where you complete it") — opens the complete-task modal directly once
@@ -346,42 +376,30 @@ export default function Tasks() {
     setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('complete'); return p }, { replace: true })
   }, [tasks, searchParams])
 
-  // Care staff work shift to shift (day, then night) — each shift sees its own
-  // tasks, RoundSys-style, rather than the whole day's list at once. Managers
-  // (who plan the whole day) always get the full-day view. Browsing another
-  // date also shows the full day, since "current shift" is meaningless there.
-  const isCareShiftView = !isRole(...TASK_CREATOR_ROLES) && viewDate === today
-  const load = async (silent = false) => {
-    if (!silent) setLoading(true)
-    try {
-      const params: Record<string, string> = { homeId: selectedHome, date: viewDate }
-      if (isCareShiftView) params.shift = 'current'
-      const res = await api.get('/tasks', { params })
-      setTasks(res.data.data || [])
-    } catch (e) { console.error(e) }
-    finally { if (!silent) setLoading(false) }
-  }
-
   // Tasks are shared across every staff member rostered to the same resident —
   // e.g. one carer completes a task mid-shift and a colleague coming on for the
   // same resident needs to see it's already done, not a stale "outstanding"
-  // list from whenever they first opened the page. Without this, the list only
-  // ever updated on navigation, so a completion made by someone else could sit
-  // invisible to anyone who already had the page open.
+  // list from whenever they first opened the page. Also rolls `today`/`viewDate`
+  // forward automatically across UK midnight so an open tab never sticks on
+  // yesterday's completed list.
   useEffect(() => {
     if (!selectedHome) return
-    const onVisible = () => { if (document.visibilityState === 'visible') load(true) }
+    const refreshAndRollover = async () => {
+      try {
+        const serverDay = await getServerTodayStr()
+        if (serverDay !== today) {
+          setToday(serverDay)
+          setViewDate(prev => (prev === today ? serverDay : prev))
+          return
+        }
+      } catch { /* ignore transient error */ }
+      load(true)
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshAndRollover() }
     document.addEventListener('visibilitychange', onVisible)
-    const poll = setInterval(() => load(true), 60000)
+    const poll = setInterval(refreshAndRollover, 60000)
     return () => { document.removeEventListener('visibilitychange', onVisible); clearInterval(poll) }
-  }, [selectedHome, viewDate])
-
-  const loadTemplates = async () => {
-    try {
-      const res = await api.get('/tasks/templates', { params: { homeId: selectedHome } })
-      setTemplates(res.data.data || [])
-    } catch (e) { console.error(e) }
-  }
+  }, [selectedHome, today, viewDate, isCareShiftView])
 
   const complete = async (taskId: string, notes = '') => {
     try {

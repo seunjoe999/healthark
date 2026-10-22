@@ -11,7 +11,7 @@ import { isWithinAmendWindow } from '../utils/clockStatus';
 import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 import { generateTasksForHome } from '../utils/taskGeneration';
 import { sendPushToStaffMany, sendPushToStaff } from '../services/push.service';
-import { getMyPendingTasksToday, pickCurrentShiftIndex } from '../utils/taskDue';
+import { getMyPendingTasksToday, pickCurrentShiftIndex, fetchEffectiveShiftsForDate } from '../utils/taskDue';
 
 const router = Router();
 
@@ -30,6 +30,8 @@ function fromToken(req: Request, field: string): string {
 // shift (day or night) — RoundSys-style, each shift sees its own tasks, not
 // the whole day's. Without it, the full day's list is returned as before
 // (managers planning the day, and the clock-out gate, use the full view).
+const ensuredHomeDates = new Set<string>();
+
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
@@ -37,7 +39,18 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = fromToken(req, 'role');
     const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = fromToken(req, 'staffId');
-    const currentShiftOnly = (req.query.shift as string) === 'current' && date === ukDateStr();
+    const todayUk = ukDateStr();
+    const currentShiftOnly = (req.query.shift as string) === 'current' && date === todayUk;
+
+    // Guarantee zero gap right at 00:00 UK midnight (or if container was restarted
+    // across midnight): ensure today's recurring tasks exist before querying.
+    if (homeId && date === todayUk) {
+      const ensureKey = `${homeId}:${date}`;
+      if (!ensuredHomeDates.has(ensureKey)) {
+        ensuredHomeDates.add(ensureKey);
+        await generateTasksForHome(homeId).catch(() => { ensuredHomeDates.delete(ensureKey); });
+      }
+    }
     // Role-restriction (assigned_role) and team-restriction (visible_team_ids)
     // are alternative, independent ways to scope a task ("Or restrict by role
     // instead" in the UI) — a task should be visible if EITHER one includes
@@ -83,6 +96,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       return ap - bp;
     });
 
+    const rotaShifts = (!isPrivileged || RESTRICTED_ROLES.includes(role)) && staffId
+      ? await fetchEffectiveShiftsForDate(staffId, homeId, date)
+      : [];
+    const rotaSuIds = Array.from(new Set(
+      rotaShifts.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+    ));
+
     if (!isPrivileged) {
       let myTeamId: string | null = null;
       if (staffId) {
@@ -97,64 +117,28 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (!hasRoleTarget && !hasTeamTarget) return true; // general/all-staff task
         if (hasRoleTarget && t.assigned_role === role) return true;
         if (hasTeamTarget && myTeamId && t.visible_team_ids.includes(myTeamId)) return true;
+        // Cross-house / bank cover: if this staff member is explicitly rostered
+        // on shift for `t.su_id` today/tonight, show that resident's tasks even
+        // if their HR profile home-team belongs to another house (or is unset).
+        if (t.su_id && rotaSuIds.includes(t.su_id) && (!hasRoleTarget || t.assigned_role === role)) return true;
         return false;
       });
     }
 
     // Restricted roles only see tasks tied to a resident they're actually
-    // ROSTERED FOR on this date — not their whole static assigned-residents
-    // list (staff_service_user_assignments), which is a longer-term caseload
-    // manager-set separately from day-to-day rota. A carer scheduled today for
-    // Resident A only, who also happens to have a standing assignment to
-    // Residents B and C from months ago, should not see B/C's tasks today —
-    // she finishes A's tasks, clocks out, and is rostered elsewhere next.
-    // Tasks with no resident attached (general/home-wide) or assigned
-    // directly to this staff member always remain visible regardless.
+    // ROSTERED FOR on this date (including active overnight shifts crossing
+    // midnight) — falling back to static assignments only when no shift exists.
     if (RESTRICTED_ROLES.includes(role) && staffId) {
-      const rotaShifts = await query<any>(
-        `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-        [staffId, homeId, date]
-      );
-      const rotaSuIds = Array.from(new Set(
-        rotaShifts.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
-      ));
-      // No rota entry at all for this date (e.g. ad-hoc/relief cover not yet
-      // logged on the rota) — fall back to the static assignment list rather
-      // than showing an empty resident-task list outright.
       const suIds = rotaSuIds.length > 0 ? rotaSuIds : await getAssignedSuIds(staffId);
       rows = rows.filter(t => t.created_by === staffId || t.assigned_staff_id === staffId || !t.su_id || suIds.includes(t.su_id));
     }
 
-    // Per-shift view (?shift=current, today only): keep only tasks whose
-    // due_time falls inside the staff member's CURRENT shift window — the
-    // same windows getMyPendingTasksToday uses for the clock-out gate, via
-    // the same helper, so the task list and the gate agree exactly on what
-    // "my shift's tasks" means. Tasks with no due_time stay (can't be
-    // matched to a shift). Applied AFTER the visibility filters above, so it
-    // only ever narrows what this staff member may already see — and only
-    // for non-privileged staff viewing today's own list; managers keep the
-    // full day for planning. Falls back to the full list when the current
-    // shift can't be determined.
-    //
-    // A task due during a shift the viewer is NOT on must never vanish for
-    // everyone: the pop-up and dashboard only ever fetch this narrowed view,
-    // so a task whose time falls outside every one of today's windows (a
-    // typo'd time, or a window the rota doesn't cover) would be invisible
-    // everywhere with no path to complete it — and an uncompletable pending
-    // task is exactly what used to trap clock-out. Anything filtered out here
-    // is therefore returned in a separate `otherShift` bucket (same shape, no
-    // extra query) so the UI can show it under its own heading instead of
-    // hiding it. Managers still get the un-narrowed full list as before.
     let otherShift: any[] = [];
     if (currentShiftOnly && !isPrivileged && staffId) {
       try {
-        const myShifts = await query<any>(
-          `SELECT start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-          [staffId, homeId, date]
-        );
-        if (myShifts.length) {
-          const idx = pickCurrentShiftIndex(myShifts, ukTimeHHMM());
-          const cur = myShifts[idx];
+        if (rotaShifts.length) {
+          const idx = pickCurrentShiftIndex(rotaShifts, ukTimeHHMM());
+          const cur = rotaShifts[idx];
           if (cur) {
             const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(':').map(Number); return h * 60 + m; };
             const start = toMin(String(cur.start_time).slice(0, 5));

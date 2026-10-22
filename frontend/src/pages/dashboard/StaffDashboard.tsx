@@ -124,26 +124,58 @@ export default function StaffDashboard() {
     if (user?.id && wantsTaskReminders) setShowTaskPopup(shouldShowTaskPopup(user.id))
   }, [user?.id, wantsTaskReminders])
 
-  // Refetch due-today medications every 5 minutes — the initial load() only
-  // runs once on mount, so a medication scheduled later in the day (e.g. an
-  // evening dose) would never appear in myMeds/medDueToday until a full page
-  // reload, and would therefore never get picked up by the overdue check below.
+  // Refetch due-today tasks AND medications every 2 minutes + whenever the app
+  // returns to foreground, and detect midnight rollover automatically. Without
+  // refreshing tasks here, a staff member already logged in before midnight
+  // kept holding only yesterday's completed tasks in `myTasks`, so the new day's
+  // tasks generated at 00:00 never popped up after midnight.
+  const activeDayRef = React.useRef<string>('')
   useEffect(() => {
     if (!user?.homeId) return
-    const refreshMeds = async () => {
+    const refreshLiveWork = async () => {
       try {
-        const res = await api.get('/mar/due-today', { params: { homeId: user.homeId, shift: 'current' } })
-        const medTasks = res.data?.data || []
-        setMyMeds(medTasks)
-        setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
+        const todayStr = await getServerTodayStr()
+        const dayRolledOver = Boolean(activeDayRef.current && activeDayRef.current !== todayStr)
+        activeDayRef.current = todayStr
+        if (dayRolledOver) {
+          overdueNotifiedRef.current.clear()
+        }
+        const prevDayStr = format(addDays(new Date(todayStr), -1), 'yyyy-MM-dd')
+        const weekAheadStr = format(addDays(new Date(todayStr), 6), 'yyyy-MM-dd')
+        const [tasksR, medsR, shiftsR] = await Promise.allSettled([
+          api.get('/tasks', { params: { homeId: user.homeId, date: todayStr, shift: 'current' } }),
+          api.get('/mar/due-today', { params: { homeId: user.homeId, shift: 'current' } }),
+          api.get('/shifts', { params: { homeId: user.homeId, from: prevDayStr, to: weekAheadStr } }),
+        ])
+        if (tasksR.status === 'fulfilled') {
+          const freshTasks = tasksR.value.data?.data || []
+          setMyTasks(freshTasks)
+          if (dayRolledOver && wantsTaskReminders && freshTasks.some((t: any) => t.status === 'pending')) {
+            setShowTaskPopup(true)
+          }
+        }
+        if (medsR.status === 'fulfilled') {
+          const medTasks = medsR.value.data?.data || []
+          setMyMeds(medTasks)
+          setMedDueToday({ total: medTasks.length, pending: medTasks.filter((t: any) => t.status === 'pending').length })
+        }
+        if (shiftsR.status === 'fulfilled') {
+          const allShifts = shiftsR.value.data?.data || []
+          setMyShifts(allShifts.filter((s: any) => s.staff_id === user.id))
+        }
       } catch { /* keep last known state on a transient failure */ }
     }
-    const interval = setInterval(refreshMeds, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [user?.homeId])
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshLiveWork() }
+    document.addEventListener('visibilitychange', onVisible)
+    const interval = setInterval(refreshLiveWork, 2 * 60 * 1000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      clearInterval(interval)
+    }
+  }, [user?.id, user?.homeId, wantsTaskReminders])
 
   // Time-based due check — on top of the frequency-based pop-up above, poll every
-  // 5 minutes for tasks AND medications whose due time has now passed and are
+  // 2 minutes for tasks AND medications whose due time has now passed and are
   // still pending, so nothing just sits silently on a list once it's overdue.
   // Medications must be included here (not just regular tasks) so a later dose
   // (e.g. an evening one after a morning dose already popped up) still triggers
@@ -165,7 +197,7 @@ export default function StaffDashboard() {
       }
     }
     checkOverdue()
-    const interval = setInterval(checkOverdue, 5 * 60 * 1000)
+    const interval = setInterval(checkOverdue, 2 * 60 * 1000)
     return () => clearInterval(interval)
   }, [myTasks, myMeds, wantsTaskReminders])
 
@@ -174,12 +206,13 @@ export default function StaffDashboard() {
     const load = async () => {
       try {
         const todayStr = await getServerTodayStr()
+        activeDayRef.current = todayStr
+        const prevDayStr = format(addDays(new Date(todayStr), -1), 'yyyy-MM-dd')
         const weekAheadStr = format(addDays(new Date(todayStr), 6), 'yyyy-MM-dd')
         const [shiftsR, tasksR, leaveR, notifR, profileR, suR, clockStatusR, homeQrR, medDueR] = await Promise.allSettled([
-          // Pull a 7-day window (not just today) so staff see their upcoming
-          // shifts on the dashboard and can't miss a reassignment or a shift
-          // further out that they never scrolled to in the full Rota view.
-          api.get('/shifts', { params: { homeId: user.homeId, from: todayStr, to: weekAheadStr } }),
+          // Include yesterday too so overnight shifts crossing midnight (e.g.
+          // 20:00–08:00 started last night) still appear under "Today's shift".
+          api.get('/shifts', { params: { homeId: user.homeId, from: prevDayStr, to: weekAheadStr } }),
           // Current shift's tasks only (day or night) — RoundSys-style, each
           // shift sees its own list rather than the whole day's at once.
           api.get('/tasks', { params: { homeId: user.homeId, date: todayStr, shift: 'current' } }),
@@ -233,15 +266,25 @@ export default function StaffDashboard() {
   // one still to come today, else fall back to the last one of the day.
   const now = new Date()
   const shiftWindow = (s: any) => {
+    const baseDate = String(s.shift_date).substring(0, 10)
     const [sh, sm] = String(s.start_time || '00:00').split(':').map(Number)
     const [eh, em] = String(s.end_time || '00:00').split(':').map(Number)
-    const start = new Date(`${todayStr0}T00:00:00`); start.setHours(sh || 0, sm || 0, 0, 0)
-    const end = new Date(`${todayStr0}T00:00:00`); end.setHours(eh || 0, em || 0, 0, 0)
+    const start = new Date(`${baseDate}T00:00:00`); start.setHours(sh || 0, sm || 0, 0, 0)
+    const end = new Date(`${baseDate}T00:00:00`); end.setHours(eh || 0, em || 0, 0, 0)
     if (end <= start) end.setDate(end.getDate() + 1) // overnight shift crossing midnight
     return { start, end }
   }
+  const prevStr0 = format(addDays(now, -1), 'yyyy-MM-dd')
   const todaysShiftsWithWindows = myShifts
-    .filter((s: any) => String(s.shift_date).substring(0, 10) === todayStr0)
+    .filter((s: any) => {
+      const d = String(s.shift_date).substring(0, 10)
+      if (d === todayStr0) return true
+      if (d === prevStr0) {
+        const w = shiftWindow(s)
+        return now >= w.start && now <= w.end
+      }
+      return false
+    })
     .map((s: any) => ({ s, ...shiftWindow(s) }))
   const myTodayShift = (
     todaysShiftsWithWindows.find(w => now >= w.start && now <= w.end)

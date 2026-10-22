@@ -495,7 +495,7 @@ export function startScheduler(): void {
   // previous days are no longer duplicated forward — the task list query
   // itself keeps showing any pending task until it's completed, so it never
   // silently disappears.
-  cron.schedule('1 0 * * *', async () => {
+  cron.schedule('0 0 * * *', async () => {
     logger.info('Scheduler: generating daily tasks');
     await generateDailyTasks();
   }, UK_TZ);

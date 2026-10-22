@@ -31,11 +31,20 @@ export function setReminderFrequency(userId: string, freq: ReminderFrequency) {
   localStorage.setItem(key(userId, 'frequency'), freq)
 }
 
+function localDateKey(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
 export function shouldShowTaskPopup(userId: string): boolean {
   if (!userId) return false
   const freq = getReminderFrequency(userId)
   if (freq === 'off') return false
   if (freq === 'every_visit') return true
+  // Always pop up fresh when a new calendar day starts after midnight, even if
+  // the previous day's pop-up fired shortly before midnight.
+  const lastDate = localStorage.getItem(key(userId, 'lastShownDate')) || ''
+  if (lastDate !== localDateKey()) return true
   const last = Number(localStorage.getItem(key(userId, 'lastShown')) || 0)
   return Date.now() - last >= FREQ_MS[freq]
 }
@@ -43,6 +52,7 @@ export function shouldShowTaskPopup(userId: string): boolean {
 export function markTaskPopupShown(userId: string) {
   if (!userId) return
   localStorage.setItem(key(userId, 'lastShown'), String(Date.now()))
+  localStorage.setItem(key(userId, 'lastShownDate'), localDateKey())
 }
 
 // Time-based due check — independent of the frequency-based reminder above.

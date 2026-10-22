@@ -17,17 +17,78 @@ function toMins(t?: string | null): number | null {
   return h * 60 + m;
 }
 
-export function pickCurrentShiftIndex(shifts: { start_time?: string | null; end_time?: string | null }[], nowHHMM: string): number {
+export function prevDateStr(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+  dt.setUTCDate(dt.getUTCDate() - 1);
+  return dt.toISOString().slice(0, 10);
+}
+
+// Fetch today's shifts PLUS any overnight shift from yesterday (end_time <= start_time)
+// that is still in progress after UK midnight (nowHHMM <= end_time), tagged with
+// `_fromPrevDay: true` so both resident visibility and shift-window matching
+// continue seamlessly across midnight until the night shift ends in the morning.
+export async function fetchEffectiveShiftsForDate(
+  staffId: string,
+  homeId: string,
+  date: string,
+  onlyShiftId?: string,
+  nowOverride?: string,
+): Promise<any[]> {
+  if (!staffId) return [];
+  if (onlyShiftId) {
+    return query<any>(
+      `SELECT id, su_id, su_ids, start_time, end_time, shift_date FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND id = $3`,
+      [staffId, homeId, onlyShiftId]
+    );
+  }
+  const todayShifts = await query<any>(
+    `SELECT id, su_id, su_ids, start_time, end_time, shift_date FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+    [staffId, homeId, date]
+  );
+  const isToday = date === ukDateStr();
+  if (!isToday) return todayShifts;
+
+  const nowMins = toMins(nowOverride || ukTimeHHMM()) ?? 0;
+  const prevDate = prevDateStr(date);
+  const prevShifts = await query<any>(
+    `SELECT id, su_id, su_ids, start_time, end_time, shift_date FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
+    [staffId, homeId, prevDate]
+  );
+  const activeOvernightPrev = prevShifts
+    .filter((s: any) => {
+      const st = toMins(s.start_time);
+      const en = toMins(s.end_time);
+      if (st == null || en == null) return false;
+      return en <= st && nowMins <= en;
+    })
+    .map((s: any) => ({ ...s, _fromPrevDay: true }));
+
+  return [...activeOvernightPrev, ...todayShifts];
+}
+
+export function pickCurrentShiftIndex(shifts: { start_time?: string | null; end_time?: string | null; _fromPrevDay?: boolean }[], nowHHMM: string): number {
   const wins = shifts.map((s, i) => {
     const st = toMins(s.start_time);
-    let en = toMins(s.end_time);
-    if (st == null || en == null) return null;
-    if (en <= st) en += 1440; // overnight shift
-    return { i, st, en };
-  }).filter((w): w is { i: number; st: number; en: number } => w !== null);
+    const enRaw = toMins(s.end_time);
+    if (st == null || enRaw == null) return null;
+    if (s._fromPrevDay) {
+      // Started yesterday evening (e.g. 20:00 -> 08:00): on today's [0..1440]
+      // clock, its active span is [st - 1440 .. enRaw] (e.g. [-240 .. 480]).
+      return { i, st: st - 1440, en: enRaw, overnight: true };
+    }
+    const overnight = enRaw <= st;
+    const en = overnight ? enRaw + 1440 : enRaw;
+    return { i, st, en, enRaw, overnight };
+  }).filter((w): w is { i: number; st: number; en: number; enRaw?: number; overnight: boolean } => w !== null);
   if (!wins.length) return 0;
   const now = toMins(nowHHMM) ?? 0;
-  const inProg = wins.find(w => now >= w.st && now <= w.en);
+  // Check shifts currently in progress first — including overnight shifts where
+  // `now` is past midnight (`00:00..enRaw`) when a caller passed raw shift rows.
+  const inProg = wins.find(w =>
+    (now >= w.st && now <= w.en) ||
+    (w.overnight && w.enRaw != null && now <= w.enRaw)
+  );
   if (inProg) return inProg.i;
   const upcoming = wins.filter(w => w.st > now).sort((a, b) => a.st - b.st)[0];
   if (upcoming) return upcoming.i;
@@ -70,12 +131,7 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
       ? query<any>('SELECT team_id FROM staff WHERE id = $1', [staffId])
       : Promise.resolve([] as any[]),
     staffId
-      ? query<any>(
-          onlyShiftId
-            ? `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3 AND id = $4`
-            : `SELECT su_id, su_ids, start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-          onlyShiftId ? [staffId, homeId, todayStr, onlyShiftId] : [staffId, homeId, todayStr]
-        )
+      ? fetchEffectiveShiftsForDate(staffId, homeId, todayStr, onlyShiftId)
       : Promise.resolve([] as any[]),
   ]);
 
@@ -83,6 +139,10 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
   if (staffId) {
     myTeamId = staffTeamRows[0]?.team_id || null;
   }
+
+  const rotaSuIds = Array.from(new Set(
+    shiftRows.flatMap((sh: any) => [sh.su_id, ...(Array.isArray(sh.su_ids) ? sh.su_ids : [])].filter(Boolean))
+  ));
 
   // 30-minute post-PRN observation tasks (created by mar.routes) show on the
   // task list with their due time but must never block clock-out — they're a
@@ -99,6 +159,11 @@ export async function getMyPendingTasksToday(homeId: string, staffId: string, ro
     if (!hasRoleTarget && !hasTeamTarget) return true; // general/all-staff task
     if (hasRoleTarget && t.assigned_role === role) return true;
     if (hasTeamTarget && myTeamId && t.visible_team_ids.includes(myTeamId)) return true;
+    // Cross-house / bank cover: if a carer is explicitly rostered onto a shift
+    // covering this resident today/tonight, show that resident's tasks even if
+    // the carer's profile team is a different house (unless restricted to a
+    // different specific role).
+    if (t.su_id && rotaSuIds.includes(t.su_id) && (!hasRoleTarget || t.assigned_role === role)) return true;
     return false;
   });
 

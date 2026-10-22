@@ -303,12 +303,29 @@ function AppRoutes() {
 class ErrorBoundary extends React.Component<{ children?: React.ReactNode }, { error: string | null }> {
   state = { error: null }
   static getDerivedStateFromError(e: Error) { return { error: e.message } }
+  componentDidCatch(e: Error, info: React.ErrorInfo) {
+    try {
+      const token = (window as any).__HA_TOKEN__ || sessionStorage.getItem('ha_token') || localStorage.getItem('ha_token')
+      const detail = `${e?.message || 'Error'}${info?.componentStack ? ` | ${info.componentStack.trim().split('\n')[0]?.trim()}` : ''}`
+      fetch('/api/system/client-error', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: detail.slice(0, 1000), page: window.location.pathname + window.location.search }),
+      }).catch(() => {})
+    } catch { /* never fail inside error boundary */ }
+  }
   render() {
     if (this.state.error) return (
       <div style={{ padding: 40, fontFamily: 'monospace', background: '#0d1526', color: '#fff', minHeight: '100vh' }}>
         <h2 style={{ color: '#e8b130' }}>App Error</h2>
         <pre style={{ color: '#f87171', whiteSpace: 'pre-wrap' }}>{this.state.error}</pre>
-        <button onClick={() => window.location.reload()} style={{ marginTop: 20, padding: '8px 16px', background: '#e8b130', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Reload</button>
+        <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+          <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', background: '#e8b130', color: '#0d1526', fontWeight: 700, border: 'none', borderRadius: 8, cursor: 'pointer' }}>Reload</button>
+          <button onClick={() => { window.location.href = '/dashboard' }} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, cursor: 'pointer' }}>Back to Dashboard</button>
+        </div>
       </div>
     )
     return this.props.children

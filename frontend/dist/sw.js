@@ -1,5 +1,5 @@
-const CACHE = 'compcare-v6';
-const DYNAMIC_CACHE = 'compcare-dynamic-v6';
+const CACHE = 'compcare-v7';
+const DYNAMIC_CACHE = 'compcare-dynamic-v7';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE = [
@@ -87,6 +87,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 </html>`;
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE)
       .then(cache => cache.addAll(PRECACHE))

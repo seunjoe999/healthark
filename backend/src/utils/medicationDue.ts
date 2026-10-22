@@ -1,7 +1,7 @@
 import { query } from '../config/database';
 import { ukDateStr, ukDayOfWeek, ukTimeHHMM } from './ukTime';
 import { getAssignedSuIds } from './residentAccess';
-import { pickCurrentShiftIndex } from './taskDue';
+import { pickCurrentShiftIndex, fetchEffectiveShiftsForDate } from './taskDue';
 
 const FREQ_TIMES: Record<string, string[]> = {
   once_daily: ['08:00'],
@@ -65,17 +65,18 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   // getAssignedSuIds itself runs its two queries one after the other; the
   // rota part is kicked off here alongside the assignments part and merged
   // inside.
-  const assignmentsP = query<{ su_id: string }>(
-    'SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1',
-    [staffId]
-  );
-  const rotaResidentsP = query<any>(
-    `SELECT su_id, su_ids FROM staff_shifts WHERE staff_id = $1 AND shift_date = $2`,
-    [staffId, today]
-  );
-  const [assignmentRows, rotaResidentRows] = isPrivileged
+  // Only query per-staff tables when `!isPrivileged && staffId` — starting
+  // un-awaited queries with an empty `staffId` previously threw Postgres 22P02
+  // (`invalid input syntax for type uuid: ""`) unhandled rejections in cron jobs.
+  const [assignmentRows, rotaResidentRows] = isPrivileged || !staffId
     ? [[], []]
-    : await Promise.all([assignmentsP, rotaResidentsP]);
+    : await Promise.all([
+        query<{ su_id: string }>(
+          'SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1',
+          [staffId]
+        ),
+        fetchEffectiveShiftsForDate(staffId, homeId, today),
+      ]);
 
   let assignedSuIds: string[] | null = null;
   if (!isPrivileged) {
@@ -191,10 +192,7 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
   // shift can't be determined (no rota rows, unparseable times).
   if (currentShiftStaffId) {
     try {
-      const shiftRows = await query<any>(
-        `SELECT start_time, end_time FROM staff_shifts WHERE staff_id = $1 AND home_id = $2 AND shift_date = $3`,
-        [currentShiftStaffId, homeId, today]
-      );
+      const shiftRows = await fetchEffectiveShiftsForDate(currentShiftStaffId, homeId, today);
       if (shiftRows.length) {
         const idx = pickCurrentShiftIndex(shiftRows, ukTimeHHMM());
         const cur = shiftRows[idx];
