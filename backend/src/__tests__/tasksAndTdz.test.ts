@@ -263,5 +263,17 @@ describe('Clock-Out End-to-End Safety Guards', () => {
     expect(src).toContain("body('homeId').if((_: any, { req }: any) => req.body.eventType !== 'clock_out').isUUID()");
     expect(src).toContain('openClockInHomeId');
   });
+
+  test('Pre-built frontend/dist is in sync with frontend/public/sw.js and has all entry chunks present', () => {
+    const publicSw = fs.readFileSync(path.join(repoRoot, 'frontend/public/sw.js'), 'utf8');
+    const distSw = fs.readFileSync(path.join(repoRoot, 'frontend/dist/sw.js'), 'utf8');
+    expect(distSw).toBe(publicSw);
+    const indexHtml = fs.readFileSync(path.join(repoRoot, 'frontend/dist/index.html'), 'utf8');
+    const scriptMatches = [...indexHtml.matchAll(/(?:src|href)="\/assets\/([^"]+)"/g)].map(m => m[1]);
+    expect(scriptMatches.length).toBeGreaterThan(0);
+    for (const asset of scriptMatches) {
+      expect(fs.existsSync(path.join(repoRoot, 'frontend/dist/assets', asset))).toBe(true);
+    }
+  });
 });
 
