@@ -8,6 +8,8 @@ import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../compone
 import { Pill, Plus, Check, X, Package, Printer, ChevronLeft, ChevronRight, AlertTriangle, PauseCircle, Building2, Stethoscope, Phone, MapPin, Shield, UserCheck, Clock, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BodySitePicker from '../../components/BodySitePicker'
+import { useServerNow, getServerNowSync } from '../../utils/serverTime'
+import { ukDateStr, ukTimeHHMM, isUkSlotDue } from '../../utils/ukDate'
 
 const FREQ_TIMES: Record<string, string[]> = {
   once_daily: ['08:00'],
@@ -122,9 +124,10 @@ export default function MAR() {
   const [witnessSignOffModal, setWitnessSignOffModal] = useState<string | null>(null)
   const [showPrescriptions, setShowPrescriptions] = useState(true)
   const [showDirections, setShowDirections] = useState(true)
+  const serverNow = useServerNow()
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState(format(endOfMonth(now), 'yyyy-MM-dd'))
-  const today = format(now, 'yyyy-MM-dd')
+  const today = ukDateStr(serverNow)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -390,7 +393,7 @@ export default function MAR() {
                   // 'PRN' is a display label, not a real time — the DB column is a TIME
                   // and rejects it, which was surfacing as "internal server error" whenever
                   // staff tried to log an as-required dose. Record the actual time given instead.
-                  else setLogModal({ med, date, slot: slot === 'PRN' ? format(new Date(), 'HH:mm') : slot })
+                  else setLogModal({ med, date, slot: slot === 'PRN' ? ukTimeHHMM(getServerNowSync()) : slot })
                 }}
                 onDiscontinue={async (med) => {
                   if (!confirm(`Discontinue ${med.medication_name}?`)) return
@@ -816,7 +819,8 @@ function MedicationTasks({ selectedHome, homes, setSelectedHome }: { selectedHom
     finally { setObsSaving(false) }
   }
   const [filterSu, setFilterSu] = useState('')
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const serverNow = useServerNow()
+  const today = ukDateStr(serverNow)
 
   const load = () => {
     if (!selectedHome) return
@@ -1172,8 +1176,8 @@ function MARGrid({ chartData, showPrescriptions, showDirections, today, canManag
                   let display = ''
                   let subDisplay = ''
 
-                  const currentHM = format(new Date(), 'HH:mm')
-                  const isPastSlot = slot !== 'PRN' && (d < today || (isToday && slot < currentHM))
+                  const nowServer = getServerNowSync()
+                  const isPastSlot = slot !== 'PRN' && (d < today || (isToday && isUkSlotDue(d, slot, new Date(nowServer.getTime() - 60_000))))
                   const isMissed = !rec && isPastSlot && !medEnded
 
                   if (rec) {
@@ -1516,13 +1520,8 @@ export function LogMARModal({ med, date, slot, suId, homeId, existingRecord, onC
   // never in the future and never hit this. Amending an already-logged record is
   // exempt — that already happened. This is a UX guard only; the real enforcement
   // is server-side in POST /mar/records, immune to a manipulated device clock.
-  const [nowHHMM, setNowHHMM] = useState(() => new Date().toTimeString().slice(0, 5))
-  useEffect(() => {
-    const t = setInterval(() => setNowHHMM(new Date().toTimeString().slice(0, 5)), 15000)
-    return () => clearInterval(t)
-  }, [])
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
-  const isEarly = !isAmend && date === todayStr && slot > nowHHMM
+  const serverNow = useServerNow()
+  const isEarly = !isAmend && !isUkSlotDue(date, slot, serverNow)
 
   useEffect(() => {
     if (homeId) {

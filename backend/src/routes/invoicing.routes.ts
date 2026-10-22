@@ -22,20 +22,46 @@ router.use(authenticate);
 // Was gated to 'admin', 'super_admin' — 'super_admin' isn't a real StaffRole
 // value, so this silently locked out the owner's own account (role
 // group_admin), who could never actually reach the page despite owning it.
-router.use(requireRole('admin', 'recruitment_admin', 'group_admin'));
+router.use(requireRole('admin', 'recruitment_admin', 'group_admin', 'super_admin'));
 
-// GET /api/invoicing?homeId=xxx&status=pending
+// GET /api/invoicing?homeId=xxx&status=pending&suId=xxx&from=YYYY-MM-DD&to=YYYY-MM-DD&search=...
 router.get('/', validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
       const status = (req.query.status as string) || 'all';
-      const whereClause = status === 'all' ? 'WHERE i.home_id = $1' : 'WHERE i.home_id = $1 AND i.status = $2';
-      const params = status === 'all' ? [homeId] : [homeId, status];
+      const { suId, from, to, search } = req.query as Record<string, string>;
+      const params: unknown[] = [homeId];
+      let whereClause = 'WHERE i.home_id = $1';
+
+      if (status && status !== 'all') {
+        params.push(status);
+        whereClause += ` AND i.status = $${params.length}`;
+      }
+      if (suId) {
+        params.push(suId);
+        whereClause += ` AND i.su_id = $${params.length}`;
+      }
+      if (from) {
+        params.push(from);
+        whereClause += ` AND i.month_date >= $${params.length}::date`;
+      }
+      if (to) {
+        params.push(to);
+        whereClause += ` AND i.month_date <= $${params.length}::date`;
+      }
+      if (search && search.trim()) {
+        params.push(`%${search.trim().toLowerCase()}%`);
+        const p = `$${params.length}`;
+        whereClause += ` AND (LOWER(su.first_name || ' ' || su.last_name) LIKE ${p}
+                           OR LOWER(i.id::text) LIKE ${p}
+                           OR LOWER(COALESCE(i.notes, '')) LIKE ${p})`;
+      }
+
       const rows = await dbQuery(
         `SELECT i.*, su.first_name, su.last_name, su.id as su_id FROM invoices i
          JOIN service_users su ON su.id = i.su_id
-         ${whereClause} ORDER BY i.month_date DESC`,
+         ${whereClause} ORDER BY i.month_date DESC, i.created_at DESC`,
         params
       );
       res.json({ success: true, data: rows } as ApiResponse);

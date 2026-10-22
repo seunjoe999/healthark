@@ -114,7 +114,7 @@ router.get('/staff/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       // Team leaders are blocked from Certificates & Documents entirely —
       // including their own — not just other staff's, per the owner's
       // explicit request. Everyone else below management can still view

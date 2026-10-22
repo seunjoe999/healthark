@@ -215,43 +215,60 @@ export default function GPReferral() {
                 <p className="text-sm">No referrals logged yet</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {referrals.map((ref: any) => {
                   const si = getStatusInfo(ref.status)
+                  const isCompleted = ref.status === 'Seen' || !!ref.outcome
                   return (
-                    <div key={ref.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                      <div className="px-5 py-4 flex items-start gap-4">
+                    <div key={ref.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                      <div className="p-5 flex items-start gap-4">
                         <si.Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: si.color }} />
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 space-y-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-slate-800">{ref.referral_type}</p>
+                            <p className="text-base font-bold text-slate-900">{ref.referral_type}</p>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: URGENCY_COLORS[ref.urgency] || '#475569' }}>{ref.urgency}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: si.bg, color: si.color }}>{ref.status}</span>
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{ background: si.bg, color: si.color }}>{ref.status}</span>
                           </div>
-                          <p className="text-xs text-slate-600 mt-1">{ref.reason}</p>
-                          {ref.referred_to && <p className="text-xs text-slate-400 mt-0.5">Referred to: {ref.referred_to}</p>}
-                          {ref.appointment_date && <p className="text-xs text-slate-400">Appointment: {format(new Date(ref.appointment_date), 'd MMM yyyy')}</p>}
-                          <p className="text-[10px] text-slate-400 mt-1">{ref.referred_at ? format(new Date(ref.referred_at), 'd MMM yyyy') : ''}{ref.staff_name ? ` · by ${ref.staff_name}` : ''}</p>
-                          {ref.notes && <p className="text-xs text-slate-500 italic mt-1">{ref.notes}</p>}
-                          {ref.outcome && <p className="text-xs text-emerald-700 font-semibold mt-1">Outcome: {ref.outcome}</p>}
+                          <p className="text-xs text-slate-500">
+                            {ref.referred_at ? format(new Date(ref.referred_at), 'd MMM yyyy') : ''}
+                            {ref.referred_to ? ` · Referred to: ${ref.referred_to}` : ''}
+                            {ref.appointment_date ? ` · Appointment: ${format(new Date(ref.appointment_date), 'd MMM yyyy')}` : ''}
+                            {ref.staff_name ? ` · Logged by ${ref.staff_name}` : ''}
+                          </p>
+                          <div>
+                            <p className="doc-section-heading">Reason for Referral</p>
+                            <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{ref.reason}</p>
+                          </div>
+                          {ref.notes && (
+                            <div>
+                              <p className="doc-section-heading">Notes</p>
+                              <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{ref.notes}</p>
+                            </div>
+                          )}
+                          {ref.outcome && (
+                            <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                              <p className="doc-section-heading">Recorded Outcome</p>
+                              <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{ref.outcome}</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex flex-col gap-1.5 flex-shrink-0">
-                          {ref.status !== 'Seen' && (
+                        {!isCompleted && (
+                          <div className="flex flex-col gap-1.5 flex-shrink-0">
                             <button onClick={() => {
-                              const outcome = ref.status !== 'Seen' ? prompt('Outcome / notes from appointment:') || '' : ''
-                              updateStatus(ref.id, 'Seen', outcome)
+                              const outcome = prompt('Outcome / notes from appointment:') || ''
+                              if (outcome.trim()) updateStatus(ref.id, 'Seen', outcome.trim())
                             }}
                               disabled={updatingId === ref.id}
                               className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700">
-                              Mark Seen
+                              Record Outcome
                             </button>
-                          )}
-                          <select className="input text-xs py-1 pr-6" value={ref.status}
-                            onChange={e => updateStatus(ref.id, e.target.value)}
-                            disabled={updatingId === ref.id}>
-                            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
+                            <select className="input text-xs py-1 pr-6" value={ref.status}
+                              onChange={e => updateStatus(ref.id, e.target.value)}
+                              disabled={updatingId === ref.id}>
+                              {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )

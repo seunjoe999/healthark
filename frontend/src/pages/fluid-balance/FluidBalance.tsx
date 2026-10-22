@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
+import { ukDateStr, ukTimeHHMM } from '../../utils/ukDate'
 
 const INPUT_CATEGORIES = [
   { value: 'drink', label: 'Drink / Oral fluids' },
@@ -27,7 +28,7 @@ const defaultForm = {
   type: 'input' as 'input' | 'output',
   category: 'drink',
   amountMl: '',
-  recordTime: new Date().toTimeString().slice(0, 5),
+  recordTime: ukTimeHHMM(),
   notes: '',
 }
 
@@ -44,7 +45,7 @@ export default function FluidBalance() {
   const [showAdd, setShowAdd] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedSU, setSelectedSU] = useState('')
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
+  const [selectedDate, setSelectedDate] = useState(() => ukDateStr())
   const [form, setForm] = useState(defaultForm)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -109,7 +110,7 @@ export default function FluidBalance() {
       type: r.type,
       category: r.category,
       amountMl: String(r.amount_ml),
-      recordTime: r.record_time?.slice(0, 5) || new Date().toTimeString().slice(0, 5),
+      recordTime: r.record_time?.slice(0, 5) || ukTimeHHMM(),
       notes: r.notes || '',
     })
     setShowAdd(true)

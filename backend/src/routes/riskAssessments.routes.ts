@@ -133,7 +133,7 @@ router.get('/:id/reads', param('id').isUUID(), validateRequest,
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Frontline staff are read-only on risk assessments — only managers may write.
-const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const MANAGER_ROLES = ['super_admin', 'group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 // Team leaders may edit an existing assessment and notify their team to read it
 // (explicitly requested, matching what they already get on Care Plans), but not
 // create new assessments from scratch — that stays management-only.

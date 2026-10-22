@@ -81,4 +81,24 @@ router.post('/', [body('suId').isUUID(), body('answers').isObject()], validateRe
   }
 );
 
+// PUT /api/service-feedback/:id — edit submitted service user questionnaire
+router.put('/:id', [param('id').isUUID(), body('answers').isObject()], validateRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await query<any>('SELECT * FROM service_user_feedback WHERE id = $1 LIMIT 1', [req.params.id]);
+      if (!existing.length) throw new AppError('Feedback not found', 404);
+      await assertResidentAccess(req, existing[0].su_id);
+      const { project, location, answers } = req.body;
+      const rows = await query(
+        `UPDATE service_user_feedback
+         SET project = $1, location = $2, answers = $3
+         WHERE id = $4
+         RETURNING *`,
+        [project ?? existing[0].project ?? null, location ?? existing[0].location ?? null, JSON.stringify(answers), req.params.id]
+      );
+      res.json({ success: true, data: rows[0] } as ApiResponse);
+    } catch (err) { next(err); }
+  }
+);
+
 export default router;

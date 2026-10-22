@@ -26,7 +26,7 @@ function fromToken(req: Request, field: string): string {
 // Was open to team_leader too -- owner explicitly asked for Quality Assurance
 // to be management-only after finding a team_leader account could reach it
 // ("this is for management... we don't want them messing about with the system").
-const QUALITY_PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin',
+const QUALITY_PRIVILEGED_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin',
   'director', 'registered_manager', 'service_manager'] as const;
 
 // GET /api/quality — list QA records

@@ -14,7 +14,7 @@ import { ukDateStr } from '../utils/ukTime';
 
 const router = Router();
 
-const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'] as const;
+const MANAGER_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'] as const;
 
 router.use(authenticate);
 

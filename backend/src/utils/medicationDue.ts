@@ -1,5 +1,5 @@
 import { query } from '../config/database';
-import { ukDateStr, ukDayOfWeek, ukTimeHHMM } from './ukTime';
+import { ukDateStr, ukDayOfWeek, ukTimeHHMM, ukDaysBetween } from './ukTime';
 import { getAssignedSuIds } from './residentAccess';
 import { pickCurrentShiftIndex, fetchEffectiveShiftsForDate } from './taskDue';
 
@@ -30,7 +30,7 @@ export function getTimeSlots(frequency: string, applyTime?: string | null): stri
   return defaults.map(t => toTime(toMin(t) + offset));
 }
 
-const PRIVILEGED_MAR_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const PRIVILEGED_MAR_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
 export interface DueMedicationTask {
   medicationId: string; suId: string; suName: string; suPhoto: string | null;
@@ -140,16 +140,12 @@ export async function getDueTodayTasks(homeId: string, staffId: string, role: st
       if (Array.isArray(med.weekly_days) && med.weekly_days.length > 0) {
         if (!med.weekly_days.map(Number).includes(todayDow)) continue;
       } else if (med.start_date) {
-        const anchorDow = new Date(med.start_date).getDay();
+        const anchorDow = ukDayOfWeek(new Date(med.start_date));
         if (anchorDow !== todayDow) continue;
       }
     }
     if (med.frequency === 'every_3_days' && med.start_date) {
-      const anchor = new Date(med.start_date);
-      const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-      const now = new Date();
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
+      const daysSinceAnchor = ukDaysBetween(med.start_date, today);
       if (daysSinceAnchor < 0 || daysSinceAnchor % 3 !== 0) continue;
     }
     // Prefer the manager's own explicitly-set time_slots (each dose independently
@@ -244,31 +240,23 @@ export async function getStockCountStatus(homeId: string, since?: Date, suIds?: 
   // given (the caller's own rostered residents), both sides of the fraction
   // are scoped to just those residents instead.
   const suScope = suIds && suIds.length > 0;
+  const today = ukDateStr();
   const [totalRows, countedRows] = await Promise.all([
     query<any>(
-      // Only residents with a real SCHEDULED (non-PRN) MAR — a resident with
-      // no active medications, or PRN-only (no charted doses to check stock
-      // against), has an empty MAR and must never inflate the denominator.
-      // Staff reported being blocked at clock-out with "0/2 residents counted"
-      // over residents who have nothing to be counted for.
       `SELECT COUNT(DISTINCT sm.su_id) AS total FROM su_medications sm
        JOIN service_users su ON su.id = sm.su_id
        WHERE su.home_id = $1 AND su.status = 'live' AND sm.is_active = true
          AND sm.is_prn = false
-         AND (sm.end_date IS NULL OR sm.end_date >= CURRENT_DATE)
+         AND (sm.end_date IS NULL OR sm.end_date >= $3::date)
          AND ($2::uuid[] IS NULL OR sm.su_id = ANY($2::uuid[]))`,
-      [homeId, suScope ? suIds : null]
+      [homeId, suScope ? suIds : null, today]
     ),
-    // Counted = a Medication Count record filed TODAY, regardless of when this
-    // particular shift clocked in. Was scoped to "since this shift's clock-in",
-    // which silently discarded a count filed minutes before clocking in or
-    // during an earlier shift the same day — staff had genuinely done the count
-    // and still got 0/N blocked at clock-out, repeatedly.
     query<any>(
       `SELECT COUNT(DISTINCT su_id) AS counted FROM daily_records
-       WHERE home_id = $1 AND record_type = 'medication_stock_count' AND recorded_at::date = CURRENT_DATE
+       WHERE home_id = $1 AND record_type = 'medication_stock_count'
+         AND (recorded_at AT TIME ZONE 'Europe/London')::date = $3::date
          AND ($2::uuid[] IS NULL OR su_id = ANY($2::uuid[]))`,
-      [homeId, suScope ? suIds : null]
+      [homeId, suScope ? suIds : null, today]
     ),
   ]);
   const total = parseInt(totalRows[0]?.total || '0', 10);

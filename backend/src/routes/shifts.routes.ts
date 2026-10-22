@@ -41,17 +41,17 @@ function fromToken(req: Request, field: string): string {
 // had no role check at all, so any authenticated staff member could hit
 // these directly (devtools/curl) to create, edit, delete or bulk-reassign
 // any shift regardless of what the UI showed them.
-const MANAGE_ROLES = ['home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin'] as const;
+const MANAGE_ROLES = ['super_admin', 'home_manager', 'group_admin', 'senior_carer', 'deputy_manager', 'admin'] as const;
 
 // Roles that see the whole home's rota, unrestricted by date or service —
 // everyone else only sees their own scheduled days, scoped to their own
 // service (see GET / below).
-const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
+const PRIVILEGED_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader',
   'supervisor', 'service_manager', 'registered_manager', 'director', 'auditor', 'senior_carer'];
 
 // Roles allowed to see/set wage & charge rates and funder billing details — these
 // are financial fields and must stay hidden from ordinary care staff.
-const FINANCIAL_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
+const FINANCIAL_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin'];
 const FINANCIAL_FIELDS = ['funder_name', 'funder_cost_notes', 'wage_rate', 'charge_rate', 'charge_bank_holiday_rate'];
 
 function isFinancialRole(role: string): boolean {

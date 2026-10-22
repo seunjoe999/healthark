@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { ApiResponse } from '../types';
+import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -22,7 +23,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = isPrivileged ? (req.query.staffId as string) : myStaffId;
     const weekStart = req.query.weekStart as string;
 
@@ -113,9 +114,9 @@ router.post('/generate', requireRole('home_manager', 'group_admin', 'senior_care
           await query(`
             INSERT INTO timesheet_entries (timesheet_id, clockin_id, work_date, start_time, end_time, hours_worked)
             VALUES ($1,$2,$3,$4,$5,$6)`,
-            [ts[0].id, s.id, new Date(s.clock_in_time as string).toISOString().split('T')[0],
-             new Date(s.clock_in_time as string).toTimeString().substring(0, 5),
-             new Date(s.clock_out_time as string).toTimeString().substring(0, 5),
+            [ts[0].id, s.id, ukDateStr(new Date(s.clock_in_time as string)),
+             ukTimeHHMM(new Date(s.clock_in_time as string)),
+             ukTimeHHMM(new Date(s.clock_out_time as string)),
              parseFloat(String(s.hours_worked || 0)).toFixed(2)]
           );
         }
@@ -136,7 +137,7 @@ router.get('/:id', param('id').isUUID(), validateRequest,
       if (!ts) throw new AppError('Not found', 404);
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && (ts as any).staff_id !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }

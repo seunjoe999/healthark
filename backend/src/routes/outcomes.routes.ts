@@ -8,7 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess, getAssignedSuIds } from '../utils/residentAccess';
 
-const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin'];
+const PRIVILEGED_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin'];
 
 const router = Router();
 router.use(authenticate);

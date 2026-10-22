@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const dueSoon = parseInt(req.query.dueSoon as string) || 0;
     const role = fromToken(req, 'role');
     const myStaffId = fromToken(req, 'staffId');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     let assignedSuIds: string[] | null = null;
     if (!isPrivileged) {
       const assignments = await query<any>('SELECT su_id FROM staff_service_user_assignments WHERE staff_id = $1', [myStaffId]);
@@ -114,7 +114,7 @@ router.get('/cautions/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }
@@ -163,7 +163,7 @@ router.get('/staff-sensitive-notes/:staffId', param('staffId').isUUID(), validat
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }
@@ -211,7 +211,7 @@ router.get('/supervisions/:staffId', param('staffId').isUUID(), validateRequest,
     try {
       const role = fromToken(req, 'role');
       const myStaffId = fromToken(req, 'staffId');
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.staffId !== myStaffId) {
         return res.status(403).json({ success: false, error: 'Forbidden' } as ApiResponse);
       }
@@ -397,13 +397,40 @@ router.delete('/supervisions/:id', param('id').isUUID(), validateRequest,
 router.put('/su/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { reviewType, reviewDate, summary, residentFeedback, familyFeedback, outcomes, nextReviewDate, attendees } = req.body;
-      const nd = (d: any) => (d && String(d).trim()) ? d : null;
-      await query(
-        `UPDATE su_reviews SET review_type=$1, review_date=$2, summary=$3, resident_feedback=$4, family_feedback=$5, outcomes=$6, next_review_date=$7, attendees=$8 WHERE id=$9`,
-        [reviewType||null, nd(reviewDate), summary||null, residentFeedback||null, familyFeedback||null, outcomes||null, nd(nextReviewDate), attendees||null, req.params.id]
+      const existing = await query<any>('SELECT * FROM su_reviews WHERE id=$1 LIMIT 1', [req.params.id]);
+      if (!existing.length) {
+        return res.status(404).json({ success: false, error: 'Review not found' } as ApiResponse);
+      }
+      await assertResidentAccess(req, existing[0].su_id);
+      const { reviewType, reviewDate, summary, residentFeedback, familyFeedback, outcomes, nextReviewDate, attendees, monthlyProgress } = req.body;
+      const ndLocal = (d: any) => (d && String(d).trim()) ? String(d).trim() : null;
+      const rows = await query(
+        `UPDATE su_reviews
+         SET review_type = COALESCE($1, review_type),
+             review_date = COALESCE($2, review_date),
+             summary = COALESCE($3, summary),
+             resident_feedback = $4,
+             family_feedback = $5,
+             outcomes = $6,
+             next_review_date = $7,
+             attendees = $8,
+             monthly_progress = COALESCE($9, monthly_progress)
+         WHERE id = $10
+         RETURNING *`,
+        [
+          reviewType || null,
+          ndLocal(reviewDate),
+          summary || null,
+          residentFeedback || null,
+          familyFeedback || null,
+          outcomes || null,
+          ndLocal(nextReviewDate),
+          attendees || null,
+          monthlyProgress || null,
+          req.params.id,
+        ]
       );
-      res.json({ success: true } as ApiResponse);
+      res.json({ success: true, data: rows[0] } as ApiResponse);
     } catch (err) { next(err); }
   }
 );

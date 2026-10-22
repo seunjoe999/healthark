@@ -79,7 +79,7 @@ router.get('/', requireRole('home_manager', 'group_admin', 'deputy_manager', 'ad
   } catch (err) { next(err); }
 });
 
-const RECRUITMENT_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'recruitment_admin'] as const;
+const RECRUITMENT_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'recruitment_admin'] as const;
 
 // POST /api/recruitment
 router.post('/', requireRole(...RECRUITMENT_ROLES), [

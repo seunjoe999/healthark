@@ -116,39 +116,31 @@ function raBorder(level: string) {
   return 'rgba(148,163,184,0.25)'
 }
 
-// Card-styled field, matching Care Plans' GoldSection pattern — a bordered
-// box with a bold label and dark, readable body text instead of faint gray.
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50">
-      <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
+    <div className="border border-slate-200 rounded-xl p-4 bg-white">
+      <p className="doc-section-heading">{label}</p>
       <p className="text-sm font-medium text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
 }
 
-// "What is the risk" gets its own green, bold treatment per request — it's
-// the headline fact of the assessment and should read first and clearest.
 function GreenSection({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
     <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
-      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">{label}</p>
-      <p className="text-sm font-bold text-emerald-800 whitespace-pre-line leading-relaxed">{value}</p>
+      <p className="doc-section-heading">{label}</p>
+      <p className="text-sm font-bold text-emerald-900 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
 }
 
-// Matches Medicine Risk Assessment's amber-highlighted treatment for triggers/
-// protective factors/management plan — manager asked for every risk assessment
-// template to share one consistent look, and these three are the ones that got
-// that distinct highlight there rather than the plain Field styling.
 function AmberSection({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
-      <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>{label}</p>
+    <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/70">
+      <p className="doc-section-heading">{label}</p>
       <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
@@ -446,17 +438,23 @@ export default function RiskManagement() {
   }, [selectedHome])
 
   useEffect(() => {
-    if (!selectedHome) return
+    if (!selectedHome || !selectedSu) {
+      setAssessments([])
+      setLoading(false)
+      return
+    }
     load()
   }, [selectedHome, selectedSu])
 
   const load = async () => {
+    if (!selectedSu) {
+      setAssessments([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const params: any = {}
-      if (selectedSu) params.suId = selectedSu
-      else params.homeId = selectedHome
-      const res = await api.get('/risk-assessments', { params })
+      const res = await api.get('/risk-assessments', { params: { suId: selectedSu } })
       setAssessments(res.data.data || [])
     } catch { toast.error('Failed to load risk management plans') }
     finally { setLoading(false) }
@@ -727,7 +725,11 @@ export default function RiskManagement() {
       )}
 
       {/* List */}
-      {loading ? <Spinner /> : assessments.length === 0 ? (
+      {!selectedSu ? (
+        <div className="flex items-center justify-center py-24">
+          <EmptyState title="Select a service user" description="Use the dropdown above to select a service user and view their risk assessments" />
+        </div>
+      ) : loading ? <Spinner /> : assessments.length === 0 ? (
         <EmptyState title="No risk management plans" description="Create a risk management plan to get started."
           action={canManage ? <Button icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>New Plan</Button> : undefined} />
       ) : visibleAssessments.length === 0 ? (

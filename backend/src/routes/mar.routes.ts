@@ -8,7 +8,7 @@ import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { assertResidentAccess, RESTRICTED_ROLES } from '../utils/residentAccess';
 import { getDueTodayTasks, getStockCountStatus } from '../utils/medicationDue';
-import { ukDateStr, ukTimeHHMM, ukTimeHHMMSS } from '../utils/ukTime';
+import { ukDateStr, ukTimeHHMM, ukTimeHHMMSS, isUkSlotDue } from '../utils/ukTime';
 import { isWithinAmendWindow } from '../utils/clockStatus';
 import { logger } from '../config/logger';
 
@@ -340,12 +340,13 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
       // never in the future and this never blocks them. Only checked for today's date —
       // a manager back-filling an earlier day's record has scheduledTime in the past anyway.
       if (scheduledTime && recordDate) {
-        const todayStr = ukDateStr();
-        if (recordDate === todayStr) {
-          const nowHHMM = ukTimeHHMM();
-          if (scheduledTime.slice(0, 5) > nowHHMM) {
-            throw new AppError(`This medication isn't due until ${scheduledTime.slice(0, 5)} — it can't be recorded early.`, 403);
-          }
+        const cleanSlot = scheduledTime.slice(0, 5);
+        // Evaluate in Europe/London monotonic UTC time (`isUkSlotDue`) rather than plain
+        // HH:MM string ordering: when UK clocks fall back at 01:00 UTC on the last Sunday
+        // of October (`01:59 BST` -> `01:00 GMT`), plain HH:MM jumps backwards and would
+        // falsely re-lock an already-due `01:30` / `01:45` medication as "early".
+        if (!isUkSlotDue(recordDate, cleanSlot)) {
+          throw new AppError(`This medication isn't due until ${cleanSlot} — it can't be recorded early.`, 403);
         }
       }
 
@@ -421,12 +422,13 @@ router.post('/records', [body('suId').isUUID(), body('medicationId').isUUID()], 
           );
           if (medRows[0]?.is_prn) {
             const medName = medRows[0].medication_name || 'medication';
+            const outcomeDue = new Date(Date.now() + 30 * 60 * 1000);
             await query(
               `INSERT INTO tasks (home_id, su_id, created_by, title, category, description, task_date, due_time, priority, status, assigned_staff_id)
                VALUES ($1,$2,$3,$4,'medication_observation',$5,$6,$7,'high','pending',$3)`,
               [homeId, suId, staffId, `30-minute check: ${medName}`,
                `Observation 30 minutes after the ${medName} PRN dose — record the resident's response and whether any further action is needed. The original dose record can be reopened from MAR within 24 hours.`,
-               ukDateStr(), ukTimeHHMM(new Date(Date.now() + 30 * 60 * 1000))]
+               ukDateStr(outcomeDue), ukTimeHHMM(outcomeDue)]
             );
           }
         }
@@ -506,7 +508,7 @@ router.patch('/records/:id', param('id').isUUID(), validateRequest,
       // alone refused a note on a dose given seconds earlier by anyone who had
       // no clock-in on record.
       const amendRole = fromToken(req, 'role');
-      const MAR_AMEND_MGMT = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+      const MAR_AMEND_MGMT = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
       const recordAgeHours = record.created_at ? (Date.now() - new Date(record.created_at).getTime()) / 3600000 : Infinity;
       if (!(recordAgeHours <= 24) && !MAR_AMEND_MGMT.includes(amendRole) && !(await isWithinAmendWindow(staffId))) {
         throw new AppError('The 24-hour window to amend this record has passed.', 403);

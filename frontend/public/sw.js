@@ -1,5 +1,5 @@
-const CACHE = 'compcare-v9';
-const DYNAMIC_CACHE = 'compcare-dynamic-v9';
+const CACHE = 'compcare-v17';
+const DYNAMIC_CACHE = 'compcare-dynamic-v17';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE = [
@@ -96,6 +96,11 @@ self.addEventListener('install', event => {
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'PURGE_ALL_CACHES') {
+    event.waitUntil(
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+    );
+  }
 });
 
 self.addEventListener('activate', event => {
@@ -118,10 +123,10 @@ self.addEventListener('fetch', event => {
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/uploads/')) return;
 
-  // Navigation requests (page loads) — network first, offline HTML fallback
+  // Navigation requests (page loads) — network first with cache:'no-store' so HTTP disk cache never serves a stale shell
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then(response => {
           // Cache a fresh copy of index.html on each successful navigation
           if (response.ok) {

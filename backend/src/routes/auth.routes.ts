@@ -627,7 +627,7 @@ router.put('/activate/:staffId', authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { role, homeId, organisationId } = req.staff;
-      if (!['home_manager', 'group_admin'].includes(role))
+      if (!['super_admin', 'home_manager', 'group_admin'].includes(role))
         throw new AppError('Only managers can activate staff accounts', 403);
 
       // Ensure the target staff belongs to the manager's organisation (and home for home_manager)

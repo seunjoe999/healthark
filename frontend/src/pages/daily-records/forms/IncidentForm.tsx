@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { dailyRecordsApi } from '../../../api'
-import { ukDateStr } from '../../../utils/ukDate'
+import { ukDateStr, ukTimeHHMM } from '../../../utils/ukDate'
 import { Button, Input, Select, Toggle, SpeechTextarea } from '../../../components/ui'
 import BodySitePicker, { BODY_ZONES } from '../../../components/BodySitePicker'
 import { AlertTriangle } from 'lucide-react'
@@ -43,7 +43,7 @@ export default function IncidentForm({ suId, onSaved }: { suId: string; onSaved:
   const [form, setForm] = useState({
     incidentType: '',
     incidentDate: ukDateStr(),
-    incidentTime: new Date().toTimeString().substring(0, 5),
+    incidentTime: ukTimeHHMM(),
     location: '',
     description: '',
     witnesses: '',

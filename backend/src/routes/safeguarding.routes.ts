@@ -100,7 +100,7 @@ router.put('/:id', param('id').isUUID(), validateRequest,
       );
       if (!rows.length) throw new AppError('Safeguarding concern not found', 404);
       if (rows[0].home_id !== homeId) throw new AppError('Safeguarding concern not found', 404);
-      const canManage = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'super_admin'].includes(role);
+      const canManage = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'super_admin'].includes(role);
       if (!canManage && rows[0].created_by !== staffId) {
         throw new AppError('You do not have permission to edit this record', 403);
       }

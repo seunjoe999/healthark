@@ -137,8 +137,8 @@ export async function requireHomeAccess(
 
     const { role, staffId, organisationId } = req.staff;
 
-    // group_admin sees all homes in their org
-    if (role === 'group_admin') {
+    // super_admin and group_admin see all homes in their org
+    if (role === 'super_admin' || role === 'group_admin') {
       const rows = await query<{ id: string }>(
         'SELECT id FROM homes WHERE id = $1 AND organisation_id = $2',
         [homeId, organisationId]
@@ -185,8 +185,8 @@ export function requirePermission(
     try {
       const { role, staffId } = req.staff;
 
-      // group_admin and home_manager have all permissions
-      if (role === 'group_admin' || role === 'home_manager') {
+      // super_admin, group_admin and home_manager have all permissions
+      if (role === 'super_admin' || role === 'group_admin' || role === 'home_manager') {
         next();
         return;
       }

@@ -24,7 +24,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 // Management plans the calendar (appointments, reviews, inspections, training) —
 // care staff view it but don't add to it, same convention used for task creation.
-const CALENDAR_MANAGE_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'] as const;
+const CALENDAR_MANAGE_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'] as const;
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -117,7 +117,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     }
 
     let rows;
-    if (role === 'group_admin') {
+    if (role === 'super_admin' || role === 'group_admin') {
       const params = filterHomeId ? [organisationId, filterHomeId] : [organisationId];
       const where = filterHomeId ? 'AND home_id = $2' : '';
       try {
@@ -371,7 +371,7 @@ router.get('/:id', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
       if (!rows.length) throw new AppError('Staff not found', 404);
       const staff = rows[0] as Record<string, unknown>;
 
-      const isPrivileged = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'group_admin', 'home_manager', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       // A staff member's personal profile (DOB, address, NI number, emergency
       // contacts, etc.) is confidential — only managers or the person
       // themselves may view it, matching the same rule applied to their
@@ -483,7 +483,7 @@ router.put(
       // leaveHoursRemaining further below are also gated on canManage).
       // Owner explicitly asked for a hard lock: nobody but them edits any
       // profile, full stop.
-      const canManage = role === 'group_admin';
+      const canManage = role === 'super_admin' || role === 'group_admin';
       if (!canManage) {
         throw new AppError('Not authorised to edit this profile', 403);
       }
@@ -620,7 +620,7 @@ router.put(
          newStatus,
          newIsActive,
          canManage ? nd(leaveDate) : null,
-         role === 'group_admin' ? (homeId || null) : null,
+         (role === 'super_admin' || role === 'group_admin') ? (homeId || null) : null,
          newRole,
          targetId,
          email || null,
@@ -874,7 +874,7 @@ router.get('/:id/clock', param('id').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{
       const decoded = token ? jwt.decode(token) as any : {};
       const role = req.staff?.role || decoded?.role || '';
       const myStaffId = req.staff?.staffId || decoded?.staffId || '';
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
       if (!isPrivileged && req.params.id !== myStaffId) {
         throw new AppError('Forbidden', 403);
       }

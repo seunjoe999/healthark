@@ -37,7 +37,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
     const date = (req.query.date as string) || ukDateStr();
     const role = fromToken(req, 'role');
-    const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
+    const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'director', 'registered_manager', 'service_manager'].includes(role);
     const staffId = fromToken(req, 'staffId');
     const todayUk = ukDateStr();
     const currentShiftOnly = (req.query.shift as string) === 'current' && date === todayUk;
@@ -245,7 +245,7 @@ router.post('/templates', requireRole('home_manager', 'group_admin'),
 // (Matches the StaffRole union; 'director'/'registered_manager'/'service_manager'
 // used for privilege checks elsewhere in this codebase aren't part of that type.)
 
-const TASK_CREATOR_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'team_leader'];
+const TASK_CREATOR_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'senior_carer', 'team_leader'];
 
 // POST /api/tasks — create a one-off (or recurring) task.
 // Any authenticated staff member may create a 'follow_up' (flagging something

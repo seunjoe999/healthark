@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MessageSquare, Plus, ChevronLeft } from 'lucide-react'
+import { MessageSquare, Plus, ChevronLeft, Pencil } from 'lucide-react'
 import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import api, { suApi, homesApi } from '../../api'
@@ -10,10 +10,6 @@ function getName(p: any) {
   return `${p?.first_name || p?.firstName || ''} ${p?.last_name || p?.lastName || ''}`.trim()
 }
 
-// Verbatim from the "Service User Satisfaction Questionnaire" (Creative Support)
-// the manager emailed as the template to use. Each question keeps its own
-// scale where the source document uses a different one per question, rather
-// than forcing everything onto one generic scale.
 const SCALE_5_FREQ = ['Always', 'Most of the time', 'Sometimes', 'Not very often', 'Not at all']
 const SCALE_4_FREQ = ['Regularly', 'Sometimes', 'Not very often', 'Not at all']
 const SCALE_UNDERSTANDING = ['They are very understanding', 'They understand most of the time', 'They have some understanding', 'They understand very little', "They don't understand at all"]
@@ -26,7 +22,7 @@ interface Q {
   type: 'scale' | 'yesno' | 'text'
   options?: string[]
   commentLabel?: string
-  conditional?: { onId: string; onValue: string } // only show if another question was answered a certain way
+  conditional?: { onId: string; onValue: string }
 }
 
 const QUESTIONS: Q[] = [
@@ -60,6 +56,7 @@ export default function ServiceUserFeedback() {
   const [list, setList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
+  const [editingFeedback, setEditingFeedback] = useState<any>(null)
   const [detail, setDetail] = useState<any>(null)
 
   useEffect(() => {
@@ -92,14 +89,21 @@ export default function ServiceUserFeedback() {
     } catch { toast.error('Failed to load') }
   }
 
+  async function openEdit(id: string) {
+    try {
+      const res = await api.get(`/service-feedback/${id}`)
+      setEditingFeedback(res.data.data)
+    } catch { toast.error('Failed to load') }
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-            <MessageSquare className="w-6 h-6 text-amber-400" /> Service User Feedback
+            <MessageSquare className="w-6 h-6 text-amber-500" /> Service User Feedback
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Satisfaction questionnaire — completed with a resident</p>
+          <p className="text-slate-500 text-sm mt-1">Satisfaction questionnaire — completed with a resident</p>
         </div>
         <Button variant="gold" icon={<Plus className="w-4 h-4" />} onClick={() => setShowNew(true)}>
           New Feedback
@@ -117,35 +121,56 @@ export default function ServiceUserFeedback() {
           description="Complete the satisfaction questionnaire with a resident to get started."
           action={<Button variant="gold" onClick={() => setShowNew(true)}>New Feedback</Button>} />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {list.map(f => (
             <div key={f.id} onClick={() => openDetail(f.id)}
-              className="card p-4 cursor-pointer hover:border-amber-500/30 transition-all flex items-center justify-between">
+              className="card p-4 cursor-pointer hover:border-amber-500/40 transition-all flex items-center justify-between gap-3">
               <div>
                 <p className="font-semibold text-white">{f.su_name}</p>
-                <p className="text-xs text-slate-400">{format(new Date(f.completed_at), 'd MMM yyyy')} · Completed by {f.completed_by_name || 'Unknown'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{format(new Date(f.completed_at), 'd MMM yyyy')} · Completed by {f.completed_by_name || 'Unknown'}</p>
               </div>
+              <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
+                onClick={(e) => { e.stopPropagation(); openEdit(f.id) }}>
+                Edit
+              </Button>
             </div>
           ))}
         </div>
       )}
 
       {showNew && (
-        <NewFeedbackModal sus={sus} onClose={() => setShowNew(false)}
+        <FeedbackFormModal sus={sus} onClose={() => setShowNew(false)}
           onSaved={() => { setShowNew(false); load() }} />
       )}
 
-      {detail && <FeedbackDetailModal feedback={detail} onClose={() => setDetail(null)} />}
+      {editingFeedback && (
+        <FeedbackFormModal
+          sus={sus}
+          existing={editingFeedback}
+          fixedSuId={editingFeedback.su_id}
+          onClose={() => setEditingFeedback(null)}
+          onSaved={() => { setEditingFeedback(null); load() }}
+        />
+      )}
+
+      {detail && (
+        <FeedbackDetailModal
+          feedback={detail}
+          onClose={() => setDetail(null)}
+          onEdit={() => { const cur = detail; setDetail(null); setEditingFeedback(cur) }}
+        />
+      )}
     </div>
   )
 }
 
-function NewFeedbackModal({ sus, fixedSuId, onClose, onSaved }: { sus?: any[]; fixedSuId?: string; onClose: () => void; onSaved: () => void }) {
-  const [step, setStep] = useState<0 | 1>(fixedSuId ? 1 : 0)
-  const [suId, setSuId] = useState(fixedSuId || '')
-  const [project, setProject] = useState('')
-  const [location, setLocation] = useState('')
-  const [answers, setAnswers] = useState<Record<string, { value?: string; comment?: string }>>({})
+function FeedbackFormModal({ sus, fixedSuId, existing, onClose, onSaved }: { sus?: any[]; fixedSuId?: string; existing?: any; onClose: () => void; onSaved: () => void }) {
+  const isEdit = !!existing
+  const [step, setStep] = useState<0 | 1>(fixedSuId || isEdit ? 1 : 0)
+  const [suId, setSuId] = useState(fixedSuId || existing?.su_id || '')
+  const [project, setProject] = useState(existing?.project || '')
+  const [location, setLocation] = useState(existing?.location || '')
+  const [answers, setAnswers] = useState<Record<string, { value?: string; comment?: string }>>(existing?.answers || {})
   const [saving, setSaving] = useState(false)
 
   const set = (id: string, field: 'value' | 'comment', v: string) =>
@@ -162,26 +187,31 @@ function NewFeedbackModal({ sus, fixedSuId, onClose, onSaved }: { sus?: any[]; f
   const save = async () => {
     setSaving(true)
     try {
-      await api.post('/service-feedback', { suId, project, location, answers })
-      toast.success('Feedback saved')
+      if (isEdit) {
+        await api.put(`/service-feedback/${existing.id}`, { project, location, answers })
+        toast.success('Feedback updated')
+      } else {
+        await api.post('/service-feedback', { suId, project, location, answers })
+        toast.success('Feedback saved')
+      }
       onSaved()
     } catch (err: any) { toast.error(err?.response?.data?.error || 'Failed to save') }
     finally { setSaving(false) }
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="New Service User Feedback" size="lg">
+    <Modal open={true} onClose={onClose} title={isEdit ? 'Edit Service User Feedback' : 'New Service User Feedback'} size="lg">
       {step === 0 ? (
         <form onSubmit={startForm} className="space-y-4">
           <Select label="Service User" options={(sus || []).map(s => ({ value: s.id, label: getName(s) }))}
             placeholder="Select resident..." value={suId} onChange={e => setSuId(e.target.value)} required />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Project</label>
+              <label className="text-xs text-slate-500 mb-1 block">Project</label>
               <input className="input" value={project} onChange={e => setProject(e.target.value)} placeholder="Optional" />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Location</label>
+              <label className="text-xs text-slate-500 mb-1 block">Location</label>
               <input className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Optional" />
             </div>
           </div>
@@ -192,25 +222,25 @@ function NewFeedbackModal({ sus, fixedSuId, onClose, onSaved }: { sus?: any[]; f
         </form>
       ) : (
         <div className="space-y-5">
-          {!fixedSuId && (
-            <button type="button" onClick={() => setStep(0)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
+          {!fixedSuId && !isEdit && (
+            <button type="button" onClick={() => setStep(0)} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700">
               <ChevronLeft className="w-3.5 h-3.5" /> Back
             </button>
           )}
           <div className="max-h-[60vh] overflow-y-auto space-y-5 pr-1">
             {visibleQuestions.map((q, i) => (
-              <div key={q.id} className="card p-3">
-                <p className="text-sm font-semibold text-white mb-2">{i + 1}. {q.text}</p>
+              <div key={q.id} className="card p-4 space-y-2.5">
+                <p className="doc-section-heading">{i + 1}. {q.text}</p>
                 {q.type === 'text' ? (
-                  <textarea className="input" rows={2} value={answers[q.id]?.value || ''}
+                  <textarea className="input" rows={3} value={answers[q.id]?.value || ''}
                     onChange={e => set(q.id, 'value', e.target.value)} placeholder="Please state..." />
                 ) : (
                   <>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                    <div className="flex flex-wrap gap-2">
                       {q.options!.map(opt => (
                         <button key={opt} type="button" onClick={() => set(q.id, 'value', opt)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                            answers[q.id]?.value === opt ? 'bg-amber-400 text-slate-900 border-amber-400' : 'bg-white/5 text-slate-300 border-white/10 hover:border-amber-400/50'
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                            answers[q.id]?.value === opt ? 'bg-amber-400 text-slate-900 border-amber-400' : 'bg-slate-100 text-slate-700 border-slate-200 hover:border-amber-400'
                           }`}>
                           {opt}
                         </button>
@@ -225,9 +255,9 @@ function NewFeedbackModal({ sus, fixedSuId, onClose, onSaved }: { sus?: any[]; f
               </div>
             ))}
           </div>
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/10">
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button variant="gold" loading={saving} onClick={save}>Save Feedback</Button>
+            <Button variant="gold" loading={saving} onClick={save}>{isEdit ? 'Save Changes' : 'Save Feedback'}</Button>
           </div>
         </div>
       )}
@@ -235,25 +265,29 @@ function NewFeedbackModal({ sus, fixedSuId, onClose, onSaved }: { sus?: any[]; f
   )
 }
 
-function FeedbackDetailModal({ feedback, onClose }: { feedback: any; onClose: () => void }) {
+function FeedbackDetailModal({ feedback, onClose, onEdit }: { feedback: any; onClose: () => void; onEdit?: () => void }) {
   const answers = feedback.answers || {}
   return (
     <Modal open={true} onClose={onClose} title={`Feedback — ${feedback.su_name}`} size="lg">
-      <div className="space-y-4">
-        <p className="text-xs text-slate-400">
-          {format(new Date(feedback.completed_at), 'd MMM yyyy')} · Completed by {feedback.completed_by_name || 'Unknown'}
-          {feedback.project ? ` · Project: ${feedback.project}` : ''}{feedback.location ? ` · Location: ${feedback.location}` : ''}
-        </p>
-        <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-xs text-slate-500">
+            {format(new Date(feedback.completed_at), 'd MMM yyyy')} · Completed by {feedback.completed_by_name || 'Unknown'}
+            {feedback.project ? ` · Project: ${feedback.project}` : ''}{feedback.location ? ` · Location: ${feedback.location}` : ''}
+          </p>
+          {onEdit && <Button size="sm" variant="gold" icon={<Pencil className="w-3.5 h-3.5" />} onClick={onEdit}>Edit Feedback</Button>}
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto space-y-5 pr-1">
           {QUESTIONS.filter(q => answers[q.id]?.value || answers[q.id]?.comment).map((q, i) => (
-            <div key={q.id} className="card p-3">
-              <p className="text-sm font-semibold text-white mb-1">{i + 1}. {q.text}</p>
-              {answers[q.id]?.value && <p className="text-sm text-amber-400 font-medium">{answers[q.id].value}</p>}
-              {answers[q.id]?.comment && <p className="text-xs text-slate-400 mt-1 whitespace-pre-wrap">{answers[q.id].comment}</p>}
+            <div key={q.id} className="card p-4 space-y-2">
+              <p className="doc-section-heading">{i + 1}. {q.text}</p>
+              {answers[q.id]?.value && <p className="text-sm text-slate-900 font-semibold leading-relaxed whitespace-pre-line">{answers[q.id].value}</p>}
+              {answers[q.id]?.comment && <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{answers[q.id].comment}</p>}
             </div>
           ))}
         </div>
-        <div className="flex justify-end pt-2 border-t border-white/10">
+        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          {onEdit && <Button variant="outline" size="sm" icon={<Pencil className="w-3.5 h-3.5" />} onClick={onEdit}>Edit</Button>}
           <Button variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
@@ -261,12 +295,11 @@ function FeedbackDetailModal({ feedback, onClose }: { feedback: any; onClose: ()
   )
 }
 
-// Embeddable panel used on a resident's own profile page (Background tab) —
-// scoped to just that resident, so no resident picker is needed.
 export function SuFeedbackPanel({ suId, suName }: { suId: string; suName: string }) {
   const [list, setList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
+  const [editing, setEditing] = useState<any>(null)
   const [detail, setDetail] = useState<any>(null)
 
   const load = () => {
@@ -286,8 +319,8 @@ export function SuFeedbackPanel({ suId, suName }: { suId: string; suName: string
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4" style={{ color: '#e8b130' }} /> Service User Feedback
+        <h3 className="doc-section-heading mb-0">
+          <MessageSquare className="w-4 h-4" /> Service User Feedback
         </h3>
         <Button size="sm" variant="gold" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setShowNew(true)}>New</Button>
       </div>
@@ -305,10 +338,20 @@ export function SuFeedbackPanel({ suId, suName }: { suId: string; suName: string
         </div>
       )}
       {showNew && (
-        <NewFeedbackModal fixedSuId={suId} onClose={() => setShowNew(false)}
+        <FeedbackFormModal fixedSuId={suId} onClose={() => setShowNew(false)}
           onSaved={() => { setShowNew(false); load() }} />
       )}
-      {detail && <FeedbackDetailModal feedback={{ ...detail, su_name: suName }} onClose={() => setDetail(null)} />}
+      {editing && (
+        <FeedbackFormModal fixedSuId={suId} existing={editing} onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load() }} />
+      )}
+      {detail && (
+        <FeedbackDetailModal
+          feedback={{ ...detail, su_name: suName }}
+          onClose={() => setDetail(null)}
+          onEdit={() => { const cur = detail; setDetail(null); setEditing(cur) }}
+        />
+      )}
     </div>
   )
 }

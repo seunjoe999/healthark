@@ -88,7 +88,7 @@ router.get('/:id/sign-offs', param('id').isUUID(), validateRequest,
       const myStaffId = fromToken(req, 'staffId');
       // Care staff and other non-privileged roles may only see their OWN sign-off
       // status for a policy — who else has read/signed it is management-only.
-      const isPrivileged = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin',
+      const isPrivileged = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin',
         'director', 'registered_manager', 'service_manager', 'team_leader'].includes(role);
       const rows = await query(
         `SELECT pso.*, s.first_name || ' ' || s.last_name as staff_name, s.role

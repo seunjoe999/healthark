@@ -56,7 +56,7 @@ router.put('/:id/resolve',
 );
 
 // ── Alert settings ────────────────────────────────────────────────
-const ALERT_SETTINGS_ROLES: any[] = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const ALERT_SETTINGS_ROLES: any[] = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 const ALERT_TYPE_LABELS: Record<string, string> = {
   care_plan_overdue: 'Care plan review overdue',
   fluid_below_threshold: 'Fluid intake below target',
@@ -126,8 +126,9 @@ router.post('/bulk',
     try {
       const { ids, action } = req.body;
       // Group admins act across homes; everyone else only on their own home's alerts.
-      const scopeHome = req.staff.role === 'group_admin' ? null : (req.staff.homeId || null);
-      if (req.staff.role !== 'group_admin' && !scopeHome) throw new AppError('No home on your account', 400);
+      const isTopAdmin = req.staff.role === 'super_admin' || req.staff.role === 'group_admin';
+      const scopeHome = isTopAdmin ? null : (req.staff.homeId || null);
+      if (!isTopAdmin && !scopeHome) throw new AppError('No home on your account', 400);
       const rows = action === 'delete'
         ? await query(
             'DELETE FROM business_alerts WHERE id = ANY($1::uuid[]) AND ($2::uuid IS NULL OR home_id = $2::uuid) RETURNING id',

@@ -368,7 +368,7 @@ router.post('/:id/signature', async (req: Request, res: Response, next: NextFunc
     // closes the incident — the same roles /review-note requires. A care
     // staff member's own signature still saves, it just doesn't mark the
     // incident reviewed by itself.
-    const REVIEW_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'];
+    const REVIEW_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'team_leader', 'senior_carer'];
     const closesIt = REVIEW_ROLES.includes(s.role);
     await query(
       `UPDATE records_incidents SET signature = $1::jsonb, updated_at = NOW(),

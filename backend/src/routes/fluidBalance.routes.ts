@@ -6,6 +6,7 @@ import { query } from '../config/database';
 import { ApiResponse } from '../types';
 import jwt from 'jsonwebtoken';
 import { isWithinAmendWindow } from '../utils/clockStatus';
+import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
 
 const router = Router();
 router.use(authenticate);
@@ -82,8 +83,8 @@ router.post('/',
         `INSERT INTO fluid_balance (home_id, su_id, recorded_by, record_date, record_time, type, category, amount_ml, notes)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
         [homeId, suId, staffId,
-         recordDate || new Date().toISOString().slice(0, 10),
-         recordTime || new Date().toTimeString().slice(0, 5),
+         recordDate || ukDateStr(),
+         recordTime || ukTimeHHMM(),
          type, category, amountMl, notes || null]
       );
       res.status(201).json({ success: true, data: rows[0] } as ApiResponse);

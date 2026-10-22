@@ -3,13 +3,13 @@ import { useAuth } from '../../context/AuthContext'
 import api, { getToken } from '../../api'
 import toast from 'react-hot-toast'
 import {
-  Lock, Users, Plus, X, ChevronDown, ChevronUp,
-  FileText, Trash2, Eye, EyeOff, Upload, CheckCircle, Loader2,
-  AlertCircle, ShieldAlert
+  Lock, Plus, ChevronDown, ChevronUp,
+  FileText, Trash2, Upload, Loader2,
+  ShieldAlert
 } from 'lucide-react'
-import SignaturePad from '../../components/SignaturePad'
+import SignaturePad, { SignatureImage } from '../../components/SignaturePad'
 
-const MANAGEMENT = ['group_admin', 'home_manager', 'deputy_manager', 'admin']
+const MANAGEMENT = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'super_admin', 'director', 'registered_manager', 'service_manager']
 
 interface ConfidentialRecord {
   id: string
@@ -36,7 +36,7 @@ const BLANK = {
 export default function Confidential() {
   const { user } = useAuth()
   const isMgmt = MANAGEMENT.includes(user?.role || '')
-  const [tab, setTab] = useState<'service_user' | 'staff'>('service_user')
+  const [tab] = useState<'service_user' | 'staff'>('service_user')
 
   // data
   const [records, setRecords] = useState<ConfidentialRecord[]>([])
@@ -181,13 +181,11 @@ export default function Confidential() {
         </div>
       )}
 
-      {/* Management: record list — Service Users only. This used to also have a
-          "Staff" tab alongside Service Users; removed per request, so this page
-          is now scoped to service user confidentiality only. */}
+      {/* Management: record list — Service Users only */}
       {isMgmt && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-300">
+            <p className="text-sm font-semibold text-slate-600">
               {tabRecords.length} record{tabRecords.length !== 1 ? 's' : ''} — {tab === 'service_user' ? 'Service Users' : 'Staff'}
             </p>
             <button onClick={() => setShowForm(v => !v)}
@@ -200,61 +198,65 @@ export default function Confidential() {
           {loading ? (
             <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 text-purple-500 animate-spin" /></div>
           ) : tabRecords.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-white/15 rounded-2xl">
-              <Lock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
+              <Lock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
               <p className="text-slate-500 text-sm">No confidential records yet</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {tabRecords.map(rec => (
-                <div key={rec.id} className="border border-white/12 rounded-xl overflow-hidden bg-white/5">
-                  <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-white/5 transition-colors"
+                <div key={rec.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => setExpanded(expanded === rec.id ? null : rec.id)}>
-                    <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
                       <FileText className="w-4 h-4 text-purple-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white text-sm truncate">{rec.title}</p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {rec.subject_name} · {new Date(rec.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })} · by {rec.created_by_name}
+                      <p className="font-bold text-slate-900 text-base truncate">{rec.title}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                        <span className="font-semibold text-slate-700">{rec.subject_name}</span>
+                        {' · '}
+                        {new Date(rec.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
+                        {rec.created_by_name ? ` · by ${rec.created_by_name}` : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {expanded === rec.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                      {expanded === rec.id ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                     </div>
                   </div>
 
                   {expanded === rec.id && (
-                    <div className="border-t border-white/8 p-4 space-y-3 bg-white/3">
+                    <div className="border-t border-slate-100 p-5 space-y-5 bg-slate-50/40">
                       {rec.content && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-500 mb-1">Content</p>
-                          <p className="text-sm text-slate-200 whitespace-pre-wrap">{rec.content}</p>
+                          <p className="doc-section-heading">Confidential Notes / Details</p>
+                          <div className="bg-white border border-slate-200 rounded-xl p-4">
+                            <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{rec.content}</p>
+                          </div>
                         </div>
                       )}
                       {rec.document_url && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-400 mb-2">Attached Document</p>
+                          <p className="doc-section-heading">Attached Document</p>
                           <a href={rec.document_url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-purple-500/30 bg-purple-500/10 text-purple-300 text-xs font-semibold hover:bg-purple-500/20 transition-colors">
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 text-xs font-semibold hover:bg-purple-100 transition-colors">
                             <FileText className="w-4 h-4" /> {rec.document_name || 'View Document'} ↗
                           </a>
                         </div>
                       )}
                       {rec.signature_data && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-500 mb-1">Signature</p>
-                          <div className="border border-emerald-500/30 rounded-xl overflow-hidden bg-white/5 w-64">
-                            <img src={rec.signature_data} alt="Signature" className="w-full h-16 object-contain" />
+                          <p className="doc-section-heading">Signature</p>
+                          <div className="border-2 border-emerald-500/30 rounded-xl overflow-hidden bg-white p-2 w-72 shadow-sm">
+                            <SignatureImage src={rec.signature_data} alt="Signature" className="w-full h-20 object-contain" />
                           </div>
-                          {rec.signed_by && <p className="text-xs text-slate-500 mt-1">Signed by: {rec.signed_by}</p>}
+                          {rec.signed_by && <p className="text-xs font-medium text-slate-600 mt-1.5">Signed by: <strong className="text-slate-900">{rec.signed_by}</strong></p>}
                         </div>
                       )}
-                      <div className="flex justify-end pt-2">
+                      <div className="flex justify-end pt-2 border-t border-slate-100">
                         <button onClick={() => handleDelete(rec.id)} disabled={deleting === rec.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 transition-colors">
-                          {deleting === rec.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                          Delete
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40">
+                          <Trash2 className="w-3.5 h-3.5" /> {deleting === rec.id ? 'Deleting…' : 'Delete Record'}
                         </button>
                       </div>
                     </div>
@@ -266,105 +268,103 @@ export default function Confidential() {
         </div>
       )}
 
-      {/* Form — always visible to staff; toggled for management */}
-      {showForm && (
-        <div className="bg-white/5 rounded-2xl border border-white/12 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100"
-            style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.06),rgba(109,40,217,0.03))' }}>
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-purple-600" />
-              <h2 className="font-semibold text-white text-sm">
-                New {tab === 'service_user' ? 'Service User' : 'Staff'} Confidential Record
-              </h2>
-            </div>
+      {/* Form — shown for all staff, and for management when toggled */}
+      {(showForm || !isMgmt) && (
+        <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="font-bold text-slate-900 text-base">
+              New Confidential Record — Service User
+            </h2>
             {isMgmt && (
-              <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
-                <X className="w-4 h-4 text-slate-500" />
+              <button type="button" onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-700 text-sm font-semibold">
+                Cancel
               </button>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="p-5 space-y-5">
-            {/* Subject select */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                {tab === 'service_user' ? 'Service User' : 'Staff Member'} *
-              </label>
-              <select value={form.subjectId} onChange={e => setForm(f => ({ ...f, subjectId: e.target.value }))}
-                className="input">
-                <option value="">— Select —</option>
-                {subjectList.map(s => (
-                  <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                ))}
-              </select>
-            </div>
+          {/* Subject selector */}
+          <div>
+            <label className="label">Service User *</label>
+            <select value={form.subjectId} onChange={e => setForm(f => ({ ...f, subjectId: e.target.value }))}
+              className="input w-full" required>
+              <option value="">Select {tab === 'service_user' ? 'service user' : 'staff member'}…</option>
+              {subjectList.map(s => (
+                <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+              ))}
+            </select>
+          </div>
 
-            {/* Title */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Title / Type *</label>
-              <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Safeguarding concern, Personal disclosure, Legal matter…"
-                className="input" />
-            </div>
+          {/* Title */}
+          <div>
+            <label className="label">Record Title / Category *</label>
+            <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Escort Notes, Safeguarding Disclosure, Court Order, Financial Power of Attorney…"
+              className="input w-full" required />
+          </div>
 
-            {/* Content */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Confidential Details</label>
-              <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                rows={5} placeholder="Document the confidential information here…"
-                className="input resize-none" />
-            </div>
+          {/* Content */}
+          <div>
+            <label className="label">Confidential Notes / Details</label>
+            <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+              rows={5} placeholder="Enter confidential information here…"
+              className="input w-full resize-none" />
+          </div>
 
-            {/* Document upload */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Attach Document (optional)</label>
-              {form.documentUrl ? (
-                <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span className="text-sm text-emerald-800 font-medium truncate flex-1">{form.documentName}</span>
-                  <button type="button" onClick={() => setForm(f => ({ ...f, documentUrl: '', documentName: '' }))}
-                    className="p-1 rounded-lg hover:bg-emerald-100 transition-colors flex-shrink-0">
-                    <X className="w-3.5 h-3.5 text-emerald-600" />
-                  </button>
-                </div>
-              ) : (
-                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploading ? 'border-purple-400/40 bg-purple-500/8' : 'border-white/15 hover:border-purple-400/50 hover:bg-purple-500/8'}`}>
-                  {uploading ? <Loader2 className="w-4 h-4 text-purple-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-400" />}
-                  <span className="text-sm text-slate-500">{uploading ? 'Uploading…' : 'Click to attach a document'}</span>
-                  <input ref={fileRef} type="file" className="hidden" disabled={uploading}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.zip"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f) }} />
+          {/* Document upload */}
+          <div>
+            <label className="label">Attach Document (optional)</label>
+            {form.documentUrl ? (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                <FileText className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                <span className="text-sm text-emerald-800 font-medium flex-1 truncate">{form.documentName}</span>
+                <button type="button" onClick={() => setForm(f => ({ ...f, documentUrl: '', documentName: '' }))}
+                  className="text-slate-500 hover:text-rose-600 text-xs underline">Remove</button>
+              </div>
+            ) : (
+              <div>
+                <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f) }}
+                  className="hidden" id="conf-doc-upload" />
+                <label htmlFor="conf-doc-upload"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-slate-600 hover:border-purple-400 hover:text-purple-700 cursor-pointer text-sm transition-colors w-fit bg-slate-50">
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploading ? 'Uploading…' : 'Upload PDF / Document / Image'}
                 </label>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
-            {/* Signature */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Signature</label>
-              <SignaturePad
-                label=""
-                onSave={dataUrl => setForm(f => ({ ...f, signatureData: dataUrl }))}
-                savedSignature={form.signatureData || null}
-              />
-            </div>
+          {/* Signed by name */}
+          <div>
+            <label className="label">Signed By (Full Name)</label>
+            <input type="text" value={form.signedBy} onChange={e => setForm(f => ({ ...f, signedBy: e.target.value }))}
+              placeholder={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Full name'}
+              className="input w-full" />
+          </div>
 
-            {/* Submit */}
-            <div className="flex gap-3 pt-2">
-              {isMgmt && (
-                <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-slate-400 hover:bg-white/5 transition-colors">
-                  Cancel
-                </button>
-              )}
-              <button type="submit" disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)' }}>
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                {saving ? 'Saving…' : 'Save Confidential Record'}
+          {/* Signature pad */}
+          <SignaturePad
+            label="Signature (confirm authenticity)"
+            onSave={dataUrl => setForm(f => ({ ...f, signatureData: dataUrl }))}
+            savedSignature={form.signatureData || null}
+          />
+
+          {/* Submit */}
+          <div className="flex justify-end gap-3 pt-2">
+            {isMgmt && (
+              <button type="button" onClick={() => setShowForm(false)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">
+                Cancel
               </button>
-            </div>
-          </form>
-        </div>
+            )}
+            <button type="submit" disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)' }}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              {saving ? 'Saving…' : 'Save Confidential Record'}
+            </button>
+          </div>
+        </form>
       )}
     </div>
   )

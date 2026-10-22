@@ -21,9 +21,67 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet" />
+    <script>
+      // Automatic mobile PWA recovery: if an installed iOS/Android shell wakes up with a stale cached JS chunk
+      // (e.g. TDZ "before initialization" or chunk load failure), purge all SW/CacheStorage entries once and hard-reload fresh.
+      (function () {
+        var GUARD_KEY = 'compcare_bundle_heal_ts';
+        function isStaleBundleError(msg) {
+          if (!msg) return false;
+          return /before initialization|ChunkLoadError|Failed to fetch dynamically imported module|Importing a module script failed|Unable to preload CSS/i.test(String(msg));
+        }
+        function purgeAndReload() {
+          try {
+            var last = parseInt(sessionStorage.getItem(GUARD_KEY) || '0', 10);
+            if (Date.now() - last < 15000) return;
+            sessionStorage.setItem(GUARD_KEY, String(Date.now()));
+          } catch (_) {}
+          var tasks = [];
+          try {
+            if ('serviceWorker' in navigator) {
+              tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+            if ('caches' in window) {
+              tasks.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              }));
+            }
+          } catch (_) {}
+          Promise.allSettled(tasks).finally(function () {
+            var u = new URL(window.location.href);
+            u.searchParams.set('_cb', String(Date.now()));
+            window.location.replace(u.toString());
+          });
+        }
+        window.purgeCompCareCachesAndReload = purgeAndReload;
+        window.addEventListener('error', function (ev) {
+          var msg = (ev && (ev.message || (ev.error && ev.error.message))) || '';
+          if (isStaleBundleError(msg)) purgeAndReload();
+        }, true);
+        window.addEventListener('unhandledrejection', function (ev) {
+          var reason = ev && ev.reason;
+          var msg = (reason && (reason.message || String(reason))) || '';
+          if (isStaleBundleError(msg)) purgeAndReload();
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+            .then(function (reg) {
+              reg.update().catch(function () {});
+              if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            })
+            .catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

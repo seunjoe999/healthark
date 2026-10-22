@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { errorHandler, notFound } from './middleware/errorHandler';
+import { auditLog } from './middleware/auditLog';
 import { logger } from './config/logger';
 import { pool } from './config/database';
 import { startScheduler } from './services/scheduler';
@@ -202,10 +203,20 @@ app.get('/api/version', (_req, res) => {
 // compute "today" for anything that must match server-generated records, since
 // a device's local date can otherwise disagree with the server.
 app.get('/api/server-time', (_req, res) => {
-  res.json({ success: true, data: { iso: new Date().toISOString() } });
+  const now = new Date();
+  res.json({
+    success: true,
+    data: {
+      iso: now.toISOString(),
+      epochMs: now.getTime(),
+      ukDate: ukDateStr(now),
+      timezone: 'Europe/London',
+    },
+  });
 });
 
 // â”€â”€ ALL API Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.use('/api', auditLog);
 app.use('/api/auth', authRoutes);
 app.use('/api/homes', homesRoutes);
 app.use('/api/staff', staffRoutes);
@@ -395,6 +406,20 @@ if (fs.existsSync(frontendDist)) {
   // strict no-cache headers, otherwise Express's default static caching
   // headers apply to '/' only, leaving regular (non-incognito) browsers
   // stuck on a stale build until their cache happens to expire.
+  app.get('/sw.js', (_req, res) => {
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(frontendDist, 'sw.js'));
+  });
+  app.get('/index.html', (_req, res) => {
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
   app.use(express.static(frontendDist, { index: false }));
   app.get(/^(?!\/api|\/uploads|\/assets).*/, (_req, res) => {
     res.setHeader('Surrogate-Control', 'no-store');

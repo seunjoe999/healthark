@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { alertsService } from './alerts.service';
 import { logger } from '../config/logger';
 import { getDueTodayTasks } from '../utils/medicationDue';
-import { ukDateStr, ukTimeHHMM } from '../utils/ukTime';
+import { ukDateStr, isUkSlotDue } from '../utils/ukTime';
 
 // ================================================================
 // HEALTHARK SCHEDULED JOBS
@@ -141,16 +141,25 @@ async function checkMissedMedication() {
   try {
     const { query } = await import('../config/database');
     const homes = await query<any>('SELECT id FROM homes WHERE is_active = true');
-    const today = ukDateStr();
-    const nowHHMM = ukTimeHHMM();
+    const now = new Date();
+    const today = ukDateStr(now);
     // A dose isn't "missed" the second the clock ticks past its time — give
-    // staff a reasonable window to actually administer it before alerting.
+    // staff a 60-minute window in true elapsed UTC time after the UK wall-clock
+    // slot before alerting. Using `isUkSlotDue(today, slot, now, graceMinutes)`
+    // instead of plain `ukTimeHHMM(Date.now() - 60m)` prevents BOTH:
+    //  1) The midnight wrap-around bug (between 00:00 and 00:59 UK time,
+    //     `now - 60m` wrapped to `"23:XX"` and marked ALL of today's daytime &
+    //     evening meds as missed right after midnight!).
+    //  2) The autumn UK DST fallback bug (at 01:30 GMT = 01:30Z on the last
+    //     Sunday of October, `now - 60m` was `00:30Z` = `01:30 BST`, miscomputing
+    //     elapsed time across the repeated 01:00–01:59 hour).
     const graceMinutes = 60;
-    const cutoff = ukTimeHHMM(new Date(Date.now() - graceMinutes * 60000));
 
     for (const home of homes as any[]) {
       const tasks = await getDueTodayTasks(home.id, '', 'home_manager');
-      const missed = tasks.filter(t => t.status === 'pending' && t.scheduledTime && t.scheduledTime < cutoff);
+      const missed = tasks.filter(
+        t => t.status === 'pending' && !!t.scheduledTime && isUkSlotDue(today, t.scheduledTime, now, graceMinutes)
+      );
       if (!missed.length) continue;
 
       const managers = await query<any>(
@@ -218,18 +227,26 @@ async function checkMissedMedication() {
 async function checkOverdueTasks() {
   try {
     const { query } = await import('../config/database');
-    const today = ukDateStr();
+    const now = new Date();
+    const today = ukDateStr(now);
     const graceMinutes = 60;
-    const cutoffHHMM = ukTimeHHMM(new Date(Date.now() - graceMinutes * 60000));
 
-    const overdue = await query<any>(
-      `SELECT t.id, t.home_id, t.title, t.task_date, t.due_time
+    const candidates = await query<any>(
+      `SELECT t.id, t.home_id, t.title, t.task_date::text AS task_date, t.due_time
        FROM tasks t
        WHERE t.status = 'pending'
-         AND (t.task_date < $1 OR (t.task_date = $1 AND t.due_time IS NOT NULL AND t.due_time <> '' AND t.due_time < $2))
-       LIMIT 200`,
-      [today, cutoffHHMM]
+         AND t.task_date <= $1::date
+       LIMIT 400`,
+      [today]
     );
+    const overdue = candidates.filter((t: any) => {
+      const d = String(t.task_date).slice(0, 10);
+      if (t.due_time && String(t.due_time).trim() !== '') {
+        return isUkSlotDue(d, String(t.due_time).slice(0, 5), now, graceMinutes);
+      }
+      // Tasks with no due_time become missed once their UK date has ended (+ grace).
+      return isUkSlotDue(d, '23:59', now, graceMinutes);
+    }).slice(0, 200);
     if (!overdue.length) return;
 
     const byHome = new Map<string, any[]>();

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { homesApi, suApi } from '../../api'
 import api from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -9,6 +9,7 @@ import { Plus, AlertTriangle, CheckCircle, Clock, FileText, Edit, Printer, Trash
 import toast from 'react-hot-toast'
 import { handleTextareaPaste } from '../../utils/pasteFormat'
 import NotifyReadersSection from '../../components/NotifyReadersSection'
+import { SignatureImage } from '../../components/SignaturePad'
 
 async function uploadDoc(file: File): Promise<{ fileUrl: string; fileName: string }> {
   const fd = new FormData()
@@ -2147,7 +2148,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, canEdit, canManage, homeI
             <div>
               <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">Service User / Family</p>
               {plan.su_signature_dataurl
-                ? <img src={plan.su_signature_dataurl} alt="SU signature" className="h-12 mb-1 border-b border-slate-300" />
+                ? <SignatureImage src={plan.su_signature_dataurl} alt="SU signature" className="h-12 mb-1 border-b border-slate-300 object-contain bg-white" />
                 : plan.su_signed_by
                   ? <p className="font-['Brush_Script_MT',cursive] italic text-xl text-slate-800 border-b border-slate-300 pb-1 mb-1" style={{ fontFamily: 'cursive' }}>{plan.su_signed_by}</p>
                   : <div className="h-10 border-b border-slate-300 mb-1" />}
@@ -2161,7 +2162,7 @@ function PlanDetailModal({ plan, su, reads, canDelete, canEdit, canManage, homeI
             <div>
               <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">Staff Member</p>
               {plan.staff_signature_dataurl
-                ? <img src={plan.staff_signature_dataurl} alt="Staff signature" className="h-12 mb-1 border-b border-slate-300" />
+                ? <SignatureImage src={plan.staff_signature_dataurl} alt="Staff signature" className="h-12 mb-1 border-b border-slate-300 object-contain bg-white" />
                 : plan.staff_signed_by
                   ? <p className="italic text-xl text-slate-800 border-b border-slate-300 pb-1 mb-1" style={{ fontFamily: 'cursive' }}>{plan.staff_signed_by}</p>
                   : <div className="h-10 border-b border-slate-300 mb-1" />}
@@ -2232,8 +2233,8 @@ function PlanDetailModal({ plan, su, reads, canDelete, canEdit, canManage, homeI
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
+    <div className="pt-1">
+      <p className="doc-section-heading">{label}</p>
       <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
@@ -2242,8 +2243,8 @@ function Field({ label, value }: { label: string; value: string }) {
 function GoldSection({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div className="border border-amber-100 rounded-xl p-4 bg-amber-50/30">
-      <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">{label}</p>
+    <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/40">
+      <p className="doc-section-heading">{label}</p>
       <p className="text-base font-semibold text-slate-900 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )

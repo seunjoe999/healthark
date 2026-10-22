@@ -77,7 +77,7 @@ const navSections = [
       { label: 'CQC Alerts',                        to: '/cqc-notifications',   icon: AlertCircle,   roles: MANAGEMENT_ONLY, featureKey: 'cqc_notifications' },
       { label: 'Service User Outcome Reports',      to: '/outcomes',            icon: Target,        roles: [], featureKey: 'outcomes' },
       { label: 'Calendar',                          to: '/calendar',            icon: Calendar,      roles: [], featureKey: 'calendar' },
-      { label: 'Capacity',                          to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
+      { label: 'Capacity Assessment',               to: '/capacity-professionals', icon: Brain,      roles: ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager', 'auditor'], featureKey: 'capacity_professionals' },
     ]
   },
   {

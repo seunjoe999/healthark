@@ -634,7 +634,7 @@ router.get('/:id/detail', param('id').isUUID(), validateRequest,
 // Management Review — a manager reads a staff member's completed daily
 // record, adds their own notes, and signs off on it (mirrors the legacy
 // RoundSys "daily note review" workflow the owner asked us to match).
-const REVIEW_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
+const REVIEW_ROLES = ['super_admin', 'group_admin', 'home_manager', 'deputy_manager', 'admin', 'director',
   'registered_manager', 'service_manager', 'team_leader', 'senior_carer', 'supervisor', 'auditor', 'recruitment_admin'];
 
 // POST /api/daily-records/:id/review
@@ -875,7 +875,7 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const role = getRole(req);
-      if (!['home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'team_leader', 'senior_carer'].includes(role)) {
+      if (!['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'recruitment_admin', 'team_leader', 'senior_carer'].includes(role)) {
         throw new AppError('Only managers and team leaders can delete records', 403);
       }
       await query('DELETE FROM daily_records WHERE id=$1', [req.params.id]);

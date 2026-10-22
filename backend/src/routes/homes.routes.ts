@@ -48,7 +48,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     console.log('HOMES: role=%s orgId=%s staffId=%s', role, organisationId, staffId);
 
     let rows;
-    if (role === 'group_admin' || role === 'auditor') {
+    if (role === 'super_admin' || role === 'group_admin' || role === 'auditor') {
       rows = await query(
         `SELECT h.*,
                 (SELECT COUNT(*) FROM service_users su WHERE su.home_id = h.id AND su.status = 'live') AS su_count,

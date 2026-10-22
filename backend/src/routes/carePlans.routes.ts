@@ -143,7 +143,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Support plans are a clinical/management document — frontline staff can
 // read them (they need to know how to support someone) but only managers
 // may write them.
-const MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const MANAGER_ROLES = ['super_admin', 'group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
 // POST /api/care-plans
 router.post('/',

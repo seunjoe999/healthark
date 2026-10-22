@@ -49,8 +49,9 @@ function summarize(r: any): string {
   if (type === 'vitals_bp') return `BP: ${r.systolic}/${r.diastolic} mmHg${r.pulse ? ` · Pulse: ${r.pulse}bpm` : ''}`
   if (type === 'vitals_temp') return `Temp: ${r.temp_celsius}°C`
   if (type === 'vitals_oxygen') return `SpO2: ${r.spo2_percent}%${r.supplemental_o2 ? ' (on O2)' : ''}`
-  if (type === 'bowel_movement') return `Bristol type ${r.bristol_type || '—'}${r.notes ? ` · ${r.notes}` : ''}`
-  return r.notes || r.description || (r.record_type ? r.record_type.replace(/_/g, ' ') : '—')
+  if (type === 'bowel_movement') return `Bristol type ${r.bristol_type || '—'}${String(r.notes || '').trim() ? ` · ${String(r.notes).trim()}` : ''}`
+  const raw = String(r.notes || r.description || '').replace(/\s+/g, ' ').trim()
+  return raw || (r.record_type ? r.record_type.replace(/_/g, ' ') : '—')
 }
 
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }

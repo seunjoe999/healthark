@@ -207,7 +207,7 @@ router.get('/:id', param('id').isUUID(), validateRequest,
   }
 );
 
-const MANAGER_ROLES = ['deputy_manager', 'home_manager', 'group_admin'];
+const MANAGER_ROLES = ['super_admin', 'deputy_manager', 'home_manager', 'group_admin'];
 
 // POST /api/service-users
 router.post('/',

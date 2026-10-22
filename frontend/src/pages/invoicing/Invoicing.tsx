@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
 import { ukDateStr } from '../../utils/ukDate'
 import { Spinner, EmptyState, Button, Modal, Input, Select } from '../../components/ui'
-import { Plus, Download, Check, X, ChevronDown, Eye, Trash2 } from 'lucide-react'
+import { Plus, Download, Check, X, ChevronDown, Eye, Trash2, Search, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { downloadCsv } from '../../utils/exportTable'
+import { printLetterheadTable } from '../../utils/letterheadPrint'
 
 interface Invoice {
   id: string
@@ -32,28 +34,77 @@ function invoiceNo(id: string) { return id.slice(0, 8).toUpperCase() }
 export default function Invoicing() {
   const { user } = useAuth()
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [residents, setResidents] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'paid'>('all')
+  const [filterSuId, setFilterSuId] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailModal, setDetailModal] = useState<Invoice | null>(null)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!user?.homeId) return
+    api.get(`/service-users?homeId=${user.homeId}&status=live`)
+      .then(res => setResidents(res.data.data || []))
+      .catch(() => {})
+  }, [user?.homeId])
 
   const loadInvoices = useCallback(async () => {
     if (!user?.homeId) return
     setLoading(true)
     try {
-      const res = await api.get(`/invoicing?homeId=${user.homeId}&status=${filter === 'all' ? 'all' : filter}`)
+      const res = await api.get(`/invoicing?homeId=${user.homeId}&status=all`)
       setInvoices(res.data.data || [])
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to load invoices')
     } finally {
       setLoading(false)
     }
-  }, [user?.homeId, filter])
+  }, [user?.homeId])
 
   useEffect(() => {
     loadInvoices()
   }, [loadInvoices])
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      if (filter !== 'all' && inv.status !== filter) return false
+      if (filterSuId && inv.su_id !== filterSuId) return false
+      const mDate = inv.month_date ? String(inv.month_date).slice(0, 10) : ''
+      if (dateFrom && mDate && mDate < dateFrom) return false
+      if (dateTo && mDate && mDate > dateTo) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase()
+        const hay = `${inv.first_name || ''} ${inv.last_name || ''} ${invoiceNo(inv.id)} ${inv.notes || ''} ${inv.status || ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [invoices, filter, filterSuId, dateFrom, dateTo, searchQuery])
+
+  const hasFilters = Boolean(filter !== 'all' || filterSuId || dateFrom || dateTo || searchQuery.trim())
+  const clearFilters = () => {
+    setFilter('all')
+    setFilterSuId('')
+    setDateFrom('')
+    setDateTo('')
+    setSearchQuery('')
+  }
+
+  const counts = useMemo(() => ({
+    all: invoices.length,
+    pending: invoices.filter(i => i.status === 'pending').length,
+    approved: invoices.filter(i => i.status === 'approved').length,
+    paid: invoices.filter(i => i.status === 'paid').length,
+  }), [invoices])
+
+  const filteredTotal = useMemo(
+    () => filteredInvoices.reduce((sum, inv) => sum + parseFloat(String(inv.invoice_amount || 0)), 0),
+    [filteredInvoices]
+  )
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this invoice?')) return
@@ -89,24 +140,132 @@ export default function Invoicing() {
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       {/* ── Header ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+      <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Invoicing</h1>
           <p className="text-sm text-slate-500 mt-1">Manage monthly resident invoices</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {filteredInvoices.length > 0 && (
+            <>
+              <Button size="sm" variant="outline" icon={<FileText className="w-3.5 h-3.5" />}
+                onClick={() => {
+                  const cols = [
+                    { key: 'invoice_no', label: 'Invoice No' },
+                    { key: 'service_user', label: 'Service User' },
+                    { key: 'month', label: 'Month' },
+                    { key: 'hours', label: 'Hours' },
+                    { key: 'amount', label: 'Amount (£)' },
+                    { key: 'status', label: 'Status' },
+                  ]
+                  const rows = filteredInvoices.map(i => ({
+                    invoice_no: invoiceNo(i.id),
+                    service_user: `${i.first_name} ${i.last_name}`,
+                    month: new Date(i.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+                    hours: i.commissioned_hours ? parseFloat(String(i.commissioned_hours)).toFixed(1) : '—',
+                    amount: `£${parseFloat(String(i.invoice_amount || 0)).toFixed(2)}`,
+                    status: i.status,
+                  }))
+                  if (!printLetterheadTable('Invoices Report', cols, rows, `Total: £${filteredTotal.toFixed(2)}`)) {
+                    toast.error('Please allow pop-ups to print / save PDF')
+                  }
+                }}>
+                Print / PDF
+              </Button>
+              <Button size="sm" variant="outline" icon={<Download className="w-3.5 h-3.5" />}
+                onClick={() => {
+                  const cols = [
+                    { key: 'invoice_no', label: 'Invoice No' },
+                    { key: 'service_user', label: 'Service User' },
+                    { key: 'month', label: 'Month' },
+                    { key: 'hours', label: 'Hours' },
+                    { key: 'amount', label: 'Amount (£)' },
+                    { key: 'status', label: 'Status' },
+                  ]
+                  const rows = filteredInvoices.map(i => ({
+                    invoice_no: invoiceNo(i.id),
+                    service_user: `${i.first_name} ${i.last_name}`,
+                    month: new Date(i.month_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+                    hours: i.commissioned_hours ? parseFloat(String(i.commissioned_hours)).toFixed(1) : '',
+                    amount: `£${parseFloat(String(i.invoice_amount || 0)).toFixed(2)}`,
+                    status: i.status,
+                  }))
+                  downloadCsv('invoices', cols, rows)
+                }}>
+                Export CSV
+              </Button>
+            </>
+          )}
           <Button size="sm" variant="outline" onClick={() => setGenerateModalOpen(true)}>Generate Monthly</Button>
           <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setCreateModalOpen(true)}>Create Invoice</Button>
         </div>
       </div>
 
-      {/* ── Filters ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex gap-2">
-        {['all', 'pending', 'approved', 'paid'].map(f => (
-          <button key={f} onClick={() => setFilter(f as any)} className={`px-3 py-1 text-sm rounded-full font-medium transition-colors ${ filter === f ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* ── Filters (Status Toggle Pills + Service User + Date From / Date To + Search) ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'pending', 'approved', 'paid'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3.5 py-1.5 text-xs rounded-full font-semibold transition-colors ${
+                  filter === f ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>
+              Showing <strong className="text-slate-800">{filteredInvoices.length}</strong> of {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
+              {' · '}Total <strong className="text-slate-900">£{filteredTotal.toFixed(2)}</strong>
+            </span>
+            {hasFilters && (
+              <button type="button" onClick={clearFilters} className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1">
+                <X className="w-3.5 h-3.5" /> Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Service User</label>
+            <select className="input text-sm w-full" value={filterSuId} onChange={e => setFilterSuId(e.target.value)}>
+              <option value="">All Service Users</option>
+              {residents.map(r => (
+                <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Date From</label>
+            <input type="date" className="input text-sm w-full" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Date To</label>
+            <input type="date" className="input text-sm w-full" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Search</label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                className="input pl-9 text-sm w-full"
+                placeholder="Name, invoice no, notes…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Content ── */}
@@ -115,11 +274,17 @@ export default function Invoicing() {
           <div className="flex items-center justify-center h-64">
             <Spinner />
           </div>
-        ) : invoices.length === 0 ? (
-          <EmptyState title="No invoices" description="No invoices found for the selected filter" action={<Button onClick={() => setCreateModalOpen(true)}>Create Invoice</Button>} />
+        ) : filteredInvoices.length === 0 ? (
+          <EmptyState
+            title="No invoices found"
+            description={hasFilters ? 'No invoices match the selected Service User, date range, or status filter.' : 'No invoices created yet.'}
+            action={hasFilters
+              ? <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+              : <Button onClick={() => setCreateModalOpen(true)}>Create Invoice</Button>}
+          />
         ) : (
           <div className="p-6 space-y-3">
-            {invoices.map(inv => (
+            {filteredInvoices.map(inv => (
               <div key={inv.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-sm transition-shadow">
                 <div className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50" onClick={() => setDetailModal(inv)}>
                   <div className="flex-1">

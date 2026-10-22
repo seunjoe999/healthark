@@ -81,7 +81,7 @@ router.delete('/:id', param('id').isUUID(), validateRequest,
       const notice = rows[0] as any;
       // Allow: managers (home_manager/group_admin) can delete any notice
       // Allow: the creator of the notice can delete it
-      if (notice.created_by !== staffId && !['home_manager', 'group_admin'].includes(role as string)) {
+      if (notice.created_by !== staffId && !['super_admin', 'home_manager', 'group_admin'].includes(role as string)) {
         throw new AppError('You do not have permission to delete this notice', 403);
       }
       const deleted = await query<{ id: string }>('DELETE FROM noticeboard WHERE id=$1 RETURNING id', [req.params.id]);

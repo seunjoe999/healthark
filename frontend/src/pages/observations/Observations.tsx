@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Thermometer, Plus, AlertTriangle, TrendingUp, Activity, Edit } from 'lucide-react'
 import { Button, Modal, Input, Select, Spinner, EmptyState, PrintButton, SpeechTextarea } from '../../components/ui'
 import api from '../../api'
-import { ukDateStr } from '../../utils/ukDate'
+import { ukDateStr, ukTimeHHMM } from '../../utils/ukDate'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { buildLetterheadPage, openLetterheadPrint, fmtDate, esc, type PrintSection } from '../../utils/letterheadPrint'
@@ -149,7 +149,7 @@ export default function Observations() {
   const canEdit = (r: any) => user?.role !== 'care_staff' || r.recorded_by === user?.id
 
   const [form, setForm] = useState({
-    suId: '', obsType: 'temperature', observedAt: ukDateStr() + 'T' + new Date().toTimeString().substring(0, 5),
+    suId: '', obsType: 'temperature', observedAt: ukDateStr() + 'T' + ukTimeHHMM(),
     tempCelsius: '', tempMethod: 'tympanic', systolic: '', diastolic: '', pulse: '', spo2: '', o2Litres: '', weight: '', bloodGlucose: '', notes: '',
   })
 
@@ -214,7 +214,7 @@ export default function Observations() {
     setForm({
       suId: r.su_id,
       obsType: r.obs_type || 'temperature',
-      observedAt: r.observed_at?.slice(0, 16) || (ukDateStr() + 'T' + new Date().toTimeString().substring(0, 5)),
+      observedAt: r.observed_at?.slice(0, 16) || (ukDateStr() + 'T' + ukTimeHHMM()),
       tempCelsius: r.temp_celsius ?? '',
       tempMethod: r.temp_method || 'tympanic',
       systolic: r.systolic != null ? String(r.systolic) : '',

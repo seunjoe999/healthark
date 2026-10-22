@@ -1969,7 +1969,7 @@ router.get('/templates/:key', (req: Request, res: Response) => {
 // Roles that can see every staff member's assessment/supervision records.
 // Everyone else can only see their own — staff assessments are personnel
 // records and must not be browsable by other frontline staff.
-const ASSESSMENT_MANAGER_ROLES = ['group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const ASSESSMENT_MANAGER_ROLES = ['super_admin', 'group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
 // team_leader can be explicitly granted MAR Review access via Settings → Access
 // Rights (the 'mar_review' feature flag) — when they have been, they must

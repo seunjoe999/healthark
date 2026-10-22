@@ -65,7 +65,7 @@ const LOCK_AFTER_MS = 10 * 60 * 1000
 // Admin accounts have no PIN (owner directive): they are never asked to create
 // one and never get the PIN lock. They are signed out after 30 minutes of
 // inactivity instead, as before, and sign back in with the password.
-const NO_PIN_ROLES = ['group_admin', 'admin']
+const NO_PIN_ROLES = ['super_admin', 'group_admin', 'admin']
 const ADMIN_SIGN_OUT_AFTER_MS = 30 * 60 * 1000
 const usesPin = (role?: string | null) => !NO_PIN_ROLES.includes(String(role))
 const idleLimit = (role?: string | null) => usesPin(role) ? LOCK_AFTER_MS : ADMIN_SIGN_OUT_AFTER_MS
@@ -374,7 +374,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally { setPinSetupSaving(false) }
   }
 
-  const isRole = (...roles: string[]) => !!user && roles.includes(user.role)
+  const isRole = (...roles: string[]) =>
+    !!user && (roles.includes(user.role) || (user.role === 'super_admin' && roles.includes('group_admin')))
 
   return (
     <AuthContext.Provider value={{ user, login, loginWithPin, logout, isRole }}>

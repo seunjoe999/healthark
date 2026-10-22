@@ -66,6 +66,7 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date())
   const [addOpen, setAddOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [dayOverflowModal, setDayOverflowModal] = useState<{ date: Date; items: any[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [sideTab, setSideTab] = useState<'upcoming' | 'done'>('upcoming')
 
@@ -194,13 +195,46 @@ export default function CalendarPage() {
                         {e.title}
                       </div>
                     ))}
-                    {dayEvents.length > 2 && <p className="text-xs text-slate-400">+{dayEvents.length - 2} more</p>}
+                    {dayEvents.length > 2 && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={ev => { ev.stopPropagation(); setDayOverflowModal({ date: day, items: dayEvents }) }}
+                        className="block text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 px-1.5 py-0.5 rounded cursor-pointer"
+                      >
+                        +{dayEvents.length - 2} more
+                      </span>
+                    )}
                   </div>
                 </button>
               )
             })}
           </div>
         </div>
+
+        <Modal
+          open={!!dayOverflowModal}
+          onClose={() => setDayOverflowModal(null)}
+          title={dayOverflowModal ? `Events — ${format(dayOverflowModal.date, 'EEEE, d MMMM yyyy')} (${dayOverflowModal.items.length})` : 'Events'}
+          size="md"
+        >
+          {dayOverflowModal && (
+            <div className="space-y-2.5 max-h-[65vh] overflow-y-auto">
+              {dayOverflowModal.items.map((e: any) => (
+                <div
+                  key={e.id}
+                  onClick={() => { setDayOverflowModal(null); setSelectedEvent(e) }}
+                  className={`p-3.5 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${TYPE_BG[e.event_type] || TYPE_BG.other}`}
+                >
+                  <p className="font-semibold text-sm">{e.title}</p>
+                  {e.su_name && <p className="text-xs font-semibold mt-0.5">👤 {e.su_name}</p>}
+                  <p className="text-xs opacity-75 mt-0.5 capitalize">{(e.event_type || '').replace('_', ' ')}</p>
+                  {e.description && <p className="text-xs opacity-70 mt-1 line-clamp-2">{e.description}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
 
         {/* Side panel */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-card flex flex-col">
@@ -357,6 +391,8 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
   const canManageCalendar = isRole(...CALENDAR_MANAGE_ROLES)
   const isAppointment = APPOINTMENT_TYPE_VALUES.includes(event.event_type)
   const [notes, setNotes] = useState({ notes: '', actionPoints: '', concerns: '', attendees: '', outcome: '', summary: '' })
+  const [hasExistingNotes, setHasExistingNotes] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [signoffs, setSignoffs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -366,16 +402,27 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
   useEffect(() => {
     api.get(`/calendar/${event.id}/notes`).then(res => {
       const d = res.data.data
-      if (d.notes?.[0]) setNotes({
-        notes: d.notes[0].notes || '',
-        actionPoints: d.notes[0].action_points || '',
-        concerns: d.notes[0].concerns || '',
-        attendees: d.notes[0].attendees || '',
-        outcome: d.notes[0].outcome || '',
-        summary: d.notes[0].summary || '',
-      })
+      if (d.notes?.[0]) {
+        const loaded = {
+          notes: d.notes[0].notes || '',
+          actionPoints: d.notes[0].action_points || '',
+          concerns: d.notes[0].concerns || '',
+          attendees: d.notes[0].attendees || '',
+          outcome: d.notes[0].outcome || '',
+          summary: d.notes[0].summary || '',
+        }
+        setNotes(loaded)
+        const recorded = !!(loaded.notes || loaded.actionPoints || loaded.concerns || loaded.attendees || loaded.outcome || loaded.summary)
+        setHasExistingNotes(recorded)
+        setEditing(!recorded)
+      } else {
+        setHasExistingNotes(false)
+        setEditing(true)
+      }
       setSignoffs(d.signoffs || [])
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch(() => {
+      setEditing(true)
+    }).finally(() => setLoading(false))
   }, [event.id])
 
   const save = async () => {
@@ -406,58 +453,116 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
 
   return (
     <Modal open={true} onClose={onClose} title={event.title} size="lg">
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
         {/* Event info */}
-        <div className={`flex items-center gap-3 p-3 rounded-xl ${typeStyle[event.event_type] || typeStyle.other}`}>
+        <div className={`flex items-center justify-between gap-3 p-3.5 rounded-xl ${typeStyle[event.event_type] || typeStyle.other}`}>
           <div>
-            <p className="text-sm font-semibold capitalize">{(event.event_type || '').replace('_', ' ')}</p>
+            <p className="text-sm font-bold capitalize">{(event.event_type || '').replace('_', ' ')}</p>
             {(() => {
-              // start_time/end_time are stored as full timestamps, not bare "HH:mm" —
-              // printing them raw showed the whole ISO string (e.g. "2026-10-01T22:10:00.000Z")
-              // instead of just the time.
               const fmtT = (v: string) => { const d = new Date(v); return isNaN(d.getTime()) ? '' : format(d, 'HH:mm') }
               const st = event.start_time ? fmtT(event.start_time) : ''
               const et = event.end_time ? fmtT(event.end_time) : ''
               return (
-                <p className="text-xs opacity-70">
+                <p className="text-xs opacity-80">
                   {event.event_date ? format(new Date(event.event_date), 'd MMMM yyyy') : ''}{st ? ` · ${st}` : ''}{et ? `–${et}` : ''}
                 </p>
               )
             })()}
-            {event.location && <p className="text-xs opacity-70">📍 {event.location}</p>}
+            {event.su_name && <p className="text-xs font-semibold mt-0.5">Resident: {event.su_name}</p>}
+            {event.location && <p className="text-xs opacity-80">📍 {event.location}</p>}
           </div>
+          {!loading && hasExistingNotes && !editing && canManageCalendar && (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit notes</Button>
+          )}
         </div>
 
-        {/* Appointment fields */}
-        {isAppointment ? (
-          <>
-            <SectionHeading title="Appointment details" description="Record what happened and the outcome" />
-            {loading ? <div className="text-center py-4 text-sm text-slate-400">Loading...</div> : (
-              <div className="space-y-3">
-                <div><label className="label">Attendees / who was present</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
-                <div><label className="label">Notes</label><textarea className="input" rows={3} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="What happened during this appointment..." /></div>
-                <div><label className="label">Action Points</label><textarea className="input" rows={2} value={notes.actionPoints} onChange={e => set('actionPoints', e.target.value)} placeholder="Any actions or follow-ups required..." /></div>
+        {event.description && (
+          <div>
+            <p className="doc-section-heading">Booking Description</p>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+              {event.description}
+            </div>
+          </div>
+        )}
+
+        {/* Read-only view when outcome/notes have already been recorded, vs form when unrecorded or explicitly editing */}
+        {loading ? (
+          <div className="text-center py-6 text-sm text-slate-400">Loading...</div>
+        ) : !editing && hasExistingNotes ? (
+          <div className="space-y-4">
+            {notes.attendees && (
+              <div>
+                <p className="doc-section-heading">Attendees / Who Was Present</p>
+                <div className="p-4 rounded-xl bg-white border border-slate-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {notes.attendees}
+                </div>
               </div>
             )}
+            {notes.outcome && (
+              <div>
+                <p className="doc-section-heading">Outcome</p>
+                <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {notes.outcome}
+                </div>
+              </div>
+            )}
+            {notes.summary && (
+              <div>
+                <p className="doc-section-heading">Summary</p>
+                <div className="p-4 rounded-xl bg-white border border-slate-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {notes.summary}
+                </div>
+              </div>
+            )}
+            {notes.notes && (
+              <div>
+                <p className="doc-section-heading">Appointment Outcome &amp; Notes</p>
+                <div className="p-4 rounded-xl bg-white border border-slate-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {notes.notes}
+                </div>
+              </div>
+            )}
+            {notes.concerns && (
+              <div>
+                <p className="doc-section-heading">Concerns</p>
+                <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {notes.concerns}
+                </div>
+              </div>
+            )}
+            {notes.actionPoints && (
+              <div>
+                <p className="doc-section-heading">Action Points &amp; Follow-up</p>
+                <div className="p-4 rounded-xl bg-white border border-slate-200 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {notes.actionPoints}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : isAppointment ? (
+          <>
+            <SectionHeading title="Appointment details" description="Record what happened and the outcome" />
+            <div className="space-y-3">
+              <div><label className="label">Attendees / who was present</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
+              <div><label className="label">Notes / Outcome</label><textarea className="input" rows={4} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="What happened during this appointment..." /></div>
+              <div><label className="label">Action Points</label><textarea className="input" rows={3} value={notes.actionPoints} onChange={e => set('actionPoints', e.target.value)} placeholder="Any actions or follow-ups required..." /></div>
+            </div>
           </>
         ) : (
           <>
-            {/* Event (meeting/activity/training/other) fields */}
             <SectionHeading title="Event details" description="Document what took place" />
-            {loading ? <div className="text-center py-4 text-sm text-slate-400">Loading...</div> : (
-              <div className="space-y-3">
-                <div><label className="label">Attendees</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
-                <div><label className="label">Summary</label><textarea className="input" rows={4} value={notes.summary} onChange={e => set('summary', e.target.value)} placeholder="Summarise what took place..." /></div>
-                <div><label className="label">Notes</label><textarea className="input" rows={3} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." /></div>
-              </div>
-            )}
+            <div className="space-y-3">
+              <div><label className="label">Attendees</label><input className="input" value={notes.attendees} onChange={e => set('attendees', e.target.value)} placeholder="Names of people present..." /></div>
+              <div><label className="label">Summary</label><textarea className="input" rows={4} value={notes.summary} onChange={e => set('summary', e.target.value)} placeholder="Summarise what took place..." /></div>
+              <div><label className="label">Notes</label><textarea className="input" rows={3} value={notes.notes} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." /></div>
+            </div>
           </>
         )}
 
         {/* Sign-offs */}
         {signoffs.length > 0 && (
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Signed off by</p>
+            <p className="doc-section-heading">Signed Off By</p>
             <div className="flex flex-wrap gap-2">
               {signoffs.map((s: any) => (
                 <span key={s.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold border border-emerald-200">
@@ -480,7 +585,14 @@ function EventDetailModal({ event, onClose, onDeleted, onSaved }: { event: any; 
               <Button variant="outline" size="sm" icon={<Check className="w-3.5 h-3.5" />} loading={signing} onClick={signOff}>Sign off</Button>
             )}
             {alreadySigned && <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Signed</span>}
-            <Button loading={saving} onClick={save}>Save</Button>
+            {editing ? (
+              <>
+                {hasExistingNotes && <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel edit</Button>}
+                <Button loading={saving} onClick={save}>Save</Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+            )}
           </div>
         </div>
       </div>

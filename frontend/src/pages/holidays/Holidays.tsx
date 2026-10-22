@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import api from '../../api'
 import { homesApi, staffApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -43,6 +43,7 @@ export default function Holidays() {
   const [declineTarget, setDeclineTarget] = useState<any>(null)
   const [declineReason, setDeclineReason] = useState('')
   const [declineMode, setDeclineMode] = useState<'decline' | 'cancel'>('decline')
+  const [dayModal, setDayModal] = useState<{ date: Date; items: any[] } | null>(null)
 
   useEffect(() => {
     homesApi.list().then(res => {
@@ -174,7 +175,7 @@ export default function Holidays() {
   // below it (which already filters to own leave for non-managers via canSeeAll)
   // — so a care/team-leader staff member saw every colleague's approved/pending
   // leave laid out on the calendar grid, not just their own.
-  const canSeeAllLeave = isRole('home_manager','group_admin','senior_carer','deputy_manager','admin', 'recruitment_admin')
+  const canSeeAllLeave = isRole('home_manager','group_admin','senior_carer','deputy_manager','admin', 'recruitment_admin', 'registered_manager', 'service_manager', 'director', 'super_admin')
   const getDayLeaves = (day: Date) => leaves.filter(l => {
     if (!canSeeAllLeave && l.staff_id !== user?.id) return false
     try {
@@ -445,7 +446,16 @@ export default function Holidays() {
                         {(l.staff_name || '').split(' ')[0]}
                       </div>
                     ))}
-                    {dayLeaves.length > 2 && <p className="text-xs text-slate-400 pl-1">+{dayLeaves.length-2}</p>}
+                    {dayLeaves.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setDayModal({ date: day, items: dayLeaves }) }}
+                        className="w-full text-left text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                        title={`View all ${dayLeaves.length} staff members on leave on ${format(day, 'd MMM yyyy')}`}
+                      >
+                        +{dayLeaves.length - 2} more
+                      </button>
+                    )}
                   </div>
                 </div>
               )
@@ -524,6 +534,61 @@ export default function Holidays() {
           })()}
         </div>
       )}
+
+      {/* Day Leave Overflow Modal (+N badge click) */}
+      <Modal
+        open={!!dayModal}
+        onClose={() => setDayModal(null)}
+        title={dayModal ? `Staff on Leave — ${format(dayModal.date, 'EEEE, d MMMM yyyy')} (${dayModal.items.length})` : 'Staff on Leave'}
+        size="md"
+      >
+        {dayModal && (
+          <div className="space-y-2.5 max-h-[65vh] overflow-y-auto pr-1">
+            {dayModal.items.map((l: any) => (
+              <div
+                key={l.id}
+                onClick={() => { setDayModal(null); setPreview(l) }}
+                className={`p-3.5 rounded-xl border cursor-pointer hover:shadow-sm transition-all flex items-center justify-between gap-3 ${
+                  l.status === 'approved'
+                    ? 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50'
+                    : l.status === 'declined'
+                    ? 'bg-rose-50/60 border-rose-200 hover:bg-rose-50'
+                    : 'bg-amber-50/60 border-amber-200 hover:bg-amber-50'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    l.status === 'approved' ? 'bg-emerald-200 text-emerald-800'
+                    : l.status === 'declined' ? 'bg-rose-200 text-rose-800'
+                    : 'bg-amber-200 text-amber-800'
+                  }`}>
+                    {(l.staff_name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 text-sm">{l.staff_name || 'Staff Member'}</p>
+                    <p className="text-xs text-slate-600 capitalize mt-0.5">
+                      {(l.leave_type || 'annual').replace(/_/g, ' ')}
+                      {' · '}
+                      {l.start_date ? format(parseISO(l.start_date), 'd MMM yyyy') : ''}
+                      {' – '}
+                      {l.end_date ? format(parseISO(l.end_date), 'd MMM yyyy') : ''}
+                      {(l.total_hours || l.hours_requested) ? ` · ${l.total_hours || l.hours_requested}h` : ''}
+                    </p>
+                    {(l.reason || l.notes) && (
+                      <p className="text-xs text-slate-500 italic mt-0.5 truncate">{l.reason || l.notes}</p>
+                    )}
+                  </div>
+                </div>
+                <span className={`badge flex-shrink-0 ${
+                  l.status === 'approved' ? 'badge-success' : l.status === 'declined' ? 'badge-critical' : 'badge-warning'
+                }`}>
+                  {l.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       {/* Leave preview modal */}
       <Modal open={!!preview} onClose={() => setPreview(null)} title="Leave Details">

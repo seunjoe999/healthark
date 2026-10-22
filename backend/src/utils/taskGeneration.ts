@@ -1,5 +1,5 @@
 import { query } from '../config/database';
-import { ukDateStr, ukDayOfWeek } from './ukTime';
+import { ukDateStr, ukDayOfWeek, ukDaysBetween } from './ukTime';
 
 // Single source of truth for "which recurring task templates fire today" —
 // used by both the 6am cron (scheduler.ts) and the manual "Generate today's
@@ -25,15 +25,11 @@ export async function generateTasksForHome(homeId: string): Promise<number> {
     // any other day never fired except by coincidence).
     const freq = tmpl.frequency || 'daily';
     const anchor = tmpl.created_at ? new Date(tmpl.created_at) : new Date();
-    const templateDow = anchor.getDay();
-    const now = new Date();
-    const monthsSinceAnchor = (now.getFullYear() - anchor.getFullYear()) * 12 + (now.getMonth() - anchor.getMonth());
-    // Whole days between the template's creation date and today, both
-    // normalised to midnight so a same-day time-of-day difference can't
-    // throw off the day-interval frequencies below by one.
-    const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const daysSinceAnchor = Math.round((todayMidnight.getTime() - anchorMidnight.getTime()) / 86400000);
+    const templateDow = ukDayOfWeek(anchor);
+    const [ty, tm, td] = today.split('-').map(Number);
+    const [ay, am, ad] = ukDateStr(anchor).split('-').map(Number);
+    const monthsSinceAnchor = (ty - ay) * 12 + (tm - am);
+    const daysSinceAnchor = ukDaysBetween(anchor, today);
 
     let shouldCreate = false;
     if (freq === 'daily' || freq === 'twice_daily' || freq === 'three_times_daily') shouldCreate = true;
@@ -58,10 +54,10 @@ export async function generateTasksForHome(homeId: string): Promise<number> {
     else if (freq === 'every_28_days' && daysSinceAnchor >= 0 && daysSinceAnchor % 28 === 0) shouldCreate = true;
     // Month-interval frequencies — recur on the same day-of-month the
     // template was created, every N months from then on.
-    else if (freq === 'monthly' && monthsSinceAnchor >= 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-    else if (freq === 'quarterly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 3 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-    else if (freq === 'every_6_months' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 6 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
-    else if (freq === 'yearly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 12 === 0 && now.getDate() === anchor.getDate()) shouldCreate = true;
+    else if (freq === 'monthly' && monthsSinceAnchor >= 0 && td === ad) shouldCreate = true;
+    else if (freq === 'quarterly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 3 === 0 && td === ad) shouldCreate = true;
+    else if (freq === 'every_6_months' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 6 === 0 && td === ad) shouldCreate = true;
+    else if (freq === 'yearly' && monthsSinceAnchor >= 0 && monthsSinceAnchor % 12 === 0 && td === ad) shouldCreate = true;
 
     if (shouldCreate) {
       // "twice_daily"/"three_times_daily" generate one row per occurrence time

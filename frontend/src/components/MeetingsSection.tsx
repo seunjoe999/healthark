@@ -6,8 +6,10 @@ import { format } from 'date-fns'
 import { ukDateStr } from '../utils/ukDate'
 import { Spinner, Button, Modal, EmptyState } from './ui'
 import { SpeechTextarea } from './ui/SpeechButton'
-import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send, Pencil, Trash2, Search } from 'lucide-react'
+import { Users, Plus, ChevronDown, ChevronUp, ShieldCheck, Send, Pencil, Trash2, Search, Download, FileText, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { downloadCsv } from '../utils/exportTable'
+import { buildLetterheadPage, openLetterheadPrint, printLetterheadTable, esc } from '../utils/letterheadPrint'
 
 type MeetingType = 'resident' | 'staff' | 'management' | 'team' | 'team_briefing'
 
@@ -56,25 +58,26 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
   const [editItem, setEditItem] = useState<any>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Team-meeting list filter — the list keeps building up, so managers can
-  // narrow it by team, date range and free text. Client-side (the whole home's
-  // list is already fetched by `load`): no backend change needed. Only shown
-  // for team_briefing; every other meeting list keeps its existing behaviour.
   const isBriefing = meetingType === 'team_briefing'
   const [filterTeam, setFilterTeam] = useState('')
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [filterText, setFilterText] = useState('')
+  const [filterSpecificId, setFilterSpecificId] = useState('')
+  const [filterSignOff, setFilterSignOff] = useState<'all' | 'signed' | 'unsigned'>('all')
   const [filterTeams, setFilterTeams] = useState<any[]>([])
   useEffect(() => {
     if (!isBriefing || !homeId) return
     api.get('/teams', { params: { homeId } }).then(res => setFilterTeams(res.data.data || [])).catch(() => {})
   }, [isBriefing, homeId])
+
   const shownMeetings = useMemo(() => {
-    if (!isBriefing) return meetings
     const q = filterText.trim().toLowerCase()
     return meetings.filter((m: any) => {
-      if (filterTeam && String(m.team_id || '') !== filterTeam) return false
+      if (filterSpecificId && String(m.id) !== filterSpecificId) return false
+      if (isBriefing && filterTeam && String(m.team_id || '') !== filterTeam) return false
+      if (filterSignOff === 'signed' && !m.signed_off) return false
+      if (filterSignOff === 'unsigned' && m.signed_off) return false
       const d = String(m.meeting_date || '').slice(0, 10)
       if (filterFrom && d && d < filterFrom) return false
       if (filterTo && d && d > filterTo) return false
@@ -85,9 +88,60 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
       }
       return true
     })
-  }, [isBriefing, meetings, filterTeam, filterFrom, filterTo, filterText])
-  const clearFilters = () => { setFilterTeam(''); setFilterFrom(''); setFilterTo(''); setFilterText('') }
-  const filtersActive = isBriefing && (!!filterTeam || !!filterFrom || !!filterTo || !!filterText.trim())
+  }, [isBriefing, meetings, filterSpecificId, filterTeam, filterSignOff, filterFrom, filterTo, filterText])
+
+  const clearFilters = () => {
+    setFilterSpecificId('')
+    setFilterTeam('')
+    setFilterSignOff('all')
+    setFilterFrom('')
+    setFilterTo('')
+    setFilterText('')
+  }
+  const filtersActive = !!filterSpecificId || (isBriefing && !!filterTeam) || filterSignOff !== 'all' || !!filterFrom || !!filterTo || !!filterText.trim()
+
+  const downloadMeetingPdf = (m: any) => {
+    const dStr = m.meeting_date ? format(new Date(m.meeting_date), 'd MMM yyyy') : '—'
+    const sections = [
+      {
+        title: `${label} Summary`,
+        inner: `<table class="idtable">
+          <tr>
+            <td class="lbl">Meeting Type</td><td class="val">${esc(label)}</td>
+            <td class="lbl">Date</td><td class="val">${esc(dStr)}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Conducted By</td><td class="val">${esc(m.conducted_by || '—')}</td>
+            <td class="lbl">Location / Service</td><td class="val">${esc(m.service_location || m.team_name || '—')}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Attendees</td><td class="val">${esc(m.attendees || '—')}</td>
+            <td class="lbl">Sign-off Status</td><td class="val">${m.signed_off ? `Signed off${m.signed_off_by ? ` by ${esc(m.signed_off_by)}` : ''}` : 'Pending sign-off'}</td>
+          </tr>
+        </table>`,
+      },
+      {
+        title: 'Minutes & Discussion Notes',
+        inner: `<p class="body-text">${esc(m.notes || 'No meeting notes recorded.')}</p>`,
+      },
+      {
+        title: 'Agreed Action Plan',
+        inner: `<p class="body-text">${esc(m.action_plan || 'No action plan recorded.')}</p>`,
+      },
+    ]
+    const body = buildLetterheadPage({
+      docTitle: `${label} Record`,
+      docSubtitle: `Recorded on ${dStr}`,
+      docRefPrefix: 'MTG',
+      docRefId: String(m.id || dStr),
+      residentLabel: 'Meeting / Team',
+      residentName: m.team || label,
+      sections,
+    })
+    if (!openLetterheadPrint(`${label} — ${dStr}`, body)) {
+      toast.error('Please allow pop-ups for this site to print / save PDF')
+    }
+  }
 
   const canLoad = (meetingType === 'management' || meetingType === 'team_briefing') ? !!homeId : !!parentId
 
@@ -140,9 +194,61 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
           </h2>
           <p className="text-sm text-slate-400 mt-0.5">Record and review {label.toLowerCase()} minutes</p>
         </div>
-        {canLoad && (
-          <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setCreateOpen(true)}>New {label}</Button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {shownMeetings.length > 0 && (
+            <>
+              <Button size="sm" variant="secondary" icon={<FileText className="w-3.5 h-3.5" />}
+                onClick={() => {
+                  const cols = [
+                    { key: 'date', label: 'Date' },
+                    { key: 'conducted_by', label: 'Conducted By' },
+                    { key: 'location', label: 'Service / Location' },
+                    { key: 'notes', label: 'Notes' },
+                    { key: 'action_plan', label: 'Action Plan' },
+                    { key: 'status', label: 'Sign-off' },
+                  ]
+                  const rows = shownMeetings.map((m: any) => ({
+                    date: m.meeting_date ? format(new Date(m.meeting_date), 'd MMM yyyy') : '—',
+                    conducted_by: m.conducted_by || '—',
+                    location: m.service_location || m.team_name || '—',
+                    notes: m.notes || '—',
+                    action_plan: m.action_plan || '—',
+                    status: m.signed_off ? 'Signed off' : 'Pending',
+                  }))
+                  if (!printLetterheadTable(`${label} Records`, cols, rows)) {
+                    toast.error('Please allow pop-ups to print / save PDF')
+                  }
+                }}>
+                Print / PDF
+              </Button>
+              <Button size="sm" variant="secondary" icon={<Download className="w-3.5 h-3.5" />}
+                onClick={() => {
+                  const cols = [
+                    { key: 'date', label: 'Date' },
+                    { key: 'conducted_by', label: 'Conducted By' },
+                    { key: 'location', label: 'Service / Location' },
+                    { key: 'notes', label: 'Notes' },
+                    { key: 'action_plan', label: 'Action Plan' },
+                    { key: 'status', label: 'Sign-off' },
+                  ]
+                  const rows = shownMeetings.map((m: any) => ({
+                    date: m.meeting_date ? format(new Date(m.meeting_date), 'd MMM yyyy') : '',
+                    conducted_by: m.conducted_by || '',
+                    location: m.service_location || m.team_name || '',
+                    notes: m.notes || '',
+                    action_plan: m.action_plan || '',
+                    status: m.signed_off ? 'Signed off' : 'Pending',
+                  }))
+                  downloadCsv(label.toLowerCase().replace(/\s+/g, '-'), cols, rows)
+                }}>
+                Export CSV
+              </Button>
+            </>
+          )}
+          {canLoad && (
+            <Button size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={() => setCreateOpen(true)}>New {label}</Button>
+          )}
+        </div>
       </div>
 
       {!canLoad ? null : loading ? (
@@ -152,42 +258,64 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
           action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setCreateOpen(true)}>New {label}</Button>} />
       ) : (
         <div className="space-y-3">
-          {isBriefing && (
-            <div className="card p-4">
-              <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
-                <div className="flex-1 min-w-[180px]">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Search</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input className="input pl-9 w-full" placeholder="Search notes, actions, people..."
-                      value={filterText} onChange={e => setFilterText(e.target.value)} />
-                  </div>
+          {/* Search & Date Range Filter Bar — enabled across ALL meeting types (Management, Team, Resident, Staff) */}
+          <div className="card p-4">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <input className="input pl-9 w-full text-sm" placeholder="Search notes, actions, chair, people..."
+                    value={filterText} onChange={e => setFilterText(e.target.value)} />
                 </div>
-                <div className="min-w-[160px]">
+              </div>
+              <div className="min-w-[180px]">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Select Meeting</label>
+                <select className="input w-full text-sm" value={filterSpecificId} onChange={e => setFilterSpecificId(e.target.value)}>
+                  <option value="">All meetings ({meetings.length})</option>
+                  {meetings.map((m: any) => (
+                    <option key={m.id} value={m.id}>
+                      {m.meeting_date ? format(new Date(m.meeting_date), 'd MMM yyyy') : 'Undated'}
+                      {m.conducted_by ? ` — ${m.conducted_by}` : ''}
+                      {m.service_location ? ` (${m.service_location})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {isBriefing && (
+                <div className="min-w-[150px]">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Team</label>
-                  <select className="input w-full" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
+                  <select className="input w-full text-sm" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
                     <option value="">All teams</option>
                     {filterTeams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">From</label>
-                  <input type="date" className="input" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">To</label>
-                  <input type="date" className="input" value={filterTo} onChange={e => setFilterTo(e.target.value)} />
-                </div>
-                {filtersActive && (
-                  <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>Clear</Button>
-                )}
+              )}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Date From</label>
+                <input type="date" className="input text-sm" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Date To</label>
+                <input type="date" className="input text-sm" value={filterTo} onChange={e => setFilterTo(e.target.value)} />
+              </div>
+              <div className="min-w-[130px]">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Sign-Off</label>
+                <select className="input w-full text-sm" value={filterSignOff} onChange={e => setFilterSignOff(e.target.value as any)}>
+                  <option value="all">All</option>
+                  <option value="signed">Signed off</option>
+                  <option value="unsigned">Pending</option>
+                </select>
               </div>
               {filtersActive && (
-                <p className="text-xs text-slate-400 mt-2">Showing {shownMeetings.length} of {meetings.length} meetings</p>
+                <Button type="button" variant="secondary" size="sm" icon={<X className="w-3.5 h-3.5" />} onClick={clearFilters}>Clear</Button>
               )}
             </div>
-          )}
-          {isBriefing && shownMeetings.length === 0 ? (
+            <p className="text-xs text-slate-400 mt-2">
+              Showing <strong className="text-slate-700">{shownMeetings.length}</strong> of {meetings.length} meeting{meetings.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          {shownMeetings.length === 0 ? (
             <EmptyState title="No meetings match" description="Try widening the date range or clearing the filters."
               action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>} />
           ) : (
@@ -230,23 +358,29 @@ export default function MeetingsSection({ meetingType, parentId, homeId, label }
                 {expanded && (
                   <div className="px-5 pb-5 pt-2 border-t border-white/5 space-y-4">
                     <MeetingView meeting={m} />
-                    {(canManage || m.created_by === user?.id) && (
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                        <p className="text-xs text-slate-500">
-                          {m.created_by === user?.id && !canManage ? 'You created this record' : 'Manage this record'}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
-                            onClick={() => setEditItem(m)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" variant="danger" loading={deletingId === m.id}
-                            icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => handleDelete(m)}>
-                            Delete
-                          </Button>
-                        </div>
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 flex-wrap gap-2">
+                      <p className="text-xs text-slate-500">
+                        {m.created_by === user?.id && !canManage ? 'You created this record' : 'Meeting actions'}
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="secondary" icon={<Download className="w-3.5 h-3.5" />}
+                          onClick={() => downloadMeetingPdf(m)}>
+                          Download PDF
+                        </Button>
+                        {(canManage || m.created_by === user?.id) && (
+                          <>
+                            <Button size="sm" variant="outline" icon={<Pencil className="w-3.5 h-3.5" />}
+                              onClick={() => setEditItem(m)}>
+                              Edit
+                            </Button>
+                            <Button size="sm" variant="danger" loading={deletingId === m.id}
+                              icon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => handleDelete(m)}>
+                              Delete
+                            </Button>
+                          </>
+                        )}
                       </div>
-                    )}
+                    </div>
                     {meetingType === 'team_briefing' && (
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                         <p className="text-xs text-slate-500">Send these minutes to staff</p>

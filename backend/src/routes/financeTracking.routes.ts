@@ -16,14 +16,12 @@ function fromToken(req: Request, field: string): string {
   return (req.staff as any)?.[field] || '';
 }
 
-// GET /api/finance-tracking?homeId=&suId= — open to all staff (not just managers), so
-// care staff logging a resident's spending can also see the running record they're
-// adding to; deletion stays manager-only below.
+// GET /api/finance-tracking?homeId=&suId=&from=&to=&paymentType=&search=
 router.get('/',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const homeId = (req.query.homeId as string) || fromToken(req, 'homeId');
-      const { suId } = req.query as Record<string, string>;
+      const { suId, from, to, paymentType, search } = req.query as Record<string, string>;
       let sql = `SELECT f.*, su.first_name || ' ' || su.last_name AS su_name,
                         c.first_name || ' ' || c.last_name AS created_by_name
                  FROM finance_tracking f
@@ -31,11 +29,36 @@ router.get('/',
                  LEFT JOIN staff c ON c.id = f.created_by
                  WHERE f.home_id = $1`;
       const params: unknown[] = [homeId];
-      if (suId) { sql += ` AND f.su_id = $2`; params.push(suId); }
-      // Was open to every staff member regardless of whose service user the entry
-      // was for — a carer could see financial logs (test accounts included) for
-      // residents they have nothing to do with. Restricted roles now only ever
-      // see entries for their own assigned residents.
+
+      if (suId) {
+        if (suId === 'general') {
+          sql += ' AND f.su_id IS NULL';
+        } else {
+          params.push(suId);
+          sql += ` AND f.su_id = $${params.length}`;
+        }
+      }
+      if (from) {
+        params.push(from);
+        sql += ` AND f.payment_date >= $${params.length}::date`;
+      }
+      if (to) {
+        params.push(to);
+        sql += ` AND f.payment_date <= $${params.length}::date`;
+      }
+      if (paymentType && paymentType !== 'all') {
+        params.push(paymentType);
+        sql += ` AND f.payment_type = $${params.length}`;
+      }
+      if (search && search.trim()) {
+        params.push(`%${search.trim().toLowerCase()}%`);
+        const p = `$${params.length}`;
+        sql += ` AND (LOWER(COALESCE(su.first_name || ' ' || su.last_name, 'general')) LIKE ${p}
+                   OR LOWER(COALESCE(f.staff_on_shift, '')) LIKE ${p}
+                   OR LOWER(COALESCE(f.notes, '')) LIKE ${p}
+                   OR LOWER(COALESCE(f.payment_type, '')) LIKE ${p})`;
+      }
+
       const role = fromToken(req, 'role');
       const staffId = fromToken(req, 'staffId');
       if (RESTRICTED_ROLES.includes(role) && staffId) {
@@ -43,7 +66,7 @@ router.get('/',
         params.push(assignedSuIds.length ? assignedSuIds : ['00000000-0000-0000-0000-000000000000']);
         sql += ` AND f.su_id = ANY($${params.length}::uuid[])`;
       }
-      sql += ' ORDER BY f.payment_date DESC, f.created_at DESC LIMIT 300';
+      sql += ' ORDER BY f.payment_date DESC, f.created_at DESC LIMIT 1000';
       const rows = await query(sql, params);
       res.json({ success: true, data: rows } as ApiResponse);
     } catch (err) { next(err); }
@@ -69,7 +92,7 @@ router.post('/',
 );
 
 // DELETE /api/finance-tracking/:id
-router.delete('/:id', requireRole('home_manager', 'group_admin', 'admin', 'recruitment_admin'), param('id').isUUID(), validateRequest,
+router.delete('/:id', requireRole('home_manager', 'group_admin', 'admin', 'recruitment_admin', 'super_admin'), param('id').isUUID(), validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await query('DELETE FROM finance_tracking WHERE id = $1', [req.params.id]);

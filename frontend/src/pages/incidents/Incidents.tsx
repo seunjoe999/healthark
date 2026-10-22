@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import api from '../../api'
 import { homesApi, suApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
@@ -1407,7 +1407,7 @@ export default function Incidents() {
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-3 border-t border-slate-50 space-y-3">
+                  <div className="px-5 pb-5 pt-4 border-t border-slate-100 space-y-4">
                     <IncidentField label="Service User" value={inc.resident_name} />
                     <IncidentField label="Incident type" value={TYPE_LABELS[incidentType] || incidentType} />
                     <IncidentField label="Date" value={inc.record_date ? format(new Date(inc.record_date), 'd MMMM yyyy') : ''} />
@@ -1423,7 +1423,7 @@ export default function Incidents() {
                     {/* Emotion display */}
                     {inc.emotion && (
                       <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Resident Emotion</p>
+                        <p className="doc-section-heading">Resident Emotion</p>
                         <EmotionDisplay value={inc.emotion} />
                       </div>
                     )}
@@ -1432,13 +1432,13 @@ export default function Incidents() {
 
                     {/* Review Notes */}
                     {(inc.review_notes?.length > 0 || inc.signature) && (
-                      <div className="space-y-3 pt-2 border-t border-slate-100">
+                      <div className="space-y-3 pt-3 border-t border-slate-100">
                         {inc.review_notes?.length > 0 && (
                           <div>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Review Notes</p>
-                            <div className="space-y-2">
+                            <p className="doc-section-heading">Review Notes</p>
+                            <div className="space-y-2.5">
                               {inc.review_notes.map((note: any, i: number) => (
-                                <p key={i} className="text-sm text-slate-700">
+                                <p key={i} className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
                                   <span className="text-xs text-slate-400">On {format(new Date(note.timestamp), 'd MMM yyyy HH:mm')} {note.author} wrote: </span>
                                   {note.text}
                                 </p>
@@ -1836,9 +1836,9 @@ export default function Incidents() {
 function IncidentField({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div>
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className="text-sm text-slate-700 whitespace-pre-line">{value}</p>
+    <div className="pt-1">
+      <p className="doc-section-heading">{label}</p>
+      <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{value}</p>
     </div>
   )
 }

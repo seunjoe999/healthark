@@ -251,6 +251,7 @@ export default function TrainingMatrix() {
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [customCourseMode, setCustomCourseMode] = useState(false)
   const [addForm, setAddForm] = useState({ staffId: '', courseName: '', completedDate: ukDateStr(), expiryDate: '' })
   const [saving, setSaving] = useState(false)
   const [trainingTypes, setTrainingTypes] = useState<{ id: string; name: string }[]>([])
@@ -563,10 +564,22 @@ export default function TrainingMatrix() {
             <Select label="Staff member *" value={addForm.staffId} onChange={e => setAddForm(p => ({ ...p, staffId: e.target.value }))}
               options={[{ value: '', label: 'Select staff member...' }, ...data.staff.map(s => ({ value: s.id, label: `${s.name} (${formatRole(s.role)})` }))]} />
             <div>
-              <Select label="Name of training *" value={addForm.courseName} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))}
-                options={[{ value: '', label: 'Select training section...' }, ...trainingTypes.map(t => ({ value: t.name, label: t.name })), { value: '__custom__', label: 'Other (type below)' }]} />
-              {addForm.courseName === '__custom__' && (
-                <Input label="Custom training name *" required value={''} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))} placeholder="e.g. Manual Handling, Fire Safety..." className="mt-2" />
+              <Select
+                label="Name of training *"
+                value={customCourseMode ? '__custom__' : addForm.courseName}
+                onChange={e => {
+                  if (e.target.value === '__custom__') {
+                    setCustomCourseMode(true)
+                    setAddForm(p => ({ ...p, courseName: '' }))
+                  } else {
+                    setCustomCourseMode(false)
+                    setAddForm(p => ({ ...p, courseName: e.target.value }))
+                  }
+                }}
+                options={[{ value: '', label: 'Select training section...' }, ...trainingTypes.map(t => ({ value: t.name, label: t.name })), { value: '__custom__', label: 'Other (type below)' }]}
+              />
+              {customCourseMode && (
+                <Input label="Custom training name *" required value={addForm.courseName} onChange={e => setAddForm(p => ({ ...p, courseName: e.target.value }))} placeholder="e.g. Manual Handling, Fire Safety..." className="mt-2" />
               )}
               <button type="button" onClick={() => setManageTypesOpen(o => !o)} className="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">
                 + Manage training sections
@@ -575,13 +588,13 @@ export default function TrainingMatrix() {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
                   {trainingTypes.length === 0 && <p className="text-xs text-slate-400">No training sections yet</p>}
                   {trainingTypes.map(t => (
-                    <div key={t.id} className="flex items-center justify-between text-sm text-slate-700">
+                    <div key={t.id} className="flex items-center justify-between text-sm text-slate-800">
                       <span>{t.name}</span>
                       <button type="button" onClick={() => removeTrainingType(t.id)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button>
                     </div>
                   ))}
                   <div className="flex gap-2 pt-1">
-                    <input className="flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-sm" placeholder="New training section name"
+                    <input className="input flex-1 text-sm py-1.5" placeholder="New training section name"
                       value={newTypeName} onChange={e => setNewTypeName(e.target.value)} />
                     <button type="button" disabled={addingType} onClick={addTrainingType}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">Add</button>

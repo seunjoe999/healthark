@@ -64,6 +64,13 @@
     color: #0f172a;
   }
 
+  /* Ensure main page content AND modals/portals in light mode default to crisp
+     dark slate text rather than inheriting body's dark-mode cream (#f5f0e8) on .bg-white tables/cards. */
+  .app-shell:not(.theme-dark),
+  .app-shell:not(.theme-dark) main {
+    color: #0f172a;
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 12px; height: 12px; }
   ::-webkit-scrollbar-track { background: #111; }
@@ -412,6 +419,29 @@
 .app-shell:not(.theme-dark) .bg-white\/10.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/10 .text-slate-100,
 .app-shell:not(.theme-dark) .bg-white\/12.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/12 .text-slate-100,
 .app-shell:not(.theme-dark) .bg-white\/15.text-slate-100, .app-shell:not(.theme-dark) .bg-white\/15 .text-slate-100 { color: #1e293b !important; }
+.app-shell:not(.theme-dark) .bg-white\/5.text-slate-200, .app-shell:not(.theme-dark) .bg-white\/5 .text-slate-200,
+.app-shell:not(.theme-dark) .bg-white\/8.text-slate-200, .app-shell:not(.theme-dark) .bg-white\/8 .text-slate-200,
+.app-shell:not(.theme-dark) .bg-white\/10.text-slate-200, .app-shell:not(.theme-dark) .bg-white\/10 .text-slate-200,
+.app-shell:not(.theme-dark) .bg-white\/12.text-slate-200, .app-shell:not(.theme-dark) .bg-white\/12 .text-slate-200,
+.app-shell:not(.theme-dark) .bg-white\/15.text-slate-200, .app-shell:not(.theme-dark) .bg-white\/15 .text-slate-200 { color: #334155 !important; }
+
+/* Prominent yellow/gold document section headings across all completed records,
+   incident reports, reviews, care plans, risk assessments, appointments & confidential records */
+.doc-section-heading {
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  color: #ca8a04;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  line-height: 1.35;
+}
+.app-shell.theme-dark .doc-section-heading {
+  color: #facc15 !important;
+}
 .app-shell:not(.theme-dark) .bg-white\/5.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/5 .text-slate-300,
 .app-shell:not(.theme-dark) .bg-white\/8.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/8 .text-slate-300,
 .app-shell:not(.theme-dark) .bg-white\/10.text-slate-300, .app-shell:not(.theme-dark) .bg-white\/10 .text-slate-300,

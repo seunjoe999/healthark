@@ -41,7 +41,17 @@ if (process.env.DATABASE_URL) {
   };
 }
 
-export const pool = new Pool(config);
+export const pool = new Pool({
+  ...config,
+  // Ensure every PostgreSQL session evaluates CURRENT_DATE, CURRENT_TIME, and
+  // NOW() in UK wall-clock time (Europe/London), automatically transitioning
+  // between BST (UTC+1) and GMT (UTC+0) on UK DST change nights.
+  options: '-c timezone=Europe/London',
+});
+
+pool.on('connect', (client) => {
+  client.query("SET TIME ZONE 'Europe/London'").catch(() => {});
+});
 
 pool.on('error', (err) => {
   console.error('Unexpected PostgreSQL pool error:', err);

@@ -1,5 +1,6 @@
 # ── Stage 1: Compile backend TypeScript ──────────────────────────────────────
 FROM node:20-alpine AS backend-build
+ENV TZ=Europe/London
 WORKDIR /build/backend
 COPY backend/package*.json ./
 RUN npm ci
@@ -8,7 +9,8 @@ RUN npm run build
 
 # ── Stage 2: Production image ─────────────────────────────────────────────────
 FROM node:20-alpine AS production
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init tzdata
+ENV TZ=Europe/London
 
 # Backend production deps
 WORKDIR /app/backend

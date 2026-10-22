@@ -4,7 +4,7 @@ import { Button, Modal, Select, Spinner, EmptyState } from '../../components/ui'
 import api, { getToken } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import SignaturePad from '../../components/SignaturePad'
+import SignaturePad, { SignatureImage } from '../../components/SignaturePad'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -1005,13 +1005,13 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             {(r.triggers || r.protective_factors) && <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }} className="space-y-3">
               {r.triggers && (
                 <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
-                  <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Triggers</p>
+                  <p className="doc-section-heading">Triggers</p>
                   <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{r.triggers}</p>
                 </div>
               )}
               {r.protective_factors && (
                 <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
-                  <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Protective Factors</p>
+                  <p className="doc-section-heading">Protective Factors</p>
                   <p className="text-sm font-semibold text-slate-800 whitespace-pre-line leading-relaxed">{r.protective_factors}</p>
                 </div>
               )}
@@ -1019,8 +1019,8 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
 
             {r.risk_notes && (
               <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
-                <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#b3800f' }}>Risk Management Plan</p>
-                <p className="text-sm whitespace-pre-line font-medium text-slate-800">{r.risk_notes}</p>
+                <p className="doc-section-heading">Risk Management Plan</p>
+                <p className="text-sm whitespace-pre-line leading-relaxed font-medium text-slate-800">{r.risk_notes}</p>
               </div>
             )}
 
@@ -1045,8 +1045,8 @@ function ViewAssessmentModal({ record: r, onClose, onEdit, onNewAssessment, onRe
             {r.signed_off_by && <div className="p-3 rounded-xl" style={{ background: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(16,185,129,0.3)' : '#bbf7d0'}` }}>
               <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2 flex items-center gap-1"><Check className="w-3 h-3" /> Signed Off</p>
               <p className={clsx('text-xs', mutedText)}>Signed by: <span className={clsx('font-semibold', isDark ? 'text-white' : 'text-slate-900')}>{r.signed_off_by}</span>{r.signed_off_date && <span> on {format(new Date(r.signed_off_date), 'dd MMM yyyy')}</span>}</p>
-              {r.staff_signature && <div className="mt-2 border border-emerald-500/30 rounded-xl overflow-hidden bg-white w-64">
-                <img src={r.staff_signature} alt="Assessor signature" className="w-full h-16 object-contain" />
+              {r.staff_signature && <div className="mt-2 border border-emerald-500/30 rounded-xl overflow-hidden bg-white p-1.5 w-64">
+                <SignatureImage src={r.staff_signature} alt="Assessor signature" className="w-full h-16 object-contain" />
               </div>}
             </div>}
 

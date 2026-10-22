@@ -147,7 +147,7 @@ router.get('/:id/reads', param('id').isUUID(), validateRequest,
   }
 );
 
-const MANAGER_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const MANAGER_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 // Team leaders may edit an existing assessment and notify their team to read it,
 // matching what they already get on Care Plans and Other Risk Assessment — not
 // create new assessments from scratch, which stays management-only.

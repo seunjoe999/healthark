@@ -23,7 +23,7 @@ interface Absence {
   days_so_far: number;
 }
 
-const PRIVILEGED_ROLES = ['home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
+const PRIVILEGED_ROLES = ['super_admin', 'home_manager', 'group_admin', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 
 interface Bradford { staff_id: number; staff_name: string; bradford_score: number; spells: number; total_days: number; }
 interface Stats { total_absences: number; active_absences: number; total_days: number; avg_days: number; }

@@ -8,7 +8,7 @@ import { ApiResponse } from '../types';
 const router = Router();
 router.use(authenticate);
 
-const MANAGEMENT: string[] = ['group_admin', 'home_manager', 'deputy_manager', 'admin'];
+const MANAGEMENT: string[] = ['super_admin', 'group_admin', 'home_manager', 'deputy_manager', 'admin', 'director', 'registered_manager', 'service_manager'];
 const isMgmt = (req: Request) => MANAGEMENT.includes(req.staff?.role);
 
 // POST /api/confidential — create a record

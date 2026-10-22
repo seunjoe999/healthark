@@ -1,4 +1,4 @@
-export type StaffRole = 'care_staff' | 'senior_carer' | 'team_leader' | 'home_manager' | 'group_admin' | 'auditor'
+export type StaffRole = 'care_staff' | 'senior_carer' | 'team_leader' | 'supervisor' | 'home_manager' | 'deputy_manager' | 'service_manager' | 'registered_manager' | 'director' | 'admin' | 'recruitment_admin' | 'group_admin' | 'super_admin' | 'auditor'
 export type SUStatus = 'live' | 'pre_admission' | 'archive' | 'on_hold' | 'hospital'
 export type EmergencyRating = 'low' | 'medium' | 'high'
 
